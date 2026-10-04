@@ -630,6 +630,9 @@ function marksOf(leaf: CaptureNode, into: Set<string>) {
 /** Whether a line of detail fits an item's: a label and a text of the builder's limits. */
 const fitsDetail = (label: string, text: string) => label.length <= CUSTOM_DETAIL_LABEL_MAX && text.length <= CUSTOM_DETAIL_TEXT_MAX;
 
+/** The longest side, in pixels, of a picture that is an icon: decoration an item does not hold, and no reason to keep a group as columns. */
+const ICON_MAX = 32;
+
 /** Maps one card, or says what stops it. Every word it keeps is a word of the card. */
 function mapCard(card: CaptureNode, leaves: CaptureNode[], slide?: SlideMark): Mapped {
   const problems: CardProblem[] = [];
@@ -649,11 +652,19 @@ function mapCard(card: CaptureNode, leaves: CaptureNode[], slide?: SlideMark): M
     used.add(first);
     const media = first.media!;
     draft.picture = { url: media.kind === "img" ? media.url : "", alt: media.kind === "img" ? media.alt.trim().slice(0, CUSTOM_ALT_MAX) : "", leaf: first };
+    let icons = 0;
     for (const other of rest) {
       used.add(other);
+      // A small icon (a review star, a heart, an arrow) is decoration, not a second picture: it is said to be left out, but it does not make the
+      // card something an item cannot be (lampan.no: six icons on each of 24 product cards kept them all as columns, 48 blocks a row).
+      if (other.box[2] <= ICON_MAX && other.box[3] <= ICON_MAX) {
+        icons += 1;
+        continue;
+      }
       problem("second-picture", false);
       draft.unheld.push(`a second picture (${other.sel ?? other.tag})`);
     }
+    if (icons > 0) draft.unheld.push(`${icons} small icon${icons === 1 ? "" : "s"} (stars, hearts, arrows)`);
   }
   for (const leaf of real.filter((l) => kindOf(l) === "V")) {
     used.add(leaf);
@@ -772,6 +783,11 @@ function mapCard(card: CaptureNode, leaves: CaptureNode[], slide?: SlideMark): M
     if (draft.badge === "" && kind === "L" && words.length <= CUSTOM_BADGE_MAX && (overPicture(leaf) || paints(leaf.s.backgroundColor) || above)) {
       draft.badge = words;
       draft.nodes.badge = leaf;
+      used.add(leaf);
+    } else if (draft.badge !== "" && above && kind === "L" && `${draft.badge} · ${words}`.length <= CUSTOM_BADGE_MAX) {
+      // A second short label above the title (a campaign and a brand: "OKTOBERFEST", "Lucide") joins the first, in their order, so the cards stay an item each
+      // instead of the whole group falling back to columns (seen on lampan.no: 24 cards as columns used up the page's blocks and style budget).
+      draft.badge = `${draft.badge} · ${words}`;
       used.add(leaf);
     }
   }

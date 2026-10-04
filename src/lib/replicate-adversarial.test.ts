@@ -313,6 +313,28 @@ describe("a card's words are one sentence, a label, or a list: never a mirage", 
     expect(above.grids.kept[0].reason).toMatch(/words above the title/);
   });
 
+  it("joins two short labels above the title into the badge, in their order, so the cards stay a grid (lampan.no: a campaign and a brand above each product's title)", () => {
+    const built = buildOf(row(3, (i, p, x, top) => made(i, p, x, top, (path, cx, cy) => [
+      text("span", [cx + 16, cy + 10, 90, 18], "OKTOBERFEST", { fontSize: "12px" }, path(0)),
+      text("span", [cx + 16, cy + 32, 60, 18], `Brand ${i}`, { fontSize: "12px" }, path(1)),
+      title(path(2), cx, cy + 60, `Lamp ${i}`),
+    ])));
+    const grid = gridsOf(built.rows)[0];
+    expect(grid.items!.map((item) => item.badge)).toEqual(["OKTOBERFEST · Brand 0", "OKTOBERFEST · Brand 1", "OKTOBERFEST · Brand 2"]);
+    expect(grid.items!.map((item) => item.title)).toEqual(["Lamp 0", "Lamp 1", "Lamp 2"]);
+    expect(built.grids.kept).toHaveLength(0);
+  });
+
+  it("still refuses a third label that would not fit the badge, so no word is dropped", () => {
+    const built = buildOf(row(3, (i, p, x, top) => made(i, p, x, top, (path, cx, cy) => [
+      text("span", [cx + 16, cy + 10, 120, 18], "A rather long campaign name", { fontSize: "12px" }, path(0)),
+      text("span", [cx + 16, cy + 32, 120, 18], "And a second long label", { fontSize: "12px" }, path(1)),
+      title(path(2), cx, cy + 60, `Lamp ${i}`),
+    ])));
+    expect(gridsOf(built.rows)).toHaveLength(0);
+    expect(built.grids.kept[0].reason).toMatch(/words above the title/);
+  });
+
   it("refuses a card with a list of words, with its own reason (a pricing column is not a footer's links)", () => {
     const list = (path: { p: string }, cx: number, cy: number, i: number) =>
       node({ ...path, tag: "ul", box: [cx + 16, cy + 60, 258, 80], s: { display: "block", listStyleType: "disc" } }, [0, 1, 2].map((k) => text("li", [cx + 16, cy + 60 + k * 26, 258, 24], `Feature ${i}-${k}`, {}, { p: `${path.p}/${k}` })));

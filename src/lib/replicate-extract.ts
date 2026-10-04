@@ -184,6 +184,9 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
       if (Number(cs.opacity) === 0) return false;
     }
     if (rect.width <= 0 && rect.height <= 0) return false;
+    // Wholly above or to the left of the page, which cannot be scrolled to (a cookie tool's iframe parked at -9999px): not on the page, however big. It
+    // was a row of its own and pushed every row after it 9,963 px down on lampan.no. A slide scrolled out of its track (`force`) is another matter.
+    if (!force && (rect.bottom + scrollY <= -20 || rect.right + scrollX <= -20)) return false;
     // Screen-reader-only text: a pixel in size, clipped.
     if (rect.width <= 1 && rect.height <= 1 && (cs.position === "absolute" || cs.position === "fixed")) return false;
     if (el.getAttribute("aria-hidden") === "true" && rect.width * rect.height < 4) return false;

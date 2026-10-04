@@ -401,9 +401,9 @@ describe("what stays as columns, and why", () => {
   });
 
   it("keeps a group as columns when more than a fifth of its cards hold something an item cannot, and builds it when only a few do", () => {
-    const withSecondPicture = (tree: CaptureNode, count: number) => {
+    const withSecondPicture = (tree: CaptureNode, count: number, size = 48) => {
       const cards = tree.children[1].children;
-      for (let i = 0; i < count; i++) cards[i].children.push(node({ p: `${cards[i].p}/99`, tag: "img", box: [cards[i].box[0] + 200, cards[i].box[1] + 10, 24, 24], s: { display: "block" }, media: { kind: "img", url: "https://source.test/icon.png", width: 24, height: 24, alt: "" } }));
+      for (let i = 0; i < count; i++) cards[i].children.push(node({ p: `${cards[i].p}/99`, tag: "img", box: [cards[i].box[0] + 200, cards[i].box[1] + 10, size, size], s: { display: "block" }, media: { kind: "img", url: "https://source.test/icon.png", width: size, height: size, alt: "" } }));
       return tree;
     };
     const few = buildReplica(input(capture(page(withSecondPicture(shop(10, 5), 2)))), newId);
@@ -413,6 +413,27 @@ describe("what stays as columns, and why", () => {
     const many = buildReplica(input(capture(page(withSecondPicture(shop(10, 5), 3)))), newId);
     expect(gridsOf(many.rows)).toHaveLength(0);
     expect(many.grids.kept[0].reason).toMatch(/3 of 10 cards hold a second picture or an icon set, more than a fifth/);
+  });
+
+  it("builds the group when every card has small icons (review stars, a heart): decoration is left out and said so, it is not a second picture (lampan.no)", () => {
+    const withIcons = (tree: CaptureNode) => {
+      for (const card of tree.children[1].children) {
+        for (let k = 0; k < 3; k++) card.children.push(node({ p: `${card.p}/9${k}`, tag: "svg", box: [card.box[0] + 10 + k * 14, card.box[1] + 5, 13, 13], s: { display: "block" }, media: { kind: "svg", markup: "<svg/>", width: 13, height: 13 } as never }));
+      }
+      return tree;
+    };
+    const built = buildReplica(input(capture(page(withIcons(shop(10, 5))))), newId);
+    expect(gridsOf(built.rows)).toHaveLength(1);
+    expect(built.grids.kept).toHaveLength(0);
+    expect(built.grids.built[0].failed).toHaveLength(0);
+    expect(gridsOf(built.rows)[0].items).toHaveLength(10);
+    // But a 33 px picture is a picture.
+    const tree = shop(10, 5);
+    for (const card of tree.children[1].children) {
+      card.children.push(node({ p: `${card.p}/98`, tag: "img", box: [card.box[0] + 200, card.box[1] + 10, 33, 33], s: { display: "block" }, media: { kind: "img", url: "https://source.test/b.png", width: 33, height: 33, alt: "" } }));
+    }
+    const bigger = buildReplica(input(capture(page(tree))), newId);
+    expect(gridsOf(bigger.rows)).toHaveLength(0);
   });
 
   it("keeps a group as columns when a card's text is more than an item holds, never cutting words", () => {

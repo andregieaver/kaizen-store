@@ -203,3 +203,31 @@ test("slides that say the same and go to different places keep their addresses i
     site.close();
   }
 });
+
+test("a box parked above the page (a cookie tool's iframe at -9999px) is not on the page: it is no row, and no row after it is pushed down", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const html = `<!doctype html><html><body style="margin:0;font-family:Arial">
+    <iframe srcdoc="<p>Consent</p>" style="position:absolute;top:-9999px;left:0;width:300px;height:200px"></iframe>
+    <div id="away" style="position:absolute;left:-5000px;top:100px;width:200px;height:100px">Parked left</div>
+    <h1 style="margin:0;padding:20px">First heading</h1>
+    <p style="margin:0;padding:20px">Second paragraph</p>
+  </body></html>`;
+  const site = await serve(html);
+  try {
+    const desktop = await openOriginal(browser, site.url, "desktop", everything, undefined, { watch: false });
+    const boxes = [...walk(desktop.capture.root)].map((n) => n.box);
+    // Nothing of the page lies above the top or left of it.
+    expect(boxes.every((b) => b[1] + b[3] > -20 && b[0] + b[2] > -20)).toBe(true);
+    const built = buildReplica({ ...own(), desktop: desktop.capture }, randomUUID);
+    const json = JSON.stringify(built.rows);
+    expect(json).toContain("First heading");
+    expect(json).toContain("Second paragraph");
+    expect(json).not.toContain("Parked left");
+    expect(json).not.toContain("Consent");
+    // The first row starts where the first heading does, not 10,000 px above it.
+    expect(built.rows[0]).toBeTruthy();
+    expect(JSON.stringify(built.parts.map((p) => p.target?.[1] ?? 0).filter((y) => y < -100))).toBe("[]");
+  } finally {
+    site.close();
+  }
+});

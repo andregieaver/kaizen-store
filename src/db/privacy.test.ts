@@ -549,7 +549,8 @@ describe("anonymising and restricting orders", () => {
     const young = await sale(store, YEAR - 2);
     const unpaid = await placeOrder(db, store, { lines: [{ sku: "B", unit: 100 }], pay: false });
     await db.query("update commerce.orders set placed_at = now() - interval '40 days' where id = $1", [unpaid.id]);
-    await rejects("select commerce.anonymise_expired_orders($1, current_date + 1)", [store], /anonymise_today/);
+    // The store's own day, not the database's: in Oslo it is already tomorrow for the last hours of the UTC day.
+    await rejects("select commerce.anonymise_expired_orders($1, commerce.store_day($1::uuid, now()) + 1)", [store], /anonymise_today/);
     await rejects("select commerce.anonymise_expired_orders($1, null)", [store], /anonymise_today/);
     expect(await scalar("select commerce.anonymise_expired_orders($1, current_date, 2)", [store])).toBe(2);
     expect((await orderRow(dues[0].id)).anonymised_at).not.toBeNull();

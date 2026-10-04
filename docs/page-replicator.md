@@ -186,6 +186,24 @@ its own takes 7 to 12 s. So (`src/lib/replicate-look.ts`):
 - to reproduce on a machine: launch `@sparticuz/chromium`'s `executablePath()` and `args` with `setGraphicsMode = false`, and run the
   steps in the order the server does. Bundle the script with esbuild first: `tsx` adds a `__name` helper that does not exist in the page.
 
+What copying lampan.no taught (D150, found with the probe on `https://lampan.no/`; run it offline on a saved capture with
+`tsx` and `buildReplica()` to see the grid decisions without a browser):
+
+- a box parked far above the page (a cookie tool's iframe at `top: -9999px`) was a row of its own, and every row after it was
+  placed 9,963 px lower: `visible()` now leaves out what lies wholly above or left of the page (a slide scrolled out of its track
+  is read as before: `force`);
+- every product card had about six small icons (review stars, a heart), each a "second picture", so 24 cards stayed as columns
+  at 48 blocks a row, which used the page's 100 blocks, then its style budget, and the rows after them collapsed to 40 px:
+  a picture of at most 32 × 32 px (`ICON_MAX`) is decoration, said to be left out but no reason to keep the group as columns;
+- two short labels above a title (a campaign and a brand) are one badge in their order, joined with " · ", where only the first was
+  and the second made the group fall back to columns;
+- the AI's answers ran out of tokens before the first word: a reasoning model counts its hidden reasoning against the limit.
+  `replyWithRoom()` asks for low reasoning effort with a limit that leaves room, and once more with three times the room.
+
+Result on the page: 100 blocks (the cap) to 85, one grid to five (37 items), nested-box sections 10 to 4, phones 24 % to 40 %.
+Still open: pictures drawn as backgrounds under words (the hero banners), a form's block, a free-layout box, and the style budget
+for a page this long (43,000 of 50,000 characters).
+
 What copying oda.com's front page taught (D150):
 
 - a zero-size holder (`picture`, `display: contents`) hid the image laid out inside it: the extractor now flattens holders

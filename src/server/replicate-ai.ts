@@ -25,6 +25,24 @@ function pictures(connection: AiConnection, images: Buffer[]): ContentPart[] {
   return images.map((bytes) => imagePart(connection, bytes, "image/jpeg"));
 }
 
+/**
+ * A reply with room to think: a reasoning model counts its hidden reasoning against the limit, so a limit that fits the answer can be used up
+ * before the first word (seen with the site's vision model on lampan.no: "cut off at its length limit"). Low reasoning effort first, a limit
+ * that leaves room, and once more with three times the room when the answer was still cut off. Other failures are the caller's.
+ */
+export async function replyWithRoom(
+  connection: AiConnection,
+  messages: ChatMessage[],
+  options: { maxTokens: number; temperature: number; timeoutMs: number },
+): Promise<{ text: string }> {
+  try {
+    return await completeText(connection, messages, { ...options, reasoningEffort: "low" });
+  } catch (error) {
+    if (!(error instanceof AiError) || !/cut off/i.test(error.message)) throw error;
+    return completeText(connection, messages, { ...options, maxTokens: options.maxTokens * 3, reasoningEffort: "low" });
+  }
+}
+
 const failure = (error: unknown): { problem: string; blind: boolean } => {
   if (error instanceof AiError) {
     // A 400 with pictures in the message means the model cannot take them.
@@ -42,7 +60,7 @@ export async function analyse(connection: AiConnection, digest: string, desktop:
   ];
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
-      const { text } = await completeText(connection, seen, { maxTokens: 2500, temperature: 0.2, timeoutMs: 120_000 });
+      const { text } = await replyWithRoom(connection, seen, { maxTokens: 4000, temperature: 0.2, timeoutMs: 120_000 });
       const analysis = parseAnalysis(text);
       if (analysis) return { ok: true, value: analysis };
     }
@@ -52,7 +70,7 @@ export async function analyse(connection: AiConnection, digest: string, desktop:
     const reason = failure(error);
     if (reason.blind) {
       try {
-        const { text } = await completeText(connection, [{ role: "system", content: analysisSystem() }, { role: "user", content: analysisUser(digest) }], { maxTokens: 2000, temperature: 0.2, timeoutMs: 90_000 });
+        const { text } = await completeText(connection, [{ role: "system", content: analysisSystem() }, { role: "user", content: analysisUser(digest) }], { maxTokens: 4000, temperature: 0.2, timeoutMs: 90_000, reasoningEffort: "low" });
         const analysis = parseAnalysis(text);
         if (analysis) return { ok: true, value: analysis };
       } catch {
@@ -75,7 +93,7 @@ export async function assess(
   ];
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
-      const { text } = await completeText(connection, messages, { maxTokens: 4000, temperature: 0.2, timeoutMs: 150_000 });
+      const { text } = await replyWithRoom(connection, messages, { maxTokens: 6000, temperature: 0.2, timeoutMs: 150_000 });
       const read = parsePatchPlan(text);
       if (read.ok) return { ok: true, value: read.plan };
       messages.push({ role: "assistant", content: text.slice(0, 6000) }, { role: "user", content: `That could not be read (${read.problem}). Answer again with the JSON object only.` });
