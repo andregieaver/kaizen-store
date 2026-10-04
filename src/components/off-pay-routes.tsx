@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { isPayPath } from "@/lib/pay-routes";
+import { isNoExtrasPath } from "@/lib/pay-routes";
 
 /**
  * Draws its children everywhere but on the cart, checkout and order (wave 1, 1e, `docs/wave-1-trust.md` 2.5, `docs/pci.md`), where a
@@ -13,10 +13,13 @@ import { isPayPath } from "@/lib/pay-routes";
  * (an open chat, a banner not yet answered) and a pay page never has it. Children that are not drawn are never hydrated, so nothing in
  * them runs.
  *
+ * The same for a hosted invoice or credit note (`isDocumentPath()`): its address holds the token that is the whole access to a document with a
+ * buyer's details, so no tracking tool or owner code may run there and read it (D159).
+ *
  * A client navigation into a pay route unmounts them here, but a script they added earlier is still in the document: that is what
  * `PayRouteGuard` (`pay-route-guard.tsx`) reloads for.
  */
 export function OffPayRoutes({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  return isPayPath(pathname) ? null : children;
+  return isNoExtrasPath(pathname) ? null : children;
 }

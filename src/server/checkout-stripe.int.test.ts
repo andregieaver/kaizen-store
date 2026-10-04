@@ -154,9 +154,10 @@ describe("starting checkout", () => {
     expect(payment).toEqual({ provider_reference: "cs_fake_1", provider_account: accountId, amount: 59700 });
   });
 
-  it("takes Kaizen's fee and sends an invoice when the store wants one", async () => {
+  it("takes Kaizen's fee and sends Stripe's invoice when the store wants one and Kaizen's own invoicing is off (D159)", async () => {
     await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 150`);
     await db().execute(sql`update commerce.payment_providers set order_invoices = true where store_id = ${storeId}::uuid`);
+    await db().execute(sql`insert into commerce.invoice_settings (store_id, enabled) values (${storeId}::uuid, false) on conflict (store_id) do update set enabled = false`);
     try {
       await startCheckout(shop(), await cartWith("DEMO-MUG-WHITE", 2), "https://shop.test", "Frakt");
       const { params } = fake.created[fake.created.length - 1];
@@ -170,7 +171,12 @@ describe("starting checkout", () => {
           },
         },
       });
+      // With Kaizen's own invoicing on, the database makes the invoice and Stripe is not asked for one.
+      await db().execute(sql`update commerce.invoice_settings set enabled = true where store_id = ${storeId}::uuid`);
+      await startCheckout(shop(), await cartWith("DEMO-MUG-WHITE", 2), "https://shop.test", "Frakt");
+      expect(fake.created[fake.created.length - 1].params.invoice_creation).toBeUndefined();
     } finally {
+      await db().execute(sql`delete from commerce.invoice_settings where store_id = ${storeId}::uuid`);
       await db().execute(sql`update commerce.platform_settings set sale_fee_bps = 0`);
       await db().execute(sql`update commerce.payment_providers set order_invoices = false where store_id = ${storeId}::uuid`);
     }

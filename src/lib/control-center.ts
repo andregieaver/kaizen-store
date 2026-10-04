@@ -47,7 +47,14 @@ export type StoreFigures = {
   returns?: ReturnFigures;
   /** What is wrong with the store's tax profile (D157, `checkupFindings()`), only when something is: for its owner. */
   tax?: string[];
+  /**
+   * Invoices (D159), only when something waits and only for the owner: paid orders still without an invoice, and how many of them are
+   * reverse-charge ones past the deadline (the 15th of the month after payment, Directive Art. 222).
+   */
+  invoices?: InvoiceFigures;
 };
+
+export type InvoiceFigures = { waiting: number; overdue: number };
 
 export type ReturnFigures = { overdue: number; unacknowledged: number; requested: number };
 
@@ -113,6 +120,17 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
     // A VAT number nobody has checked, or an IOSS or OSS registration left half done (D157): only an owner can change them.
     if (owner && s.tax && s.tax.length > 0) {
       items.push({ text: `${s.name}: the tax settings need a look. ${s.tax.join(" ")}`, href: `${base}/settings/tax`, action: "Open tax settings" });
+    }
+    // Paid orders still waiting for an invoice (D159): the owner can fix what holds them (details, tax profile). Not urgent, unless a
+    // reverse-charge invoice is past its legal deadline.
+    if (owner && s.invoices && s.invoices.waiting > 0) {
+      const overdue = s.invoices.overdue;
+      items.push({
+        text: `${s.name}: ${plural(s.invoices.waiting, "paid order is", "paid orders are")} waiting for an invoice${overdue > 0 ? `, ${overdue} of them past the deadline for a reverse-charge invoice` : ""}.`,
+        href: `${base}/invoices?tab=waiting`,
+        action: "Open invoices",
+        urgent: overdue > 0,
+      });
     }
     // Nothing of the stock is shown to a member who may not open Products.
     if (hidden(s, "stock")) {

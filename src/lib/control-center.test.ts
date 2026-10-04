@@ -78,6 +78,17 @@ describe("the control center (D107)", () => {
     expect(attentionFor([store({ tax: [] })])).toEqual([]);
   });
 
+  it("asks an owner, and only an owner, about paid orders waiting for an invoice, urgent only past a reverse-charge deadline (D159)", () => {
+    const waiting = attentionFor([store({ slug: "a", name: "A", invoices: { waiting: 3, overdue: 0 } })]);
+    expect(waiting).toEqual([
+      { text: "A: 3 paid orders are waiting for an invoice.", href: "/admin/a/invoices?tab=waiting", action: "Open invoices", urgent: false },
+    ]);
+    const overdue = attentionFor([store({ slug: "a", name: "A", invoices: { waiting: 1, overdue: 1 } })]);
+    expect(overdue[0]).toMatchObject({ text: "A: 1 paid order is waiting for an invoice, 1 of them past the deadline for a reverse-charge invoice.", urgent: true });
+    expect(attentionFor([store({ role: "admin", invoices: { waiting: 3, overdue: 1 } })])).toEqual([]);
+    expect(attentionFor([store({ invoices: { waiting: 0, overdue: 0 } })])).toEqual([]);
+  });
+
   it("adds Work's own attention items for a store that uses it, urgent first, and nothing for one that does not", () => {
     const now = Date.parse("2026-09-29T12:00:00Z");
     const workOf = (slug: string, name: string) => workOverview({

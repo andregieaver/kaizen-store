@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
+import { OrderDocuments as DocumentLinks } from "@/components/documents/order-documents";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { OwnBookings } from "@/components/own-bookings";
 import { OrderReturns } from "@/components/withdraw/order-returns";
@@ -23,6 +24,7 @@ import { vatText } from "@/lib/vat-text";
 import { fileSize } from "@/lib/file-size";
 import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
 import { termsForOrder } from "@/server/checkout-terms";
+import { getOrderDocuments } from "@/server/invoices";
 import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
 import { listOrderReturns } from "@/server/returns";
 import { perRequest } from "@/server/request-memo";
@@ -46,7 +48,7 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
-  const [downloads, subscription, account, returns, terms] = await Promise.all([
+  const [downloads, subscription, account, returns, terms, documents] = await Promise.all([
     digital && paid ? getOrderDownloads(store.id, order.id) : [],
     order.subscriptionId ? getSubscriptionForOrder(store.id, order.id) : null,
     getCheckoutAccount(store.id, order.id),
@@ -54,8 +56,10 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
     listOrderReturns(store.id, order.id),
     // What the shopper was shown of the store's terms when they ordered (wave 1, 1e); nothing for an order that kept none.
     termsForOrder(store.id, order.id),
+    // Its invoice and credit notes (D159): the order's own key has been checked, so its documents are the visitor's to see.
+    getOrderDocuments(store.id, order.id),
   ]);
-  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms };
+  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms, documents };
 }
 
 const FRAME = "rounded-lg border border-border p-4";
@@ -66,13 +70,13 @@ const FRAME = "rounded-lg border border-border p-4";
  * address, so it all renders per request. The order page shows it, and so
  * does a store's own page for it (D113), whole or in pieces (D117:
  * `OrderStatus`, `OrderAccount`, `OrderBookings`, `OrderLines`,
- * `OrderTotals`, `OrderSubscription`, `OrderDownloads`, `OrderAddress`,
- * `OrderContinue`).
+ * `OrderTotals`, `OrderDocuments`, `OrderSubscription`, `OrderDownloads`,
+ * `OrderAddress`, `OrderContinue`).
  */
 export async function OrderDetails(shop: Shop) {
   const view = await orderView(shop);
   const { m } = view;
-  const [account, subscription, downloads] = [accountBlock(view), subscriptionBlock(view), downloadsBlock(view)];
+  const [account, subscription, downloads, documents] = [accountBlock(view), subscriptionBlock(view), downloadsBlock(view), documentsBlock(view)];
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       {statusBlock(view)}
@@ -85,6 +89,7 @@ export async function OrderDetails(shop: Shop) {
           {earnedNote(view)}
         </div>
       </section>
+      {documents}
       {returnsBlock(view)}
       {subscription && <div className={FRAME}>{subscription}</div>}
       {downloads && <div className={FRAME}>{downloads}</div>}
@@ -124,6 +129,11 @@ export async function OrderTotals(shop: Shop) {
       {earnedNote(view)}
     </>
   );
+}
+
+/** The order's invoice and credit notes (D159); nothing for an order without any, and "Test order: no invoice" for one paid in Stripe's test mode. */
+export async function OrderDocuments(shop: Shop) {
+  return documentsBlock(await orderView(shop));
 }
 
 /** The subscription the order started (D117); nothing for an order without one. */
@@ -312,6 +322,20 @@ function earnedNote({ market, order, m, money }: OrderView) {
     ready: m.bonus.earnedNow,
   });
   return earned && <p className="mt-3 text-sm">{earned}</p>;
+}
+
+/** The invoice and its credit notes as links to the hosted page and the PDF (D159); a waiting invoice is not mentioned to the shopper. */
+function documentsBlock({ store, market, documents }: OrderView) {
+  return (
+    <DocumentLinks
+      lang={market.lang}
+      locale={market.locale}
+      base={marketPath(store.slug, market.slug)}
+      invoice={documents.invoice}
+      creditNotes={documents.creditNotes}
+      testOrder={!documents.invoice && documents.eligibility === "test_mode"}
+    />
+  );
 }
 
 function subscriptionBlock({ store, market, m, subscription }: OrderView) {

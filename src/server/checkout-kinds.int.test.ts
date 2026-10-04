@@ -116,6 +116,8 @@ const { setCartCompany } = await import("./cart");
 const { attachReferral, rememberAffiliate } = await import("./affiliates");
 const { chooseDelivery, deliveryOptionsFor, quoteDelivery } = await import("./delivery-options");
 const { orderNumberAudit } = await import("./order-numbers");
+const { issueWaitingInvoices } = await import("./invoice-issue");
+const documentFixture = await import("./invoice-test-fixture");
 
 const run = Date.now().toString(36);
 const slug = `kinds-${run}`;
@@ -143,6 +145,14 @@ beforeAll(async () => {
     values (${storeId}::uuid, 'test', ${`acct_kinds${run}`}, 'active', false)
   `);
   await db().execute(sql`update commerce.payment_providers set enabled = true, active_mode = 'test' where store_id = ${storeId}::uuid`);
+  // The seller's details and VAT registration: what an invoice needs (D159). The orders are checked out in Stripe's test mode like a new store's.
+  await db().execute(sql`
+    update commerce.stores set legal_name = 'Kinds AS', organisation_number = '923456789', postal_address = 'Storgata 1, 0155 Oslo', country = 'NO' where id = ${storeId}::uuid
+  `);
+  await db().execute(sql`
+    insert into commerce.store_tax_profile (store_id, vat_registered, vat_number) values (${storeId}::uuid, true, 'NO923456789MVA')
+    on conflict (store_id) do update set vat_registered = true, vat_number = 'NO923456789MVA'
+  `);
   // The store offers euro (D109), at the rate `noInEuro` uses.
   await db().execute(sql`
     insert into commerce.store_currencies (store_id, currency, rate, round_to, position)
@@ -239,6 +249,74 @@ function chargedNow(params: Record<string, unknown>): number {
     ?.shipping_rate_data.fixed_amount.amount ?? 0;
   const coupon = (params.discounts as { coupon: string }[] | undefined)?.[0]?.coupon;
   return lines + shipping - (coupon ? (fake.coupons.get(coupon) ?? 0) : 0);
+}
+
+/**
+ * The invoice of a paid order (D159) and its credit notes, held to the order and to the refunds to the minor unit, in the currency shown.
+ * The database makes the invoice in the payment's own transaction, but only for a live account (a test-mode order never gets a legal number),
+ * and this store's account is a test one like every new store's: it is switched to live for the one call that issues the waiting invoice, and
+ * back, which is the same function, called later.
+ */
+async function expectDocuments(orderId: string, scenario: { euro?: boolean; gifts?: number }) {
+  await db().execute(sql`update commerce.stripe_accounts set mode = 'live' where store_id = ${storeId}::uuid`);
+  try {
+    expect(await issueWaitingInvoices(storeId)).toBeGreaterThanOrEqual(1);
+  } finally {
+    await db().execute(sql`update commerce.stripe_accounts set mode = 'test' where store_id = ${storeId}::uuid`);
+  }
+  const invoice = (await documentFixture.invoiceOf(storeId, orderId))!;
+  expect(invoice, "an invoice for the paid order").not.toBeNull();
+  const order = (await getOrder(storeId, orderId))!;
+  // The invoice is the order, in the currency shown.
+  expect(invoice.currency).toBe(scenario.euro ? "EUR" : "NOK");
+  expect({ total: invoice.totalMinor, vat: invoice.taxMinor }).toEqual({ total: order.totalMinor, vat: order.taxMinor });
+  expect(invoice.netMinor + invoice.taxMinor).toBe(invoice.totalMinor);
+  // The VAT per rate is what the order charged on its lines and shipping, rate by rate.
+  const expected = await documentFixture.orderVatByRate(orderId);
+  const buckets = new Map<string, number>(invoice.snapshot.buckets.map((b: { rate: number; vatMinor: number }) => [b.rate.toFixed(4), b.vatMinor]));
+  for (const [rate, vat] of expected) if (vat !== 0) expect(buckets.get(rate), `VAT at ${rate}`).toBe(vat);
+  expect(invoice.snapshot.buckets.reduce((sum: number, b: { vatMinor: number }) => sum + b.vatMinor, 0)).toBe(order.taxMinor);
+  expect(invoice.snapshot.lines.filter((l: { kind: string }) => l.kind === "gift")).toHaveLength(scenario.gifts ?? 0);
+  // What was paid online and what is left for the venue.
+  const online = invoice.snapshot.payments.find((p: { kind: string }) => p.kind === "paid_online");
+  const venue = invoice.snapshot.payments.find((p: { kind: string }) => p.kind === "pay_at_venue");
+  expect(online?.amountMinor ?? 0).toBe(order.totalMinor - order.balanceMinor);
+  expect(venue?.amountMinor ?? 0).toBe(order.balanceMinor);
+  // An order in euro carries its VAT in the seller's currency (kroner) at the store's rate, and the figure unit 1c adds up.
+  if (scenario.euro) {
+    const home = invoice.snapshot.buckets.reduce((sum: number, b: { vatMinor: number }) => sum + Math.floor(b.vatMinor * 11.5 + 0.5), 0);
+    expect(invoice).toMatchObject({ vatHomeCurrency: "NOK", fxRate: 11.5, vatHomeMinor: home });
+    expect(invoice.snapshot.vatMain).toMatchObject({ currency: "NOK", vatMinor: home });
+  } else {
+    expect(invoice.vatHomeMinor).toBeNull();
+    expect(invoice.snapshot.vatMain).toMatchObject({ currency: "NOK", vatMinor: order.taxMinor, fxRate: null });
+  }
+
+  // Refunded in two parts: a credit note for each, never above the invoice, and together exactly the refunds, with the VAT of each rate adding up.
+  const admin = (await (await import("./order-admin")).getOrderAdmin(storeId, orderId))!;
+  if (admin.refundableMinor < 2) return;
+  const part = Math.floor(admin.refundableMinor / 3);
+  const refunded = [part, admin.refundableMinor - part];
+  for (const amountMinor of refunded) {
+    const made = await refundOrder(storeId, orderId, { amountMinor, reason: "Test", restock: [] }, null);
+    expect(made, JSON.stringify({ made, refunded, admin: { refundable: admin.refundableMinor, canRefund: admin.canRefund } })).toMatchObject({ ok: true });
+  }
+  const notes = await documentFixture.notesOf(storeId, orderId);
+  expect(notes.map((n) => n.totalMinor)).toEqual(refunded);
+  expect(notes.reduce((sum, n) => sum + n.totalMinor, 0)).toBe(refunded[0] + refunded[1]);
+  expect(notes.every((n) => n.currency === invoice.currency && n.netMinor + n.taxMinor === n.totalMinor)).toBe(true);
+  if (refunded[0] + refunded[1] === invoice.totalMinor) {
+    // The whole invoice credited: nothing left, per rate, and the VAT credited is the invoice's.
+    expect(notes.reduce((sum, n) => sum + n.taxMinor, 0)).toBe(invoice.taxMinor);
+    for (const bucket of invoice.snapshot.buckets as { rate: number; basis: string; vatMinor: number; grossMinor: number }[]) {
+      const credited = notes.flatMap((n) => n.snapshot.buckets).filter((b: { rate: number; basis: string }) => b.rate === bucket.rate && b.basis === bucket.basis);
+      expect(credited.reduce((sum: number, b: { grossMinor: number }) => sum + b.grossMinor, 0)).toBe(bucket.grossMinor);
+      expect(credited.reduce((sum: number, b: { vatMinor: number }) => sum + b.vatMinor, 0)).toBe(bucket.vatMinor);
+    }
+  }
+  if (scenario.euro) {
+    for (const n of notes) expect(n).toMatchObject({ vatHomeCurrency: "NOK", fxRate: 11.5 });
+  }
 }
 
 type Scenario = {
@@ -572,6 +650,7 @@ describe("checkout for every kind of product", () => {
       status: "complete",
       payment_status: "paid",
       mode: params.mode,
+      payment_intent: `pi_${open!.sessionId}`,
       ...(params.mode === "subscription" && { subscription: `sub_kinds_${run}_${open!.orderId}` }),
     });
     const paid = await getShopperOrder(storeId, open!.orderId, open!.sessionId);
@@ -579,6 +658,8 @@ describe("checkout for every kind of product", () => {
     const booked = paid?.lines.filter((l) => l.booking) ?? [];
     expect(booked.map((l) => l.booking?.status)).toEqual(Array(scenario.bookings).fill("confirmed"));
     expect(await getOpenCheckout(storeId, cartId())).toBeNull();
+    // Its invoice and the credit notes of its refunds (D159) are the order and the refunds, to the minor unit, in the currency shown.
+    await expectDocuments(open!.orderId, scenario);
     // The emails about it link back to the currency it was bought in (D109).
     if (scenario.euro) {
       await db().execute(sql`update commerce.orders set email = ${`shopper-${run}@example.com`} where id = ${open!.orderId}::uuid`);

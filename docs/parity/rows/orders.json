@@ -1385,30 +1385,76 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Optional Stripe invoice per order with Stripe's numbering (`orderInvoices`), 'of which VAT' on the order page and emails, gap-free order numbers (D141); no invoice issued in Kaizen's own series, no invoice PDF, no legal invoice layout for the shopper to download.",
+    "gap": "Built and held by tests in the working tree (unit 1b, D159 proposed; not committed, no migration applied to production): `commerce.issue_order_invoice()` is called inside `complete_order_payment()` in a sub-block, so every paid path (checkout, renewal, standing delivery, venue booking) gets one invoice in the store's own gap-free series, frozen as a JSON snapshot, immutable (one-time `pdf_path` aside), with no delete and no direct insert; copied, host, Stripe-test-mode and invoicing-off orders get none, and a store with incomplete seller details, a non-registered seller whose order charged VAT or no exchange rate waits and is issued later; the shopper's order page and the hosted page `/account/documents/{token}` draw it from the snapshot, the PDF is the same view rendered by Chromium and stored once with the print page as fallback, the confirmation and shipped emails link it and attach the PDF when it exists, staff list, reprint, export and resend, and a reverse-charge or IOSS order says so with the numbers (checked through checkout in `vat-engine.int.test.ts`). I ran these in my own database on 2026-10-04: 283 unit, PGlite and render tests, 314 integration tests and the 4 e2e tests (a rebuilt app, real Chromium) passed. Still short of Full: (1) every consumer-visible text of the invoice (`src/lib/invoice-text.ts`, nb, sv, da, en) and the admin warnings are hand-written and unreviewed, and the content list (4.3 of the spec) rests on Art. 226 read through the UK legislation mirror (EUR-Lex would not load), Norway's bokforingsforskriften 5-1-1, Skatteverket and Denmark's guidance, with Germany from a secondary source and every other member state unread, so by docs/parity/WAVES.md step 4 the row is not Full until a person has read them (spec section 8); the national-currency VAT line, the buyer-address rule for downloads and the not-registered rendering (read for Denmark only) are the points most likely to change; (2) the order of the e2e is a fixture: `e2e/invoices.spec.ts` pays an order built by SQL through `complete_order_payment()` and proves the real Chromium PDF holds the number and total, the not-found for a foreign token, the print fallback and no cookie, but no spec presses Checkout (a test database has no Stripe); the checkout kinds scenarios in `checkout-kinds.int.test.ts` pay with a fake Stripe, and issue the invoice only after the store's test account is switched to live for one call; (3) never exercised: a PDF stored in Supabase Storage, Chromium on Vercel for the three new routes (`outputFileTracingIncludes`), `/api/cron/document-pdfs` is not scheduled anywhere, and nothing ran against production; (4) invoicing is off for stores that already have real orders until the owner turns it on, and no invoice is made for earlier orders (stated in the spec, section 7); (5) a venue-only booking's snapshot still stores a payment day and supply date equal to the confirmation day; the document no longer draws them, and unit 1c does not read them; (6) not built, by the spec: simplified invoices, exemption references for exempt lines, custom templates, structured e-invoices, other languages, and any country beyond NO, SE, DK, DE and the Directive.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
       "A paid order gets an invoice in the store's own gap-free invoice series, issued once and immutable, with seller and buyer details, VAT per rate and the order's currency (database and integration tests, as `issue_work_invoice`).",
-      "The shopper downloads a legal invoice PDF from the order page and the order email, and staff can reprint it (render and integration tests).",
+      "The shopper can always download a legal invoice PDF from the order page, the order email links it and attaches the PDF when it exists, and staff can reprint it (render and integration tests).",
       "A business order carries the buyer's company and VAT number and the reverse-charge note when it applies.",
       "Copied history and hosts' orders never get an invoice from this store."
     ],
     "evidence": {
       "files": [
-        "src/server/checkout.ts",
-        "src/server/order-numbers.ts",
-        "src/lib/order-numbers.ts",
-        "src/server/work-invoices.ts"
+        "supabase/migrations/20261004125309_order_invoices.sql",
+        "supabase/migrations/20261004125337_order_invoices_rules.sql",
+        "supabase/migrations/20261004125343_order_invoices_audit.sql",
+        "supabase/migrations/20261004152302_order_invoices_fixes.sql",
+        "docs/wave-1b-invoices.md",
+        "src/lib/invoice-snapshot.ts",
+        "src/lib/credit-allocation.ts",
+        "src/lib/invoice-eligibility.ts",
+        "src/lib/invoice-text.ts",
+        "src/lib/document-token.ts",
+        "src/lib/invoice-retention.ts",
+        "src/server/invoices.ts",
+        "src/server/invoice-issue.ts",
+        "src/server/invoice-emails.ts",
+        "src/server/invoice-pdf.ts",
+        "src/server/invoice-storage.ts",
+        "src/server/stripe-refunds.ts",
+        "src/server/stripe-webhooks.ts",
+        "src/server/order-admin.ts",
+        "src/server/returns.ts",
+        "src/components/documents/order-document-view.tsx",
+        "src/components/documents/order-documents.tsx",
+        "src/app/s/[store]/[market]/account/documents/[token]/page.tsx",
+        "src/app/s/[store]/[market]/account/documents/[token]/pdf/route.ts",
+        "src/app/admin/(gated)/[store]/invoices/page.tsx",
+        "src/app/admin/(gated)/[store]/invoices/actions.ts",
+        "src/app/admin/(gated)/[store]/settings/invoices/page.tsx",
+        "src/app/api/cron/document-pdfs/route.ts"
       ],
       "tests": [
+        "src/db/invoices.test.ts",
+        "src/db/invoice-parity.test.ts",
+        "src/db/invoices-money-review.test.ts",
+        "src/lib/invoice-snapshot.test.ts",
+        "src/lib/credit-allocation.test.ts",
+        "src/lib/invoice-eligibility.test.ts",
+        "src/lib/invoice-text.test.ts",
+        "src/lib/invoice-retention.test.ts",
+        "src/server/document-readers.test.ts",
+        "src/server/stripe-refunds.test.ts",
+        "src/components/documents/order-document-view.test.ts",
+        "src/components/documents/order-documents.test.ts",
+        "src/components/documents/shopper-documents.test.ts",
+        "src/server/invoice-issue.int.test.ts",
+        "src/server/invoice-documents.int.test.ts",
+        "src/server/invoice-refunds.int.test.ts",
+        "src/server/invoice-refunds-stale.security.int.test.ts",
+        "src/server/invoice-returns.int.test.ts",
+        "src/db/invoices-concurrency.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/vat-engine.int.test.ts",
         "src/server/checkout-stripe.int.test.ts",
-        "src/lib/order-numbers.test.ts"
+        "e2e/invoices.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D141"
+      "D141",
+      "D159"
     ],
     "history": []
   },
@@ -1424,32 +1470,88 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "Credit notes exist only for Work invoices (`credit_work_invoice()`); a shop order's refund produces a refund email and a Stripe refund, not a credit note.",
+    "gap": "Built and held by tests in the working tree (unit 1b, D159 proposed; not committed, no migration applied to production): a deferred constraint trigger on refunds issues one credit note, in its own gap-free series, at commit for every refund that becomes `succeeded`, by any path (`refundOrder()`, order cancel, booking cancel, the AI tool, D153 returns, the new Stripe `refund.created`/`refund.updated` handler `applyStripeRefund()`, a refund made in Stripe's Dashboard, raw SQL), allocated by the largest-remainder method over the invoice's VAT rates (`creditAllocation()`), never above what the invoice has left per rate (a database trigger), with the VAT in the seller's currency summing exactly to the invoice's; a return's refund is one note with its working (`returns.refund_working`: goods at their rates, deduction, delivery, return shipping, adjustment), a return refunded outside Kaizen gets its note from the return, and the refund email links it and attaches the PDF when it exists. I ran these in my own database on 2026-10-04: the PGlite, unit and integration tests listed all passed. Still short of Full: (1) the credit note's wording, the treatment of a deduction and of return shipping (do they reduce the credited VAT) and the not-registered rendering are hand-written and unreviewed, and the legal basis is the same partly secondary reading as the invoice's, so by WAVES.md step 4 the row is not Full until a person has read them; (2) the Stripe webhook endpoint must be told to send `refund.created` and `refund.updated` in test and live (only the lead can check it in Stripe's Dashboard); until then a refund Stripe reports later, or a refund made in the Dashboard, is seen only by the job that asks Stripe about Kaizen's own pending refunds, and the handler was tested against a fake Stripe only; (3) the rule that a refund of a payment that is not on the invoice (a no-show fee) gets no credit note (`payment_on_invoice()`: made no later than the invoice and named by no `booking.no_show` event) is a heuristic that a future fee payment of another kind could slip past; (4) a refund Stripe reports as failed after it succeeded changes nothing and is only reported by the checkup, with no corrective document (stated in the spec, section 7); a staff retry of a refund the webhook already recorded is refused when nothing is left to refund; (5) no manual credit note, no credit for a cancelled order that was never refunded, no corrective invoice or void (wave 3); (6) the PDF, Storage, Chromium on Vercel and production are unproven as for the invoice row.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
-      "Every refund of a paid order can produce a credit note in the store's gap-free credit-note series, linked to the invoice, with the refunded amount and VAT per rate (database and integration tests).",
-      "A return's refund (D153) produces one credit note with its working; the shopper gets the PDF with the refund email.",
+      "Every refund that succeeds on an order that has an invoice produces a credit note in the store's gap-free credit-note series, linked to the invoice, with the refunded amount and VAT per rate; refunds on host, copied, Stripe-test-mode or invoicing-off orders, and pending or failed refunds, produce none until they succeed (database and integration tests).",
+      "A return's refund (D153) produces one credit note with its working; the refund email links it and attaches the PDF when it exists, and the shopper can always download it from the order page.",
       "A credit note is immutable and cannot exceed what the invoice left uncredited."
     ],
     "evidence": {
       "files": [
-        "src/server/work-invoices.ts"
+        "supabase/migrations/20261004125309_order_invoices.sql",
+        "supabase/migrations/20261004125337_order_invoices_rules.sql",
+        "supabase/migrations/20261004125343_order_invoices_audit.sql",
+        "supabase/migrations/20261004152302_order_invoices_fixes.sql",
+        "docs/wave-1b-invoices.md",
+        "src/lib/invoice-snapshot.ts",
+        "src/lib/credit-allocation.ts",
+        "src/lib/invoice-eligibility.ts",
+        "src/lib/invoice-text.ts",
+        "src/lib/document-token.ts",
+        "src/lib/invoice-retention.ts",
+        "src/server/invoices.ts",
+        "src/server/invoice-issue.ts",
+        "src/server/invoice-emails.ts",
+        "src/server/invoice-pdf.ts",
+        "src/server/invoice-storage.ts",
+        "src/server/stripe-refunds.ts",
+        "src/server/stripe-webhooks.ts",
+        "src/server/order-admin.ts",
+        "src/server/returns.ts",
+        "src/components/documents/order-document-view.tsx",
+        "src/components/documents/order-documents.tsx",
+        "src/app/s/[store]/[market]/account/documents/[token]/page.tsx",
+        "src/app/s/[store]/[market]/account/documents/[token]/pdf/route.ts",
+        "src/app/admin/(gated)/[store]/invoices/page.tsx",
+        "src/app/admin/(gated)/[store]/invoices/actions.ts",
+        "src/app/admin/(gated)/[store]/settings/invoices/page.tsx",
+        "src/app/api/cron/document-pdfs/route.ts"
       ],
       "tests": [
-        "src/server/work-invoices.int.test.ts"
+        "src/db/invoices.test.ts",
+        "src/db/invoice-parity.test.ts",
+        "src/db/invoices-money-review.test.ts",
+        "src/lib/invoice-snapshot.test.ts",
+        "src/lib/credit-allocation.test.ts",
+        "src/lib/invoice-eligibility.test.ts",
+        "src/lib/invoice-text.test.ts",
+        "src/lib/invoice-retention.test.ts",
+        "src/server/document-readers.test.ts",
+        "src/server/stripe-refunds.test.ts",
+        "src/components/documents/order-document-view.test.ts",
+        "src/components/documents/order-documents.test.ts",
+        "src/components/documents/shopper-documents.test.ts",
+        "src/server/invoice-issue.int.test.ts",
+        "src/server/invoice-documents.int.test.ts",
+        "src/server/invoice-refunds.int.test.ts",
+        "src/server/invoice-refunds-stale.security.int.test.ts",
+        "src/server/invoice-returns.int.test.ts",
+        "src/db/invoices-concurrency.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/vat-engine.int.test.ts",
+        "src/server/checkout-stripe.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D122"
+      "D122",
+      "D159"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-04",
+        "from": "missing",
+        "to": "partial",
+        "why": "Unit 1b (D159 proposed) read in the working tree and run in a fresh database on 2026-10-04: invoices.test.ts and invoices-money-review.test.ts (every refund path P1 to P10, one note per refund, own series, over-invoice refused, no credit for a no-show fee), credit-allocation.test.ts, invoice-refunds.int.test.ts (refundOrder, the refund webhook, pending then succeeded, replays), invoice-returns.int.test.ts (a return's working, refunded outside) and checkout-kinds.int.test.ts (every kind, in euro, refunded in parts) all pass, so the gap that a shop order's refund produced no credit note is closed in the code. Held at partial because the wording is unreviewed legal text (WAVES.md step 4) and nothing runs in production yet."
+      }
+    ]
   },
   {
     "id": "orders.gift-receipts-and-messages",

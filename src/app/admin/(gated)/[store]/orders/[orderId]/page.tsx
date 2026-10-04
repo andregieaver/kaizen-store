@@ -17,12 +17,14 @@ import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/or
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { BringBooking } from "@/components/admin/bring-booking";
 import { ChosenDeliveryBooking } from "@/components/admin/chosen-delivery-booking";
+import { sendDocumentAgainAction } from "../../invoices/actions";
 import { helthjemBookAction } from "../helthjem-actions";
 import { porterbuddyBookAction } from "../porterbuddy-actions";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
 import type { CarrierId } from "@/lib/shipping-carriers";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
+import { DocumentsCard } from "@/components/admin/invoices/documents-card";
 import { OrderReturnsCard } from "@/components/admin/returns/order-returns-card";
 import { OrderTermsCard } from "@/components/admin/order-terms-card";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
@@ -36,11 +38,12 @@ import { isReturnEvent, eventSentence } from "@/lib/return-admin";
 import { marketPath, storeHref } from "@/lib/paths";
 import { formatDeliveryDate } from "@/lib/standing-orders";
 import { orderAttribution } from "@/server/affiliates";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { estimateWeightGrams } from "@/server/bring-shipping";
 import { carrierTracking, trackedCarrier } from "@/server/carrier-tracking";
 import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
+import { getOrderDocuments } from "@/server/invoices";
 import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
 import { orderReturnsOverview } from "@/server/order-returns";
 import { getCarrier } from "@/server/shipping-carriers";
@@ -82,9 +85,10 @@ const card = "rounded-lg border border-border bg-background p-5";
  */
 export default async function OrderPage({ params }: PageProps<"/admin/[store]/orders/[orderId]">) {
   const { store: slug, orderId } = await params;
-  const { store } = await requirePermission(slug, "orders:read");
+  const member = await requirePermission(slug, "orders:read");
+  const { store } = member;
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
@@ -98,6 +102,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     orderReturnsOverview(store.id, orderId),
     // How VAT was charged and why (D157): staff see the whole of it, VIES's name and address included.
     getOrderTreatment(store.id, orderId),
+    // Its invoice and credit notes, or why it has none (D159).
+    getOrderDocuments(store.id, orderId),
   ]);
   if (!order) notFound();
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
@@ -455,6 +461,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               <CancelForm {...ids} amountLabel={money(order.refundableMinor)} hasEmail={Boolean(order.email)} unpaid={toCharge} />
             </section>
           )}
+
+          <DocumentsCard
+            base={`/admin/${store.slug}`}
+            documents={documents}
+            canWrite={memberCan(member, "orders:write")}
+            sendAgain={(type, id) => sendDocumentAgainAction.bind(null, store.slug, type, id)}
+            locale={locale}
+          />
 
           {returns && !order.copied && (
             <OrderReturnsCard

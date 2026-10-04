@@ -12,6 +12,7 @@ import { sendReferrerRewardEmail } from "./affiliate-emails";
 import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
 import { recordHostCommission } from "./host-payments";
 import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
+import { applyStripeRefund, isRefundEvent, stripeForAccount } from "./stripe-refunds";
 import { activateSubscription, renewSubscription, syncSubscription } from "./subscriptions";
 
 type Row = Record<string, unknown>;
@@ -43,7 +44,9 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
   const handled =
     event.type.startsWith("checkout.session.") ||
     event.type === "invoice.paid" ||
-    event.type.startsWith("customer.subscription.");
+    event.type.startsWith("customer.subscription.") ||
+    // Refunds (D159): a pending one completing, one made in Stripe's Dashboard.
+    isRefundEvent(event.type);
   if (!handled) return;
   if (!(await recordEvent(storeId, event))) return;
   try {
@@ -52,6 +55,10 @@ export async function handleStripeEvent(storeId: string, event: Stripe.Event): P
       if (orderId) await sendOrderConfirmation(storeId, orderId);
     } else if (event.type.startsWith("customer.subscription.")) {
       await syncSubscription(storeId, event.data.object as Stripe.Subscription);
+    } else if (isRefundEvent(event.type)) {
+      const refund = event.data.object as Stripe.Refund;
+      // The credit note is the database's (a trigger at commit); this brings the refund row up to date, or records the refund.
+      await applyStripeRefund(storeId, refund, { account: event.account ?? null, stripe: await stripeForAccount(storeId, event.account) });
     } else {
       await applySession(storeId, event.data.object as Stripe.Checkout.Session, event.type);
     }

@@ -13,6 +13,15 @@ const CHROMIUM_FILES = [
   "./node_modules/.pnpm/playwright-core@*/node_modules/playwright-core/{browsers,package}.json",
 ];
 
+// The documents' PDFs also render their HTML with `react-dom/server`, which `src/server/document-html.tsx` loads from disk at run time
+// (Next refuses to bundle it into a route), so the trace is told about it and the packages it needs. Read from pnpm's own folders, like Chromium's.
+const DOCUMENT_PDF_FILES = [
+  ...CHROMIUM_FILES,
+  "./node_modules/.pnpm/react-dom@*/node_modules/react-dom/**",
+  "./node_modules/.pnpm/react@*/node_modules/react/**",
+  "./node_modules/.pnpm/scheduler@*/node_modules/scheduler/**",
+];
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   poweredByHeader: false,
@@ -25,6 +34,11 @@ const nextConfig: NextConfig = {
     // A glob, not the route's name: `[store]` would be read as a set of characters, and the route group
     // `(gated)` is part of the path Turbopack matches. Checked in the build's `.nft.json` for this route.
     "/admin/**/replicate/**/tick": CHROMIUM_FILES,
+    // The PDFs of invoices and credit notes (D159, `src/server/invoice-pdf.ts`): the hosted page's and the staff's routes, and the job
+    // that makes the missing ones. No other route imports `invoice-pdf.ts` (a source-scan test holds it).
+    "/s/**/account/documents/**/pdf": DOCUMENT_PDF_FILES,
+    "/admin/**/invoices/**/pdf": DOCUMENT_PDF_FILES,
+    "/api/cron/document-pdfs": DOCUMENT_PDF_FILES,
   },
   experimental: {
     // Market pages each have their own root layout, so the 404 page is global.

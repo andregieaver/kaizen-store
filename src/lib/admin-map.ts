@@ -109,6 +109,10 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Approve or decline a return request", "Set return instructions and address", "Mark the goods in transit or received", "Inspect the goods and set a deduction", "Refund with the working shown", "Send the acknowledgement again", "Close or cancel"],
     keywords: ["refund", "inspect", "restock", "acknowledgement", "withdrawal statement", "deduction", "diminished value"],
   }),
+  store("invoices", "/invoices", "Invoices", "Main", "The store's invoices and credit notes (one for every paid order and every refund that succeeds, numbered in the store's own series): search by number, order or email, view, print or download the PDF, the orders still waiting for an invoice and why, and a CSV for the accountant.", {
+    tasks: ["Find an invoice or credit note (?q=)", "See what is waiting for an invoice (?tab=waiting)", "Check again after fixing the business details", "Download a CSV for the accountant", "Open or download an invoice's PDF"],
+    keywords: ["invoice", "faktura", "credit note", "kreditnota", "kreditfaktura", "receipt", "pdf", "accountant", "bookkeeper", "vat invoice", "invoice number", "waiting for an invoice"],
+  }),
   store("subscriptions", "/subscriptions", "Subscriptions", "Main", "Shoppers' subscriptions to products bought on a schedule.", {
     keywords: ["recurring", "renewals"],
   }),
@@ -325,6 +329,11 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["vat", "mva", "moms", "vat number", "reverse charge", "oss", "ioss", "one stop shop", "vies", "tax", "registration"],
     tasks: ["Save the store's VAT number", "Check the VAT number", "Record an OSS or IOSS registration", "See what is missing for reverse charge"],
+  }),
+  store("invoices.settings", "/settings/invoices", "Invoicing settings", "Sales", "Invoicing for orders: the switch, what is missing before it can be switched on (business details, tax profile), the prefix and first number of the invoice and credit note series until the first is issued, the note printed on every document, and whether the confirmation email carries the invoice.", {
+    needs: "owner",
+    keywords: ["invoice", "faktura", "invoice numbers", "numbering", "series", "prefix", "credit note", "footer note", "bank details", "invoicing off", "stripe invoice"],
+    tasks: ["Switch invoicing on or off", "See what is missing for invoices", "Set the invoice number prefix and first number", "Write the note printed on every invoice"],
   }),
   store("payments", "/settings/payments", "Payments", "Sales", "Stripe: the store's accounts in test and live, going live, and invoices for orders.", {
     needs: "owner",

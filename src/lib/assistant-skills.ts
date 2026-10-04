@@ -266,6 +266,19 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "invoices-and-credit-notes",
+    area: "store",
+    title: "Understand the store's invoices and credit notes",
+    when: "The owner asks about invoices, credit notes, a missing or waiting invoice, invoice numbers, the PDF a shopper gets, or what the accountant needs.",
+    steps: [
+      "Call invoice_readiness: it says whether invoicing is on, what the store's own details still lack, the two number series and how many orders wait, worked out in code. Repeat its words.",
+      "For the documents themselves call list_invoices (invoices, credit_notes, or waiting for orders with no invoice yet and refunds with no credit note, with why each waits). It gives numbers, days and amounts, never a buyer's name or address: for those open the order (order, with orderId).",
+      "An invoice is made by the store when an order is paid and a credit note when a refund succeeds; you cannot make, change, renumber or send one. Waiting ones are tried again every five minutes; after fixing the cause the owner presses Check again on the Invoices page (invoices).",
+      "Missing seller details are fixed on the Company page (company); a VAT number under the Tax page (tax); the switch, the note on every document and the numbering at the invoicing settings (invoices.settings), which only an owner changes. The accountant's file is the CSV on the Invoices page.",
+      "A reverse-charge order waiting past the 15th of the month after it was paid is overdue: say so plainly. For anything else about what an invoice must say in a country, say this is not tax or accounting advice and that an accountant should confirm it.",
+    ],
+  },
+  {
     id: "grow-sales",
     area: "store",
     title: "Sell more",

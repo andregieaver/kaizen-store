@@ -98,6 +98,23 @@ async function createOrder(number: string): Promise<string> {
   return id;
 }
 
+/** A document row as the issuing function writes it, for tests of the rules around it (a real one is made by `issue_order_invoice`). */
+async function insertInvoice(storeId: string, orderId: string, number: number, totalMinor: number, taxMinor: number): Promise<void> {
+  const snapshot = {
+    version: 1,
+    buckets: [{ rate: 0.19, basis: "standard", netMinor: totalMinor - taxMinor, vatMinor: taxMinor, grossMinor: totalMinor }],
+  };
+  await db.transaction(async (tx) => {
+    await tx.query("select set_config('commerce.issuing_document', $1, true)", [orderId]);
+    await tx.query(
+      `insert into commerce.invoices (store_id, order_id, series, number, document_number, currency, total_minor, tax_minor, net_minor,
+         issued_on, supply_date, locale, vat_kind, snapshot, public_token)
+       values ($1, $2, 'invoice', $3, $4, 'EUR', $5, $6, $7, current_date, current_date, 'de-DE', 'standard', $8::jsonb, $9)`,
+      [storeId, orderId, number, `F-${number}`, totalMinor, taxMinor, totalMinor - taxMinor, JSON.stringify(snapshot), `inv_${"a".repeat(43)}`],
+    );
+  });
+}
+
 async function createAccount(email: string): Promise<string> {
   const { id } = await one<{ id: string }>(
     "insert into commerce.accounts (email) values ($1) returning id",
@@ -1022,11 +1039,9 @@ describe("orders", () => {
       db.query("delete from commerce.order_events where order_id = $1", [orderId]),
     ).rejects.toThrow(/append-only/);
 
-    await db.query(
-      `insert into commerce.invoices (store_id, order_id, series, number, document_number, currency, total_minor, tax_minor)
-       values ($1, $2, 'invoice', 9001, 'INV-9001', 'EUR', 1490, 238)`,
-      [store, orderId],
-    );
+    // An invoice is made only by the issuing function (D159, which has its own tests in invoices.test.ts); here the setting it
+    // makes is set by hand to get a row to try the append-only rule on.
+    await insertInvoice(store, orderId, 9001, 1490, 238);
     await expect(
       db.query("update commerce.invoices set total_minor = 1 where order_id = $1", [orderId]),
     ).rejects.toThrow(/append-only/);
@@ -1034,13 +1049,8 @@ describe("orders", () => {
 
   it("refuses an invoice against another store's order", async () => {
     const orderId = await createOrder("K-2");
-    await expect(
-      db.query(
-        `insert into commerce.invoices (store_id, order_id, series, number, document_number, currency, total_minor, tax_minor)
-         values ($1, $2, 'invoice', 1, 'INV-1', 'EUR', 1490, 238)`,
-        [other, orderId],
-      ),
-    ).rejects.toThrow(/invoices_order_fk/);
+    // The issuing guard of D159 sees it first (an order of another store is not found); the composite foreign key stays behind it.
+    await expect(insertInvoice(other, orderId, 1, 1490, 238)).rejects.toThrow(/document\.order|invoices_order_fk/);
   });
 });
 

@@ -14,6 +14,11 @@ vi.mock("@/server/returns", () => ({ listOrderReturns: async () => [] }));
 const termsNow = vi.hoisted(() => ({ record: null as null | Record<string, unknown> }));
 vi.mock("@/server/checkout-terms", () => ({ termsForOrder: async () => termsNow.record }));
 vi.mock("@/server/subscriptions", () => ({ getSubscriptionForOrder: async () => null }));
+// The order's invoice and credit notes (D159).
+const documentsNow = vi.hoisted(() => ({
+  value: { eligibility: "disabled", invoice: null, creditNotes: [], waiting: null, shopperNote: null, staffNote: null } as Record<string, unknown>,
+}));
+vi.mock("@/server/invoices", () => ({ getOrderDocuments: async () => documentsNow.value }));
 vi.mock("@/app/s/[store]/[market]/account/actions", () => ({ checkoutSignInAction: async () => undefined }));
 vi.mock("@/components/own-bookings", () => ({ OwnBookings: () => null }));
 vi.mock("@/components/account-sign-in", () => ({ PasswordReset: () => null }));
@@ -23,7 +28,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { OrderDetails, OrderTerms, OrderTotals } from "./order-section";
+import { OrderDetails, OrderDocuments, OrderTerms, OrderTotals } from "./order-section";
 
 const ID = "6f1f3a1e-2b7c-4e0e-9a55-0c4c7a1d9b10";
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
@@ -73,6 +78,7 @@ const totals = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   termsNow.record = null;
+  documentsNow.value = { eligibility: "disabled", invoice: null, creditNotes: [], waiting: null, shopperNote: null, staffNote: null };
   getShopperOrder.mockResolvedValue(order());
 });
 
@@ -301,5 +307,62 @@ describe("the order's VAT per rate (D157)", () => {
     expect(words).toContain("of which VAT 25 % €15.00");
     expect(words).toContain("of which VAT 15 % €1.30");
     expect(words).not.toContain("of which VAT €");
+  });
+});
+
+describe("the order's invoice and credit notes (D159)", () => {
+  const TOKEN = `inv_${"a".repeat(43)}`;
+  const CREDIT = `crn_${"b".repeat(43)}`;
+  const withDocuments = () => {
+    documentsNow.value = {
+      eligibility: "ok",
+      invoice: { id: "i1", type: "invoice", documentNumber: "F-17", issuedOn: "2026-10-04", token: TOKEN, hasPdf: false, totalMinor: 9000, currency: "EUR" },
+      creditNotes: [{ id: "c1", type: "credit_note", documentNumber: "K-3", issuedOn: "2026-10-09", token: CREDIT, hasPdf: true, totalMinor: 500, currency: "EUR" }],
+      waiting: null,
+      shopperNote: null,
+      staffNote: null,
+    };
+  };
+  const html = async (element: Promise<unknown>) => renderToString((await element) as never);
+
+  it("are on the whole order page, with a link to each and to its PDF, under the order's own market", async () => {
+    withDocuments();
+    const page = await html(OrderDetails(shop));
+    expect(page).toContain("Invoice F-17");
+    expect(page).toContain("Credit note K-3");
+    expect(page).toContain(`href="/s/demo/ie/account/documents/${TOKEN}"`);
+    expect(page).toContain(`href="/s/demo/ie/account/documents/${TOKEN}/pdf"`);
+    expect(page).toContain(`href="/s/demo/ie/account/documents/${CREDIT}/pdf"`);
+  });
+
+  it("are a piece of their own for a page built from pieces (D117)", async () => {
+    withDocuments();
+    expect(await html(OrderDocuments(shop))).toContain("Invoice F-17");
+    documentsNow.value = { ...documentsNow.value, invoice: null, creditNotes: [], eligibility: "disabled" };
+    expect(await html(OrderDocuments(shop))).toBe("");
+  });
+
+  it("say nothing for an order with no invoice (copied, a host's, switched off, or one that waits), and no error", async () => {
+    for (const eligibility of ["copied", "host", "disabled", "ok"]) {
+      documentsNow.value = { eligibility, invoice: null, creditNotes: [], waiting: eligibility === "ok" ? "seller_details" : null, shopperNote: null, staffNote: "staff only" };
+      const page = await html(OrderDetails(shop));
+      expect(page).not.toMatch(/Invoice|Documents|staff only|seller_details/);
+    }
+  });
+
+  it("tell a test order that it has no invoice, in the store's language", async () => {
+    documentsNow.value = { eligibility: "test_mode", invoice: null, creditNotes: [], waiting: null, shopperNote: "Test order: no invoice.", staffNote: null };
+    expect(await html(OrderDocuments(shop))).toContain("Test order: no invoice.");
+    const nb = { ...shop, market: { ...market, lang: "nb", locale: "nb-NO" } as Market };
+    expect(await html(OrderDocuments(nb))).toContain("Testbestilling: ingen faktura.");
+  });
+
+  it("read in the store's language", async () => {
+    withDocuments();
+    const nb = { ...shop, market: { ...market, lang: "nb", locale: "nb-NO" } as Market };
+    const page = await html(OrderDetails(nb));
+    expect(page).toContain("Dokumenter");
+    expect(page).toContain("Faktura F-17");
+    expect(page).toContain("Kreditnota K-3");
   });
 });

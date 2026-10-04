@@ -23,7 +23,7 @@ describe("what a store copy does with each table", () => {
       ) {
         expect([table, COPY_RULES[table].group]).toEqual([
           table,
-          table === "payment_methods" || table === "payment_providers" ? "settings" : "never",
+          table === "payment_methods" || table === "payment_providers" || table === "invoice_settings" ? "settings" : "never",
         ]);
       }
     }

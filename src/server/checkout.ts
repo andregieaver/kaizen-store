@@ -41,6 +41,7 @@ import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { findUsableDiscount } from "./discounts";
 import { commissionOf, hostCheckoutAccount } from "./host-payments";
 import { getCheckoutAccount } from "./settings";
+import { kaizenInvoicingOn } from "./invoice-settings";
 import { ensureSubscriptionEvents } from "./subscriptions";
 import { platformStripe } from "./stripe";
 
@@ -1055,8 +1056,9 @@ export async function startCheckout(
     const token = await confirmAtVenue(shop.storeId, order, contact);
     return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
   }
-  // Renewals arrive as webhook events that older platform webhooks were not sent (D25).
-  if (order.subscription) await ensureSubscriptionEvents(connection.mode);
+  // Renewals (D25) and refunds that complete later or are made in Stripe (D159) arrive as webhook events that older platform
+  // webhooks were not sent; checked once per server instance and mode.
+  await ensureSubscriptionEvents(connection.mode);
   // A host's listings are paid on the host's own account (D71), in the store's mode.
   let seller = connection.accountId;
   let commissionBps = 0;
@@ -1089,6 +1091,8 @@ export async function startCheckout(
     `);
   }
   const partial = order.balanceMinor > 0;
+  // Kaizen's own invoice and credit notes (D159) are made by the database when the order is paid: Stripe's invoice option is then not used.
+  const kaizenInvoices = await kaizenInvoicingOn(shop.storeId);
   // Reverse charge (D157): Stripe is sent the order's own net amounts, each line at its amount due, no coupon (the discounts
   // and the VAT not charged are inside them) and the shipping at its net amount, so what Stripe charges is `dueNowMinor`.
   const reverse = order.vatKind === "reverse_charge";
@@ -1179,6 +1183,8 @@ export async function startCheckout(
               },
               ...(order.lines.some((line) => line.deposit) && { customer_creation: "always" as const }),
             }),
+        // A business's invoice needs its full address (Art. 226 point 5, D159): Stripe asks for a billing address, not only a postal code.
+        ...(order.company && { billing_address_collection: "required" as const }),
         ...(order.ships && {
           shipping_address_collection: {
             allowed_countries: [
@@ -1205,6 +1211,7 @@ export async function startCheckout(
         // An invoice for part of an order would mislead: the store invoices the whole at the venue.
         // A host is the seller of their own bookings, so the store's invoices are not theirs (D71).
         ...(connection.orderInvoices &&
+          !kaizenInvoices &&
           !order.subscription &&
           !partial &&
           !order.hostId && {

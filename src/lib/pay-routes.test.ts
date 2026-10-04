@@ -1,7 +1,7 @@
 import { pathToRegexp } from "next/dist/compiled/path-to-regexp";
 import { describe, expect, it } from "vitest";
 
-import { FORBIDDEN_ON_PAY_ROUTES, PAY_SEGMENTS, PAY_SOURCES, importsForbidden, isPayPath } from "./pay-routes";
+import { FORBIDDEN_ON_PAY_ROUTES, PAY_SEGMENTS, PAY_SOURCES, importsForbidden, isDocumentPath, isNoExtrasPath, isPayPath } from "./pay-routes";
 
 const PAY = [
   "/s/demo/no/cart",
@@ -97,5 +97,42 @@ describe("what the pay route guard loads (a policy without eval)", () => {
       const imports = [...read(file).matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1]);
       expect([file, imports.filter((i) => i === "zod" || /(^|\/)affiliates$/.test(i))]).toEqual([file, []]);
     }
+  });
+});
+
+describe("the hosted invoices and credit notes (D159)", () => {
+  const TOKEN = "inv_" + "A".repeat(43);
+  const DOCS = [
+    `/s/demo/no/account/documents/${TOKEN}`,
+    `/s/demo/no-en-eur/account/documents/${TOKEN}/pdf`,
+    `/s/demo/se/account/documents/crn_${"b".repeat(43)}?print=1`,
+    `/no/account/documents/${TOKEN}`,
+    `/no~tok_1/account/documents/${TOKEN}/pdf`,
+  ];
+  const NOT_DOCS = [
+    "/s/demo/no",
+    "/s/demo/no/account",
+    "/s/demo/no/account/documents",
+    "/s/demo/no/account/orders/abc",
+    "/s/demo/no/account/invoice/tok",
+    "/s/demo/no/products/account/documents/x",
+    "/account/documents/x",
+    "/admin/demo/invoices/abc",
+  ];
+
+  it.each(DOCS)("%s draws none of the layout's extras", (path) => {
+    expect(isDocumentPath(path)).toBe(true);
+    expect(isNoExtrasPath(path)).toBe(true);
+    // A document is not a pay route: no card, so no policy and no pay-route reload rules of their own.
+    expect(isPayPath(path)).toBe(false);
+  });
+
+  it.each(NOT_DOCS)("%s is not one", (path) => {
+    expect(isDocumentPath(path)).toBe(false);
+  });
+
+  it("the pay routes still draw none of them", () => {
+    expect(isNoExtrasPath("/s/demo/no/cart")).toBe(true);
+    expect(isNoExtrasPath("/s/demo/no/account")).toBe(false);
   });
 });

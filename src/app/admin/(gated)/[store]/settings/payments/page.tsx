@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { accountStage } from "@/lib/stripe-account";
 import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { ensureTestAccount, requestIp } from "@/server/connect";
+import { kaizenInvoicingOn } from "@/server/invoice-settings";
 import { getPaymentSettings, recentAudit } from "@/server/settings";
 
 import { setStripeProviderAction } from "../../../actions";
@@ -16,7 +18,7 @@ export default async function PaymentSettingsPage({
 }: PageProps<"/admin/[store]/settings/payments">) {
   const current = await requireOwnerRole((await params).store);
   const { account, store } = current;
-  const [settings, audit] = await Promise.all([getPaymentSettings(store), recentAudit(store.id)]);
+  const [settings, audit, kaizenInvoices] = await Promise.all([getPaymentSettings(store), recentAudit(store.id), kaizenInvoicingOn(store.id)]);
   const isOwner = memberCan(current, "owner");
   const { accounts, stripe } = settings;
   const modes = settings.modes;
@@ -123,12 +125,15 @@ export default async function PaymentSettingsPage({
                 <input type="hidden" name="activeMode" value={modes[0]} />
               )}
               <label className="flex items-start gap-2 text-sm">
+                {/* Kaizen's own invoices (D159) replace Stripe's while they are on: the choice is kept as it was, and not used. */}
                 <input
                   type="checkbox"
-                  name="orderInvoices"
+                  name={kaizenInvoices ? undefined : "orderInvoices"}
                   defaultChecked={stripe.orderInvoices}
+                  disabled={kaizenInvoices}
                   className="mt-0.5 size-4"
                 />
+                {kaizenInvoices && stripe.orderInvoices && <input type="hidden" name="orderInvoices" value="on" />}
                 <span>
                   Email an invoice (PDF) with each order
                   <span className="block text-muted">
@@ -136,6 +141,15 @@ export default async function PaymentSettingsPage({
                     a small fee per invoice. Without it, shoppers get Stripe&apos;s receipt if receipts
                     are on in your Stripe Dashboard.
                   </span>
+                  {kaizenInvoices && (
+                    <span className="mt-1 block font-medium">
+                      Not used while Kaizen makes the invoices: every paid order gets a numbered invoice from the store, and a shopper never gets two. Change this in the{" "}
+                      <Link href={`/admin/${store.slug}/settings/invoices`} className="underline">
+                        invoicing settings
+                      </Link>
+                      .
+                    </span>
+                  )}
                 </span>
               </label>
               <div>

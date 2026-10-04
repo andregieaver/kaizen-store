@@ -163,6 +163,22 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "list_invoices",
+    "The store's own invoices and credit notes (D159), read only: each one's number, the day it was issued, its order, the VAT treatment, net, VAT and total in the order's currency, and whether a PDF is stored; the totals per currency are worked out in code. `which` is `invoices`, `credit_notes`, or `waiting`: paid orders still waiting for an invoice and refunds without a credit note (what is missing, and the page that fixes it). Buyers' names, addresses and emails are never given (open the order in the admin for those). Invoices are made by the store on payment, and credit notes from a refund that succeeded: you cannot make, change or send one. This is not tax or accounting advice.",
+    z.object({
+      which: z.enum(["invoices", "credit_notes", "waiting"]).default("invoices"),
+      from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A day is written 2026-10-01.").optional().describe("The first day issued, as 2026-10-01 (the store's own day)."),
+      to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A day is written 2026-10-01.").optional().describe("The last day issued, as 2026-10-31."),
+      search: z.string().trim().max(60).optional().describe("A document number or an order number."),
+      limit: limit(50, 20),
+    }),
+  ),
+  tool(
+    "invoice_readiness",
+    "Whether the store can issue invoices (D159), worked out in code: whether invoicing is on, which of the seller's details an invoice needs are missing (legal name, address, organisation number, country, a VAT number when registered), whether the tax profile is saved, the two number series (prefix and next number, and whether they are locked by a first document), how many documents exist and how many orders wait, each with the page that fixes it. Read only: a person changes the invoicing settings and the numbering, never the assistant. This is not tax or accounting advice.",
+    z.object({}),
+  ),
+  tool(
     "store_checkup",
     "A check of the store's health worked out in code: orders waiting too long to be sent, stock running out, searches finding nothing, setup left to do, integrations failing, changes waiting for approval. Each finding comes with the page to fix it. Use it for 'how is my store doing' and to suggest what to do next.",
     z.object({}),

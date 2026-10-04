@@ -94,6 +94,8 @@ import { campaignsTag } from "./campaign-notices";
 import { listCampaigns, saveCampaign, setCampaignActive } from "./campaigns";
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { listDiscounts, saveDiscount } from "./discounts";
+import { getInvoiceSettings, invoiceReadiness, seriesStates } from "./invoice-settings";
+import { invoiceCheckupFindings, invoiceCounts, listCreditNotes, listInvoices, waitingCreditNotes, waitingInvoices } from "./invoices";
 import { orderNumberAudit } from "./order-numbers";
 import { taxCheckupFindings, taxProfileView } from "./tax-profile";
 import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder } from "./order-admin";
@@ -558,7 +560,7 @@ async function setupProgressTool({ store }: OwnerToolContext) {
 
 async function storeCheckup(ctx: OwnerToolContext) {
   const { store } = ctx;
-  const [[counts], [low], progress, integrations, restock, numbering, taxFindings] = await Promise.all([
+  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings] = await Promise.all([
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
@@ -583,6 +585,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
     restockSuggestions({ store }, { days: 30, cover_days: 30, lead_days: 7 }),
     orderNumberAudit(store.id),
     taxCheckupFindings(store.id),
+    invoiceCheckupFindings(store.id),
   ]);
   const findings: { what: string; page: string }[] = [];
   const add = (when: boolean, what: string, page: string) => when && findings.push({ what, page: adminLink(store, page) });
@@ -596,6 +599,8 @@ async function storeCheckup(ctx: OwnerToolContext) {
   for (const problem of auditProblems(numbering)) add(true, `Order numbering is not in sequence: ${problem}`, "/orders");
   // The tax profile (D157): registered without a number, a number never checked valid, IOSS or OSS half filled in.
   for (const finding of taxFindings) add(true, finding.message, "/settings/tax");
+  // Invoices and credit notes (D159): numbering in sequence, invoices waiting, a refund with no credit note, PDFs that could not be made.
+  for (const finding of documentFindings) add(true, finding.message, "/invoices");
   add(Number(counts.drafts) > 0, `${counts.drafts} product(s) are drafts, not on the site.`, "/products");
   add(store.paymentsTest && store.paymentsOn, "Payments are in test mode: shoppers cannot really pay yet.", "/settings/payments");
   for (const i of integrations) add(i.enabled && i.recentFailures > 0, `${i.provider} failed ${i.recentFailures} send(s) this week.`, `/integrations/${i.provider}`);
@@ -627,6 +632,118 @@ async function taxReadinessTool({ store }: OwnerToolContext) {
     features: lines.map((line) => ({ feature: line.key, on: line.on, needs: line.needs, text: line.text })),
     page: adminLink(store, "/settings/tax"),
     note: "A valid answer from VIES says that a number is registered; it does not say that a sale is exempt. Destination VAT is charged on consumer sales. Ask an accountant for anything beyond that.",
+  };
+}
+
+const VAT_KIND_WORDS: Record<string, string> = {
+  standard: "VAT charged",
+  reverse_charge: "Reverse charge: no VAT charged, the buyer accounts for it",
+  ioss: "IOSS: VAT charged for the destination country under the import scheme",
+};
+
+/**
+ * The store's invoices and credit notes (D159), read only. Amounts come from the documents' own frozen figures in each order's currency,
+ * totals are added in code per currency, and a buyer's name, address or email is never part of the answer.
+ */
+async function listInvoicesTool({ store }: OwnerToolContext, input: OwnerToolInput<"list_invoices">) {
+  if (input.search?.includes("@")) return fail("Search by a document number or an order number: the assistant does not look documents up by an email address.");
+  if (input.from && input.to && input.from > input.to) return fail("`from` is after `to`.");
+  if (input.which === "waiting") {
+    const [waiting, creditNotes] = await Promise.all([waitingInvoices(store.id), waitingCreditNotes(store.id)]);
+    const sums = new Map<string, number>();
+    for (const w of waiting) sums.set(w.currency, (sums.get(w.currency) ?? 0) + w.totalMinor);
+    return {
+      invoices_waiting: waiting.length,
+      overdue: waiting.filter((w) => w.overdue).length,
+      waiting_total: [...sums].map(([currency, minor]) => money(store, minor, currency)),
+      orders: waiting.slice(0, input.limit).map((w) => ({
+        order: w.orderNumber,
+        paid_on: w.paidOn,
+        total: money(store, w.totalMinor, w.currency),
+        treatment: VAT_KIND_WORDS[w.vatKind] ?? w.vatKind,
+        why_it_waits: w.words,
+        fix_at: w.fixAt ? adminLink(store, w.fixAt) : null,
+        ...(w.overdue ? { overdue_since: w.deadline } : {}),
+      })),
+      credit_notes_to_check: creditNotes.slice(0, input.limit).map((c) => ({
+        order: c.orderNumber,
+        state: c.state === "short" ? "The refund was larger than what the invoice had left, so the credit note covers only part of it." : "The refund has no credit note yet; it is tried again every five minutes.",
+        [c.state === "short" ? "left_uncredited" : "refunded"]: money(store, c.amountMinor, c.currency),
+      })),
+      page: adminLink(store, "/invoices"),
+      note: "Invoices are made when an order is paid, and waiting ones are tried again every five minutes. The owner presses Check again on the Waiting tab after fixing the cause.",
+    };
+  }
+  const filter = { from: input.from ?? null, to: input.to ?? null, q: input.search ?? null, limit: input.limit };
+  const kind = input.which === "credit_notes" ? "credit_notes" : "invoices";
+  const { rows, total } = kind === "invoices" ? await listInvoices(store.id, filter) : await listCreditNotes(store.id, filter);
+  // Added in code, per currency, over the rows given (the count says if there are more).
+  const sums = new Map<string, { net: number; vat: number; total: number }>();
+  for (const r of rows) {
+    const sum = sums.get(r.currency) ?? { net: 0, vat: 0, total: 0 };
+    sum.net += r.netMinor;
+    sum.vat += r.vatMinor;
+    sum.total += r.totalMinor;
+    sums.set(r.currency, sum);
+  }
+  return {
+    count: total,
+    shown: rows.length,
+    ...(total > rows.length ? { more: `${total - rows.length} more match; narrow the period or search by a number.` } : {}),
+    totals_of_those_shown: [...sums].map(([currency, s]) => ({ net: money(store, s.net, currency), vat: money(store, s.vat, currency), total: money(store, s.total, currency) })),
+    documents: rows.map((r) => ({
+      number: r.documentNumber,
+      type: kind === "invoices" ? "invoice" : "credit_note",
+      issued_on: r.issuedOn,
+      order: r.orderNumber,
+      ...(r.vatKind ? { treatment: VAT_KIND_WORDS[r.vatKind] ?? r.vatKind } : {}),
+      buyer_country: r.buyerCountry,
+      net: money(store, r.netMinor, r.currency),
+      vat: money(store, r.vatMinor, r.currency),
+      total: money(store, r.totalMinor, r.currency),
+      pdf_stored: r.hasPdf,
+      ...(r.invoiceNumber ? { credits_invoice: r.invoiceNumber } : {}),
+      ...(r.anonymised ? { anonymised: true } : {}),
+    })),
+    page: adminLink(store, "/invoices"),
+    note: "Buyers' details are not given here; open the order in the admin. A credit note's figures are what it takes back.",
+  };
+}
+
+/** What invoicing needs (D159), from `invoiceReadiness()`: on or off, what is missing, the series, how much waits. */
+async function invoiceReadinessTool({ store }: OwnerToolContext) {
+  const [readiness, settings, series, counts] = await Promise.all([invoiceReadiness(store.id), getInvoiceSettings(store.id), seriesStates(store.id), invoiceCounts(store.id)]);
+  const FIELD_WORDS: Record<string, string> = {
+    legal_name: "the legal name",
+    postal_address: "the postal address",
+    organisation_number: "the organisation number",
+    country: "the country",
+    vat_number: "the VAT number (the store is registered for VAT)",
+  };
+  return {
+    invoicing_on: settings.enabled,
+    ...(settings.enabledFrom ? { on_since: settings.enabledFrom, note_on_since: "Only orders paid after this get an invoice; earlier ones are never back-dated." } : {}),
+    ready_to_issue: readiness.ready,
+    missing: readiness.missing.map((field) => ({ what: FIELD_WORDS[field] ?? field, fix_at: adminLink(store, readiness.fixAt[field] ?? "/settings/company") })),
+    tax_profile_saved: readiness.taxProfileSaved,
+    registered_for_vat: readiness.vatRegistered,
+    ...(readiness.taxProfileSaved ? {} : { tax_profile_page: adminLink(store, "/settings/tax") }),
+    ...(readiness.ratesByHand ? { rates_by_hand: "The store keeps its exchange rates by hand: an invoice in another currency than the seller's own needs the VAT stated in the seller's currency, so an accountant should look at the rates." } : {}),
+    ...(readiness.stripeInvoicesIgnored ? { stripe_invoice_option: "Stripe's own invoice option is switched on but is not used while the store makes its own invoices." } : {}),
+    series: series.map((s) => ({
+      series: s.series === "invoice" ? "invoices" : "credit notes",
+      next_number: s.nextDocumentNumber,
+      issued: s.issued,
+      locked: s.locked,
+    })),
+    invoices_issued: counts.invoices,
+    credit_notes_issued: counts.creditNotes,
+    invoices_waiting: counts.waiting,
+    overdue_reverse_charge: counts.overdue,
+    pdfs_failing: counts.pdfFailing,
+    page: adminLink(store, "/invoices"),
+    settings_page: adminLink(store, "/settings/invoices"),
+    note: "Only an owner changes the invoicing settings and numbering. This is not tax or accounting advice: an accountant should confirm the content of the invoices for each country.",
   };
 }
 
@@ -1589,6 +1706,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   store_checkup: storeCheckup,
   get_tax_profile: getTaxProfileTool,
   tax_readiness: taxReadinessTool,
+  list_invoices: listInvoicesTool,
+  invoice_readiness: invoiceReadinessTool,
   list_customers: listCustomersTool,
   get_customer: getCustomerTool,
   list_subscriptions: listSubscriptionsTool,

@@ -69,6 +69,9 @@ export const COPY_RULES: Record<string, CopyRule> = {
   markets: settings("The countries the store sells to, and their currencies and languages."),
   menus: settings("Menus (D85), without links to products that were not copied."),
   payment_methods: settings("Which payment methods are switched on per market; never credentials."),
+  invoice_settings: settings(
+    "Invoicing switch and footer note (D159); a copy starts enabled with no start date, and the invoice and credit note series are never copied.",
+  ),
   payment_providers: settings("The provider's switches (on, invoices for orders); the new store starts in test mode."),
   producer_registrations: settings("Producer registrations (packaging, electrical, …) of the same business."),
   saved_parts: settings(
@@ -166,6 +169,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   product_views: never("How often the original's products were viewed (D152)."),
   page_replications: never("Jobs that copied another website's page for the original store; their drafts are pages and copied as pages."),
   credit_notes: never("Accounting documents with gap-free numbers of the original."),
+  document_deliveries: never("Which emails carried which of the original's documents (D159)."),
+  document_pdf_state: never("Render attempts of the original's documents (D159)."),
   customer_codes: never("Sign-in codes."),
   customer_sessions: never("Sessions."),
   customer_sign_in_links: never("Sign-in links."),

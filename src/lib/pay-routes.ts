@@ -58,3 +58,20 @@ export const FORBIDDEN_ON_PAY_ROUTES: readonly string[] = [
 /** The file name, relative to `src/`, without its extension, as `FORBIDDEN_ON_PAY_ROUTES` names it. */
 export const importsForbidden = (specifier: string): string | undefined =>
   FORBIDDEN_ON_PAY_ROUTES.find((fragment) => specifier === fragment || specifier.endsWith(`/${fragment}`) || specifier === `@/${fragment}`);
+
+/**
+ * A hosted invoice or credit note, `/s/{store}/{market}/account/documents/{token}` (and its `/pdf`), on either shape of address (D159,
+ * `docs/wave-1b-invoices.md` 2.2 point 4 and 3.5). Not a pay route (no card is typed, so no policy of its own), but the address holds a
+ * bearer token that opens a document with a buyer's name, address, email and VAT number: the consent banner's tracking tools and the
+ * owner's own code read `location.href`, and the chat widget and the referral capture are other sites' reach too, so the layout draws
+ * none of them here, and a document is entered by a full page load like a pay route.
+ */
+export function isDocumentPath(pathname: string): boolean {
+  const segments = pathname.split(/[?#]/)[0].split("/").filter(Boolean);
+  const own = segments[0] === "s" ? 2 : 0;
+  const market = segments[own];
+  return market !== undefined && MARKET.test(market) && segments[own + 1] === "account" && segments[own + 2] === "documents" && segments.length > own + 3;
+}
+
+/** Where the market layout draws none of its extras (`MarketExtras`) and a script from an earlier page must not still be in the document: the pay routes and the hosted documents. */
+export const isNoExtrasPath = (pathname: string): boolean => isPayPath(pathname) || isDocumentPath(pathname);

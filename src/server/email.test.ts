@@ -68,6 +68,16 @@ describe("deliver", () => {
     expect(Buffer.from(file.content, "base64").toString("utf8")).toBe(attachments[0].content);
   });
 
+  it("sends a binary attachment (an invoice's PDF) as the base64 it was given, not encoded again", async () => {
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ id: "re-email-4" }));
+    const bytes = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0xff, 0xfe, 0x00, 0x80]);
+    const attachments = [{ filename: "F-1.pdf", content: bytes.toString("base64"), contentType: "application/pdf", encoding: "base64" as const }];
+    await deliver(settings, "abc", { ...message, attachments }, fetcher);
+    const [file] = JSON.parse(fetcher.mock.calls[0][1].body).attachments;
+    expect(file).toEqual({ filename: "F-1.pdf", content: bytes.toString("base64"), content_type: "application/pdf" });
+    expect(Buffer.from(file.content, "base64").equals(bytes)).toBe(true);
+  });
+
   it("tries again when Resend is busy, but not when the email is refused", async () => {
     const busy = vi
       .fn()

@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
+import { isAdoptedRefund } from "@/lib/refund-adopted";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { cancelUnpaidOrder } from "./checkout";
@@ -300,6 +301,16 @@ async function paymentIntentFor(
 }
 
 /**
+ * Stripe's idempotency key for a refund staff make: the order, the refunds Kaizen itself made so far and the amount, so a retry after a
+ * failed write replays the same Stripe refund and a deliberate second refund of the same amount gets a new key. Rows the webhook
+ * recorded for refunds made in Stripe (`isAdoptedRefund`) are not counted: one written for the very refund of an earlier try would
+ * otherwise change the key of the retry, and Stripe would make the refund a second time (D159).
+ */
+export function refundKey(orderId: string, refunds: readonly Pick<RefundRow, "reason">[], amountMinor: number): string {
+  return `refund-${orderId}-${refunds.filter((r) => !isAdoptedRefund(r.reason)).length}-${amountMinor}`;
+}
+
+/**
  * Refunds part or all of what was paid, through Stripe on the store's
  * account (Kaizen's fee on the refunded part goes back to the store), and
  * puts the chosen items back in stock.
@@ -358,7 +369,7 @@ export async function refundOrder(
           refund_application_fee: true,
           metadata: { order_id: orderId, order_number: order.number },
         },
-        { stripeAccount, idempotencyKey: options.idempotencyKey ?? `refund-${orderId}-${order.refunds.length}-${input.amountMinor}` },
+        { stripeAccount, idempotencyKey: options.idempotencyKey ?? refundKey(orderId, order.refunds, input.amountMinor) },
       );
       providerReference = refund.id;
       status = refund.status === "failed" || refund.status === "canceled" ? "failed" : refund.status === "succeeded" ? "succeeded" : "pending";
@@ -372,29 +383,48 @@ export async function refundOrder(
 
   const refundId = await db().transaction(async (tx) => {
     let id = "";
+    // The webhook may have recorded this very refund already (a refund Stripe accepted whose row an earlier try failed to write: its event
+    // writes the row after a grace period). The same key then gave back the same refund, and its row is claimed here, never made twice.
+    let adopted = false;
     if (input.amountMinor > 0) {
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by)
         values (${storeId}::uuid, ${String(payment!.id)}::uuid, ${input.amountMinor}, ${input.reason},
                 ${providerReference}, ${status}::commerce.refund_status,
                 ${JSON.stringify(restock.map(({ sku, quantity }) => ({ sku, quantity })))}::jsonb, ${accountId}::uuid)
+        on conflict (store_id, provider_reference) do nothing
         returning id
       `);
-      id = String(row.id);
+      if (row) {
+        id = String(row.id);
+      } else {
+        const [existing] = await tx.execute<Row>(sql`
+          update commerce.refunds set reason = ${input.reason}, created_by = ${accountId}::uuid,
+            restocked = ${JSON.stringify(restock.map(({ sku, quantity }) => ({ sku, quantity })))}::jsonb
+          where store_id = ${storeId}::uuid and provider_reference = ${providerReference} and payment_id = ${String(payment!.id)}::uuid
+          returning id
+        `);
+        if (!existing) throw new Error("The refund's Stripe id belongs to another payment.");
+        id = String(existing.id);
+        adopted = true;
+      }
     }
     for (const item of restock) await putBack(tx, storeId, item.variantId, item.quantity);
-    await tx.execute(sql`
-      insert into commerce.order_events (store_id, order_id, type, data, actor)
-      values (${storeId}::uuid, ${orderId}::uuid, ${input.amountMinor > 0 ? "order.refunded" : "order.restocked"},
-              ${JSON.stringify({
-                amount: input.amountMinor,
-                reason: input.reason,
-                restocked: restock.map(({ sku, quantity }) => ({ sku, quantity })),
-                // A refund Stripe reported as failed is kept as a row too; a caller that retries (a return) counts these.
-                ...(input.amountMinor > 0 && status === "failed" ? { status } : {}),
-                ...options.eventData,
-              })}::jsonb, 'staff')
-    `);
+    // An adopted refund has its `order.refunded` event already (written by the webhook); only the stock going back is new.
+    if (!adopted || restock.length > 0) {
+      await tx.execute(sql`
+        insert into commerce.order_events (store_id, order_id, type, data, actor)
+        values (${storeId}::uuid, ${orderId}::uuid, ${input.amountMinor > 0 && !adopted ? "order.refunded" : "order.restocked"},
+                ${JSON.stringify({
+                  amount: adopted ? 0 : input.amountMinor,
+                  reason: input.reason,
+                  restocked: restock.map(({ sku, quantity }) => ({ sku, quantity })),
+                  // A refund Stripe reported as failed is kept as a row too; a caller that retries (a return) counts these.
+                  ...(input.amountMinor > 0 && status === "failed" ? { status } : {}),
+                  ...options.eventData,
+                })}::jsonb, 'staff')
+      `);
+    }
     await options.inTransaction?.(tx, { refundId: id, status });
     return id;
   });

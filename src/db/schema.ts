@@ -2684,6 +2684,12 @@ export const payments = commerce.table(
     kaizenFeeMinor: money("kaizen_fee_minor").default(0),
     currency: char("currency", { length: 3 }).notNull(),
     status: paymentStatus("status").notNull().default("pending"),
+    /**
+     * A payment at the venue (no Stripe account to say so) made while the store's Stripe was in test mode (D159): set by a trigger when the
+     * row is made, so the mode is frozen with the payment and a store that later goes live never gives a test order a legal invoice number.
+     * Always false for any other provider (a Stripe payment's mode is its account's).
+     */
+    testMode: boolean("test_mode").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -2897,6 +2903,11 @@ export const returns = commerce.table(
     refundComputedMinor: bigint("refund_computed_minor", { mode: "number" }),
     refundMinor: bigint("refund_minor", { mode: "number" }),
     refundNote: text("refund_note"),
+    /**
+     * What `refundFor()` worked out as the credit note reads it (D159): `{ lines: [{ lineId, quantity, valueMinor, deductionMinor }],
+     * deliveryMinor, returnShippingMinor, adjustmentMinor, amountMinor, outside }`. Written once, with the refund.
+     */
+    refundWorking: jsonb("refund_working"),
     refundedAt: timestamp("refunded_at", { withTimezone: true }),
     /** Refunded outside Kaizen's Stripe (a note and an event; nothing sent from here). */
     refundOutside: boolean("refund_outside").notNull().default(false),
@@ -3179,6 +3190,12 @@ const seriesRef = (name: string, cols: { storeId: AnyPgColumn; series: AnyPgColu
     foreignColumns: [documentSeries.storeId, documentSeries.series],
   });
 
+/**
+ * An invoice for a shop order (D159, `docs/wave-1b-invoices.md`): made only by `commerce.make_order_invoice()` inside the payment
+ * transaction (`complete_order_payment()`), one per order, its whole content frozen in `snapshot` (the document is drawn only from
+ * it). Immutable: the database refuses an update (but the one-time `pdf_path`/`pdf_sha256` and the anonymising of unit 1g's
+ * retention), a delete and an insert that is not by the issuing function. Unit 1c reads the columns and `snapshot.buckets`.
+ */
 export const invoices = commerce.table(
   "invoices",
   {
@@ -3192,17 +3209,57 @@ export const invoices = commerce.table(
     totalMinor: money("total_minor"),
     taxMinor: money("tax_minor"),
     issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+    /** `order` today: an invoice for a shop order. */
+    kind: text("kind").notNull().default("order"),
+    /** The store day it was issued (never back-dated) and the day of supply (the payment day). */
+    issuedOn: date("issued_on").notNull(),
+    supplyDate: date("supply_date").notNull(),
+    locale: text("locale").notNull(),
+    netMinor: money("net_minor"),
+    /** The order's VAT treatment: `standard`, `reverse_charge` or `ioss`. */
+    vatKind: text("vat_kind").notNull(),
+    /** The VAT in the seller's country's currency, where Directive Art. 230 needs it, with the rate it was converted at. */
+    vatHomeCurrency: char("vat_home_currency", { length: 3 }),
+    vatHomeMinor: bigint("vat_home_minor", { mode: "number" }),
+    fxRate: numeric("fx_rate", { precision: 18, scale: 8 }),
+    fxAsOf: date("fx_as_of"),
+    /** `ecb_auto` when the store keeps its rates from the ECB, `owner` otherwise. */
+    fxSource: text("fx_source"),
+    snapshot: jsonb("snapshot").notNull(),
+    /** The hosted page's whole access (`inv_` and 43 base64url characters); null once anonymised. */
+    publicToken: text("public_token"),
+    /** The stored PDF (private `documents` bucket), written once. */
+    pdfPath: text("pdf_path"),
+    pdfSha256: text("pdf_sha256"),
+    anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
   },
   (t) => [
     unique("invoices_store_id_key").on(t.storeId, t.id),
     unique("invoices_series_number_key").on(t.storeId, t.series, t.number),
     unique("invoices_document_number_key").on(t.storeId, t.documentNumber),
+    unique("invoices_order_key").on(t.storeId, t.orderId),
+    unique("invoices_public_token_key").on(t.publicToken),
     orderRef("invoices_order_fk", t),
     seriesRef("invoices_series_fk", t),
-    index("invoices_order_idx").on(t.storeId, t.orderId),
+    index("invoices_issued_idx").on(t.storeId, t.issuedOn),
+    check("invoices_kind", sql`${t.kind} = 'order'`),
+    check("invoices_series", sql`${t.series} = 'invoice'`),
+    check("invoices_vat_kind", sql`${t.vatKind} in ('standard', 'reverse_charge', 'ioss')`),
+    check("invoices_total", sql`${t.totalMinor} > 0 and ${t.totalMinor} = ${t.netMinor} + ${t.taxMinor}`),
+    check("invoices_reverse_charge", sql`${t.vatKind} <> 'reverse_charge' or ${t.taxMinor} = 0`),
+    check("invoices_vat_home", sql`(${t.vatHomeMinor} is null) = (${t.fxRate} is null) and (${t.vatHomeMinor} is null) = (${t.vatHomeCurrency} is null)`),
+    check("invoices_fx_source", sql`${t.fxSource} is null or ${t.fxSource} in ('ecb_auto', 'owner')`),
+    check("invoices_public_token", sql`(${t.anonymisedAt} is null and ${t.publicToken} ~ '^inv_[A-Za-z0-9_-]{43}$') or (${t.anonymisedAt} is not null and ${t.publicToken} is null)`),
+    check("invoices_pdf", sql`(${t.pdfPath} is null) = (${t.pdfSha256} is null)`),
+    check("invoices_snapshot", sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'version' = '1'`),
   ],
 );
 
+/**
+ * A credit note (D159): made only by `commerce.make_credit_note()`, for a refund that succeeded (any path: a deferred trigger on
+ * `refunds` runs it at commit) or for a return refunded outside Kaizen (`source = 'return_outside'`, from `returns`). One per
+ * refund, in its own series, referring to its invoice, and never above what the invoice left uncredited per rate bucket.
+ */
 export const creditNotes = commerce.table(
   "credit_notes",
   {
@@ -3217,10 +3274,30 @@ export const creditNotes = commerce.table(
     totalMinor: money("total_minor"),
     taxMinor: money("tax_minor"),
     issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
+    /** `refund` (a succeeded refund) or `return_outside` (a return refunded outside Kaizen's Stripe). */
+    source: text("source").notNull(),
+    returnId: uuid("return_id"),
+    issuedOn: date("issued_on").notNull(),
+    locale: text("locale").notNull(),
+    netMinor: money("net_minor"),
+    /** Copied from the invoice: a credit note is converted at the invoice's rate. */
+    vatHomeCurrency: char("vat_home_currency", { length: 3 }),
+    vatHomeMinor: bigint("vat_home_minor", { mode: "number" }),
+    fxRate: numeric("fx_rate", { precision: 18, scale: 8 }),
+    fxAsOf: date("fx_as_of"),
+    fxSource: text("fx_source"),
+    snapshot: jsonb("snapshot").notNull(),
+    /** `crn_` and 43 base64url characters; null once anonymised. */
+    publicToken: text("public_token"),
+    pdfPath: text("pdf_path"),
+    pdfSha256: text("pdf_sha256"),
+    anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
   },
   (t) => [
     unique("credit_notes_series_number_key").on(t.storeId, t.series, t.number),
     unique("credit_notes_document_number_key").on(t.storeId, t.documentNumber),
+    unique("credit_notes_refund_key").on(t.storeId, t.refundId),
+    unique("credit_notes_public_token_key").on(t.publicToken),
     foreignKey({
       name: "credit_notes_invoice_fk",
       columns: [t.storeId, t.invoiceId],
@@ -3231,9 +3308,96 @@ export const creditNotes = commerce.table(
       columns: [t.storeId, t.refundId],
       foreignColumns: [refunds.storeId, refunds.id],
     }),
+    foreignKey({
+      name: "credit_notes_return_fk",
+      columns: [t.storeId, t.returnId],
+      foreignColumns: [returns.storeId, returns.id],
+    }),
     seriesRef("credit_notes_series_fk", t),
     index("credit_notes_invoice_idx").on(t.storeId, t.invoiceId),
-    index("credit_notes_refund_idx").on(t.storeId, t.refundId),
+    index("credit_notes_return_idx").on(t.storeId, t.returnId),
+    uniqueIndex("credit_notes_return_outside_key")
+      .on(t.storeId, t.returnId)
+      .where(sql`${t.source} = 'return_outside'`),
+    index("credit_notes_issued_idx").on(t.storeId, t.issuedOn),
+    check("credit_notes_series", sql`${t.series} = 'credit_note'`),
+    check("credit_notes_source", sql`${t.source} in ('refund', 'return_outside')`),
+    check(
+      "credit_notes_source_ref",
+      sql`(${t.source} = 'refund' and ${t.refundId} is not null and ${t.returnId} is null) or (${t.source} = 'return_outside' and ${t.returnId} is not null and ${t.refundId} is null)`,
+    ),
+    check("credit_notes_total", sql`${t.totalMinor} > 0 and ${t.totalMinor} = ${t.netMinor} + ${t.taxMinor}`),
+    check("credit_notes_vat_home", sql`(${t.vatHomeMinor} is null) = (${t.fxRate} is null) and (${t.vatHomeMinor} is null) = (${t.vatHomeCurrency} is null)`),
+    check("credit_notes_fx_source", sql`${t.fxSource} is null or ${t.fxSource} in ('ecb_auto', 'owner')`),
+    check("credit_notes_public_token", sql`(${t.anonymisedAt} is null and ${t.publicToken} ~ '^crn_[A-Za-z0-9_-]{43}$') or (${t.anonymisedAt} is not null and ${t.publicToken} is null)`),
+    check("credit_notes_pdf", sql`(${t.pdfPath} is null) = (${t.pdfSha256} is null)`),
+    check("credit_notes_snapshot", sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'version' = '1'`),
+  ],
+);
+
+/**
+ * A store's invoicing switch and the note printed on every invoice and credit note (D159, edited by owners at
+ * `/admin/{store}/settings/invoices`). No row means invoicing is on and counts from the start; the migration wrote a row with
+ * `enabled = false` for a store that already had real orders, so nothing is numbered for it until its owner chooses. Switching
+ * on sets `enabled_from` (a trigger): invoices are issued from then on and never back-dated.
+ */
+export const invoiceSettings = commerce.table(
+  "invoice_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    enabled: boolean("enabled").notNull().default(true),
+    enabledFrom: timestamp("enabled_from", { withTimezone: true }),
+    footerNote: text("footer_note"),
+    emailWithConfirmation: boolean("email_with_confirmation").notNull().default(true),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("invoice_settings_updated_by_idx").on(t.updatedBy),
+    check("invoice_settings_footer_note", sql`${t.footerNote} is null or length(${t.footerNote}) <= 1000`),
+  ],
+);
+
+/** Which email carried which document, so the stand-alone email is sent only for a document no earlier email carried (D159). */
+export const documentDeliveries = commerce.table(
+  "document_deliveries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    documentType: text("document_type").notNull(),
+    documentId: uuid("document_id").notNull(),
+    emailMessageId: uuid("email_message_id")
+      .notNull()
+      .references(() => emailMessages.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("document_deliveries_key").on(t.storeId, t.documentType, t.documentId, t.emailMessageId),
+    index("document_deliveries_email_idx").on(t.emailMessageId),
+    check("document_deliveries_type", sql`${t.documentType} in ('invoice', 'credit_note')`),
+  ],
+);
+
+/**
+ * Attempts to render a document's PDF (D159): the only mutable table of the unit, with no personal data. A document that
+ * failed five times is shown as "PDF not made" and retried by hand.
+ */
+export const documentPdfState = commerce.table(
+  "document_pdf_state",
+  {
+    storeId: storeId().references(() => stores.id),
+    documentType: text("document_type").notNull(),
+    documentId: uuid("document_id").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+    lastError: text("last_error"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.documentType, t.documentId] }),
+    check("document_pdf_state_type", sql`${t.documentType} in ('invoice', 'credit_note')`),
+    check("document_pdf_state_error", sql`${t.lastError} is null or length(${t.lastError}) <= 200`),
   ],
 );
 

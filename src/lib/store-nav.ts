@@ -43,6 +43,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/orders", "Orders", "Every order: open it, fulfil it, refund it, print its packing slip."),
           item("/returns", "Returns", "Customers' withdrawals and return requests: approve, receive, inspect and refund them in time."),
+          item("/invoices", "Invoices", "Invoices and credit notes for orders, the orders waiting for one, and a CSV for the accountant."),
           item("/subscriptions", "Subscriptions", "Customers' recurring subscriptions and their payments."),
           item("/deliveries", "Subscription boxes", "Weekly delivery days, cutoffs, and the lists customers have set up.", { needs: "deliveries" }),
           item("/emails", "Emails", "Every email the store sent to customers and staff, and whether it arrived."),
@@ -202,6 +203,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get."),
           item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms."),
           item("/settings/tax", "Tax", "VAT registration and number, OSS and IOSS, and how the store charges VAT."),
+          item("/settings/invoices", "Invoicing", "Switch on invoices, the numbering, the note printed on every invoice and credit note."),
           item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services."),
         ],
       },

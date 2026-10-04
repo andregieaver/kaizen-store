@@ -97,6 +97,11 @@ test("admin pages are not reachable without a session", async ({ page }) => {
     "/admin/platform/experiments",
     "/admin/demo/customer-groups",
     "/admin/demo/companies",
+    // Invoices and credit notes (D159): the list, its settings and a document's printable view.
+    "/admin/demo/invoices",
+    "/admin/demo/settings/invoices",
+    "/admin/demo/invoices/11111111-1111-4111-8111-111111111111/print",
+    "/admin/demo/invoices/credit-notes/11111111-1111-4111-8111-111111111111/print",
   ];
   for (const path of paths) {
     await page.goto(path);
@@ -131,6 +136,8 @@ test("admin pages send nothing of theirs to a visitor without a session, before 
     "/admin/demo/orders",
     "/admin/demo/wishlists",
     "/admin/demo/wishlists/activity",
+    "/admin/demo/invoices",
+    "/admin/demo/settings/invoices",
   ];
   for (const path of paths) {
     const html = await (await request.get(path)).text();

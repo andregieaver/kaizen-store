@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { OrderDocuments } from "@/components/documents/order-documents";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { OwnBookings } from "@/components/own-bookings";
 import { OrderReturns } from "@/components/withdraw/order-returns";
@@ -18,6 +19,7 @@ import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { vatText } from "@/lib/vat-text";
 import { getCustomer, ownsOrder } from "@/server/customers";
+import { getOrderDocuments } from "@/server/invoices";
 import { getOrderAdmin } from "@/server/order-admin";
 import { getOrderDownloads } from "@/server/orders";
 import { listOrderReturns } from "@/server/returns";
@@ -48,12 +50,14 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
   const customer = await getCustomer(store.id);
   if (!customer) redirect(`${base}/account`);
   if (!z.uuid().safeParse(orderId).success || !(await ownsOrder(store.id, customer.id, orderId))) notFound();
-  const [order, downloads, subscription, returns] = await Promise.all([
+  const [order, downloads, subscription, returns, documents] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderDownloads(store.id, orderId),
     getSubscriptionForOrder(store.id, orderId),
     // The order is the signed-in customer's own (checked above): its withdrawals and returns (D153).
     listOrderReturns(store.id, orderId),
+    // Its invoice and credit notes (D159), found by the order's own id: the customer's ownership was checked above.
+    getOrderDocuments(store.id, orderId),
   ]);
   if (!order) notFound();
   const m = t(market.lang);
@@ -198,6 +202,15 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
         <OrderVatNotes order={order} text={vatWords} />
         {earned && <p className="mt-3 text-sm">{earned}</p>}
       </section>
+
+      <OrderDocuments
+        lang={market.lang}
+        locale={market.locale}
+        base={base}
+        invoice={documents.invoice}
+        creditNotes={documents.creditNotes}
+        testOrder={!documents.invoice && documents.eligibility === "test_mode"}
+      />
 
       <OrderReturns m={m.returns} base={base} order={order} orderKey={null} returns={returns} />
 

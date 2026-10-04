@@ -22,6 +22,7 @@ import { cutoffWeekday, formatDeliveryDate, weekdayName } from "@/lib/standing-o
 import { siteUrl } from "@/lib/site";
 
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
+import { documentBlocks, emailsCarryInvoice, recordDocumentDeliveries, type DocumentBlocks, type DocumentWant } from "./invoice-emails";
 import { ensureUi } from "./ui-text";
 import { withdrawBlocks } from "./withdraw-link";
 import { getOrder, type OrderBooking, type OrderView } from "./orders";
@@ -250,6 +251,8 @@ export async function sendOrderConfirmation(
   const address = addressText(order, m);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const booked = bookedLines(order);
+  // The invoice (D159): its number and a link, issued in the payment's own transaction; nothing when there is none (waiting, test, copied).
+  const documents = await documentsFor(storeId, order, store, market, { invoice: true }, { switchable: true });
 
   const blocks: EmailBlock[] = [
     { type: "heading", text: text.orderHeading },
@@ -273,6 +276,7 @@ export async function sendOrderConfirmation(
           },
         ]
       : []),
+    ...(documents?.blocks ?? []),
     ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
     // The right of withdrawal (D153): a consumer's order says so and links to the withdrawal function.
     ...(await withdrawBlocks(storeId, store, market, order, text)),
@@ -298,19 +302,47 @@ export async function sendOrderConfirmation(
     footer: footer(store, text),
     lang: ctx.lang,
   });
-  return sendEmail({
+  const kind = renewal ? "subscription.renewed" : "order.confirmation";
+  const idempotencyKey = resend ? undefined : `order-confirmation:${orderId}`;
+  const outcome = await sendEmail({
     storeId,
-    kind: renewal ? "subscription.renewed" : "order.confirmation",
+    kind,
     to: order.email,
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
     // Staff can send it again; the automatic one goes once.
-    idempotencyKey: resend ? undefined : `order-confirmation:${orderId}`,
+    idempotencyKey,
     orderId,
     subscriptionId: subscription?.id ?? null,
-    attachments: calendarAttachment(booked.map((line) => bookingEvent(line, store, m))),
+    attachments: [...calendarAttachment(booked.map((line) => bookingEvent(line, store, m))), ...(documents?.attachments ?? [])],
   });
+  await noteDeliveries(storeId, documents, outcome, { idempotencyKey, orderId, kind });
+  return outcome;
+}
+
+/** The documents an email adds for an order, or null (never throws: a document never stops an email). */
+async function documentsFor(
+  storeId: string,
+  order: OrderView,
+  store: EmailStore,
+  market: Market,
+  want: DocumentWant,
+  { switchable = false }: { switchable?: boolean } = {},
+): Promise<DocumentBlocks | null> {
+  try {
+    if (switchable && !(await emailsCarryInvoice(storeId))) return null;
+    const found = await documentBlocks({ storeId, orderId: order.id, storeSlug: store.slug, marketSlug: market.slug, lang: order.locale.split("-")[0] || market.lang, want, attach: true });
+    return found.docs.length > 0 ? found : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Notes which documents an email carried, once it is kept. */
+async function noteDeliveries(storeId: string, documents: DocumentBlocks | null, outcome: SendOutcome, email: { idempotencyKey?: string; orderId: string; kind: string }) {
+  if (!documents || outcome === "duplicate" || outcome === "failed") return;
+  await recordDocumentDeliveries(storeId, documents.docs, email);
 }
 
 /** A short email about an order: sent, refunded or cancelled (D27). */
@@ -326,6 +358,8 @@ async function orderNotice(
     store: EmailStore;
     m: Messages;
   }) => { subject: string; heading: string; intro: string; extra?: EmailBlock[]; attachments?: OutgoingEmail["attachments"]; withdraw?: boolean },
+  /** The documents the email carries (D159): the invoice (when the owner lets the emails carry it) or a refund's credit note. */
+  documents?: { want: DocumentWant; switchable?: boolean },
 ): Promise<SendOutcome | null> {
   const order = await getOrder(storeId, orderId);
   if (!order?.email || order.copied) return null;
@@ -335,6 +369,7 @@ async function orderNotice(
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const built = build({ order, text, money, store, m });
   const url = await orderUrl(storeId, store, market, orderId);
+  const carried = documents ? await documentsFor(storeId, order, store, market, documents.want, { switchable: documents.switchable }) : null;
   const email = renderEmail({
     subject: built.subject,
     preview: built.intro,
@@ -344,11 +379,12 @@ async function orderNotice(
       { type: "heading", text: built.heading },
       { type: "paragraph", text: built.intro },
       ...(built.extra ?? []),
+      ...(carried?.blocks ?? []),
       ...(url ? [{ type: "button" as const, text: text.seeOrder, url }] : []),
       ...(built.withdraw ? await withdrawBlocks(storeId, store, market, order, text) : []),
     ],
   });
-  return sendEmail({
+  const outcome = await sendEmail({
     storeId,
     kind,
     to: order.email,
@@ -357,8 +393,10 @@ async function orderNotice(
     replyTo: store.details.contactEmail,
     idempotencyKey: key,
     orderId,
-    attachments: built.attachments,
+    attachments: [...(built.attachments ?? []), ...(carried?.attachments ?? [])],
   });
+  await noteDeliveries(storeId, carried, outcome, { idempotencyKey: key, orderId, kind });
+  return outcome;
 }
 
 export function sendShipped(
@@ -369,29 +407,45 @@ export function sendShipped(
 ) {
   // Sent again on request: a key of its own, so the first sending does not stop it.
   const key = resend ? `order-sent:${shipment.id}:again:${crypto.randomUUID()}` : `order-sent:${shipment.id}`;
-  return orderNotice(storeId, orderId, "order.sent", key, ({ order, text, store, m }) => {
-    const address = addressText(order, m);
-    return {
-      subject: text.shippedSubject(store.name, order.number),
-      heading: text.shippedHeading,
-      intro: text.shippedIntro(order.number),
-      withdraw: true,
-      extra: [
-        ...(shipment.trackingNumber ? [{ type: "paragraph" as const, text: text.tracking(shipment.carrier, shipment.trackingNumber) }] : []),
-        ...(shipment.trackingUrl ? [{ type: "button" as const, text: text.trackParcel, url: shipment.trackingUrl }] : []),
-        ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
-      ],
-    };
-  });
+  return orderNotice(
+    storeId,
+    orderId,
+    "order.sent",
+    key,
+    ({ order, text, store, m }) => {
+      const address = addressText(order, m);
+      return {
+        subject: text.shippedSubject(store.name, order.number),
+        heading: text.shippedHeading,
+        intro: text.shippedIntro(order.number),
+        withdraw: true,
+        extra: [
+          ...(shipment.trackingNumber ? [{ type: "paragraph" as const, text: text.tracking(shipment.carrier, shipment.trackingNumber) }] : []),
+          ...(shipment.trackingUrl ? [{ type: "button" as const, text: text.trackParcel, url: shipment.trackingUrl }] : []),
+          ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
+        ],
+      };
+    },
+    // The invoice again, for the shopper who has lost it (D159).
+    { want: { invoice: true }, switchable: true },
+  );
 }
 
 export function sendRefunded(storeId: string, orderId: string, refundId: string, amountMinor: number) {
-  return orderNotice(storeId, orderId, "order.refunded", `order-refunded:${refundId}`, ({ order, text, money, store }) => ({
-    subject: text.refundSubject(store.name, order.number),
-    heading: text.refundHeading,
-    // An order whose VAT was not charged (reverse charge, D157) is refunded without VAT, and the email says so.
-    intro: [text.refundIntro(money(amountMinor), order.number), refundVatNote(order.locale.split("-")[0], order)].filter(Boolean).join(" "),
-  }));
+  return orderNotice(
+    storeId,
+    orderId,
+    "order.refunded",
+    `order-refunded:${refundId}`,
+    ({ order, text, money, store }) => ({
+      subject: text.refundSubject(store.name, order.number),
+      heading: text.refundHeading,
+      // An order whose VAT was not charged (reverse charge, D157) is refunded without VAT, and the email says so.
+      intro: [text.refundIntro(money(amountMinor), order.number), refundVatNote(order.locale.split("-")[0], order)].filter(Boolean).join(" "),
+    }),
+    // The refund's credit note (D159), made when the refund succeeded: a link, and the PDF when it exists.
+    refundId ? { want: { creditNoteOfRefund: refundId } } : undefined,
+  );
 }
 
 export function sendCancelled(storeId: string, orderId: string, amountMinor: number, { unpaid = false }: { unpaid?: boolean } = {}) {

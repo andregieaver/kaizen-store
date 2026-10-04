@@ -1716,6 +1716,34 @@
       "when": 1791112261560,
       "tag": "20261004111101_plan_features_wave1",
       "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1791118389137,
+      "tag": "20261004125309_order_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 246,
+      "version": "7",
+      "when": 1791118417071,
+      "tag": "20261004125337_order_invoices_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1791118423122,
+      "tag": "20261004125343_order_invoices_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1791127382514,
+      "tag": "20261004152302_order_invoices_fixes",
+      "breakpoints": true
     }
   ]
 }

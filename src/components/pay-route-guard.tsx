@@ -5,7 +5,7 @@ import { useEffect } from "react";
 
 import { heldAffiliateCode } from "@/lib/affiliate-memory";
 import { withAffiliate } from "@/lib/affiliate-address";
-import { isPayPath } from "@/lib/pay-routes";
+import { isNoExtrasPath } from "@/lib/pay-routes";
 
 /**
  * Every entry into the cart, checkout or order is a full page load (wave 1, 1e, `docs/wave-1-trust.md` 2.5, `docs/pci.md`): a script
@@ -25,7 +25,7 @@ let leftPayRoutes = false;
 
 /** Notes where the document is; true when it has been outside the pay routes. */
 export function notePath(pathname: string): boolean {
-  if (!isPayPath(pathname)) leftPayRoutes = true;
+  if (!isNoExtrasPath(pathname)) leftPayRoutes = true;
   return leftPayRoutes;
 }
 

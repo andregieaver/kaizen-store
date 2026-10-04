@@ -17,6 +17,7 @@ import {
   returnStep as stepSchema,
   type ReturnQueueFilter,
 } from "@/lib/return-input";
+import { adjustmentOf } from "@/lib/credit-allocation";
 import { refundFor, refundableAfter, reviewOverride, shippingPaidMinor, type Refund, type RefundLine, type WorkingRow } from "@/lib/return-refund";
 import {
   actionsFor,
@@ -1002,10 +1003,20 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
 
   /** Written in the same transaction as the refund (or on its own when no money or stock moves). */
   const record = async (tx: Tx, refundId: string) => {
+    // The working the credit note reads (D159): each line returned at its own rate, the deductions, the delivery given back, the
+    // return shipping the shopper pays and what staff added or took (the difference to the amount). Written with the refund, once.
+    const working = {
+      lines: refund.lines.filter((l) => l.returnQuantity > 0).map((l) => ({ lineId: l.lineId, quantity: l.returnQuantity, valueMinor: l.valueMinor, deductionMinor: l.deductionMinor })),
+      deliveryMinor: shippingRefunded,
+      returnShippingMinor: returnShipping,
+      amountMinor: amount,
+      outside,
+    };
+    const refundWorking = { ...working, adjustmentMinor: adjustmentOf(working) };
     await tx.execute(sql`
       update commerce.returns set refund_id = ${refundId || null}::uuid, refund_minor = ${amount}, refund_computed_minor = ${refund.amountMinor},
         refund_note = ${adjusted ? reason : null}, refund_outside = ${outside}, return_shipping_minor = ${returnShipping},
-        shipping_refund_minor = ${shippingRefunded}, refund_claimed_at = null
+        shipping_refund_minor = ${shippingRefunded}, refund_working = ${JSON.stringify(refundWorking)}::jsonb, refund_claimed_at = null
       where store_id = ${storeId}::uuid and id = ${ret.id}::uuid
     `);
     const more = {

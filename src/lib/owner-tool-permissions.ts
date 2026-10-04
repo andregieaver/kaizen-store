@@ -52,6 +52,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   // The tax settings are the owner's alone (D157), like the page they stand in for.
   get_tax_profile: "owner",
   tax_readiness: "owner",
+  // Documents hold buyers' details: the list shows none, and reads like the Orders page (`orders:read`); the settings are the owner's (D159).
+  list_invoices: "orders:read",
+  invoice_readiness: "owner",
   ai_usage: "owner",
   get_recommendations: "marketing:read",
   check_recommendations: "marketing:read",

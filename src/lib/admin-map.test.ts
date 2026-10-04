@@ -74,6 +74,19 @@ describe("the admin map (D103)", () => {
     expect(ADMIN_PAGES.find((p) => p.id === "returns.settings")?.group).toBe("Settings");
   });
 
+  it("knows where a store's invoices and credit notes are, and their settings (D159)", () => {
+    expect(findPages("store", "download the pdf of a credit note")[0]?.id).toBe("invoices");
+    expect(findPages("store", "which orders are waiting for an invoice")[0]?.id).toBe("invoices");
+    expect(findPages("store", "csv for my accountant")[0]?.id).toBe("invoices");
+    expect(findPages("store", "change the invoice number prefix", { owner: true })[0]?.id).toBe("invoices.settings");
+    // The settings are the owner's, as they change legal numbering.
+    expect(findPages("store", "change the invoice number prefix", {}).map((p) => p.id)).not.toContain("invoices.settings");
+    expect(matchPath("/admin/kaffe/invoices")?.page.id).toBe("invoices");
+    expect(matchPath("/admin/kaffe/settings/invoices")).toMatchObject({ page: { id: "invoices.settings" }, storeSlug: "kaffe" });
+    expect(ADMIN_PAGES.find((p) => p.id === "invoices")?.group).toBe("Orders");
+    expect(ADMIN_PAGES.find((p) => p.id === "invoices.settings")).toMatchObject({ group: "Settings", needs: "owner" });
+  });
+
   it("offers only what the person can open, where that is told (wave 1, 1f)", () => {
     const readOnly = (page: { id: string }) => page.id !== "campaigns";
     expect(findPages("store", "campaigns buy n pay for m").map((p) => p.id)).toContain("campaigns");
@@ -134,7 +147,8 @@ describe("the admin map (D103)", () => {
     expect(pageHref(store, { store: "acme" })).toBe("/admin/account/work/s/acme/clients");
     expect(findPages("store", "log my hours with a timer").map((p) => p.id)).not.toContain("work.time");
     expect(findPages("store", "log my hours with a timer", { work: true })[0]?.id).toBe("work.time");
-    expect(findPages("store", "invoice number prefix", { work: true })[0]?.id).toBe("work.store.settings");
+    // The store's own invoices (wave 1b) share these words, so a question about Work's invoices says "work".
+    expect(findPages("store", "work invoice number prefix", { work: true })[0]?.id).toBe("work.store.settings");
     expect(findPages("store", "which invoices are overdue", { work: true })[0]?.id).toBe("work.invoices");
     // Where Work is switched on is always offered, or nobody could find the switch.
     expect(findPages("store", "switch on work").map((p) => p.id)).toContain("work.settings");

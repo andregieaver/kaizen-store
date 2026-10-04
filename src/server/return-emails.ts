@@ -14,6 +14,7 @@ import { dayIn } from "@/lib/work-dates";
 import { refundDeadline, sendBackDay, type ReturnAddress } from "@/lib/withdrawal";
 
 import { sendEmail, type SendOutcome } from "./email";
+import { documentBlocks, recordDocumentDeliveries } from "./invoice-emails";
 import { loadFacts, recipientsOf, type OrderFacts } from "./return-facts";
 import { NOTHING_SENT_SQL } from "./return-sql";
 import { emailContext, emailFooter, type EmailStore } from "./shopper-emails";
@@ -296,6 +297,8 @@ async function returnMail(
   event: string,
   kind: string,
   build: (mail: Mail, text: EmailText, money: (minor: number) => string) => { subject: string; heading: string; intro: string; blocks: EmailBlock[] },
+  /** The refund's email carries the return's credit note (D159): a link, and the PDF when it exists. */
+  withCreditNote = false,
 ): Promise<SendOutcome | null> {
   const mail = await loadMail(storeId, returnId);
   if (!mail) return null;
@@ -304,6 +307,9 @@ async function returnMail(
   const { store, market, text } = mail.ctx;
   const money = (minor: number) => formatMoney(minor, mail.facts.currency, market.locale);
   const built = build(mail, text, money);
+  const documents = withCreditNote
+    ? await documentBlocks({ storeId, orderId: mail.facts.orderId, storeSlug: store.slug, marketSlug: market.slug, lang: mail.ctx.lang, want: { creditNoteOfReturn: returnId }, attach: true }).catch(() => null)
+    : null;
   const email = renderEmail({
     subject: built.subject,
     preview: built.intro,
@@ -313,19 +319,24 @@ async function returnMail(
       { type: "heading", text: built.heading },
       { type: "paragraph", text: built.intro },
       ...built.blocks,
+      ...(documents?.blocks ?? []),
       { type: "button", text: text.returns.statusButton, url: statusUrl(store, market.slug, mail.ret.publicToken) },
     ],
   });
-  return sendEmail({
+  const idempotencyKey = `return.${returnId}.${event}`;
+  const outcome = await sendEmail({
     storeId,
     kind,
     to,
     email,
     fromName: store.name,
     replyTo: store.details.contactEmail,
-    idempotencyKey: `return.${returnId}.${event}`,
+    idempotencyKey,
     orderId: mail.facts.orderId,
+    ...(documents && documents.attachments.length > 0 ? { attachments: documents.attachments } : {}),
   });
+  if (documents && outcome !== "duplicate" && outcome !== "failed") await recordDocumentDeliveries(storeId, documents.docs, { idempotencyKey });
+  return outcome;
 }
 
 /** A voluntary return the store approved: how to send the goods back. Once. */
@@ -394,7 +405,7 @@ export const sendReturnRefunded = (storeId: string, returnId: string, working: W
         { type: "paragraph", text: text.returns.refundedTiming },
       ],
     };
-  });
+  }, true);
 
 /**
  * The reminder to the store that a withdrawal's refund is past its legal deadline: to the store's contact email, in

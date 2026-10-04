@@ -38,6 +38,9 @@ const EXACT: Record<string, AuditArea> = {
   "store.legal_role_changed": "website",
   "store.navigation_updated": "website",
   "store.part_sharing": "website",
+  // Settings: the invoicing switch, note and numbering change legal documents, but they are the owner's settings (D159).
+  "invoice.settings_updated": "settings",
+  "invoice.series_set": "settings",
   // Staff: the owner's download of the activity log is about the team's doings.
   "activity.exported": "staff",
   // Staff: the store's own two-step switch and its terms.
@@ -56,6 +59,10 @@ const PREFIXES: Record<string, AuditArea> = {
   "return.": "orders",
   "booking.": "orders",
   "deliveries.": "orders",
+  // Invoices and credit notes for orders (D159): exporting, sending again and the documents' own events.
+  "invoice.": "orders",
+  "credit_note.": "orders",
+  "document.": "orders",
   // Products
   "product.": "products",
   "product_layout.": "products",

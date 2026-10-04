@@ -28,6 +28,8 @@ import { BUILDER_AREAS, BUILDER_READ, BUILDER_WRITE, MEMBERSHIP_ONLY_PAGE_IDS, P
 
 const root = process.cwd();
 const STORE = "src/app/admin/(gated)/[store]/";
+/** The store's printable views (an invoice or a credit note without the admin around it, wave 1b): the same guards, no store layout. */
+const STORE_PRINT = "src/app/admin/(gated)/(print)/[store]/";
 const WORK = "src/app/admin/(gated)/(owner)/account/work/s/[store]/";
 const WORK_PRINT = "src/app/admin/(gated)/(print)/account/work/s/[store]/";
 /** Entry points of other trees that take a store from the address; each has its own expectation. */
@@ -94,11 +96,11 @@ function discover(): Entry[] {
     return null;
   };
   for (const file of allFiles) {
-    const surface = file.startsWith(STORE) ? "store" : file.startsWith(WORK) || file.startsWith(WORK_PRINT) ? "work" : file in OTHERS ? "other" : null;
+    const surface = file.startsWith(STORE) || file.startsWith(STORE_PRINT) ? "store" : file.startsWith(WORK) || file.startsWith(WORK_PRINT) ? "work" : file in OTHERS ? "other" : null;
     if (!surface) continue;
     const kind = kindOf(file);
     if (!kind) continue;
-    const base = file.startsWith(STORE) ? STORE : file.startsWith(WORK) ? WORK : file.startsWith(WORK_PRINT) ? WORK_PRINT : "";
+    const base = file.startsWith(STORE) ? STORE : file.startsWith(STORE_PRINT) ? STORE_PRINT : file.startsWith(WORK) ? WORK : file.startsWith(WORK_PRINT) ? WORK_PRINT : "";
     entries.push({ file, kind, surface, path: base ? tailOf(file, base).replace(/\/$/, "") : "" });
   }
   return entries;

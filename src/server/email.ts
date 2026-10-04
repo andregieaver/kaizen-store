@@ -51,7 +51,7 @@ export async function deliver(
     ...(message.attachments?.length && {
       attachments: message.attachments.map((file) => ({
         filename: file.filename,
-        content: Buffer.from(file.content, "utf8").toString("base64"),
+        content: file.encoding === "base64" ? file.content : Buffer.from(file.content, "utf8").toString("base64"),
         content_type: file.contentType,
       })),
     }),
@@ -107,8 +107,11 @@ export type OutgoingEmail = {
   subscriptionId?: string | null;
   /** Extra headers, such as List-Unsubscribe on reminders (D33). */
   headers?: Record<string, string>;
-  /** Text files sent with it, such as a booking's calendar file (D65); not kept with the email. */
-  attachments?: { filename: string; content: string; contentType: string }[];
+  /**
+   * Files sent with it, not kept with the email: a booking's calendar file (D65, text), or an invoice's PDF (D159, `encoding: "base64"`
+   * with the bytes already encoded).
+   */
+  attachments?: { filename: string; content: string; contentType: string; encoding?: "base64" }[];
 };
 
 export type SendOutcome = "sent" | "logged" | "failed" | "duplicate";

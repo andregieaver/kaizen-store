@@ -102,6 +102,7 @@ describe("the landing path that is stored", () => {
     const secrets = [
       "/s/demo/no/account/sign-in/AbCdEf0123456789secrettoken",
       "/s/demo/no/account/invoice/tok123",
+      "/s/demo/no/account/documents/inv_AbCdEf0123456789tok123",
       "/s/demo/no/account/company/invite/tok123",
       "/s/demo/no/account/orders/0b3c9a42-6d0e-4b7e-9c35-2f4d9c6a7e11",
       "/s/demo/no/order/0b3c9a42-6d0e-4b7e-9c35-2f4d9c6a7e11",

@@ -40,4 +40,15 @@ describe("what the pay routes do not draw (wave 1, 1e)", () => {
       expect(draw(path), path).not.toContain("banner and chat");
     }
   });
+
+  it("draws nothing on a hosted invoice or credit note, whose address is the whole access to a buyer's document (D159)", () => {
+    for (const path of [
+      `/s/demo/no/account/documents/inv_${"A".repeat(43)}`,
+      `/s/demo/no/account/documents/crn_${"A".repeat(43)}/pdf`,
+      `/no/account/documents/inv_${"A".repeat(43)}`,
+    ]) {
+      expect(draw(path), path).not.toContain("banner and chat");
+    }
+    expect(draw("/s/demo/no/account/orders/abc")).toContain("banner and chat");
+  });
 });

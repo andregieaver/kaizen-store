@@ -62,6 +62,10 @@ export const WEBHOOK_EVENTS: Stripe.WebhookEndpointCreateParams.EnabledEvent[] =
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
+  // Refunds (D159): a refund that was pending completes, or is made in Stripe's Dashboard; both change what a credit note stands for.
+  "refund.created",
+  "refund.updated",
+  "refund.failed",
 ];
 
 /** Account (v2) events: a store's Stripe account needs something, or changed. */

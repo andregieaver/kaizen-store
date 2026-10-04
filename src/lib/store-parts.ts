@@ -166,6 +166,11 @@ export const STORE_PIECES = {
     name: "Order totals",
     hint: "Shipping, discounts, the total and its VAT, and the company it was bought for.",
   },
+  order_documents: {
+    route: "order",
+    name: "Invoice and credit notes",
+    hint: "The order's invoice and credit notes, each with a link to read it and to download it as a PDF. Nothing for an order without one, and \"Test order: no invoice\" for one paid in test mode.",
+  },
   order_subscription: {
     route: "order",
     name: "Subscription",

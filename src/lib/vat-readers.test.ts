@@ -16,7 +16,8 @@ const files = (dir: string, out: string[] = []): string[] => {
   for (const name of readdirSync(dir)) {
     const full = path.join(dir, name);
     if (statSync(full).isDirectory()) files(full, out);
-    else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) && !name.endsWith(".d.ts")) out.push(full);
+    // Fixtures that tests build their rows with (`*-fixture.ts`, imported by tests only) are not the app, as in order-numbers.test.ts.
+    else if (/\.(ts|tsx)$/.test(name) && !/\.test\.tsx?$/.test(name) && !/-fixture\.tsx?$/.test(name) && !name.endsWith(".d.ts")) out.push(full);
   }
   return out;
 };

@@ -80,6 +80,9 @@ const { preRegisterCustomer, startSession } = await import("./customers");
 const { checkOwnVatNumber, getTaxProfile, saveTaxProfile } = await import("./tax-profile");
 const { checkCartVatNumber, pruneVatChecks, setCartVat } = await import("./vat-checks");
 const { cancelOrder, refundOrder } = await import("./order-admin");
+const { issueWaitingInvoices } = await import("./invoice-issue");
+const documents = await import("./invoice-test-fixture");
+const invoicesRead = await import("./invoices");
 
 // ---------------------------------------------------------------------------
 // A faked VIES: the answer by number, every request recorded
@@ -325,9 +328,10 @@ describe("reverse charge: from the cart to a paid order", () => {
 
   });
 
-  it("tells the store's Stripe invoice: the words and both VAT numbers, in four fields", async () => {
+  it("tells the store's Stripe invoice: the words and both VAT numbers, in four fields (while Kaizen's own invoicing is off, D159)", async () => {
     reset(de);
     await db().execute(sql`update commerce.payment_providers set order_invoices = true where store_id = ${storeId}::uuid`);
+    await db().execute(sql`insert into commerce.invoice_settings (store_id, enabled) values (${storeId}::uuid, false) on conflict (store_id) do update set enabled = false`);
     try {
       await add("DEMO-MUG-WHITE", 1);
       await typeNumber(DE_NUMBER);
@@ -345,8 +349,15 @@ describe("reverse charge: from the cart to a paid order", () => {
       await add("DEMO-MUG-WHITE", 1);
       const ordinary = (await checkout()).params.invoice_creation as { invoice_data: { custom_fields: { name: string }[] } };
       expect(ordinary.invoice_data.custom_fields.map((f) => f.name)).toEqual(["Incl. VAT"]);
+      // With Kaizen's own invoicing on, the database makes the invoice and Stripe is not asked for one (D159).
+      await db().execute(sql`update commerce.invoice_settings set enabled = true where store_id = ${storeId}::uuid`);
+      reset(de);
+      await add("DEMO-MUG-WHITE", 1);
+      await typeNumber(DE_NUMBER);
+      expect((await checkout()).params.invoice_creation).toBeUndefined();
     } finally {
       await db().execute(sql`update commerce.payment_providers set order_invoices = false where store_id = ${storeId}::uuid`);
+      await db().execute(sql`update commerce.invoice_settings set enabled = true where store_id = ${storeId}::uuid`);
     }
   });
 
@@ -979,5 +990,152 @@ describe("the VAT of every placed order is what the order page says", () => {
     expect(shopper?.vatReliefMinor).toBeGreaterThan(0);
     expect(shopper?.shippingReliefMinor).toBeGreaterThan(0);
     expect(readCartId).toBeDefined();
+  });
+});
+
+describe("the invoice of a reverse-charge or IOSS order (D159)", () => {
+  const iossForm = {
+    vatRegistered: true, vatNumber: SELLER, dispatchCountry: "CN", ossScheme: "none" as const, ossMemberState: "", ossNumber: "", ossRegisteredOn: "",
+    iossNumber: "IM2460000000", iossIntermediary: "Customs Agent AB", iossMarkets: ["DE", "DK", "CZ"], iossRegisteredOn: "2026-07-01",
+  };
+  const home = { ...iossForm, dispatchCountry: "", iossNumber: "", iossIntermediary: "", iossMarkets: [], iossRegisteredOn: "" };
+
+  beforeAll(async () => {
+    await db().execute(sql`
+      update commerce.stores set legal_name = 'Vat AB', organisation_number = '5566778899', postal_address = 'Storgatan 1, 111 22 Stockholm' where id = ${storeId}::uuid
+    `);
+    await db().execute(sql`delete from commerce.invoice_settings where store_id = ${storeId}::uuid`);
+  });
+
+  /** Pays the order the way Stripe's session does, then issues its invoice: the store's account is a test one (no legal number), so it is live for that one call. */
+  async function invoiceOf(open: { orderId: string; sessionId: string }, params: Record<string, unknown>) {
+    fake.sessions.set(open.sessionId, { status: "complete", payment_status: "paid", mode: params.mode, payment_intent: `pi_${open.sessionId}` });
+    await getShopperOrder(storeId, open.orderId, open.sessionId);
+    await db().execute(sql`update commerce.stripe_accounts set mode = 'live' where store_id = ${storeId}::uuid`);
+    try {
+      await issueWaitingInvoices(storeId);
+    } finally {
+      await db().execute(sql`update commerce.stripe_accounts set mode = 'test' where store_id = ${storeId}::uuid`);
+    }
+    return documents.invoiceOf(storeId, open.orderId);
+  }
+
+  it("says reverse charge with both VAT numbers, at rate 0 with the rate that would have applied, and never prints VIES's name or address", async () => {
+    reset(de);
+    await add("DEMO-MUG-WHITE", 2);
+    await add("DEMO-NOTEBOOK-LINED", 3);
+    await typeNumber(DE_NUMBER);
+    const { order, open, params } = await checkout();
+    // A business's invoice needs its full address (Art. 226 point 5): Stripe is asked for the billing address, not only a postal code.
+    expect(params.billing_address_collection).toBe("required");
+    const invoice = (await invoiceOf(open, params))!;
+    expect(invoice).toMatchObject({ vatKind: "reverse_charge", taxMinor: 0, totalMinor: order.totalMinor, netMinor: order.totalMinor, currency: "EUR" });
+    const s = invoice.snapshot;
+    expect(s.treatment).toMatchObject({ kind: "reverse_charge", sellerVatNumber: SELLER, buyerVatNumber: DE_NUMBER, statements: ["reverse_charge"] });
+    expect(s.buyer).toMatchObject({ type: "business", company: "Kunde GmbH", vatNumber: DE_NUMBER });
+    expect(s.seller).toMatchObject({ vatRegistered: true, vatNumber: SELLER, country: "SE" });
+    expect(s.buckets).toEqual([{ rate: 0, basis: "reverse_charge", netMinor: order.totalMinor, vatMinor: 0, grossMinor: order.totalMinor }]);
+    for (const line of s.lines) expect(line).toMatchObject({ vatRate: 0, vatMinor: 0, basis: "reverse_charge", wouldHaveRate: 0.19 });
+    expect(s.shipping).toMatchObject({ vatRate: 0, vatMinor: 0, wouldHaveRate: 0.19 });
+    // The VAT amount is nothing, so no VAT in the seller's currency is needed (an invoice in euro from a Swedish seller).
+    expect(s.vatHome).toBeNull();
+    // What VIES answered about the buyer is for staff alone: it is in no document.
+    const text = JSON.stringify(s);
+    // (VIES's name is in capitals; the company is written as the buyer typed it.)
+    for (const private_ of ["KUNDE GMBH", "HAUPTSTRASSE", "BERLIN", "requestIdentifier", "WAPI"]) expect(text).not.toContain(private_);
+    // The number in the hosted page's data is the buyer's own number, once, in the buyer block and the treatment.
+    expect(text.split(DE_NUMBER).length - 1).toBe(2);
+  });
+
+  it("credits a reverse-charge invoice with a note that carries the same statement and no VAT", async () => {
+    reset(de);
+    await add("DEMO-MUG-WHITE", 2);
+    await typeNumber(DE_NUMBER);
+    const { order, open, params } = await checkout();
+    const invoice = (await invoiceOf(open, params))!;
+    const admin = await (await import("./order-admin")).getOrderAdmin(storeId, order.id);
+    expect(admin!.refundableMinor).toBe(order.totalMinor);
+    expect(await refundOrder(storeId, order.id, { amountMinor: Math.floor(order.totalMinor / 2), reason: "Del", restock: [] }, null)).toMatchObject({ ok: true });
+    expect(await refundOrder(storeId, order.id, { amountMinor: order.totalMinor - Math.floor(order.totalMinor / 2), reason: "Rest", restock: [] }, null)).toMatchObject({ ok: true });
+    const notes = await documents.notesOf(storeId, order.id);
+    expect(notes).toHaveLength(2);
+    for (const note of notes) {
+      expect(note).toMatchObject({ taxMinor: 0, currency: "EUR" });
+      expect(note.snapshot.treatment).toMatchObject({ kind: "reverse_charge", buyerVatNumber: DE_NUMBER, sellerVatNumber: SELLER });
+      expect(note.snapshot.buckets).toEqual([expect.objectContaining({ rate: 0, basis: "reverse_charge", vatMinor: 0 })]);
+    }
+    expect(notes.reduce((sum, n) => sum + n.totalMinor, 0)).toBe(invoice.totalMinor);
+    expect(notes[1].snapshot.position.leftOnInvoiceMinor).toBe(0);
+  });
+
+  it("flags a waiting reverse-charge invoice as overdue after the 15th of the month after the payment, on the store's day", async () => {
+    reset(de);
+    await add("DEMO-MUG-WHITE", 1);
+    await typeNumber(DE_NUMBER);
+    const { order, open, params } = await checkout();
+    // The seller's details are taken away while it is paid: it waits.
+    await db().execute(sql`update commerce.stores set legal_name = null where id = ${storeId}::uuid`);
+    try {
+      fake.sessions.set(open.sessionId, { status: "complete", payment_status: "paid", mode: params.mode, payment_intent: `pi_${open.sessionId}` });
+      await getShopperOrder(storeId, order.id, open.sessionId);
+      await db().execute(sql`update commerce.stripe_accounts set mode = 'live' where store_id = ${storeId}::uuid`);
+      const waiting = await invoicesRead.waitingInvoices(storeId);
+      const mine = waiting.find((w) => w.orderId === order.id)!;
+      expect(mine).toMatchObject({ reason: "seller_details", vatKind: "reverse_charge", overdue: false });
+      const [y, m] = mine.paidOn.split("-").map(Number);
+      const deadline = `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-15`;
+      expect(mine.deadline).toBe(deadline);
+      expect((await invoicesRead.waitingInvoices(storeId, deadline)).find((w) => w.orderId === order.id)!.overdue).toBe(false);
+      const after = new Date(`${deadline}T12:00:00Z`);
+      after.setUTCDate(after.getUTCDate() + 1);
+      expect((await invoicesRead.waitingInvoices(storeId, after.toISOString().slice(0, 10))).find((w) => w.orderId === order.id)!.overdue).toBe(true);
+      expect((await invoicesRead.invoiceCounts(storeId, after.toISOString().slice(0, 10))).overdue).toBeGreaterThanOrEqual(1);
+      // Issued when the details are back, with today as its issue date and the payment day as its supply date.
+      await db().execute(sql`update commerce.stores set legal_name = 'Vat AB' where id = ${storeId}::uuid`);
+      expect(await issueWaitingInvoices(storeId)).toBeGreaterThanOrEqual(1);
+      expect(await documents.invoiceOf(storeId, order.id)).toMatchObject({ vatKind: "reverse_charge", supplyDate: mine.paidOn });
+    } finally {
+      await db().execute(sql`update commerce.stores set legal_name = 'Vat AB' where id = ${storeId}::uuid`);
+      await db().execute(sql`update commerce.stripe_accounts set mode = 'test' where store_id = ${storeId}::uuid`);
+    }
+  });
+
+  it("states the store's IOSS number on an IOSS-marked order, with the VAT charged as always, and none on one above 150 EUR", async () => {
+    reset(de);
+    await add("DEMO-MUG-WHITE", 2);
+    expect(await saveTaxProfile(member, iossForm)).toMatchObject({ ok: true });
+    try {
+      const { order, open, params } = await checkout();
+      expect(order.vatKind).toBe("ioss");
+      const invoice = (await invoiceOf(open, params))!;
+      expect(invoice).toMatchObject({ vatKind: "ioss", taxMinor: order.taxMinor, totalMinor: order.totalMinor });
+      expect(invoice.taxMinor).toBeGreaterThan(0);
+      expect(invoice.snapshot.treatment).toMatchObject({ kind: "ioss", iossNumber: "IM2460000000", statements: ["ioss"], buyerVatNumber: null });
+      expect(invoice.snapshot.buyer.vatNumber).toBeNull();
+
+      // A consignment above the limit is not an IOSS sale: no statement, no number.
+      reset(de);
+      await add("DEMO-MUG-WHITE", 5);
+      const over = await checkout();
+      const overInvoice = (await invoiceOf(over.open, over.params))!;
+      expect(overInvoice).toMatchObject({ vatKind: "standard" });
+      expect(overInvoice.snapshot.treatment).toMatchObject({ kind: "standard", iossNumber: null });
+      expect(overInvoice.snapshot.treatment.statements).not.toContain("ioss");
+    } finally {
+      await saveTaxProfile(member, home);
+    }
+  });
+
+  it("prints no buyer's VAT number on a consumer's invoice, and the VAT in it", async () => {
+    reset(de);
+    await add("DEMO-MUG-WHITE", 1);
+    const { order, open, params } = await checkout();
+    // A private buyer is not asked for more than before.
+    expect(params.billing_address_collection).toBeUndefined();
+    const invoice = (await invoiceOf(open, params))!;
+    expect(invoice).toMatchObject({ vatKind: "standard", taxMinor: order.taxMinor });
+    expect(invoice.taxMinor).toBeGreaterThan(0);
+    expect(invoice.snapshot.buyer).toMatchObject({ type: "consumer", vatNumber: null });
+    expect(invoice.snapshot.treatment).toMatchObject({ kind: "standard", buyerVatNumber: null, iossNumber: null });
   });
 });
