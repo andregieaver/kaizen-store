@@ -15,7 +15,7 @@ import {
 } from "@/lib/global-parts";
 import { pageInput, type PageContent, type PageType } from "@/lib/page-content";
 
-import { pageRulesProblem } from "./page-rules";
+import { pageRulesProblem, payPageProblem } from "./page-rules";
 
 /**
  * Global rows, columns and components (D98) on the server: when a global
@@ -133,7 +133,9 @@ export async function spreadGlobals(
     sql` or `,
   );
   const pages = await tx.execute<Row>(sql`
-    select p.id, p.type, p.draft, p.published from commerce.pages p
+    select p.id, p.type, p.draft, p.published,
+      exists (select 1 from commerce.page_roles r where r.store_id = p.store_id and r.page_id = p.id and r.role = 'checkout') as checkout
+    from commerce.pages p
     where p.store_id is not distinct from ${owner}::uuid and (${anyOf})
     for update
   `);
@@ -148,7 +150,7 @@ export async function spreadGlobals(
       if (sameJson(next, content)) return null;
       const parsed = pageInput.safeParse(next);
       const problem = parsed.success
-        ? pageRulesProblem(owner, type, parsed.data)
+        ? (pageRulesProblem(owner, type, parsed.data) ?? (page.checkout ? payPageProblem(parsed.data) : null))
         : [...new Set(parsed.error.issues.map((i) => i.message))].join(" ");
       if (problem) problems.push(`It is also on “${content.title}”, which could then not be saved: ${problem}`);
       return next;

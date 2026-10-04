@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { formatMoney } from "@/lib/money";
 import { accountStage } from "@/lib/stripe-account";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { getHostTaxDetails, hostTaxStatus } from "@/server/dac7";
 import { getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { getHost, hostListings } from "@/server/hosts";
@@ -17,7 +17,8 @@ export const metadata: Metadata = { title: "Host" };
 
 export default async function HostPage({ params }: PageProps<"/admin/[store]/hosts/[hostId]">) {
   const { store: slug, hostId } = await params;
-  const { store, role } = await requireMember(slug);
+  const current = await requirePermission(slug, "bookings:read");
+  const { store } = current;
   if (!z.uuid().safeParse(hostId).success) notFound();
   const host = await getHost(store.id, hostId);
   if (!host) notFound();
@@ -30,7 +31,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
     hostTaxStatus(store.id),
   ]);
   const missing = taxes.get(host.id)?.missingAddresses ?? [];
-  const owner = role === "owner";
+  const owner = memberCan(current, "owner");
   const stage = mode ? accountStage(accounts[mode] ?? null) : null;
   const locale = store.markets[0]?.locale ?? "en-GB";
   const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });

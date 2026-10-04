@@ -5,7 +5,8 @@ import { refresh } from "next/cache";
 import type { z } from "zod";
 
 import type { recurringInvoiceInput } from "@/lib/work-input";
-import { audit, requireMember, type Membership } from "@/server/auth";
+import { audit, type Membership } from "@/server/auth";
+import { checkPermission } from "@/server/permissions";
 import { problem, type WorkResult } from "@/server/work-errors";
 import {
   createRecurring,
@@ -20,7 +21,7 @@ import {
 
 /**
  * Work's actions for repeating invoices (docs/work.md 7.2 WP8), on a client's page. Each is bound to
- * the store's slug as its first argument and asks `requireMember()` itself, then hands what the
+ * the store's slug as its first argument and asks `checkPermission()` itself, then hands what the
  * browser sent to the server function, which checks it again with `recurringInvoiceInput`. Owners
  * and admins may do everything here except switch automatic issuing on or off (the server function
  * refuses an admin), which is an owner's decision and is kept in the audit log. The templates'
@@ -28,14 +29,14 @@ import {
  * that is needed. They answer `{ ok: true, … }` or `{ ok: false, problems }`.
  */
 
-const OFF = "Work is switched off for this store.";
+const OFF = "Work is switched off for this store, or your role has no access to it.";
 
 async function change<T extends object>(
   storeSlug: string,
   run: (member: Membership) => Promise<WorkResult<T>>,
 ): Promise<WorkResult<T>> {
-  const member = await requireMember(storeSlug);
-  if (!member.store.workOn) return problem(OFF);
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member?.store.workOn) return problem(OFF);
   const result = await run(member);
   if (result.ok) refresh();
   return result;

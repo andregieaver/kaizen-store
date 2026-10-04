@@ -4,7 +4,7 @@ import Link from "next/link";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { FieldsToolbar } from "@/components/admin/fields-toolbar";
 import { describeLocation, entitiesText } from "@/lib/field-group-editor";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listFieldGroups } from "@/server/custom-fields";
 
 import {
@@ -22,7 +22,7 @@ const small = "flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-surfa
 
 /** A store's groups of custom fields (D118): what each is on, whether it is on, and their order in the editors. */
 export default async function FieldsPage({ params }: PageProps<"/admin/[store]/fields">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "products:read");
   const [groups, terms] = await Promise.all([listFieldGroups(store.id), editorTerms(store.id)]);
   const roles = roleOptions();
   const lookup = {

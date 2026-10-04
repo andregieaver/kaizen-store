@@ -7,13 +7,13 @@ import type { AiEvalResult, AiImageTestResult, AiTestResult } from "@/components
 import { aiFormValues } from "@/lib/ai-provider";
 import { AI_TAG, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import { testPicture } from "@/server/ai-pictures";
-import { requireMember, type Membership } from "@/server/auth";
+import { type Membership } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { runUnderstandingEval } from "@/server/query-understanding";
 
 /** A store's own AI sends its products and shoppers' searches to another company, so only an owner chooses it (D73). */
 async function asOwner(storeSlug: string): Promise<Membership | string> {
-  const member = await requireMember(storeSlug);
-  return member.role === "owner" ? member : "Only an owner can change the store's AI.";
+  return (await checkOwnerRole(storeSlug)) ?? "Only an owner can change the store's AI.";
 }
 
 export async function saveStoreAiAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {

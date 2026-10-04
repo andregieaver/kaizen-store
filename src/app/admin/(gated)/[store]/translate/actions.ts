@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import type { TranslateMode } from "@/lib/page-translate-ai";
 import { TRANSLATE_SCOPES, type Unit } from "@/lib/store-translate";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { fieldsTag } from "@/server/custom-fields";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
@@ -28,7 +28,8 @@ export type WorklistResult = { ok: true; units: Unit[]; total: number } | { ok: 
 
 /** What there is to translate into a language, in the scopes chosen. */
 export async function worklistAction(storeSlug: string, input: unknown): Promise<WorklistResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:read");
+  if (!member) return { ok: false, problem: NO_ACCESS };
   const parsed = worklistInput.safeParse(input);
   if (!parsed.success) return { ok: false, problem: "Choose a language and something to translate." };
   if (!member.store.localization.locales.slice(1).includes(parsed.data.locale)) {
@@ -47,7 +48,8 @@ const acceptedInput = z.array(
 
 /** Writes what staff accepted: products' and menus' texts, custom fields' labels and values, and pages' drafts. */
 export async function applyAction(storeSlug: string, locale: string, accepted: unknown): Promise<ApplyResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { ok: false, problem: NO_ACCESS };
   const parsed = acceptedInput.safeParse(accepted);
   if (!parsed.success) return { ok: false, problem: "The translations could not be read. Reload the page and try again." };
   const result = await applyTranslations(member, locale, parsed.data);

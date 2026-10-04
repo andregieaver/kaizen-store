@@ -35,6 +35,8 @@ vi.mock("@/server/auth", () => ({
     if (!member) throw new Error(`not a member of ${slug}`);
     return member;
   },
+  getMembership: async (slug: string) => members.get(slug) ?? null,
+  holderOf: (member: { role: string; kind?: string; permissions?: string[] | null }) => ({ role: member.role, kind: member.kind, permissions: member.permissions }),
   audit: async () => {},
 }));
 

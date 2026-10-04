@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 
 import { DiscountForm } from "../discount-form";
 
 export const metadata: Metadata = { title: "New coupon" };
 
 export default async function NewDiscountPage({ params }: PageProps<"/admin/[store]/discounts/new">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "marketing:read");
   return (
     <div className="flex flex-col gap-6">
       <div>

@@ -5,7 +5,7 @@ import { formatMoney } from "@/lib/money";
 import { computeLine } from "@/lib/work-calc";
 import { formatDay } from "@/lib/work-dates";
 import { scheduleSummary } from "@/lib/work-recurring-ui";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { listRecurring, type RecurringList, type RecurringSummary } from "@/server/work-recurring";
 
 import { DeleteRecurringButton, NewRecurringButton, TemplateActions } from "./recurring-controls";
@@ -41,9 +41,9 @@ export function RecurringPanel(props: RecurringPanelProps) {
 }
 
 async function RecurringBody(props: RecurringPanelProps) {
-  const { store, role } = await requireMember(props.storeSlug);
-  const list = await listRecurring(store.id, props.clientId);
-  return <RecurringPanelView {...props} list={list} canAutoIssue={role === "owner"} />;
+  const member = await requirePermission(props.storeSlug, "settings:read");
+  const list = await listRecurring(member.store.id, props.clientId);
+  return <RecurringPanelView {...props} list={list} canAutoIssue={memberCan(member, "owner")} />;
 }
 
 /** What the panel draws, from what was read: no reads of its own, so it draws the same in every state. */

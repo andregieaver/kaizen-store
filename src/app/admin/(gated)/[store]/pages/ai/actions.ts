@@ -1,7 +1,7 @@
 "use server";
 
 import type { PageBrief, PagePlan, PictureJob, StudioMessage } from "@/lib/page-ai";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { buildDraft, fillPicture, hearOwner, interviewTurn, planPage, speakToOwner, type StudioOwner } from "@/server/page-ai";
 import { isPageId, readRecording, readStudioInput, readStudioPlan, unreadable } from "@/server/page-studio-input";
 
@@ -11,7 +11,7 @@ import { isPageId, readRecording, readStudioInput, readStudioPlan, unreadable } 
  */
 
 async function studioOwner(storeSlug: string): Promise<StudioOwner> {
-  const { store, account } = await requireMember(storeSlug);
+  const { store, account } = await requirePermission(storeSlug, "website:write");
   return { storeId: store.id, storeSlug: store.slug, account };
 }
 

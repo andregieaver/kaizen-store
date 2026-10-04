@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listCompanies } from "@/server/companies";
 import { getTier, tierMembers } from "@/server/customer-tiers";
 
@@ -17,7 +17,7 @@ const card = "flex flex-col gap-3 rounded-lg border border-border bg-background 
 
 export default async function CustomerGroupPage({ params }: PageProps<"/admin/[store]/customer-groups/[groupId]">) {
   const { store: slug, groupId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "customers:read");
   if (!z.uuid().safeParse(groupId).success) notFound();
   const group = await getTier(store.id, groupId);
   if (!group) notFound();

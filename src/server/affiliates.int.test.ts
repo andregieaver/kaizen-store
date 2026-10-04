@@ -15,6 +15,7 @@ const jar = vi.hoisted(() => new Map<string, string>());
 vi.mock("next/headers", () => ({
   cookies: async () => ({
     get: (name: string) => (jar.has(name) ? { name, value: jar.get(name)! } : undefined),
+    getAll: () => [...jar.entries()].map(([name, value]) => ({ name, value })),
     set: (name: string, value: string) => void jar.set(name, value),
     delete: (name: string) => void jar.delete(name),
   }),
@@ -262,6 +263,28 @@ describe("registering as a friend", () => {
     expect(await attachReferral(storeId, viaCookie.id)).toBe(true);
     jar.clear();
     expect(await referredBy(viaCookie.id)).not.toBeNull();
+  });
+
+  it("ties a friend who declined marketing cookies and whose page memory was lost on the way to the cart, by the code on their open cart", async () => {
+    await programs();
+    const a = (await ensureAffiliate(storeId, (await customer("inviter-nocookie")).id))!;
+    const friend = await customer("nocookie-friend");
+    const referredBy = async (id: string) => (await db().execute<Row>(sql`select referred_by_customer_id as r from commerce.customers where id = ${id}::uuid`))[0].r;
+    // Adding to the cart put the code on the cart (from the page's memory); no kaizen_aff cookie was ever written.
+    const [cart] = await db().execute<Row>(sql`insert into commerce.carts (store_id, market_code, currency, locale, expires_at, affiliate_code) values (${storeId}::uuid, 'NO', 'NOK', 'nb-NO', now() + interval '1 day', ${a.code}) returning id`);
+    jar.clear();
+    // Nothing on the form (the memory is gone after the pay page's reload) and no cookie, no cart cookie: not tied.
+    expect(await attachReferral(storeId, friend.id, null)).toBe(false);
+    jar.set(`cart_${storeId}_NO`, String(cart.id));
+    expect(await attachReferral(storeId, friend.id, null)).toBe(true);
+    jar.clear();
+    expect(await referredBy(friend.id)).not.toBeNull();
+    // A cart that carries no code ties nobody.
+    const other = await customer("nocookie-other");
+    const [bare] = await db().execute<Row>(sql`insert into commerce.carts (store_id, market_code, currency, locale, expires_at) values (${storeId}::uuid, 'NO', 'NOK', 'nb-NO', now() + interval '1 day') returning id`);
+    jar.set(`cart_${storeId}_NO`, String(bare.id));
+    expect(await attachReferral(storeId, other.id, null)).toBe(false);
+    jar.clear();
   });
 
   it("never ties an old account, one that has ordered, oneself, a blocked referrer's friend, or a code that is not one", async () => {

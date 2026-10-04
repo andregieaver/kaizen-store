@@ -1,7 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { getMembership, requireAccount } from "@/server/auth";
+import { requireAccount } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { connectSlackWebhook } from "@/server/integrations";
 import { SLACK_COOKIE, SLACK_COOKIE_PATH, SlackConnectError, slackStarted, slackWebhookFor } from "@/server/slack";
 
@@ -20,8 +21,8 @@ export async function GET(request: Request) {
   }
   const back = (status: string) =>
     NextResponse.redirect(new URL(`/admin/${started.storeSlug}/integrations/slack?slack=${status}`, request.url));
-  const member = started.accountId === account.id ? await getMembership(started.storeSlug) : null;
-  if (!member || member.role !== "owner") return back("failed");
+  const member = started.accountId === account.id ? await checkOwnerRole(started.storeSlug) : null;
+  if (!member) return back("failed");
   try {
     const webhook = await slackWebhookFor(params);
     const saved = await connectSlackWebhook(member, webhook);

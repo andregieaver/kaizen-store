@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import { groupFromPreset, type FieldGroupInput } from "@/lib/custom-fields";
 import { startFieldFileUpload, type FieldFileUpload } from "@/server/media";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkAnyPermission, checkPermission, requirePermission } from "@/server/permissions";
 import {
   deleteFieldGroup,
   fieldsTag,
@@ -31,7 +31,8 @@ export async function saveFieldGroupAction(
   storeSlug: string,
   input: FieldGroupInput,
 ): Promise<SaveResult & { id?: string }> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   const result = await saveFieldGroup(member, input);
   if (result.ok) updateTag(fieldsTag(member.store.id));
   return result;
@@ -39,7 +40,8 @@ export async function saveFieldGroupAction(
 
 /** Deletes a group and what was entered in its fields, then goes back to the list. */
 export async function deleteFieldGroupAction(storeSlug: string, id: string): Promise<SaveResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!idSchema.safeParse(id).success) return unknownGroup();
   const result = await deleteFieldGroup(member, id);
   if (!result.ok) return result;
@@ -49,7 +51,7 @@ export async function deleteFieldGroupAction(storeSlug: string, id: string): Pro
 
 /** Switches a group on or off from the list. */
 export async function setFieldGroupActiveAction(storeSlug: string, id: string, active: boolean): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "products:write");
   if (!idSchema.safeParse(id).success) return;
   const result = await setFieldGroupActive(member, id, active);
   if (result.ok) updateTag(fieldsTag(member.store.id));
@@ -58,7 +60,7 @@ export async function setFieldGroupActiveAction(storeSlug: string, id: string, a
 
 /** Moves a group one place up or down the list (the order editors show them in). */
 export async function moveFieldGroupAction(storeSlug: string, id: string, direction: "up" | "down"): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "products:write");
   if (!idSchema.safeParse(id).success) return;
   const ids = (await listFieldGroups(member.store.id)).map((g) => g.id);
   const from = ids.indexOf(id);
@@ -72,7 +74,8 @@ export async function moveFieldGroupAction(storeSlug: string, id: string, direct
 
 /** Makes a group from a preset and saves it, so the owner lands in the editor with fields to change. */
 export async function createFromPresetAction(storeSlug: string, key: string): Promise<SaveResult & { id?: string }> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   const taken = (await listFieldGroups(member.store.id)).map((g) => g.slug);
   const group = groupFromPreset(key, taken);
   if (!group) return { ok: false, problems: ["Unknown preset."] };
@@ -86,7 +89,8 @@ export async function importFieldGroupsAction(
   storeSlug: string,
   raw: unknown,
 ): Promise<SaveResult & { ids?: string[] }> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   const result = await importFieldGroups(member, raw);
   // Groups may have been saved before one in the file failed.
   updateTag(fieldsTag(member.store.id));
@@ -99,22 +103,25 @@ const fieldFile = z.object({ name: z.string().max(255), type: z.string().max(150
 
 /** Starts an upload of a file for a custom field (D118) straight from the browser to the store's folder in the public bucket. */
 export async function startFieldFileUploadAction(storeSlug: string, file: unknown): Promise<FieldFileUpload> {
-  const { store } = await requireMember(storeSlug);
+  // The page builder's field blocks use it too: the website's members may, as the products' do.
+  const member = await checkAnyPermission(storeSlug, ["products:write", "website:write"]);
+  if (!member) return { ok: false, problem: NO_ACCESS };
   const parsed = fieldFile.safeParse(file);
   if (!parsed.success) return { ok: false, problem: "Choose a file to upload." };
-  return startFieldFileUpload(store.id, parsed.data);
+  return startFieldFileUpload(member.store.id, parsed.data);
 }
 
 /** The fields of a category or tag (D118, phase 2), read when its editor opens. */
 export async function termFieldsAction(storeSlug: string, termId: string): Promise<TermFieldsEditor | null> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "products:read");
   if (!idSchema.safeParse(termId).success) return null;
   return termFieldsForEditor(member.store.id, termId);
 }
 
 /** Saves what was entered in a category's or tag's fields; the server checks it against the store's groups. */
 export async function saveTermFieldsAction(storeSlug: string, termId: string, changes: unknown): Promise<SaveResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!idSchema.safeParse(termId).success) return { ok: false, problems: ["Unknown category or tag."] };
   const result = await saveTermFields(member, termId, changes);
   if (result.ok) updateTag(fieldsTag(member.store.id));
@@ -123,7 +130,8 @@ export async function saveTermFieldsAction(storeSlug: string, termId: string, ch
 
 /** Saves what was entered in the store's own fields (D120); the site's pages, layouts, headers and footers read the public ones. */
 export async function saveStoreFieldsAction(storeSlug: string, changes: unknown): Promise<SaveResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   const result = await saveStoreFields(member, changes);
   if (result.ok) {
     updateTag(fieldsTag(member.store.id));

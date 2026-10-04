@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatMoney } from "@/lib/money";
 import { cutoffWeekday, formatCutoff, formatDeliveryDate, WEEKDAYS, weekdayName, type DeliverySchedule } from "@/lib/standing-orders";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { deliveryRounds, listStandingOrders, type ScheduleView } from "@/server/standing-orders";
 
 import { saveScheduleAction } from "./actions";
@@ -28,8 +28,9 @@ const ORDER_STATUS: Record<string, string> = {
  * (made at its cutoff, charged when sent), and the shoppers' lists.
  */
 export default async function DeliveriesPage({ params }: PageProps<"/admin/[store]/deliveries">) {
-  const { store, role } = await requireMember((await params).store);
-  const owner = role === "owner";
+  const current = await requirePermission((await params).store, "orders:read");
+  const { store } = current;
+  const owner = memberCan(current, "owner");
   const [rounds, lists] = await Promise.all([deliveryRounds(store.id), listStandingOrders(store.id)]);
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const when = (at: number) => formatCutoff(at, locale, store.timeZone);

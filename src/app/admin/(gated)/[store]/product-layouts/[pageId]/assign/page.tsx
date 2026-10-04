@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { categoryTree } from "@/lib/taxonomy";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getPageForEdit } from "@/server/pages";
 import { layoutUses } from "@/server/product-layouts";
 import { listTerms } from "@/server/taxonomy";
@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "Where a layout is used" };
  */
 export default async function AssignLayoutPage({ params }: PageProps<"/admin/[store]/product-layouts/[pageId]/assign">) {
   const { store: storeSlug, pageId } = await params;
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "products:read");
   const layout = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, "product_layout") : null;
   if (!layout) notFound();
   const [terms, uses] = await Promise.all([listTerms({ storeId: store.id, contentType: "product" }), layoutUses(store.id)]);

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import { PAGE_TYPES, type PageType } from "@/lib/page-content";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPageTypeAccess } from "@/server/permissions";
 import { fieldsTag } from "@/server/custom-fields";
 import { duplicatePage } from "@/server/page-duplicate";
 
@@ -20,7 +20,8 @@ export async function duplicateStorePageAction(
   id: string,
   edited?: string,
 ): Promise<DuplicateResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPageTypeAccess(storeSlug, type, "write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!PAGE_TYPES.includes(type) || !z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown page."] };
   let held: unknown;
   if (edited !== undefined) {

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { AffiliateOverviewCard } from "@/components/admin/affiliate-overview";
 import { AffiliateSettingsForm } from "@/components/admin/affiliate-settings-form";
 import { AttributionsTable, ReferrersTable } from "@/components/admin/affiliate-tables";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { affiliateOverview, getAffiliateSettings, listAffiliates, listAttributions } from "@/server/affiliates";
 import { getBonusSettings } from "@/server/bonus";
 
@@ -17,7 +17,8 @@ export const metadata: Metadata = { title: "Referral program" };
  * that came through links, and can block a referrer.
  */
 export default async function AffiliatesPage({ params }: PageProps<"/admin/[store]/affiliates">) {
-  const { store, role } = await requireMember((await params).store);
+  const current = await requirePermission((await params).store, "marketing:read");
+  const { store } = current;
   const [settings, overview, referrers, attributions, bonus] = await Promise.all([
     getAffiliateSettings(store.id),
     affiliateOverview(store.id),
@@ -49,7 +50,7 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
         locale={locale}
         bonusOn={settings.bonusOn}
         pendingDays={bonus.pendingDays}
-        canEdit={role === "owner"}
+        canEdit={memberCan(current, "owner")}
         save={saveAffiliateAction.bind(null, store.slug)}
       />
       <section aria-labelledby="referrers-heading" className="flex flex-col gap-3">

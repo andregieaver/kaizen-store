@@ -203,7 +203,7 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
         row(heading(m.checkoutTitle)),
         columns(
           "right-sidebar",
-          [part("checkout_delivery"), part("checkout_payment"), part("checkout_back")],
+          [part("checkout_delivery"), part("checkout_terms"), part("checkout_payment"), part("checkout_back")],
           [part("checkout_items"), part("checkout_code"), part("checkout_credits"), part("checkout_totals")],
         ),
       ]);
@@ -213,7 +213,7 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
       return page(m.thanks, [
         row(part("order_status")),
         row(part("order_account"), part("order_bookings"), part("order_lines"), part("order_totals")),
-        row(part("order_subscription"), part("order_downloads"), part("order_address"), part("order_continue")),
+        row(part("order_subscription"), part("order_downloads"), part("order_address"), part("order_terms"), part("order_continue")),
       ]);
     case "account":
       return page(m.account.title, [row(part("account"))]);

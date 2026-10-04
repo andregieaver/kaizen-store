@@ -11,7 +11,7 @@ import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layo
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, type PageRole } from "@/lib/page-roles";
 import type { Term } from "@/lib/taxonomy";
-import { requireMember } from "@/server/auth";
+import { requirePageTypeAccess } from "@/server/permissions";
 import { testOfVersionPage } from "@/server/experiment-admin";
 import { getPageForEdit, listPages, type PageSummary } from "@/server/pages";
 import { layoutUses, type LayoutUse } from "@/server/product-layouts";
@@ -57,7 +57,7 @@ const INTRO: Record<PageType, string> = {
 };
 
 export async function StorePagesListView({ type, params, searchParams }: { type: PageType; params: StoreParams; searchParams: Query }) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePageTypeAccess((await params).store, type, "read");
   const copy = PAGE_TYPE_COPY[type];
   const [pages, query] = await Promise.all([listPages(store.id, type), searchParams]);
   const base = storePagesBase(store, type);
@@ -176,7 +176,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
 
 /** A store's page or article categories and tags (D50, D53, D57): chosen in the editor, shown by content grids. */
 export async function StorePageTermsView({ type, params }: { type: PageType; params: StoreParams }) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePageTypeAccess((await params).store, type, "read");
   const copy = PAGE_TYPE_COPY[type];
   const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: termContentOf(type) }), termFieldsSetup(store)]);
   return (
@@ -206,7 +206,7 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
 }
 
 export async function StoreNewPageView({ type, params }: { type: PageType; params: StoreParams }) {
-  const { store, account } = await requireMember((await params).store);
+  const { store, account } = await requirePageTypeAccess((await params).store, type, "read");
   const [saved, terms, gridTerms] = await Promise.all([
     listSavedParts(store.id),
     listTerms({ storeId: store.id, contentType: termContentOf(type) }),
@@ -231,7 +231,7 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
 /** One of a store's pages or articles in the editor, opened from its list or from the store. */
 export async function StoreEditPageView({ type, params, searchParams }: { type: PageType; params: PageParams; searchParams: Query }) {
   const { store: storeSlug, pageId } = await params;
-  const { store, account } = await requireMember(storeSlug);
+  const { store, account } = await requirePageTypeAccess(storeSlug, type, "read");
   const [page, { saved: justSaved }, saved, terms, gridTerms] = await Promise.all([
     z.uuid().safeParse(pageId).success ? getPageForEdit(store.id, pageId, type) : null,
     searchParams,
@@ -300,7 +300,7 @@ export async function StorePreviewPageView({
   searchParams?: Query;
 }) {
   const { store: storeSlug, pageId } = await params;
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePageTypeAccess(storeSlug, type, "read");
   const page = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, type) : null;
   if (!page) notFound();
   const copy = PAGE_TYPE_COPY[type];

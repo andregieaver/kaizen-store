@@ -5,14 +5,14 @@ import { redirect } from "next/navigation";
 
 import type { FormState } from "@/components/admin/action-form";
 import { isProvider } from "@/lib/integrations";
-import { requireMember, type Membership } from "@/server/auth";
+import { type Membership } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { removeIntegration, saveIntegration, sendTest } from "@/server/integrations";
 import { SLACK_COOKIE, SLACK_COOKIE_PATH, slackStart } from "@/server/slack";
 
 /** Integrations send shoppers' details to another company, so only an owner connects or changes them (D41). */
 async function asOwner(storeSlug: string): Promise<Membership | string> {
-  const member = await requireMember(storeSlug);
-  return member.role === "owner" ? member : "Only an owner can change integrations.";
+  return (await checkOwnerRole(storeSlug)) ?? "Only an owner can change integrations.";
 }
 
 export async function saveIntegrationAction(

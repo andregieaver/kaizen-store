@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { moneyByCurrency } from "@/components/admin/customer-bar";
 import { WishlistTabs } from "@/components/admin/wishlist-admin";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listStoreWishlists, mostWishedProducts, wishlistFigures } from "@/server/wishlist-admin";
 
 export const metadata: Metadata = { title: "Wishlists" };
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Wishlists" };
  * much is in them, and how much went to the cart and was bought.
  */
 export default async function WishlistsPage({ params, searchParams }: PageProps<"/admin/[store]/wishlists">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "customers:read");
   const query = await searchParams;
   const q = typeof query.q === "string" ? query.q : "";
   const customerId = typeof query.customer === "string" && z.uuid().safeParse(query.customer).success ? query.customer : null;

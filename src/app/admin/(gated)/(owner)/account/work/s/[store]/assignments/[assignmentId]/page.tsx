@@ -12,11 +12,11 @@ import { TimerToggle } from "@/components/admin/work/timer-controls";
 import { Badge } from "@/components/admin/work/work-parts";
 import { WorkOff } from "@/components/admin/work/work-off";
 import { todayIn } from "@/lib/work-dates";
-import { requireMember } from "@/server/auth";
 import { formDefaults, getAssignmentDetail, getClient, listClients } from "@/server/work";
 import { listAssignmentChoices } from "@/server/work-choices";
 import { listTimeEntries } from "@/server/work-time";
 import { workBase } from "@/lib/work-paths";
+import { memberCan, requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Assignment" };
 
@@ -31,7 +31,8 @@ export default async function WorkAssignmentPage({
   params,
 }: PageProps<"/admin/account/work/s/[store]/assignments/[assignmentId]">) {
   const { store: slug, assignmentId } = await params;
-  const { store, account, role } = await requireMember(slug);
+  const staffer = await requirePermission(slug, "settings:read");
+  const { store, account } = staffer;
   if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Assignment" />;
   const assignment = await getAssignmentDetail(store.id, assignmentId);
   if (!assignment) notFound();
@@ -51,7 +52,7 @@ export default async function WorkAssignmentPage({
   const base = workBase(store.slug);
   const locale = store.markets[0]?.locale ?? "en";
   const today = todayIn(store.timeZone);
-  const viewer = { accountId: account.id, owner: role === "owner" };
+  const viewer = { accountId: account.id, owner: memberCan(staffer, "owner") };
   const target = {
     storeSlug: store.slug,
     storeName: store.name,

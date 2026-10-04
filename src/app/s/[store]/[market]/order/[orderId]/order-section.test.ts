@@ -10,6 +10,9 @@ vi.mock("@/server/orders", () => ({
 }));
 vi.mock("@/server/customers", () => ({ getCheckoutAccount: async () => null }));
 vi.mock("@/server/returns", () => ({ listOrderReturns: async () => [] }));
+// What the order kept of the store's terms (wave 1, 1e).
+const termsNow = vi.hoisted(() => ({ record: null as null | Record<string, unknown> }));
+vi.mock("@/server/checkout-terms", () => ({ termsForOrder: async () => termsNow.record }));
 vi.mock("@/server/subscriptions", () => ({ getSubscriptionForOrder: async () => null }));
 vi.mock("@/app/s/[store]/[market]/account/actions", () => ({ checkoutSignInAction: async () => undefined }));
 vi.mock("@/components/own-bookings", () => ({ OwnBookings: () => null }));
@@ -20,7 +23,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { OrderDetails, OrderTotals } from "./order-section";
+import { OrderDetails, OrderTerms, OrderTotals } from "./order-section";
 
 const ID = "6f1f3a1e-2b7c-4e0e-9a55-0c4c7a1d9b10";
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
@@ -65,6 +68,7 @@ const totals = async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  termsNow.record = null;
   getShopperOrder.mockResolvedValue(order());
 });
 
@@ -136,5 +140,43 @@ describe("the order's totals with a friend's welcome discount (D131)", () => {
       .replace(/<[^>]+>/g, " ")
       .replace(/\s+/g, " ");
     expect(page).toContain(`${t("nb").affiliate.discountRow} −`);
+  });
+});
+
+describe("the terms the order was placed under (wave 1, 1e)", () => {
+  const record = (mode: string) => ({
+    orderId: ID,
+    mode,
+    acceptedAt: new Date("2026-10-03T09:00:00Z"),
+    locale: "en-IE",
+    snapshots: [
+      { role: "terms", snapshotId: "a", hash: "h1", title: "Terms of sale" },
+      { role: "privacy", snapshotId: "b", hash: "h2", title: "Privacy statement" },
+    ],
+  });
+  const piece = async () => {
+    const markup = renderToString(await OrderTerms(shop));
+    return { markup, words: markup.replace(/<!-- -->/g, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ") };
+  };
+
+  it("shows what was shown, with a read-only page for each text behind the order's own key", async () => {
+    termsNow.record = record("link");
+    const { markup, words } = await piece();
+    expect(words).toContain("Terms you accepted");
+    expect(words).toContain("These texts were shown when you ordered on");
+    expect(markup).toContain(`href="/s/demo/ie/order/${ID}/terms/terms?session_id=cs_test_1"`);
+    expect(markup).toContain(`href="/s/demo/ie/order/${ID}/terms/privacy?session_id=cs_test_1"`);
+  });
+
+  it("says the texts were ticked when the shopper ticked them", async () => {
+    termsNow.record = record("checkbox");
+    expect((await piece()).words).toContain("You ticked these texts when you ordered on");
+  });
+
+  it("shows nothing for an order that kept none, and is part of the whole order page when it did", async () => {
+    expect((await piece()).markup).toBe("");
+    expect(renderToString(await OrderDetails(shop))).not.toContain("Terms you accepted");
+    termsNow.record = record("link");
+    expect(renderToString(await OrderDetails(shop))).toContain("Terms you accepted");
   });
 });

@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 
 import { CampaignForm } from "../campaign-form";
 
 export const metadata: Metadata = { title: "New campaign" };
 
 export default async function NewCampaignPage({ params }: PageProps<"/admin/[store]/campaigns/new">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "marketing:read");
   return (
     <div className="flex flex-col gap-6">
       <div>

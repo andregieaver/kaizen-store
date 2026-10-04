@@ -5,6 +5,7 @@ import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
+import { CheckoutTerms as CheckoutTermsView } from "@/components/checkout-terms";
 import { DeliveryChoice } from "@/components/delivery-choice";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { creditsNet } from "@/lib/bonus-shopper";
@@ -15,12 +16,14 @@ import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
 import { CHECKOUT_MINUTES, stripeLocale } from "@/lib/checkout";
 import { checkoutLabels } from "@/lib/checkout-labels";
+import { termsTemplate, type TermsDisplay } from "@/lib/checkout-terms";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
+import { termsDisplayFor } from "@/server/checkout-terms";
 import { cartRemindersOn, checkoutOptedOut } from "@/server/cart-reminders";
 import { getCustomer } from "@/server/customers";
 import { deliveryView } from "@/server/delivery-choice";
@@ -70,7 +73,7 @@ const moneyOf = (view: CheckoutView, market: Market) => (minor: number) =>
  * `CheckoutItems`, `CheckoutCode`, `CheckoutTotals`, `CheckoutPayment`,
  * `CheckoutBack`).
  */
-export async function Checkout({ store, market }: { store: Store; market: Market }) {
+export async function Checkout({ store, market, drawTerms = true }: { store: Store; market: Market; drawTerms?: boolean }) {
   const view = await requireCheckout(store, market);
   const { m, base } = view;
   const credits = creditsBlock(store, market, view);
@@ -89,7 +92,7 @@ export async function Checkout({ store, market }: { store: Store; market: Market
       </section>
       <div className="flex flex-col gap-6 md:order-first">
         {await deliveryBlock(store, market, view)}
-        {await paymentForm(store, market, view)}
+        {await paymentForm(store, market, view, drawTerms)}
         <Link href={`${base}/cart`} className="text-sm underline">
           {m.backToCart}
         </Link>
@@ -126,9 +129,29 @@ export async function CheckoutTotals({ store, market }: { store: Store; market: 
   return totalsList(await requireCheckout(store, market), market);
 }
 
-/** Contact, delivery and payment, or the button to start over when the checkout has expired (D117). */
-export async function CheckoutPayment({ store, market }: { store: Store; market: Market }) {
-  return paymentForm(store, market, await requireCheckout(store, market));
+/**
+ * Contact, delivery and payment, or the button to start over when the checkout has expired (D117). It draws the terms sentence
+ * above its pay button itself unless the page holds the terms piece (`drawTerms` false), so no store's checkout is without it.
+ */
+export async function CheckoutPayment({ store, market, drawTerms = true }: { store: Store; market: Market; drawTerms?: boolean }) {
+  return paymentForm(store, market, await requireCheckout(store, market), drawTerms);
+}
+
+/**
+ * The sentence by the pay button, with or without a tick box (wave 1, 1e, `stores.terms_at_checkout`): the store's terms and privacy
+ * statement as links. Nothing when the store shows none, has chosen no page, or the checkout starts over (nothing to pay).
+ */
+export async function CheckoutTerms({ store, market }: { store: Store; market: Market }) {
+  const view = await requireCheckout(store, market);
+  const publishableKey = platformPublishableKey(view.open.mode);
+  if (view.open.expired || view.open.changed || !publishableKey) return null;
+  return termsNode(store, market, view, await termsDisplayFor(store, market));
+}
+
+function termsNode(store: Store, market: Market, view: CheckoutView, display: TermsDisplay | null) {
+  if (!display) return null;
+  const words = view.m.terms;
+  return <CheckoutTermsView store={store.slug} market={market.slug} display={display} template={termsTemplate(words, display)} newTab={words.newTab} />;
 }
 
 /** A link back to the cart (D117). */
@@ -368,10 +391,10 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
   );
 }
 
-async function paymentForm(store: Store, market: Market, view: CheckoutView) {
+async function paymentForm(store: Store, market: Market, view: CheckoutView, drawTerms: boolean) {
   const { m, base, cartId, open, order } = view;
   const publishableKey = platformPublishableKey(open.mode);
-  const [customer, reminders] = await Promise.all([getCustomer(store.id), cartRemindersOn(store.id)]);
+  const [customer, reminders, display] = await Promise.all([getCustomer(store.id), cartRemindersOn(store.id), termsDisplayFor(store, market)]);
   const optedOut = reminders && !customer ? await checkoutOptedOut(store.id, cartId) : false;
   const money = moneyOf(view, market);
   const restart = open.expired || open.changed || !publishableKey;
@@ -452,6 +475,9 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView) {
                   }
                 : null
             }
+            // The terms (wave 1, 1e): drawn by the pay button unless the page has its own piece for them.
+            termsSlot={drawTerms ? termsNode(store, market, view, display) : null}
+            terms={display ? { store: store.slug, market: market.slug, display, labels: { hint: m.terms.hint, failed: m.terms.failed } } : null}
             links={{
               cart: `${base}/cart`,
               order: `${base}/order/${open.orderId}?session_id=${encodeURIComponent(open.sessionId)}`,

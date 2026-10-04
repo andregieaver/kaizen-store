@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { ProductEditor } from "@/components/admin/product-editor";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { fieldsForEditor } from "@/server/custom-fields";
 import { getEditorContext, getProductForEdit } from "@/server/products";
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Edit product" };
 
 export default async function EditProductPage({ params }: PageProps<"/admin/[store]/products/[productId]">) {
   const { store: slug, productId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "products:read");
   if (!z.uuid().safeParse(productId).success) notFound();
   const context = await getEditorContext(store);
   const product = await getProductForEdit(store, context, productId);

@@ -11,7 +11,7 @@ import { formatPriceInput } from "@/lib/product-input";
 
 /**
  * The forms of a return's steps (D153). Each is an `ActionForm` bound to a server action (`returns/actions.ts`, which asks
- * `requireMember()` and the server's own checks again): the page binds the store and the return, these only draw the fields.
+ * `requirePermission()` and the server's own checks again): the page binds the store and the return, these only draw the fields.
  * They take their actions as props, so a test can draw them without a server.
  */
 

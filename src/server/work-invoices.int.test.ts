@@ -31,6 +31,8 @@ vi.mock("@/server/auth", async () => {
       if (!member) throw new Error(`not a member of ${slug}`);
       return member;
     },
+    getMembership: async (slug: string) => members.get(slug) ?? null,
+    holderOf: (member: { role: string; kind?: string; permissions?: string[] | null }) => ({ role: member.role, kind: member.kind, permissions: member.permissions }),
     audit: async (
       accountId: string | null,
       storeId: string | null,
@@ -1487,7 +1489,7 @@ describe("the actions", () => {
     expect(bad(await actions.createDraftInvoiceAction(offSlug, { clientId: client })).problems[0]).toMatch(
       /switched off/,
     );
-    await expect(actions.createDraftInvoiceAction("nobody", { clientId: client })).rejects.toThrow(/not a member/);
+    expect(bad(await actions.createDraftInvoiceAction("nobody", { clientId: client })).problems[0]).toMatch(/no access/);
 
     const draft = ok(await actions.createDraftInvoiceAction(f.slug, { clientId: client })).invoiceId;
     const detail = (await invoices.getWorkInvoiceDetail(f.storeId, draft))!;

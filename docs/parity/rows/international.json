@@ -488,14 +488,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 4,
-    "gap": "No starter privacy, terms, returns, shipping or imprint pages in any language (legal texts \"need human review\", src/lib/i18n.ts, and are not in the repo); no terms-acceptance link or checkbox at checkout. D153 added hand-written withdrawal and return texts (flagged for review) but those are interface texts, not store policy pages.",
-    "bucket": "A",
-    "wave": 1,
+    "gap": "Built and tested, not Full, because no person has read the texts and nothing here may be called Full on the strength of hand-written legal text alone (docs/parity/WAVES.md step 4). Starters for terms, privacy, returns, shipping, withdrawal information and an imprint exist in nb, sv, da and en (src/lib/legal-starters/*), are filled from legalFacts(), are made as drafts with a review notice and [[placeholders]] that the builder's checker blocks publishing over, and stay out of the sitemap until published. Checkout shows a terms and privacy link or a required checkbox (stores.terms_at_checkout) and the pay press records order_terms with immutable legal_snapshots. Missing: (1) a person's review of every text, and the eight questions in docs/wave-1-trust.md section 8 (the pay button's wording under CRD Art. 8(2), the durable-medium duty, guarantee periods and complaint bodies per country, the Swedish and Danish statutes, the privacy starter's recipients and transfers); (2) the checkout sentence, tick box and recording are held by component and integration tests only: the demo store takes no payments, so no end-to-end run reaches the pay button; (3) the order confirmation email does not link the accepted terms yet (the lead adds the line at merge), and orders confirmed wholly at the venue and subscription renewals have no sentence and no record; (4) the goods exclusions are printed for every store with a [[Check]] line rather than filtered by what the store sells, and a translation made stale by a later edit of the main text is still shown as it was (D55). The migrations legal_terms and legal_terms_rules are not yet applied to production. Skeptic check (2026-10-03): (5) the sitemap clause of criterion 4 (a draft starter is left out until published) is held only indirectly: e2e/legal-pages.spec.ts says in a comment that it does not check the sitemap, and legal-starters.int.test.ts asserts only that a legal page is not in the list of role pages kept out of the sitemap; no test reads the sitemap output with a draft and a published starter. (6) The tick box in checkbox mode is enforced in the browser only: recordTermsAcceptance() runs before Stripe's confirm and the browser does not start the payment when it fails, but nothing on the server refuses to complete an order that has no order_terms record (staff are only shown the missing record), so a client that skips the page's script pays without ticking.",
+    "bucket": "D",
+    "wave": null,
     "criteria": [
       "A store can create starter pages for privacy, terms, shipping, returns and withdrawal information and an imprint, in nb, sv, da and en, filled from the store's business details and settings (return window, who pays return shipping).",
       "Every starter is hand-written, marked draft and carries a visible notice that it needs legal review before use; none is machine-translated.",
@@ -503,14 +503,48 @@
       "A starter is never published automatically and is left out of the sitemap until the owner publishes it."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/legal-starters.ts",
+        "src/lib/legal-starters/nb.ts",
+        "src/lib/legal-starters/sv.ts",
+        "src/lib/legal-starters/da.ts",
+        "src/lib/legal-starters/en.ts",
+        "src/lib/legal-facts.ts",
+        "src/server/legal-facts.ts",
+        "src/server/legal-starters.ts",
+        "src/lib/legal-roles.ts",
+        "src/lib/checkout-terms.ts",
+        "src/server/checkout-terms.ts",
+        "src/components/checkout-terms.tsx",
+        "src/app/s/[store]/[market]/checkout/terms-actions.ts",
+        "src/components/admin/legal-pages-panel.tsx",
+        "src/app/admin/(gated)/[store]/settings/legal/page.tsx",
+        "supabase/migrations/20261003194725_legal_terms.sql",
+        "supabase/migrations/20261003194748_legal_terms_rules.sql"
+      ],
+      "tests": [
+        "src/lib/legal-starters.test.ts",
+        "src/lib/legal-roles.test.ts",
+        "src/lib/checkout-terms.test.ts",
+        "src/components/checkout-terms.test.ts",
+        "src/server/legal-starters.int.test.ts",
+        "src/server/checkout-terms.int.test.ts",
+        "src/db/trust.test.ts",
+        "e2e/legal-pages.spec.ts"
+      ],
       "untested": false
     },
     "decisions": [
       "D112"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "missing",
+        "to": "partial",
+        "why": "Read src/lib/legal-starters/{nb,sv,da,en}.ts, src/lib/checkout-terms.ts, src/server/checkout-terms.ts and the order page; ran legal-starters.test.ts, checkout-terms.test.ts, legal-roles.test.ts, src/db/trust.test.ts, legal-starters.int.test.ts, checkout-terms.int.test.ts (all pass). All four criteria are built and held by tests; kept Partial because every text is hand-written and unreviewed (docs/wave-1-trust.md section 8) and the checkout sentence was never run against a live Stripe checkout"
+      }
+    ]
   },
   {
     "id": "international.cookie-consent-banner-and-api",
@@ -742,21 +776,32 @@
       "was": null
     },
     "weight": 4,
-    "gap": "D11 sets WCAG 2.2 AA as the target and theme colours are checked for contrast (contrastRatio() in src/lib/theme.ts, theme.test.ts), but there is no automated accessibility test (no axe or similar in package.json or e2e), no audit result and no accessibility statement template or generator.",
-    "bucket": "A",
-    "wave": 1,
+    "gap": "Criteria 1 to 3 are built and tested; criterion 4 is outside code, so this row stays Partial. e2e/a11y.spec.ts runs axe (WCAG 2.0 A to 2.2 AA) in light and dark over the storefront and the admin's sign-in, forgot-password and sign-up pages and fails on serious or critical findings, with a known-bad fixture proving it can fail; the statement generator (src/lib/a11y-statement.ts, /admin/{store}/settings/accessibility) makes a draft page in nb, sv, da and en that says \"not assessed\" until the owner records an audit; theme colour pairs are flagged below 4.5:1. Missing: (1) the independent audit, which is bucket D and never counted by code; (2) the Stripe payment form and the signed-in admin screens are not scanned in CI (no Stripe or Supabase session there), and the manual axe run on a test-mode checkout recorded in docs/pci.md has not been done; (3) an automated scan finds only part of the problems; (4) ENFORCEMENT_BODIES are all verified:false, the Annex V content was not read in full, and the statement text needs legal review (docs/wave-1-trust.md section 8). The e2e specs were run in this wave on a port other than 3100. Skeptic check (2026-10-03): no e2e renders the checkout page itself. a11y.spec.ts's checkout test only follows the demo store's redirect to the cart (the demo takes no payments) and scans the cart, and csp.spec.ts reads the checkout's headers only, so the checkout's own markup (address, delivery choice, terms sentence and tick box, pay button) is not scanned by axe at all, in addition to Stripe's form; the manual run recorded nowhere is therefore the only check of it.",
+    "bucket": "D",
+    "wave": null,
     "criteria": [
-      "CI runs an automated WCAG check (for example axe through Playwright) over the main storefront pages (home, product, cart, checkout, order, account, withdraw) and admin entry pages and fails on serious violations.",
+      "CI runs an automated WCAG check over the storefront's front, product, cart, order, account (signed out) and withdraw pages, the checkout in the states reachable without a payment session, and the admin's signed-out entry pages, in light and dark where the theme allows, and fails on serious or critical violations. The payment form and signed-in admin screens are checked by hand and recorded.",
       "A store can generate an accessibility statement from a template (conformance status, known issues, contact, enforcement body per country) in nb, sv, da and en, marked as needing review before publication.",
       "Theme settings that fail the AA contrast ratio are refused or flagged in the theme editor (already partly true, held by a test).",
       "Outside this row, and never counted as Full by code: an independent audit result."
     ],
     "evidence": {
       "files": [
-        "src/lib/theme.ts"
+        "src/lib/theme.ts",
+        "src/lib/a11y-statement.ts",
+        "src/lib/a11y-statement-text.ts",
+        "src/server/accessibility.ts",
+        "src/components/admin/a11y-statement-form.tsx",
+        "src/app/admin/(gated)/[store]/settings/accessibility/page.tsx",
+        "e2e/a11y.ts",
+        "e2e/fixtures/a11y-bad.html"
       ],
       "tests": [
-        "src/lib/theme.test.ts"
+        "src/lib/theme.test.ts",
+        "src/lib/a11y-statement.test.ts",
+        "src/server/accessibility.int.test.ts",
+        "src/components/admin/theme-editor-warnings.test.ts",
+        "e2e/a11y.spec.ts"
       ],
       "untested": false
     },
@@ -1033,9 +1078,9 @@
       "was": "full"
     },
     "weight": 5,
-    "gap": "Card entry is in Stripe's Payment Element and no Kaizen route receives card data (true), but the revised SAQ A (docs/plan.md) needs a site not susceptible to attacks from scripts, and nothing keeps third-party or owner scripts, the chat widget or tag code off the checkout routes: there is no Content-Security-Policy in `src` or `next.config.ts`, `StoreChat` is mounted in the market layout (`layout.tsx:171`) and `SiteConsent` loads owners' custom code and tracking tools on every store page. The SAQ A attestation itself is a company task, not software.",
-    "bucket": "A",
-    "wave": 1,
+    "gap": "Criteria 1 to 4 are built and held by tests at the level of the header, the import graph and the components; Partial because the attestation is the company's and the policy was never run against a live Stripe payment. src/lib/csp.ts sends an enforced Content-Security-Policy on cart, checkout and order of every store (both address shapes; no unsafe-eval; Stripe's origins as its guide lists them), OffPayRoutes draws no consent manager, owner code, chat widget or affiliate capture there, the pages are entered by full page loads (PayRouteGuard), the checkout page may not hold an HTML or embedded-video block, and no-card-fields.test.ts scans for card inputs. Missing: (1) the SAQ A attestation, and the question whether Kaizen as platform has PCI duties of its own (docs/pci.md; the company's, bucket D); (2) the manual test-mode payment on a preview through to the order page, with the console open and an axe run, is not done (the table in docs/pci.md is empty), so it is not known that Stripe's form, redirect methods and address autocomplete (https://maps.googleapis.com was added from Stripe's guide, never seen working) work under the enforced policy; CSP_ENFORCE = false is the one-line fallback; (3) script-src keeps 'unsafe-inline' because the prerendered shell cannot carry a nonce, so the policy stops other origins' scripts but not an injected inline one (the SRI form was not tried); (4) e2e/csp.spec.ts \"the cart loads under the policy with no violation\" FAILS on the current tree (re-run 2026-10-03): the review fix made PayRouteGuard import @/lib/affiliates, which imports zod, whose JIT probe calls Function(\"\") and the browser reports it as a securitypolicyviolation (script-src blocked eval); harmless at runtime (zod falls back) but it puts the violation back on cart, checkout and order until withAffiliate() is moved out of the zod module or zod is set to jitless; (5) the migrations are not applied and nothing is deployed.",
+    "bucket": "D",
+    "wave": null,
     "criteria": [
       "Card details are entered only in Stripe's payment form on Kaizen's checkout page (Stripe Elements, ui_mode elements) or on Stripe's hosted pages; no Kaizen route receives, logs or stores a card number, expiry or security code.",
       "Payments are direct charges on the store's connected account, so the card data's scope is Stripe's (SAQ A style).",
@@ -1047,10 +1092,26 @@
         "src/server/checkout.ts",
         "src/components/checkout-form.tsx",
         "src/server/connect.ts",
-        "src/server/stripe.ts"
+        "src/server/stripe.ts",
+        "src/lib/csp.ts",
+        "src/lib/pay-routes.ts",
+        "next.config.ts",
+        "src/components/off-pay-routes.tsx",
+        "src/components/pay-route-guard.tsx",
+        "src/app/s/[store]/[market]/extras.tsx",
+        "docs/pci.md"
       ],
       "tests": [
-        "src/server/checkout-stripe.int.test.ts"
+        "src/server/checkout-stripe.int.test.ts",
+        "src/lib/csp.test.ts",
+        "src/lib/next-config-headers.test.ts",
+        "src/lib/pay-routes.test.ts",
+        "src/lib/pay-routes.graph.test.ts",
+        "src/lib/no-card-fields.test.ts",
+        "src/components/off-pay-routes.test.ts",
+        "src/components/pay-route-guard.test.ts",
+        "src/server/page-checks.int.test.ts",
+        "e2e/csp.spec.ts"
       ],
       "untested": false
     },
@@ -1080,12 +1141,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 4,
-    "gap": "Staff sign in with a password or a Supabase magic link only; no authenticator app or other second factor, and no way for an owner to require one.",
+    "gap": "All four criteria are built (TOTP enrolment with ten single-use recovery codes from Your account, a challenge after the password or magic link, the owner's store requirement stores.require_two_step, platform admins always, audit entries, an atomic five-tries-in-15-minutes limit) and held by unit tests and integration tests with an injected Supabase client; getAccount() fails closed and reads enrolment from the signed aal claim or a server-side getUser(), never the cookie. Partial because no test talks to a real Supabase Auth (CI has none): enrolment, the challenge, the aal2 claim and the admin delete-factor call used by a recovery code have not been seen working, and e2e/admin-two-step.spec.ts reaches only the signed-out redirects. Full after one manual check recorded: TOTP enabled in the project's Auth settings, SUPABASE_SECRET_KEY set to the secret key in Vercel, the platform admin enrols in production and saves the recovery codes (docs/wave-1-trust.md section 9.3); until then a platform admin without a factor is held at enrolment, and ADMIN_TWO_STEP=off is the break-glass. Not done by design: passkeys, Supabase's experimental native recovery codes, SMS. The migrations staff_security and staff_security_rules are not yet applied to production.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -1095,12 +1156,41 @@
       "Platform admins are required to use it. (Beyond Shopify's native, which only Plus has.)"
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/server/two-step.ts",
+        "src/lib/two-step.ts",
+        "src/server/recovery-codes.ts",
+        "src/lib/recovery-codes.ts",
+        "src/server/auth.ts",
+        "src/server/supabase-admin.ts",
+        "src/components/admin/two-step-panel.tsx",
+        "src/app/admin/sign-in/two-step/page.tsx",
+        "src/app/admin/sign-in/two-step/set-up/page.tsx",
+        "supabase/migrations/20261003195103_staff_security.sql",
+        "supabase/migrations/20261003195109_staff_security_rules.sql"
+      ],
+      "tests": [
+        "src/lib/two-step.test.ts",
+        "src/lib/recovery-codes.test.ts",
+        "src/server/two-step.int.test.ts",
+        "src/server/account-gate.int.test.ts",
+        "src/server/security-review.int.test.ts",
+        "src/server/store-mcp.int.test.ts",
+        "src/components/admin/two-step-panel.test.ts",
+        "src/db/trust.test.ts",
+        "e2e/admin-two-step.spec.ts"
+      ],
       "untested": false
     },
     "decisions": [],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "missing",
+        "to": "partial",
+        "why": "Read src/server/two-step.ts, src/lib/two-step.ts, the account gate in src/server/auth.ts and the pages under /admin/sign-in/two-step; ran two-step.test.ts, two-step.int.test.ts, account-gate.int.test.ts, security-review.int.test.ts, store-mcp.int.test.ts (pass). All four criteria are built and tested with an injected Supabase client, but nothing has run against a real Supabase Auth, so not Full"
+      }
+    ]
   },
   {
     "id": "international.staff-roles-and-permissions",
@@ -1114,14 +1204,14 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 3,
-    "gap": "Two roles (owner, admin; enum member_role); every admin can reach every page except owner-only staff and payment keys; no per-section permissions and no custom roles. Hosts are separate, with their own area (D71).",
-    "bucket": "A",
-    "wave": 1,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner defines roles (at least: orders, products, marketing, content, analytics, read-only) as sets of per-section permissions and assigns one to each staff member.",
       "Every admin page and server action checks the permission through requireMember(); a member without it gets a 404 or a refusal, and the navigation hides what they cannot use.",
@@ -1130,17 +1220,51 @@
     ],
     "evidence": {
       "files": [
-        "src/server/settings.ts",
+        "src/lib/permissions.ts",
+        "src/lib/permission-keys.ts",
+        "src/lib/permission-guards.ts",
+        "src/lib/permissions.baseline.json",
+        "src/server/permissions.ts",
+        "src/server/store-roles.ts",
+        "src/server/team.ts",
         "src/server/auth.ts",
-        "src/db/schema.ts"
+        "src/lib/owner-tool-permissions.ts",
+        "src/lib/store-nav.ts",
+        "src/components/admin/role-editor.tsx",
+        "src/components/admin/team-view.tsx",
+        "src/app/admin/(gated)/[store]/staff/roles/page.tsx",
+        "src/server/control-center.ts",
+        "supabase/migrations/20261003195103_staff_security.sql",
+        "supabase/migrations/20261003195109_staff_security_rules.sql",
+        "supabase/migrations/20261003203141_store_role_templates.sql"
       ],
       "tests": [
-        "src/db/commerce.test.ts"
+        "src/lib/permissions.scan.test.ts",
+        "src/lib/permissions.matrix.test.ts",
+        "src/lib/permissions.test.ts",
+        "src/lib/store-nav.test.ts",
+        "src/lib/owner-tool-permissions.test.ts",
+        "src/server/permissions.int.test.ts",
+        "src/server/store-roles.int.test.ts",
+        "src/server/owner-tool-permissions.int.test.ts",
+        "src/server/store-mcp.int.test.ts",
+        "src/server/security-review.int.test.ts",
+        "src/server/store-members-expiry.test.ts",
+        "src/components/admin/team-and-roles.test.ts",
+        "src/db/commerce.test.ts",
+        "src/db/trust.test.ts"
       ],
       "untested": false
     },
     "decisions": [],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "full",
+        "why": "Read src/lib/permissions.ts, src/server/permissions.ts, src/server/store-roles.ts and the scan tests; ran permissions.scan.test.ts (every admin page, action and route asks a guard, literal keys, baseline oracle), permissions.matrix.test.ts, permissions.test.ts, store-nav.test.ts, owner-tool-permissions.test.ts, permissions.int.test.ts, store-roles.int.test.ts, owner-tool-permissions.int.test.ts, store-mcp.int.test.ts, src/db/trust.test.ts (all pass); review findings on the control center and collaborator expiry were fixed with regression tests"
+      }
+    ]
   },
   {
     "id": "international.audit-log-of-admin-changes",
@@ -1156,10 +1280,10 @@
     "kaizen": {
       "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "full"
     },
     "weight": 2,
-    "gap": "commerce.audit_log is written by audit() (staff, settings, payments, many pages) but the only screen is the last 20 entries on the Payments settings page; no store-wide log page with filters, no history of who changed a product or price, no export.",
+    "gap": "Criteria 1, 2 and 4 hold and are tested; criterion 3 does not hold in the screen. activityPeople() (src/server/activity.ts), which fills the person filter on /admin/{store}/activity, takes no role into account: a member whose role lacks staff:read (the seeded Read-only role, for one) is offered every current and past member of the store by name or email, although the Team page and the log's own staff entries are refused them. Shown on 2026-10-03 with a Read-only member against a fresh database; activity.int.test.ts checks the people list for an owner only, so no test holds it. Fix: offer the person filter only the accounts that appear in the entries this viewer may see (or all of them only with staff:read or owner), and add a test with a Read-only and an orders-only member. Everything else was re-run and holds: filters, cursor paging, visibility of entries by area, store isolation, the owner-only formula-safe CSV (50,000-row cap), allowlisted changes for product, price, page, discount, shipping, staff and payment-setting writes (audit-coverage.int.test.ts calls the real server functions), append-only entries with deletion only after 24 months through the daily cron. Not applied to production until the lead applies the migrations.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -1170,15 +1294,49 @@
     ],
     "evidence": {
       "files": [
+        "src/server/audit.ts",
+        "src/lib/audit.ts",
+        "src/server/activity.ts",
+        "src/lib/activity-text.ts",
+        "src/components/admin/activity-view.tsx",
+        "src/app/admin/(gated)/[store]/activity/page.tsx",
+        "src/server/product-audit.ts",
+        "src/server/security-jobs.ts",
         "src/server/auth.ts",
         "src/server/settings.ts",
-        "src/lib/store-copy-rules.ts"
+        "src/lib/store-copy-rules.ts",
+        "supabase/migrations/20261003195103_staff_security.sql",
+        "supabase/migrations/20261003195109_staff_security_rules.sql"
       ],
-      "tests": [],
+      "tests": [
+        "src/server/activity.int.test.ts",
+        "src/server/audit-coverage.int.test.ts",
+        "src/server/activity-export.int.test.ts",
+        "src/server/security-jobs.int.test.ts",
+        "src/lib/audit.test.ts",
+        "src/lib/activity-text.test.ts",
+        "src/server/product-audit.test.ts",
+        "src/server/price-audit-scan.test.ts",
+        "src/components/admin/activity-and-legal.test.ts",
+        "src/db/trust.test.ts"
+      ],
       "untested": false
     },
     "decisions": [],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "partial",
+        "to": "full",
+        "why": "Read src/server/audit.ts, src/server/activity.ts, the activity page and export route; ran activity.int.test.ts, audit-coverage.int.test.ts, activity-export.int.test.ts, security-jobs.int.test.ts, audit.test.ts, activity-text.test.ts, src/db/trust.test.ts (all pass): each filter, paging, visibility by permission and store isolation, an entry with allowlisted fields for product, price, page, discount, shipping, staff and payment changes, owner-only formula-safe CSV, edits refused and deletion only after 24 months"
+      },
+      {
+        "on": "2026-10-03",
+        "from": "full",
+        "to": "partial",
+        "why": "Skeptic re-rate: re-ran activity.int, audit-coverage.int, activity-export.int, security-jobs.int, audit.test, trust.test (all pass), then read src/server/activity.ts and the activity page. activityPeople() has no role check: a scratch integration test with a member holding the seeded Read-only role (no staff:read) got every member of the store back for the person filter, so criterion 3 (staff see only what their role allows) does not hold in the screen; the existing test checks the list for an owner only. Lowered from Full to Partial until the filter is limited to what the viewer may see and a test holds it"
+      }
+    ]
   },
   {
     "id": "international.legal-invoices-and-credit-notes-for-orders",

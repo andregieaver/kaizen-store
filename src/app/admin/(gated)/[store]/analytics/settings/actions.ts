@@ -15,7 +15,7 @@ import {
   saveTarget,
   setVisitCounting,
 } from "@/server/analytics-settings";
-import { requireMember } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 
 /**
  * The analytics settings' server actions (D152), bound to the store's slug as their first argument. Every one checks the member
@@ -28,8 +28,8 @@ const failed = (messages: string[]): FormState => ({ status: "error", messages }
 
 /** The cost estimates or the customer lifetime: the form sends its own fields and the others stay as they are. */
 export async function saveAnalyticsSettingsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return failed([OWNER_ONLY]);
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return failed([OWNER_ONLY]);
   const current = await getAnalyticsSettings(member.store.id);
   const result = await saveAnalyticsSettings(member, settingsFromForm(Object.fromEntries(form), current, mainCurrency(member.store)));
   if (!result.ok) return failed(result.problems);
@@ -42,8 +42,8 @@ export async function saveAnalyticsSettingsAction(storeSlug: string, _state: For
 
 /** Sets a month's net revenue target. */
 export async function saveTargetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return failed([OWNER_ONLY]);
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return failed([OWNER_ONLY]);
   const result = await saveTarget(member, Object.fromEntries(form));
   if (!result.ok) return failed(result.problems);
   refresh();
@@ -54,8 +54,8 @@ export async function saveTargetAction(storeSlug: string, _state: FormState, for
 
 /** Takes a month's target away. */
 export async function deleteTargetAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return failed([OWNER_ONLY]);
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return failed([OWNER_ONLY]);
   const month = form.get("month");
   const result = await deleteTarget(member, typeof month === "string" ? month : "");
   if (!result.ok) return failed(result.problems);
@@ -65,8 +65,8 @@ export async function deleteTargetAction(storeSlug: string, _state: FormState, f
 
 /** Switches visit counting on or off, from the button pressed (`enabled` is `on` or `off`). */
 export async function setVisitCountingAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return failed([OWNER_ONLY]);
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return failed([OWNER_ONLY]);
   const choice = form.get("enabled");
   if (choice !== "on" && choice !== "off") return failed(["Choose whether to turn visit counting on or off."]);
   const result = await setVisitCounting(member, choice === "on");
@@ -87,8 +87,8 @@ export async function setVisitCountingAction(storeSlug: string, _state: FormStat
  * in place of itself, and a refresh would take it away with the form.
  */
 export async function backfillCostsAction(storeSlug: string): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return failed([OWNER_ONLY]);
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return failed([OWNER_ONLY]);
   const result = await backfillCosts(member);
   if (!result.ok) return failed(result.problems);
   return { status: "ok", messages: [`Updated ${formatCount(result.lines)} order ${result.lines === 1 ? "line" : "lines"}.`] };

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>A page that breaks the rules on purpose</title>
+  </head>
+  <body>
+    <!-- Wave 1, 1e: the accessibility scan must be able to fail. This page is scanned by e2e/a11y.spec.ts, which expects it to. -->
+    <main>
+      <h1>Known-bad fixture</h1>
+      <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" />
+      <button></button>
+      <input type="text" />
+      <p style="color: #cccccc; background: #ffffff">Low contrast text that nobody can read.</p>
+    </main>
+  </body>
+</html>

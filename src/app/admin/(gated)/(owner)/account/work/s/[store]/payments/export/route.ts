@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 
 import { CSV_CONTENT_TYPE, csvFileName, paymentsToCsv, withBom } from "@/lib/work-csv";
 import { isDay } from "@/lib/work-dates";
-import { audit, requireMember } from "@/server/auth";
+import { audit } from "@/server/auth";
 import { paymentRegister } from "@/server/work-exports";
+import { requirePermission } from "@/server/permissions";
 
 /**
  * The payments received on Work invoices as a spreadsheet file (WP7b), by the day they were received, optionally
@@ -12,7 +13,7 @@ import { paymentRegister } from "@/server/work-exports";
  */
 export async function GET(request: Request, { params }: RouteContext<"/admin/account/work/s/[store]/payments/export">) {
   const { store: slug } = await params;
-  const { store, account } = await requireMember(slug);
+  const { store, account } = await requirePermission(slug, "settings:read");
   if (!store.workOn) notFound();
   const search = new URL(request.url).searchParams;
   const from = search.get("from") ?? "";

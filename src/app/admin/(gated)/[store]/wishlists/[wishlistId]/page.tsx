@@ -6,7 +6,7 @@ import { z } from "zod";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { CartAddTable, variantText } from "@/components/admin/wishlist-admin";
 import { formatMoney } from "@/lib/money";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { customerSummary } from "@/server/customer-admin";
 import { getStoreWishlist, listCartAdds } from "@/server/wishlist-admin";
 
@@ -21,7 +21,7 @@ const card = "rounded-lg border border-border bg-background p-5";
  */
 export default async function WishlistPage({ params }: PageProps<"/admin/[store]/wishlists/[wishlistId]">) {
   const { store: slug, wishlistId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "customers:read");
   if (!z.uuid().safeParse(wishlistId).success) notFound();
   const market = store.markets[0] ?? null;
   const list = await getStoreWishlist(store.id, wishlistId, market);

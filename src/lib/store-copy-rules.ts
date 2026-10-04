@@ -125,6 +125,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   media_embeddings: derived("Search by meaning of pictures; made again from alt texts."),
   product_embeddings: derived("Search by meaning of products; made again by the new store's own AI."),
   search_cache: derived("Cached search vectors and filters; refilled by use."),
+  store_roles: derived("The new store gets the role templates from ensureStoreRoles() (wave 1, 1f); custom roles name people's powers and are not copied."),
 
   // Never ------------------------------------------------------------------------------------------------------
   abandoned_checkouts: never("Carts left behind by shoppers, with their emails."),
@@ -155,6 +156,9 @@ export const COPY_RULES: Record<string, CopyRule> = {
   company_invites: never("Invitations hold tokens for the original."),
   consents: never("The consent log is evidence for the original site."),
   cookie_scans: never("Scan results of the original site; the new store scans its own."),
+  legal_snapshots: never("What the original's shoppers were shown of its terms and policies when they ordered (wave 1, 1e): evidence, never copied."),
+  order_terms: never("The record that an order was placed under the original's terms (wave 1, 1e); copied orders are history without it."),
+  accessibility_settings: never("An accessibility claim and its audit evidence (wave 1, 1e) belong to the site they were made for."),
   analytics_settings: never("The original's cost assumptions (D152): fees, shipping and fixed costs are the new owner's own to enter."),
   analytics_targets: never("The original's monthly revenue targets (D152)."),
   marketing_spend: never("What the original's owner entered as marketing spend (D152): history of the original's business."),

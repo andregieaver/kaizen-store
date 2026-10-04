@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { CSV_CONTENT_TYPE, csvFileName, withBom, workReportToCsv } from "@/lib/work-csv";
 import { todayIn } from "@/lib/work-dates";
 import { parseReportParams, periodReportToCsv, reportFileName } from "@/lib/work-reports";
-import { requireMember } from "@/server/auth";
 import { clientTimeReport, getPeriodReport } from "@/server/work-reports";
+import { requirePermission } from "@/server/permissions";
 
 /**
  * A Work report as a spreadsheet file (docs/work.md 5.2, WP9), with the settings of the reports page in
@@ -14,7 +14,7 @@ import { clientTimeReport, getPeriodReport } from "@/server/work-reports";
  * counted once, in the period it was invoiced.
  */
 export async function GET(request: Request, { params }: RouteContext<"/admin/account/work/s/[store]/reports/csv">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   if (!store.workOn) notFound();
   const query = Object.fromEntries(new URL(request.url).searchParams);
   const settings = parseReportParams(query, todayIn(store.timeZone));

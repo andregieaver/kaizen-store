@@ -38,6 +38,17 @@ describe("legal pages", () => {
     }
     expect(isLegalPage("om-oss", "Om oss")).toBe(false);
   });
+
+  it("includes the shipping policy and the accessibility statement, by words in four languages", () => {
+    for (const [slug, title] of [["frakt", "x"], ["x", "Leveranse og frakt"], ["x", "Leveransvillkor"], ["x", "Forsendelse"], ["x", "Shipping policy"], ["x", "Tilgjengelighetserklæring"], ["x", "Tillgänglighetsredogörelse"], ["x", "Tilgængelighedserklæring"], ["accessibility", "x"]]) {
+      expect(isLegalPage(slug, title), `${slug} ${title}`).toBe(true);
+    }
+  });
+
+  it("is any page the store chose for a legal role, whatever it is called", () => {
+    expect(isLegalPage("lars-sine-regler", "Lars' regler")).toBe(false);
+    expect(isLegalPage("lars-sine-regler", "Lars' regler", true)).toBe(true);
+  });
 });
 
 describe("what comes back", () => {

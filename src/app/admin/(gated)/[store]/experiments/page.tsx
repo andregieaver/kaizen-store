@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { targetLabel } from "@/lib/ab-site";
 import { GOAL_WORDS, STATUS_WORDS, type ExperimentStatus } from "@/lib/experiments";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listExperiments } from "@/server/experiment-admin";
 
 export const metadata: Metadata = { title: "A/B tests" };
@@ -21,7 +21,7 @@ const BADGE: Record<ExperimentStatus, string> = {
 
 /** The store's A/B tests (D148): what is running, what waits to be started and what has been decided. */
 export default async function ExperimentsPage({ params }: PageProps<"/admin/[store]/experiments">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "marketing:read");
   const tests = await listExperiments(store.id);
   const base = `/admin/${store.slug}/experiments`;
 

@@ -37,6 +37,7 @@ export async function savePageAction(
   id: string | null,
   payload: string,
   publish: boolean,
+  acknowledged?: string[],
 ): Promise<PageSaveState> {
   const admin = await requirePlatformAdmin();
   if (!isType(type) || (id !== null && !isId(id))) return { status: "error", problems: ["Unknown page."] };
@@ -46,8 +47,9 @@ export async function savePageAction(
   } catch {
     return { status: "error", problems: ["The page could not be read. Reload and try again."] };
   }
-  const result = await savePage(admin, null, id, json, { publish: publish === true, type });
-  if (!result.ok) return { status: "error", problems: result.problems };
+  const acknowledgedIssues = Array.isArray(acknowledged) ? acknowledged.filter((a): a is string => typeof a === "string" && a.length <= 120).slice(0, 200) : undefined;
+  const result = await savePage(admin, null, id, json, { publish: publish === true, type, acknowledgedIssues });
+  if (!result.ok) return { status: "error", problems: result.problems, code: result.code, issues: result.issues };
   // Drafts are not on the site; publishing changes pages, menus, sitemap and llms.txt, and so does a global part's change (D98).
   if (publish || result.pages) updateTag(PAGES_TAG);
   const page = await getPageForEdit(null, result.id, type);

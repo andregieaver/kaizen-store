@@ -3,7 +3,8 @@
 import { refresh } from "next/cache";
 
 import type { assignmentInput, clientInput, taskInput, timeEntryInput, timeEntryNoteInput } from "@/lib/work-input";
-import { requireAccount, requireMember, type Membership } from "@/server/auth";
+import { requireAccount, type Membership } from "@/server/auth";
+import { checkPermission } from "@/server/permissions";
 import { lookupCompany, searchCompanies, type BrregLookup, type BrregSearch } from "@/server/brreg";
 import {
   createAssignment,
@@ -39,7 +40,7 @@ import type { z } from "zod";
 /**
  * Work's actions for clients, assignments, tasks, time and timers (docs/work.md
  * 7.2 WP3). Each is bound to the store's slug as its first argument and asks
- * `requireMember()` itself (a layout's check does not stop a page or an action
+ * `checkPermission()` itself (a layout's check does not stop a page or an action
  * running), then hands what the browser sent to the server function, which
  * checks it again with the shared schemas. They answer `{ ok: true }` (with
  * what was made) or `{ ok: false, problems }`, and refresh what is on screen.
@@ -51,12 +52,18 @@ import type { z } from "zod";
  * there too.
  */
 
-const OFF = "Work is switched off for this store.";
+const OFF = "Work is switched off for this store, or your role has no access to it.";
 
 /** The membership, for a store that has Work switched on (data is kept when it is off, but nothing changes). */
 async function workMember(storeSlug: string): Promise<Membership | null> {
-  const member = await requireMember(storeSlug);
-  return member.store.workOn ? member : null;
+  const member = await checkPermission(storeSlug, "settings:write");
+  return member?.store.workOn ? member : null;
+}
+
+/** The same for what only reads (the register lookups): a role that can see Work's settings area can ask. */
+async function workReader(storeSlug: string): Promise<Membership | null> {
+  const member = await checkPermission(storeSlug, "settings:read");
+  return member?.store.workOn ? member : null;
 }
 
 /** Runs a change for a member of a store with Work on, and refreshes the page when it worked. */
@@ -208,12 +215,12 @@ export async function runningTimerAction(): Promise<RunningTimer | null> {
  * only the number goes to the registry.
  */
 export async function lookupCompanyAction(storeSlug: string, input: string): Promise<BrregLookup> {
-  if (!(await workMember(storeSlug))) return { ok: false, reason: "unavailable" };
+  if (!(await workReader(storeSlug))) return { ok: false, reason: "unavailable" };
   return lookupCompany(String(input).slice(0, 60));
 }
 
 /** The same by name: up to eight companies to choose from. */
 export async function searchCompaniesAction(storeSlug: string, input: string): Promise<BrregSearch> {
-  if (!(await workMember(storeSlug))) return { ok: false, reason: "unavailable" };
+  if (!(await workReader(storeSlug))) return { ok: false, reason: "unavailable" };
   return searchCompanies(String(input).slice(0, 120));
 }

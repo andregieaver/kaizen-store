@@ -5,7 +5,8 @@ import { updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { storeDetailsInput } from "@/lib/store-details";
-import { requireMember, type Membership } from "@/server/auth";
+import { type Membership } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { STORES_TAG } from "@/server/seo";
 import {
@@ -20,10 +21,7 @@ import { storeTag } from "@/server/stores";
 
 // Setup is the owner's job; every action re-checks that on the server.
 async function asOwner(storeSlug: string): Promise<Membership | FormState> {
-  const member = await requireMember(storeSlug);
-  return member.role === "owner"
-    ? member
-    : { status: "error", messages: ["Only an owner can set up the store."] };
+  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: ["Only an owner can set up the store."] };
 }
 
 function refreshStore(member: Membership) {

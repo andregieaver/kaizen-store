@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { parsePrice } from "@/lib/product-input";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import { saveStaffFields } from "@/server/field-entities";
 import type { SaveResult } from "@/server/settings";
 import { getOrder } from "@/server/orders";
@@ -28,7 +28,7 @@ const done = (message: string): OrderActionState => ({ ok: true, message });
 const failed = (message: string): OrderActionState => ({ ok: false, message });
 
 async function orderFor(storeSlug: string, orderId: string) {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "orders:write");
   if (!z.uuid().safeParse(orderId).success) return null;
   const order = await getOrder(member.store.id, orderId);
   return order ? { member, order } : null;
@@ -212,7 +212,8 @@ export async function resendConfirmationAction(storeSlug: string, orderId: strin
  * against the store's own groups.
  */
 export async function saveOrderFieldsAction(storeSlug: string, orderId: string, changes: unknown): Promise<SaveResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "orders:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(orderId).success) return { ok: false, problems: ["Unknown order."] };
   const result = await saveStaffFields(member, "order", orderId, changes);
   if (result.ok) refresh();

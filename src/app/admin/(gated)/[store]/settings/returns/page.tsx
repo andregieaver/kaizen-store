@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ReturnSettingsForm } from "@/components/admin/returns/settings-form";
 import { languageName } from "@/lib/localization";
-import { requireMember } from "@/server/auth";
+import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { getInstructionTranslations, getReturnSettings } from "@/server/return-settings";
 
 import { saveReturnSettingsAction } from "./actions";
@@ -14,7 +14,8 @@ export const metadata: Metadata = { title: "Returns settings" };
  * excludes, where goods are sent and the instructions customers read. Owners change them; staff see them.
  */
 export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[store]/settings/returns">) {
-  const { store, role } = await requireMember((await params).store);
+  const current = await requireOwnerRole((await params).store);
+  const { store } = current;
   const [settings, translations] = await Promise.all([getReturnSettings(store.id), getInstructionTranslations(store.id)]);
   const [main, ...others] = store.localization.locales;
   return (
@@ -32,7 +33,7 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
         translations={translations}
         main={{ locale: main, name: languageName(main) }}
         others={others.map((locale) => ({ locale, name: languageName(locale) }))}
-        canEdit={role === "owner"}
+        canEdit={memberCan(current, "owner")}
         action={saveReturnSettingsAction.bind(null, store.slug)}
         translateHref={`/admin/${store.slug}/translate`}
       />

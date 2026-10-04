@@ -3,11 +3,14 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { diffOf } from "@/lib/audit";
 import { decryptSecret, parseKey } from "@/lib/secret-box";
 import { accountStage, type PaymentModeName } from "@/lib/stripe-account";
 
 import { audit, type Membership, type Role } from "./auth";
+import { auditChange } from "./audit";
 import { getStripeAccounts, type StripeAccount } from "./connect";
+import { memberCan, NO_ACCESS } from "./permissions";
 import { platformModes } from "./stripe";
 import type { Store } from "./stores";
 
@@ -64,6 +67,9 @@ export async function setStripeProvider(
       };
     }
   }
+  const [before] = await db().execute<Row>(sql`
+    select enabled, active_mode, order_invoices from commerce.payment_providers where store_id = ${store.id}::uuid and provider = 'stripe'
+  `);
   await db().execute(sql`
     update commerce.payment_providers
        set enabled = ${enabled}, active_mode = ${activeMode}, order_invoices = ${orderInvoices},
@@ -75,6 +81,10 @@ export async function setStripeProvider(
     enabled,
     activeMode,
     orderInvoices,
+  }, {
+    target: { type: "payments", id: "stripe" },
+    // Which settings changed, never a key: only these three fields are ever written (`ALLOWED_FIELDS.payments`).
+    changes: diffOf("payments", before ? { enabled: Boolean(before.enabled), mode: String(before.active_mode), orderInvoices: Boolean(before.order_invoices) } : null, { enabled, mode: activeMode, orderInvoices }).changes,
   });
   return { ok: true };
 }
@@ -150,14 +160,24 @@ export type StaffMember = {
   role: Role;
   signedInBefore: boolean;
   disabled: boolean;
+  /** The custom role they hold (wave 1, 1f), null for the owner role and the default admin set. */
+  roleId?: string | null;
+  roleName?: string | null;
+  /** `collaborator`: an agency's account with an expiry. */
+  kind?: "staff" | "collaborator";
+  expiresAt?: string | null;
+  /** Seen to have two-step sign-in (the display mirror, not an access decision). */
+  hasTwoStep?: boolean;
 };
 
 export async function listStaff(storeId: string): Promise<StaffMember[]> {
   const rows = await db().execute<Row>(sql`
     select a.id, a.email, a.name, a.avatar_path, m.role, a.auth_user_id is not null as linked,
-           (m.disabled_at is not null or a.disabled_at is not null) as disabled
+           (m.disabled_at is not null or a.disabled_at is not null) as disabled,
+           m.role_id, r.name as role_name, m.kind, m.expires_at, a.two_step_since is not null as has_two_step
     from commerce.store_members m
     join commerce.accounts a on a.id = m.account_id
+    left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
     where m.store_id = ${storeId}::uuid
     order by disabled, m.role, lower(a.email)
   `);
@@ -169,15 +189,32 @@ export async function listStaff(storeId: string): Promise<StaffMember[]> {
     role: row.role as Role,
     signedInBefore: Boolean(row.linked),
     disabled: Boolean(row.disabled),
+    roleId: row.role_id ? String(row.role_id) : null,
+    roleName: row.role_name ? String(row.role_name) : null,
+    kind: row.kind === "collaborator" ? "collaborator" : "staff",
+    expiresAt: row.expires_at ? new Date(String(row.expires_at)).toISOString() : null,
+    hasTwoStep: Boolean(row.has_two_step),
   }));
 }
 
 /** Gives someone access to the store, creating their account if needed. */
 export async function inviteStaff(
-  { account, store }: Membership,
+  member: Membership,
   email: string,
   role: Role,
+  /** One of the store's custom roles (wave 1, 1f): the person is then an `admin` holding it. */
+  roleId: string | null = null,
 ): Promise<SaveResult> {
+  const { account, store } = member;
+  // Only an owner changes the team, whatever the page's guard says (`staff:write` is held by the owner role only).
+  if (!memberCan(member, "staff:write")) return { ok: false, problems: [NO_ACCESS] };
+  if (roleId && role !== "admin") return { ok: false, problems: ["A custom role is for an admin."] };
+  let roleName: string | null = null;
+  if (roleId) {
+    const [found] = await db().execute<Row>(sql`select name from commerce.store_roles where store_id = ${store.id}::uuid and id = ${roleId}::uuid`);
+    if (!found) return { ok: false, problems: ["That role no longer exists."] };
+    roleName = String(found.name);
+  }
   const result = await db().transaction(async (tx) => {
     const [invitee] = await tx.execute<Row>(sql`
       insert into commerce.accounts (email) values (${email})
@@ -192,27 +229,31 @@ export async function inviteStaff(
     `);
     if (existing && !existing.disabled_at) return "member" as const;
 
+    // A person invited again is staff: a collaborator's expiry and an old role do not carry over.
     await tx.execute(sql`
-      insert into commerce.store_members (store_id, account_id, role, invited_by)
-      values (${store.id}::uuid, ${String(invitee.id)}::uuid, ${role}, ${account.id}::uuid)
+      insert into commerce.store_members (store_id, account_id, role, role_id, invited_by)
+      values (${store.id}::uuid, ${String(invitee.id)}::uuid, ${role}, ${roleId}::uuid, ${account.id}::uuid)
       on conflict (store_id, account_id) do update set
-        role = excluded.role, disabled_at = null, invited_by = excluded.invited_by
+        role = excluded.role, role_id = excluded.role_id, kind = 'staff', expires_at = null,
+        disabled_at = null, invited_by = excluded.invited_by
     `);
-    return "invited" as const;
+    return String(invitee.id);
   });
 
   if (result === "member") return { ok: false, problems: [`${email} already has access.`] };
   if (result === "disabled") {
     return { ok: false, problems: [`${email} cannot be invited. Contact support.`] };
   }
-  await audit(account.id, store.id, "staff.invited", { email, role });
+  await auditChange(member, "staff.invited", { type: "account", id: result, label: email }, null, { email, role, roleName, kind: "staff" }, "staff", { email, role });
   return { ok: true };
 }
 
 export async function disableStaff(
-  { account, store }: Membership,
+  member: Membership,
   accountId: string,
 ): Promise<SaveResult> {
+  const { account, store } = member;
+  if (!memberCan(member, "staff:write")) return { ok: false, problems: [NO_ACCESS] };
   if (accountId === account.id) {
     return { ok: false, problems: ["You cannot remove your own access."] };
   }
@@ -224,7 +265,7 @@ export async function disableStaff(
         and m.disabled_at is null and a.id = m.account_id
       returning a.email
     `);
-    if (row) await audit(account.id, store.id, "staff.disabled", { email: String(row.email) });
+    if (row) await audit(account.id, store.id, "staff.disabled", { email: String(row.email) }, { target: { type: "account", id: accountId } });
     return { ok: true };
   } catch {
     return { ok: false, problems: ["The store must keep at least one active owner."] };
@@ -286,6 +327,7 @@ export async function saveShippingSettings(
   rates: { marketCode: string; amountMinor: number; freeOverMinor: number | null }[],
 ): Promise<SaveResult> {
   const markets = new Map(store.markets.map((m) => [m.code, m]));
+  const before = await getShippingSettings(store);
   for (const rate of rates) {
     const market = markets.get(rate.marketCode);
     if (!market) return { ok: false, problems: [`The store does not sell to ${rate.marketCode}.`] };
@@ -297,6 +339,20 @@ export async function saveShippingSettings(
         free_over_minor = excluded.free_over_minor, updated_at = now()
     `);
   }
-  await audit(account.id, store.id, "shipping.updated", { rates });
+  // Before and after for each market whose rate changed, in the market's own currency (minor units); never the carrier's keys.
+  const after = await getShippingSettings(store);
+  for (const rate of rates) {
+    const was = before.find((b) => b.marketCode === rate.marketCode);
+    const now = after.find((a) => a.marketCode === rate.marketCode);
+    await auditChange(
+      { accountId: account.id, storeId: store.id },
+      "shipping.updated",
+      { type: "shipping", id: rate.marketCode, label: `Shipping to ${rate.marketCode}` },
+      was ? { rates: was.amountMinor, freeAboveMinor: was.freeOverMinor, currency: was.currency } : null,
+      now ? { rates: now.amountMinor, freeAboveMinor: now.freeOverMinor, currency: now.currency } : null,
+      "shipping",
+      { rates: [rate] },
+    );
+  }
   return { ok: true };
 }

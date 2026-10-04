@@ -3,13 +3,11 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
-import { BuyerQuestion } from "@/components/buyer";
-import { SiteConsent } from "@/components/consent/site-consent";
 import { AbMarker } from "@/components/ab/ab-marker";
 import { StoreExperiments } from "@/components/ab/store-experiments";
-import { StoreAffiliate } from "@/components/store-affiliate";
+import { OffPayRoutes } from "@/components/off-pay-routes";
+import { PayDocumentWatcher } from "@/components/pay-route-guard";
 import { StoreVisits } from "@/components/store-visits";
-import { StoreChat } from "@/components/site-chat";
 import { StoreSiteFooter, StoreSiteHeader } from "@/components/site-parts";
 import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu, WithdrawalStrip } from "@/components/store-layout";
 import { CustomCss } from "@/components/custom-css";
@@ -17,7 +15,6 @@ import { StoreColorScript } from "@/components/store-color-switch";
 import { UiTexts } from "@/components/ui-texts";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { buyerScript } from "@/lib/b2b";
-import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
 import { inView } from "@/lib/markets";
 import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
@@ -27,8 +24,11 @@ import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveShop } from "@/server/shop";
+import { legalLinksFor } from "@/server/legal-links";
 import { siteLayoutForVisitor } from "@/server/site-layouts";
 import { uiTextsFor } from "@/server/ui-text";
+
+import { MarketExtras } from "./extras";
 
 import "../../../globals.css";
 
@@ -91,7 +91,12 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
   const { store, market, ab } = shop;
   const m = t(market.lang);
   // The store's own header and footer built in the page builder (D80), else the standard ones; the visitor's version of them while one is under an A/B test (D148).
-  const [header, footer] = await Promise.all([siteLayoutForVisitor(store.id, "header", ab), siteLayoutForVisitor(store.id, "footer", ab)]);
+  const [header, footer, legalLinks] = await Promise.all([
+    siteLayoutForVisitor(store.id, "header", ab),
+    siteLayoutForVisitor(store.id, "footer", ab),
+    // The published legal pages, listed in the standard footer (wave 1, 1e).
+    legalLinksFor(store, market),
+  ]);
   const headerLayout = header.layout;
   const footerLayout = footer.layout;
   const uiTexts = uiTextsFor(market.lang);
@@ -148,7 +153,7 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         >
           {children}
         </main>
-        {footerLayout ? <StoreSiteFooter store={store} market={market} layout={footerLayout} /> : <StoreFooter store={store} market={market} />}
+        {footerLayout ? <StoreSiteFooter store={store} market={market} layout={footerLayout} /> : <StoreFooter store={store} market={market} legal={legalLinks} />}
         {/* The withdrawal function is always reachable (D153): a footer of the store's own without its link gets the standard one. */}
         {footerLayout && !footerHasWithdrawal(footerLayout.content) && <WithdrawalStrip store={store} market={market} />}
         {/*
@@ -165,15 +170,20 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         </Suspense>
         {/* The slide-out cart on phones, when the cart is opened from a page of the store. */}
         {drawer}
-        {store.businessPopup && <BuyerQuestion storeId={store.id} labels={m.buyer} />}
-        {/* The store's AI assistant (D81), while it is on. */}
+        {/*
+          What other sites' code can come in through (wave 1, 1e): the store's assistant, referral capture, the business popup, and the
+          consent banner with the tracking tools and the owner's own code it loads. Not drawn on the cart, checkout and order, where a
+          shopper types a card (`docs/pci.md`); everywhere else they stay as they were across navigations.
+        */}
         <Suspense fallback={null}>
-          <StoreChat store={store} market={market} />
+          <OffPayRoutes>
+            <MarketExtras store={store} market={market} />
+          </OffPayRoutes>
         </Suspense>
         <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
-        {/* A friend's referral link (D131): read in the browser, kept in memory and, once allowed, in a cookie. */}
+        {/* Notes when this document has left the pay routes, so the cart, checkout and order load afresh (wave 1, 1e). */}
         <Suspense fallback={null}>
-          <StoreAffiliate store={store} base={marketPath(store.slug, market.slug)} />
+          <PayDocumentWatcher />
         </Suspense>
         {/* Cookieless visit counting (D152), while the owner has it on; the beacon reads the path, so it sits in a boundary. */}
         <Suspense fallback={null}>
@@ -197,17 +207,6 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         {/* A/B tests of the store's pages (D148): a visitor's versions, once they have accepted statistics cookies. */}
         <Suspense fallback={null}>
           <StoreExperiments storeId={store.id} store={store.slug} market={market.slug} />
-        </Suspense>
-        {/* Asks about the store's optional tools and code, if it has any, in the market's language (D58, D61). */}
-        <Suspense fallback={null}>
-          <SiteConsent
-            storeId={store.id}
-            tracking={store.tracking}
-            code={liveCustomCode(store.customCode)}
-            lang={market.lang}
-            locale={market.locale}
-            cookiePage={marketPath(store.slug, market.slug, "/cookies")}
-          />
         </Suspense>
       </body>
     </html>

@@ -17,6 +17,7 @@ import {
 import { formatMoney } from "@/lib/money";
 import { referralUrl } from "@/lib/referrals";
 import { readToolInput } from "@/lib/owner-tools";
+import type { PermissionHolder } from "@/lib/permissions";
 import { saysYes } from "@/lib/speech-text";
 import { siteUrl } from "@/lib/site";
 
@@ -50,6 +51,8 @@ export type ManagerContext = {
   /** The store it works in; null on the platform. */
   store: Store | null;
   flags: SiteFlags;
+  /** Whose role the store tools are held to (`holderOfPrincipal()`); none: an owner's run. */
+  holder?: PermissionHolder;
   connection: AiConnection | null;
   /** Tells the person's browser to open a page. */
   navigate: (href: string, label: string) => void;

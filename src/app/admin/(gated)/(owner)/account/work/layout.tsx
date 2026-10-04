@@ -9,7 +9,7 @@ import { requireAccount } from "@/server/auth";
  * `/admin/account/work/s/{store}`, sharing a sub-navigation and the person's
  * running timer (one across all their stores, `WorkShell`). The layout stays
  * while they move between them, so the clock and its warnings carry on. It is
- * not the only check: every page and action asks `requireMember()` (or, for
+ * not the only check: every page and action asks `requirePermission()` (or, for
  * the combined pages, reads only the stores the account belongs to) itself.
  */
 export default async function WorkLayout({ children }: LayoutProps<"/admin/account/work">) {

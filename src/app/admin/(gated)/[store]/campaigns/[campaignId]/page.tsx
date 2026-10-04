@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { campaignStatus } from "@/lib/campaigns";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getCampaign, listCampaigns } from "@/server/campaigns";
 
 import { deleteCampaignAction } from "../actions";
@@ -17,7 +17,7 @@ const STATUS = { active: "Running now", off: "Switched off", scheduled: "Starts 
 
 export default async function CampaignPage({ params }: PageProps<"/admin/[store]/campaigns/[campaignId]">) {
   const { store: slug, campaignId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "marketing:read");
   if (!z.uuid().safeParse(campaignId).success) notFound();
   const campaign = await getCampaign(store.id, campaignId);
   if (!campaign) notFound();

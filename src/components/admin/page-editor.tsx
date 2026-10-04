@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useEffectEvent, useId, useRef, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, useTransition } from "react";
 
 import { applicableGroups, EntityFields } from "@/components/admin/entity-fields";
 import { fieldFileUploader } from "@/components/admin/field-file-upload";
@@ -28,6 +28,7 @@ import {
   type PageThumbnail,
 } from "@/lib/page-content";
 import { layoutOf } from "@/lib/page-layout";
+import { blockingIssues, issueId, pageIssues, type PageIssue } from "@/lib/page-a11y";
 import { applyMotionPlan, type MotionPlan } from "@/lib/motion-plan";
 import { WandSparkles } from "lucide-react";
 
@@ -59,6 +60,7 @@ import { CssPanel } from "./css-panel";
 import type { Upload } from "./image-upload";
 import type { PageOwnerContext, PageSaveState } from "./page-context";
 import { ColorField, newId, PageBuilder } from "./page-builder";
+import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
@@ -166,6 +168,8 @@ export function PageEditor({
   const [message, setMessage] = useState<string | null>(notice);
   const [busy, startBusy] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Publishing with a blocking problem asks first (wave 1, 1e): the problems the owner is being asked about, or none.
+  const [asking, setAsking] = useState<PageIssue[] | null>(null);
   // The language being written (D55): the main one builds the page; another only says its texts.
   const [main, ...others] = context.languages;
   const [locale, setLocale] = useState(main.locale);
@@ -261,16 +265,29 @@ export function PageEditor({
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
-  const submit = (publish: boolean) =>
+  // The page checker (wave 1, 1e): what a reader, a screen reader or the checkout's policy would meet, as the page stands now. A checker that
+  // throws on odd content is not allowed to stop the editor: the tab then says it is not available, and the server asks again on publish.
+  const checkout = context.check?.checkoutPageId != null && saved?.id === context.check.checkoutPageId;
+  const issues = useMemo<PageIssue[] | null>(() => {
+    try {
+      return pageIssues(content, { ...(context.check && { theme: { sets: context.check.theme } }), checkout });
+    } catch {
+      return null;
+    }
+  }, [content, context.check, checkout]);
+
+  const submit = (publish: boolean, acknowledged?: string[]) =>
     startBusy(async () => {
       setProblems([]);
       const sent = content;
       // The globals changed here (D98): the server takes them from this page to every page using them.
       const globalEdits = editedGlobals(sent, known.current);
       const fields = fieldGroups.length > 0 ? changesFrom(fieldGroups.flatMap((g) => g.fields), fieldData, context.languages.map((l) => l.locale)) : undefined;
-      const outcome: PageSaveState = await actions.save(saved?.id ?? null, JSON.stringify({ ...sent, globalEdits, fields }), publish);
+      const outcome: PageSaveState = await actions.save(saved?.id ?? null, JSON.stringify({ ...sent, globalEdits, fields }), publish, acknowledged);
       if (outcome.status === "error") {
-        setProblems(outcome.problems);
+        // The server holds the same question as the dialog: something it found that this editor did not is asked about now.
+        if (outcome.code === "needs_confirmation" && outcome.issues && outcome.issues.length > 0) setAsking(outcome.issues);
+        else setProblems(outcome.problems);
         return;
       }
       if (globalEdits.length > 0) {
@@ -290,6 +307,13 @@ export function PageEditor({
       // A new page moves to its own address; the editor there says what happened.
       if (!saved) router.replace(`${adminBase}/${outcome.page.id}?saved=${publish ? "published" : "draft"}`);
     });
+
+  // Publish: a blocking problem (the checkout page's refusals are the server's to say) is asked about first; a draft is never held back.
+  const requestPublish = () => {
+    const blocking = issues ? blockingIssues(issues).filter((i) => i.rule !== "pay_page_block") : [];
+    if (blocking.length > 0) setAsking(blocking);
+    else submit(true);
+  };
 
   // Ctrl/Cmd + S saves the draft.
   const onKey = useEffectEvent((event: KeyboardEvent) => {
@@ -386,6 +410,11 @@ export function PageEditor({
         productParts={shape === "product_layout"}
         fieldGroups={context.fields?.groups ?? null}
         onTestPart={context.experimentsHref && saved?.published ? testPart : undefined}
+        checks={
+          issues
+            ? { count: issues.length, panel: <PageIssuesPanel issues={issues} /> }
+            : { count: 0, panel: <p className="text-sm text-muted">Checks are not available for this page right now.</p> }
+        }
         shopParts={shape === "page" && context.owner !== null}
         siteParts={shape === "header" || shape === "footer" ? sitePartsFor(context.owner) : null}
         upload={upload}
@@ -655,6 +684,19 @@ export function PageEditor({
         saveSiteCss={actions.saveSiteCss}
       />
 
+      {asking && (
+        <PublishWithIssuesDialog
+          issues={asking}
+          busy={busy}
+          onFixFirst={() => setAsking(null)}
+          onPublishAnyway={() => {
+            const seen = asking.map(issueId);
+            setAsking(null);
+            submit(true, seen);
+          }}
+        />
+      )}
+
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
           <button
@@ -667,7 +709,7 @@ export function PageEditor({
           </button>
           <button
             type="button"
-            onClick={() => submit(true)}
+            onClick={requestPublish}
             disabled={busy}
             className="min-h-11 rounded-md bg-foreground px-5 font-medium text-background disabled:opacity-50"
           >

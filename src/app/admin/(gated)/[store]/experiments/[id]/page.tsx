@@ -6,7 +6,7 @@ import { DraftPanel, RunPanel } from "@/components/admin/experiment-controls";
 import { ExperimentResultsView } from "@/components/admin/experiment-results-view";
 import { targetLabel } from "@/lib/ab-site";
 import { GOAL_WORDS, STATUS_WORDS } from "@/lib/experiments";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getExperiment } from "@/server/experiment-admin";
 import { experimentResults } from "@/server/experiment-results";
 
@@ -17,7 +17,7 @@ const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "
 /** One A/B test (D148): set up while it is a draft, watched and decided once it has started. */
 export default async function ExperimentPage({ params }: PageProps<"/admin/[store]/experiments/[id]">) {
   const { store: slug, id } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "marketing:read");
   const test = await getExperiment(store.id, id);
   if (!test) notFound();
   const base = `/admin/${store.slug}/experiments`;

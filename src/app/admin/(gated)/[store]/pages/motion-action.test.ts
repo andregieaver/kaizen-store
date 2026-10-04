@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
-const requireMember = vi.fn();
+const getMembership = vi.fn();
 const requirePlatformAdmin = vi.fn();
-vi.mock("@/server/auth", () => ({ requireMember, requirePlatformAdmin }));
+vi.mock("@/server/auth", () => ({ getMembership, requireMember: vi.fn(), holderOf: (member: { role: string }) => ({ role: member.role }), requirePlatformAdmin }));
 const aiFor = vi.fn();
 vi.mock("@/server/ai", () => ({ aiFor, AiError: class extends Error {}, completeText: vi.fn() }));
 const planPageMotion = vi.fn();
@@ -26,16 +26,16 @@ const rows = [
 const plan = { ok: true, plan: { style: "elegant", summary: "s", items: [], aiUsed: false } };
 
 beforeEach(() => {
-  requireMember.mockReset().mockResolvedValue({ store: { id: "store-1" }, account: { id: "acct-1" } });
+  getMembership.mockReset().mockResolvedValue({ store: { id: "store-1" }, account: { id: "acct-1" }, role: "owner" });
   requirePlatformAdmin.mockReset().mockResolvedValue({ id: "admin-1" });
   aiFor.mockReset().mockResolvedValue({ textModel: "m" });
   planPageMotion.mockReset().mockResolvedValue(plan);
 });
 
 describe("a store's planMotionAction", () => {
-  it("checks membership, asks for the store's AI for this feature, and plans the rows", async () => {
+  it("checks the member, asks for the store's AI for this feature, and plans the rows", async () => {
     const result = await storeAction("shop", "page", JSON.stringify(rows));
-    expect(requireMember).toHaveBeenCalledWith("shop");
+    expect(getMembership).toHaveBeenCalledWith("shop");
     expect(aiFor).toHaveBeenCalledWith("store-1", { feature: "page_motion", accountId: "acct-1" });
     expect(planPageMotion).toHaveBeenCalledWith({ textModel: "m" }, rows);
     expect(result).toBe(plan);
@@ -48,8 +48,8 @@ describe("a store's planMotionAction", () => {
   });
 
   it("does not answer for a store the person does not belong to", async () => {
-    requireMember.mockRejectedValue(new Error("NEXT_NOT_FOUND"));
-    await expect(storeAction("other", "page", JSON.stringify(rows))).rejects.toThrow("NEXT_NOT_FOUND");
+    getMembership.mockResolvedValue(null);
+    expect(await storeAction("other", "page", JSON.stringify(rows))).toEqual({ ok: false, problem: "You do not have access to this." });
     expect(aiFor).not.toHaveBeenCalled();
     expect(planPageMotion).not.toHaveBeenCalled();
   });

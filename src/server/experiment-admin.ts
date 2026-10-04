@@ -6,6 +6,7 @@ import { revalidateTag, updateTag } from "next/cache";
 import { db } from "@/db/client";
 import { isPartOnlyPlace, targetKindOf, TESTED_PLACES, type TargetKind } from "@/lib/ab-site";
 import { applyPart, buttonsWithin, describePart, findPart, formsWithin, partChanges, testablePart, type PartKind } from "@/lib/experiment-parts";
+import { isLegalRole } from "@/lib/legal-roles";
 import { parsePageContent, type PageContent, type PageType } from "@/lib/page-content";
 import { cleanTranslations } from "@/lib/page-translation";
 import {
@@ -49,7 +50,7 @@ function refreshTag(tag: string): void {
 
 /**
  * Making, starting, stopping and applying A/B tests of pages (D148, docs/ab-testing.md): what the admin's actions call
- * (each behind `requireMember()`). A test is a draft until it starts; its versions are copies of the page, pages of type
+ * (each behind `requirePermission()`). A test is a draft until it starts; its versions are copies of the page, pages of type
  * `variant` with no address of their own, edited in the page builder. The database holds the rules (the migration); the
  * checks here say what is wrong in words before it asks.
  */
@@ -332,6 +333,8 @@ export async function createExperiment(account: Account, storeId: string, input:
   const targetType = String(page.type) as PageType;
   const role = page.role ? String(page.role) : null;
   const kind = targetKindOf(targetType, role) ?? "page";
+  // A page chosen for the terms, the privacy statement and the like is never tested (wave 1, 1e): the database refuses it too.
+  if (isLegalRole(role)) return { ok: false, problems: ["A legal page is never tested: what a shopper accepts must be the text the store published."] };
   // The pages for a place of their own that are not tested yet (the cookies page, the blog, search, 404, category and tag pages) are refused; a working page only by a part of it.
   if (role && kind !== "role") return { ok: false, problems: ["The cookies page and the blog, search, 404, category and tag pages cannot be tested yet."] };
   if (kind === "role" && isPartOnlyPlace(role) && !input.part) return { ok: false, problems: ["A working page is tested by a part of it: open it in the page builder and choose a row, a column or a component around the shop's own, with “A/B test this”."] };

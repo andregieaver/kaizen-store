@@ -69,7 +69,7 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
 }
 
 async function Notice({ searchParams }: { searchParams: PageProps<"/admin/sign-in">["searchParams"] }) {
-  const { error } = await searchParams;
+  const { error, notice } = await searchParams;
   const account = await getAccount();
   if (account) {
     return (
@@ -78,6 +78,13 @@ async function Notice({ searchParams }: { searchParams: PageProps<"/admin/sign-i
         <Link href="/admin" className="underline">
           Go to the admin
         </Link>
+      </p>
+    );
+  }
+  if (notice === "recovered") {
+    return (
+      <p role="status" className="text-sm">
+        Your recovery code worked, and your two-step sign-in was taken away. Sign in again: you will be asked to set it up once more.
       </p>
     );
   }

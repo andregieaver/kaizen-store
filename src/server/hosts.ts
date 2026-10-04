@@ -14,7 +14,7 @@ import { getStore, type Store } from "./stores";
  * Outside hosts (D71): a store running a marketplace lists stays and
  * rentals for hosts, who sign in with their own accounts and see only
  * their own listings, bookings and calendars, in a host area apart from
- * the store's admin. Hosts are not store members, so `requireMember()`
+ * the store's admin. Hosts are not store members, so `requirePermission()`
  * never lets them into the store's own pages.
  */
 

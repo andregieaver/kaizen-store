@@ -31,6 +31,11 @@ export type StoreFigures = {
   lowStock: number;
   outOfStock: number;
   /**
+   * What this member may not see of the store, from the area keys their role holds (wave 1, 1f): `sales` (sales, orders waiting to be
+   * sent, the latest orders and returns), `stock`, `plan`. Left out of the figures, never shown as zero; absent for the owner.
+   */
+  hides?: ("sales" | "stock" | "plan")[];
+  /**
    * What needs attention in the Work area (D122, docs/work.md 6.5), only for a store with the module on: the Work
    * overview's own items (`workOverview().attention`, worded with the store's name and pointing at its Work pages).
    */
@@ -45,6 +50,9 @@ export type StoreFigures = {
 export type ReturnFigures = { overdue: number; unacknowledged: number; requested: number };
 
 export type AttentionItem = { text: string; href: string; action: string; urgent?: boolean };
+
+/** Whether a figure of the store is withheld from this member. */
+export const hidden = (store: Pick<StoreFigures, "hides">, what: "sales" | "stock" | "plan"): boolean => Boolean(store.hides?.includes(what));
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const daysSince = (iso: string, now: number) => Math.floor((now - new Date(iso).getTime()) / 86_400_000);
@@ -66,7 +74,7 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
     }
     if (owner && s.open && s.payments === "setup") items.push({ text: `${s.name} cannot take real payments until Stripe is set up.`, href: `${base}/settings/payments`, action: "Set up payments", urgent: true });
     else if (owner && s.open && s.payments === "off") items.push({ text: `Payments are switched off in ${s.name}.`, href: `${base}/settings/payments`, action: "Open payments" });
-    if (s.toSend > 0) {
+    if (s.toSend > 0 && !hidden(s, "sales")) {
       const late = s.oldestToSend ? daysSince(s.oldestToSend, now) : 0;
       items.push({
         text: `${s.name}: ${plural(s.toSend, "order is", "orders are")} waiting to be sent${late >= 1 ? `, the oldest for ${plural(late, "day", "days")}` : ""}.`,
@@ -100,7 +108,10 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
         action: "Answer",
       });
     }
-    if (s.outOfStock > 0) items.push({ text: `${s.name}: ${plural(s.outOfStock, "product is", "products are")} out of stock.`, href: `${base}/products`, action: "Open products" });
+    // Nothing of the stock is shown to a member who may not open Products.
+    if (hidden(s, "stock")) {
+      // (no stock item)
+    } else if (s.outOfStock > 0) items.push({ text: `${s.name}: ${plural(s.outOfStock, "product is", "products are")} out of stock.`, href: `${base}/products`, action: "Open products" });
     else if (s.lowStock > 0) items.push({ text: `${s.name}: ${plural(s.lowStock, "product is", "products are")} running low.`, href: `${base}/products`, action: "Open products" });
     // Every member can open Work's pages, so staff are shown these too.
     items.push(...(s.work ?? []));

@@ -1660,6 +1660,41 @@
       "when": 1790981679404,
       "tag": "20261002225439_reserve_withdraw_slug",
       "breakpoints": true
+    },
+    {
+      "idx": 237,
+      "version": "7",
+      "when": 1791056845683,
+      "tag": "20261003194725_legal_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 238,
+      "version": "7",
+      "when": 1791056868058,
+      "tag": "20261003194748_legal_terms_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 239,
+      "version": "7",
+      "when": 1791057063062,
+      "tag": "20261003195103_staff_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1791057069461,
+      "tag": "20261003195109_staff_security_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 241,
+      "version": "7",
+      "when": 1791059501550,
+      "tag": "20261003203141_store_role_templates",
+      "breakpoints": true
     }
   ]
 }

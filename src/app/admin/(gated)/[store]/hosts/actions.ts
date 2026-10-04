@@ -5,15 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
-import { requireMember } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { inviteHost, setHostDisabled, updateHost } from "@/server/hosts";
 
 /** Hosts change what the store earns (D71): owners only. */
-async function requireOwner(storeSlug: string) {
-  const member = await requireMember(storeSlug);
-  return member.role === "owner" ? member : null;
-}
+const requireOwner = (storeSlug: string) => checkOwnerRole(storeSlug);
 
 const fields = (formData: FormData) => ({
   name: formData.get("name"),

@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 
-import { audit, requireMember } from "@/server/auth";
+import { audit } from "@/server/auth";
 import { dac7Csv, dac7Report } from "@/server/dac7";
+import { requireOwnerRole } from "@/server/permissions";
 
 /**
  * The year's DAC7 report as a spreadsheet file (D71): `sellers.csv` or
@@ -9,10 +10,10 @@ import { dac7Csv, dac7Report } from "@/server/dac7";
  */
 export async function GET(_request: Request, { params }: RouteContext<"/admin/[store]/hosts/dac7/[year]/[part]">) {
   const { store: slug, year: yearText, part: file } = await params;
-  const { store, role, account } = await requireMember(slug);
+  const { store, account } = await requireOwnerRole(slug);
   const year = Number(yearText);
   const part = file === "sellers.csv" ? "sellers" : file === "properties.csv" ? "properties" : null;
-  if (role !== "owner" || !part || !Number.isInteger(year) || year < 2023 || year > new Date().getUTCFullYear()) notFound();
+  if (!part || !Number.isInteger(year) || year < 2023 || year > new Date().getUTCFullYear()) notFound();
   const report = await dac7Report(store.id, year, store.timeZone);
   await audit(account.id, store.id, "hosts.dac7_downloaded", { year, part });
   return new Response(dac7Csv(report, part), {

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { PrintButton } from "@/components/admin/print-button";
 import { t } from "@/lib/i18n";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getOrderAdmin } from "@/server/order-admin";
 
 export const metadata: Metadata = { title: "Packing slip" };
@@ -14,7 +14,7 @@ export default async function PackingSlipPage({
   params,
 }: PageProps<"/admin/[store]/orders/[orderId]/packing-slip">) {
   const { store: slug, orderId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "orders:read");
   if (!z.uuid().safeParse(orderId).success) notFound();
   const order = await getOrderAdmin(store.id, orderId);
   if (!order) notFound();

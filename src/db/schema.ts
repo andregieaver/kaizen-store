@@ -40,6 +40,9 @@ import {
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
+import { AUDIT_AREA_KEYS } from "../lib/audit";
+import { LEGAL_ROLES } from "../lib/legal-roles";
+import { GRANTABLE_PERMISSIONS } from "../lib/permission-keys";
 import { RETURN_REASONS } from "../lib/withdrawal";
 
 export const commerce = pgSchema("commerce");
@@ -55,6 +58,12 @@ const money = (name: string) => bigint(name, { mode: "number" }).notNull();
 const storeId = () => uuid("store_id").notNull();
 /** The channels' keys as a SQL list for a check (`src/lib/analytics-channels.ts`, D152). */
 const channelList = sql.raw(CHANNEL_KEYS.map((k) => `'${k}'`).join(", "));
+/** The permission keys a custom role may hold (wave 1, 1f: `src/lib/permission-keys.ts`), as a SQL list for a check. */
+const grantableList = sql.raw(GRANTABLE_PERMISSIONS.map((k) => `'${k}'`).join(", "));
+/** The areas an audit entry may carry (wave 1, 1f: `src/lib/audit.ts`), as a SQL list for a check. */
+const auditAreaList = sql.raw(AUDIT_AREA_KEYS.map((k) => `'${k}'`).join(", "));
+/** The linked legal roles (wave 1, 1e: `src/lib/legal-roles.ts`), as a SQL list for a check. */
+const legalRoleList = sql.raw(LEGAL_ROLES.map((r) => `'${r}'`).join(", "));
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -252,6 +261,18 @@ export const accounts = commerce.table(
     assistantLearns: boolean("assistant_learns").notNull().default(true),
     /** The owner asked Kaizen for no reminders about plans left unpaid (D33). */
     planRemindersOptedOutAt: timestamp("plan_reminders_opted_out_at", { withTimezone: true }),
+    /**
+     * A mirror for display only (wave 1, 1f): when the account was last seen with a verified second step ("has
+     * two-step" on the Team page). Never used to decide access: that is read from the signed `aal` claim or a
+     * server-side `getUser()`, never from the session cookie.
+     */
+    twoStepSince: timestamp("two_step_since", { withTimezone: true }),
+    /**
+     * Set when a recovery code was used or a platform admin reset the account's two-step, cleared when a factor is
+     * next verified. While set and without a factor the account is held at enrolment whether or not anything
+     * requires two-step: a decision the server made, so unlike the mirror it is read for access.
+     */
+    twoStepReenrolAt: timestamp("two_step_reenrol_at", { withTimezone: true }),
     createdAt: createdAt(),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
   },
@@ -343,6 +364,21 @@ export const stores = commerce.table(
     /** On phones, open the slide-out cart (D64) once something is added to it. */
     openCartOnAdd: boolean("open_cart_on_add").notNull().default(false),
     /**
+     * What checkout says about the store's terms (wave 1, 1e): `link` (a sentence with links, the default), `checkbox`
+     * (the same with a required tick) or `off` (nothing drawn, nothing recorded). A copy of a store starts with `link`.
+     */
+    termsAtCheckout: text("terms_at_checkout").notNull().default("link"),
+    /**
+     * Every member of the store must have a second step (wave 1, 1f); a member without one is held at enrolment before
+     * the store's admin. Switched on by an owner who has one themselves. A copy starts with it off.
+     */
+    requireTwoStep: boolean("require_two_step").notNull().default(false),
+    /**
+     * The role templates (`ROLE_TEMPLATE_KEYS`) `ensureStoreRoles()` has already offered the store (wave 1, 1f). A template an owner
+     * deleted stays listed here, so it is not made again on the next visit. A copy starts empty and is offered them afresh.
+     */
+    roleTemplatesOffered: text("role_templates_offered").array().notNull().default(sql`'{}'::text[]`),
+    /**
      * Cookieless visit counting for the analytics (D152): off until the owner switches it on, and never copied with a
      * store, so a copy counts nothing until its own owner chooses.
      */
@@ -401,6 +437,7 @@ export const stores = commerce.table(
   },
   (t) => [
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
+    check("stores_terms_at_checkout", sql`${t.termsAtCheckout} in ('link', 'checkbox', 'off')`),
     check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
@@ -423,6 +460,38 @@ export const stores = commerce.table(
   ],
 );
 
+/**
+ * A store's own roles (wave 1, 1f, `docs/wave-1-trust.md`): a name and `{area}:{read|write}` keys, chosen from the
+ * grantable ones (`GRANTABLE_PERMISSIONS` in `src/lib/permission-keys.ts`; never `staff:write`, `billing:write` or `owner`,
+ * which stay with the owner role). The system roles `owner` and `admin` have no row. The templates are made by
+ * `ensureStoreRoles()` in application code, not by `clone_store()`; `template` keeps one from being made twice.
+ */
+export const storeRoles = commerce.table(
+  "store_roles",
+  {
+    storeId: storeId().references(() => stores.id),
+    id: uuid("id").notNull().defaultRandom(),
+    name: text("name").notNull(),
+    template: text("template"),
+    permissions: text("permissions").array().notNull().default(sql`'{}'::text[]`),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.id] }),
+    uniqueIndex("store_roles_name_key").on(t.storeId, sql`lower(${t.name})`),
+    uniqueIndex("store_roles_template_key").on(t.storeId, t.template).where(sql`${t.template} is not null`),
+    index("store_roles_created_by_idx").on(t.createdBy),
+    check("store_roles_name", sql`length(btrim(${t.name})) between 1 and 60`),
+    check(
+      "store_roles_template",
+      sql`${t.template} is null or ${t.template} in ('orders', 'products', 'marketing', 'content', 'analytics', 'read_only')`,
+    ),
+    check("store_roles_permissions", sql`${t.permissions} <@ array[${grantableList}]::text[]`),
+  ],
+);
+
 /** Who works in which store, and in what role (docs/platform.md, P5). */
 export const storeMembers = commerce.table(
   "store_members",
@@ -435,11 +504,29 @@ export const storeMembers = commerce.table(
     invitedBy: uuid("invited_by").references(() => accounts.id),
     createdAt: createdAt(),
     disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    /** A custom role (wave 1, 1f); only an `admin` carries one, and null is the default admin set. */
+    roleId: uuid("role_id"),
+    /** `collaborator`: an agency's account the owner invited with an expiry; never an owner. */
+    kind: text("kind").notNull().default("staff"),
+    /** When a collaborator's access ends; `getMembership()` ignores a member after it and the daily job marks it. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
   },
   (t) => [
     primaryKey({ columns: [t.storeId, t.accountId] }),
     index("store_members_account_idx").on(t.accountId),
     index("store_members_invited_by_idx").on(t.invitedBy),
+    index("store_members_role_idx").on(t.storeId, t.roleId),
+    foreignKey({
+      name: "store_members_role_fk",
+      columns: [t.storeId, t.roleId],
+      foreignColumns: [storeRoles.storeId, storeRoles.id],
+    }).onDelete("restrict"),
+    check("store_members_role_id", sql`${t.roleId} is null or ${t.role} = 'admin'`),
+    check("store_members_kind", sql`${t.kind} in ('staff', 'collaborator')`),
+    check(
+      "store_members_collaborator",
+      sql`${t.kind} <> 'collaborator' or (${t.role} = 'admin' and ${t.expiresAt} is not null)`,
+    ),
   ],
 );
 
@@ -454,10 +541,23 @@ export const auditLog = commerce.table(
     action: text("action").notNull(),
     details: jsonb("details").notNull().default({}),
     createdAt: createdAt(),
+    /**
+     * The part of the admin the action belongs to (wave 1, 1f: `AUDIT_AREAS` in `src/lib/audit.ts`). Filled once by the
+     * database's guard for old rows (the one update allowed); readers use `coalesce(area, areaOfAction(action))`.
+     */
+    area: text("area"),
+    /** What the action was done to (`product`, `page`, …) and its id as text, when the action has a target. */
+    targetType: text("target_type"),
+    targetId: text("target_id"),
+    /** The changed fields as `{ field: { from, to } }`, only fields on the allowlist of the kind, never a secret (`diffOf()`). */
+    changes: jsonb("changes"),
   },
   (t) => [
     index("audit_log_store_idx").on(t.storeId, t.createdAt),
     index("audit_log_account_idx").on(t.accountId),
+    index("audit_log_store_area_idx").on(t.storeId, t.area, sql`${t.id} desc`),
+    index("audit_log_store_account_idx").on(t.storeId, t.accountId, sql`${t.id} desc`),
+    check("audit_log_area", sql`${t.area} is null or ${t.area} in (${auditAreaList})`),
   ],
 );
 
@@ -3486,7 +3586,7 @@ export const pageRoles = commerce.table(
     unique("page_roles_store_page_key").on(t.storeId, t.pageId),
     // A store can only choose a page of its own.
     foreignKey({ name: "page_roles_page_fk", columns: [t.storeId, t.pageId], foreignColumns: [pages.storeId, pages.id] }).onDelete("cascade"),
-    check("page_roles_role", sql`${t.role} in ('blog', 'search', 'not_found', 'cart', 'checkout', 'order', 'account', 'sign_in', 'wishlist', 'subscription', 'deliveries', 'cookies', 'category', 'tag')`),
+    check("page_roles_role", sql`${t.role} in ('blog', 'search', 'not_found', 'cart', 'checkout', 'order', 'account', 'sign_in', 'wishlist', 'subscription', 'deliveries', 'cookies', 'category', 'tag', ${legalRoleList})`),
   ],
 );
 
@@ -6744,5 +6844,129 @@ export const productViews = commerce.table(
     primaryKey({ columns: [t.storeId, t.day, t.productId] }),
     productRef("product_views_product_fk", t),
     check("product_views_views", sql`${t.views} >= 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Legal pages, terms at checkout and accessibility (wave 1, 1e: docs/wave-1-trust.md)
+// ---------------------------------------------------------------------------
+
+/**
+ * The text of a store's terms, privacy statement and the like as a shopper was shown it when ordering: the localised
+ * published page (title and rows as `PageContent`) with its role, locale and a hash of a canonical form of the two. One
+ * row per `(store, role, locale, hash)`, so ten thousand orders under one unchanged page share a row and a changed page
+ * makes a new one. Never changed or deleted (the rules migration). `page_id` has no foreign key: the page may be
+ * deleted, the snapshot is the record. Never copied with a store.
+ */
+export const legalSnapshots = commerce.table(
+  "legal_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    role: text("role").notNull(),
+    locale: text("locale").notNull(),
+    pageId: uuid("page_id"),
+    title: text("title").notNull(),
+    content: jsonb("content").notNull(),
+    contentHash: text("content_hash").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("legal_snapshots_store_id_key").on(t.storeId, t.id),
+    unique("legal_snapshots_text_key").on(t.storeId, t.role, t.locale, t.contentHash),
+    index("legal_snapshots_store_idx").on(t.storeId),
+    check("legal_snapshots_role", sql`${t.role} in (${legalRoleList})`),
+    check("legal_snapshots_hash", sql`${t.contentHash} ~ '^[0-9a-f]{64}$'`),
+  ],
+);
+
+/**
+ * That a shopper pressed pay while a store's terms were shown (`link`) or ticked (`checkbox`), one row per order, with
+ * which snapshots they were shown: `[{ role, snapshotId, hash, title }]`. A side table, not columns on `orders`, so the
+ * money paths keep their own schema; read as `OrderView.terms`. Never changed or deleted; a copied order (`C-…`) never
+ * has one; never copied with a store.
+ */
+export const orderTerms = commerce.table(
+  "order_terms",
+  {
+    orderId: uuid("order_id").primaryKey(),
+    storeId: storeId().references(() => stores.id),
+    mode: text("mode").notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }).notNull().defaultNow(),
+    locale: text("locale").notNull(),
+    snapshots: jsonb("snapshots").notNull(),
+  },
+  (t) => [
+    orderRef("order_terms_order_fk", t),
+    index("order_terms_store_idx").on(t.storeId, t.acceptedAt),
+    check("order_terms_mode", sql`${t.mode} in ('link', 'checkbox')`),
+    check("order_terms_snapshots", sql`jsonb_typeof(${t.snapshots}) = 'array' and jsonb_array_length(${t.snapshots}) between 1 and 2`),
+  ],
+);
+
+/**
+ * What the owner says about the store's accessibility, the input of the statement generator (EAA, `src/lib/a11y-statement.ts`).
+ * `full` needs who assessed and on what date; the default is "has not been assessed". Never copied: an audit claim
+ * belongs to the site it was made for.
+ */
+export const accessibilitySettings = commerce.table(
+  "accessibility_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    status: text("status").notNull().default("not_assessed"),
+    assessedBy: text("assessed_by"),
+    assessedOn: date("assessed_on", { mode: "string" }),
+    reportUrl: text("report_url"),
+    assessmentNote: text("assessment_note"),
+    /** The owner's tick that the business is a microenterprise (EAA Art. 4(5)). */
+    microenterprise: boolean("microenterprise").notNull().default(false),
+    knownIssues: text("known_issues").notNull().default(""),
+    contactEmail: text("contact_email"),
+    preparedOn: date("prepared_on", { mode: "string" }),
+    reviewedOn: date("reviewed_on", { mode: "string" }),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("accessibility_settings_updated_by_idx").on(t.updatedBy),
+    check("accessibility_settings_status", sql`${t.status} in ('not_assessed', 'partial', 'full')`),
+    check(
+      "accessibility_settings_full",
+      sql`${t.status} <> 'full' or (nullif(btrim(${t.assessedBy}), '') is not null and ${t.assessedOn} is not null)`,
+    ),
+    check("accessibility_settings_known_issues", sql`length(${t.knownIssues}) <= 4000`),
+    check("accessibility_settings_note", sql`${t.assessmentNote} is null or length(${t.assessmentNote}) <= 2000`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Staff security (wave 1, 1f)
+// ---------------------------------------------------------------------------
+
+/**
+ * An account's recovery codes for the second step: ten to a set (`batch`), stored only as an HMAC of the normalised
+ * code (never the code), single use (`used_at` is set once, by one `update … where used_at is null returning`), a new
+ * set revokes the old (`revoked_at`). The rules migration lets an update only set those two columns once. Used and
+ * revoked rows are pruned after 12 months by the daily job. An account's, not a store's: no `store_id`.
+ */
+export const accountRecoveryCodes = commerce.table(
+  "account_recovery_codes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id),
+    batch: uuid("batch").notNull(),
+    codeHash: text("code_hash").notNull(),
+    createdAt: createdAt(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("account_recovery_codes_hash_key").on(t.accountId, t.codeHash),
+    index("account_recovery_codes_account_idx").on(t.accountId),
+    check("account_recovery_codes_hash", sql`${t.codeHash} ~ '^[0-9a-f]{64}$'`),
   ],
 );

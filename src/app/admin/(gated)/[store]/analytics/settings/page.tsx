@@ -24,10 +24,10 @@ export const metadata: Metadata = { title: "Analytics settings" };
  * sees how it is set up and is told who can change it. The page loads and the view draws.
  */
 export default async function AnalyticsSettingsPage({ params }: PageProps<"/admin/[store]/analytics/settings">) {
-  const ctx = await analyticsContext((await params).store, {});
-  const { store, role, settings, base, now } = ctx;
+  const ctx = await analyticsContext((await params).store, {}, "owner");
+  const { store, settings, base, now } = ctx;
   const [summary, targets] = await Promise.all([analyticsSetupSummary(store.id), listTargets(store.id, 60)]);
-  const owner = role === "owner";
+  const owner = ctx.owner;
   return (
     <div className="flex flex-col gap-6">
       <AnalyticsHeader

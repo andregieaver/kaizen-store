@@ -43,6 +43,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/chat", "Chat agent", "Kaizen's public site chat agent and its knowledge base."),
   item("/emails", "Emails", "Every email Kaizen and the stores sent, and email setup."),
   item("/languages", "Languages", "The languages stores can offer, and where each one's interface text stands."),
+  item("/activity", "Activity log", "What platform admins and the platform did: two-step sign-in events, approvals and settings, with who did it and when."),
 ];
 
 /** Addresses inside a section: its hub page and every page in its sidebar. */

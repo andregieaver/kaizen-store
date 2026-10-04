@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { COPIED_ORDER_MESSAGE } from "@/server/order-admin";
 import { getOrder } from "@/server/orders";
 import { porterbuddyBook } from "@/server/porterbuddy-shipping";
@@ -18,7 +18,8 @@ const bookInput = z.object({ notify: z.boolean(), parcel: z.unknown() });
  * customer when asked), a test one only says it worked.
  */
 export async function porterbuddyBookAction(storeSlug: string, orderId: string, raw: unknown): Promise<PorterbuddyBookState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "orders:write");
+  if (!member) return { ok: false, message: NO_ACCESS };
   if (!z.uuid().safeParse(orderId).success) return { ok: false, message: "This order no longer exists." };
   const order = await getOrder(member.store.id, orderId);
   if (!order) return { ok: false, message: "This order no longer exists." };

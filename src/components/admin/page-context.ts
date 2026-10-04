@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import type { GridData } from "@/lib/content-grid";
+import type { PageIssue, ThemeSet } from "@/lib/page-a11y";
 import type { FieldGroup, FieldLookups } from "@/lib/custom-fields";
 import type { SiteFonts } from "@/lib/fonts";
 import type { PageType } from "@/lib/page-content";
@@ -23,7 +24,10 @@ import type { StartFieldFile } from "./field-file-upload";
 import type { Upload } from "./image-upload";
 import type { StartVideo } from "./video-upload";
 
-export type PageSaveState = { status: "saved"; page: EditablePage } | { status: "error"; problems: string[] };
+export type PageSaveState =
+  | { status: "saved"; page: EditablePage }
+  /** `code: "needs_confirmation"` (wave 1, 1e): publishing was held for blocking problems the owner has not acknowledged; `issues` lists them. */
+  | { status: "error"; problems: string[]; code?: "needs_confirmation" | "pay_page_block"; issues?: PageIssue[] };
 
 /**
  * What the page editor and builder need from the pages' owner (D53):
@@ -82,12 +86,18 @@ export type PageOwnerContext = {
   theme: { css: string; attributes: Record<string, string> } | null;
   /** Templates shared between stores and the marketplace (D125); null on Kaizen's own pages. */
   templates: TemplateActions | null;
+  /**
+   * What the page checker needs to know (wave 1, 1e): the theme's colours, so text with no colour of its own is checked against its background,
+   * and the page chosen for the checkout, which may not hold what the payment policy would break. Kaizen's own pages have no theme.
+   */
+  check: { theme: ThemeSet[]; checkoutPageId: string | null } | null;
   /** For a version made for an A/B test (D148): the kind of page it is a version of, so the builder offers what that kind holds; null otherwise. */
   variantOf: PageType | null;
   /** Where a store's A/B tests are made (D148), for the builder's "A/B test this"; null for Kaizen's pages and for anything but a store's page. */
   experimentsHref: string | null;
   actions: {
-    save: (id: string | null, payload: string, publish: boolean) => Promise<PageSaveState>;
+    /** `acknowledged`: the checker's blocking problems the owner has seen and chose to publish with (issue ids), recorded in the audit log. */
+    save: (id: string | null, payload: string, publish: boolean, acknowledged?: string[]) => Promise<PageSaveState>;
     unpublish: (id: string) => Promise<PageSaveState>;
     remove: (id: string) => Promise<{ problems: string[] } | void>;
     /** Makes a draft copy (D126): from what the editor holds (its JSON), or from the saved draft when none is given. */

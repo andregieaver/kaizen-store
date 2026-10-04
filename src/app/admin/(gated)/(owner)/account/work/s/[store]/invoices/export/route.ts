@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 
 import { CSV_CONTENT_TYPE, csvFileName, invoiceListToCsv, withBom } from "@/lib/work-csv";
 import { invoiceListFilter, parseInvoiceListParams } from "@/lib/work-invoice-ui";
-import { audit, requireMember } from "@/server/auth";
+import { audit } from "@/server/auth";
 import { invoiceRegister } from "@/server/work-exports";
+import { requirePermission } from "@/server/permissions";
 
 /**
  * The invoice register as a spreadsheet file (docs/work.md 1.9, WP7b): the issued invoices the list is showing (same
@@ -13,7 +14,7 @@ import { invoiceRegister } from "@/server/work-exports";
  */
 export async function GET(request: Request, { params }: RouteContext<"/admin/account/work/s/[store]/invoices/export">) {
   const { store: slug } = await params;
-  const { store, account } = await requireMember(slug);
+  const { store, account } = await requirePermission(slug, "settings:read");
   if (!store.workOn) notFound();
   const query = parseInvoiceListParams(Object.fromEntries(new URL(request.url).searchParams));
   const rows = await invoiceRegister(store.id, invoiceListFilter(query, 100));

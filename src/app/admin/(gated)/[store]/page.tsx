@@ -4,9 +4,9 @@ import { Suspense } from "react";
 
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
-import { attentionFor, changeText, money, totalSales } from "@/lib/control-center";
+import { attentionFor, changeText, hidden, money, totalSales } from "@/lib/control-center";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
-import { requireMember } from "@/server/auth";
+import { memberCan, requireMemberAny } from "@/server/permissions";
 import { controlCenter } from "@/server/control-center";
 import { getSetupProgress } from "@/server/setup";
 import { platformModes } from "@/server/stripe";
@@ -14,9 +14,10 @@ import { platformModes } from "@/server/stripe";
 type Props = PageProps<"/admin/[store]">;
 
 export default async function AdminOverview({ params }: Props) {
-  const { account, store, role } = await requireMember((await params).store);
+  const current = await requireMemberAny((await params).store);
+  const { account, store } = current;
   // A new owner's first stop is the setup wizard.
-  if (!store.setupCompletedAt && role === "owner") redirect(`/admin/${store.slug}/setup`);
+  if (!store.setupCompletedAt && memberCan(current, "owner")) redirect(`/admin/${store.slug}/setup`);
 
   const [progress, center] = await Promise.all([getSetupProgress(store), controlCenter(account, store.slug)]);
   const figures = center.stores[0];
@@ -56,18 +57,18 @@ export default async function AdminOverview({ params }: Props) {
       {/* Setup has its own checklist below; what else needs someone is listed here. */}
       {store.setupCompletedAt && <Attention items={attention} empty="Nothing needs you right now. Every order is sent and stock is fine." />}
       {/* What Analytics found: its own reports are read after the page is shown, and a failure leaves it out. */}
-      {store.setupCompletedAt && (
+      {store.setupCompletedAt && memberCan(current, "analytics:read") && (
         <Suspense fallback={<HomeAnalyticsAlertsFallback />}>
           <HomeAnalyticsAlerts store={store} base={base} now={now} />
         </Suspense>
       )}
-      {store.setupCompletedAt && (
+      {store.setupCompletedAt && !(figures && hidden(figures, "sales") && hidden(figures, "stock")) && (
         <Section id="week-heading" title="The last 7 days">
           <StatGrid>
-            {sales.length === 0 ? <Stat label="Sales" value="–" sub="No sales yet" href={`${base}/orders`} /> : sales.slice(0, 2).map((f) => <Stat key={f.currency} label={`Sales (${f.currency})`} value={money(f.week, f.currency)} sub={changeText(f.week, f.prior)} href={`${base}/orders`} />)}
-            <Stat label="Orders" value={orders} sub={changeText(orders, priorOrders)} href={`${base}/orders`} />
-            <Stat label="Waiting to be sent" value={figures?.toSend ?? 0} href={`${base}/orders?show=to-send`} />
-            <Stat label="Products running low" value={figures?.lowStock ?? 0} sub={figures && figures.outOfStock > 0 ? `${figures.outOfStock} out of stock` : undefined} href={`${base}/products`} />
+            {figures && hidden(figures, "sales") ? null : sales.length === 0 ? <Stat label="Sales" value="–" sub="No sales yet" href={`${base}/orders`} /> : sales.slice(0, 2).map((f) => <Stat key={f.currency} label={`Sales (${f.currency})`} value={money(f.week, f.currency)} sub={changeText(f.week, f.prior)} href={`${base}/orders`} />)}
+            {!(figures && hidden(figures, "sales")) && <Stat label="Orders" value={orders} sub={changeText(orders, priorOrders)} href={`${base}/orders`} />}
+            {!(figures && hidden(figures, "sales")) && <Stat label="Waiting to be sent" value={figures?.toSend ?? 0} href={`${base}/orders?show=to-send`} />}
+            {!(figures && hidden(figures, "stock")) && <Stat label="Products running low" value={figures?.lowStock ?? 0} sub={figures && figures.outOfStock > 0 ? `${figures.outOfStock} out of stock` : undefined} href={`${base}/products`} />}
           </StatGrid>
         </Section>
       )}
@@ -103,7 +104,7 @@ export default async function AdminOverview({ params }: Props) {
                   <span className="sr-only">{step.done ? "Done: " : "To do: "}</span>
                   {step.label}
                 </span>
-                {!step.done && role === "owner" && (
+                {!step.done && memberCan(current, "owner") && (
                   <Link
                     href={`/admin/${store.slug}/${"href" in step ? step.href : `setup/${step.step}`}`}
                     className="underline"

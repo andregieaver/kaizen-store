@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { decimalAmount } from "@/lib/dac7";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { dac7Report } from "@/server/dac7";
 
 export const metadata: Metadata = { title: "Tax report (DAC7)" };
@@ -19,7 +19,8 @@ const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
  * before. Kaizen prepares it; the store checks it and files it.
  */
 export default async function Dac7Page({ params, searchParams }: PageProps<"/admin/[store]/hosts/dac7">) {
-  const { store, role } = await requireMember((await params).store);
+  const staffer = await requirePermission((await params).store, "bookings:read");
+  const { store } = staffer;
   const current = thisYear();
   const asked = Number((await searchParams).year);
   const year = Number.isInteger(asked) && asked >= current - 3 && asked <= current ? asked : current - 1;
@@ -131,7 +132,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
       )}
 
       {report.sellers.length > 0 &&
-        (role === "owner" ? (
+        (memberCan(staffer, "owner") ? (
           <section aria-labelledby="download-heading" className="flex flex-col gap-2 text-sm">
             <h2 id="download-heading" className="font-medium">
               Download

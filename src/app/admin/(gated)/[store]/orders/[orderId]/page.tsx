@@ -24,6 +24,7 @@ import { formatWindow } from "@/lib/porterbuddy";
 import type { CarrierId } from "@/lib/shipping-carriers";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { OrderReturnsCard } from "@/components/admin/returns/order-returns-card";
+import { OrderTermsCard } from "@/components/admin/order-terms-card";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { bookingWhen } from "@/lib/booking-text";
 import { percentText } from "@/lib/customer-tiers";
@@ -34,7 +35,7 @@ import { isReturnEvent, eventSentence } from "@/lib/return-admin";
 import { marketPath, storeHref } from "@/lib/paths";
 import { formatDeliveryDate } from "@/lib/standing-orders";
 import { orderAttribution } from "@/server/affiliates";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { estimateWeightGrams } from "@/server/bring-shipping";
 import { carrierTracking, trackedCarrier } from "@/server/carrier-tracking";
 import { customerSummary } from "@/server/customer-admin";
@@ -80,7 +81,7 @@ const card = "rounded-lg border border-border bg-background p-5";
  */
 export default async function OrderPage({ params }: PageProps<"/admin/[store]/orders/[orderId]">) {
   const { store: slug, orderId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "orders:read");
   if (!z.uuid().safeParse(orderId).success) notFound();
   const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns] = await Promise.all([
     getOrderAdmin(store.id, orderId),
@@ -469,6 +470,11 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               ))}
             </ol>
           </section>
+
+          {/* What the shopper was shown about the terms when they ordered (wave 1, 1e): the record, and each text as it was. */}
+          <Suspense fallback={null}>
+            <OrderTermsCard store={store} orderId={orderId} zone="Europe/Oslo" />
+          </Suspense>
 
           <StaffFieldsSection store={store} entity="order" id={orderId} save={saveOrderFieldsAction.bind(null, store.slug, orderId)} />
         </div>

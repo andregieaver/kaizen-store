@@ -5,9 +5,9 @@ import { ReportPrintView } from "@/components/admin/work/report-print";
 import { WorkOff } from "@/components/admin/work/work-off";
 import { todayIn } from "@/lib/work-dates";
 import { parseReportParams, reportFileName, reportQuery } from "@/lib/work-reports";
-import { requireMember } from "@/server/auth";
 import { getPeriodReport } from "@/server/work-reports";
 import { workBase } from "@/lib/work-paths";
+import { requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Print report", robots: { index: false, follow: false } };
 
@@ -21,7 +21,7 @@ export default async function ReportPrintPage({
   params,
   searchParams,
 }: PageProps<"/admin/account/work/s/[store]/reports/print">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   if (!store.workOn) {
     return (
       <div className="p-8">

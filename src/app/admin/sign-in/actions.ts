@@ -8,6 +8,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { siteUrl } from "@/lib/site";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/password";
+import { afterFirstStep } from "@/lib/sign-in-redirect";
 import { canSignIn, signInAccount } from "@/server/auth";
 import { KAIZEN_LIFE_PROVIDER, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { admit } from "@/server/sign-in";
@@ -77,7 +78,8 @@ async function signInWithPassword(formData: FormData): Promise<FormState> {
   if ((await admit(supabase, data.user)) !== "admitted") {
     return { status: "error", messages: ["That account does not have access yet."] };
   }
-  redirect(safeNext(String(formData.get("next") ?? "")));
+  // A person with a second step goes to it first; the gate holds them there whichever way they arrive.
+  redirect(afterFirstStep(data.user, String(formData.get("next") ?? "")));
 }
 
 /**

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { formatMoney } from "@/lib/money";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { listOrders } from "@/server/orders";
 
@@ -13,7 +13,7 @@ type Props = PageProps<"/admin/[store]/orders">;
 
 
 export default async function OrdersPage({ params, searchParams }: Props) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "orders:read");
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Orders</h1>
@@ -25,7 +25,7 @@ export default async function OrdersPage({ params, searchParams }: Props) {
 }
 
 async function OrderList({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "orders:read");
   const show = (await searchParams).show;
   const unpaid = show === "unpaid";
   const toSend = show === "to-send";

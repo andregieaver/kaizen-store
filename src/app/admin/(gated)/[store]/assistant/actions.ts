@@ -1,10 +1,10 @@
 "use server";
 
-import { notFound } from "next/navigation";
 import { updateTag } from "next/cache";
 import { after } from "next/server";
 
-import { requireMember, type Membership } from "@/server/auth";
+import { type Membership } from "@/server/auth";
+import { requireOwnerRole } from "@/server/permissions";
 import {
   assistantAbilities,
   decideApproval,
@@ -20,9 +20,7 @@ import { readRecording, unreadable } from "@/server/page-studio-input";
 
 /** The store's AI manager's actions (D94, D103): for the store's owners only. */
 async function requireOwner(storeSlug: string): Promise<Membership> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") notFound();
-  return member;
+  return requireOwnerRole(storeSlug);
 }
 
 /** What the panel needs when it first opens. */

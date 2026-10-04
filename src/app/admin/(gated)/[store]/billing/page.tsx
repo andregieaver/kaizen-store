@@ -6,7 +6,7 @@ import { PlanFeatureTable } from "@/components/plan-feature-table";
 import { formatMoney } from "@/lib/money";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { mainCurrency } from "@/lib/markets";
-import { requireMember } from "@/server/auth";
+import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { getFeatureMatrix } from "@/server/plan-features";
 import { planRemindersOn, planRemindersOptedOut } from "@/server/plan-reminders";
 import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan, type StoreBilling } from "@/server/billing";
@@ -24,13 +24,14 @@ export const metadata: Metadata = { title: "Billing" };
 
 /** The store's plan with Kaizen: choose or change it, its fee per sale, and Kaizen's invoices. */
 export default async function BillingPage({ params, searchParams }: PageProps<"/admin/[store]/billing">) {
-  const { store, role, account } = await requireMember((await params).store);
+  const staffer = await requireOwnerRole((await params).store);
+  const { store, account } = staffer;
   const { checkout } = await searchParams;
   // Back from Stripe Checkout: record the new plan now rather than waiting for the webhook.
   if (typeof checkout === "string") await completePlanCheckout(store.id, checkout);
 
   const [billing, plans, matrix] = await Promise.all([getStoreBilling(store.id), listPlans(), getFeatureMatrix()]);
-  const isOwner = role === "owner";
+  const isOwner = memberCan(staffer, "owner");
   const [reminders, optedOut] = await Promise.all([planRemindersOn(), planRemindersOptedOut(account.id)]);
   const mode = billingMode();
   const onPlan = isOnPlan(billing?.status) && billing?.mode === mode;

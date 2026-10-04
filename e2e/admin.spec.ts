@@ -56,6 +56,12 @@ test("admin pages are not reachable without a session", async ({ page }) => {
     "/admin/platform/languages",
     "/admin/platform/languages/de",
     "/admin/demo/staff",
+    // Wave 1 (1e, 1f): the team's roles, the activity logs, the legal pages and the accessibility page.
+    "/admin/demo/staff/roles",
+    "/admin/demo/activity",
+    "/admin/demo/settings/legal",
+    "/admin/demo/settings/accessibility",
+    "/admin/platform/activity",
     "/admin/demo/website",
     "/admin/demo/settings",
     "/admin/demo/campaigns",

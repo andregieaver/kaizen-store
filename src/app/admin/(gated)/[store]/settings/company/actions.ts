@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { storeDetailsInput } from "@/lib/store-details";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkOwnerRole, checkPermission } from "@/server/permissions";
 import { audienceInput, saveStoreAudience } from "@/server/b2b";
 import { catalogTag } from "@/server/catalog";
 import { deleteLocation, saveLocation } from "@/server/company";
@@ -18,8 +18,8 @@ const problems = (messages: string[]): FormState => ({ status: "error", messages
 
 /** The business that sells (D40): the owner's to change, as in setup. */
 export async function saveBusinessAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return problems(["Only an owner can change the business details."]);
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return problems(["Only an owner can change the business details."]);
   const parsed = storeDetailsInput.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return problems([...new Set(parsed.error.issues.map((issue) => issue.message))]);
   await saveStoreDetails(member, parsed.data);
@@ -31,8 +31,8 @@ export async function saveBusinessAction(storeSlug: string, _state: FormState, f
 
 /** Who the store sells to (B2B): how prices show on every page, so the catalogue is drawn again. */
 export async function saveAudienceAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return problems(["Only an owner can change who the store sells to."]);
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return problems(["Only an owner can change who the store sells to."]);
   const parsed = audienceInput.safeParse({
     audience: formData.get("audience"),
     businessPopup: formData.get("businessPopup") === "on",
@@ -46,7 +46,8 @@ export async function saveAudienceAction(storeSlug: string, _state: FormState, f
 
 /** The office's address and hours. */
 export async function saveOfficeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const result = await saveLocation(member, null, { ...Object.fromEntries(formData), kind: "office" });
   return result.ok ? { status: "ok", messages: ["Office saved."] } : problems(result.problems);
 }
@@ -58,7 +59,8 @@ export async function savePlaceAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (placeId && !z.uuid().safeParse(placeId).success) return problems(["That place no longer exists."]);
   const result = await saveLocation(member, placeId, Object.fromEntries(formData));
   if (!result.ok) return problems(result.problems);
@@ -67,7 +69,8 @@ export async function savePlaceAction(
 }
 
 export async function deletePlaceAction(storeSlug: string, placeId: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(placeId).success || !(await deleteLocation(member, placeId))) {
     return { ok: false, problems: ["That place no longer exists."] };
   }

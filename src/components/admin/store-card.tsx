@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { changeText, money, type StoreFigures } from "@/lib/control-center";
+import { changeText, hidden, money, type StoreFigures } from "@/lib/control-center";
 import { storeBase, storeHref } from "@/lib/paths";
 
 const PAYMENTS = { off: "Payments off", test: "Test payments", live: "Live payments", setup: "Payments need setup" } as const;
@@ -32,6 +32,10 @@ export function StoreCard({ store }: { store: StoreFigures }) {
   const base = `/admin/${store.slug}`;
   const sales = store.sales[0];
   const orders = store.sales.reduce((sum, f) => sum + f.orders, 0);
+  // What this member's role does not open is left out, never drawn as a zero.
+  const noSales = hidden(store, "sales");
+  const noStock = hidden(store, "stock");
+  const noPlan = hidden(store, "plan");
   return (
     <article aria-labelledby={`store-${store.slug}`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -43,10 +47,12 @@ export function StoreCard({ store }: { store: StoreFigures }) {
         {store.role === "admin" && <span className={chip}>Staff</span>}
         {store.suspended && <span className={warn}>Suspended</span>}
         {!store.open && <span className={warn}>Not open yet</span>}
-        <span className={`${chip} ml-auto`}>{store.plan ? `${store.plan.name}${["past_due", "unpaid"].includes(store.plan.status) ? " · overdue" : ""}` : "No plan"}</span>
-        <span className={store.payments === "setup" ? warn : chip}>{PAYMENTS[store.payments]}</span>
+        {!noPlan && <span className={`${chip} ml-auto`}>{store.plan ? `${store.plan.name}${["past_due", "unpaid"].includes(store.plan.status) ? " · overdue" : ""}` : "No plan"}</span>}
+        <span className={`${store.payments === "setup" ? warn : chip}${noPlan ? " ml-auto" : ""}`}>{PAYMENTS[store.payments]}</span>
       </div>
+      {noSales && noStock ? null : (
       <div className="grid grid-cols-2 gap-1 sm:grid-cols-[minmax(0,1.7fr)_repeat(3,minmax(0,1fr))]">
+        {!noSales && (<>
         <Figure
           label="Sales, 7 days"
           value={sales ? money(sales.week, sales.currency) : "–"}
@@ -55,8 +61,10 @@ export function StoreCard({ store }: { store: StoreFigures }) {
         />
         <Figure label="Orders, 7 days" value={String(orders)} href={`${base}/orders`} />
         <Figure label="To send" value={String(store.toSend)} href={`${base}/orders?show=to-send`} />
-        <Figure label="Running low" value={String(store.lowStock)} sub={store.outOfStock > 0 ? `${store.outOfStock} out of stock` : null} href={`${base}/products`} />
+        </>)}
+        {!noStock && <Figure label="Running low" value={String(store.lowStock)} sub={store.outOfStock > 0 ? `${store.outOfStock} out of stock` : null} href={`${base}/products`} />}
       </div>
+      )}
       <nav aria-label={`${store.name} shortcuts`} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3 text-sm">
         <Link href={base} className="font-medium underline">
           Open admin

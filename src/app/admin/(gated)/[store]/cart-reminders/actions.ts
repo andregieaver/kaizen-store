@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { ReminderStepInput } from "@/lib/cart-reminders";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import {
   deleteCartReminderStep,
   saveCartReminderStep,
@@ -16,7 +16,7 @@ import type { SaveResult } from "@/server/settings";
 
 /** Turns the store's cart reminders on (with three to start from) or off (D33). */
 export async function setCartRemindersAction(storeSlug: string, enabled: boolean): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "marketing:write");
   await setCartRemindersEnabled(member, enabled);
   refresh();
 }
@@ -27,7 +27,8 @@ export async function saveReminderStepAction(
   id: string | null,
   input: ReminderStepInput,
 ): Promise<SaveResult & { id?: string }> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (id !== null && !z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown reminder."] };
   const result = await saveCartReminderStep(member, id, input);
   if (result.ok) refresh();
@@ -35,7 +36,8 @@ export async function saveReminderStepAction(
 }
 
 export async function deleteReminderStepAction(storeSlug: string, id: string): Promise<SaveResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown reminder."] };
   await deleteCartReminderStep(member, id);
   redirect(`/admin/${member.store.slug}/cart-reminders`);
@@ -47,7 +49,8 @@ export async function sendTestReminderAction(
   id: string,
   locale: string,
 ): Promise<{ ok: boolean; message: string }> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { ok: false, message: NO_ACCESS };
   if (!z.uuid().safeParse(id).success) return { ok: false, message: "Save the reminder first." };
   const outcome = await sendTestReminder(member, id, locale);
   if (outcome === "sent") return { ok: true, message: `Sent to ${member.account.email}.` };

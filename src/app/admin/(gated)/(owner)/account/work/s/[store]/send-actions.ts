@@ -5,7 +5,8 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { MESSAGE_MAX } from "@/lib/work-email";
-import { requireMember, type Membership } from "@/server/auth";
+import type { Membership } from "@/server/auth";
+import { checkPermission } from "@/server/permissions";
 import { problem, zodProblems, type WorkResult } from "@/server/work-errors";
 import { hostedInvoiceUrl, sendCreditNoteEmail, sendInvoiceEmail, sendPaymentReminderEmail } from "@/server/work-emails";
 
@@ -13,17 +14,17 @@ import { sendReason } from "@/lib/work-send-ui";
 
 /**
  * Work's actions for sending documents (docs/work.md 4.7, WP7b): an invoice, a payment reminder and a credit note
- * by email, and the hosted link to copy. Each is bound to the store's slug, asks `requireMember()` itself and
+ * by email, and the hosted link to copy. Each is bound to the store's slug, asks `checkPermission()` itself and
  * checks that Work is on; owners and admins may send. What is sent, to whom and when is decided by
  * `src/server/work-emails.ts` (issued invoices only, the store's own, kept in the email log): a browser only names
  * the document, an address and a note, checked again here. They answer `{ ok: true, … }` or `{ ok: false, problems }`.
  */
 
-const OFF = "Work is switched off for this store.";
+const OFF = "Work is switched off for this store, or your role has no access to it.";
 
 async function workMember(storeSlug: string): Promise<Membership | null> {
-  const member = await requireMember(storeSlug);
-  return member.store.workOn ? member : null;
+  const member = await checkPermission(storeSlug, "settings:write");
+  return member?.store.workOn ? member : null;
 }
 
 const optionalEmail = z

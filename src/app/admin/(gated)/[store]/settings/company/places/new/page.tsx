@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { KIND_LABELS } from "@/server/company";
 import { listCountries } from "@/server/stores";
 
@@ -17,7 +17,7 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 
 /** A new store or pickup point (D40). */
 export default async function NewPlacePage({ params, searchParams }: PageProps<"/admin/[store]/settings/company/places/new">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   const kind = (await searchParams).kind === "pickup" ? "pickup" : "shop";
   const countries = await listCountries();
   const what = kind === "shop" ? "store" : "pickup point";

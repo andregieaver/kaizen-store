@@ -17,7 +17,11 @@ vi.mock("@/server/orders", () => ({ getOrder: (...a: unknown[]) => getOrder(...a
 vi.mock("@/server/cart-reminders", () => ({ cartRemindersOn: async () => false, checkoutOptedOut: async () => false }));
 vi.mock("@/server/customers", () => ({ getCustomer: async () => null }));
 vi.mock("@/server/discounts", () => ({ getCartCode: async () => null }));
-vi.mock("@/server/stripe", () => ({ platformPublishableKey: () => null }));
+const stripeNow = vi.hoisted(() => ({ key: null as string | null }));
+vi.mock("@/server/stripe", () => ({ platformPublishableKey: () => stripeNow.key }));
+// The terms the store shows at checkout (wave 1, 1e): replaced by what the store has chosen.
+const termsNow = vi.hoisted(() => ({ display: null as null | Record<string, unknown> }));
+vi.mock("@/server/checkout-terms", () => ({ termsDisplayFor: async () => termsNow.display }));
 vi.mock("@/components/checkout-button", () => ({ CheckoutButton: () => null }));
 vi.mock("@/components/checkout-code-form", () => ({ CheckoutCodeForm: () => null }));
 vi.mock("@/components/checkout-form", () => ({ CheckoutForm: () => null }));
@@ -30,7 +34,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutTotals } from "./checkout-section";
+import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutTerms, CheckoutTotals } from "./checkout-section";
 
 let bonusNow: CartBonus | null = null;
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
@@ -211,5 +215,40 @@ describe("the checkout's delivery piece (D135)", () => {
     const markup = renderToString(await CheckoutTotals({ store, market }));
     expect(markup).toContain("Pakke til hentested");
     expect(markup).toContain("Kiwi, Storgata 9, 0155 Oslo");
+  });
+});
+
+describe("the checkout's terms piece (wave 1, 1e)", () => {
+  const pages = [
+    { role: "terms", title: "Terms of sale", href: "/s/demo/ie/terms-of-sale" },
+    { role: "privacy", title: "Privacy statement", href: "/s/demo/ie/privacy" },
+  ];
+
+  beforeEach(() => {
+    stripeNow.key = "pk_test_1";
+    termsNow.display = { mode: "link", kind: "both", pages };
+  });
+
+  it("draws the sentence with the store's two pages as links", async () => {
+    const markup = renderToString(await CheckoutTerms({ store, market }));
+    expect(words(markup)).toContain("By ordering you accept Terms of sale (opens in a new tab) and confirm that you have read Privacy statement (opens in a new tab) .");
+    expect(markup).toContain('href="/s/demo/ie/terms-of-sale"');
+    expect(markup).toContain('href="/s/demo/ie/privacy"');
+    expect(markup).not.toContain('type="checkbox"');
+  });
+
+  it("draws a tick box in checkbox mode", async () => {
+    termsNow.display = { mode: "checkbox", kind: "both", pages };
+    const markup = renderToString(await CheckoutTerms({ store, market }));
+    expect(markup).toContain('type="checkbox"');
+    expect(words(markup)).toContain("I accept Terms of sale");
+  });
+
+  it("draws nothing when the store shows no terms, or the checkout starts over", async () => {
+    termsNow.display = null;
+    expect(renderToString(await CheckoutTerms({ store, market }))).toBe("");
+    termsNow.display = { mode: "link", kind: "both", pages };
+    stripeNow.key = null;
+    expect(renderToString(await CheckoutTerms({ store, market }))).toBe("");
   });
 });

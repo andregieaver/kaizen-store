@@ -4,7 +4,7 @@ import Link from "next/link";
 import { occupiedDates } from "@/lib/booking-ranges";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { exportDates } from "@/lib/calendar-sync";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
 import { blocksBetween } from "@/server/calendar-sync";
 
@@ -25,7 +25,7 @@ const todayIn = (timeZone: string) => zonedDate(Date.now(), timeZone);
  * be cancelled.
  */
 export default async function StaysPage({ params, searchParams }: PageProps<"/admin/[store]/bookings/stays">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "bookings:read");
   const query = await searchParams;
   const tz = store.timeZone;
   const today = todayIn(tz);

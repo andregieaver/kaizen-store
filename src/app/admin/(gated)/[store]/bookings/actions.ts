@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import { cancelBooking, removeResource, saveResource, type ResourceKind } from "@/server/bookings";
 import { addBlock, addFeed, removeBlock, removeFeed, resetCalendarToken, syncFeed } from "@/server/calendar-sync";
 import { markNoShow } from "@/server/no-show";
@@ -18,7 +18,8 @@ export async function saveStaffAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "bookings:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (staffId && !z.uuid().safeParse(staffId).success) return { status: "error", messages: ["They are no longer in the store."] };
   const result = await saveResource(member, staffId, {
     name: formData.get("name"),
@@ -33,7 +34,8 @@ export async function saveStaffAction(
 }
 
 export async function removeStaffAction(storeSlug: string, staffId: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "bookings:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(staffId).success || !(await removeResource(member, staffId))) {
     return { ok: false, problems: ["They are no longer in the store."] };
   }
@@ -48,7 +50,8 @@ export async function saveUnitAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "bookings:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const gone = "It is no longer in the store.";
   if (unitId && !z.uuid().safeParse(unitId).success) return { status: "error", messages: [gone] };
   const result = await saveResource(
@@ -70,7 +73,8 @@ export async function saveUnitAction(
 }
 
 export async function removeUnitAction(storeSlug: string, unitId: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "bookings:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(unitId).success || !(await removeResource(member, unitId))) {
     return { ok: false, problems: ["It is no longer in the store."] };
   }
@@ -83,7 +87,7 @@ export async function removeUnitAction(storeSlug: string, unitId: string): Promi
  * the order.
  */
 export async function cancelBookingAction(storeSlug: string, bookingId: string, formData: FormData): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "bookings:write");
   if (!z.uuid().safeParse(bookingId).success) return;
   if (!(await cancelBooking(member, bookingId))) return;
   if (formData.get("notify") === "on") await sendBookingCancelled(member.store.id, bookingId);
@@ -99,7 +103,7 @@ export async function noShowAction(
   _previous: NoShowState,
   formData: FormData,
 ): Promise<NoShowState> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "bookings:write");
   if (!z.uuid().safeParse(bookingId).success) return { ok: false, message: "This booking no longer exists." };
   const result = await markNoShow(member, bookingId, formData.get("charge") === "on");
   if (!result.ok) return { ok: false, message: result.problem };
@@ -115,7 +119,8 @@ const id = z.uuid();
 
 /** Closes a room, item or member of staff for some dates, saying if bookings are already there. */
 export async function addBlockAction(storeSlug: string, resourceId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "bookings:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!id.safeParse(resourceId).success) return { status: "error", messages: ["It is no longer in the store."] };
   const result = await addBlock(member, resourceId, {
     from: formData.get("from"),
@@ -135,21 +140,22 @@ export async function addBlockAction(storeSlug: string, resourceId: string, _sta
 }
 
 export async function removeBlockAction(storeSlug: string, blockId: string): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "bookings:write");
   if (id.safeParse(blockId).success) await removeBlock(member, blockId);
   refresh();
 }
 
 /** Makes (or replaces) the secret address other sites read the resource's calendar from. */
 export async function resetCalendarAction(storeSlug: string, resourceId: string): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "bookings:write");
   if (id.safeParse(resourceId).success) await resetCalendarToken(member, resourceId);
   refresh();
 }
 
 /** Adds a calendar from another site and reads it at once. */
 export async function addFeedAction(storeSlug: string, resourceId: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "bookings:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!id.safeParse(resourceId).success) return { status: "error", messages: ["It is no longer in the store."] };
   const result = await addFeed(member, resourceId, { name: formData.get("name"), url: formData.get("url") });
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -160,13 +166,13 @@ export async function addFeedAction(storeSlug: string, resourceId: string, _stat
 }
 
 export async function syncFeedAction(storeSlug: string, feedId: string): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "bookings:write");
   if (id.safeParse(feedId).success) await syncFeed(member.store.id, feedId);
   refresh();
 }
 
 export async function removeFeedAction(storeSlug: string, feedId: string): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "bookings:write");
   if (id.safeParse(feedId).success) await removeFeed(member, feedId);
   refresh();
 }

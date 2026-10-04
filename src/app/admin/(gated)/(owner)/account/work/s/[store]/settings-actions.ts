@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import { requireMember } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { saveWorkSettings, setWorkSeries } from "@/server/work-settings";
 import { seriesFromForm, settingsFromForm } from "@/lib/work-settings";
 
@@ -15,8 +15,8 @@ export async function saveWorkSettingsAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return problems(["Only an owner can change Work's settings."]);
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return problems(["Only an owner can change Work's settings."]);
   if (!member.store.workOn) return problems(["Work is off. Switch it on in Work settings first."]);
   const saved = await saveWorkSettings(member, settingsFromForm(formData));
   if (!saved.ok) return problems(saved.problems);
@@ -31,8 +31,8 @@ export async function saveWorkSeriesAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return problems(["Only an owner can change the numbering."]);
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return problems(["Only an owner can change the numbering."]);
   if (!member.store.workOn) return problems(["Work is off. Switch it on in Work settings first."]);
   const saved = await setWorkSeries(member, seriesFromForm(series, formData));
   if (!saved.ok) return problems(saved.problems);

@@ -3,14 +3,11 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkOwnerRole, checkPermission } from "@/server/permissions";
 import { addStoreDomain, checkStoreDomain, removeStoreDomain, setPrimaryDomain } from "@/server/domains";
 
 /** A store's own domains (P8) are the owner's: they decide where the store lives. */
-async function asOwner(storeSlug: string) {
-  const member = await requireMember(storeSlug);
-  return member.role === "owner" ? member : null;
-}
+const asOwner = (storeSlug: string) => checkOwnerRole(storeSlug);
 
 const notOwner: FormState = { status: "error", messages: ["Only an owner can change the store's domains."] };
 const done = (messages: string[]): FormState => {
@@ -28,7 +25,8 @@ export async function addDomainAction(storeSlug: string, _state: FormState, form
 
 /** Anyone on the staff may ask for a check: it changes nothing the DNS does not already say. */
 export async function checkDomainAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const result = await checkStoreDomain(member.store.id, String(form.get("id") ?? ""));
   if (!result.ok) return { status: "error", messages: result.problems };
   return done([

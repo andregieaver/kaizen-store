@@ -6,7 +6,6 @@ import { DraftEditor } from "@/components/admin/work/invoice-draft-editor";
 import { InvoiceStatusChip } from "@/components/admin/work/invoice-status";
 import { IssuedInvoiceView } from "@/components/admin/work/invoice-issued";
 import { WorkOff } from "@/components/admin/work/work-off";
-import { requireMember } from "@/server/auth";
 import { getAssignment, getClient } from "@/server/work";
 import {
   countryCurrency,
@@ -17,6 +16,7 @@ import {
 } from "@/server/work-invoice-screens";
 import { getWorkInvoiceDetail, nextInvoiceNumberPreview } from "@/server/work-invoices";
 import { workBase } from "@/lib/work-paths";
+import { memberCan, requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Invoice" };
 
@@ -27,7 +27,8 @@ export const metadata: Metadata = { title: "Invoice" };
  */
 export default async function WorkInvoicePage({ params }: PageProps<"/admin/account/work/s/[store]/invoices/[invoiceId]">) {
   const { store: slug, invoiceId } = await params;
-  const { store, role } = await requireMember(slug);
+  const viewer = await requirePermission(slug, "settings:read");
+  const { store } = viewer;
   if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Invoice" />;
   // The overview's "Invoice time" leads to `/invoices/new`: the list, with the New invoice dialog open.
   if (invoiceId === "new") redirect(`${workBase(store.slug)}/invoices?new=1`);
@@ -71,7 +72,7 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
           locale={locale}
           timeZone={store.timeZone}
           detail={detail}
-          isOwner={role === "owner"}
+          isOwner={memberCan(viewer, "owner")}
           homeCurrency={homeCurrency}
         />
       </div>

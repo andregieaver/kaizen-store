@@ -5,7 +5,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { describeDiscount, discountStatus } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listDiscounts } from "@/server/discounts";
 
 import { deleteDiscountAction } from "./actions";
@@ -22,7 +22,7 @@ const STATUS = {
 
 /** The store's discount codes (D31), newest first, with how often each was used. */
 export default async function DiscountsPage({ params }: PageProps<"/admin/[store]/discounts">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "marketing:read");
   const discounts = await listDiscounts(store.id);
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const currencyOf = (marketCode: string) => store.markets.find((m) => m.code === marketCode)?.currency ?? mainCurrency(store);

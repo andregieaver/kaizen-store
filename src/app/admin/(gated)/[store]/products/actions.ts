@@ -9,7 +9,8 @@ import type { FieldData } from "@/lib/custom-fields";
 import { productInput, type ProductInput } from "@/lib/product-input";
 import { canWrite, writeRequest, type WrittenText } from "@/lib/product-writing";
 import { AiError, aiFor } from "@/server/ai";
-import { requireMember, type Membership } from "@/server/auth";
+import { type Membership } from "@/server/auth";
+import { NO_ACCESS, checkAnyPermission, checkPermission, requirePermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { fieldsTag, getFieldData, getVariantFieldData } from "@/server/custom-fields";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
@@ -62,7 +63,8 @@ export async function saveProductAction(
   productId: string | null,
   payload: string,
 ): Promise<SaveState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { status: "error", problems: [NO_ACCESS] };
   if (productId !== null && !z.uuid().safeParse(productId).success) {
     return { status: "error", problems: ["Unknown product."] };
   }
@@ -79,7 +81,7 @@ export async function saveProductAction(
   const context = await getEditorContext(member.store);
   // Custom fields (D118) come along in the same JSON; the server checks them against the store's own groups.
   const sent = typeof json === "object" && json !== null ? (json as { fields?: unknown; variantFields?: unknown }) : {};
-  const result = await saveProduct(member.store, context, productId, parsed.data, sent.fields, sent.variantFields);
+  const result = await saveProduct(member.store, context, productId, parsed.data, sent.fields, sent.variantFields, member.account);
   if (!result.ok) return { status: "error", problems: result.problems };
   refreshCatalogue(member);
   // Search by meaning finds the product as saved, without waiting for the cron (D74).
@@ -102,15 +104,17 @@ export async function saveProductAction(
 
 /** Receives a picture already shrunk by the browser, plus its thumbnail. */
 export async function uploadImageAction(storeSlug: string, formData: FormData): Promise<UploadResult> {
-  const { account, store } = await requireMember(storeSlug);
+  // The page builder uploads its pictures here too, so the website's members may as well (and only these two areas' members).
+  const member = await checkAnyPermission(storeSlug, ["products:write", "website:write"]);
+  if (!member) return { ok: false, problem: NO_ACCESS };
   // Kept in the store's media library too (D88).
-  return uploadToLibrary({ storeId: store.id, accountId: account.id }, formData);
+  return uploadToLibrary({ storeId: member.store.id, accountId: member.account.id }, formData);
 }
 
 export async function archiveProductAction(storeSlug: string, productId: string, archive: boolean) {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "products:write");
   if (!z.uuid().safeParse(productId).success) return;
-  await setArchived(member.store, productId, archive);
+  await setArchived(member.store, productId, archive, member.account);
   refreshCatalogue(member);
   redirect(`/admin/${storeSlug}/products${archive ? "" : `/${productId}`}`);
 }
@@ -120,7 +124,9 @@ const videoFile = z.object({ name: z.string().max(255).optional(), type: z.strin
 
 /** Starts an upload of a row's background video straight from the browser to the public bucket. */
 export async function startVideoUploadAction(storeSlug: string, file: unknown): Promise<VideoUpload> {
-  const { account, store } = await requireMember(storeSlug);
+  const member = await checkAnyPermission(storeSlug, ["products:write", "website:write"]);
+  if (!member) return { ok: false, problem: NO_ACCESS };
+  const { account, store } = member;
   const parsed = videoFile.safeParse(file);
   if (!parsed.success) return { ok: false, problem: "Choose a video to upload." };
   const started = await startVideoUpload(store.id, parsed.data);
@@ -131,7 +137,8 @@ export async function startVideoUploadAction(storeSlug: string, file: unknown): 
 
 /** Starts an upload of a download file straight from the browser to the private bucket (D24). */
 export async function startFileUploadAction(storeSlug: string, fileName: string): Promise<FileUpload> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problem: NO_ACCESS };
   const name = z.string().trim().min(1).max(200).safeParse(fileName);
   if (!name.success) return { ok: false, problem: "The file needs a name." };
   return startFileUpload(member.store.id, name.data);
@@ -152,18 +159,21 @@ function termsChanged(member: Membership, result: TermsResult): TermsResult {
 }
 
 export async function createProductTermAction(storeSlug: string, input: unknown): Promise<TermsResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   return termsChanged(member, await createTerm(member.account, productTerms(member), input));
 }
 
 export async function updateProductTermAction(storeSlug: string, id: string, input: unknown): Promise<TermsResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown category or tag."] };
   return termsChanged(member, await updateTerm(member.account, productTerms(member), id, input));
 }
 
 export async function deleteProductTermAction(storeSlug: string, id: string): Promise<TermsResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown category or tag."] };
   return termsChanged(member, await deleteTerm(member.account, productTerms(member), id));
 }
@@ -175,7 +185,8 @@ export type SuggestResult = { ok: true; written: WrittenText; model: string } | 
  * editor. Staff edit it and copy it in; it is saved only with the product.
  */
 export async function suggestTextAction(storeSlug: string, productId: string | null, request: unknown): Promise<SuggestResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "products:write");
+  if (!member) return { ok: false, problem: NO_ACCESS };
   if (productId !== null && !z.uuid().safeParse(productId).success) return { ok: false, problem: "Unknown product." };
   const parsed = writeRequest.safeParse(request);
   if (!parsed.success) return { ok: false, problem: "The texts could not be read. Reload the page and try again." };

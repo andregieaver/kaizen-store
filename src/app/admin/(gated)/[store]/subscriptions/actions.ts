@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { readContentsForm } from "@/lib/subscription-form";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { sendSubscriptionChanged } from "@/server/shopper-emails";
 import {
   changeSubscription,
@@ -28,7 +28,7 @@ export async function changeSubscriptionAction(
   change: SubscriptionChange,
   periods = 1,
 ): Promise<StaffSubscriptionState> {
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "orders:write");
   const parsed = staffChange.safeParse(change);
   if (!parsed.success || !z.uuid().safeParse(subscriptionId).success) return { failed: true, problem: "invalid" };
   const result = await changeSubscription(store.id, subscriptionId, parsed.data, { periods, actor: "staff" });
@@ -44,7 +44,7 @@ export async function changeContentsAction(
   _state: StaffSubscriptionState,
   form: FormData,
 ): Promise<StaffSubscriptionState> {
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "orders:write");
   const parsed = readContentsForm(form);
   if (!parsed.success || !z.uuid().safeParse(subscriptionId).success) return { failed: true, problem: "invalid" };
   const result = await changeSubscriptionContents(store.id, subscriptionId, parsed.data, { actor: "staff" });

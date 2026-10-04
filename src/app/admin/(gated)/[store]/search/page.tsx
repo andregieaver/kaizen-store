@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { aiFor } from "@/server/ai";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { SEARCH_LOG_DAYS, searchStats } from "@/server/search";
 
 export const metadata: Metadata = { title: "Search" };
@@ -17,7 +17,7 @@ const percent = new Intl.NumberFormat("en-GB", { style: "percent", maximumFracti
  * product the store lacks, or a word its products do not use yet.
  */
 export default async function SearchStatsPage({ params }: PageProps<"/admin/[store]/search">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   const [stats, ai] = await Promise.all([searchStats(store.id), aiFor(store.id)]);
   const meaningOn = Boolean(ai?.space);
 

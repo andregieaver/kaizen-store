@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { requireMember } from "@/server/auth";
+import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { REMINDER_HOURS, storeTimeZones } from "@/server/bookings";
 
 import { saveBookingsModuleAction, saveDeliveriesModuleAction } from "./actions";
@@ -12,8 +12,9 @@ const card = "rounded-lg border border-border bg-background p-5";
 
 /** What the store does besides selling goods (D65): switched on here. */
 export default async function FeaturesPage({ params }: PageProps<"/admin/[store]/settings/features">) {
-  const { store, role } = await requireMember((await params).store);
-  const owner = role === "owner";
+  const current = await requireOwnerRole((await params).store);
+  const { store } = current;
+  const owner = memberCan(current, "owner");
 
   return (
     <div className="flex flex-col gap-6">

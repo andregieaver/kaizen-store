@@ -26,6 +26,7 @@ import type { Membership } from "./auth";
 import { workEvent } from "./work";
 import { syncTaskHoursToDraftLine } from "./work-draft-sync";
 import { problem, workGuard, zodProblems, type WorkResult } from "./work-errors";
+import { memberCan } from "./permissions";
 
 type Row = Record<string, unknown>;
 
@@ -57,7 +58,7 @@ const isUuid = (value: unknown): value is string => z.uuid().safeParse(value).su
 
 /** Whether the member may change an entry that this account logged: owners any, admins their own. */
 export const mayChangeEntry = (member: Pick<Membership, "role" | "account">, entryAccountId: string): boolean =>
-  member.role === "owner" || member.account.id === entryAccountId;
+  memberCan(member, "owner") || member.account.id === entryAccountId;
 
 // --- Reading entries ---------------------------------------------------------------
 
@@ -571,7 +572,8 @@ export async function getRunningTimer(accountId: string): Promise<RunningTimer |
     where w.account_id = ${accountId}::uuid
       and 'work' = any(st.modules)
       and exists (select 1 from commerce.store_members m
-                  where m.store_id = w.store_id and m.account_id = w.account_id and m.disabled_at is null)
+                  where m.store_id = w.store_id and m.account_id = w.account_id and m.disabled_at is null
+                    and (m.expires_at is null or m.expires_at > now()))
   `);
   return row ? toRunningTimer(row) : null;
 }
@@ -655,7 +657,7 @@ export async function stopTimer(
   const { store } = member;
   const target = options.forAccountId ?? member.account.id;
   if (!isUuid(target)) return problem("There is no timer to stop.");
-  if (target !== member.account.id && member.role !== "owner")
+  if (target !== member.account.id && !memberCan(member, "owner"))
     return problem("Only an owner can stop someone else's timer.");
   const note = timeEntryNoteInput.safeParse({ note: options.note });
   if (!note.success) return problem(...zodProblems(note.error));

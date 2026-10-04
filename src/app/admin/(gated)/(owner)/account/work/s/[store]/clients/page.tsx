@@ -5,17 +5,17 @@ import { ClientsList } from "@/components/admin/work/clients-list";
 import { WorkOff } from "@/components/admin/work/work-off";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
 import { parseClientListParams } from "@/lib/work-ui";
-import { requireMember } from "@/server/auth";
 import { listCountries } from "@/server/stores";
 import { formDefaults, listClients } from "@/server/work";
 import { sellerDetails } from "@/server/work-settings";
 import { workBase } from "@/lib/work-paths";
+import { requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Clients" };
 
 /** Work's clients (D122): who the store bills, with their assignments and what is not yet invoiced. */
 export default async function WorkClientsPage({ params, searchParams }: PageProps<"/admin/account/work/s/[store]/clients">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Clients" />;
   const { show, query } = parseClientListParams(await searchParams);
   const [clients, defaults, countries, seller] = await Promise.all([

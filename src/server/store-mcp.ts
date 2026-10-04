@@ -9,7 +9,7 @@ import { publicEnv } from "@/lib/env";
 import { OWNER_TOOLS, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type OwnerTool } from "@/lib/owner-tools";
 import { siteUrl } from "@/lib/site";
 
-import type { Account, Membership } from "./auth";
+import { holderOf, type Account, type Membership } from "./auth";
 import { keepForApproval, kaizenLifeConversation, runTurn, type AssistantEvent } from "./owner-assistant";
 import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import { getStore } from "./stores";
@@ -26,7 +26,12 @@ type Row = Record<string, unknown>;
  * owner's approval in the store's admin, never run from here.
  */
 
-export type McpCaller = { account: Account; stores: { id: string; slug: string; name: string }[] };
+export type McpCaller = {
+  account: Account;
+  stores: { id: string; slug: string; name: string }[];
+  /** The assurance level of the token (`aal` claim): a store that requires two-step, and a platform admin, are served at `aal2` only (wave 1, 1f). */
+  aal: "aal1" | "aal2";
+};
 
 /** Who a bearer token is: an owner, with the stores they own, if the token is Kaizen Life's. */
 export async function mcpCaller(token: string): Promise<McpCaller | null> {
@@ -53,7 +58,7 @@ export async function callerFromClaims(claims: Record<string, unknown>, clientId
   if (claims.client_id !== clientId || typeof claims.sub !== "string") return null;
   if (typeof claims.exp !== "number" || claims.exp * 1000 < Date.now()) return null;
   const rows = await db().execute<Row>(sql`
-    select a.id, a.email, a.name, a.platform_admin, s.id as store_id, s.slug, s.name as store_name
+    select a.id, a.email, a.name, a.platform_admin, s.id as store_id, s.slug, s.name as store_name, s.require_two_step
     from commerce.accounts a
     join commerce.store_members m on m.account_id = a.id and m.role = 'owner' and m.disabled_at is null
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed'
@@ -62,9 +67,16 @@ export async function callerFromClaims(claims: Record<string, unknown>, clientId
   `);
   if (rows.length === 0) return null;
   const first = rows[0];
+  const aal = claims.aal === "aal2" ? "aal2" : "aal1";
+  // A platform admin works at the second step only, wherever they sign in: a token that did not pass it is refused whole.
+  if (first.platform_admin && aal !== "aal2") return null;
+  // A store that requires two-step is not served to a token that did not pass it, as its admin is not.
+  const served = rows.filter((row) => aal === "aal2" || !row.require_two_step);
+  if (served.length === 0) return null;
   return {
     account: { id: String(first.id), email: String(first.email), name: first.name ? String(first.name) : null, platformAdmin: Boolean(first.platform_admin) },
-    stores: rows.map((row) => ({ id: String(row.store_id), slug: String(row.slug), name: String(row.store_name) })),
+    stores: served.map((row) => ({ id: String(row.store_id), slug: String(row.slug), name: String(row.store_name) })),
+    aal,
   };
 }
 
@@ -144,7 +156,7 @@ export async function callMcpTool(
     const input = readToolInput(tool, rest);
     if (!input.ok) return text(`The arguments could not be read: ${input.problem}`, true);
     try {
-      await preflightOwnerTool({ account: member.account, store: member.store, invalidate }, name, rest);
+      await preflightOwnerTool({ account: member.account, store: member.store, invalidate, holder: holderOf(member) }, name, rest);
     } catch (error) {
       if (error instanceof OwnerToolError) return text(error.message, true);
       console.error(`[store-mcp] ${name}`, error);
@@ -166,7 +178,7 @@ export async function callMcpTool(
     });
   }
   try {
-    return text(await runOwnerTool({ account: member.account, store: member.store, invalidate }, name, rest));
+    return text(await runOwnerTool({ account: member.account, store: member.store, invalidate, holder: holderOf(member) }, name, rest));
   } catch (error) {
     if (error instanceof OwnerToolError) return text(error.message, true);
     console.error(`[store-mcp] ${name}`, error);

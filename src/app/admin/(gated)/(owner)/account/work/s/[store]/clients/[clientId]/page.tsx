@@ -14,11 +14,11 @@ import { RecurringPanel } from "@/components/admin/work/recurring-panel";
 import { Badge } from "@/components/admin/work/work-parts";
 import { WorkOff } from "@/components/admin/work/work-off";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
-import { requireMember } from "@/server/auth";
 import { listCountries } from "@/server/stores";
 import { formDefaults, getClient, listAssignments } from "@/server/work";
 import { sellerDetails } from "@/server/work-settings";
 import { workBase } from "@/lib/work-paths";
+import { memberCan, requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Client" };
 
@@ -30,7 +30,8 @@ export const metadata: Metadata = { title: "Client" };
  */
 export default async function WorkClientPage({ params }: PageProps<"/admin/account/work/s/[store]/clients/[clientId]">) {
   const { store: slug, clientId } = await params;
-  const { store, role } = await requireMember(slug);
+  const viewer = await requirePermission(slug, "settings:read");
+  const { store } = viewer;
   if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Client" />;
   const client = await getClient(store.id, clientId);
   if (!client) notFound();
@@ -124,7 +125,7 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
         archived={archived}
       />
 
-      {role === "owner" && (
+      {memberCan(viewer, "owner") && (
         <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-border pt-4">
           <h2 id="delete-heading" className="text-sm font-medium">
             Delete this client

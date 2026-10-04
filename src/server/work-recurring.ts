@@ -25,6 +25,7 @@ import { refreshDraftInvoices } from "./work-draft-sync";
 import { problem, workGuard, zodProblems, type WorkResult } from "./work-errors";
 import { sendInvoiceEmail } from "./work-emails";
 import { deleteDraft, issueInvoice, type WorkActor } from "./work-invoices";
+import { memberCan } from "./permissions";
 
 type Row = Record<string, unknown>;
 
@@ -241,7 +242,7 @@ export async function createRecurring(member: Membership, raw: unknown): Promise
   const parsed = recurringInvoiceInput.safeParse(raw);
   if (!parsed.success) return problem(...zodProblems(parsed.error));
   const input = parsed.data;
-  if (input.autoIssue && member.role !== "owner") return problem(OWNER_ONLY_AUTO);
+  if (input.autoIssue && !memberCan(member, "owner")) return problem(OWNER_ONLY_AUTO);
   return workGuard(() =>
     db().transaction(async (tx): Promise<Created> => {
       const [client] = await tx.execute<Row>(sql`
@@ -296,7 +297,7 @@ export async function updateRecurring(member: Membership, templateId: string, ra
       `);
       if (!current) return problem(NOT_FOUND);
       if (String(current.client_id) !== input.clientId) return problem("A repeating invoice stays with its client.");
-      if (Boolean(current.auto_issue) !== input.autoIssue && member.role !== "owner") return problem(OWNER_ONLY_AUTO);
+      if (Boolean(current.auto_issue) !== input.autoIssue && !memberCan(member, "owner")) return problem(OWNER_ONLY_AUTO);
       await tx.execute(sql`
         update commerce.work_recurring_invoices
            set name = ${input.name}, description = ${lineDescription(input.description ?? input.name)}, unit = ${input.unit},

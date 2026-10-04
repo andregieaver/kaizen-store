@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."stores" ADD COLUMN "role_templates_offered" text[] DEFAULT '{}'::text[] NOT NULL;

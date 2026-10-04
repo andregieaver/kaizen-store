@@ -16,6 +16,7 @@ const signedIn = vi.hoisted(() => ({ member: null as unknown }));
 vi.mock("./auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./auth")>()),
   requireMember: async () => signedIn.member,
+  getMembership: async () => signedIn.member,
 }));
 
 const campaigns = await import("./campaigns");

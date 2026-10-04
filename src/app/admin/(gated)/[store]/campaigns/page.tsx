@@ -5,7 +5,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listCampaigns } from "@/server/campaigns";
 
 import { deleteCampaignAction, setCampaignActiveAction } from "./actions";
@@ -23,7 +23,7 @@ const KIND_WORD = { percent: "Percentage off", multi_buy: "Buy more, pay for few
 
 /** The store's campaigns (D114): offers without a code, for a time, and what each has given. */
 export default async function CampaignsPage({ params }: PageProps<"/admin/[store]/campaigns">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "marketing:read");
   const campaigns = await listCampaigns(store.id);
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const currencyOf = (marketCode: string) => store.markets.find((m) => m.code === marketCode)?.currency ?? mainCurrency(store);

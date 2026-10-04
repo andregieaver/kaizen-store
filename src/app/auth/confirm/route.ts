@@ -1,7 +1,7 @@
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { type NextRequest, NextResponse } from "next/server";
 
-import { safeNext } from "@/lib/password";
+import { afterFirstStep } from "@/lib/sign-in-redirect";
 import { createClient } from "@/lib/supabase/server";
 import { admit } from "@/server/sign-in";
 
@@ -27,6 +27,6 @@ export async function GET(request: NextRequest) {
   if (error || !data.user) return to("/admin/sign-in?error=link");
 
   return (await admit(supabase, data.user)) === "admitted"
-    ? to(safeNext(url.searchParams.get("next"), type === "recovery" ? "/admin/account" : "/admin"))
+    ? to(afterFirstStep(data.user, url.searchParams.get("next"), type === "recovery" ? "/admin/account" : "/admin"))
     : to("/admin/sign-in?error=no-access");
 }

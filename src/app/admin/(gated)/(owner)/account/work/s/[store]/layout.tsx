@@ -1,4 +1,5 @@
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
+
 
 /**
  * One store's Work screens (D123). The shell (sub-navigation, running timer) is
@@ -6,6 +7,6 @@ import { requireMember } from "@/server/auth";
  * before its pages start. Every page and action still checks for itself.
  */
 export default async function WorkStoreLayout({ children, params }: LayoutProps<"/admin/account/work/s/[store]">) {
-  await requireMember((await params).store);
+  await requirePermission((await params).store, "settings:read");
   return children;
 }

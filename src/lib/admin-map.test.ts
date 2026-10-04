@@ -74,6 +74,27 @@ describe("the admin map (D103)", () => {
     expect(ADMIN_PAGES.find((p) => p.id === "returns.settings")?.group).toBe("Settings");
   });
 
+  it("offers only what the person can open, where that is told (wave 1, 1f)", () => {
+    const readOnly = (page: { id: string }) => page.id !== "campaigns";
+    expect(findPages("store", "campaigns buy n pay for m").map((p) => p.id)).toContain("campaigns");
+    expect(findPages("store", "campaigns buy n pay for m", { canOpen: readOnly }).map((p) => p.id)).not.toContain("campaigns");
+    expect(pagesFor("store", { canOpen: () => false })).toEqual([]);
+  });
+
+  it("knows the team's roles, the activity log, the legal pages and the accessibility page", () => {
+    expect(matchPath("/admin/kaffe/staff/roles")?.page.id).toBe("staff.roles");
+    expect(matchPath("/admin/kaffe/activity")?.page.id).toBe("activity");
+    expect(matchPath("/admin/kaffe/settings/legal")?.page.id).toBe("legal");
+    expect(matchPath("/admin/kaffe/settings/accessibility")?.page.id).toBe("accessibility");
+    expect(matchPath("/admin/kaffe/orders/abc/terms/terms")?.page.id).toBe("order.terms");
+    expect(matchPath("/admin/platform/activity")?.page.id).toBe("activity");
+    // The owner's pages stay the owner's.
+    for (const id of ["staff", "staff.roles", "legal", "accessibility"]) expect(ADMIN_PAGES.find((p) => p.area === "store" && p.id === id)?.needs, id).toBe("owner");
+    expect(findPages("store", "two-step authenticator", { owner: true })[0]?.id).toBe("staff");
+    expect(findPages("store", "make a draft privacy policy", { owner: true })[0]?.id).toBe("legal");
+    expect(findPages("store", "make a draft privacy policy").map((p) => p.id)).not.toContain("legal");
+  });
+
   it("builds addresses, and reads them back", () => {
     const order = ADMIN_PAGES.find((p) => p.area === "store" && p.id === "order")!;
     expect(pageHref(order, { orderId: "abc-123" }, "kaffe")).toBe("/admin/kaffe/orders/abc-123");

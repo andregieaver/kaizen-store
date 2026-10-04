@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { formatMoney } from "@/lib/money";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listAdminProducts } from "@/server/products";
 
 export const metadata: Metadata = { title: "Products" };
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Products" };
 type Props = PageProps<"/admin/[store]/products">;
 
 export default async function ProductsPage({ params, searchParams }: Props) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "products:read");
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -45,7 +45,7 @@ async function ProductList({
   storeSlug: string;
   searchParams: Props["searchParams"];
 }) {
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "products:read");
   const archived = (await searchParams).show === "archived";
   const products = await listAdminProducts(store, { archived });
   const locale = store.markets[0]?.locale ?? "en";

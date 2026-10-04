@@ -7,7 +7,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { FieldGroupEditor } from "@/components/admin/field-group-editor";
 import { groupToInput } from "@/lib/custom-fields";
 import { moneyCurrencies } from "@/lib/field-money";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getFieldGroup } from "@/server/custom-fields";
 
 import { deleteFieldGroupAction, saveFieldGroupAction } from "../actions";
@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Group of custom fields" };
 
 export default async function FieldGroupPage({ params }: PageProps<"/admin/[store]/fields/[groupId]">) {
   const { store: slug, groupId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "products:read");
   if (!z.uuid().safeParse(groupId).success) notFound();
   const [group, terms] = await Promise.all([getFieldGroup(store.id, groupId), editorTerms(store.id)]);
   if (!group) notFound();

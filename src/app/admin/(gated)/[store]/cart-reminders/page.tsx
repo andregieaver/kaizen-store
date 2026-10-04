@@ -4,7 +4,7 @@ import Link from "next/link";
 import { describeDelay } from "@/lib/cart-reminders";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import {
   cartReminderStats,
   getCartReminderSettings,
@@ -33,7 +33,7 @@ const tile = "flex flex-col gap-1 rounded-lg border border-border bg-background 
  * reminders and their texts, how they do, and the latest carts.
  */
 export default async function CartRemindersPage({ params }: PageProps<"/admin/[store]/cart-reminders">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "marketing:read");
   const [settings, stats, carts, discounts] = await Promise.all([
     getCartReminderSettings(store.id),
     cartReminderStats(store.id),

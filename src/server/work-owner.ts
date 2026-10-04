@@ -39,6 +39,7 @@ import { getPeriodReport } from "./work-reports";
 import type { InvoiceStatus } from "./work-invoices";
 import type { TimeEntryItem } from "./work-time";
 import { setWorkModule } from "./work-settings";
+import { can } from "@/lib/permissions";
 
 type Row = Record<string, unknown>;
 
@@ -110,7 +111,8 @@ function toWorkStore(row: Row): WorkStore {
  */
 export async function workStoresFor(account: Pick<Account, "id">): Promise<WorkStores> {
   const rows = await db().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.time_zone, m.role, ('work' = any(s.modules)) as work_on,
+    select s.id, s.slug, s.name, s.time_zone, m.role, m.kind, r.permissions as role_permissions, m.role_id,
+           ('work' = any(s.modules)) as work_on,
            (select json_build_object('code', mk.code, 'currency', mk.currency, 'defaultLocale', mk.default_locale)
               from commerce.markets mk
              where mk.store_id = s.id and mk.active
@@ -120,10 +122,19 @@ export async function workStoresFor(account: Pick<Account, "id">): Promise<WorkS
              where ev.store_id = s.id and ev.account_id = m.account_id) as last_used
     from commerce.store_members m
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed'
+    left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
     where m.account_id = ${account.id}::uuid and m.disabled_at is null
+      and (m.expires_at is null or m.expires_at > now())
     order by lower(s.name), s.slug
   `);
-  const stores = rows.map(toWorkStore);
+  // Work's screens need `settings:read` (wave 1, 1f): a store whose role gives the member no access to settings is not offered.
+  const may = (row: Row) =>
+    can(
+      { role: row.role as "owner" | "admin", kind: row.kind === "collaborator" ? "collaborator" : "staff", permissions: row.role_id ? ((row.role_permissions ?? []) as string[]).map(String) : null },
+      "settings:read",
+    );
+  const allowed = rows.filter(may);
+  const stores = allowed.map(toWorkStore);
   return {
     using: stores.filter((store) => store.workOn),
     off: stores.filter((store) => !store.workOn && store.role === "owner"),
@@ -540,7 +551,7 @@ export async function listOwnerPeople(stores: readonly WorkStore[]): Promise<{ i
     select distinct a.id, coalesce(nullif(a.name, ''), a.email) as label
     from commerce.store_members m
     join commerce.accounts a on a.id = m.account_id
-    where ${inStores(sql`m.store_id`, everyone)} and m.disabled_at is null
+    where ${inStores(sql`m.store_id`, everyone)} and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
     order by 2, 1
   `);
   return rows.map((row) => ({ id: String(row.id), name: String(row.label) }));
@@ -802,10 +813,10 @@ export async function switchWorkModule(
   const [membership] = await db().execute<Row>(sql`
     select m.role from commerce.store_members m
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed'
-    where s.slug = ${storeSlug} and m.account_id = ${account.id}::uuid and m.disabled_at is null
+    where s.slug = ${storeSlug} and m.account_id = ${account.id}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
   `);
   if (!membership) return problem("That store was not found.");
-  if (membership.role !== "owner") return problem("Only an owner can switch Work on or off.");
+  if (!can({ role: membership.role as "owner" | "admin" }, "owner")) return problem("Only an owner can switch Work on or off.");
   const store = await getStore(storeSlug);
   if (!store) return problem("That store was not found.");
   await setWorkModule({ account, store, role: "owner" }, enabled);

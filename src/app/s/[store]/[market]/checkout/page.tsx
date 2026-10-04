@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { PayRouteGuard } from "@/components/pay-route-guard";
 import { RolePage } from "@/components/role-page";
 import { t } from "@/lib/i18n";
 import { resolveShop } from "@/server/shop";
@@ -26,11 +27,15 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   if (!shop) notFound();
   const { store, market } = shop;
   return (
-    <RolePage store={store} market={market} ab={shop.ab} role="checkout" route={{ part: "checkout", query: searchParams }}>
-      <h1 className="mb-6 text-3xl font-heading tracking-tight">{t(market.lang).checkoutTitle}</h1>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-surface" />}>
-        <Checkout store={store} market={market} />
-      </Suspense>
-    </RolePage>
+    <>
+      {/* Loads the page afresh if the document has been elsewhere: nothing another page added runs where a card is typed (wave 1, 1e). */}
+      <PayRouteGuard store={store.slug} />
+      <RolePage store={store} market={market} ab={shop.ab} role="checkout" route={{ part: "checkout", query: searchParams }}>
+        <h1 className="mb-6 text-3xl font-heading tracking-tight">{t(market.lang).checkoutTitle}</h1>
+        <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-surface" />}>
+          <Checkout store={store} market={market} />
+        </Suspense>
+      </RolePage>
+    </>
   );
 }

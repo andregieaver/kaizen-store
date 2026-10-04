@@ -76,6 +76,8 @@ async function createStore(slug: string): Promise<Store> {
     frontPageId: null,
     productsPageId: null,
     pageRoles: {},
+    legalPages: {},
+    termsAtCheckout: "link",
     tracking: {},
     customCode: {},
     customCss: "",

@@ -13,7 +13,7 @@ import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { customerAffiliate } from "@/server/affiliates";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { getBonusSettings, customerBonus } from "@/server/bonus";
 import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
@@ -35,7 +35,7 @@ const card = "rounded-lg border border-border bg-background p-5";
  */
 export default async function CustomerPage({ params }: PageProps<"/admin/[store]/customers/[customerId]">) {
   const { store: slug, customerId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "customers:read");
   if (!z.uuid().safeParse(customerId).success) notFound();
   const ref = await findCustomer(store.id, customerId);
   if (!ref) notFound();

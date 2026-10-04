@@ -2,13 +2,13 @@
 
 import { refresh } from "next/cache";
 
-import { requireMember, type Membership } from "@/server/auth";
+import { type Membership } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { choosePlace, findPlaces, removeGoogle, saveGoogleKey } from "@/server/google-reviews";
 
 /** The Google key is billed to the owner's own account, so only an owner sets it up (D91). */
 async function asOwner(storeSlug: string): Promise<Membership | string> {
-  const member = await requireMember(storeSlug);
-  return member.role === "owner" ? member : "Only an owner can set up Google reviews.";
+  return (await checkOwnerRole(storeSlug)) ?? "Only an owner can set up Google reviews.";
 }
 
 export async function saveStoreGoogleKeyAction(storeSlug: string, key: string) {

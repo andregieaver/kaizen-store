@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { ThemeEditor } from "@/components/admin/theme-editor";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listSavedThemes } from "@/server/themes";
 
 import {
@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Design" };
 
 /** The store's theme (D60): colours, fonts, buttons, corners, layout and product cards. */
 export default async function StoreDesignPage({ params }: PageProps<"/admin/[store]/settings/design">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "website:read");
   const saved = await listSavedThemes(store.id);
   return (
     <div className="flex flex-col gap-6">

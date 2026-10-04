@@ -3,7 +3,7 @@ import { Suspense } from "react";
 
 import { MediaLibrary } from "@/components/admin/media-library";
 import { mediaQuery } from "@/lib/media-query";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { aiFor } from "@/server/ai";
 import { altSite, missingAltTexts } from "@/server/alt-texts";
 import { uploadsEnabled } from "@/server/media";
@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Media library" };
  * here or in any editor, with where each is used.
  */
 export default async function MediaPage({ params, searchParams }: PageProps<"/admin/[store]/media">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "website:read");
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -38,7 +38,7 @@ export default async function MediaPage({ params, searchParams }: PageProps<"/ad
 }
 
 async function Library({ storeSlug, searchParams }: { storeSlug: string; searchParams: PageProps<"/admin/[store]/media">["searchParams"] }) {
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "website:read");
   const query = mediaQuery(await searchParams);
   const owner = { storeId: store.id, storeSlug: store.slug };
   const [{ items, total, searched }, ai, site, altMissing] = await Promise.all([

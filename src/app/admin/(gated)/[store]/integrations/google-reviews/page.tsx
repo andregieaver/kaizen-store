@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { GoogleReviewsSettings } from "@/components/admin/google-reviews-settings";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { getGoogleSettings } from "@/server/google-reviews";
 
 import { chooseStorePlaceAction, findStorePlacesAction, removeStoreGoogleAction, saveStoreGoogleKeyAction } from "./actions";
@@ -11,7 +11,8 @@ export const metadata: Metadata = { title: "Google reviews" };
 
 /** The store's Google reviews (D91), shown by testimonials components set to Google. */
 export default async function StoreGoogleReviewsPage({ params }: PageProps<"/admin/[store]/integrations/google-reviews">) {
-  const { store, role } = await requireMember((await params).store);
+  const current = await requirePermission((await params).store, "settings:read");
+  const { store } = current;
   const settings = await getGoogleSettings(store.id);
   return (
     <div className="flex flex-col gap-6">
@@ -25,7 +26,7 @@ export default async function StoreGoogleReviewsPage({ params }: PageProps<"/adm
           Google as each page is shown and never kept, as Google&apos;s terms ask; nothing about your visitors is sent.
         </p>
       </div>
-      {role === "owner" ? (
+      {memberCan(current, "owner") ? (
         <GoogleReviewsSettings
           hint={settings?.hint ?? null}
           place={settings?.place ?? null}

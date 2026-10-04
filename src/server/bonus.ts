@@ -94,6 +94,7 @@ export async function roleIn(accountId: string, storeId: string): Promise<"owner
   const [row] = await db().execute<Row>(sql`
     select role from commerce.store_members
     where store_id = ${storeId}::uuid and account_id = ${accountId}::uuid and disabled_at is null
+      and (expires_at is null or expires_at > now())
   `);
   return row ? (row.role as "owner" | "admin") : null;
 }

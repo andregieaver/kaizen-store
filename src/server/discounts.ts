@@ -17,7 +17,8 @@ import { shown, type Market } from "@/lib/markets";
 import { parsePrice } from "@/lib/product-input";
 import { planPrice } from "@/lib/subscriptions";
 
-import { audit, type Membership } from "./auth";
+import { auditChange } from "./audit";
+import type { Membership } from "./auth";
 import { readCartId, type Shop } from "./cart";
 import { getCustomer } from "./customers";
 import type { SaveResult } from "./settings";
@@ -103,6 +104,21 @@ export async function getDiscount(storeId: string, id: string): Promise<(StoreDi
   return row ? { ...toDiscount(row), used: Number(row.used) } : null;
 }
 
+/** What the activity log keeps of a code: the fields of `ALLOWED_FIELDS.discount`, amounts in minor units per country (never a customer, never an order). */
+function discountFacts(d: Pick<StoreDiscount, "code" | "kind" | "percent" | "amounts" | "minSubtotals" | "usageLimit" | "oncePerCustomer" | "startsAt" | "endsAt" | "active">): Record<string, unknown> {
+  return {
+    code: d.code,
+    kind: d.kind,
+    value: d.kind === "percent" ? d.percent : d.amounts,
+    minimumMinor: Object.keys(d.minSubtotals).length > 0 ? d.minSubtotals : null,
+    usageLimit: d.usageLimit,
+    perCustomerLimit: d.oncePerCustomer ? 1 : null,
+    startsAt: d.startsAt,
+    endsAt: d.endsAt,
+    active: d.active,
+  };
+}
+
 /** An ISO time from the admin's `datetime-local`, read as Norwegian time. */
 export function osloTime(value: string | null): string | null {
   if (!value) return null;
@@ -159,7 +175,8 @@ export async function saveDiscount(
     `);
     if (Number(row.n) !== new Set(d.productIds).size) problems.push("A chosen product no longer exists.");
   }
-  if (id && !(await getDiscount(store.id, id))) return { ok: false, problems: ["The code no longer exists."] };
+  const existing = id ? await getDiscount(store.id, id) : null;
+  if (id && !existing) return { ok: false, problems: ["The code no longer exists."] };
   if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
 
   const values = {
@@ -195,7 +212,16 @@ export async function saveDiscount(
           )
           returning id
         `);
-    await audit(account.id, store.id, id ? "discount.updated" : "discount.created", { code: values.code });
+    const saved = await getDiscount(store.id, String(row.id));
+    await auditChange(
+      { accountId: account.id, storeId: store.id },
+      id ? "discount.updated" : "discount.created",
+      { type: "discount", id: String(row.id), label: values.code },
+      existing ? discountFacts(existing) : null,
+      saved ? discountFacts(saved) : null,
+      "discount",
+      { code: values.code },
+    );
     return { ok: true, id: String(row.id) };
   } catch (error) {
     const code = (error as { cause?: { code?: string }; code?: string }).cause?.code ?? (error as { code?: string }).code;
@@ -212,7 +238,7 @@ export async function deleteDiscount({ account, store }: Membership, id: string)
   const current = await getDiscount(store.id, id);
   if (!current) return { ok: true };
   await db().execute(sql`delete from commerce.discount_codes where store_id = ${store.id}::uuid and id = ${id}::uuid`);
-  await audit(account.id, store.id, "discount.deleted", { code: current.code, used: current.used });
+  await auditChange({ accountId: account.id, storeId: store.id }, "discount.deleted", { type: "discount", id, label: current.code }, discountFacts(current), null, "discount", { code: current.code, used: current.used });
   return { ok: true };
 }
 

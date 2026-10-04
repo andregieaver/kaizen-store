@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { hostTaxStatus } from "@/server/dac7";
 import { listHosts } from "@/server/hosts";
 
@@ -15,7 +15,8 @@ export const metadata: Metadata = { title: "Hosts" };
  * in to their own area, and the store keeps a commission of their bookings.
  */
 export default async function HostsPage({ params }: PageProps<"/admin/[store]/hosts">) {
-  const { store, role } = await requireMember((await params).store);
+  const current = await requirePermission((await params).store, "bookings:read");
+  const { store } = current;
   const [hosts, taxes] = await Promise.all([listHosts(store.id), hostTaxStatus(store.id)]);
   const base = `/admin/${store.slug}/hosts`;
 
@@ -64,7 +65,7 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
           ))}
         </ul>
       )}
-      {role === "owner" ? (
+      {memberCan(current, "owner") ? (
         <section aria-labelledby="add-host" className="flex flex-col gap-3">
           <h2 id="add-host" className="font-medium">
             Add a host

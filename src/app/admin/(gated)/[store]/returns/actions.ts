@@ -7,7 +7,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { previewData, type RefundPreviewData } from "@/lib/return-admin";
 import { parsePrice } from "@/lib/product-input";
 import type { ReturnAddress } from "@/lib/withdrawal";
-import { audit, requireMember, type Membership } from "@/server/auth";
+import { audit, type Membership } from "@/server/auth";
+import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import { markDelivered } from "@/server/order-delivery";
 import { getOrder } from "@/server/orders";
 import { getReturn, previewRefund, type Done } from "@/server/returns";
@@ -28,7 +29,7 @@ import { registerWithdrawal, resendAcknowledgement } from "@/server/withdrawals"
 
 /**
  * What staff do with a return (D153): each step is a server action bound to the store's slug and the return's id by the
- * page. Every one asks `requireMember()` first (a store the account is not a member of is a 404, and the return is looked
+ * page. Every one asks `requirePermission()` first (a store the account is not a member of is a 404, and the return is looked
  * up by this store's id, so another store's return is "no longer exists"), reads the form into the shape the server's own
  * schema checks again, writes the change to the audit log and refreshes the page. The queue is for everyone who works the
  * store's orders; the rules are the owner's (`settings/returns`).
@@ -52,7 +53,7 @@ function addressOf(form: FormData): ReturnAddress | null {
 }
 
 async function member(storeSlug: string, returnId: string): Promise<{ member: Membership; valid: boolean }> {
-  const found = await requireMember(storeSlug);
+  const found = await requirePermission(storeSlug, "orders:write");
   return { member: found, valid: z.uuid().safeParse(returnId).success };
 }
 
@@ -254,10 +255,11 @@ export async function recalculateRefundAction(storeSlug: string, returnId: strin
 
 /**
  * *Mark delivered* (D153): the day the customer received the goods, which starts their 14 days. Bound to the store and the
- * order by the order page; `requireMember()` first, and the order is looked up by this store's id.
+ * order by the order page; `requirePermission()` first, and the order is looked up by this store's id.
  */
 export async function markDeliveredAction(storeSlug: string, orderId: string, _previous: FormState, form: FormData): Promise<FormState> {
-  const found = await requireMember(storeSlug);
+  const found = await checkPermission(storeSlug, "orders:write");
+  if (!found) return { status: "error", messages: [NO_ACCESS] };
   if (!z.uuid().safeParse(orderId).success) return failed("This order no longer exists.");
   const result = await markDelivered(found.store.id, { orderId, on: text(form, "on") || null }, found.account.id);
   if (!result.ok) return failed(result.problem);
@@ -280,7 +282,8 @@ function ticked(form: FormData): { lineId: string; quantity: number }[] {
 
 /** Registers a withdrawal the customer made outside the withdrawal function, on the order's page. */
 export async function registerWithdrawalAction(storeSlug: string, orderId: string, _previous: FormState, form: FormData): Promise<FormState> {
-  const found = await requireMember(storeSlug);
+  const found = await checkPermission(storeSlug, "orders:write");
+  if (!found) return { status: "error", messages: [NO_ACCESS] };
   if (!z.uuid().safeParse(orderId).success) return failed("This order no longer exists.");
   const order = await getOrder(found.store.id, orderId);
   if (!order) return failed("This order no longer exists.");

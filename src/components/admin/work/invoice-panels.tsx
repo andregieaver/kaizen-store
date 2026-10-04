@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { formatMoney } from "@/lib/money";
 import { formatDay } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listWorkInvoices } from "@/server/work-invoices";
 
 import { BillUnbilledButton } from "./bill-unbilled-button";
@@ -184,7 +184,7 @@ async function InvoiceList({
   filter: { clientId?: string; assignmentId?: string };
   empty: string;
 }) {
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "settings:read");
   const list = await listWorkInvoices(store.id, { ...filter, pageSize: 50 });
   const base = `${workBase(storeSlug)}/invoices`;
   if (list.rows.length === 0)

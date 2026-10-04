@@ -6,6 +6,8 @@ import { db } from "@/db/client";
 import { summarizeUsage } from "@/lib/ai-usage";
 import { formatMoney } from "@/lib/money";
 import { OWNER_TOOLS_BY_NAME, readToolInput, type OwnerToolInput, type OwnerToolName } from "@/lib/owner-tools";
+import { mayUseTool, toolRefusal } from "@/lib/owner-tool-permissions";
+import type { PermissionHolder } from "@/lib/permissions";
 import { auditProblems } from "@/lib/order-numbers";
 import { marketPath, storeHref } from "@/lib/paths";
 import { parsePrice } from "@/lib/product-input";
@@ -114,7 +116,17 @@ export type OwnerToolContext = {
   store: Store;
   /** Refreshes a cache tag: `updateTag` in a server action, `revalidateTag` in a route. */
   invalidate: (tag: string) => void;
+  /**
+   * Who the tools work for, for the permission each tool needs (`src/lib/owner-tool-permissions.ts`). The assistant and the store's MCP server
+   * pass the member's own; a run with none is an owner's (the assistant is the owner's alone in this wave), which is what tests and internal runs are.
+   */
+  holder?: PermissionHolder;
 };
+
+/** Refuses, in the assistant's words, a tool the member's role does not hold the permission for. */
+function requireToolPermission(ctx: OwnerToolContext, name: string): void {
+  if (!mayUseTool(ctx.holder ?? { role: "owner" }, name)) fail(toolRefusal(name));
+}
 
 export { OwnerToolError };
 
@@ -505,7 +517,7 @@ async function cancelBookingTool({ store, account }: OwnerToolContext, input: Ow
 
 async function archiveProductTool(ctx: OwnerToolContext, input: OwnerToolInput<"archive_product">) {
   const id = await findProductId(ctx.store, input.product);
-  if (!(await setArchived(ctx.store, id, input.archived))) return fail("That product is not this store's.");
+  if (!(await setArchived(ctx.store, id, input.archived, ctx.account))) return fail("That product is not this store's.");
   ctx.invalidate(catalogTag(ctx.store.id));
   return { done: input.archived ? `${input.product} is taken off the site.` : `${input.product} is back, as a draft to publish from the product page.` };
 }
@@ -1456,6 +1468,8 @@ async function createFieldGroupTool(ctx: OwnerToolContext, input: OwnerToolInput
  * `OwnerToolError` with the reason for the model.
  */
 export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, raw: unknown): Promise<void> {
+  // A change the member's role may not make is refused now, never kept for a yes.
+  if (OWNER_TOOLS_BY_NAME[name]) requireToolPermission(ctx, name);
   // A return that could not be approved or declined (a withdrawal is never declined) is refused now, never kept for a yes (D153).
   if (name === "approve_return" || name === "decline_return") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -1593,6 +1607,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
 export async function runOwnerTool(ctx: OwnerToolContext, name: string, raw: unknown): Promise<unknown> {
   const tool = OWNER_TOOLS_BY_NAME[name];
   if (!tool) return fail(`There is no tool called ${name}.`);
+  requireToolPermission(ctx, name);
   const input = readToolInput(tool, raw);
   if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
   const result = await HANDLERS[name as OwnerToolName](ctx, input.input as never);

@@ -33,6 +33,10 @@ vi.mock("@/server/auth", async (original) => {
       if (!entry) throw new Error("NEXT_NOT_FOUND");
       return { account: entry.account, role: calls.role, store: (await getStore(storeSlug))! };
     },
+    getMembership: async (storeSlug: string): Promise<Membership | null> => {
+      const entry = members.byStore.get(storeSlug);
+      return entry ? { account: entry.account, role: calls.role, store: (await getStore(storeSlug))! } : null;
+    },
   };
 });
 

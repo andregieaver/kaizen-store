@@ -1,26 +1,37 @@
 import "server-only";
 
 import { parseAnalyticsParams, type AnalyticsParams } from "@/lib/analytics-period";
-import { requireMember } from "./auth";
+import type { PermissionKey } from "@/lib/permissions";
+
+import type { Membership } from "./auth";
+import { memberCan, requirePermission } from "./permissions";
 import { getAnalyticsSettings, type StoredAnalyticsSettings } from "./analytics-settings";
 
 /**
  * What every analytics page starts with (D152): the member (a stranger gets a 404, every page checks for itself), the
  * period and comparison the address asks for, in the store's time zone, and the cost settings.
  */
-export type AnalyticsContext = Awaited<ReturnType<typeof requireMember>> & {
+export type AnalyticsContext = Membership & {
+  /** Whether the member holds the owner role: the pages show what only an owner can change (costs, targets) to them alone. */
+  owner: boolean;
   base: string;
   now: Date;
   params: AnalyticsParams;
   settings: StoredAnalyticsSettings;
 };
 
-export async function analyticsContext(storeSlug: string, searchParams: Record<string, string | string[] | undefined>): Promise<AnalyticsContext> {
-  const member = await requireMember(storeSlug);
+/** A guard (wave 1, 1f): the pages of the cockpit need `analytics:read`; the settings page passes `owner`. */
+export async function analyticsContext(
+  storeSlug: string,
+  searchParams: Record<string, string | string[] | undefined>,
+  key: PermissionKey = "analytics:read",
+): Promise<AnalyticsContext> {
+  const member = await requirePermission(storeSlug, key);
   const now = new Date();
   const [settings] = await Promise.all([getAnalyticsSettings(member.store.id)]);
   return {
     ...member,
+    owner: memberCan(member, "owner"),
     base: `/admin/${member.store.slug}`,
     now,
     params: parseAnalyticsParams(searchParams, { now, timeZone: member.store.timeZone }),

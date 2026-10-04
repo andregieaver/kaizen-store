@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getDiscount } from "@/server/discounts";
 
 import { deleteDiscountAction } from "../actions";
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Coupon" };
 
 export default async function DiscountPage({ params }: PageProps<"/admin/[store]/discounts/[discountId]">) {
   const { store: slug, discountId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "marketing:read");
   if (!z.uuid().safeParse(discountId).success) notFound();
   const discount = await getDiscount(store.id, discountId);
   if (!discount) notFound();

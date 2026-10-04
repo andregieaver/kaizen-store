@@ -5,7 +5,8 @@ import { refresh } from "next/cache";
 import type { z } from "zod";
 
 import type { invoiceDraftInput, invoiceInput, recordPaymentInput, reversePaymentInput } from "@/lib/work-input";
-import { audit, requireMember, type Membership } from "@/server/auth";
+import { audit, type Membership } from "@/server/auth";
+import { checkPermission, memberCan } from "@/server/permissions";
 import { problem, type WorkResult } from "@/server/work-errors";
 import {
   createDraftInvoice,
@@ -29,7 +30,7 @@ import {
 /**
  * Work's actions for invoices (docs/work.md 7.2 WP4): create a draft, save it and its lines, make
  * lines from time, issue, credit, record and reverse payments, delete a draft. Each is bound to the
- * store's slug as its first argument and asks `requireMember()` itself (a layout's check does not stop
+ * store's slug as its first argument and asks `checkPermission()` itself (a layout's check does not stop
  * a page or an action running), then hands what the browser sent to the server function, which checks
  * it again with the shared schemas: amounts and totals are never accepted from a browser.
  *
@@ -41,12 +42,12 @@ import {
  * `date_before_previous`, which the person can confirm).
  */
 
-const OFF = "Work is switched off for this store.";
+const OFF = "Work is switched off for this store, or your role has no access to it.";
 
 /** The membership, for a store that has Work on. */
 async function workMember(storeSlug: string): Promise<Membership | null> {
-  const member = await requireMember(storeSlug);
-  return member.store.workOn ? member : null;
+  const member = await checkPermission(storeSlug, "settings:write");
+  return member?.store.workOn ? member : null;
 }
 
 /** Runs a change for a member of a store with Work on, and refreshes the page when it worked. */
@@ -150,7 +151,7 @@ export async function issueInvoiceAction(storeSlug: string, input: IssueInvoiceR
 /** Credits an invoice, whole or in part, optionally recording the refund. Owners only (4.9). */
 export async function creditInvoiceAction(storeSlug: string, input: CreditInvoiceRequest) {
   return change(storeSlug, async (member) => {
-    if (member.role !== "owner") return problem("Only an owner can credit an invoice.");
+    if (!memberCan(member, "owner")) return problem("Only an owner can credit an invoice.");
     const result = await creditInvoice(member, input);
     if (result.ok) {
       await audit(member.account.id, member.store.id, "work.invoice.credited", {

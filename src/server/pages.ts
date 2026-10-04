@@ -5,6 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
 import {
+  pageBlocks,
   pageInput,
   pageFonts,
   pageSlugProblem,
@@ -20,12 +21,16 @@ import { currentGlobal, refreshUses, sameGlobal, type GlobalPart, type PartKind 
 import { mergeLocales } from "@/lib/localization";
 import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-translation";
 import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
+import { isLegalRole, LEGAL_ROLE_COPY, type LegalRole } from "@/lib/legal-roles";
+import { issueCounts, pageIssues, blockingIssues, refusedIssues, themeSetsOf, unacknowledged, type PageIssue } from "@/lib/page-a11y";
+import { parseStoreTheme } from "@/lib/theme";
 
 import { audit, type Account } from "./auth";
+import { auditChange } from "./audit";
 import { findFont, installFonts } from "./fonts";
 import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./global-parts";
 import { withPageAlts } from "./media-alts";
-import { pageRulesProblem } from "./page-rules";
+import { pageRulesProblem, payPageProblem } from "./page-rules";
 import { scopedTermIds } from "./taxonomy";
 
 /**
@@ -78,7 +83,14 @@ export type EditablePage = {
 };
 
 /** `pages`: how many other pages a change to a global part (D98) reached, so the site's cached pages are refreshed. */
-export type PageResult = { ok: true; id: string; pages?: number } | { ok: false; problems: string[] };
+export type PageResult =
+  | { ok: true; id: string; pages?: number }
+  /**
+   * `code: "needs_confirmation"` (wave 1, 1e, docs/wave-1-trust.md 2.2): publishing was held because the checker found blocking issues the owner
+   * has not acknowledged; nothing was saved or published, and `issues` lists them. Sending the same page again with `acknowledgedIssues` (the
+   * issue ids or rule ids the owner saw) publishes it and records the choice.
+   */
+  | { ok: false; problems: string[]; code?: "needs_confirmation" | "pay_page_block"; issues?: PageIssue[] };
 
 const iso = (value: unknown) => (value == null ? null : new Date(String(value)).toISOString());
 
@@ -186,7 +198,19 @@ export async function savePage(
   owner: PageOwner,
   id: string | null,
   input: unknown,
-  { publish, type = "page", variantOf = null }: { publish: boolean; type?: PageType; /** For a version made for an A/B test (D148): the kind of page it is a version of, which decides what it may hold. */ variantOf?: PageType | null },
+  {
+    publish,
+    type = "page",
+    variantOf = null,
+    acknowledgedIssues,
+  }: {
+    publish: boolean;
+    type?: PageType;
+    /** For a version made for an A/B test (D148): the kind of page it is a version of, which decides what it may hold. */
+    variantOf?: PageType | null;
+    /** The checker's blocking issues the owner has seen and chosen to publish with: issue ids (`image_alt:{block}`) or rule ids (`image_alt`). */
+    acknowledgedIssues?: readonly string[];
+  },
 ): Promise<PageResult> {
   // What a page is shaped like: its own type, or the one a version of it stands in for.
   const shape: PageType = type === "variant" ? (variantOf ?? "page") : type;
@@ -226,6 +250,13 @@ export async function savePage(
     // Only articles have an author (D57).
     ...(type === "article" && author ? { author } : {}),
   };
+  // The page checker (wave 1, 1e): what a shopper, a screen reader or the checkout's policy would meet. The checkout page may not hold
+  // what the policy would break (refused on any save); publishing with another blocking issue asks first, on the server, so skipping
+  // the dialog cannot skip the question. A draft is never held back.
+  const checked = await checkBeforeSave(owner, id, content, publish, acknowledgedIssues);
+  if (checked.result) return checked.result;
+  const before = id === null ? null : await pageSummaryBefore(owner, id, type);
+
   let result: PageResult;
   let spreadTo = 0;
   try {
@@ -304,13 +335,98 @@ export async function savePage(
   if (result.ok && spreadTo > 0) result = { ...result, pages: spreadTo };
 
   if (result.ok) {
-    await audit(account.id, owner, `${auditPrefix(owner)}.${type}_${publish ? "published" : "saved"}`, {
-      page: result.id,
-      slug: content.slug,
-      ...(spreadTo > 0 && { globalPages: spreadTo }),
-    });
+    const state: PageState = publish ? "published" : before === null || before.state === "draft" ? "draft" : before.livePublished && samePageContent(content, before.livePublished) ? "published" : "changed";
+    await auditChange(
+      { accountId: account.id, storeId: owner },
+      `${auditPrefix(owner)}.${type}_${publish ? "published" : "saved"}`,
+      { type: type === "article" ? "article" : "page", id: result.id, label: content.title },
+      before && { title: before.title, address: before.address, state: before.state, rowCount: before.rowCount, blockCount: before.blockCount },
+      pageSummary(content, state),
+      "page",
+      { page: result.id, slug: content.slug, ...(spreadTo > 0 && { globalPages: spreadTo }) },
+    );
+    // Published with checks the owner chose to go past: written down, with how many of each rule and never the page's words.
+    if (publish && checked.acknowledged.length > 0) {
+      await audit(
+        account.id,
+        owner,
+        `${auditPrefix(owner)}.${type}_published_with_issues`,
+        { page: result.id, slug: content.slug, issues: issueCounts(checked.acknowledged) },
+        { target: { type: "page", id: result.id } },
+      );
+    }
   }
   return result;
+}
+
+type PageAuditFacts = { title: string; address: string; state: PageState; rowCount: number; blockCount: number };
+const pageSummary = (content: PageContent, state: PageState): PageAuditFacts => ({
+  title: content.title,
+  address: content.slug,
+  state,
+  rowCount: content.rows.length,
+  blockCount: pageBlocks(content).length,
+});
+
+/** The page as it stood before a save, for the audit entry's before and after. */
+async function pageSummaryBefore(owner: PageOwner, id: string, type: PageType): Promise<(PageAuditFacts & { livePublished: PageContent | null }) | null> {
+  const [row] = await db().execute<Row>(sql`
+    select slug, draft, published from commerce.pages where id = ${id}::uuid and ${ownedBy(owner, type)}
+  `);
+  if (!row) return null;
+  const draft = readDraft(row.draft, String(row.slug));
+  const published = parsePageContent(row.published);
+  return { ...pageSummary(draft, stateOf(draft, published)), livePublished: published };
+}
+
+/**
+ * The checker's gate on a save. Returns the result to answer with when the save must stop (the checkout page holding what the policy
+ * would break, or publishing with unacknowledged blocking issues), and otherwise the blocking issues the owner acknowledged. A checker
+ * that throws on odd content is logged and publishing goes on as without it.
+ */
+async function checkBeforeSave(
+  owner: PageOwner,
+  id: string | null,
+  content: PageContent,
+  publish: boolean,
+  acknowledgedIssues: readonly string[] | undefined,
+): Promise<{ result: PageResult | null; acknowledged: PageIssue[] }> {
+  try {
+    let theme: ReturnType<typeof themeSetsOf> | undefined;
+    let checkout = false;
+    if (owner !== null) {
+      const [row] = await db().execute<Row>(sql`
+        select s.theme,
+          exists (select 1 from commerce.page_roles r where r.store_id = s.id and r.role = 'checkout' and r.page_id = ${id}::uuid) as checkout
+        from commerce.stores s where s.id = ${owner}::uuid
+      `);
+      if (row) {
+        theme = themeSetsOf(parseStoreTheme(row.theme).settings);
+        checkout = Boolean(row.checkout);
+      }
+    }
+    const issues = pageIssues(content, { ...(theme && { theme: { sets: theme } }), checkout });
+    if (checkout && refusedIssues(issues).length > 0) {
+      return { result: { ok: false, problems: [payPageProblem(content) ?? "The checkout page cannot hold this."], code: "pay_page_block", issues: refusedIssues(issues) }, acknowledged: [] };
+    }
+    if (!publish) return { result: null, acknowledged: [] };
+    const open = unacknowledged(issues, acknowledgedIssues);
+    if (open.length > 0) {
+      return {
+        result: {
+          ok: false,
+          code: "needs_confirmation",
+          problems: [`This page has ${open.length === 1 ? "a problem" : `${open.length} problems`} to look at before it is published. Fix ${open.length === 1 ? "it" : "them"}, or publish anyway.`],
+          issues: blockingIssues(issues),
+        },
+        acknowledged: [],
+      };
+    }
+    return { result: null, acknowledged: blockingIssues(issues) };
+  } catch (error) {
+    console.error("[pages] the page checker failed; publishing goes on without it", error);
+    return { result: null, acknowledged: [] };
+  }
 }
 
 /**
@@ -331,7 +447,7 @@ export async function unpublishPage(account: Account, owner: PageOwner, id: stri
     where id = ${id}::uuid and ${ownedBy(owner, type)} and published_at is not null
     returning slug
   `);
-  if (rows.length > 0) await audit(account.id, owner, `${auditPrefix(owner)}.${type}_unpublished`, { page: id, slug: rows[0].slug });
+  if (rows.length > 0) await audit(account.id, owner, `${auditPrefix(owner)}.${type}_unpublished`, { page: id, slug: rows[0].slug }, { target: { type: type === "article" ? "article" : "page", id } });
   return rows.length > 0;
 }
 
@@ -341,7 +457,7 @@ export async function deletePage(account: Account, owner: PageOwner, id: string,
     delete from commerce.pages where id = ${id}::uuid and ${ownedBy(owner, type)} returning slug, draft ->> 'title' as title
   `);
   if (rows.length > 0) {
-    await audit(account.id, owner, `${auditPrefix(owner)}.${type}_deleted`, { page: id, slug: rows[0].slug, title: rows[0].title });
+    await audit(account.id, owner, `${auditPrefix(owner)}.${type}_deleted`, { page: id, slug: rows[0].slug, title: rows[0].title, label: rows[0].title }, { target: { type: type === "article" ? "article" : "page", id } });
   }
   return rows.length > 0;
 }
@@ -533,39 +649,55 @@ export async function productsPageOf(store: { id: string; productsPageId: string
  * Chooses one of a store's published pages for a role (D112): its blog, its
  * search page or its 404 page; or the standard page again with null. A page
  * has one place: not the front page, the All products page or another role's.
+ *
+ * Also the linked legal roles (wave 1, 1e, `LEGAL_ROLES`): the terms, the
+ * privacy statement and the like, which keep their page at its own address.
+ * The same refusals, and a page in a running or scheduled A/B test cannot be
+ * given one (a legal page is never tested). The checkout page may not hold
+ * what the payment policy would break, so a page that does is refused there.
  */
 export async function setPageRole(
   account: Account,
   storeId: string,
-  role: PageRole,
+  role: PageRole | LegalRole,
   pageId: string | null,
 ): Promise<{ ok: true } | { ok: false; problems: string[] }> {
+  const legal = isLegalRole(role);
+  const action = legal ? "store.legal_role_changed" : "store.page_role_changed";
   if (pageId === null) {
     await db().execute(sql`delete from commerce.page_roles where store_id = ${storeId}::uuid and role = ${role}`);
-    await audit(account.id, storeId, "store.page_role_changed", { role, page: null });
+    await audit(account.id, storeId, action, { role, page: null });
     return { ok: true };
   }
   const [page] = await db().execute<Row>(sql`
-    select published_at is not null as published,
+    select published_at is not null as published, published, draft ->> 'title' as title,
       id = (select front_page_id from commerce.stores where id = ${storeId}::uuid) as front,
       id = (select products_page_id from commerce.stores where id = ${storeId}::uuid) as products,
-      (select role from commerce.page_roles r where r.store_id = ${storeId}::uuid and r.page_id = pages.id) as other_role
+      (select role from commerce.page_roles r where r.store_id = ${storeId}::uuid and r.page_id = pages.id) as other_role,
+      exists (select 1 from commerce.experiments e where e.store_id = ${storeId}::uuid and e.target_page_id = pages.id and e.status in ('scheduled', 'running')) as in_test
     from commerce.pages
     where id = ${pageId}::uuid and store_id = ${storeId}::uuid and type = 'page'
   `);
-  const name = ROLE_COPY[role].name.toLowerCase();
+  const name = (legal ? LEGAL_ROLE_COPY[role].name : ROLE_COPY[role].name).toLowerCase();
+  const otherName = (other: string) => (isLegalRole(other) ? LEGAL_ROLE_COPY[other].name : ROLE_COPY[other as PageRole]?.name)?.toLowerCase() ?? "other special page";
   if (!page) return { ok: false, problems: ["That page no longer exists."] };
   if (!page.published) return { ok: false, problems: [`Publish the page before making it your ${name}.`] };
   if (page.front) return { ok: false, problems: [`That page is your front page. Choose another page for your ${name}.`] };
   if (page.products) return { ok: false, problems: [`That page is your All products page. Choose another page for your ${name}.`] };
   if (page.other_role && page.other_role !== role) {
-    return { ok: false, problems: [`That page is your ${ROLE_COPY[page.other_role as PageRole]?.name.toLowerCase() ?? "other special page"}. Choose another page for your ${name}.`] };
+    return { ok: false, problems: [`That page is your ${otherName(String(page.other_role))}. Choose another page for your ${name}.`] };
+  }
+  if (legal && page.in_test) return { ok: false, problems: [`That page is in an A/B test, and a legal page is never tested. Stop the test first, or choose another page for your ${name}.`] };
+  if (role === "checkout") {
+    const content = parsePageContent(page.published);
+    const problem = content ? payPageProblem(content) : null;
+    if (problem) return { ok: false, problems: [problem] };
   }
   await db().execute(sql`
     insert into commerce.page_roles (store_id, role, page_id) values (${storeId}::uuid, ${role}, ${pageId}::uuid)
     on conflict (store_id, role) do update set page_id = excluded.page_id, updated_at = now()
   `);
-  await audit(account.id, storeId, "store.page_role_changed", { role, page: pageId });
+  await audit(account.id, storeId, action, { role, page: pageId, label: legal ? LEGAL_ROLE_COPY[role].name : undefined }, legal ? { target: { type: "page", id: pageId } } : {});
   return { ok: true };
 }
 

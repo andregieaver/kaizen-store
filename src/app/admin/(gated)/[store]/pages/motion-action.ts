@@ -3,7 +3,7 @@
 import type { MotionPlanResult } from "@/lib/motion-plan";
 import type { PageType } from "@/lib/page-content";
 import { aiFor } from "@/server/ai";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPageTypeAccess } from "@/server/permissions";
 import { planPageMotion, readMotionRows } from "@/server/motion-ai";
 
 /**
@@ -13,7 +13,8 @@ import { planPageMotion, readMotionRows } from "@/server/motion-ai";
  * like the store's other page actions.
  */
 export async function planMotionAction(storeSlug: string, type: PageType, rowsJson: string): Promise<MotionPlanResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPageTypeAccess(storeSlug, type, "write");
+  if (!member) return { ok: false, problem: NO_ACCESS };
   const read = readMotionRows(type, rowsJson);
   if (!read.ok) return read;
   const connection = await aiFor(member.store.id, { feature: "page_motion", accountId: member.account.id });

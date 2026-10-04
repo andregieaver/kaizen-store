@@ -5,7 +5,7 @@ import { PageDrawing } from "@/app/admin/(gated)/[store]/pages/drawing";
 import { newPageContent } from "@/lib/page-content";
 import { LAYOUT_TYPE_LABELS } from "@/lib/page-layout";
 import { KIND_LABELS } from "@/lib/templates";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { previewTemplate } from "@/server/templates";
 
 export const metadata: Metadata = { title: "Template preview", robots: { index: false, follow: false } };
@@ -24,7 +24,7 @@ export default async function TemplatePreviewPage({
   params,
 }: PageProps<"/admin/account/templates/s/[store]/[templateId]/preview">) {
   const { store: slug, templateId } = await params;
-  const { store, account } = await requireMember(slug);
+  const { store, account } = await requirePermission(slug, "website:read");
   const result = await previewTemplate(store.id, account, templateId);
   if (!result.ok) notFound();
   const { preview } = result;

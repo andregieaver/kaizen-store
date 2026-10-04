@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { addToTierByEmail, deleteTier, saveTier, setCustomerTier } from "@/server/customer-tiers";
 import type { SaveResult } from "@/server/settings";
 
@@ -19,7 +19,8 @@ function toState(result: SaveResult, success: string): FormState {
 
 /** Makes a discount group (id null) or changes one (D108). */
 export async function saveGroupAction(storeSlug: string, groupId: string | null, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (groupId !== null && !id.safeParse(groupId).success) return { status: "error", messages: ["Unknown group."] };
   const result = await saveTier(member, groupId, {
     name: String(form.get("name") ?? ""),
@@ -32,7 +33,8 @@ export async function saveGroupAction(storeSlug: string, groupId: string | null,
 }
 
 export async function deleteGroupAction(storeSlug: string, groupId: string): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!id.safeParse(groupId).success) return { status: "error", messages: ["Unknown group."] };
   const result = await deleteTier(member, groupId);
   if (result.ok) redirect(`/admin/${member.store.slug}/customer-groups`);
@@ -41,14 +43,16 @@ export async function deleteGroupAction(storeSlug: string, groupId: string): Pro
 
 /** Puts the customer with this email in the group; someone with no account gets one made ahead of them. */
 export async function addToGroupAction(storeSlug: string, groupId: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!id.safeParse(groupId).success) return { status: "error", messages: ["Unknown group."] };
   return toState(await addToTierByEmail(member, groupId, String(form.get("email") ?? "")), "Added to the group.");
 }
 
 /** Takes a customer out of their group. */
 export async function removeFromGroupAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const customerId = id.safeParse(form.get("customerId"));
   if (!customerId.success) return { status: "error", messages: ["Unknown customer."] };
   return toState(await setCustomerTier(member, customerId.data, null), "Removed from the group.");
@@ -56,7 +60,8 @@ export async function removeFromGroupAction(storeSlug: string, _state: FormState
 
 /** Sets a customer's group from their own page; empty takes them out. */
 export async function setCustomerGroupAction(storeSlug: string, customerId: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const group = String(form.get("groupId") ?? "");
   if (!id.safeParse(customerId).success || (group !== "" && !id.safeParse(group).success)) return { status: "error", messages: ["Unknown customer or group."] };
   return toState(await setCustomerTier(member, customerId, group || null), "Saved.");

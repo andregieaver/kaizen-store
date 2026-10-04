@@ -9,11 +9,11 @@ import { WorkOff } from "@/components/admin/work/work-off";
 import { todayIn } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
 import { parseTimeFilters, timeFilterQuery } from "@/lib/work-ui";
-import { requireMember } from "@/server/auth";
 import { listAssignments, listClients } from "@/server/work";
 import { listAssignmentChoices, listPeople } from "@/server/work-choices";
 import { listTimeEntries } from "@/server/work-time";
 import { workBase } from "@/lib/work-paths";
+import { memberCan, requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Time" };
 
@@ -26,10 +26,11 @@ const PAGE_SIZE = 50;
  * Totals count everything the filters match, not just the page.
  */
 export default async function WorkTimePage({ params, searchParams }: PageProps<"/admin/account/work/s/[store]/time">) {
-  const { store, account, role } = await requireMember((await params).store);
+  const viewer = await requirePermission((await params).store, "settings:read");
+  const { store, account } = viewer;
   if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Time" />;
   const query = await searchParams;
-  const owner = role === "owner";
+  const owner = memberCan(viewer, "owner");
   // Others see their own time whatever the address says; the form and the links do not show that as a filter.
   const shown = { ...parseTimeFilters(query), ...(owner ? {} : { accountId: "" }) };
   const filters = owner ? shown : { ...shown, accountId: account.id };

@@ -18,6 +18,7 @@ import {
   CheckoutDelivery,
   CheckoutItems,
   CheckoutPayment,
+  CheckoutTerms,
   CheckoutTotals,
 } from "@/app/s/[store]/[market]/checkout/checkout-section";
 import { CookiesSection } from "@/app/s/[store]/[market]/cookies/cookies-section";
@@ -32,6 +33,7 @@ import {
   OrderLines,
   OrderStatus,
   OrderSubscription,
+  OrderTerms,
   OrderTotals,
 } from "@/app/s/[store]/[market]/order/[orderId]/order-section";
 import { SubscriptionSection } from "@/app/s/[store]/[market]/subscription/[token]/subscription-section";
@@ -78,6 +80,8 @@ async function Part({
   const query = route.query ?? Promise.resolve({});
   const m = t(market.lang);
   const order = route.param ? { store, market, orderId: route.param, query } : null;
+  // A page with its own piece for the terms at checkout (wave 1, 1e) has them there; the payment form then does not draw them too.
+  const holdsTerms = route.holds?.includes("checkout_terms") ?? false;
   switch (part) {
     case "cart_lines":
       return <CartLines store={store} market={market} m={m} />;
@@ -101,8 +105,10 @@ async function Part({
       return <CheckoutDelivery store={store} market={market} />;
     case "checkout_totals":
       return <CheckoutTotals store={store} market={market} />;
+    case "checkout_terms":
+      return <CheckoutTerms store={store} market={market} />;
     case "checkout_payment":
-      return <CheckoutPayment store={store} market={market} />;
+      return <CheckoutPayment store={store} market={market} drawTerms={!holdsTerms} />;
     case "checkout_back":
       return <CheckoutBack store={store} market={market} />;
     case "order_status":
@@ -121,12 +127,14 @@ async function Part({
       return order && <OrderDownloads {...order} />;
     case "order_address":
       return order && <OrderAddress {...order} />;
+    case "order_terms":
+      return order && <OrderTerms {...order} />;
     case "order_continue":
       return order && <OrderContinue {...order} />;
     case "cart":
       return <CartContents store={store} market={market} m={m} />;
     case "checkout":
-      return <Checkout store={store} market={market} />;
+      return <Checkout store={store} market={market} drawTerms={!holdsTerms} />;
     case "order":
       return route.param ? <OrderDetails store={store} market={market} orderId={route.param} query={query} /> : null;
     case "account":

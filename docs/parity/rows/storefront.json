@@ -1596,11 +1596,11 @@
       "was": null
     },
     "weight": 3,
-    "gap": "WCAG 2.2 AA is the intent (D11): theme colour pairs are checked against 4.5:1 and warned about (`themeWarnings()`), alt texts in every language (D89), motion stops under reduced motion (D128). No automated accessibility run in CI, and no checker for pages owners build (heading order, empty links, contrast of owner backgrounds and CSS). The audit evidence itself is bucket D.",
-    "bucket": "A",
-    "wave": 1,
+    "gap": "All four criteria are built and tested; Partial only because the independent audit is bucket D and the payment form is not scanned. e2e/a11y.spec.ts (axe, light and dark, serious and critical fail) covers the pages CI can reach; the builder's Checks tab (src/lib/page-a11y.ts: missing alt text, empty links and buttons, heading order, contrast, placeholders, translations too) links each issue to its block; savePage() asks before publishing a page with a blocking issue and records the owner's choice (needs_confirmation, acknowledgedIssues, audit entry page.published_with_issues); the statement is generated from facts the site holds and flagged for review. Missing: (1) the independent audit; (2) the Stripe payment form and signed-in admin screens are not scanned in CI and the manual axe run has not been recorded (docs/pci.md); (3) the checker reads a page's own content only (a picture behind text is not checked, owner CSS is not read) and a translation made stale by a later edit is not noticed; (4) nothing here is applied to production until the lead applies the migrations and ships. Skeptic check (2026-10-03): no e2e renders the checkout page itself. a11y.spec.ts's checkout test only follows the demo store's redirect to the cart (the demo takes no payments) and scans the cart, and csp.spec.ts reads the checkout's headers only, so the checkout's own markup (address, delivery choice, terms sentence and tick box, pay button) is not scanned by axe at all, in addition to Stripe's form; the manual run recorded nowhere is therefore the only check of it.",
+    "bucket": "D",
+    "wave": null,
     "criteria": [
-      "An automated WCAG check (axe or equivalent) runs in CI over the storefront's key pages (front, product, cart, checkout, account) in light and dark and fails on serious or critical violations.",
+      "An automated WCAG check (axe or equivalent) runs in CI over the storefront's front, product, cart, order, account (signed out) and withdraw pages and the checkout in the states reachable without a payment session, in light and dark, and fails on serious or critical violations. The payment form is checked by hand and recorded.",
       "The page builder lists issues in a page's draft: pictures without alt text, heading order, empty links or buttons, text over a background below 4.5:1, with a link to the block.",
       "Publishing a page with an unresolved blocking issue shows a warning and records the owner's choice.",
       "An accessibility statement can be generated from facts the site holds, flagged for review."
@@ -1611,13 +1611,24 @@
         "src/lib/alt-text.ts",
         "src/server/alt-texts.ts",
         "src/app/globals.css",
-        "src/lib/motion-attrs.ts"
+        "src/lib/motion-attrs.ts",
+        "src/lib/page-a11y.ts",
+        "src/components/admin/page-issues-panel.tsx",
+        "src/server/pages.ts",
+        "src/lib/a11y-statement.ts",
+        "e2e/a11y.ts"
       ],
       "tests": [
         "src/lib/theme.test.ts",
         "src/lib/alt-text.test.ts",
         "src/server/alt-texts.int.test.ts",
-        "e2e/motion.spec.ts"
+        "e2e/motion.spec.ts",
+        "src/lib/page-a11y.test.ts",
+        "src/server/page-checks.int.test.ts",
+        "src/components/admin/activity-and-legal.test.ts",
+        "src/lib/a11y-statement.test.ts",
+        "src/server/accessibility.int.test.ts",
+        "e2e/a11y.spec.ts"
       ],
       "untested": false
     },

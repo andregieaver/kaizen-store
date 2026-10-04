@@ -80,6 +80,7 @@ function visibleTo(storeId: string, accountId: string, source: TemplateSource | 
     and exists (
       select 1 from commerce.store_members v
       where v.store_id = ${viewer} and v.account_id = ${accountId}::uuid and v.disabled_at is null
+        and (v.expires_at is null or v.expires_at > now())
     )
     and ${shared}`;
 }

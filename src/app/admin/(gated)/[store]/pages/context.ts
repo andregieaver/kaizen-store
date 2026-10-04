@@ -7,6 +7,7 @@ import { reservedPageSlugs, type PageType } from "@/lib/page-content";
 import { pageLanguages } from "@/lib/page-translation";
 import { marketPath, storeBase, storeHref, storeOrigin } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
+import { themeSetsOf } from "@/lib/page-a11y";
 import { themeAttributes, themeCss } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { uploadsEnabled } from "@/server/media";
@@ -82,6 +83,8 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     plans: null,
     theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings) },
     // Templates shared between stores and the marketplace (D125), bound to the store.
+    // What the page checker needs (wave 1, 1e): the theme's colours, and the page chosen for the checkout.
+    check: { theme: themeSetsOf(store.theme.settings), checkoutPageId: store.pageRoles.checkout ?? null },
     variantOf,
     // Tests of a page, a product layout, a header or a footer, and of their parts (D148).
     experimentsHref: type === "page" || type === "product_layout" || type === "header" || type === "footer" ? `/admin/${store.slug}/experiments/new` : null,

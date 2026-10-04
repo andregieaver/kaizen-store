@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { BonusResult } from "@/lib/bonus";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { adjustBonus } from "@/server/bonus";
 import { saveStaffFields } from "@/server/field-entities";
 import type { SaveResult } from "@/server/settings";
@@ -15,7 +15,8 @@ import type { SaveResult } from "@/server/settings";
  * server checks everything against the store's own groups.
  */
 export async function saveCustomerFieldsAction(storeSlug: string, customerId: string, changes: unknown): Promise<SaveResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: ["Unknown customer."] };
   const result = await saveStaffFields(member, "customer", customerId, changes);
   if (result.ok) refresh();
@@ -27,7 +28,8 @@ export async function saveCustomerFieldsAction(storeSlug: string, customerId: st
  * Owners and admins both may; the server keeps the balance from going below zero and writes the audit log.
  */
 export async function adjustBonusAction(storeSlug: string, customerId: string, amountMinor: number, note: string): Promise<BonusResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: ["Unknown customer."] };
   if (!Number.isSafeInteger(amountMinor) || amountMinor === 0) return { ok: false, problems: ["The amount must be a whole number of minor units, not 0."] };
   const result = await adjustBonus(member.account, member.store.id, customerId, amountMinor, String(note ?? ""));

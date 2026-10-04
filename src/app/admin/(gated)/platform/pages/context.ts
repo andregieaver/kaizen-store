@@ -57,6 +57,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     plans: planChoices(plans),
     theme: null,
     templates: null,
+    check: null,
     variantOf: null,
     experimentsHref: null,
     fields: null,

@@ -5,7 +5,7 @@ import { ReturnsQueueView } from "@/components/admin/returns/queue-view";
 import { QueueSkeleton } from "@/components/admin/returns/skeletons";
 import { pageNumber } from "@/lib/return-admin";
 import { returnQueueFilter } from "@/lib/return-input";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listReturns, returnCounts } from "@/server/returns";
 
 
@@ -20,7 +20,7 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
  * for an answer and what acknowledgement was not sent. Every member of the store can work it.
  */
 export default async function ReturnsPage({ params, searchParams }: Props) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "orders:read");
   return (
     <Suspense fallback={<QueueSkeleton />}>
       <Queue storeSlug={store.slug} searchParams={searchParams} />
@@ -29,7 +29,7 @@ export default async function ReturnsPage({ params, searchParams }: Props) {
 }
 
 async function Queue({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "orders:read");
   const query = await searchParams;
   const filter = returnQueueFilter.parse({ status: first(query.status), kind: first(query.kind), q: first(query.q), overdue: first(query.overdue) });
   const [queue, counts] = await Promise.all([listReturns(store.id, filter, { page: pageNumber(query.page) }), returnCounts(store.id)]);

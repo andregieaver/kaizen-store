@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { ReturnDetailView, type ReturnDetailActions } from "@/components/admin/returns/detail-view";
 import { previewData, todayIn } from "@/lib/return-admin";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getReturn, previewRefund } from "@/server/returns";
 
 import {
@@ -28,7 +28,7 @@ export const metadata: Metadata = { title: "Return" };
 /** One withdrawal or return and everything staff do with it (D153): a thin loader over `ReturnDetailView`. */
 export default async function ReturnPage({ params }: PageProps<"/admin/[store]/returns/[returnId]">) {
   const { store: slug, returnId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "orders:read");
   if (!z.uuid().safeParse(returnId).success) notFound();
   const detail = await getReturn(store.id, returnId);
   if (!detail) notFound();

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { z } from "zod";
 
+import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { Avatar } from "@/components/avatar";
 import { InvoiceList } from "@/components/admin/plan-invoices";
 import { SUBSCRIPTION_LABELS } from "@/lib/plans";
@@ -12,7 +13,10 @@ import { listEmails } from "@/server/email";
 import { getPlatformCustomer } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
 import { requirePlatformAdmin } from "@/server/auth";
+import { twoStepOfAccount } from "@/server/team";
 import { avatarFor } from "@/server/avatars";
+
+import { resetTwoStepAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -25,7 +29,7 @@ const card = "rounded-lg border border-border bg-background p-5";
  */
 export default async function PlatformCustomerPage({ params }: PageProps<"/admin/platform/customers/[accountId]">) {
   await connection();
-  await requirePlatformAdmin();
+  const admin = await requirePlatformAdmin();
   const { accountId } = await params;
   if (!z.uuid().safeParse(accountId).success) notFound();
   const customer = await getPlatformCustomer(accountId);
@@ -43,6 +47,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
   ]);
   const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const kaizenEmails = emails.filter((e) => e.storeName === null);
+  const twoStep = await twoStepOfAccount(accountId);
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,6 +81,32 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
           </div>
         ))}
       </div>
+
+      <section aria-labelledby="two-step" className={card}>
+        <h2 id="two-step" className="mb-1 font-medium">
+          Two-step sign-in
+        </h2>
+        <p className="mb-3 text-sm text-muted">
+          {twoStep?.waitingToSetUp
+            ? "Their second step was removed. They set it up again when they next sign in."
+            : twoStep?.seen
+              ? "On, as last seen. If they have lost their phone and their recovery codes, you can take it away: they are emailed and set it up again at their next sign-in."
+              : "Not seen to be on."}
+        </p>
+        {customer.id === admin.id ? (
+          <p className="text-sm text-muted">This is you. Change your own two-step sign-in on Your account; another platform admin can reset it if you are locked out.</p>
+        ) : (
+          <ActionForm action={resetTwoStepAction.bind(null, accountId)} className="flex flex-col gap-3">
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="confirm" className="mt-1 size-4" />
+              <span>I have checked that this is the person, and that they have lost their phone and their recovery codes.</span>
+            </label>
+            <div>
+              <SubmitButton variant="secondary">Remove their two-step sign-in</SubmitButton>
+            </div>
+          </ActionForm>
+        )}
+      </section>
 
       <section aria-labelledby="stores" className={card}>
         <h2 id="stores" className="mb-3 font-medium">Stores and plans</h2>

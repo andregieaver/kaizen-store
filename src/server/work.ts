@@ -28,6 +28,7 @@ import { audit, type Membership } from "./auth";
 import type { Store } from "./stores";
 import { refreshDraftInvoices, removeLinesForTask, syncTaskToDraftLine } from "./work-draft-sync";
 import { problem, workGuard, zodProblems, type WorkResult } from "./work-errors";
+import { memberCan } from "./permissions";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<Db, "execute">;
@@ -38,7 +39,7 @@ type Runner = Pick<Db, "execute">;
  *
  * Every query takes the store's id, and a row of another store is never found
  * (the composite foreign keys refuse it as well). The callers check the
- * membership (`requireMember()` in the actions); the functions that write take
+ * membership (`requirePermission()` in the actions); the functions that write take
  * it, as their neighbours do, for who did it and, where the rules ask, for
  * the role. Everything a browser sends is checked again with the schemas of
  * `src/lib/work-input.ts`. Readers return plain, serialisable objects: days
@@ -74,7 +75,7 @@ export async function workEvent(
 }
 
 /** Owners do everything; admins everything except what 4.9 keeps for owners. */
-export const isOwner = ({ role }: Pick<Membership, "role">): boolean => role === "owner";
+export const isOwner = (member: Pick<Membership, "role" | "kind" | "permissions">): boolean => memberCan(member, "owner");
 
 // --- Defaults for the forms -----------------------------------------------------
 

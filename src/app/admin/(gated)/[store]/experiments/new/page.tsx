@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ExperimentForm } from "@/components/admin/experiment-form";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { describePart, testablePart, type PartKind } from "@/lib/experiment-parts";
 import { buttonsOf, formsOf, publishedContentOf, testablePages } from "@/server/experiment-admin";
 
@@ -11,7 +11,7 @@ import { createExperimentAction } from "../actions";
 export const metadata: Metadata = { title: "New A/B test" };
 
 export default async function NewExperimentPage({ params, searchParams }: PageProps<"/admin/[store]/experiments/new">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "marketing:read");
   const query = await searchParams;
   const asked = (key: string) => (typeof query[key] === "string" ? (query[key] as string) : "");
   let pages = await testablePages(store.id);

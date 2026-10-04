@@ -3,13 +3,13 @@
 import { refresh } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import { requireMember } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { saveSchedule, scheduleInput } from "@/server/standing-orders";
 
 /** Adds or changes a delivery day (D102). Owners only: it changes what shoppers agreed to. */
 export async function saveScheduleAction(storeSlug: string, scheduleId: string | null, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return { status: "error", messages: ["Only an owner can change delivery days."] };
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return { status: "error", messages: ["Only an owner can change delivery days."] };
   const parsed = scheduleInput.safeParse({
     id: scheduleId,
     marketCode: form.get("marketCode"),

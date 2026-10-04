@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { AFFILIATE_PARAM, withAffiliate } from "./affiliate-address";
 import { allocateCredit } from "./bonus";
 import { consentCookieName, decodeConsent } from "./cookie-consent";
 import { REFERRAL_CODE, makeReferralCode, normalizeReferralCode } from "./referrals";
@@ -67,9 +68,6 @@ export const affiliateSettingsInput = z.object({
 export const AFFILIATE_CODE = REFERRAL_CODE;
 export const makeAffiliateCode = makeReferralCode;
 export const normalizeAffiliateCode = normalizeReferralCode;
-
-/** The query parameter a store's referral link carries. */
-export const AFFILIATE_PARAM = "ref";
 
 /** The cookie that keeps a store's referral (D131), per store: `kaizen_aff_{storeId}`; only after the visitor allowed it. */
 export const affiliateCookie = (storeId: string) => `kaizen_aff_${storeId}`;
@@ -227,13 +225,6 @@ export function shouldCarry(
   return url.pathname !== base && !url.pathname.startsWith(`${base}/`);
 }
 
-/** The address with the code added. */
-export function withAffiliate(href: string, origin: string, code: string): string {
-  const url = new URL(href, origin);
-  url.searchParams.set(AFFILIATE_PARAM, code);
-  return url.origin === origin ? `${url.pathname}${url.search}${url.hash}` : url.toString();
-}
-
 // ---------------------------------------------------------------------------
 // What the pages show of people: never more than a neutral label
 // ---------------------------------------------------------------------------
@@ -307,3 +298,6 @@ export type CustomerAffiliate = {
 };
 
 export type AffiliateResult<T extends object = object> = ({ ok: true } & T) | { ok: false; problems: string[] };
+
+// Kept here for the modules that always imported them; the pay routes read them from `affiliate-address` (no zod: a CSP without eval).
+export { AFFILIATE_PARAM, withAffiliate };

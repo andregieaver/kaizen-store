@@ -200,6 +200,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use."),
           item("/settings/shipping", "Shipping", "The flat rate for each market, free shipping above an amount, and carriers."),
           item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get."),
+          item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms."),
           item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services."),
         ],
       },
@@ -209,6 +210,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/navigation", "Header and footer", "The store's logos, icon, business details and which menus its standard header and footer show."),
           item("/settings/seo", "SEO & Reach", "How search engines and AI crawlers see the store."),
           item("/settings/cookies", "Cookies and tracking", "The cookies the store sets, its tracking tools and consents."),
+          item("/settings/accessibility", "Accessibility", "What has been checked against the accessibility requirements, and a draft accessibility statement for the site."),
         ],
       },
       {
@@ -223,20 +225,34 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Account",
         items: [
           item("/billing", "Billing", "The store's plan, what it costs and its invoices."),
-          item("/staff", "Team", "Who can work in the store's admin, and their roles."),
+          item("/staff", "Team", "Who can work in the store's admin, their roles, collaborators with an end date, and two-step sign-in."),
+          item("/activity", "Activity log", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings."),
         ],
       },
     ],
   },
 ];
 
-/** The pages of the sections offered to a store with these modules on. */
-export function storeSections(flags: StoreFlags): StoreSection[] {
+/**
+ * Whether the person looking can open a page, from its address after the store's (wave 1, 1f): the navigation offers only what a
+ * member may open, so a page they cannot use is not a link to a 404. Built from the member's keys by `canOpenPath()` in `permissions.ts`
+ * (not here: that file reads this one).
+ */
+export type CanOpen = (path: string) => boolean;
+
+/**
+ * The pages of the sections offered to a store with these modules on, and, with `canOpen`, only those the member can open: a group,
+ * a section and a hub's card with none left are not drawn.
+ */
+export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSection[] {
   const on = (needs?: StoreNeeds) => !needs || (needs === "bookings" ? flags.bookingsOn : flags.deliveriesOn);
-  return STORE_SECTIONS.filter((s) => on(s.needs)).map((s) => ({
-    ...s,
-    groups: s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.needs)) })).filter((g) => g.items.length > 0),
-  }));
+  const open = (path: string) => !canOpen || canOpen(path);
+  return STORE_SECTIONS.filter((s) => on(s.needs))
+    .map((s) => ({
+      ...s,
+      groups: s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.needs) && open(i.path)) })).filter((g) => g.items.length > 0),
+    }))
+    .filter((s) => !canOpen || s.groups.length > 0);
 }
 
 /** Addresses inside a section, after the store's: its hub (if it has one) and every page in its sidebar. */
@@ -262,10 +278,10 @@ export const storeLink = (base: string, item: Pick<StoreItem, "path" | "exact">)
 type Link = { href: string; label: string; exact?: boolean };
 
 /** The tabs of a store's admin: Home, then each section offered, with the addresses inside it. A page of cards marks only itself, its pages are inside their own section. */
-export function storeTabs(base: string, flags: StoreFlags): (Link & { icon: NavIconName; also: string[] })[] {
+export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen): (Link & { icon: NavIconName; also: string[] })[] {
   return [
     { href: base, label: "Home", icon: "home", exact: true, also: HOME_PATHS.map((p) => `${base}${p}`) },
-    ...storeSections(flags).map((s) => ({
+    ...storeSections(flags, canOpen).map((s) => ({
       href: `${base}${s.start}`,
       label: s.label,
       icon: s.icon,
@@ -277,10 +293,10 @@ export function storeTabs(base: string, flags: StoreFlags): (Link & { icon: NavI
 }
 
 /** The sidebar of each section (none for Home), by the addresses inside it: a section's page of cards matches only itself. */
-export function storeAreas(base: string, flags: StoreFlags): { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] {
+export function storeAreas(base: string, flags: StoreFlags, canOpen?: CanOpen): { prefixes: string[]; exact?: string[]; groups: { heading: string; items: Link[] }[] }[] {
   return [
     { prefixes: HOME_PATHS.map((p) => `${base}${p}`), exact: [base], groups: [] },
-    ...storeSections(flags).map((s) => ({
+    ...storeSections(flags, canOpen).map((s) => ({
       prefixes: s.groups.flatMap((g) => g.items.map((i) => `${base}${i.path}`)),
       ...(s.hub && { exact: [`${base}${s.start}`] }),
       groups: s.groups.map((g) => ({ heading: g.heading, items: g.items.map((i) => ({ label: i.label, ...storeLink(base, i) })) })),

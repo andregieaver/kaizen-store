@@ -4,14 +4,14 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { EmailView } from "@/components/admin/email-log";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getEmail } from "@/server/email";
 
 export const metadata: Metadata = { title: "Email" };
 
 export default async function StoreEmailPage({ params }: PageProps<"/admin/[store]/emails/[emailId]">) {
   const { store: slug, emailId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "orders:read");
   const email = z.uuid().safeParse(emailId).success ? await getEmail(emailId, store.id) : null;
   if (!email) notFound();
   return (

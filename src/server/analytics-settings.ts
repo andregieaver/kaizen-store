@@ -18,6 +18,7 @@ import { mainCurrency } from "@/lib/markets";
 
 import { audit, type Membership } from "./auth";
 import { storeTag } from "./stores";
+import { can } from "@/lib/permissions";
 
 type Row = Record<string, unknown>;
 
@@ -79,7 +80,7 @@ export async function saveAnalyticsSettings(
   { account, store, role }: Membership,
   input: unknown,
 ): Promise<AnalyticsResult<{ settings: AnalyticsSettings }>> {
-  if (role !== "owner") return refuse(OWNER_ONLY);
+  if (!can({ role }, "owner")) return refuse(OWNER_ONLY);
   const parsed = parseAnalyticsSettings(input, mainCurrency(store));
   if (!parsed.ok) return refuse(...parsed.problems);
   const s = parsed.value;
@@ -106,7 +107,7 @@ export async function saveAnalyticsSettings(
  * stops the counting and keeps what was counted (the daily job deletes rows after 25 months).
  */
 export async function setVisitCounting({ account, store, role }: Membership, enabled: boolean): Promise<AnalyticsResult<{ enabled: boolean }>> {
-  if (role !== "owner") return refuse(OWNER_ONLY);
+  if (!can({ role }, "owner")) return refuse(OWNER_ONLY);
   await db().execute(sql`update commerce.stores set visit_counting = ${enabled} where id = ${store.id}::uuid`);
   await audit(account.id, store.id, "analytics.visit_counting", { enabled });
   refreshTag(storeTag(store.slug));
@@ -119,7 +120,7 @@ export async function setVisitCounting({ account, store, role }: Membership, ena
  * and so is a variant with no cost. Owner only; returns how many lines were filled in.
  */
 export async function backfillCosts({ account, store, role }: Membership): Promise<AnalyticsResult<{ lines: number }>> {
-  if (role !== "owner") return refuse(OWNER_ONLY);
+  if (!can({ role }, "owner")) return refuse(OWNER_ONLY);
   const rows = await db().execute<Row>(sql`
     update commerce.order_lines ol set unit_cost_minor = v.cost_minor
     from commerce.product_variants v, commerce.orders o

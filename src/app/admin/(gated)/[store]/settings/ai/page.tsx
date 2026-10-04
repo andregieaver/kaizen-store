@@ -6,7 +6,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { providerInfo } from "@/lib/ai-provider";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { getAiSettings, type AiSettings } from "@/server/ai";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 
 import { evalStoreAiAction, removeStoreAiAction, saveStoreAiAction, testStoreAiAction, testStoreImageAction } from "./actions";
 
@@ -27,9 +27,10 @@ function describe(settings: AiSettings): string {
  */
 export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/settings/ai">) {
   const { store: slug } = await params;
-  const { store, role } = await requireMember(slug);
+  const staffer = await requirePermission(slug, "settings:read");
+  const { store } = staffer;
   const [own, kaizen] = await Promise.all([getAiSettings(store.id), getAiSettings(null)]);
-  const owner = role === "owner";
+  const owner = memberCan(staffer, "owner");
   const usingOwn = own?.enabled === true;
   const current = usingOwn
     ? `Your own AI · ${describe(own)}`

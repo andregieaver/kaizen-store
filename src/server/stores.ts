@@ -8,6 +8,8 @@ import { parseStoreAudience, type StoreAudience } from "@/lib/b2b";
 import type { StoreCurrency } from "@/lib/currency";
 import { localizationOf, type Localization } from "@/lib/localization";
 import { toMarket, type Market } from "@/lib/markets";
+import { isTermsMode, type TermsMode } from "@/lib/checkout-terms";
+import { isLegalRole, type LegalRole } from "@/lib/legal-roles";
 import { isPageRole, type PageRole } from "@/lib/page-roles";
 import { isStoreSlug } from "@/lib/paths";
 import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
@@ -81,6 +83,10 @@ export type Store = {
   productsPageId: string | null;
   /** The pages chosen for the blog, the search page and the 404 page (D112), by role. */
   pageRoles: Partial<Record<PageRole, string>>;
+  /** The pages chosen for the terms, privacy statement and the like (wave 1, 1e): linked roles, served at their own address. */
+  legalPages: Partial<Record<LegalRole, string>>;
+  /** What checkout says about the terms: a sentence with links, with a tick box, or nothing (wave 1, 1e). */
+  termsAtCheckout: TermsMode;
   /** Analytics and marketing tools, loaded only with the shopper's consent (D58). */
   tracking: TrackingSettings;
   /** The owner's own code for the head and body (D61), as saved; `liveCustomCode()` says whether it is added. */
@@ -128,7 +134,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     select
       s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
-      s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.modules, s.time_zone, s.booking_reminder_hours,
+      s.terms_at_checkout, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.modules, s.time_zone, s.booking_reminder_hours,
       s.locales, s.rates_auto, s.rates_updated_at,
       (
         select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
@@ -207,6 +213,8 @@ async function loadStore(slug: string): Promise<Store | null> {
     frontPageId: text(row.front_page_id),
     productsPageId: text(row.products_page_id),
     pageRoles: Object.fromEntries(Object.entries((row.page_roles ?? {}) as Record<string, string>).filter(([role]) => isPageRole(role))),
+    legalPages: Object.fromEntries(Object.entries((row.page_roles ?? {}) as Record<string, string>).filter(([role]) => isLegalRole(role))),
+    termsAtCheckout: isTermsMode(row.terms_at_checkout) ? row.terms_at_checkout : "link",
     tracking: parseTracking(row.tracking),
     customCode: parseCustomCode(row.custom_code),
     customCss: String(row.custom_css ?? ""),

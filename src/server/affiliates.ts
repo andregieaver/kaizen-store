@@ -32,7 +32,7 @@ import type { Market } from "@/lib/markets";
 
 import { audit, type Account } from "./auth";
 import { bonusProgram, roleIn, type BonusProgram, type Runner } from "./bonus";
-import type { Shop } from "./cart";
+import { deviceCartIds, type Shop } from "./cart";
 
 type Row = Record<string, unknown>;
 
@@ -206,6 +206,26 @@ async function cookieCode(storeId: string): Promise<string | null> {
   }
 }
 
+/**
+ * The code on an open cart of this browser (its `cart_{store}_{market}` cookies), the newest first: what a friend who declined marketing
+ * cookies still has once the page's memory is gone (a pay page loads afresh, `PayRouteGuard`), because adding to the cart put the code on
+ * the cart. Null outside a request, for no cart or a cart with no code.
+ */
+async function deviceCartCode(storeId: string): Promise<string | null> {
+  try {
+    const ids = await deviceCartIds(storeId);
+    if (ids.length === 0) return null;
+    const [row] = await db().execute<Row>(sql`
+      select affiliate_code from commerce.carts
+      where store_id = ${storeId}::uuid and id in (${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)}) and status = 'open' and affiliate_code is not null
+      order by updated_at desc limit 1
+    `);
+    return row?.affiliate_code ? String(row.affiliate_code) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The code a cart carries, else the consented cookie's: what the cart page counts on. */
 export async function codeInPlay(runner: Runner, storeId: string, cartId: string | null): Promise<string | null> {
   if (cartId) {
@@ -242,7 +262,8 @@ export async function rememberAffiliate(shop: Shop, cartId: string, code?: strin
  */
 export async function attachReferral(storeId: string, customerId: string, code?: string | null): Promise<boolean> {
   try {
-    const clean = await validAffiliateCode(db(), storeId, code ?? (await cookieCode(storeId)));
+    // The page's code, else the consented cookie's, else the one on this browser's open cart (a friend who declined marketing cookies).
+    const clean = await validAffiliateCode(db(), storeId, code ?? (await cookieCode(storeId)) ?? (await deviceCartCode(storeId)));
     if (!clean) return false;
     const done = await db().execute<Row>(sql`
       update commerce.customers c set referred_by_customer_id = a.customer_id, updated_at = now()

@@ -4,7 +4,7 @@ import { CookieScanPanel } from "@/components/admin/cookie-scan";
 import { ConsentLog, CustomCodeForm, TrackingForm } from "@/components/admin/cookie-settings";
 import { reviewFindings } from "@/lib/cookie-scan";
 import { marketPath, storeDomain, storeHref } from "@/lib/paths";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { listConsents } from "@/server/consents";
 import { latestFindings, listScans } from "@/server/cookie-scans";
 import { listCookieNotes } from "@/server/site-cookies";
@@ -15,7 +15,8 @@ export const metadata: Metadata = { title: "Cookies and tracking" };
 
 /** The store's cookies, tools and consents (D58). */
 export default async function StoreCookiesPage({ params }: PageProps<"/admin/[store]/settings/cookies">) {
-  const { store, role } = await requireMember((await params).store);
+  const current = await requirePermission((await params).store, "settings:read");
+  const { store } = current;
   const market = store.markets[0];
   const [consents, scans, lastDone, notes] = await Promise.all([
     listConsents(store.id),
@@ -57,7 +58,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
         lastDone={lastDone}
         findings={lastDone ? reviewFindings(lastDone.items, notes) : []}
         scanAction={requestStoreScanAction.bind(null, store.slug)}
-        noteAction={role === "owner" ? saveStoreCookieNoteAction.bind(null, store.slug) : null}
+        noteAction={memberCan(current, "owner") ? saveStoreCookieNoteAction.bind(null, store.slug) : null}
       />
       <ConsentLog consents={consents} />
     </div>

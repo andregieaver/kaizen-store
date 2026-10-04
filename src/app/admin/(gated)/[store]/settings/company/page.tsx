@@ -7,7 +7,7 @@ import { BusinessDetailsFields } from "@/components/admin/business-details-field
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
 import { weekSummary } from "@/lib/opening-hours";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { getCompany, KIND_LABELS, type StoreLocation } from "@/server/company";
 import { listCountries } from "@/server/stores";
 
@@ -22,8 +22,8 @@ const card = "rounded-lg border border-border bg-background p-5";
  * its office with opening hours, and any physical stores and pickup points.
  */
 export default async function CompanyPage({ params }: PageProps<"/admin/[store]/settings/company">) {
-  const member = await requireMember((await params).store);
-  const { store, role } = member;
+  const member = await requirePermission((await params).store, "settings:read");
+  const { store } = member;
   const [company, countries] = await Promise.all([getCompany(store.id), listCountries()]);
   const base = `/admin/${store.slug}/settings/company`;
   const homeCountry = store.details.country ?? "NO";
@@ -40,7 +40,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
         <p className="mb-4 text-sm text-muted">
           Shoppers see these in the footer, the terms of sale and every order confirmation. The law requires them.
         </p>
-        {role === "owner" ? (
+        {memberCan(member, "owner") ? (
           <ActionForm action={saveBusinessAction.bind(null, store.slug)} className="flex flex-col gap-4">
             <BusinessDetailsFields name={store.name} details={store.details} countries={countries} fallbackEmail={member.account.email} />
             <div>
@@ -62,7 +62,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
           Who you sell to. Prices are always charged with VAT; businesses see them without it, and give their company&apos;s name and
           organisation number at checkout.
         </p>
-        {role === "owner" ? (
+        {memberCan(member, "owner") ? (
           <ActionForm action={saveAudienceAction.bind(null, store.slug)} className="flex flex-col gap-4">
             <AudienceFields audience={store.audience} businessPopup={store.businessPopup} />
             <div>

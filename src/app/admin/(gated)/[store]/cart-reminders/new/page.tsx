@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getCartReminderSettings, newStepContent } from "@/server/cart-reminders";
 
 import { ReminderForm } from "../reminder-form";
@@ -9,7 +9,7 @@ import { ReminderForm } from "../reminder-form";
 export const metadata: Metadata = { title: "New cart reminder" };
 
 export default async function NewReminderPage({ params }: PageProps<"/admin/[store]/cart-reminders/new">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "marketing:read");
   const { steps } = await getCartReminderSettings(store.id);
   const last = steps.at(-1)?.delayMinutes ?? 0;
   const locales = store.localization.locales;

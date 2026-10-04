@@ -379,13 +379,13 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Two fixed roles, `owner` and `admin` (`Role` in `src/server/auth.ts`, a `role` select on the Staff page): owners manage staff and payment keys, admins everything else. No per-section permissions, no collaborator accounts for agencies, no two-step authentication, no staff limit by plan. Changes are written to `commerce.audit_log` but the log is read only on the payments page (`recentAudit()`, 20 rows). No test holds `inviteStaff()`, `disableStaff()` or `recentAudit()` directly.",
+    "gap": "Criteria 1, 2 and 4 are built and tested (roles of per-section permissions assigned from the Team page and refused by every page, action and route; collaborators with a role and an expiry, badged in the staff list, ignored by getMembership() once expired and ended by the daily job; an Activity log by person, area, action and period that holds every role change). Criterion 3 is Partial for the reason of international.staff-two-step-authentication: nothing has run against a real Supabase Auth, and the platform admin's real enrolment in production is still to be recorded. Also not built: a staff limit by plan (Shopify limits users by plan), passkeys (dropped from the criterion), and an agency account that invites itself (collaborators are invited by the owner). This is the same Shopify feature as international.staff-roles-and-permissions (parity README rule 8): the lead should merge the two rows, the survivor taking both rows' criteria and one weight; not merged here.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
       "An owner creates a role with a chosen set of per-section permissions (orders, products, customers, marketing, settings, billing, staff) and assigns it; a page and a server action both refuse a member without the permission.",
-      "A collaborator can be invited for a store by an agency's account with a limited role and an expiry, and shows as a collaborator in the staff list.",
-      "A staff member can switch on two-step authentication (authenticator app or passkey), is asked for it at sign-in, and an owner can require it for the whole store.",
+      "An owner can invite an agency's account to the store as a collaborator with a limited role and an expiry; it shows as a collaborator in the staff list and loses access when it expires.",
+      "A staff member can switch on two-step authentication (authenticator app), is asked for it at sign-in, and an owner can require it for the whole store.",
       "A viewer lists the audit log by person, action and date for the store, and every role or permission change appears in it."
     ],
     "evidence": {
@@ -393,9 +393,26 @@
         "src/server/auth.ts",
         "src/server/settings.ts",
         "src/app/admin/(gated)/[store]/staff/page.tsx",
-        "src/app/admin/(gated)/actions.ts"
+        "src/app/admin/(gated)/actions.ts",
+        "src/server/team.ts",
+        "src/server/store-roles.ts",
+        "src/server/permissions.ts",
+        "src/server/security-jobs.ts",
+        "src/server/two-step.ts",
+        "src/components/admin/team-view.tsx",
+        "src/server/activity.ts",
+        "src/app/admin/(gated)/[store]/activity/page.tsx"
       ],
-      "tests": [],
+      "tests": [
+        "src/server/store-roles.int.test.ts",
+        "src/server/permissions.int.test.ts",
+        "src/server/security-jobs.int.test.ts",
+        "src/server/activity.int.test.ts",
+        "src/server/two-step.int.test.ts",
+        "src/lib/permissions.scan.test.ts",
+        "src/components/admin/team-and-roles.test.ts",
+        "src/db/trust.test.ts"
+      ],
       "untested": false
     },
     "decisions": [],

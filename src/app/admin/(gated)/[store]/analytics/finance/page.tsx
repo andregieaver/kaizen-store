@@ -50,7 +50,7 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
         base={ctx.base}
         currency={mainCurrency(store)}
         locale={store.markets[0]?.locale ?? "en"}
-        isOwner={ctx.role === "owner"}
+        isOwner={ctx.owner}
         current={current}
         comparison={comparison && compare.mode !== "none" ? { mode: compare.mode, data: comparison } : null}
         bucket={bucket}

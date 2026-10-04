@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CompanyFields } from "@/components/admin/company-fields";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listCompanies, employeePercent } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
 
@@ -17,7 +17,7 @@ export const metadata: Metadata = { title: "Companies" };
  * discount that employees get.
  */
 export default async function CompaniesPage({ params }: PageProps<"/admin/[store]/companies">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "customers:read");
   const [companies, groups] = await Promise.all([listCompanies(store.id), listTiers(store.id)]);
   const base = `/admin/${store.slug}`;
 

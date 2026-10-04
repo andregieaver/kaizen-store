@@ -98,6 +98,9 @@ const PAGES: readonly AdminPage[] = [
   store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "Main", "A printable packing slip for one order, without prices.", {
     keywords: ["print", "slip", "pack"],
   }),
+  store("order.terms", "/orders/[orderId]/terms/[role]", "Terms as shown", "Main", "One of the texts an order was placed under (the terms or the privacy statement), as the shopper was shown it: the kept copy, its version and when it was accepted.", {
+    keywords: ["terms accepted", "terms snapshot", "privacy statement", "what the customer agreed to"],
+  }),
   store("returns", "/returns", "Returns", "Main", "Customers' withdrawals from a purchase (the legal right to change their mind) and return requests inside the store's own window: a queue with what is overdue, to approve, to receive and to refund.", {
     tasks: ["See what is past its refund deadline (?overdue=1)", "See return requests to answer (?status=requested)", "Search by return, order, name or email (?q=)", "Open a return and work it to a refund"],
     keywords: ["return", "withdrawal", "withdraw", "right of withdrawal", "angrerett", "refund deadline", "send back", "14 days", "return request", "RMA"],
@@ -423,7 +426,30 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["plan", "subscription to kaizen", "invoice", "fee"],
   }),
-  store("staff", "/staff", "Team", "Account", "The store's members and their roles.", { needs: "owner", keywords: ["users", "roles", "invite"] }),
+  store("staff", "/staff", "Team", "Account", "The store's members: their roles, collaborators with an end date, who has two-step sign-in, and whether the store requires it.", {
+    needs: "owner",
+    tasks: ["Invite someone as staff or as a collaborator with an end date", "Change a member's role", "Remove access", "Require two-step sign-in of everyone"],
+    keywords: ["users", "roles", "invite", "collaborator", "agency", "two-step", "2fa", "two factor", "authenticator", "permissions"],
+  }),
+  store("staff.roles", "/staff/roles", "Roles", "Account", "The store's roles: what each can see and change, per area. Orders, Products, Marketing, Content, Analytics and Read-only to start from.", {
+    needs: "owner",
+    tasks: ["Make a role", "Choose what a role can view or change", "Delete a role nobody holds"],
+    keywords: ["permissions", "access", "staff roles", "who can", "read only"],
+  }),
+  store("activity", "/activity", "Activity log", "Account", "Who changed what and when: products, prices, pages, discounts, shipping, staff and payment settings. Filter by person, area, action and period; owners can download it as CSV.", {
+    tasks: ["See who changed a price", "Filter by person or area", "Download the log as CSV (owners)"],
+    keywords: ["audit", "audit log", "history", "who did", "changes", "log"],
+  }),
+  store("legal", "/settings/legal", "Legal pages", "Selling", "Starter drafts of the terms of sale, privacy statement, returns and shipping policies, withdrawal information and imprint, written from the store's own details in Norwegian, Swedish, Danish or English; which published page each role has; and what checkout says about the terms (a link, a tick box or nothing).", {
+    needs: "owner",
+    tasks: ["Make a starter draft", "Choose the published page for terms, privacy and the rest", "Choose link, tick box or nothing at checkout"],
+    keywords: ["terms", "terms and conditions", "privacy", "privacy policy", "imprint", "policies", "gdpr", "shipping policy", "returns policy", "checkbox", "accept", "vilkår", "personvern"],
+  }),
+  store("accessibility", "/settings/accessibility", "Accessibility", "Site", "What has been assessed against the accessibility requirements (status, who assessed and when), known issues, and a draft accessibility statement made from it and from what the site itself knows.", {
+    needs: "owner",
+    tasks: ["Record an assessment", "Make a draft accessibility statement"],
+    keywords: ["wcag", "eaa", "accessibility statement", "tilgjengelighet", "contrast", "screen reader"],
+  }),
 
   // Outside a store --------------------------------------------------------------------------
   account("stores", "", "Control center", "Every store you run at a glance: what needs you first, the week's sales and orders, stock running out, and the latest orders.", {
@@ -534,6 +560,9 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["experiment", "a/b", "test", "split", "guardrail"],
   }),
   platform("search-test", "/search-test", "Search test", "Platform", "The search experiment: keyword against hybrid search.", { keywords: ["experiment", "a/b"] }),
+  platform("activity", "/activity", "Activity log", "Platform", "What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets, approvals. Filter by person and period.", {
+    keywords: ["audit", "audit log", "history", "who did", "two-step", "security events"],
+  }),
   platform("assistant", "/assistant", "AI manager", "Platform", "The platform's AI manager: conversations and what it has learned about you.", {
     keywords: ["assistant", "ai", "memory"],
   }),
@@ -570,10 +599,18 @@ export function pageHref(page: AdminPage, params: Record<string, string>, storeS
   return `${areaBase(page.area, storeSlug)}${path}`;
 }
 
-export type SiteFlags = { bookings?: boolean; deliveries?: boolean; work?: boolean; owner?: boolean };
+export type SiteFlags = {
+  bookings?: boolean;
+  deliveries?: boolean;
+  work?: boolean;
+  owner?: boolean;
+  /** Whether the person can open the page (wave 1, 1f: their role's keys); where it is not given every page is open to them. Built from `canOpenPath()` in `permissions.ts`. */
+  canOpen?: (page: AdminPage) => boolean;
+};
 
 /** Whether a page is offered to this person in this store. */
 export function pageOffered(page: AdminPage, flags: SiteFlags): boolean {
+  if (flags.canOpen && !flags.canOpen(page)) return false;
   if (page.needs === "bookings") return Boolean(flags.bookings);
   if (page.needs === "deliveries") return Boolean(flags.deliveries);
   if (page.needs === "work") return Boolean(flags.work);

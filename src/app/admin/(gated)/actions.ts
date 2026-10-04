@@ -11,21 +11,16 @@ import { siteUrl } from "@/lib/site";
 import { seoFromForm } from "@/lib/seo";
 import { PAYMENT_MODES, type PaymentModeName } from "@/lib/stripe-account";
 import { createClient } from "@/lib/supabase/server";
-import { requireMember, type Membership } from "@/server/auth";
+import type { Membership } from "@/server/auth";
 import { applyPlanDiscount, cancelPlan, choosePlan, portalUrl, removeWaitingDiscount } from "@/server/billing";
 import { createAccountSession, createStripeAccount, refreshStripeAccount } from "@/server/connect";
 import { setPlanRemindersOptOut } from "@/server/plan-reminders";
+import { checkOwnerRole, checkPermission, NO_ACCESS, requireOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { saveStoreSeo, STORES_TAG } from "@/server/seo";
 import { storeTag } from "@/server/stores";
 import { parsePrice } from "@/lib/product-input";
-import {
-  disableStaff,
-  saveShippingSettings,
-  inviteStaff,
-  setStripeProvider,
-  type SaveResult,
-} from "@/server/settings";
+import { saveShippingSettings, setStripeProvider, type SaveResult } from "@/server/settings";
 
 // Every action takes the store's slug as its first (bound) argument and
 // re-checks the signed-in account's access to that store.
@@ -33,10 +28,8 @@ import {
 const mode = z.enum(PAYMENT_MODES as [PaymentModeName, ...PaymentModeName[]]);
 
 async function asOwner(storeSlug: string): Promise<Membership | FormState> {
-  const member = await requireMember(storeSlug);
-  return member.role === "owner"
-    ? member
-    : { status: "error", messages: ["Only an owner can change this."] };
+  const member = await checkOwnerRole(storeSlug);
+  return member ?? { status: "error", messages: ["Only an owner can change this."] };
 }
 
 function toState(result: SaveResult, success?: string): FormState {
@@ -79,7 +72,7 @@ export async function accountSessionAction(
 
 /** After onboarding: reads the account's state from Stripe and shows it. */
 export async function refreshStripeAccountAction(storeSlug: string, modeName: PaymentModeName): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requireOwnerRole(storeSlug);
   const parsedMode = mode.safeParse(modeName);
   if (!parsedMode.success) return;
   if (await refreshStripeAccount(member.store.id, parsedMode.data)) {
@@ -109,42 +102,13 @@ export async function setStripeProviderAction(
   return toState(result);
 }
 
-export async function inviteStaffAction(
-  storeSlug: string,
-  _state: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const owner = await asOwner(storeSlug);
-  if (!("store" in owner)) return owner;
-  const email = z.email().safeParse(String(formData.get("email") ?? "").trim());
-  const role = z.enum(["owner", "admin"]).safeParse(formData.get("role"));
-  if (!email.success || !role.success) {
-    return { status: "error", messages: ["Enter a valid email and role."] };
-  }
-  return toState(
-    await inviteStaff(owner, email.data, role.data),
-    `${email.data} can now sign in at /admin/sign-in.`,
-  );
-}
-
-export async function disableStaffAction(
-  storeSlug: string,
-  _state: FormState,
-  formData: FormData,
-): Promise<FormState> {
-  const owner = await asOwner(storeSlug);
-  if (!("store" in owner)) return owner;
-  const id = z.uuid().safeParse(formData.get("accountId"));
-  if (!id.success) return { status: "error", messages: ["Unknown staff member."] };
-  return toState(await disableStaff(owner, id.data), "Access removed.");
-}
-
 export async function saveShippingAction(
   storeSlug: string,
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const rates: { marketCode: string; amountMinor: number; freeOverMinor: number | null }[] = [];
   const problems: string[] = [];
   for (const market of member.store.markets) {
@@ -171,7 +135,8 @@ export async function saveStoreSeoAction(
   _state: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "settings:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const locales = member.store.localization.locales;
   const result = await saveStoreSeo(member, seoFromForm(formData, locales));
   if (result.ok) {
@@ -244,7 +209,7 @@ export async function removePlanDiscountAction(storeSlug: string): Promise<FormS
 
 /** The Plan page's link: no reminders from Kaizen about plans left unpaid, or reminders after all (D33). */
 export async function planRemindersOptOutAction(storeSlug: string, optOut: boolean): Promise<void> {
-  const member = await requireMember(storeSlug);
+  const member = await requireOwnerRole(storeSlug);
   await setPlanRemindersOptOut(member.account.id, optOut);
   refresh();
 }

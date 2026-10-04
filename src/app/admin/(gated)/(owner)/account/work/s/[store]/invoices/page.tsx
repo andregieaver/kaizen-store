@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 import { InvoicesListView } from "@/components/admin/work/invoices-list";
 import { WorkOff } from "@/components/admin/work/work-off";
 import { invoiceListFilter, parseInvoiceListParams } from "@/lib/work-invoice-ui";
-import { requireMember } from "@/server/auth";
 import { listClients } from "@/server/work";
 import { newInvoiceChoices } from "@/server/work-invoice-screens";
 import { listWorkInvoices } from "@/server/work-invoices";
+import { requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Invoices" };
 
@@ -18,7 +18,7 @@ const PAGE_SIZE = 25;
  * links to).
  */
 export default async function WorkInvoicesPage({ params, searchParams }: PageProps<"/admin/account/work/s/[store]/invoices">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Invoices" />;
   const search = await searchParams;
   const query = parseInvoiceListParams(search);

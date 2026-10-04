@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { weekSummary } from "@/lib/opening-hours";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listResources } from "@/server/bookings";
 
 export const metadata: Metadata = { title: "Staff and hours" };
 
 /** Who takes appointments, and when (D65). */
 export default async function StaffPage({ params }: PageProps<"/admin/[store]/bookings/staff">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "bookings:read");
   const staff = await listResources(store.id);
   const base = `/admin/${store.slug}/bookings/staff`;
 

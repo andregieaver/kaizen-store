@@ -7,10 +7,10 @@ import { mainCurrency } from "@/lib/markets";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
 import { workBase } from "@/lib/work-paths";
 import { SERIES_TEXT, sellerReadiness } from "@/lib/work-settings";
-import { requireMember } from "@/server/auth";
 import { getWorkSeries, getWorkSettings, sellerDetails } from "@/server/work-settings";
 
 import { saveWorkSeriesAction, saveWorkSettingsAction } from "../settings-actions";
+import { memberCan, requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Work settings" };
 
@@ -22,9 +22,10 @@ const card = "rounded-lg border border-border bg-background p-5";
  * Owners change them; admins see them.
  */
 export default async function WorkSettingsPage({ params }: PageProps<"/admin/account/work/s/[store]/settings">) {
-  const { store, role } = await requireMember((await params).store);
+  const viewer = await requirePermission((await params).store, "settings:read");
+  const { store } = viewer;
   if (!store.workOn) return <WorkOff storeSlug={store.slug} title="Work settings" />;
-  const owner = role === "owner";
+  const owner = memberCan(viewer, "owner");
   const [settings, series, seller] = await Promise.all([
     getWorkSettings(store.id),
     getWorkSeries(store.id),

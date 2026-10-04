@@ -16,6 +16,8 @@ import { runManagerTool, runPlatformTool, type ManagerContext } from "./manager-
 import { experimentApprovalSummary } from "./experiment-tools";
 import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import type { Store } from "./stores";
+import { mayUseTool } from "@/lib/owner-tool-permissions";
+import { can, canOpenPath, type PermissionHolder } from "@/lib/permissions";
 
 type Row = Record<string, unknown>;
 
@@ -33,7 +35,18 @@ type Row = Record<string, unknown>;
  */
 
 /** Who the AI manager works for: an owner in their store, or a platform admin (store null). */
-export type Principal = { account: Account; store: Store | null; role?: Role };
+export type Principal = {
+  account: Account;
+  store: Store | null;
+  role?: Role;
+  /** The member's kind and role keys (wave 1, 1f), so the tools and pages offered are the ones their role may use; a `Membership` carries them. */
+  kind?: "staff" | "collaborator";
+  permissions?: readonly string[] | null;
+};
+
+/** What the tools and the offered pages are held to: the principal's own role, or none given (an owner's run, as before roles). */
+export const holderOfPrincipal = (p: Pick<Principal, "role" | "kind" | "permissions">): PermissionHolder | undefined =>
+  p.role ? { role: p.role, kind: p.kind, permissions: p.permissions } : undefined;
 
 /** The conversations of the principal's area: the store's, or the platform's. */
 const inScope = (p: Principal, column = sql`store_id`) => (p.store ? sql`${column} = ${p.store.id}::uuid` : sql`${column} is null`);
@@ -198,7 +211,16 @@ export const ASK_KAIZEN_LIFE: ToolDefinition = {
 
 /** What the admin offers this person here: pages behind a module, or for owners only. */
 export function siteFlags(p: Principal): SiteFlags {
-  return p.store ? { bookings: p.store.bookingsOn, deliveries: p.store.deliveriesOn, work: p.store.workOn, owner: p.role === "owner" } : {};
+  if (!p.store) return {};
+  const holder = holderOfPrincipal(p);
+  return {
+    bookings: p.store.bookingsOn,
+    deliveries: p.store.deliveriesOn,
+    work: p.store.workOn,
+    owner: holder ? can(holder, "owner") : false,
+    // Only the pages their role can open are offered (a store's pages by their place in the navigation; the account's own are everyone's).
+    ...(holder && { canOpen: (page) => page.area !== "store" || canOpenPath(holder, page.path) }),
+  };
 }
 
 /**
@@ -398,6 +420,7 @@ export async function runTurn(input: TurnInput): Promise<void> {
     account,
     store,
     flags: siteFlags(p),
+    holder: holderOfPrincipal(p),
     connection,
     navigate: (href, label) => emit({ type: "navigate", href, label }),
     invalidate: input.invalidate,
@@ -412,7 +435,10 @@ export async function runTurn(input: TurnInput): Promise<void> {
       },
     },
   };
-  const tools = [...(store ? OWNER_TOOLS : PLATFORM_TOOLS).map(toolDefinition), ...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
+  // The tools a role may use are the ones offered: the model never sees a tool its person's role could not run.
+  const holder = holderOfPrincipal(p);
+  const storeTools = holder ? OWNER_TOOLS.filter((t) => mayUseTool(holder, t.name)) : OWNER_TOOLS;
+  const tools = [...(store ? storeTools : PLATFORM_TOOLS).map(toolDefinition), ...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
   const messages: ToolChatMessage[] = [
     {
       role: "system",
@@ -516,7 +542,7 @@ async function callTool(
     // What could not be done, or must be reworded (claims), is refused now, never kept for a yes.
     if (ctx.store) {
       try {
-        await preflightOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate }, name, args);
+        await preflightOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args);
       } catch (error) {
         if (error instanceof OwnerToolError) return { error: error.message };
         console.error(`[ai-manager] ${name}`, error);
@@ -533,7 +559,7 @@ async function callTool(
   }
   try {
     if (manager) return { result: await runManagerTool(ctx, name, args) };
-    if (ctx.store) return { result: await runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate }, name, args) };
+    if (ctx.store) return { result: await runOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args) };
     return { result: await runPlatformTool(ctx, name, args) };
   } catch (error) {
     if (error instanceof OwnerToolError) return { error: error.message };
@@ -616,7 +642,7 @@ export async function decideApproval(
     const tool = String(claimed.tool);
     const answer = (
       p.store
-        ? await runOwnerTool({ account: p.account, store: p.store, invalidate }, tool, claimed.args)
+        ? await runOwnerTool({ account: p.account, store: p.store, invalidate, holder: holderOfPrincipal(p) }, tool, claimed.args)
         : await runPlatformTool({ account: p.account, store: null, flags: {}, connection: null, navigate: () => {}, invalidate }, tool, claimed.args)
     ) as { done?: string };
     result = { done: answer?.done ?? "Done." };

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatMoney } from "@/lib/money";
 import { ENOUGH_VISITORS, percentOf, perVisitor, REPORT_PERIODS, reportDays } from "@/lib/recommendations";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { aiFor } from "@/server/ai";
 import { recommendationReport } from "@/server/recommend-events";
 import { REPLAY_ORDERS, replayOnOrders } from "@/server/recommend-eval";
@@ -25,7 +25,8 @@ const KIND_WORDS: Record<RuleKind, string> = { goes_with: "goes with", never_wit
  * products go together, never go together, or are never recommended; and see what shoppers did.
  */
 export default async function RecommendationsPage({ params, searchParams }: PageProps<"/admin/[store]/recommendations">) {
-  const { store, role } = await requireMember((await params).store);
+  const current = await requirePermission((await params).store, "marketing:read");
+  const { store } = current;
   const query = await searchParams;
   const days = reportDays((query.days as string | undefined) ?? undefined);
   const replayMarket = store.markets[0];
@@ -41,7 +42,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
   ]);
   const base = `/admin/${store.slug}`;
   const locale = store.markets[0]?.locale ?? "nb-NO";
-  const canEdit = role === "owner";
+  const canEdit = memberCan(current, "owner");
   const aiOn = Boolean(ai?.textModel);
 
   return (

@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-import { requireMember } from "@/server/auth";
 import { carrierLabel } from "@/server/carrier-label";
+import { requirePermission } from "@/server/permissions";
 
 /** The PDF label of a shipment booked with Posten / Bring (D134) or Porterbuddy (D137), fetched with the store's own agreement for its staff only. */
 export async function GET(_request: Request, { params }: RouteContext<"/admin/[store]/orders/[orderId]/label/[shipmentId]">) {
   const { store: slug, orderId, shipmentId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "orders:read");
   if (!z.uuid().safeParse(orderId).success || !z.uuid().safeParse(shipmentId).success) return new Response("Not found", { status: 404 });
   const pdf = await carrierLabel(store.id, orderId, shipmentId);
   if (!pdf) return new Response("The label is not available from the carrier right now.", { status: 404 });

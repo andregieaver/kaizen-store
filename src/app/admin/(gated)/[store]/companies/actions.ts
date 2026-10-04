@@ -6,7 +6,7 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { INVITES_PER_BATCH, parseInviteEmails } from "@/lib/customer-tiers";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import { lookupCompany, searchCompanies, type BrregLookup, type BrregSearch } from "@/server/brreg";
 import { addMainAccount, createInvites, deleteCompany, removeMember, revokeInvite, saveCompany, staffEmailMarket } from "@/server/companies";
 import type { SaveResult } from "@/server/settings";
@@ -34,7 +34,8 @@ function companyValues(form: FormData, creating: boolean) {
 
 /** Makes a company (id null) with its main account, or changes one (D108). */
 export async function saveCompanyAction(storeSlug: string, companyId: string | null, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (companyId !== null && !id.safeParse(companyId).success) return bad("company");
   const result = await saveCompany(member, companyId, companyValues(form, companyId === null));
   if (!result.ok) return toState(result, "");
@@ -50,7 +51,8 @@ export async function saveCompanyAction(storeSlug: string, companyId: string | n
 }
 
 export async function deleteCompanyAction(storeSlug: string, companyId: string): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!id.safeParse(companyId).success) return bad("company");
   const result = await deleteCompany(member, companyId);
   if (result.ok) redirect(`/admin/${member.store.slug}/companies`);
@@ -59,14 +61,16 @@ export async function deleteCompanyAction(storeSlug: string, companyId: string):
 
 /** Makes an account the company's main account. */
 export async function setMainAccountAction(storeSlug: string, companyId: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!id.safeParse(companyId).success) return bad("company");
   return toState(await addMainAccount(member, companyId, String(form.get("email") ?? "")), "Main account added.");
 }
 
 /** Takes an account out of the company, a main account too: their discount stops at once. */
 export async function removeCompanyMemberAction(storeSlug: string, companyId: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const customerId = id.safeParse(form.get("customerId"));
   if (!id.safeParse(companyId).success || !customerId.success) return bad("account");
   const done = await removeMember(member.store.id, companyId, customerId.data, { allowOwner: true, market: await staffEmailMarket(member.store.id) });
@@ -77,7 +81,8 @@ export async function removeCompanyMemberAction(storeSlug: string, companyId: st
 
 /** Invites employees on the company's behalf, as the store. */
 export async function inviteToCompanyAction(storeSlug: string, companyId: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!id.safeParse(companyId).success) return bad("company");
   const { emails, invalid } = parseInviteEmails(String(form.get("emails") ?? ""));
   if (invalid.length > 0) return { status: "error", messages: [`Not email addresses: ${invalid.slice(0, 5).join(", ")}`] };
@@ -99,7 +104,8 @@ export async function inviteToCompanyAction(storeSlug: string, companyId: string
 }
 
 export async function revokeCompanyInviteAction(storeSlug: string, companyId: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "customers:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const inviteId = id.safeParse(form.get("inviteId"));
   if (!id.safeParse(companyId).success || !inviteId.success) return bad("invitation");
   const done = await revokeInvite(member.store.id, companyId, inviteId.data);
@@ -113,12 +119,12 @@ export async function revokeCompanyInviteAction(storeSlug: string, companyId: st
  * (D124). Store staff only; only the number goes to the register.
  */
 export async function lookupRegisterCompanyAction(storeSlug: string, input: string): Promise<BrregLookup> {
-  await requireMember(storeSlug);
+  await requirePermission(storeSlug, "customers:write");
   return lookupCompany(String(input).slice(0, 60));
 }
 
 /** The same by name: up to eight companies to choose from. */
 export async function searchRegisterCompaniesAction(storeSlug: string, input: string): Promise<BrregSearch> {
-  await requireMember(storeSlug);
+  await requirePermission(storeSlug, "customers:write");
   return searchCompanies(String(input).slice(0, 120));
 }

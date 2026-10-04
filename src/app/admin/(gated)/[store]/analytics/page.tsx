@@ -27,7 +27,7 @@ export default async function AnalyticsOverviewPage({ params, searchParams }: Pa
 
   const data = await overviewHead(store, query, now, { sessions: (period) => sessionTotals(store, period), settings: ctx.settings });
 
-  const frame: OverviewFrame = { base: ctx.base, currency: data.currency, locale: store.markets[0]?.locale ?? "en", isOwner: ctx.role === "owner", params: data.params };
+  const frame: OverviewFrame = { base: ctx.base, currency: data.currency, locale: store.markets[0]?.locale ?? "en", isOwner: ctx.owner, params: data.params };
   const stream: StreamProps = { ctx, frame, reads: overviewReads(store, now, ctx.settings) };
 
   return (

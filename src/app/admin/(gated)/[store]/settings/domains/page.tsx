@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { DomainsPanel } from "@/components/admin/domains-panel";
 import { hostOrigin, storeBase, storeDomain, storeHref } from "@/lib/paths";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { checkWaitingDomains, deployIfBehind, listStoreDomains, routedAsSaved } from "@/server/domains";
 import { domainsConfigured } from "@/server/vercel";
 
@@ -12,7 +12,8 @@ export const metadata: Metadata = { title: "Domains" };
 
 /** The store's addresses and its own domains (P7, P8). */
 export default async function DomainsPage({ params }: PageProps<"/admin/[store]/settings/domains">) {
-  const { store, role } = await requireMember((await params).store);
+  const current = await requirePermission((await params).store, "settings:read");
+  const { store } = current;
   const domain = storeDomain();
   if (!domain) {
     return (
@@ -43,7 +44,7 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
         hostAddress={hostOrigin(`${store.slug}.${domain.split(":")[0]}`)}
         domains={domains}
         deploying={deploying}
-        owner={role === "owner"}
+        owner={memberCan(current, "owner")}
         configured={domainsConfigured()}
         actions={{
           add: addDomainAction.bind(null, store.slug),

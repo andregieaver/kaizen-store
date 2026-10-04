@@ -6,7 +6,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { parseRate, stepMinor } from "@/lib/currency";
 import { isOfferable, languageOptions } from "@/lib/localization";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
-import { requireMember, type Membership } from "@/server/auth";
+import { type Membership } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { enabledLanguages } from "@/server/languages";
 import { fetchRatesNow, saveCurrencies, saveLanguages, type CurrencyInput } from "@/server/localization";
@@ -18,8 +19,7 @@ import { storeTag } from "@/server/stores";
 // change clears the store's and its catalogue's caches.
 
 async function asOwner(storeSlug: string): Promise<Membership | FormState> {
-  const member = await requireMember(storeSlug);
-  return member.role === "owner" ? member : { status: "error", messages: ["Only an owner can change this."] };
+  return (await checkOwnerRole(storeSlug)) ?? { status: "error", messages: ["Only an owner can change this."] };
 }
 
 function done(member: Membership, result: SaveResult, success: string): FormState {

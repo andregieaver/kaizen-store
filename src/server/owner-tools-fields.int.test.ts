@@ -458,6 +458,7 @@ describe("custom fields in the AI manager (D118)", () => {
   it("is kept for approval when Kaizen Life asks, after the same checks", async () => {
     const owner = {
       account: member.account,
+      aal: "aal2" as const,
       stores: [{ id: member.store.id, slug: member.store.slug, name: member.store.name }],
     };
     const bad = await mcp.callMcpTool(

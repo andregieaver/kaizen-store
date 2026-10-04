@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { ChatAgentView } from "@/components/admin/chat-agent-view";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 
 import { addDocumentAction, deleteDocumentAction, saveChatAgentAction, uploadChatAvatarAction } from "./actions";
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Chat agent" };
 /** The store's chat agent and its knowledge base (D81). */
 export default async function StoreChatPage({ params }: PageProps<"/admin/[store]/chat">) {
   const { store: slug } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "settings:read");
   return (
     <ChatAgentView
       storeId={store.id}

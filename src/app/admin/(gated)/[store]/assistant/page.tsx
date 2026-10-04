@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { AiManagerPage } from "@/components/admin/ai-manager-page";
-import { requireMember } from "@/server/auth";
+import { requireOwnerRole } from "@/server/permissions";
 import { assistantAbilities, getConversation, listConversations } from "@/server/owner-assistant";
 
 import {
@@ -17,8 +16,7 @@ export const metadata: Metadata = { title: "AI manager" };
 
 /** The store's AI manager (D94, D103): for owners only. */
 export default async function StoreAssistantPage({ params, searchParams }: PageProps<"/admin/[store]/assistant">) {
-  const member = await requireMember((await params).store);
-  if (member.role !== "owner") notFound();
+  const member = await requireOwnerRole((await params).store);
   const { c, tab } = await searchParams;
   const [abilities, conversations, conversation] = await Promise.all([
     assistantAbilities(member.store.id),

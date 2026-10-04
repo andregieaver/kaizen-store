@@ -30,6 +30,9 @@ import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
 type Props = { store: Store; market: Market };
 
+/** A published legal page of the store (wave 1, 1e): what `legalLinksFor()` finds. */
+type LegalLink = { role: string; title: string; href: string };
+
 /** A store's menu by id (D85): its items, or none. */
 export function storeMenu(store: Store, id: string | null | undefined): MenuEntry[] {
   return (id && store.menus.find((menu) => menu.id === id)?.items) || [];
@@ -372,7 +375,7 @@ export function WithdrawalStrip({ store, market }: Props) {
  * Who sells (required on every page of a web shop, by e-commerce and
  * consumer law), the footer menu and the countries.
  */
-export function StoreFooter({ store, market }: Props) {
+export function StoreFooter({ store, market, legal: legalPages = [] }: Props & { legal?: LegalLink[] }) {
   const m = t(market.lang);
   const footer = storeMenu(store, store.footerMenuId);
   const details = store.details;
@@ -399,6 +402,20 @@ export function StoreFooter({ store, market }: Props) {
           </Link>
           {/* The withdrawal function, always reachable (D153). */}
           <WithdrawalLink store={store} market={market} />
+          {/* The store's terms, privacy statement and the like, once the owner has published them (wave 1, 1e). */}
+          {legalPages.length > 0 && (
+            <nav aria-label={m.terms.legalNav}>
+              <ul className="flex flex-col gap-1">
+                {legalPages.map((page) => (
+                  <li key={page.role}>
+                    <Link href={page.href} className="inline-flex min-h-10 items-center text-muted underline">
+                      {page.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
         </div>
         {footer.length > 0 && (
           <nav aria-label={m.footerMenu}>

@@ -8,8 +8,10 @@ import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
+import { canOpenPath } from "@/lib/permissions";
 import { storeAreas, storeTabs } from "@/lib/store-nav";
-import { requireMember } from "@/server/auth";
+import { holderOf } from "@/server/auth";
+import { memberCan, requireMemberAny } from "@/server/permissions";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
 
 import {
@@ -32,7 +34,9 @@ const FULL_WIDTH = String.raw`^/admin/[^/]+/(pages|articles|product-layouts|head
  * store, the control center or the platform.
  */
 export default async function StoreAdminLayout({ children, params }: LayoutProps<"/admin/[store]">) {
-  const { account, store, role } = await requireMember((await params).store);
+  const member = await requireMemberAny((await params).store);
+  const { account, store, role } = member;
+  const isOwner = memberCan(member, "owner");
   // In test mode, Kaizen sets up the store's test Stripe account itself, after
   // the page is sent, so test purchases work without any setup (D20).
   if (store.paymentsTest) {
@@ -45,8 +49,11 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
 
   const base = `/admin/${store.slug}`;
   // The store's sections (D147): a tab each with its own sidebar, none for Home. The AI manager is in the header.
-  const tabs: NavItem[] = storeTabs(base, store);
-  const areas: NavArea[] = storeAreas(base, store);
+  // Only what the member can open (wave 1, 1f): their role's areas, and no page that would be a 404.
+  const holder = holderOf(member);
+  const canOpen = (path: string) => canOpenPath(holder, path);
+  const tabs: NavItem[] = storeTabs(base, store, canOpen);
+  const areas: NavArea[] = storeAreas(base, store, canOpen);
   return (
     <AdminFrame
       before={<AdminTrail storeSlug={store.slug} storeOrigins={storeOrigins(store.slug)} />}
@@ -58,7 +65,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       actions={
         <>
           {/* The AI manager (D103), from every page of the store's admin, for owners. */}
-          {role === "owner" && (
+          {isOwner && (
             <AiManagerLauncher
               area="store"
               base={`${base}/assistant`}
@@ -83,7 +90,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
           </Link>
         </>
       }
-      account={<AdminAccountMenu account={account} role={role} />}
+      account={<AdminAccountMenu account={account} role={member.roleName ?? (member.kind === "collaborator" ? "collaborator" : role)} />}
       tabs={tabs}
       groups={[]}
       areas={areas}

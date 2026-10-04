@@ -4,7 +4,8 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import type { ReturnAddress } from "@/lib/withdrawal";
-import { audit, requireMember } from "@/server/auth";
+import { audit } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
 import { saveInstructionTranslations, saveReturnSettings } from "@/server/return-settings";
 import { storeTag } from "@/server/stores";
@@ -16,8 +17,8 @@ const text = (form: FormData, name: string): string => String(form.get(name) ?? 
  * everything again with the schema the form's fields are read into, and the change is written to the audit log.
  */
 export async function saveReturnSettingsAction(storeSlug: string, _previous: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return { status: "error", messages: ["Only an owner can change the return rules."] };
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return { status: "error", messages: ["Only an owner can change the return rules."] };
 
   const parts = [text(form, "addressName"), text(form, "addressStreet"), text(form, "addressPostalCode"), text(form, "addressCity"), text(form, "addressCountry")];
   const returnAddress: ReturnAddress | null = parts.every((p) => p === "")

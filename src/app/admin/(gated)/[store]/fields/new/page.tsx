@@ -4,7 +4,7 @@ import Link from "next/link";
 import { FieldGroupEditor } from "@/components/admin/field-group-editor";
 import { emptyGroup, isFieldEntity } from "@/lib/custom-fields";
 import { moneyCurrencies } from "@/lib/field-money";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 
 import { saveFieldGroupAction } from "../actions";
 import { editorTerms, roleOptions, storeLanguages } from "../data";
@@ -12,7 +12,7 @@ import { editorTerms, roleOptions, storeLanguages } from "../data";
 export const metadata: Metadata = { title: "New group of custom fields" };
 
 export default async function NewFieldGroupPage({ params, searchParams }: PageProps<"/admin/[store]/fields/new">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "products:read");
   // A link from the store's, a customer's or an order's fields starts a group for that kind of thing.
   const { entity } = await searchParams;
   const start = typeof entity === "string" && isFieldEntity(entity) ? entity : "product";

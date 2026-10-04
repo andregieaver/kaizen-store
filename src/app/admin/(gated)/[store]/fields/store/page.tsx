@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { EntityFieldsCard } from "@/components/admin/entity-fields-card";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { storeFieldsForEditor } from "@/server/field-entities";
 
 import { saveStoreFieldsAction } from "../actions";
@@ -18,7 +18,7 @@ export const metadata: Metadata = { title: "Store details" };
  * the store's fields.
  */
 export default async function StoreFieldsPage({ params }: PageProps<"/admin/[store]/fields/store">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "products:read");
   const editor = await storeFieldsForEditor(store.id);
   const base = `/admin/${store.slug}/fields`;
 

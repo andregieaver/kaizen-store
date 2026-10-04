@@ -6,7 +6,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { dayText } from "@/components/admin/analytics/overview-view";
 import { channelLabel } from "@/lib/analytics-traffic";
 import { addSpend, deleteSpend } from "@/server/analytics-settings";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkPermission } from "@/server/permissions";
 
 /**
  * The Marketing page's server actions (D152), bound to the store's slug as their first argument. Each checks the member for itself; any
@@ -18,7 +18,8 @@ const failed = (messages: string[]): FormState => ({ status: "error", messages }
 
 /** Enters what was spent on a channel (and a campaign in it) on a day: `day`, `channel`, `campaign`, `amount` and `note`. */
 export async function addSpendAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "analytics:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const result = await addSpend(member, Object.fromEntries(form));
   if (!result.ok) return failed(result.problems);
   refresh();
@@ -36,7 +37,8 @@ export async function addSpendAction(storeSlug: string, _state: FormState, form:
 
 /** Takes one entry of spend away (`id`). */
 export async function deleteSpendAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "analytics:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const id = form.get("id");
   const result = await deleteSpend(member, typeof id === "string" ? id : "");
   if (!result.ok) return failed(result.problems);

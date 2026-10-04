@@ -7,7 +7,8 @@ import { BusinessDetailsFields } from "@/components/admin/business-details-field
 import { SetupFrame } from "@/components/admin/setup-frame";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { storeBase, storeHref } from "@/lib/paths";
-import { requireMember, type Membership } from "@/server/auth";
+import { type Membership } from "@/server/auth";
+import { memberCan, requireMemberAny } from "@/server/permissions";
 import { getPaymentSettings } from "@/server/settings";
 import {
   getSetupProgress,
@@ -32,10 +33,10 @@ export const metadata: Metadata = { title: "Set up your store" };
 export default async function SetupStepPage({ params }: Props) {
   const { store: slug, step } = await params;
   if (!isSetupStep(step)) notFound();
-  const member = await requireMember(slug);
+  const member = await requireMemberAny(slug);
   const progress = await getSetupProgress(member.store);
 
-  if (member.role !== "owner") {
+  if (!memberCan(member, "owner")) {
     return (
       <p className="mx-auto max-w-2xl text-sm">
         Only an owner can set up {member.store.name}. Ask an owner to finish the setup.
@@ -156,7 +157,7 @@ async function CountriesStep({ member }: { member: Membership }) {
 }
 
 async function PaymentsStep({ member }: { member: Membership }) {
-  const { store, role } = member;
+  const { store } = member;
   const settings = await getPaymentSettings(store);
   return (
     <div className="flex flex-col gap-4">
@@ -175,7 +176,7 @@ async function PaymentsStep({ member }: { member: Membership }) {
           storeSlug={store.slug}
           mode="live"
           account={settings.accounts.live}
-          isOwner={role === "owner"}
+          isOwner={memberCan(member, "owner")}
           title="Real payments (when you are ready)"
         />
       )}

@@ -26,7 +26,7 @@ export default async function AnalyticsCustomersPage({ params, searchParams }: P
         title="Customers"
         description="Do customers come back, what is a customer worth, and who are your best? The period picks the customers who ordered in it; repeat rates, lifetime value, groups and cohorts always look at the whole history."
       />
-      <CustomersView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} timeZone={store.timeZone} isOwner={ctx.role === "owner"} report={report} />
+      <CustomersView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} timeZone={store.timeZone} isOwner={ctx.owner} report={report} />
     </div>
   );
 }

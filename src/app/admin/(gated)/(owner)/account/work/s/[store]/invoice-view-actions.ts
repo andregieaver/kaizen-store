@@ -2,7 +2,8 @@
 
 import { refresh } from "next/cache";
 
-import { requireMember, type Membership } from "@/server/auth";
+import type { Membership } from "@/server/auth";
+import { checkPermission } from "@/server/permissions";
 import { problem, type WorkResult } from "@/server/work-errors";
 import { newInvoiceChoices, type NewInvoiceChoices } from "@/server/work-invoice-screens";
 import {
@@ -22,16 +23,22 @@ import {
  * membership and that Work is on itself, and only reads or calls the invoice server's own functions.
  */
 
-const OFF = "Work is switched off for this store.";
+const OFF = "Work is switched off for this store, or your role has no access to it.";
 
 async function workMember(storeSlug: string): Promise<Membership | null> {
-  const member = await requireMember(storeSlug);
-  return member.store.workOn ? member : null;
+  const member = await checkPermission(storeSlug, "settings:write");
+  return member?.store.workOn ? member : null;
+}
+
+/** The same for what only reads: a role that can see Work's settings area can look. */
+async function workReader(storeSlug: string): Promise<Membership | null> {
+  const member = await checkPermission(storeSlug, "settings:read");
+  return member?.store.workOn ? member : null;
 }
 
 /** The clients and assignments the new-invoice dialog offers: read when it is opened from a page that did not load them. */
 export async function newInvoiceChoicesAction(storeSlug: string): Promise<WorkResult<{ choices: NewInvoiceChoices }>> {
-  const member = await workMember(storeSlug);
+  const member = await workReader(storeSlug);
   if (!member) return problem(OFF);
   return { ok: true, choices: await newInvoiceChoices(member.store.id) };
 }
@@ -41,7 +48,7 @@ export async function unbilledTimeAction(
   storeSlug: string,
   filter: { clientId?: string; assignmentId?: string; from?: string; to?: string },
 ): Promise<WorkResult<{ groups: UnbilledGroup[] }>> {
-  const member = await workMember(storeSlug);
+  const member = await workReader(storeSlug);
   if (!member) return problem(OFF);
   return { ok: true, groups: await unbilledTime(member.store.id, filter) };
 }
@@ -51,7 +58,7 @@ export async function findAssignmentDraftAction(
   storeSlug: string,
   assignmentId: string,
 ): Promise<WorkResult<{ invoiceId: string | null }>> {
-  const member = await workMember(storeSlug);
+  const member = await workReader(storeSlug);
   if (!member) return problem(OFF);
   const list = await listWorkInvoices(member.store.id, { assignmentId, status: "draft", pageSize: 1 });
   return { ok: true, invoiceId: list.rows[0]?.id ?? null };

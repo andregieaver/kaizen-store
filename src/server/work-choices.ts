@@ -76,7 +76,7 @@ export async function listPeople(storeId: string): Promise<Person[]> {
     select a.id, coalesce(nullif(a.name, ''), a.email) as label
     from commerce.store_members m
     join commerce.accounts a on a.id = m.account_id
-    where m.store_id = ${storeId}::uuid and m.disabled_at is null
+    where m.store_id = ${storeId}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
     order by lower(coalesce(nullif(a.name, ''), a.email)), a.id
   `);
   return rows.map((row) => ({ id: String(row.id), name: String(row.label) }));

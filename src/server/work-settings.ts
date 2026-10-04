@@ -16,6 +16,7 @@ import type { ReadinessProblem, SellerDetails } from "@/lib/work-vat";
 import { audit, type Membership } from "./auth";
 import { refreshDraftInvoices } from "./work-draft-sync";
 import { problem, workGuard, zodProblems, type WorkResult } from "./work-errors";
+import { can } from "@/lib/permissions";
 
 type Row = Record<string, unknown>;
 
@@ -76,7 +77,7 @@ export async function getWorkSettings(storeId: string): Promise<WorkSettings> {
 
 /** Checks and saves the settings (`workSettingsInput`). Owners only; written to the audit log. */
 export async function saveWorkSettings({ account, store, role }: Membership, raw: unknown): Promise<Saved> {
-  if (role !== "owner") return problem(OWNER_ONLY);
+  if (!can({ role }, "owner")) return problem(OWNER_ONLY);
   const parsed = workSettingsInput.safeParse(raw);
   if (!parsed.success) return problem(...zodProblems(parsed.error));
   const s = parsed.data;
@@ -196,7 +197,7 @@ export async function getWorkSeries(storeId: string): Promise<Record<SeriesName,
  * refuses too (it never lets a number go down once one is issued).
  */
 export async function setWorkSeries({ account, store, role }: Membership, raw: unknown): Promise<Saved> {
-  if (role !== "owner") return problem(OWNER_ONLY);
+  if (!can({ role }, "owner")) return problem(OWNER_ONLY);
   const parsed = numberSeriesInput.safeParse(raw);
   if (!parsed.success) return problem(...zodProblems(parsed.error));
   const input = parsed.data;

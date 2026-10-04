@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CompanyFields } from "@/components/admin/company-fields";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { employeePercent, getCompany, listInvites, listMembers } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
 
@@ -27,7 +27,7 @@ const card = "flex flex-col gap-3 rounded-lg border border-border bg-background 
 
 export default async function CompanyPage({ params }: PageProps<"/admin/[store]/companies/[companyId]">) {
   const { store: slug, companyId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "customers:read");
   if (!z.uuid().safeParse(companyId).success) notFound();
   const company = await getCompany(store.id, companyId);
   if (!company) notFound();

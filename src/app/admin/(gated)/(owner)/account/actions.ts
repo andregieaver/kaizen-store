@@ -14,6 +14,7 @@ import { audit, requireAccount, saveColorMode } from "@/server/auth";
 import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { LINK_COOKIE, linkStart, unlinkLife } from "@/server/kaizen-life-link";
+import { regenerateRecoveryCodes, removeSecondStep, type EnrolFinish, type StepResult } from "@/server/two-step";
 
 async function origin(): Promise<string> {
   const header = (await headers()).get("origin");
@@ -139,4 +140,18 @@ export async function disconnectLifeAssistantAction(): Promise<void> {
   const account = await requireAccount();
   if (await unlinkLife(account.id)) await audit(account.id, null, "account.kaizen_life_assistant_disconnected");
   redirect("/admin/account");
+}
+
+/** New recovery codes (wave 1, 1f), shown once: the old set stops working. Needs a session that has passed its second step. */
+export async function regenerateRecoveryCodesAction(): Promise<EnrolFinish> {
+  const account = await requireAccount();
+  return regenerateRecoveryCodes(account);
+}
+
+/** Switches the signed-in account's two-step sign-in off, with an email to say so. Needs a session that has passed its second step. */
+export async function removeTwoStepAction(): Promise<StepResult> {
+  const account = await requireAccount();
+  // A platform admin must use it: switching it off would only hold them at set-up at once.
+  if (account.platformAdmin) return { ok: false, problem: "Platform admins must use two-step sign-in." };
+  return removeSecondStep(account);
 }

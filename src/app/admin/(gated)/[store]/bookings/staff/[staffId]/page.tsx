@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getResource } from "@/server/bookings";
 
 import { removeStaffAction, saveStaffAction } from "../../actions";
@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Staff" };
 
 export default async function StaffMemberPage({ params }: PageProps<"/admin/[store]/bookings/staff/[staffId]">) {
   const { store: slug, staffId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "bookings:read");
   if (!z.uuid().safeParse(staffId).success) notFound();
   const staff = await getResource(store.id, staffId);
   if (!staff || staff.kind !== "staff") notFound();

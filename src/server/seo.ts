@@ -8,6 +8,7 @@ import type { z } from "zod";
 import { db, readDb } from "@/db/client";
 import { t } from "@/lib/i18n";
 import { effectiveLocales } from "@/lib/localization";
+import { LEGAL_ROLES } from "@/lib/legal-roles";
 import { inView, shown, toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
@@ -134,6 +135,9 @@ export type PublicStore = {
   rolePageIds: string[];
 };
 
+/** The linked legal roles as a SQL array, for the sitemap's list of pages that have a place of their own. */
+const LEGAL_ROLE_LIST = sql.raw(`array[${LEGAL_ROLES.map((r) => `'${r}'`).join(", ")}]`);
+
 /** Every open store, for robots.txt, the sitemap index and Kaizen's llms.txt. */
 export async function listPublicStores(): Promise<PublicStore[]> {
   "use cache";
@@ -141,7 +145,8 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   cacheTag(STORES_TAG);
   const rows = await readDb().execute<Row>(sql`
     select s.id, s.slug, s.name, s.seo, s.locales, s.is_template, s.setup_completed_at, s.front_page_id, s.products_page_id,
-      (select coalesce(array_agg(r.page_id), '{}') from commerce.page_roles r where r.store_id = s.id) as role_pages,
+      -- The legal pages (wave 1, 1e) keep their own address and stay in the sitemap once published: only D112's roles are left out.
+      (select coalesce(array_agg(r.page_id), '{}') from commerce.page_roles r where r.store_id = s.id and r.role <> all(${LEGAL_ROLE_LIST}::text[])) as role_pages,
       greatest(s.created_at, s.setup_completed_at,
         (select max(p.updated_at) from commerce.products p where p.store_id = s.id)) as updated_at,
       coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)

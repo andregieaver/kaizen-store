@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { StoreCopyWizard } from "@/components/admin/store-copy-wizard";
-import { listStores, requireMember } from "@/server/auth";
+import { listStores } from "@/server/auth";
+import { memberCan, requireMemberAny } from "@/server/permissions";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
 
 import { copyChoicesAction, startStoreCopyAction } from "../../copy-actions";
@@ -16,8 +17,9 @@ export const metadata: Metadata = { title: "Duplicate a store" };
  */
 export default async function DuplicateStorePage({ params }: PageProps<"/admin/stores/copy/[store]">) {
   const { store: slug } = await params;
-  const { account, role } = await requireMember(slug);
-  if (role !== "owner" && !account.platformAdmin) notFound();
+  const member = await requireMemberAny(slug);
+  const { account } = member;
+  if (!memberCan(member, "owner") && !account.platformAdmin) notFound();
 
   const owned = (await listStores(account)).filter((store) => store.role === "owner").length;
   const full = !account.platformAdmin && owned >= MAX_STORES_PER_OWNER;

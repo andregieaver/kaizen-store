@@ -126,6 +126,11 @@ export const STORE_PIECES = {
     name: "Checkout totals",
     hint: "Subtotal, shipping, discounts, VAT and the total, with the company and a subscription's terms.",
   },
+  checkout_terms: {
+    route: "checkout",
+    name: "Terms at checkout",
+    hint: "The sentence that names your terms and privacy statement, with a tick box when you have chosen one under Settings, Legal pages. Put it right above the payment form; without it the standard checkout draws it by the pay button. Nothing when the store shows none.",
+  },
   checkout_payment: {
     route: "checkout",
     name: "Payment form",
@@ -176,6 +181,11 @@ export const STORE_PIECES = {
     name: "Delivery address",
     hint: "Where the order is delivered. Nothing for an order that is not shipped.",
   },
+  order_terms: {
+    route: "order",
+    name: "Terms you accepted",
+    hint: "The terms and privacy statement the shopper was shown when they ordered, each as a read-only page. Nothing for an order that kept none.",
+  },
   order_continue: {
     route: "order",
     name: "Continue shopping",
@@ -217,6 +227,8 @@ export type StoreRoute = {
   /** The address's own part: the order in `/order/{id}`, the secret in `/subscription/{token}`. */
   param?: string;
   query?: Promise<StoreQuery>;
+  /** The shop components the page holds, so one that draws a thing itself leaves it to the piece that does (the terms at checkout). */
+  holds?: readonly ShopPart[];
 };
 
 /** The working pages that come in pieces, as the builder groups them. */

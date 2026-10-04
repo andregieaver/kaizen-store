@@ -7,7 +7,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getLocation, KIND_LABELS } from "@/server/company";
 import { listCountries } from "@/server/stores";
 
@@ -21,7 +21,7 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 /** A store or pickup point (D40): its address, directions and opening hours. */
 export default async function PlacePage({ params }: PageProps<"/admin/[store]/settings/company/places/[placeId]">) {
   const { store: slug, placeId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "settings:read");
   if (!z.uuid().safeParse(placeId).success) notFound();
   const [place, countries] = await Promise.all([getLocation(store.id, placeId), listCountries()]);
   if (!place || place.kind === "office") notFound();

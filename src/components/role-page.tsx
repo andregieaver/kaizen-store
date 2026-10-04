@@ -4,10 +4,11 @@ import { AbMarker } from "@/components/ab/ab-marker";
 import { PageEditLink } from "@/components/page-edit-link";
 import { StorePageArticle } from "@/components/store-page-article";
 import type { Market } from "@/lib/markets";
+import { pageBlocks } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import type { PageRole } from "@/lib/page-roles";
 import { adminOrigin } from "@/lib/paths";
-import type { StoreRoute } from "@/lib/store-parts";
+import type { ShopPart, StoreRoute } from "@/lib/store-parts";
 import type { GridPlace } from "@/server/content-grid";
 import { rolePageForVisitor } from "@/server/role-pages";
 import type { Store } from "@/server/stores";
@@ -39,12 +40,12 @@ export async function RolePage({
 }) {
   const { page, test, version } = await rolePageForVisitor(store, role, ab);
   if (!page) return children;
+  const content = localizePage(page.content, market.locale);
+  // What the page holds of the shop's own components, so a component that draws another's part (the payment form, the terms) leaves it to it.
+  const holds = route ? pageBlocks(content).flatMap((block): ShopPart[] => (block.type === "storePart" ? [block.part] : [])) : undefined;
   return (
     <>
-      <StorePageArticle
-        content={localizePage(page.content, market.locale)}
-        place={{ ...place, pageId: page.id, owner: store.id, market: market.slug, route }}
-      />
+      <StorePageArticle content={content} place={{ ...place, pageId: page.id, owner: store.id, market: market.slug, route: route && { ...route, holds } }} />
       <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
       {/* A test of this working page (D148): which version this is, for the exposure. */}
       {test && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={test.id} variant={version} goalBlock={test.goalBlock} />}

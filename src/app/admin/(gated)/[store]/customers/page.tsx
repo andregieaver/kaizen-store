@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
 import { Avatar } from "@/components/avatar";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { listCustomers } from "@/server/customer-admin";
 
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Customers" };
 
 /** Everyone who has an account or has bought (D35), most recently active first, with a search. */
 export default async function CustomersPage({ params, searchParams }: PageProps<"/admin/[store]/customers">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "customers:read");
   const raw = (await searchParams).q;
   const q = typeof raw === "string" ? raw : "";
   const customers = await listCustomers(store.id, { q });

@@ -6,15 +6,16 @@ import { redirect } from "next/navigation";
 import type { FormState } from "@/components/admin/action-form";
 import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING, parseCheckoutSettings } from "@/lib/delivery-options";
 import { CARRIERS, isCarrierId } from "@/lib/shipping-carriers";
-import { requireMember } from "@/server/auth";
+import { checkOwnerRole } from "@/server/permissions";
 import { checkCarrier } from "@/server/bring-shipping";
 import { CHECKOUT_SERVICES, saveCheckoutSettings } from "@/server/delivery-options";
 import { getCarrier, removeCarrier, saveCarrier } from "@/server/shipping-carriers";
 
 /** A carrier's agreement holds the store's own keys, so only an owner saves or forgets it (D133). */
 export async function saveCarrierAction(storeSlug: string, carrier: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const { store, role, account } = await requireMember(storeSlug);
-  if (role !== "owner") return { status: "error", messages: ["Only an owner can set up a shipping carrier."] };
+  const held = await checkOwnerRole(storeSlug);
+  if (!held) return { status: "error", messages: ["Only an owner can set up a shipping carrier."] };
+  const { store, account } = held;
   const info = CARRIERS.find((c) => c.id === carrier);
   if (!info) return { status: "error", messages: ["Unknown carrier."] };
   const result = await saveCarrier(account.id, store.id, carrier, {
@@ -28,16 +29,18 @@ export async function saveCarrierAction(storeSlug: string, carrier: string, _sta
 }
 
 export async function removeCarrierAction(storeSlug: string, carrier: string): Promise<void> {
-  const { store, role, account } = await requireMember(storeSlug);
-  if (role !== "owner") return;
+  const held = await checkOwnerRole(storeSlug);
+  if (!held) return;
+  const { store, account } = held;
   await removeCarrier(account.id, store.id, carrier);
   redirect(`/admin/${store.slug}/integrations`);
 }
 
 /** Asks the carrier whether the store's agreement works (D134, D136). Posten / Bring and PostNord have connections so far. */
 export async function checkCarrierAction(storeSlug: string, carrier: string): Promise<FormState> {
-  const { store, role, account } = await requireMember(storeSlug);
-  if (role !== "owner") return { status: "error", messages: ["Only an owner can check a shipping carrier."] };
+  const held = await checkOwnerRole(storeSlug);
+  if (!held) return { status: "error", messages: ["Only an owner can check a shipping carrier."] };
+  const { store, account } = held;
   const info = CARRIERS.find((c) => c.id === carrier);
   if (!info || info.available.length === 0) return { status: "error", messages: ["This carrier's connection is not built yet."] };
   const result = await checkCarrier(account.id, store.id, info.id);
@@ -52,8 +55,9 @@ export async function checkCarrierAction(storeSlug: string, carrier: string): Pr
  * price, the basket value over which they are free and the weight of a parcel when the goods have none. Owners only.
  */
 export async function saveCheckoutSettingsAction(storeSlug: string, carrier: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const { store, role, account } = await requireMember(storeSlug);
-  if (role !== "owner") return { status: "error", messages: ["Only an owner can change what is offered at checkout."] };
+  const held = await checkOwnerRole(storeSlug);
+  if (!held) return { status: "error", messages: ["Only an owner can change what is offered at checkout."] };
+  const { store, account } = held;
   if (!isCarrierId(carrier) || !CHECKOUT_SERVICES[carrier]) return { status: "error", messages: ["This carrier has no services at checkout yet."] };
   const saved = await getCarrier(store.id, carrier);
   const parsed = parseCheckoutSettings(formData, CHECKOUT_SERVICES[carrier].map((s) => s.id), {

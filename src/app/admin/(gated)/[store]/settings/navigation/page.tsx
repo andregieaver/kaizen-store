@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { NavigationEditor } from "@/components/admin/navigation-editor";
 import { marketPath, storeHref } from "@/lib/paths";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 import { listStoreMenus } from "@/server/menus";
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Header and footer" };
 
 /** The storefront's logo and icon (D30, D62), and the menus its standard header and footer show (D85). */
 export default async function NavigationPage({ params }: PageProps<"/admin/[store]/settings/navigation">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   const home = store.markets[0];
   const menus = await listStoreMenus(store.id);
 

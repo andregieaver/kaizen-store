@@ -4,7 +4,7 @@ import Link from "next/link";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { INTEGRATIONS } from "@/lib/integrations";
 import { CARRIERS } from "@/lib/shipping-carriers";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listIntegrations } from "@/server/integrations";
 import { listCarriers } from "@/server/shipping-carriers";
 
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Integrations" };
 
 /** Every integration a store can turn on (D41), and how each connected one is doing. */
 export default async function IntegrationsPage({ params }: PageProps<"/admin/[store]/integrations">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   const [connected, carriers] = await Promise.all([listIntegrations(store.id), listCarriers(store.id)]);
   const base = `/admin/${store.slug}/integrations`;
 

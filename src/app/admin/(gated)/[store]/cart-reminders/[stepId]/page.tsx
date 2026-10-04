@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { DeleteReminderButton } from "@/components/admin/delete-reminder-button";
 import { describeDelay } from "@/lib/cart-reminders";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getCartReminderStep } from "@/server/cart-reminders";
 
 import { deleteReminderStepAction } from "../actions";
@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Cart reminder" };
 
 export default async function ReminderPage({ params }: PageProps<"/admin/[store]/cart-reminders/[stepId]">) {
   const { store: slug, stepId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "marketing:read");
   if (!z.uuid().safeParse(stepId).success) notFound();
   const step = await getCartReminderStep(store.id, stepId);
   if (!step) notFound();

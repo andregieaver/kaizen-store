@@ -148,6 +148,24 @@ const messages = {
       entryUsableFrom: (date: string) => `kan brukes fra ${date}`,
       entryExpires: (date: string) => `utløper ${date}`,
     },
+    /** Terms at checkout (wave 1, 1e): the sentence by the pay button, the tick box and what an order keeps. Hand-written, needs legal review (docs/wave-1-trust.md section 8). `{terms}` and `{privacy}` stand for the two links. */
+    terms: {
+      both: (terms: string, privacy: string) => `Ved å bestille godtar du ${terms} og bekrefter at du har lest ${privacy}.`,
+      termsOnly: (terms: string) => `Ved å bestille godtar du ${terms}.`,
+      privacyOnly: (privacy: string) => `Ved å bestille bekrefter du at du har lest ${privacy}.`,
+      checkboxBoth: (terms: string, privacy: string) => `Jeg godtar ${terms} og bekrefter at jeg har lest ${privacy}.`,
+      checkboxTerms: (terms: string) => `Jeg godtar ${terms}.`,
+      checkboxPrivacy: (privacy: string) => `Jeg bekrefter at jeg har lest ${privacy}.`,
+      hint: "Kryss av for å godta vilkårene før du betaler.",
+      failed: "Vi kunne ikke lagre at du godtok vilkårene. Prøv igjen.",
+      newTab: "(åpnes i en ny fane)",
+      legalNav: "Juridisk informasjon",
+      orderHeading: "Vilkår du godtok",
+      orderShown: (date: string) => `Disse tekstene ble vist da du bestilte ${date}.`,
+      orderTicked: (date: string) => `Du krysset av for disse tekstene da du bestilte ${date}.`,
+      snapshotNote: (date: string) => `Teksten slik den var da du bestilte ${date}. Butikken kan ha endret den siden.`,
+      backToOrder: "Tilbake til bestillingen",
+    },
     /** Choosing how the order is delivered at checkout (D135): a carrier's services and pickup points next to the flat rate. */
     deliveryChoice: {
       heading: "Leveringsmåte",
@@ -1231,6 +1249,24 @@ const messages = {
       entryUsableFrom: (date: string) => `kan användas från ${date}`,
       entryExpires: (date: string) => `går ut ${date}`,
     },
+    /** Terms at checkout (wave 1, 1e): the sentence by the pay button, the tick box and what an order keeps. Hand-written, needs legal review (docs/wave-1-trust.md section 8). `{terms}` and `{privacy}` stand for the two links. */
+    terms: {
+      both: (terms: string, privacy: string) => `Genom att beställa godkänner du ${terms} och bekräftar att du har läst ${privacy}.`,
+      termsOnly: (terms: string) => `Genom att beställa godkänner du ${terms}.`,
+      privacyOnly: (privacy: string) => `Genom att beställa bekräftar du att du har läst ${privacy}.`,
+      checkboxBoth: (terms: string, privacy: string) => `Jag godkänner ${terms} och bekräftar att jag har läst ${privacy}.`,
+      checkboxTerms: (terms: string) => `Jag godkänner ${terms}.`,
+      checkboxPrivacy: (privacy: string) => `Jag bekräftar att jag har läst ${privacy}.`,
+      hint: "Kryssa i rutan för att godkänna villkoren innan du betalar.",
+      failed: "Vi kunde inte spara att du godkände villkoren. Försök igen.",
+      newTab: "(öppnas i en ny flik)",
+      legalNav: "Juridisk information",
+      orderHeading: "Villkor du godkände",
+      orderShown: (date: string) => `Dessa texter visades när du beställde ${date}.`,
+      orderTicked: (date: string) => `Du kryssade i dessa texter när du beställde ${date}.`,
+      snapshotNote: (date: string) => `Texten som den var när du beställde ${date}. Butiken kan ha ändrat den sedan dess.`,
+      backToOrder: "Tillbaka till beställningen",
+    },
     /** Choosing how the order is delivered at checkout (D135): a carrier's services and pickup points next to the flat rate. */
     deliveryChoice: {
       heading: "Leveranssätt",
@@ -2313,6 +2349,24 @@ const messages = {
       entryUsableFrom: (date: string) => `kan bruges fra ${date}`,
       entryExpires: (date: string) => `udløber ${date}`,
     },
+    /** Terms at checkout (wave 1, 1e): the sentence by the pay button, the tick box and what an order keeps. Hand-written, needs legal review (docs/wave-1-trust.md section 8). `{terms}` and `{privacy}` stand for the two links. */
+    terms: {
+      both: (terms: string, privacy: string) => `Når du bestiller, accepterer du ${terms} og bekræfter, at du har læst ${privacy}.`,
+      termsOnly: (terms: string) => `Når du bestiller, accepterer du ${terms}.`,
+      privacyOnly: (privacy: string) => `Når du bestiller, bekræfter du, at du har læst ${privacy}.`,
+      checkboxBoth: (terms: string, privacy: string) => `Jeg accepterer ${terms} og bekræfter, at jeg har læst ${privacy}.`,
+      checkboxTerms: (terms: string) => `Jeg accepterer ${terms}.`,
+      checkboxPrivacy: (privacy: string) => `Jeg bekræfter, at jeg har læst ${privacy}.`,
+      hint: "Sæt kryds for at acceptere vilkårene, før du betaler.",
+      failed: "Vi kunne ikke gemme, at du accepterede vilkårene. Prøv igen.",
+      newTab: "(åbner i en ny fane)",
+      legalNav: "Juridiske oplysninger",
+      orderHeading: "Vilkår, du accepterede",
+      orderShown: (date: string) => `Disse tekster blev vist, da du bestilte ${date}.`,
+      orderTicked: (date: string) => `Du satte kryds ved disse tekster, da du bestilte ${date}.`,
+      snapshotNote: (date: string) => `Teksten, som den var, da du bestilte ${date}. Butikken kan have ændret den siden.`,
+      backToOrder: "Tilbage til ordren",
+    },
     /** Choosing how the order is delivered at checkout (D135): a carrier's services and pickup points next to the flat rate. */
     deliveryChoice: {
       heading: "Leveringsmåde",
@@ -3392,6 +3446,24 @@ const messages = {
       kinds: { earn: "Earned", redeem: "Used", restore: "Returned", reverse: "Taken back", expire: "Expired", adjust: "Adjusted by the store", referral: "Referral reward" },
       entryUsableFrom: (date: string) => `usable from ${date}`,
       entryExpires: (date: string) => `expires ${date}`,
+    },
+    /** Terms at checkout (wave 1, 1e): the sentence by the pay button, the tick box and what an order keeps. Hand-written, needs legal review (docs/wave-1-trust.md section 8). `{terms}` and `{privacy}` stand for the two links. */
+    terms: {
+      both: (terms: string, privacy: string) => `By ordering you accept ${terms} and confirm that you have read ${privacy}.`,
+      termsOnly: (terms: string) => `By ordering you accept ${terms}.`,
+      privacyOnly: (privacy: string) => `By ordering you confirm that you have read ${privacy}.`,
+      checkboxBoth: (terms: string, privacy: string) => `I accept ${terms} and confirm that I have read ${privacy}.`,
+      checkboxTerms: (terms: string) => `I accept ${terms}.`,
+      checkboxPrivacy: (privacy: string) => `I confirm that I have read ${privacy}.`,
+      hint: "Tick the box to accept the terms before you pay.",
+      failed: "We could not save that you accepted the terms. Try again.",
+      newTab: "(opens in a new tab)",
+      legalNav: "Legal",
+      orderHeading: "Terms you accepted",
+      orderShown: (date: string) => `These texts were shown when you ordered on ${date}.`,
+      orderTicked: (date: string) => `You ticked these texts when you ordered on ${date}.`,
+      snapshotNote: (date: string) => `The text as it was when you ordered on ${date}. The store may have changed it since.`,
+      backToOrder: "Back to the order",
     },
     /** Choosing how the order is delivered at checkout (D135): a carrier's services and pickup points next to the flat rate. */
     deliveryChoice: {

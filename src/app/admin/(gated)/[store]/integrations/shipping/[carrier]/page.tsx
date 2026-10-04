@@ -6,7 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING } from "@/lib/delivery-options";
 import { CARRIER_FEATURE_LABELS, carrierInfo } from "@/lib/shipping-carriers";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { CHECKOUT_SERVICES, getCheckoutSettings } from "@/server/delivery-options";
 import { getShippingSettings } from "@/server/settings";
 import { db } from "@/db/client";
@@ -25,11 +25,12 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
  */
 export default async function CarrierPage({ params }: PageProps<"/admin/[store]/integrations/shipping/[carrier]">) {
   const { store: slug, carrier } = await params;
-  const { store, role } = await requireMember(slug);
+  const current = await requirePermission(slug, "settings:read");
+  const { store } = current;
   const info = carrierInfo(carrier);
   if (!info) notFound();
   const saved = await getCarrier(store.id, info.id);
-  const owner = role === "owner";
+  const owner = memberCan(current, "owner");
   const live = info.available.length > 0;
   const marketCountries = [...new Set(store.markets.map((m) => m.code.toUpperCase()))];
   // Markets the store sells to, the carrier's first: the carrier can only deliver where it delivers.

@@ -1,8 +1,9 @@
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { AdminColorSync } from "@/components/admin/admin-colors";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
-import { getAccount } from "@/server/auth";
+import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 
 /**
  * Every signed-in admin page (D107). Each level draws its own header
@@ -17,10 +18,19 @@ export default function GatedLayout({ children }: LayoutProps<"/admin">) {
   );
 }
 
-/** Admits signed-in accounts only; everyone else is sent to sign in. */
+/**
+ * Admits signed-in accounts only; everyone else is sent to sign in. `getAccount()` fails closed (wave 1, 1f): a person whose
+ * second step is due (a factor not yet used in this session, or a requirement and no factor) is not let in and is sent to the
+ * page for it, never to the recovery that would take them for an expired session.
+ */
 async function Gate({ children }: { children: React.ReactNode }) {
   const account = await getAccount();
-  if (!account) return <SessionRecovery />;
+  if (!account) {
+    const held = await getAssurance();
+    const destination = held ? heldDestination(held.assurance) : null;
+    if (destination) redirect(destination);
+    return <SessionRecovery />;
+  }
   return (
     <div className="flex min-h-screen flex-col">
       <SessionKeeper />

@@ -17,7 +17,7 @@ export function workBase(storeSlug: string): string {
  * `redirects` (`next.config.ts`). The first segment must not be `account` or
  * `platform`, or `/admin/account/work` would match `/admin/:store/work` and
  * redirect to itself. A redirect names no data: the page it lands on checks
- * that the person is a member of the store (`requireMember()`).
+ * that the person is a member of the store (`requirePermission()`).
  */
 export const LEGACY_WORK_REDIRECTS: readonly { source: string; destination: string; permanent: false }[] = [
   { source: "/admin/:store((?!account/|platform/)[^/]+)/settings/work", destination: `${WORK_ROOT}/s/:store/settings`, permanent: false },

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { CartAddTable, WishlistTabs } from "@/components/admin/wishlist-admin";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listCartAdds } from "@/server/wishlist-admin";
 
 export const metadata: Metadata = { title: "From wishlist to purchase" };
@@ -19,7 +19,7 @@ const FILTERS = [
  * still in the cart, taken out, or left behind.
  */
 export default async function WishlistActivityPage({ params, searchParams }: PageProps<"/admin/[store]/wishlists/activity">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "customers:read");
   const raw = (await searchParams).show;
   const show = FILTERS.find((f) => f.key === raw)?.key ?? "all";
   const rows = await listCartAdds(store.id, { outcome: show === "all" ? undefined : show });

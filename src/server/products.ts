@@ -30,6 +30,7 @@ import type { Term } from "@/lib/taxonomy";
 import { aiFor } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
 import { storedFileInfo, uploadsEnabled } from "./media";
+import { auditProductSave, productSnapshot } from "./product-audit";
 import { listLayoutChoices } from "./product-layouts";
 import type { Store } from "./stores";
 import { listTerms, scopedTermIds } from "./taxonomy";
@@ -602,6 +603,8 @@ export async function saveProduct(
   fields?: unknown,
   /** What was entered in its variants' custom fields, by the variant's SKU, in the same shape. */
   variantFields?: unknown,
+  /** Who saves it, for the activity log (wave 1, 1f): a product, and each price that changed, is written down when it is given. */
+  actor?: { id: string },
 ): Promise<SaveProductResult> {
   const input = asKind(given);
   const euRows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
@@ -644,6 +647,7 @@ export async function saveProduct(
     ...(await scopedTermIds(termScope, "tag", input.tags)),
   ];
 
+  const before = actor && productId ? await productSnapshot(store.id, productId, context.primaryLocale) : null;
   try {
     const id = await db().transaction(async (tx) => {
       const manufacturerId = await resolveOperator(tx, store.id, input.manufacturer);
@@ -707,6 +711,7 @@ export async function saveProduct(
       `);
       return saved;
     });
+    if (actor) await auditProductSave({ accountId: actor.id, storeId: store.id }, id, before, await productSnapshot(store.id, id, context.primaryLocale));
     return { ok: true, productId: id };
   } catch (error) {
     if (error instanceof FieldProblems) return { ok: false, problems: error.problems };
@@ -1050,12 +1055,15 @@ function saveProblem(error: unknown, input: ProductInput): string {
 }
 
 /** Takes a product off sale and out of the list (it is kept, not deleted). */
-export async function setArchived(store: Store, productId: string, archived: boolean): Promise<boolean> {
+export async function setArchived(store: Store, productId: string, archived: boolean, actor?: { id: string }): Promise<boolean> {
+  const primary = store.localization.locales[0] ?? "en";
+  const before = actor ? await productSnapshot(store.id, productId, primary) : null;
   const rows = await db().execute<Row>(sql`
     update commerce.products
        set status = ${archived ? "archived" : "draft"}, updated_at = now()
      where store_id = ${store.id}::uuid and id = ${productId}::uuid
     returning id
   `);
+  if (actor && rows.length > 0 && before) await auditProductSave({ accountId: actor.id, storeId: store.id }, productId, before, await productSnapshot(store.id, productId, primary));
   return rows.length > 0;
 }

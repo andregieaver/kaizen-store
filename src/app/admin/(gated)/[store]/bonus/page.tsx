@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { BonusOverviewCard } from "@/components/admin/bonus-overview";
 import { BonusSettingsForm } from "@/components/admin/bonus-settings-form";
 import { mainCurrency } from "@/lib/markets";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { bonusOverview, getBonusSettings } from "@/server/bonus";
 
 import { saveBonusAction } from "./actions";
@@ -15,7 +15,8 @@ export const metadata: Metadata = { title: "Bonus credits" };
  * Owners set the rules; staff see them and what the program owes.
  */
 export default async function BonusPage({ params }: PageProps<"/admin/[store]/bonus">) {
-  const { store, role } = await requireMember((await params).store);
+  const current = await requirePermission((await params).store, "marketing:read");
+  const { store } = current;
   const [settings, overview] = await Promise.all([getBonusSettings(store.id), bonusOverview(store.id)]);
   const locale = store.markets[0]?.locale ?? "nb-NO";
 
@@ -33,7 +34,7 @@ export default async function BonusPage({ params }: PageProps<"/admin/[store]/bo
         initial={settings}
         currency={mainCurrency(store)}
         locale={locale}
-        canEdit={role === "owner"}
+        canEdit={memberCan(current, "owner")}
         save={saveBonusAction.bind(null, store.slug)}
       />
     </div>

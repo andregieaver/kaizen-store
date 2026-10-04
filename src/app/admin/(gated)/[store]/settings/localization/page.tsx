@@ -5,7 +5,7 @@ import { ROUND_STEPS } from "@/lib/currency";
 import { currencyName, languageName, languageOptions } from "@/lib/localization";
 import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
 import { OFFERABLE_CURRENCIES, minorUnitDigits } from "@/lib/money";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { enabledLanguages } from "@/server/languages";
 import { uiCounts } from "@/server/ui-text";
 
@@ -16,8 +16,9 @@ export const metadata: Metadata = { title: "Languages and currencies" };
 const input = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
 
 export default async function LocalizationPage({ params }: PageProps<"/admin/[store]/settings/localization">) {
-  const { store, role } = await requireMember((await params).store);
-  const owner = role === "owner";
+  const current = await requirePermission((await params).store, "settings:read");
+  const { store } = current;
+  const owner = memberCan(current, "owner");
   const { localization, markets } = store;
   const [languages, counts] = await Promise.all([enabledLanguages(), uiCounts()]);
   const catalogSize = fullCatalog().length;

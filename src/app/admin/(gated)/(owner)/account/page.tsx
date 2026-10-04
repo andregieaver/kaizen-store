@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
 import { AppearanceField } from "@/components/admin/admin-colors";
+import { ManageTwoStep } from "@/components/admin/two-step-panel";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
@@ -11,6 +12,7 @@ import { requireAccount } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
 import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { lifeLink, lifeLinkOn } from "@/server/kaizen-life-link";
+import { twoStepStatus } from "@/server/two-step";
 
 import {
   accountAvatarAction,
@@ -19,6 +21,8 @@ import {
   connectLifeAssistantAction,
   disconnectKaizenLifeAction,
   disconnectLifeAssistantAction,
+  regenerateRecoveryCodesAction,
+  removeTwoStepAction,
   revokeAppAction,
   setPasswordAction,
 } from "./actions";
@@ -34,6 +38,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   const assistantStatus = query["life-assistant"];
   const owner = await isOwner(account);
   const supabase = await createClient();
+  const twoStep = await twoStepStatus(account);
   const [identity, grants, link] = await Promise.all([
     owner && kaizenLifeSignInOn() ? kaizenLifeIdentity(supabase) : null,
     owner ? supabase.auth.oauth.listGrants().then(({ data }) => data ?? [], () => []) : [],
@@ -115,6 +120,27 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
             <SubmitButton>Save password</SubmitButton>
           </div>
         </ActionForm>
+      </section>
+
+      <section aria-labelledby="two-step-heading" className="flex max-w-md flex-col gap-3">
+        <h2 id="two-step-heading" className="font-medium">
+          Two-step sign-in
+        </h2>
+        {twoStep ? (
+          <ManageTwoStep
+            enrolled={twoStep.enrolled}
+            codesLeft={twoStep.codesLeft}
+            platformAdmin={account.platformAdmin}
+            recoveryAvailable={twoStep.recoveryAvailable}
+            setUpHref="/admin/sign-in/two-step/set-up?next=/admin/account"
+            account={account.email}
+            madeOn={new Date().toISOString().slice(0, 10)}
+            regenerate={regenerateRecoveryCodesAction}
+            remove={removeTwoStepAction}
+          />
+        ) : (
+          <p className="text-sm text-muted">Sign in again to see your two-step sign-in.</p>
+        )}
       </section>
 
       {owner && kaizenLifeSignInOn() && (

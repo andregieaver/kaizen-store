@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listResources, type BookingResource } from "@/server/bookings";
 
 export const metadata: Metadata = { title: "Rooms and rental items" };
 
 /** What is booked by the night or the day (D67): rooms and homes for stays, items for rentals. */
 export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bookings/units">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "bookings:read");
   const all = await listResources(store.id, ["unit", "item"]);
   const base = `/admin/${store.slug}/bookings/units`;
   const button = "min-h-10 rounded-md border border-border px-4 py-2 text-sm font-medium";

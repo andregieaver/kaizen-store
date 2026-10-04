@@ -49,7 +49,7 @@ type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
  * `refundOrder()` (Stripe on the store's account, stock, host commission), with the amount worked out by `refundFor()`
  * from the stored facts, bounded and logged when staff adjust it. Nothing is refunded automatically.
  *
- * The action layer calls `requireMember()` first and passes the account; these functions never trust a caller's store.
+ * The action layer calls `requirePermission()` first and passes the account; these functions never trust a caller's store.
  */
 
 export type Done<T extends object = object> = ({ ok: true } & T) | Refused;

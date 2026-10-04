@@ -1,0 +1,101 @@
+import { pathToRegexp } from "next/dist/compiled/path-to-regexp";
+import { describe, expect, it } from "vitest";
+
+import { FORBIDDEN_ON_PAY_ROUTES, PAY_SEGMENTS, PAY_SOURCES, importsForbidden, isPayPath } from "./pay-routes";
+
+const PAY = [
+  "/s/demo/no/cart",
+  "/s/demo/no/checkout",
+  "/s/demo/no/order/6f1c0b9e-1111-2222-3333-444444444444",
+  "/s/demo/no/order/abc/terms/terms",
+  "/s/demo/no-en/cart",
+  "/s/demo/no-eur/checkout",
+  "/s/demo/no-en-eur/order",
+  "/s/demo/no~3fa9c1d2b_7b21aa90c/checkout",
+  "/no/cart",
+  "/no/checkout",
+  "/se/order/abc",
+  "/no-en/checkout",
+  "/no~abc/order/123",
+  "/s/demo/no/cart?utm=1",
+  "/s/demo/no/cart/",
+];
+const NOT_PAY = [
+  "/",
+  "/s/demo",
+  "/s/demo/no",
+  "/s/demo/no/products",
+  "/s/demo/no/cartoon",
+  "/s/demo/no/account",
+  "/s/demo/no/withdraw",
+  "/s/cart",
+  "/s/cart/no",
+  "/cart",
+  "/checkout",
+  "/blog/cart",
+  "/blog/order",
+  "/admin/demo/orders",
+  "/admin/cart",
+  "/s/demo/n/cart",
+  "/s/demo/nor/cart",
+  "/api/cart",
+  "/s/demo/no/product/cart",
+];
+
+describe("the pay routes (wave 1, 1e)", () => {
+  it("are the cart, the checkout and the order", () => {
+    expect(PAY_SEGMENTS).toEqual(["cart", "checkout", "order"]);
+  });
+
+  it.each(PAY)("%s is a pay route", (path) => {
+    expect(isPayPath(path)).toBe(true);
+  });
+
+  it.each(NOT_PAY)("%s is not", (path) => {
+    expect(isPayPath(path)).toBe(false);
+  });
+
+  it("is what the sources the policy is sent on match, both ways round", () => {
+    const sources = PAY_SOURCES.map((source) => pathToRegexp(source));
+    const matched = (path: string) => sources.some((re) => re.test(path.split("?")[0]));
+    for (const path of PAY) expect([path, matched(path)]).toEqual([path, true]);
+    for (const path of NOT_PAY) expect([path, matched(path)]).toEqual([path, false]);
+  });
+});
+
+describe("what a pay route may not reach", () => {
+  it("names the consent banner and manager, the owner's code, the chat widget, referral capture and the business popup", () => {
+    for (const fragment of ["site-consent", "consent-manager", "store-custom-code", "custom-code", "site-chat", "chat-widget", "store-affiliate", "buyer"]) {
+      expect(FORBIDDEN_ON_PAY_ROUTES.some((f) => f.includes(fragment))).toBe(true);
+    }
+  });
+
+  it("finds a forbidden import by its specifier, with or without the alias", () => {
+    expect(importsForbidden("@/components/consent/site-consent")).toBeTruthy();
+    expect(importsForbidden("@/lib/custom-code")).toBeTruthy();
+    expect(importsForbidden("../../components/site-chat")).toBeTruthy();
+    expect(importsForbidden("@/components/store-layout")).toBeUndefined();
+    expect(importsForbidden("@/lib/customer-tiers")).toBeUndefined();
+  });
+
+  it("names files that exist, so the list cannot silently go stale", async () => {
+    const { existsSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    for (const fragment of FORBIDDEN_ON_PAY_ROUTES) {
+      const base = join(process.cwd(), "src", fragment);
+      expect([fragment, [".ts", ".tsx"].some((ext) => existsSync(base + ext))]).toEqual([fragment, true]);
+    }
+  });
+});
+
+describe("what the pay route guard loads (a policy without eval)", () => {
+  it("reaches no zod: the guard's imports are small modules, never affiliates.ts", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { join } = await import("node:path");
+    const read = (file: string) => readFileSync(join(process.cwd(), "src", file), "utf8");
+    for (const file of ["components/pay-route-guard.tsx", "lib/affiliate-address.ts", "lib/affiliate-memory.ts", "lib/pay-routes.ts"]) {
+      const imports = [...read(file).matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1]);
+      expect([file, imports.filter((i) => i === "zod" || /(^|\/)affiliates$/.test(i))]).toEqual([file, []]);
+    }
+  });
+});

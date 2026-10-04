@@ -9,12 +9,15 @@ import {
   ShippingAddressElement,
   useCheckoutElements,
 } from "@stripe/react-stripe-js/checkout";
-import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
+import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
 import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
 import { captureCheckoutEmailAction, checkoutRemindersAction } from "@/app/s/[store]/[market]/checkout/actions";
+import { recordTermsAction } from "@/app/s/[store]/[market]/checkout/terms-actions";
+import { payHeld, payStep, type TermsDisplay } from "@/lib/checkout-terms";
 
 import { useShowsDark } from "./color-mode-switch";
+import { termsKey, useTicked } from "./terms-choice";
 
 export type CheckoutFormLabels = {
   contact: string;
@@ -48,6 +51,18 @@ export type CheckoutAccountOption = {
   store: string;
   market: string;
   labels: { create: string; hint: string; password: string; rule: string };
+};
+
+/**
+ * The terms the store shows at checkout (wave 1, 1e): what the shopper pressed pay under is kept with the order, and in
+ * `checkbox` mode the button is held until the box is ticked. The sentence and box are drawn by their own piece
+ * (`CheckoutTerms`), which may sit anywhere on the page; they meet here through the in-memory choice.
+ */
+export type CheckoutTermsOption = {
+  store: string;
+  market: string;
+  display: TermsDisplay;
+  labels: { hint: string; failed: string };
 };
 
 const FONT = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
@@ -88,6 +103,8 @@ export function CheckoutForm({
   links,
   account = null,
   reminders = null,
+  terms = null,
+  termsSlot = null,
 }: {
   publishableKey: string;
   stripeAccount: string;
@@ -100,6 +117,9 @@ export function CheckoutForm({
   links: { cart: string; order: string };
   account?: CheckoutAccountOption | null;
   reminders?: CheckoutReminderOption | null;
+  terms?: CheckoutTermsOption | null;
+  /** The sentence and box for the terms (`CheckoutTerms`), drawn above the pay button; null where the page has its own piece. */
+  termsSlot?: ReactNode;
 }) {
   // Stripe runs in the browser only; the server sends the waiting state.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -115,7 +135,7 @@ export function CheckoutForm({
       stripe={stripe}
       options={{ clientSecret, elementsOptions: { appearance: appearance(dark), loader: "auto" } }}
     >
-      <Form labels={labels} links={links} ships={ships} account={account} reminders={reminders} />
+      <Form labels={labels} links={links} ships={ships} account={account} reminders={reminders} terms={terms} termsSlot={termsSlot} />
     </CheckoutElementsProvider>
   );
 }
@@ -137,14 +157,20 @@ function Form({
   ships,
   account,
   reminders,
+  terms,
+  termsSlot,
 }: {
   labels: CheckoutFormLabels;
   links: { cart: string; order: string };
   ships: boolean;
   account: CheckoutAccountOption | null;
   reminders: CheckoutReminderOption | null;
+  terms: CheckoutTermsOption | null;
+  termsSlot: ReactNode;
 }) {
   const state = useCheckoutElements();
+  const ticked = useTicked(terms ? termsKey(terms.store, terms.market) : "");
+  const held = payHeld(terms?.display ?? null, ticked);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [express, setExpress] = useState(false);
@@ -226,11 +252,36 @@ function Form({
     return true;
   };
 
+  /**
+   * What the shopper pressed pay under, kept with the order before Stripe is asked (wave 1, 1e). In `checkbox` mode a record
+   * that fails stops the payment and says so; in `link` mode the payment goes on and the order simply has no record.
+   */
+  const recordTerms = async (): Promise<boolean> => {
+    if (!terms) return true;
+    const step = payStep(terms.display);
+    if (!step.record) return true;
+    let kept = false;
+    try {
+      kept = (await recordTermsAction(terms.store, terms.market)).ok;
+    } catch {
+      kept = false;
+    }
+    if (kept || !step.stopOnFailure) return true;
+    fail(terms.labels.failed);
+    return false;
+  };
+
   const pay = async (event: FormEvent) => {
     event.preventDefault();
+    // The button is disabled while the box is unticked; a keyboard submit or a script gets the same answer.
+    if (held) {
+      setProblem(terms?.labels.hint ?? null);
+      return;
+    }
     setBusy(true);
     setProblem(null);
     if (!(await saveAccount())) return;
+    if (!(await recordTerms())) return;
     // On success Stripe takes the shopper to the order page.
     const result = await checkout.confirm();
     if (result.type === "error") fail(result.error.message);
@@ -244,7 +295,13 @@ function Form({
           onReady={(event) => setExpress(Boolean(event.availablePaymentMethods))}
           onConfirm={async (event) => {
             setProblem(null);
-            if (!(await saveAccount())) {
+            // Apple Pay, Google Pay and Link are held by the same box.
+            if (held) {
+              event.paymentFailed();
+              fail(terms?.labels.hint ?? "");
+              return;
+            }
+            if (!(await saveAccount()) || !(await recordTerms())) {
               event.paymentFailed();
               return;
             }
@@ -326,12 +383,19 @@ function Form({
       </section>
 
       <div className="flex flex-col gap-3">
+        {termsSlot}
         <p ref={problemRef} tabIndex={-1} role="alert" className="text-sm text-red-700 empty:hidden dark:text-red-400">
           {problem}
         </p>
+        {held && terms && (
+          <p id={`${id}-held`} className="text-sm text-muted">
+            {terms.labels.hint}
+          </p>
+        )}
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || held}
+          aria-describedby={held ? `${id}-held` : undefined}
           className="min-h-12 button-primary px-4 font-medium disabled:opacity-40"
         >
           {busy ? labels.paying : labels.pay}

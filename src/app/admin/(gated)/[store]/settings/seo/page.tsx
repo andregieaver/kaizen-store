@@ -6,7 +6,7 @@ import { SearchTextFields, ShareImageField } from "@/components/admin/seo-fields
 import { t } from "@/lib/i18n";
 import { marketPath, storeBase, storeSiteUrl } from "@/lib/paths";
 import { AI_ASSISTANT_BOTS, AI_TRAINING_BOTS, LLMS_MAX, RULES_MAX } from "@/lib/seo";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 import { altTextGaps, storeSitemapPath } from "@/server/seo";
 
@@ -22,7 +22,7 @@ const hint = "text-sm font-normal text-muted";
 
 /** How the store shows up in search engines, when shared, and to AI assistants (D21). */
 export default async function SeoPage({ params }: PageProps<"/admin/[store]/settings/seo">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   const seo = store.seo;
   const gaps = await altTextGaps(store.id);
   const names = new Intl.DisplayNames(["en"], { type: "language" });

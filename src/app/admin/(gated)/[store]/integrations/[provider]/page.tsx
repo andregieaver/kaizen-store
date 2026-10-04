@@ -7,7 +7,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { TestSendButton } from "@/components/admin/test-send-button";
 import { EVENTS, INTEGRATIONS, isProvider } from "@/lib/integrations";
-import { requireMember } from "@/server/auth";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { DEFAULT_EVENTS, getIntegration, listDeliveries, type DeliveryRow } from "@/server/integrations";
 import { slackAppOn } from "@/server/slack";
 
@@ -33,13 +33,14 @@ const SLACK_RETURN: Record<string, { ok: boolean; text: string }> = {
 export default async function IntegrationPage({ params, searchParams }: PageProps<"/admin/[store]/integrations/[provider]">) {
   const { store: slug, provider } = await params;
   const returned = provider === "slack" ? SLACK_RETURN[String((await searchParams).slack ?? "")] : undefined;
-  const { store, role } = await requireMember(slug);
+  const current = await requirePermission(slug, "settings:read");
+  const { store } = current;
   const info = INTEGRATIONS.find((i) => i.id === provider);
   if (!info || info.comingSoon || !isProvider(provider)) notFound();
   const [integration, deliveries] = await Promise.all([getIntegration(store.id, provider), listDeliveries(store.id, provider)]);
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
-  const owner = role === "owner";
+  const owner = memberCan(current, "owner");
   const chosen = new Set(integration?.events ?? DEFAULT_EVENTS);
   const slack = provider === "slack";
   const addToSlack = slack && owner && slackAppOn();

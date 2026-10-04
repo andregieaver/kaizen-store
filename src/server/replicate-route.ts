@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { ITERATIONS } from "@/lib/replicate";
 
-import { getMembership } from "./auth";
+import { checkPermission } from "./permissions";
 import { sameSite } from "./chat-route";
 import { abortReplication, currentReplication, replicationStatus, startReplication, tickReplication, type ReplicaOwner } from "./replicate";
 
@@ -16,8 +16,9 @@ import { abortReplication, currentReplication, replicationStatus, startReplicati
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const notFound = () => new Response("Not found", { status: 404 });
 
-async function ownerOf(request: Request, storeSlug: string): Promise<ReplicaOwner | null> {
-  const member = await getMembership(storeSlug);
+/** A member who may use the studio: reading a job needs `website:read`, starting, nudging or stopping one `website:write`. */
+async function ownerOf(request: Request, storeSlug: string, access: "read" | "write" = "write"): Promise<ReplicaOwner | null> {
+  const member = await checkPermission(storeSlug, access === "read" ? "website:read" : "website:write");
   if (!member) return null;
   return { storeId: member.store.id, storeSlug: member.store.slug, account: member.account, origin: new URL(request.url).origin };
 }
@@ -39,7 +40,7 @@ export async function startRequest(request: Request, storeSlug: string): Promise
 }
 
 export async function currentRequest(request: Request, storeSlug: string): Promise<Response> {
-  const owner = await ownerOf(request, storeSlug);
+  const owner = await ownerOf(request, storeSlug, "read");
   if (!owner) return notFound();
   return json({ job: await currentReplication(owner) });
 }
@@ -47,7 +48,7 @@ export async function currentRequest(request: Request, storeSlug: string): Promi
 const idOk = (id: string) => /^[0-9a-f-]{36}$/.test(id);
 
 export async function statusRequest(request: Request, storeSlug: string, id: string): Promise<Response> {
-  const owner = idOk(id) ? await ownerOf(request, storeSlug) : null;
+  const owner = idOk(id) ? await ownerOf(request, storeSlug, "read") : null;
   if (!owner) return notFound();
   const job = await replicationStatus(owner, id);
   return job ? json({ job }) : notFound();

@@ -6,9 +6,9 @@ import { DocumentPage } from "@/components/admin/work/document-page";
 import { WorkOff } from "@/components/admin/work/work-off";
 import { CreditNoteDocumentView } from "@/components/work/invoice-document";
 import { documentFileName } from "@/lib/work-invoice-print";
-import { requireMember } from "@/server/auth";
 import { creditNoteDocumentData } from "@/server/work-invoices";
 import { workBase } from "@/lib/work-paths";
+import { requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Print credit note", robots: { index: false, follow: false } };
 
@@ -22,7 +22,7 @@ export default async function CreditNotePrintPage({
   searchParams,
 }: PageProps<"/admin/account/work/s/[store]/credit-notes/[creditNoteId]/print">) {
   const { store: slug, creditNoteId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "settings:read");
   if (!store.workOn) {
     return (
       <div className="p-8">

@@ -6,9 +6,9 @@ import { DocumentPage, NoDocument } from "@/components/admin/work/document-page"
 import { WorkOff } from "@/components/admin/work/work-off";
 import { InvoiceDocumentView } from "@/components/work/invoice-document";
 import { documentFileName, printableState } from "@/lib/work-invoice-print";
-import { requireMember } from "@/server/auth";
 import { invoiceDocumentData } from "@/server/work-invoices";
 import { workBase } from "@/lib/work-paths";
+import { requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Print invoice", robots: { index: false, follow: false } };
 
@@ -25,7 +25,7 @@ export default async function InvoicePrintPage({
   searchParams,
 }: PageProps<"/admin/account/work/s/[store]/invoices/[invoiceId]/print">) {
   const { store: slug, invoiceId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "settings:read");
   if (!store.workOn) {
     return (
       <div className="p-8">

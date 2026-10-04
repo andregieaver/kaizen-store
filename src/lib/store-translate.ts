@@ -106,9 +106,13 @@ export function menuUnit(menuId: string, menuName: string, index: number, label:
 // ---------------------------------------------------------------------------
 
 /** Pages whose address or title says they are terms, privacy, returns or withdrawal: legal texts. */
-const LEGAL_PAGE = /(terms|vilk[aå]r|villkor|vilk[aå]ar|betingelser|conditions|privacy|personvern|personal-?data|integritet|persondata|databeskyttelse|cookie|retur|return|angrerett|[ãa]ngerr[äa]tt|fortrydelse|withdrawal|refund|imprint|impressum|gdpr|legal|juridisk)/i;
+const LEGAL_PAGE = /(terms|vilk[aå]r|villkor|vilk[aå]ar|betingelser|conditions|privacy|personvern|personal-?data|integritet|persondata|databeskyttelse|cookie|retur|return|angrerett|[ãa]ngerr[äa]tt|fortrydelse|withdrawal|refund|imprint|impressum|gdpr|legal|juridisk|shipping|frakt|levering|leverans|fragt|forsendelse|tilgjengelig|tillg[aä]nglighet|tilg[aæ]ngelighed|accessib)/i;
 
-export const isLegalPage = (slug: string, title: string) => LEGAL_PAGE.test(slug) || LEGAL_PAGE.test(title);
+/**
+ * Whether a page is a legal text: told by its address or title, or (wave 1, 1e) because the store chose it for one of the legal roles
+ * (`held`: terms, privacy, returns, shipping, withdrawal information, imprint, accessibility), whatever it is called.
+ */
+export const isLegalPage = (slug: string, title: string, held = false) => held || LEGAL_PAGE.test(slug) || LEGAL_PAGE.test(title);
 
 // ---------------------------------------------------------------------------
 // Return instructions (D153)

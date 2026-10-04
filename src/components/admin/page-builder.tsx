@@ -473,7 +473,10 @@ export function PageBuilder({
   fieldGroups = null,
   lang,
   onTestPart,
+  checks = null,
 }: {
+  /** The page checker's tab (wave 1, 1e): how many problems it found and its panel; null where there is none (a translated view). */
+  checks?: { count: number; panel: ReactNode } | null;
   /** Offers "A/B test this" on a row, column or component (D148); undefined where the page cannot be tested (not a published store page). */
   onTestPart?: (target: { kind: "row" | "column" | "block"; id: string }) => void;
   /** The language the page is shown in (its main one, or the one it is translated into). */
@@ -833,6 +836,7 @@ export function PageBuilder({
             pageType={pageType}
             onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
             onUseLayout={(part) => placeSaved(part)}
+            checks={checks}
             templates={templates && { actions: templates, controller, use: templateUse, source, onSource: setSource, onBrowse: () => setBrowsing({ kind: "all" }), onPreview: openPreview }}
             onShared={(id, sharing) => setParts(parts.map((p) => (p.id === id ? { ...p, sharing } : p)))}
             rowsFull={rowsFull}
@@ -990,7 +994,9 @@ const TABS = [
 ] as const;
 /** Only where a store can share and use templates (D125). */
 const TEMPLATES_TAB = { key: "templates", label: "Templates" } as const;
-type Tab = (typeof TABS)[number]["key"] | typeof TEMPLATES_TAB.key;
+/** Where the page checker's findings are (wave 1, 1e): a tab of its own, with how many there are in its label. */
+const CHECKS_TAB = { key: "checks", label: "Checks" } as const;
+type Tab = (typeof TABS)[number]["key"] | typeof TEMPLATES_TAB.key | typeof CHECKS_TAB.key;
 
 /** What the Templates tab needs (D125); none on Kaizen's own pages, which have no such tab. */
 type TemplatesInSidebar = {
@@ -1024,11 +1030,14 @@ function Sidebar({
   onOpenSaved,
   onUseLayout,
   templates,
+  checks,
   onShared,
   rowsFull,
   blocksFull,
 }: {
   id: string;
+  /** The Checks tab (wave 1, 1e), or null. */
+  checks: { count: number; panel: ReactNode } | null;
   /** Folded away, leaving a rail (D125). */
   hidden: boolean;
   onFold: () => void;
@@ -1061,7 +1070,7 @@ function Sidebar({
   blocksFull: boolean;
 }) {
   const id = useId();
-  const tabs = templates ? [...TABS, TEMPLATES_TAB] : TABS;
+  const tabs = [...TABS, ...(templates ? [TEMPLATES_TAB] : []), ...(checks ? [CHECKS_TAB] : [])];
   const select = (index: number) => {
     const next = tabs[(index + tabs.length) % tabs.length].key;
     setTab(next);
@@ -1077,7 +1086,7 @@ function Sidebar({
       <div className="border-b border-border px-4 py-1.5">
         <RailHeader side="left" label="building blocks" controls={panelId} onFold={onFold} />
       </div>
-      <div role="tablist" aria-label="Building blocks" className={`grid border-b border-border ${templates ? "grid-cols-4" : "grid-cols-3"}`}>
+      <div role="tablist" aria-label="Building blocks" className={`grid border-b border-border ${tabs.length >= 5 ? "grid-cols-5" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
         {tabs.map((t, index) => (
           <button
             key={t.key}
@@ -1094,7 +1103,7 @@ function Sidebar({
             }}
             className="min-h-11 truncate border-b-2 border-transparent px-1 text-xs font-medium text-muted aria-selected:border-foreground aria-selected:text-foreground"
           >
-            {t.label}
+            {t.key === "checks" && checks && checks.count > 0 ? `${t.label} (${checks.count})` : t.label}
           </button>
         ))}
       </div>
@@ -1234,6 +1243,7 @@ function Sidebar({
               sharing={templates && { setSharing: templates.actions.setSharing, onChanged: onShared }}
             />
           )}
+          {t.key === "checks" && checks && checks.panel}
           {t.key === "templates" && templates && (
             <TemplatesTab
               controller={templates.controller}
@@ -2014,6 +2024,7 @@ function RowItem({
     <li
       ref={setNodeRef}
       data-builder-item="row"
+      data-builder-id={row.id}
       data-builder-modal={row.modal ? "" : undefined}
       {...markAttributes(row)}
       tabIndex={0}
@@ -2117,6 +2128,7 @@ function ColumnItem({
     <div
       ref={setNodeRef}
       data-builder-item="column"
+      data-builder-id={column.id}
       {...markAttributes(column)}
       tabIndex={0}
       role="group"
@@ -2251,6 +2263,7 @@ function BlockItem({
     <div
       ref={setNodeRef}
       data-builder-item="block"
+      data-builder-id={block.id}
       {...markAttributes(block)}
       tabIndex={0}
       role="group"

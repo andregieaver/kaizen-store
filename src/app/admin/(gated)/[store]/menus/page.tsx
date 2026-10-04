@@ -7,7 +7,7 @@ import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { t } from "@/lib/i18n";
 import type { PageType } from "@/lib/page-content";
 import { termTargets } from "@/lib/taxonomy";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listStoreMenus, menuUses } from "@/server/menus";
 import { listMenuProducts } from "@/server/navigation";
 import { uploadsEnabled } from "@/server/media";
@@ -26,7 +26,7 @@ export const metadata: Metadata = { title: "Menus" };
  * components in pages, headers and footers.
  */
 export default async function MenusPage({ params, searchParams }: PageProps<"/admin/[store]/menus">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "website:read");
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -46,7 +46,7 @@ export default async function MenusPage({ params, searchParams }: PageProps<"/ad
 }
 
 async function Menus({ storeSlug, searchParams }: { storeSlug: string; searchParams: PageProps<"/admin/[store]/menus">["searchParams"] }) {
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "website:read");
   const { menu: wanted } = await searchParams;
   const [menus, uses, products, terms, pages, articles, blogTerms] = await Promise.all([
     listStoreMenus(store.id),

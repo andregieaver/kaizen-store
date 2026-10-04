@@ -1,6 +1,7 @@
 import "server-only";
 
 import { pageBlocks, type PageContent, type PageType } from "@/lib/page-content";
+import { pageIssues, refusedIssues } from "@/lib/page-a11y";
 import { productBlocks } from "@/lib/product-layout";
 import { siteLayoutProblem } from "@/lib/site-layout";
 
@@ -88,4 +89,16 @@ function ownerGridProblem(owner: PageOwner, rows: PageContent["rows"]): string |
     }
   }
   return null;
+}
+
+/**
+ * What the checkout page may not hold (wave 1, 1e, docs/wave-1-trust.md 2.5): an `html` block or a video that embeds another
+ * site, which the checkout's Content-Security-Policy would block and which are exactly the owner-script risk it is there for.
+ * Refused, never asked about: for a page chosen for the checkout role when it is saved, when it is chosen, and when a global part
+ * reaches it.
+ */
+export function payPageProblem(content: Pick<PageContent, "rows" | "title">): string | null {
+  const refused = refusedIssues(pageIssues(content, { checkout: true }));
+  if (refused.length === 0) return null;
+  return `The checkout page cannot hold ${refused.length === 1 ? "this" : "these"}: ${[...new Set(refused.map((i) => i.where))].join(", ")}. Card payments run in the checkout's own secure form, and a block from another site would be blocked there. Use a picture or text instead.`;
 }

@@ -2,7 +2,6 @@
 
 import { refresh } from "next/cache";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
@@ -112,7 +111,12 @@ export async function updateCartLine(formData: FormData): Promise<void> {
   refresh();
 }
 
-export type CheckoutState = { problem: CheckoutProblem | null };
+/**
+ * `to`: where the order is paid, when it was placed. The browser goes there with a full page load, not a client navigation
+ * (wave 1, 1e, `docs/pci.md`): a script the page added before (the consent manager's, the assistant's) must not still be in the
+ * document where the shopper types a card.
+ */
+export type CheckoutState = { problem: CheckoutProblem | null; to?: string };
 
 const contactInput = z.object({
   name: z.string().trim().min(1).max(120),
@@ -170,7 +174,7 @@ export async function checkoutAction(
     // A signed-in customer's order is theirs from the start, and codes for one use each know them (D31).
     { customerId: (await getCustomer(shop.store.id))?.id ?? null, contact: who?.success ? who.data : null },
   );
-  if (result.ok) redirect(result.url);
+  if (result.ok) return { problem: null, to: result.url };
   refresh();
   return { problem: result.problem };
 }

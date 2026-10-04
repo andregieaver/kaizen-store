@@ -45,6 +45,29 @@ describe("the store's MCP server for Kaizen Life (D96)", () => {
     expect(await mcp.callerFromClaims(claims({ sub: crypto.randomUUID() }), CLIENT)).toBeNull();
   });
 
+  it("serves a store that requires two-step, and a platform admin, to a token that passed the second step only (aal2)", async () => {
+    // A token at aal1 still reaches a store that does not require two-step ...
+    expect((await mcp.callerFromClaims(claims({ aal: "aal1" }), CLIENT))?.aal).toBe("aal1");
+    expect((await mcp.callerFromClaims(claims({ aal: "aal2" }), CLIENT))?.aal).toBe("aal2");
+    // ... but not one that requires it: the store is left out for aal1, and a caller with no store left is refused.
+    await db().execute(sql`update commerce.stores set require_two_step = true where slug = ${slug}`);
+    try {
+      expect(await mcp.callerFromClaims(claims({ aal: "aal1" }), CLIENT)).toBeNull();
+      expect(await mcp.callerFromClaims(claims(), CLIENT)).toBeNull();
+      expect((await mcp.callerFromClaims(claims({ aal: "aal2" }), CLIENT))?.stores).toEqual([expect.objectContaining({ slug })]);
+    } finally {
+      await db().execute(sql`update commerce.stores set require_two_step = false where slug = ${slug}`);
+    }
+    // A platform admin is served at aal2 only, wherever they sign in.
+    await db().execute(sql`update commerce.accounts set platform_admin = true where auth_user_id = ${authUser}::uuid`);
+    try {
+      expect(await mcp.callerFromClaims(claims({ aal: "aal1" }), CLIENT)).toBeNull();
+      expect(await mcp.callerFromClaims(claims({ aal: "aal2" }), CLIENT)).not.toBeNull();
+    } finally {
+      await db().execute(sql`update commerce.accounts set platform_admin = false where auth_user_id = ${authUser}::uuid`);
+    }
+  });
+
   it("lists every tool with the store it is for, and answers from the owner's stores only", async () => {
     expect(mcp.MCP_TOOLS.find((t) => t.name === "sales_summary")?.inputSchema).toMatchObject({ required: ["store"] });
     expect(await mcp.callMcpTool(caller!, "list_stores", {}, () => {})).toEqual({

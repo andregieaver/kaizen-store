@@ -20,6 +20,7 @@ import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { fileSize } from "@/lib/file-size";
 import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
+import { termsForOrder } from "@/server/checkout-terms";
 import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
 import { listOrderReturns } from "@/server/returns";
 import { perRequest } from "@/server/request-memo";
@@ -43,14 +44,16 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
-  const [downloads, subscription, account, returns] = await Promise.all([
+  const [downloads, subscription, account, returns, terms] = await Promise.all([
     digital && paid ? getOrderDownloads(store.id, order.id) : [],
     order.subscriptionId ? getSubscriptionForOrder(store.id, order.id) : null,
     getCheckoutAccount(store.id, order.id),
     // The order's own key has just been checked, so its returns (withdrawal and return requests, D153) are the visitor's to see.
     listOrderReturns(store.id, order.id),
+    // What the shopper was shown of the store's terms when they ordered (wave 1, 1e); nothing for an order that kept none.
+    termsForOrder(store.id, order.id),
   ]);
-  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns };
+  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms };
 }
 
 const FRAME = "rounded-lg border border-border p-4";
@@ -84,6 +87,7 @@ export async function OrderDetails(shop: Shop) {
       {subscription && <div className={FRAME}>{subscription}</div>}
       {downloads && <div className={FRAME}>{downloads}</div>}
       {addressBlock(view)}
+      {termsBlock(view)}
       {continueLink(view)}
     </div>
   );
@@ -133,6 +137,11 @@ export async function OrderDownloads(shop: Shop) {
 /** Where the order is delivered (D117); nothing for an order that is not shipped. */
 export async function OrderAddress(shop: Shop) {
   return addressBlock(await orderView(shop));
+}
+
+/** The terms and privacy statement the shopper was shown when they ordered, each a read-only page (wave 1, 1e); nothing for an order that kept none. */
+export async function OrderTerms(shop: Shop) {
+  return termsBlock(await orderView(shop));
 }
 
 /** A link back to the store (D117). The order's address is checked first: it is the shopper's own order. */
@@ -357,6 +366,31 @@ function addressBlock({ order, m }: OrderView) {
             </span>
           ))}
       </address>
+    </section>
+  );
+}
+
+function termsBlock({ store, market, order, sessionId, terms, m }: OrderView) {
+  if (!terms || terms.snapshots.length === 0) return null;
+  const date = terms.acceptedAt.toLocaleDateString(market.locale, { dateStyle: "long" });
+  return (
+    <section aria-labelledby="terms-heading">
+      <h2 id="terms-heading" className="mb-1 font-medium">
+        {m.terms.orderHeading}
+      </h2>
+      <p className="mb-2 text-sm text-muted">{terms.mode === "checkbox" ? m.terms.orderTicked(date) : m.terms.orderShown(date)}</p>
+      <ul className="flex flex-col gap-1">
+        {terms.snapshots.map((shown) => (
+          <li key={shown.role}>
+            <Link
+              href={`${marketPath(store.slug, market.slug, `/order/${order.id}/terms/${shown.role}`)}?session_id=${encodeURIComponent(sessionId)}`}
+              className="underline"
+            >
+              {shown.title}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

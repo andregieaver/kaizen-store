@@ -4,7 +4,7 @@ import Link from "next/link";
 import { StoreTranslator } from "@/components/admin/store-translator";
 import { pageLanguages } from "@/lib/page-translation";
 import { aiFor } from "@/server/ai";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { translationCoverage } from "@/server/store-translate";
 
 import { translateStorePageAction } from "../pages/actions";
@@ -13,7 +13,7 @@ import { applyAction, worklistAction } from "./actions";
 export const metadata: Metadata = { title: "Translate the store" };
 
 export default async function TranslatePage({ params }: PageProps<"/admin/[store]/translate">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "website:read");
   const languages = pageLanguages(store.localization.locales);
   const connection = languages.length > 1 ? await aiFor(store.id) : null;
 

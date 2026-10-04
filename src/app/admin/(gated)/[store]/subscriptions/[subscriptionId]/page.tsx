@@ -10,7 +10,7 @@ import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { formatMoney } from "@/lib/money";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { customerSummary } from "@/server/customer-admin";
 import type { OrderStatus } from "@/server/orders";
 import { allowedChanges, getSubscription, swapChoices } from "@/server/subscriptions";
@@ -23,7 +23,7 @@ export default async function SubscriptionPage({
   params,
 }: PageProps<"/admin/[store]/subscriptions/[subscriptionId]">) {
   const { store: slug, subscriptionId } = await params;
-  const { store } = await requireMember(slug);
+  const { store } = await requirePermission(slug, "orders:read");
   if (!z.uuid().safeParse(subscriptionId).success) notFound();
   const [subscription, customer] = await Promise.all([
     getSubscription(store.id, subscriptionId),

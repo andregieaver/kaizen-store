@@ -3,7 +3,7 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import { requireMember } from "@/server/auth";
+import { NO_ACCESS, checkOwnerRole, checkPermission } from "@/server/permissions";
 import { addRule, recommendTag, removeRule, saveRecommendSettings, type SaveResult } from "@/server/recommend-settings";
 
 function toState(result: SaveResult, success: string): FormState {
@@ -13,8 +13,8 @@ function toState(result: SaveResult, success: string): FormState {
 
 /** Saves the recommendation settings (D139). Owners decide what the site spends its AI on and what shoppers are shown. */
 export async function saveRecommendSettingsAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
-  if (member.role !== "owner") return { status: "error", messages: ["Only an owner can change the recommendations."] };
+  const member = await checkOwnerRole(storeSlug);
+  if (!member) return { status: "error", messages: ["Only an owner can change the recommendations."] };
   const result = await saveRecommendSettings(member.account, member.store.id, form);
   if (result.ok) {
     updateTag(recommendTag(member.store.id));
@@ -25,7 +25,8 @@ export async function saveRecommendSettingsAction(storeSlug: string, _state: For
 
 /** Adds a pairing, an exclusion or a hidden product (D139). */
 export async function addRuleAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const result = await addRule(member.account, member.store.id, {
     kind: String(form.get("kind") ?? ""),
     productId: String(form.get("productId") ?? ""),
@@ -40,7 +41,8 @@ export async function addRuleAction(storeSlug: string, _state: FormState, form: 
 }
 
 export async function removeRuleAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "marketing:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const result = await removeRule(member.account, member.store.id, String(form.get("ruleId") ?? ""));
   if (result.ok) {
     updateTag(recommendTag(member.store.id));

@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { LEGAL_ROLES } from "@/lib/legal-roles";
 import { parsePageContent, type PageType } from "@/lib/page-content";
 import { applyTranslated, translationItems, type TranslateMode } from "@/lib/page-translate-ai";
 import { withTranslation } from "@/lib/page-translation";
@@ -85,6 +86,12 @@ async function pageWork(storeId: string, to: string, mode: TranslateMode): Promi
     select id, type, slug, draft from commerce.pages
     where store_id = ${storeId}::uuid and type in ('page', 'article') order by type, updated_at desc
   `);
+  // A page the store chose for a legal role (terms, privacy, …) is a legal text whatever it is called (wave 1, 1e).
+  const roles = await db().execute<Row>(sql`
+    select page_id from commerce.page_roles
+    where store_id = ${storeId}::uuid and role = any(${sql.raw(`array[${LEGAL_ROLES.map((r) => `'${r}'`).join(", ")}]::text[]`)})
+  `);
+  const held = new Set(roles.map((r) => String(r.page_id)));
   return rows.flatMap((row) => {
     const content = parsePageContent(row.draft);
     if (!content) return [];
@@ -96,7 +103,7 @@ async function pageWork(storeId: string, to: string, mode: TranslateMode): Promi
         scope: "pages" as const,
         title: content.title || String(row.slug),
         kind: row.type === "article" ? "Article" : "Page",
-        legal: isLegalPage(String(row.slug), content.title),
+        legal: isLegalPage(String(row.slug), content.title, held.has(String(row.id))),
         items,
       },
     ];

@@ -14,7 +14,9 @@ import type { Term } from "@/lib/taxonomy";
 import { translateRequest, type TranslateResult } from "@/lib/page-translate-ai";
 import { AiError, aiFor } from "@/server/ai";
 import { db } from "@/db/client";
-import { requireMember, type Membership } from "@/server/auth";
+import { type Membership } from "@/server/auth";
+import { BUILDER_READ, BUILDER_WRITE } from "@/lib/permissions";
+import { NO_ACCESS, checkAnyPermission, checkPageTypeAccess, checkPermission, requireAnyPermission } from "@/server/permissions";
 import { fieldsTag, pageFacts, saveFieldData } from "@/server/custom-fields";
 import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import { recommendedGridData } from "@/server/recommend-grid";
@@ -53,8 +55,10 @@ export async function saveStorePageAction(
   id: string | null,
   payload: string,
   publish: boolean,
+  acknowledged?: string[],
 ): Promise<PageSaveState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPageTypeAccess(storeSlug, type, "write");
+  if (!member) return { status: "error", problems: [NO_ACCESS] };
   if (!isType(type) || (id !== null && !isId(id))) return { status: "error", problems: ["Unknown page."] };
   let json: unknown;
   try {
@@ -69,8 +73,10 @@ export async function saveStorePageAction(
   }
   // A version made for an A/B test (D148) holds what the page it is a version of may hold.
   const variantOf = type === "variant" && id !== null ? ((await testOfVersionPage(member.store.id, id))?.targetType ?? null) : null;
-  const result = await savePage(member.account, member.store.id, id, json, { publish: publish === true, type, variantOf });
-  if (!result.ok) return { status: "error", problems: result.problems };
+  // The ids of the checker's problems the owner chose to publish with (wave 1, 1e); anything but a list of short texts is no acknowledgement.
+  const acknowledgedIssues = Array.isArray(acknowledged) ? acknowledged.filter((a): a is string => typeof a === "string" && a.length <= 120).slice(0, 200) : undefined;
+  const result = await savePage(member.account, member.store.id, id, json, { publish: publish === true, type, variantOf, acknowledgedIssues });
+  if (!result.ok) return { status: "error", problems: result.problems, code: result.code, issues: result.issues };
   // Custom fields (D118) come along with the page's JSON; the page is saved, and its fields are checked against the store's groups.
   const fields = typeof json === "object" && json !== null ? (json as { fields?: unknown }).fields : undefined;
   if ((type === "page" || type === "article") && fields !== undefined) {
@@ -93,7 +99,8 @@ export async function saveStorePageAction(
 }
 
 export async function unpublishStorePageAction(storeSlug: string, type: PageType, id: string): Promise<PageSaveState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPageTypeAccess(storeSlug, type, "write");
+  if (!member) return { status: "error", problems: [NO_ACCESS] };
   if (!isType(type) || !isId(id)) return { status: "error", problems: ["Unknown page."] };
   const test = await runningTestOf(member.store.id, id);
   if (test) return { status: "error", problems: [`This page is in the running A/B test "${test.name}". Stop the test before unpublishing it.`] };
@@ -106,7 +113,8 @@ export async function unpublishStorePageAction(storeSlug: string, type: PageType
 
 /** Deletes the page and goes back to the list; returns only when it could not. */
 export async function deleteStorePageAction(storeSlug: string, type: PageType, id: string): Promise<{ problems: string[] } | void> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPageTypeAccess(storeSlug, type, "write");
+  if (!member) return { problems: [NO_ACCESS] };
   if (!isType(type) || !isId(id)) return { problems: ["Unknown page."] };
   // A page that is in an A/B test, running or not, is held by the test (D148): delete the test first.
   const [tested] = await db().execute<Record<string, unknown>>(sql`
@@ -123,7 +131,8 @@ export async function deleteStorePageAction(storeSlug: string, type: PageType, i
 
 /** Chooses the page shown as the store's front page (D54), or the product list. */
 export async function setFrontPageAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const choice = String(form.get("frontPage") ?? "");
   if (choice !== "" && !isId(choice)) return { status: "error", messages: ["Unknown page."] };
   const result = await setFrontPage(member.account, member.store.id, choice || null);
@@ -137,7 +146,8 @@ export async function setFrontPageAction(storeSlug: string, _state: FormState, f
 
 /** Chooses the page shown as the store's All products page at /products (D83), or the standard list. */
 export async function setProductsPageAction(storeSlug: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const choice = String(form.get("productsPage") ?? "");
   if (choice !== "" && !isId(choice)) return { status: "error", messages: ["Unknown page."] };
   const result = await setProductsPage(member.account, member.store.id, choice || null);
@@ -151,7 +161,8 @@ export async function setProductsPageAction(storeSlug: string, _state: FormState
 
 /** Chooses the page for one of the store's special places (D112): its blog, search page or 404 page, or the standard one. */
 export async function setPageRoleAction(storeSlug: string, role: string, _state: FormState, form: FormData): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!isPageRole(role)) return { status: "error", messages: ["Unknown page."] };
   const choice = String(form.get("page") ?? "");
   if (choice !== "" && !isId(choice)) return { status: "error", messages: ["Unknown page."] };
@@ -165,7 +176,8 @@ export async function setPageRoleAction(storeSlug: string, role: string, _state:
 
 /** Makes a starter page for one of the store's special places, published and in place, to change in the builder (D112). */
 export async function createRolePageAction(storeSlug: string, role: string): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!isPageRole(role)) return { status: "error", messages: ["Unknown page."] };
   const result = await createRolePage(member, role);
   if (!result.ok) return { status: "error", messages: result.problems };
@@ -181,7 +193,8 @@ export async function chooseStoreSiteLayoutAction(
   _state: FormState,
   form: FormData,
 ): Promise<FormState> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
   const choice = String(form.get("layout") ?? "");
   if (choice !== "" && !isId(choice)) return { status: "error", messages: [`Unknown ${type}.`] };
   const result = await chooseSiteLayout(member.account, member.store.id, type, choice || null);
@@ -192,7 +205,8 @@ export async function chooseStoreSiteLayoutAction(
 
 /** The store's own CSS for every page of its storefront (D100): live at once. */
 export async function saveStoreCssAction(storeSlug: string, css: unknown): Promise<{ ok: true } | { ok: false; problems: string[] }> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   const result = await saveSiteCss(member.account, member.store.id, css);
   if (result.ok) updateTag(storeTag(member.store.slug));
   return result;
@@ -201,12 +215,14 @@ export async function saveStoreCssAction(storeSlug: string, css: unknown): Promi
 // Saved rows, columns and components: the store's own (D46, D53).
 
 export async function createStorePartAction(storeSlug: string, input: unknown): Promise<SavedResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkAnyPermission(storeSlug, BUILDER_WRITE);
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   return createSavedPart(member.account, member.store.id, input);
 }
 
 export async function updateStorePartAction(storeSlug: string, id: string, input: unknown): Promise<SavedResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkAnyPermission(storeSlug, BUILDER_WRITE);
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
   const result = await updateSavedPart(member.account, member.store.id, id, input);
   if (result.ok && result.pages) pagesChanged(member);
@@ -214,7 +230,8 @@ export async function updateStorePartAction(storeSlug: string, id: string, input
 }
 
 export async function deleteStorePartAction(storeSlug: string, id: string): Promise<SavedResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkAnyPermission(storeSlug, BUILDER_WRITE);
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return { ok: false, problems: ["Unknown saved part."] };
   const result = await deleteSavedPart(member.account, member.store.id, id);
   if (result.ok && result.pages) pagesChanged(member);
@@ -228,28 +245,31 @@ const unknownTemplate = { ok: false, problems: ["Unknown template."] } satisfies
 
 /** The templates the store may see from a source, active or not. */
 export async function templatesListAction(storeSlug: string, source: TemplateSource): Promise<TemplateItem[]> {
-  const member = await requireMember(storeSlug);
+  const member = await requireAnyPermission(storeSlug, BUILDER_READ);
   if (!TEMPLATE_SOURCES.includes(source)) return [];
   return listTemplates(member.store.id, member.account, source);
 }
 
 /** Switches a template on or off for the store's builder. */
 export async function setTemplateActiveAction(storeSlug: string, id: string, active: boolean): Promise<TemplateResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id) || typeof active !== "boolean") return unknownTemplate;
   return setTemplateActive(member.store.id, member.account, id, active);
 }
 
 /** A copy of a template for the page, with the other store's own things left out and its pictures copied here. */
 export async function applyTemplateAction(storeSlug: string, id: string): Promise<TemplateResult<{ part: SavedPart }>> {
-  const member = await requireMember(storeSlug);
+  const member = await checkAnyPermission(storeSlug, BUILDER_WRITE);
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id)) return unknownTemplate;
   return applyTemplate(member.store.id, member.account, id);
 }
 
 /** Who can use one of the store's saved parts as a template; owners only. */
 export async function setPartSharingAction(storeSlug: string, id: string, sharing: PartSharing): Promise<TemplateResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isId(id) || !PART_SHARING.includes(sharing)) return unknownTemplate;
   return setPartSharing(member.store.id, member.account, id, sharing);
 }
@@ -269,19 +289,22 @@ function termsChanged(member: Membership, type: PageType, result: TermsResult): 
 const unknownTerm: TermsResult = { ok: false, problems: ["Unknown category or tag."] };
 
 export async function createStorePageTermAction(storeSlug: string, type: PageType, input: unknown): Promise<TermsResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPageTypeAccess(storeSlug, type, "write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isType(type)) return unknownTerm;
   return termsChanged(member, type, await createTerm(member.account, termScope(member, type), input));
 }
 
 export async function updateStorePageTermAction(storeSlug: string, type: PageType, id: string, input: unknown): Promise<TermsResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPageTypeAccess(storeSlug, type, "write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isType(type) || !isId(id)) return unknownTerm;
   return termsChanged(member, type, await updateTerm(member.account, termScope(member, type), id, input));
 }
 
 export async function deleteStorePageTermAction(storeSlug: string, type: PageType, id: string): Promise<TermsResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkPageTypeAccess(storeSlug, type, "write");
+  if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!isType(type) || !isId(id)) return unknownTerm;
   return termsChanged(member, type, await deleteTerm(member.account, termScope(member, type), id));
 }
@@ -293,7 +316,7 @@ export async function storeGridPreviewAction(
   block: unknown,
   pageId: string | null,
 ): Promise<GridData | { problem: string }> {
-  const member = await requireMember(storeSlug);
+  const member = await requireAnyPermission(storeSlug, BUILDER_READ);
   const parsed = pageBlockSchema.safeParse(block);
   if (!parsed.success || parsed.data.type !== "contentGrid") {
     return { problem: parsed.success ? "Not a content grid." : parsed.error.issues[0].message };
@@ -309,13 +332,13 @@ export async function storeGridPreviewAction(
 /** The store's own product categories and tags, whatever store the grid names. */
 export async function storeGridTermsAction(storeSlug: string, _storeId: string): Promise<Term[]> {
   void _storeId;
-  const member = await requireMember(storeSlug);
+  const member = await requireAnyPermission(storeSlug, BUILDER_READ);
   return listTerms({ storeId: member.store.id, contentType: "product" });
 }
 
 /** What a custom grid item's link can point at (D155): the store's own pages, products, articles, categories and tags, by address. */
 export async function storeLinkTargetsAction(storeSlug: string): Promise<ItemLinkTargets> {
-  const member = await requireMember(storeSlug);
+  const member = await requireAnyPermission(storeSlug, BUILDER_READ);
   return itemLinkTargets(member.store.id, member.store.localization.locales[0] ?? "en-GB");
 }
 
@@ -325,7 +348,8 @@ export async function storeLinkTargetsAction(storeSlug: string): Promise<ItemLin
  * puts them in the language's translation and staff save.
  */
 export async function translateStorePageAction(storeSlug: string, request: unknown): Promise<TranslateResult> {
-  const member = await requireMember(storeSlug);
+  const member = await checkAnyPermission(storeSlug, BUILDER_WRITE);
+  if (!member) return { ok: false, problem: NO_ACCESS };
   const parsed = translateRequest.safeParse(request);
   if (!parsed.success) return { ok: false, problem: "The texts could not be read. Reload the page and try again." };
   const languages = member.store.localization.locales;

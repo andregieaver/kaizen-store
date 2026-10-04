@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { bringBook, bringOptionsFor, type BringOptions } from "@/server/bring-shipping";
 import { COPIED_ORDER_MESSAGE } from "@/server/order-admin";
 import { getOrder } from "@/server/orders";
@@ -12,7 +12,7 @@ import { sendShipped } from "@/server/shopper-emails";
 export type BringBookState = { ok: boolean; message: string };
 
 async function orderFor(storeSlug: string, orderId: string) {
-  const member = await requireMember(storeSlug);
+  const member = await requirePermission(storeSlug, "orders:write");
   if (!z.uuid().safeParse(orderId).success) return null;
   const order = await getOrder(member.store.id, orderId);
   return order ? { member, order } : null;

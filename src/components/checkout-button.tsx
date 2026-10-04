@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 
 import { checkoutAction, type CheckoutState } from "@/app/s/[store]/[market]/cart/actions";
 import type { CheckoutProblem } from "@/server/checkout";
@@ -87,6 +87,11 @@ export function CheckoutButton({
       ),
     { problem: null },
   );
+  // On to payment with a full page load (wave 1, 1e): nothing a page added earlier may be in the document where a card is typed.
+  const to = state.to;
+  useEffect(() => {
+    if (to) window.location.assign(to);
+  }, [to]);
   const [who, setWho] = useState({ name: contact?.name ?? "", email: contact?.email ?? "", phone: contact?.phone ?? "" });
   // Kept as typed: a form action resets its fields, and a mistyped number should not be lost.
   const [companyName, setCompanyName] = useState(company?.name ?? "");
@@ -160,10 +165,10 @@ export function CheckoutButton({
       )}
       <button
         type="submit"
-        disabled={disabled || pending}
+        disabled={disabled || pending || Boolean(to)}
         className="min-h-12 button-primary px-4 font-medium disabled:opacity-40"
       >
-        {pending ? labels.startingPayment : labels.checkout}
+        {pending || to ? labels.startingPayment : labels.checkout}
       </button>
       <p role="status" aria-live="polite" className="text-sm">
         {state.problem && labels.problems[state.problem]}

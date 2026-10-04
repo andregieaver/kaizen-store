@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { accountStage } from "@/lib/stripe-account";
-import { requireMember } from "@/server/auth";
+import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { ensureTestAccount, requestIp } from "@/server/connect";
 import { getPaymentSettings, recentAudit } from "@/server/settings";
 
@@ -14,9 +14,10 @@ export const metadata: Metadata = { title: "Payments" };
 export default async function PaymentSettingsPage({
   params,
 }: PageProps<"/admin/[store]/settings/payments">) {
-  const { account, store, role } = await requireMember((await params).store);
+  const current = await requireOwnerRole((await params).store);
+  const { account, store } = current;
   const [settings, audit] = await Promise.all([getPaymentSettings(store), recentAudit(store.id)]);
-  const isOwner = role === "owner";
+  const isOwner = memberCan(current, "owner");
   const { accounts, stripe } = settings;
   const modes = settings.modes;
   // Test payments need nothing from the owner: Kaizen sets up the store's

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { TermsManager } from "@/components/admin/terms";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listTerms } from "@/server/taxonomy";
 
 import { termFieldsSetup } from "../../fields/data";
@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Product categories and tags" };
 
 /** The store's product categories and tags (D50): chosen on each product, used in menus and content grids. */
 export default async function ProductTermsPage({ params }: PageProps<"/admin/[store]/products/categories">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "products:read");
   const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: "product" }), termFieldsSetup(store)]);
   return (
     <div className="flex flex-col gap-6">

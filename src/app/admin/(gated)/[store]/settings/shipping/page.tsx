@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatPriceInput } from "@/lib/product-input";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { getShippingSettings } from "@/server/settings";
 
 import { saveShippingAction } from "../../../actions";
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Shipping" };
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
 
 export default async function ShippingPage({ params }: PageProps<"/admin/[store]/settings/shipping">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "settings:read");
   const settings = await getShippingSettings(store);
 
   return (

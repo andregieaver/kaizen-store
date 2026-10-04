@@ -1,0 +1,3670 @@
+{
+  "note": "Written by scripts/permission-baseline.mjs before the permission sweep (wave 1, 1f). The oracle: what each file asked for before roles. Do not edit by hand.",
+  "guards": [
+    "requireMember",
+    "getMembership",
+    "requireOwner"
+  ],
+  "summary": {
+    "owner": 96,
+    "member": 119,
+    "none": 35
+  },
+  "entries": [
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/actions.ts",
+      "surface": "admin",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 84,
+          "text": "if (!kaizenLifeSignInOn() || !(await isOwner(account))) redirect(\"/admin/account\");"
+        },
+        {
+          "line": 125,
+          "text": "const start = (await isOwner(account)) ? linkStart(account.id) : null;"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/kaizen-life/callback/route.ts",
+      "surface": "admin",
+      "kind": "route",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 15,
+          "text": "if (!(await isOwner(account))) return back(\"failed\");"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 35,
+          "text": "const owner = await isOwner(account);"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/layout.tsx",
+      "surface": "admin",
+      "kind": "layout",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        12
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/actions.ts",
+      "surface": "work",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        42,
+        58
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/assignments/[assignmentId]/page.tsx",
+      "surface": "work",
+      "kind": "page",
+      "path": "/assignments/[assignmentId]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        34
+      ],
+      "ownerChecks": [
+        {
+          "line": 54,
+          "text": "const viewer = { accountId: account.id, owner: role === \"owner\" };"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/clients/[clientId]/page.tsx",
+      "surface": "work",
+      "kind": "page",
+      "path": "/clients/[clientId]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        33
+      ],
+      "ownerChecks": [
+        {
+          "line": 127,
+          "text": "{role === \"owner\" && ("
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/clients/page.tsx",
+      "surface": "work",
+      "kind": "page",
+      "path": "/clients",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-actions.ts",
+      "surface": "work",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        32,
+        48
+      ],
+      "ownerChecks": [
+        {
+          "line": 153,
+          "text": "if (member.role !== \"owner\") return problem(\"Only an owner can credit an invoice.\");"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoice-view-actions.ts",
+      "surface": "work",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        28
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoices/[invoiceId]/page.tsx",
+      "surface": "work",
+      "kind": "page",
+      "path": "/invoices/[invoiceId]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        30
+      ],
+      "ownerChecks": [
+        {
+          "line": 74,
+          "text": "isOwner={role === \"owner\"}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoices/export/route.ts",
+      "surface": "work",
+      "kind": "route",
+      "path": "/invoices/export",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/invoices/page.tsx",
+      "surface": "work",
+      "kind": "page",
+      "path": "/invoices",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        21
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/layout.tsx",
+      "surface": "work",
+      "kind": "layout",
+      "path": "",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        9
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/page.tsx",
+      "surface": "work",
+      "kind": "page",
+      "path": "",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/payments/export/route.ts",
+      "surface": "work",
+      "kind": "route",
+      "path": "/payments/export",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/recurring-actions.ts",
+      "surface": "work",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        23,
+        37
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/reports/csv/route.ts",
+      "surface": "work",
+      "kind": "route",
+      "path": "/reports/csv",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/reports/page.tsx",
+      "surface": "work",
+      "kind": "page",
+      "path": "/reports",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/send-actions.ts",
+      "surface": "work",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16,
+        25
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/settings-actions.ts",
+      "surface": "work",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18,
+        34
+      ],
+      "ownerChecks": [
+        {
+          "line": 19,
+          "text": "if (member.role !== \"owner\") return problems([\"Only an owner can change Work's settings.\"]);"
+        },
+        {
+          "line": 35,
+          "text": "if (member.role !== \"owner\") return problems([\"Only an owner can change the numbering.\"]);"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/settings/page.tsx",
+      "surface": "work",
+      "kind": "page",
+      "path": "/settings",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        25
+      ],
+      "ownerChecks": [
+        {
+          "line": 27,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/account/work/s/[store]/time/page.tsx",
+      "surface": "work",
+      "kind": "page",
+      "path": "/time",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        29
+      ],
+      "ownerChecks": [
+        {
+          "line": 32,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/layout.tsx",
+      "surface": "admin",
+      "kind": "layout",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 20,
+          "text": "const owner = stores.some((store) => store.role === \"owner\");"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 25,
+          "text": "const owner = stores.some((store) => store.role === \"owner\");"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/stores/copy/[store]/page.tsx",
+      "surface": "owner",
+      "kind": "page",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        19
+      ],
+      "ownerChecks": [
+        {
+          "line": 20,
+          "text": "if (role !== \"owner\" && !account.platformAdmin) notFound();"
+        },
+        {
+          "line": 22,
+          "text": "const owned = (await listStores(account)).filter((store) => store.role === \"owner\").length;"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(owner)/stores/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 23,
+          "text": "const owned = stores.filter((store) => store.role === \"owner\").length;"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(print)/account/templates/s/[store]/[templateId]/preview/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        27
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(print)/account/work/s/[store]/credit-notes/[creditNoteId]/print/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        25
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(print)/account/work/s/[store]/invoices/[invoiceId]/print/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        28
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/(print)/account/work/s/[store]/reports/print/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        24
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/affiliates/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        19,
+        44
+      ],
+      "ownerChecks": [
+        {
+          "line": 20,
+          "text": "if (member.role !== \"owner\") return { ok: false, problems: [\"Only an owner can change the referral program.\"] };"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/affiliates/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/affiliates",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ],
+      "ownerChecks": [
+        {
+          "line": 52,
+          "text": "canEdit={role === \"owner\"}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/customers/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/analytics/customers",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 29,
+          "text": "<CustomersView base={ctx.base} locale={store.markets[0]?.locale ?? \"en\"} timeZone={store.timeZone} isOwner={ctx.role === \"owner\"} report={re"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/finance/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/analytics/finance",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 53,
+          "text": "isOwner={ctx.role === \"owner\"}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/inventory/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/analytics/inventory",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/marketing/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        21,
+        39
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/marketing/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/analytics/marketing",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/analytics",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 30,
+          "text": "const frame: OverviewFrame = { base: ctx.base, currency: data.currency, locale: store.markets[0]?.locale ?? \"en\", isOwner: ctx.role === \"own"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/products/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/analytics/products",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/settings/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        31,
+        45,
+        57,
+        68,
+        90
+      ],
+      "ownerChecks": [
+        {
+          "line": 32,
+          "text": "if (member.role !== \"owner\") return failed([OWNER_ONLY]);"
+        },
+        {
+          "line": 46,
+          "text": "if (member.role !== \"owner\") return failed([OWNER_ONLY]);"
+        },
+        {
+          "line": 58,
+          "text": "if (member.role !== \"owner\") return failed([OWNER_ONLY]);"
+        },
+        {
+          "line": 69,
+          "text": "if (member.role !== \"owner\") return failed([OWNER_ONLY]);"
+        },
+        {
+          "line": 91,
+          "text": "if (member.role !== \"owner\") return failed([OWNER_ONLY]);"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/settings/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/analytics/settings",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 30,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/subscriptions/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/analytics/subscriptions",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/analytics/traffic/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/analytics/traffic",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/articles/[pageId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/articles/[pageId]",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/articles/[pageId]/preview/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/articles/[pageId]/preview",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/articles/categories/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/articles/categories",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/articles/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/articles/new",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/articles/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/articles",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/assistant/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember",
+        "requireOwner"
+      ],
+      "callLines": [
+        22,
+        23,
+        30,
+        36,
+        41,
+        46,
+        51,
+        57
+      ],
+      "ownerChecks": [
+        {
+          "line": 24,
+          "text": "if (member.role !== \"owner\") notFound();"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/assistant/live/delegate/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/assistant/live/delegate",
+      "legacy": "owner",
+      "calls": [
+        "getMembership"
+      ],
+      "callLines": [
+        9
+      ],
+      "ownerChecks": [
+        {
+          "line": 10,
+          "text": "if (!member || member.role !== \"owner\") return new Response(\"Not found\", { status: 404 });"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/assistant/live/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/assistant/live",
+      "legacy": "owner",
+      "calls": [
+        "getMembership"
+      ],
+      "callLines": [
+        6
+      ],
+      "ownerChecks": [
+        {
+          "line": 7,
+          "text": "if (!member || member.role !== \"owner\") return new Response(\"Not found\", { status: 404 });"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/assistant/live/transcript/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/assistant/live/transcript",
+      "legacy": "owner",
+      "calls": [
+        "getMembership"
+      ],
+      "callLines": [
+        6
+      ],
+      "ownerChecks": [
+        {
+          "line": 7,
+          "text": "if (!member || member.role !== \"owner\") return new Response(\"Not found\", { status: 404 });"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/assistant/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/assistant",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ],
+      "ownerChecks": [
+        {
+          "line": 21,
+          "text": "if (member.role !== \"owner\") notFound();"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/assistant/speak/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/assistant/speak",
+      "legacy": "owner",
+      "calls": [
+        "getMembership"
+      ],
+      "callLines": [
+        6
+      ],
+      "ownerChecks": [
+        {
+          "line": 7,
+          "text": "if (!member || member.role !== \"owner\") return new Response(\"Not found\", { status: 404 });"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/assistant/turn/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/assistant/turn",
+      "legacy": "owner",
+      "calls": [
+        "getMembership"
+      ],
+      "callLines": [
+        9
+      ],
+      "ownerChecks": [
+        {
+          "line": 10,
+          "text": "if (!member || member.role !== \"owner\") return new Response(\"Not found\", { status: 404 });"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/billing/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/billing",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        27
+      ],
+      "ownerChecks": [
+        {
+          "line": 33,
+          "text": "const isOwner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/billing/resume/[token]/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/billing/resume/[token]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ],
+      "ownerChecks": [
+        {
+          "line": 16,
+          "text": "const found = member.role === \"owner\" && token.length <= 64 ? await openPlanReminderLink(token) : null;"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bonus/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18
+      ],
+      "ownerChecks": [
+        {
+          "line": 19,
+          "text": "if (member.role !== \"owner\") return { ok: false, problems: [\"Only an owner can change the bonus program.\"] };"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bonus/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/bonus",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18
+      ],
+      "ownerChecks": [
+        {
+          "line": 36,
+          "text": "canEdit={role === \"owner\"}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        21,
+        36,
+        51,
+        73,
+        86,
+        102,
+        118,
+        138,
+        145,
+        152,
+        163,
+        169
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/bookings",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        32
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/staff/[staffId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/bookings/staff/[staffId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        19
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/staff/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/bookings/staff/new",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        12
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/staff/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/bookings/staff",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        12
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/stays/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/bookings/stays",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        28
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/store-calendar-actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/units/[unitId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/bookings/units/[unitId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/units/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/bookings/units/new",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        13
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/bookings/units/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/bookings/units",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        11
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/campaigns/[campaignId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/campaigns/[campaignId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/campaigns/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15,
+        28,
+        38
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/campaigns/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/campaigns/new",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        11
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/campaigns/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/campaigns",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        26
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/cart-reminders/[stepId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/cart-reminders/[stepId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/cart-reminders/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        19,
+        30,
+        38,
+        50
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/cart-reminders/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/cart-reminders/new",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        12
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/cart-reminders/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/cart-reminders",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        36
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/chat/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16,
+        33,
+        39,
+        48
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/chat/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/chat",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/companies/[companyId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/companies/[companyId]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        30
+      ],
+      "ownerChecks": [
+        {
+          "line": 89,
+          "text": "{member.role === \"owner\" ? \"Main account\" : \"Employee\"} · since {date(member.joinedAt)}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/companies/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        37,
+        53,
+        62,
+        69,
+        80,
+        102,
+        116,
+        122
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/companies/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/companies",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/customer-groups/[groupId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/customer-groups/[groupId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/customer-groups/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        22,
+        35,
+        44,
+        51,
+        59
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/customer-groups/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/customer-groups",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/customers/[customerId]/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18,
+        30
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/customers/[customerId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/customers/[customerId]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        38
+      ],
+      "ownerChecks": [
+        {
+          "line": 262,
+          "text": "{access.role === \"owner\" ? \"Main account of \" : \"Employee of \"}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/customers/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/customers",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/deliveries/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        11
+      ],
+      "ownerChecks": [
+        {
+          "line": 12,
+          "text": "if (member.role !== \"owner\") return { status: \"error\", messages: [\"Only an owner can change delivery days.\"] };"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/deliveries/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/deliveries",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        31
+      ],
+      "ownerChecks": [
+        {
+          "line": 32,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/discounts/[discountId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/discounts/[discountId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/discounts/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18,
+        27
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/discounts/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/discounts/new",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        11
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/discounts/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/discounts",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        25
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/emails/[emailId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/emails/[emailId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/emails/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/emails",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        11
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/experiments/[id]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/experiments/[id]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/experiments/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        49,
+        71,
+        84,
+        94,
+        102,
+        110,
+        119,
+        128,
+        136,
+        145,
+        154,
+        162
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/experiments/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/experiments/new",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/experiments/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/experiments",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        24
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/experiments/variants/[pageId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/experiments/variants/[pageId]",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/experiments/variants/[pageId]/preview/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/experiments/variants/[pageId]/preview",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/experiments/variants/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/experiments/variants",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/fields/[groupId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/fields/[groupId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/fields/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        34,
+        42,
+        52,
+        61,
+        75,
+        89,
+        102,
+        110,
+        117,
+        126
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/fields/export/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/fields/export",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        12
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/fields/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/fields/new",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/fields/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/fields",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        25
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/fields/store/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/fields/store",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        21
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/footers/[pageId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/footers/[pageId]",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/footers/[pageId]/preview/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/footers/[pageId]/preview",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/footers/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/footers/new",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/footers/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/footers",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/headers/[pageId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/headers/[pageId]",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/headers/[pageId]/preview/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/headers/[pageId]/preview",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/headers/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/headers/new",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/headers/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/headers",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/hosts/[hostId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/hosts/[hostId]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ],
+      "ownerChecks": [
+        {
+          "line": 33,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/hosts/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember",
+        "requireOwner"
+      ],
+      "callLines": [
+        13,
+        14,
+        27,
+        35,
+        47
+      ],
+      "ownerChecks": [
+        {
+          "line": 15,
+          "text": "return member.role === \"owner\" ? member : null;"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/hosts/dac7/[year]/[part]/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/hosts/dac7/[year]/[part]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        12
+      ],
+      "ownerChecks": [
+        {
+          "line": 15,
+          "text": "if (role !== \"owner\" || !part || !Number.isInteger(year) || year < 2023 || year > new Date().getUTCFullYear()) notFound();"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/hosts/dac7/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/hosts/dac7",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        22
+      ],
+      "ownerChecks": [
+        {
+          "line": 134,
+          "text": "(role === \"owner\" ? ("
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/hosts/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/hosts",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18
+      ],
+      "ownerChecks": [
+        {
+          "line": 67,
+          "text": "{role === \"owner\" ? ("
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/integrations/[provider]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/integrations/[provider]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        36
+      ],
+      "ownerChecks": [
+        {
+          "line": 42,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/integrations/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ],
+      "ownerChecks": [
+        {
+          "line": 15,
+          "text": "return member.role === \"owner\" ? member : \"Only an owner can change integrations.\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/integrations/google-reviews/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        10
+      ],
+      "ownerChecks": [
+        {
+          "line": 11,
+          "text": "return member.role === \"owner\" ? member : \"Only an owner can set up Google reviews.\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/integrations/google-reviews/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/integrations/google-reviews",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ],
+      "ownerChecks": [
+        {
+          "line": 28,
+          "text": "{role === \"owner\" ? ("
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/integrations/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/integrations",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/integrations/shipping/[carrier]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/integrations/shipping/[carrier]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        28
+      ],
+      "ownerChecks": [
+        {
+          "line": 32,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/integrations/shipping/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16,
+        31,
+        39,
+        55
+      ],
+      "ownerChecks": [
+        {
+          "line": 17,
+          "text": "if (role !== \"owner\") return { status: \"error\", messages: [\"Only an owner can set up a shipping carrier.\"] };"
+        },
+        {
+          "line": 32,
+          "text": "if (role !== \"owner\") return;"
+        },
+        {
+          "line": 40,
+          "text": "if (role !== \"owner\") return { status: \"error\", messages: [\"Only an owner can check a shipping carrier.\"] };"
+        },
+        {
+          "line": 56,
+          "text": "if (role !== \"owner\") return { status: \"error\", messages: [\"Only an owner can change what is offered at checkout.\"] };"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/layout.tsx",
+      "surface": "store",
+      "kind": "layout",
+      "path": "",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        35
+      ],
+      "ownerChecks": [
+        {
+          "line": 61,
+          "text": "{role === \"owner\" && ("
+        },
+        {
+          "line": 95,
+          "text": "{stores.some((s) => s.role === \"owner\") && <MenuFooterLink href=\"/admin\">Control center</MenuFooterLink>}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/media/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        23,
+        33,
+        45,
+        58,
+        65
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/media/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/media",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        22,
+        41
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/menus/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        11,
+        19
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/menus/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/menus",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        29,
+        49
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/orders/[orderId]/label/[shipmentId]/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/orders/[orderId]/label/[shipmentId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        9
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/orders/[orderId]/packing-slip/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/orders/[orderId]/packing-slip",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/orders/[orderId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/orders/[orderId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        83
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/orders/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        31,
+        215
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/orders/bring-actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/orders/helthjem-actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        19
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/orders/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/orders",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16,
+        28
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/orders/porterbuddy-actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        21
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ],
+      "ownerChecks": [
+        {
+          "line": 19,
+          "text": "if (!store.setupCompletedAt && role === \"owner\") redirect(`/admin/${store.slug}/setup`);"
+        },
+        {
+          "line": 106,
+          "text": "{!step.done && role === \"owner\" && ("
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/[pageId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/pages/[pageId]",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/[pageId]/preview/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/pages/[pageId]/preview",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        57,
+        96,
+        109,
+        126,
+        140,
+        154,
+        168,
+        184,
+        195,
+        204,
+        209,
+        217,
+        231,
+        238,
+        245,
+        252,
+        272,
+        278,
+        284,
+        296,
+        312,
+        318,
+        328
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/ai/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/ai/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/pages/ai",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        24
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/ai/replicate/[jobId]/abort/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/pages/ai/replicate/[jobId]/abort",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/ai/replicate/[jobId]/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/pages/ai/replicate/[jobId]",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/ai/replicate/[jobId]/tick/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/pages/ai/replicate/[jobId]/tick",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/ai/replicate/route.ts",
+      "surface": "store",
+      "kind": "route",
+      "path": "/pages/ai/replicate",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/categories/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/pages/categories",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/duplicate-action.ts",
+      "surface": "store",
+      "kind": "module",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        23
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/motion-action.ts",
+      "surface": "store",
+      "kind": "module",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/pages/new",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/pages",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/pages/views.tsx",
+      "surface": "store",
+      "kind": "module",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        60,
+        179,
+        209,
+        234,
+        303
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/product-layouts/[pageId]/assign/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/product-layouts/[pageId]/assign",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        24
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/product-layouts/[pageId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/product-layouts/[pageId]",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/product-layouts/[pageId]/preview/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/product-layouts/[pageId]/preview",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/product-layouts/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/product-layouts/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/product-layouts/new",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/product-layouts/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/product-layouts",
+      "legacy": "none",
+      "calls": []
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/products/[productId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/products/[productId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/products/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        65,
+        105,
+        111,
+        123,
+        134,
+        155,
+        160,
+        166,
+        178
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/products/categories/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/products/categories",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/products/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/products/new",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        13
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/products/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/products",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14,
+        48
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/recommendations/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16,
+        28,
+        43
+      ],
+      "ownerChecks": [
+        {
+          "line": 17,
+          "text": "if (member.role !== \"owner\") return { status: \"error\", messages: [\"Only an owner can change the recommendations.\"] };"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/recommendations/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/recommendations",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        28
+      ],
+      "ownerChecks": [
+        {
+          "line": 44,
+          "text": "const canEdit = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/returns/[returnId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/returns/[returnId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        31
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/returns/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        31,
+        55,
+        257,
+        260,
+        283
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/returns/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/returns",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        23,
+        32
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/search/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/search",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/ai/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15
+      ],
+      "ownerChecks": [
+        {
+          "line": 16,
+          "text": "return member.role === \"owner\" ? member : \"Only an owner can change the store's AI.\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/ai/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/ai",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        30
+      ],
+      "ownerChecks": [
+        {
+          "line": 32,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/company/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        21,
+        34,
+        49,
+        61,
+        70
+      ],
+      "ownerChecks": [
+        {
+          "line": 22,
+          "text": "if (member.role !== \"owner\") return problems([\"Only an owner can change the business details.\"]);"
+        },
+        {
+          "line": 35,
+          "text": "if (member.role !== \"owner\") return problems([\"Only an owner can change who the store sells to.\"]);"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/company/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/company",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        25
+      ],
+      "ownerChecks": [
+        {
+          "line": 43,
+          "text": "{role === \"owner\" ? ("
+        },
+        {
+          "line": 65,
+          "text": "{role === \"owner\" ? ("
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/company/places/[placeId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/company/places/[placeId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        24
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/company/places/new/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/company/places/new",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/cookies/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        13,
+        28,
+        44,
+        51
+      ],
+      "ownerChecks": [
+        {
+          "line": 14,
+          "text": "if (member.role !== \"owner\") return { status: \"error\", messages: [\"Only an owner can change the store's tools.\"] };"
+        },
+        {
+          "line": 29,
+          "text": "if (member.role !== \"owner\") return { status: \"error\", messages: [\"Only an owner can change the store's custom code.\"] };"
+        },
+        {
+          "line": 52,
+          "text": "if (member.role !== \"owner\") return { status: \"error\", messages: [\"Only an owner can describe the store's cookies.\"] };"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/cookies/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/cookies",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        18
+      ],
+      "ownerChecks": [
+        {
+          "line": 60,
+          "text": "noteAction={role === \"owner\" ? saveStoreCookieNoteAction.bind(null, store.slug) : null}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/design/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        22,
+        31,
+        37,
+        45,
+        51
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/design/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/design",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/domains/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        11,
+        31
+      ],
+      "ownerChecks": [
+        {
+          "line": 12,
+          "text": "return member.role === \"owner\" ? member : null;"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/domains/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/domains",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15
+      ],
+      "ownerChecks": [
+        {
+          "line": 46,
+          "text": "owner={role === \"owner\"}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/features/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16,
+        32
+      ],
+      "ownerChecks": [
+        {
+          "line": 17,
+          "text": "if (member.role !== \"owner\") return problems([\"Only an owner can switch features on or off.\"]);"
+        },
+        {
+          "line": 33,
+          "text": "if (member.role !== \"owner\") return problems([\"Only an owner can switch features on or off.\"]);"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/features/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/features",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15
+      ],
+      "ownerChecks": [
+        {
+          "line": 16,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/localization/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        21
+      ],
+      "ownerChecks": [
+        {
+          "line": 22,
+          "text": "return member.role === \"owner\" ? member : { status: \"error\", messages: [\"Only an owner can change this.\"] };"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/localization/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/localization",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        19
+      ],
+      "ownerChecks": [
+        {
+          "line": 20,
+          "text": "const owner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/navigation/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        12
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/navigation/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/navigation",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/payments/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/payments",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ],
+      "ownerChecks": [
+        {
+          "line": 19,
+          "text": "const isOwner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/returns/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        19
+      ],
+      "ownerChecks": [
+        {
+          "line": 20,
+          "text": "if (member.role !== \"owner\") return { status: \"error\", messages: [\"Only an owner can change the return rules.\"] };"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/returns/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/returns",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ],
+      "ownerChecks": [
+        {
+          "line": 35,
+          "text": "canEdit={role === \"owner\"}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/seo/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/seo",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        25
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/settings/shipping/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/settings/shipping",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/setup/[step]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/setup/[step]",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        35
+      ],
+      "ownerChecks": [
+        {
+          "line": 38,
+          "text": "if (member.role !== \"owner\") {"
+        },
+        {
+          "line": 178,
+          "text": "isOwner={role === \"owner\"}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/setup/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        23
+      ],
+      "ownerChecks": [
+        {
+          "line": 24,
+          "text": "return member.role === \"owner\""
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/setup/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/setup",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        8
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/staff/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/staff",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ],
+      "ownerChecks": [
+        {
+          "line": 16,
+          "text": "const isOwner = role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/subscriptions/[subscriptionId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/subscriptions/[subscriptionId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        26
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/subscriptions/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        31,
+        47
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/subscriptions/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/subscriptions",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        15,
+        27
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/translate/actions.ts",
+      "surface": "store",
+      "kind": "action",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        31,
+        50
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/translate/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/translate",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        16
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/website/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/website",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/wishlists/[wishlistId]/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/wishlists/[wishlistId]",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        24
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/wishlists/activity/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/wishlists/activity",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        22
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/[store]/wishlists/page.tsx",
+      "surface": "store",
+      "kind": "page",
+      "path": "/wishlists",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/actions.ts",
+      "surface": "admin",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        36,
+        82,
+        147,
+        174,
+        247
+      ],
+      "ownerChecks": [
+        {
+          "line": 37,
+          "text": "return member.role === \"owner\""
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/platform/customers/[accountId]/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 34,
+          "text": "const owned = customer.stores.filter((s) => s.role === \"owner\");"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/platform/stores/[store]/invoices/[invoiceId]/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 35,
+          "text": "const owner = people.find((p) => p.role === \"owner\") ?? people[0];"
+        },
+        {
+          "line": 67,
+          "text": "badge: `${owner.role === \"owner\" ? \"Owner\" : \"Staff\"} of ${store.name}`,"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/(gated)/platform/stores/[store]/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 33,
+          "text": "const owner = people.find((p) => p.role === \"owner\");"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/oauth/consent/actions.ts",
+      "surface": "admin",
+      "kind": "action",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 20,
+          "text": "if (approve && !(await isOwner(account))) redirect(`/admin/oauth/consent?authorization_id=${id}`);"
+        }
+      ]
+    },
+    {
+      "file": "src/app/admin/oauth/consent/page.tsx",
+      "surface": "admin",
+      "kind": "page",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 53,
+          "text": "if (!(await isOwner(account))) {"
+        }
+      ]
+    },
+    {
+      "file": "src/app/api/integrations/slack/callback/route.ts",
+      "surface": "api",
+      "kind": "route",
+      "path": "/api/integrations/slack/callback",
+      "legacy": "owner",
+      "calls": [
+        "getMembership"
+      ],
+      "callLines": [
+        23
+      ],
+      "ownerChecks": [
+        {
+          "line": 24,
+          "text": "if (!member || member.role !== \"owner\") return back(\"failed\");"
+        }
+      ]
+    },
+    {
+      "file": "src/app/api/platform/editor/route.ts",
+      "surface": "api",
+      "kind": "route",
+      "path": "/api/platform/editor",
+      "legacy": "member",
+      "calls": [
+        "getMembership"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/app/s/[store]/[market]/account/account-section.tsx",
+      "surface": "other",
+      "kind": "module",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 95,
+          "text": "{mine.role === \"owner\" ? m.companyAccount.cardIntroOwner : m.companyAccount.cardIntroEmployee}"
+        }
+      ]
+    },
+    {
+      "file": "src/app/s/[store]/[market]/account/company/actions.ts",
+      "surface": "other",
+      "kind": "module",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 19,
+          "text": "if (!shop || !customer || !mine || mine.role !== \"owner\") return null;"
+        }
+      ]
+    },
+    {
+      "file": "src/app/s/[store]/[market]/account/company/page.tsx",
+      "surface": "other",
+      "kind": "module",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 48,
+          "text": "const owner = mine.role === \"owner\";"
+        },
+        {
+          "line": 91,
+          "text": "<span className=\"text-sm text-muted\">{member.role === \"owner\" ? m.roleOwner : m.roleEmployee}</span>"
+        }
+      ]
+    },
+    {
+      "file": "src/components/admin/admin-shell-parts.tsx",
+      "surface": "component",
+      "kind": "component",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 29,
+          "text": "owner={stores.some((store) => store.role === \"owner\")}"
+        }
+      ]
+    },
+    {
+      "file": "src/components/admin/returns/step-forms.tsx",
+      "surface": "component",
+      "kind": "component",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        14
+      ]
+    },
+    {
+      "file": "src/components/admin/store-card.tsx",
+      "surface": "component",
+      "kind": "component",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 70,
+          "text": "{store.role === \"owner\" && ("
+        }
+      ]
+    },
+    {
+      "file": "src/components/admin/stores-list.tsx",
+      "surface": "component",
+      "kind": "component",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 30,
+          "text": "{canDuplicate && (store.role === \"owner\" || platformAdmin) && ("
+        }
+      ]
+    },
+    {
+      "file": "src/components/admin/work/invoice-panels.tsx",
+      "surface": "component",
+      "kind": "component",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        187
+      ]
+    },
+    {
+      "file": "src/components/admin/work/owner-settings.tsx",
+      "surface": "component",
+      "kind": "component",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 20,
+          "text": "const owner = store.role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/components/admin/work/recurring-panel.tsx",
+      "surface": "component",
+      "kind": "component",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        44
+      ],
+      "ownerChecks": [
+        {
+          "line": 46,
+          "text": "return <RecurringPanelView {...props} list={list} canAutoIssue={role === \"owner\"} />;"
+        }
+      ]
+    },
+    {
+      "file": "src/db/schema.ts",
+      "surface": "other",
+      "kind": "module",
+      "legacy": "member",
+      "calls": [
+        "getMembership"
+      ],
+      "callLines": [
+        506
+      ]
+    },
+    {
+      "file": "src/lib/control-center.ts",
+      "surface": "other",
+      "kind": "module",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 57,
+          "text": "const owner = s.role === \"owner\";"
+        }
+      ]
+    },
+    {
+      "file": "src/lib/customer-tiers.ts",
+      "surface": "other",
+      "kind": "module",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 76,
+          "text": "return role === \"owner\" ? tierPercent : Math.round(tierPercent * sharePercent) / 100;"
+        }
+      ]
+    },
+    {
+      "file": "src/lib/permissions.ts",
+      "surface": "other",
+      "kind": "module",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 51,
+          "text": "if (holder.role === \"owner\") return [...GRANTABLE_PERMISSIONS, ...OWNER_HELD];"
+        },
+        {
+          "line": 69,
+          "text": "if (holder.role === \"owner\") return true;"
+        }
+      ]
+    },
+    {
+      "file": "src/lib/work-owner.ts",
+      "surface": "other",
+      "kind": "module",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 115,
+          "text": "everyone: stores.filter((store) => store.role === \"owner\").map((store) => store.id),"
+        },
+        {
+          "line": 116,
+          "text": "ownOnly: stores.filter((store) => store.role !== \"owner\").map((store) => store.id),"
+        }
+      ]
+    },
+    {
+      "file": "src/lib/work-paths.ts",
+      "surface": "other",
+      "kind": "module",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/server/analytics-context.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        19
+      ]
+    },
+    {
+      "file": "src/server/analytics-settings.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 82,
+          "text": "if (role !== \"owner\") return refuse(OWNER_ONLY);"
+        },
+        {
+          "line": 109,
+          "text": "if (role !== \"owner\") return refuse(OWNER_ONLY);"
+        },
+        {
+          "line": 122,
+          "text": "if (role !== \"owner\") return refuse(OWNER_ONLY);"
+        }
+      ]
+    },
+    {
+      "file": "src/server/experiment-admin.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        52
+      ]
+    },
+    {
+      "file": "src/server/hosts.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        17
+      ]
+    },
+    {
+      "file": "src/server/kaizen-life.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 28,
+          "text": "export async function isOwner(account: Pick<Account, \"id\" | \"platformAdmin\">): Promise<boolean> {"
+        },
+        {
+          "line": 60,
+          "text": "if (!(await isOwner(account))) {"
+        }
+      ]
+    },
+    {
+      "file": "src/server/owner-assistant.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 201,
+          "text": "return p.store ? { bookings: p.store.bookingsOn, deliveries: p.store.deliveriesOn, work: p.store.workOn, owner: p.role === \"owner\" } : {};"
+        }
+      ]
+    },
+    {
+      "file": "src/server/replicate-route.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "member",
+      "calls": [
+        "getMembership"
+      ],
+      "callLines": [
+        20
+      ]
+    },
+    {
+      "file": "src/server/returns.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "member",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        52
+      ]
+    },
+    {
+      "file": "src/server/work-owner.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 129,
+          "text": "off: stores.filter((store) => !store.workOn && store.role === \"owner\"),"
+        },
+        {
+          "line": 808,
+          "text": "if (membership.role !== \"owner\") return problem(\"Only an owner can switch Work on or off.\");"
+        }
+      ]
+    },
+    {
+      "file": "src/server/work-recurring.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 244,
+          "text": "if (input.autoIssue && member.role !== \"owner\") return problem(OWNER_ONLY_AUTO);"
+        },
+        {
+          "line": 299,
+          "text": "if (Boolean(current.auto_issue) !== input.autoIssue && member.role !== \"owner\") return problem(OWNER_ONLY_AUTO);"
+        }
+      ]
+    },
+    {
+      "file": "src/server/work-settings.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 79,
+          "text": "if (role !== \"owner\") return problem(OWNER_ONLY);"
+        },
+        {
+          "line": 199,
+          "text": "if (role !== \"owner\") return problem(OWNER_ONLY);"
+        }
+      ]
+    },
+    {
+      "file": "src/server/work-time.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "owner",
+      "calls": [],
+      "ownerChecks": [
+        {
+          "line": 60,
+          "text": "member.role === \"owner\" || member.account.id === entryAccountId;"
+        },
+        {
+          "line": 658,
+          "text": "if (target !== member.account.id && member.role !== \"owner\")"
+        }
+      ]
+    },
+    {
+      "file": "src/server/work.ts",
+      "surface": "server",
+      "kind": "helper",
+      "legacy": "owner",
+      "calls": [
+        "requireMember"
+      ],
+      "callLines": [
+        41
+      ],
+      "ownerChecks": [
+        {
+          "line": 77,
+          "text": "export const isOwner = ({ role }: Pick<Membership, \"role\">): boolean => role === \"owner\";"
+        },
+        {
+          "line": 385,
+          "text": "if (!isOwner(member)) return problem(\"Only an owner can delete a client.\");"
+        }
+      ]
+    }
+  ]
+}

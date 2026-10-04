@@ -1,91 +1,81 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
-import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { Avatar } from "@/components/avatar";
-import { requireMember } from "@/server/auth";
-import { avatarFor } from "@/server/avatars";
+import { InviteForms, TeamList, TwoStepRequirement } from "@/components/admin/team-view";
+import { requireOwnerRole } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
+import { ensureStoreRoles, listStoreRoles } from "@/server/store-roles";
+import { twoStepRequired } from "@/server/team";
 
-import { disableStaffAction, inviteStaffAction } from "../../actions";
+import {
+  assignRoleAction,
+  disableStaffAction,
+  extendCollaboratorAction,
+  inviteCollaboratorAction,
+  inviteStaffAction,
+  setTwoStepRequirementAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Team" };
 
+/**
+ * The store's team (wave 1, 1f): who works in the store and with what role, collaborators with an end date, who has two-step sign-in and
+ * whether the store requires it. The owner's page: the team and the plan are held by owners only, so a role can never grant them.
+ */
 export default async function StaffPage({ params }: PageProps<"/admin/[store]/staff">) {
-  const { account, store, role } = await requireMember((await params).store);
-  const members = await listStaff(store.id);
-  const isOwner = role === "owner";
+  const { account, store } = await requireOwnerRole((await params).store);
+  // The six starting roles are made the first time the team is looked at, and never again once an owner has deleted one.
+  await ensureStoreRoles(store.id, account.id);
+  const [members, roles, required] = await Promise.all([listStaff(store.id), listStoreRoles(store.id), twoStepRequired(store.id)]);
+  const active = members.filter((m) => !m.disabled);
+  const slug = store.slug;
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Team</h1>
-        <p className="text-sm text-muted">
-          People listed here can sign in with a link sent to their email. Owners manage staff and
-          payment keys; admins manage everything else.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Team</h1>
+          <p className="max-w-2xl text-sm text-muted">
+            People listed here can sign in with a link sent to their email, or with their password. Owners manage the team and the plan; everyone else
+            works in the parts of the admin their role gives them.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link href={`/admin/${slug}/staff/roles`} className="inline-flex min-h-10 items-center rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+            Roles
+          </Link>
+          <Link href={`/admin/${slug}/activity`} className="inline-flex min-h-10 items-center rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+            Activity log
+          </Link>
+        </div>
       </div>
 
       <section aria-labelledby="members-heading" className="rounded-lg border border-border bg-background p-5">
         <h2 id="members-heading" className="sr-only">
           Members
         </h2>
-        <ul className="divide-y divide-border">
-          {members.map((member) => (
-            <li key={member.accountId} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-              <div className="flex min-w-0 items-center gap-3">
-                <Avatar avatar={avatarFor(member)} size={40} />
-                <div className="min-w-0">
-                  <p className="font-medium">{member.name ? `${member.name} (${member.email})` : member.email}</p>
-                  <p className="text-muted">
-                    {member.role}
-                    {member.disabled ? " · access removed" : member.signedInBefore ? "" : " · not signed in yet"}
-                  </p>
-                </div>
-              </div>
-              {isOwner && !member.disabled && member.accountId !== account.id && (
-                <ActionForm
-                  action={disableStaffAction.bind(null, store.slug)}
-                  className="flex items-center gap-2"
-                >
-                  <input type="hidden" name="accountId" value={member.accountId} />
-                  <SubmitButton variant="secondary">
-                    Remove access<span className="sr-only"> for {member.email}</span>
-                  </SubmitButton>
-                </ActionForm>
-              )}
-            </li>
-          ))}
-        </ul>
+        <TeamList
+          members={members}
+          roles={roles}
+          viewerId={account.id}
+          now={new Date()}
+          zone={store.timeZone || "Europe/Oslo"}
+          actions={{
+            assign: assignRoleAction.bind(null, slug),
+            extend: extendCollaboratorAction.bind(null, slug),
+            disable: disableStaffAction.bind(null, slug),
+          }}
+        />
       </section>
 
-      {isOwner && (
-        <section aria-labelledby="invite-heading" className="rounded-lg border border-border bg-background p-5">
-          <h2 id="invite-heading" className="mb-3 font-medium">
-            Invite someone
-          </h2>
-          <ActionForm action={inviteStaffAction.bind(null, store.slug)} className="flex flex-col gap-3 sm:max-w-md">
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              Email
-              <input
-                type="email"
-                name="email"
-                required
-                className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-sm font-medium">
-              Role
-              <select name="role" defaultValue="admin" className="min-h-10 rounded-md border border-border bg-background px-3 font-normal">
-                <option value="admin">Admin</option>
-                <option value="owner">Owner</option>
-              </select>
-            </label>
-            <div>
-              <SubmitButton>Invite</SubmitButton>
-            </div>
-          </ActionForm>
-        </section>
-      )}
+      <TwoStepRequirement
+        required={required}
+        withIt={active.filter((m) => m.hasTwoStep).length}
+        total={active.length}
+        action={setTwoStepRequirementAction.bind(null, slug)}
+      />
+
+      <InviteForms roles={roles} actions={{ staff: inviteStaffAction.bind(null, slug), collaborator: inviteCollaboratorAction.bind(null, slug) }} />
     </div>
   );
 }

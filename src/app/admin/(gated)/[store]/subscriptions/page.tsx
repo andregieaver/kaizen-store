@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { formatMoney } from "@/lib/money";
 import { planSummary, renewalState, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { listSubscriptions } from "@/server/subscriptions";
 
 export const metadata: Metadata = { title: "Subscriptions" };
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Subscriptions" };
 type Props = PageProps<"/admin/[store]/subscriptions">;
 
 export default async function SubscriptionsPage({ params }: Props) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "orders:read");
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Subscriptions</h1>
@@ -24,7 +24,7 @@ export default async function SubscriptionsPage({ params }: Props) {
 }
 
 async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
-  const { store } = await requireMember(storeSlug);
+  const { store } = await requirePermission(storeSlug, "orders:read");
   const subscriptions = await listSubscriptions(store.id);
   const locale = store.markets[0]?.locale ?? "en";
   const base = `/admin/${store.slug}/subscriptions`;

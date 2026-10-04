@@ -5,7 +5,7 @@ import { layoutDay, minuteOfDay, weekStart } from "@/lib/booking-calendar";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { formatMoney } from "@/lib/money";
 import { hoursOn } from "@/lib/opening-hours";
-import { requireMember } from "@/server/auth";
+import { requirePermission } from "@/server/permissions";
 import { NoShowForm } from "@/components/admin/no-show-form";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
 
@@ -29,7 +29,7 @@ const todayIn = (timeZone: string) => zonedDate(Date.now(), timeZone);
  * where one can be cancelled.
  */
 export default async function BookingsPage({ params, searchParams }: PageProps<"/admin/[store]/bookings">) {
-  const { store } = await requireMember((await params).store);
+  const { store } = await requirePermission((await params).store, "bookings:read");
   const query = await searchParams;
   const tz = store.timeZone;
   const today = todayIn(tz);
