@@ -26,6 +26,9 @@ too, where it can be written.
 
 ### One-time setup (owner)
 
+(The step-by-step version, with the Vercel hook and the variables, was given in the conversation that
+added this; the order matters: secret, baseline run, hook, then the two variables, then `vercel.json`.)
+
 1. In the repository's *Settings → Secrets and variables → Actions* add the secret
    `PRODUCTION_DATABASE_URL`: Supabase *Connect → Session pooler* connection string for the
    `postgres` role (`postgres://postgres.<ref>:<password>@aws-0-eu-west-1.pooler.supabase.com:5432/postgres`).
@@ -40,12 +43,28 @@ too, where it can be written.
 
 From then on, a migration file committed to `main` reaches production after the tests pass.
 
+### Deploying after the migration
+
+Vercel's own build of `main` is switched off in `vercel.json` (`git.deploymentEnabled.main: false`;
+pull-request previews are unaffected). Production gets new code from the `deploy` job in
+`ci.yml`, which calls a Vercel deploy hook after `check` and, when it ran, `migrate` have succeeded.
+So new code never runs against the old schema, and a failed check or migration deploys nothing.
+The cost is that production now waits for CI (about as long as `check`, 15 to 20 minutes) instead of
+building at once. The job is off until the repository variable `DEPLOY_VIA_CI` is `true`; the secret
+`VERCEL_DEPLOY_HOOK_URL` is the hook (Vercel → project → Settings → Git → Deploy Hooks, branch `main`).
+*Actions → CI → Run workflow → redeploy* deploys the head of main by hand (to test the hook, or after a
+failed deploy). A hook builds the head of `main` at the moment it is called, so two quick pushes make
+two builds of the newest commit.
+
+Turning it off again: delete the `git` block from `vercel.json` (Vercel builds `main` itself again)
+and set `DEPLOY_VIA_CI` to anything but `true`.
+
 ### Rules for migrations that ship this way
 
-- Code reaches Vercel on the push; the migration follows once the checks are green, so for a while the
-  new code runs against the old schema. Write migrations so the previous code still works (add
-  columns and tables, never rename or drop in the same change as the code that stops using them) and
-  make new code tolerate a missing column for the length of one CI run, or split the change in two pushes.
+- Because the deploy waits for the migration, new code never meets the old schema, but the *old*
+  code runs against the new schema from the moment the migration lands until the deploy finishes
+  (minutes). Write migrations so the running code still works: add columns and tables, and never rename
+  or drop in the same change as the code that stops using them; do the removal in a later push.
 - A migration is plain SQL for a real Postgres: the production connection is not Supabase's migration
   tool, so `DROP` statements, triggers and multi-statement files run as written.
 - Advisors (RLS, search path, indexes) are still checked by hand after a migration that adds tables

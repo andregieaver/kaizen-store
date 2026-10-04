@@ -10,6 +10,10 @@ on:
       baseline_through:
         description: "Last migration file production already has (records it and every earlier file as applied, runs nothing)"
         required: false
+      redeploy:
+        description: "Deploy the head of main to production through the Vercel deploy hook, without running the checks"
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -118,6 +122,40 @@ jobs:
         run: node scripts/db-migrate.mjs
       - name: Nothing is left pending
         run: node scripts/db-migrate.mjs --status
+
+  # Production's deploy (docs/ci-migrations.md): Vercel's own build of main is switched off in vercel.json, so
+  # production gets new code only here: after the checks, and after the migrations when there were any, so
+  # new code never runs against the old schema. A failed check or migration deploys nothing. Off until the
+  # repository variable DEPLOY_VIA_CI is "true" (set it before vercel.json turns Vercel's own deploy off).
+  deploy:
+    if: >-
+      always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_VIA_CI == 'true'
+      && needs.check.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
+    needs: [check, migrate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask Vercel to deploy the head of main
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          test -n "$VERCEL_DEPLOY_HOOK_URL" || { echo "The secret VERCEL_DEPLOY_HOOK_URL is not set."; exit 1; }
+          curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL"
+          echo
+
+  # Manual: deploy again (to test the hook, or after a failed deploy) without running anything else.
+  redeploy:
+    if: github.event_name == 'workflow_dispatch' && inputs.redeploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask Vercel to deploy the head of main
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          test -n "$VERCEL_DEPLOY_HOOK_URL" || { echo "The secret VERCEL_DEPLOY_HOOK_URL is not set."; exit 1; }
+          curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL"
+          echo
 
   baseline:
     if: github.event_name == 'workflow_dispatch' && inputs.baseline_through != ''
