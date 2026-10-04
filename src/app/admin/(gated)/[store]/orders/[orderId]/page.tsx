@@ -25,6 +25,7 @@ import type { CarrierId } from "@/lib/shipping-carriers";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { OrderReturnsCard } from "@/components/admin/returns/order-returns-card";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
+import { VatReliefRow, VatTreatmentPanel } from "@/components/admin/vat-treatment-panel";
 import { bookingWhen } from "@/lib/booking-text";
 import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
@@ -43,7 +44,7 @@ import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
 import { orderReturnsOverview } from "@/server/order-returns";
 import { getCarrier } from "@/server/shipping-carriers";
 import { deliveryOfOrder } from "@/server/standing-orders";
-import { getOrderDownloads, getOrderEvents, type Address, type OrderEvent } from "@/server/orders";
+import { getOrderDownloads, getOrderEvents, getOrderTreatment, type Address, type OrderEvent } from "@/server/orders";
 import { listCartAdds } from "@/server/wishlist-admin";
 
 import { saveOrderFieldsAction } from "../actions";
@@ -82,7 +83,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const { store: slug, orderId } = await params;
   const { store } = await requireMember(slug);
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
@@ -94,6 +95,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     orderAttribution(store.id, orderId),
     // The withdrawals and returns made on it, and where it stands in the 14 days (D153).
     orderReturnsOverview(store.id, orderId),
+    // How VAT was charged and why (D157): staff see the whole of it, VIES's name and address included.
+    getOrderTreatment(store.id, orderId),
   ]);
   if (!order) notFound();
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
@@ -265,8 +268,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
               <ReferralDiscountRow minor={order.copied ? 0 : order.referralDiscountMinor} currency={order.currency} locale={locale} />
               <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} />
+              <VatReliefRow kind={order.vatKind} reliefMinor={order.vatReliefMinor} money={money} />
               <div className="flex justify-between font-semibold"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
-              <div className="flex justify-between text-muted"><dt>VAT included (standard rate)</dt><dd>{money(order.taxMinor)}</dd></div>
+              <div className="flex justify-between text-muted"><dt>{order.vatKind === "reverse_charge" ? "VAT charged (reverse charge)" : "VAT included (standard rate)"}</dt><dd>{money(order.taxMinor)}</dd></div>
               {order.balanceMinor > 0 && (
                 <div className="flex justify-between"><dt>To pay at the appointment</dt><dd>{money(order.balanceMinor)}</dd></div>
               )}
@@ -282,6 +286,18 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
             </dl>
           </section>
+
+          {!order.copied && (
+            <VatTreatmentPanel
+              treatment={treatment}
+              kind={order.vatKind}
+              reliefMinor={order.vatReliefMinor}
+              shippingReliefMinor={order.shippingReliefMinor}
+              currency={order.currency}
+              locale={locale}
+              typedCompany={order.company?.name ?? null}
+            />
+          )}
 
           {!order.copied && <OrderAttributionCard attribution={attribution} storeSlug={store.slug} locale={locale} />}
 

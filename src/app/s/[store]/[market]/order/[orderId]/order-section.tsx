@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
+import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { OwnBookings } from "@/components/own-bookings";
 import { OrderReturns } from "@/components/withdraw/order-returns";
 import { PasswordReset } from "@/components/account-sign-in";
@@ -18,6 +19,7 @@ import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
+import { vatText } from "@/lib/vat-text";
 import { fileSize } from "@/lib/file-size";
 import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
 import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
@@ -218,9 +220,11 @@ function linesList({ market, order, m, money }: OrderView) {
   );
 }
 
-function totalsList({ order, m, money, store }: OrderView) {
+function totalsList({ order, m, money, store, market }: OrderView) {
+  const vatWords = vatText(market.lang);
   return (
-    <dl className="flex flex-col gap-1">
+    <>
+      <dl className="flex flex-col gap-1">
       {order.ships && (
         <div className="flex justify-between">
           <dt>{order.delivery?.label ?? m.shipping}</dt>
@@ -256,14 +260,12 @@ function totalsList({ order, m, money, store }: OrderView) {
           <dd>−{money(order.bonus.usedMinor)}</dd>
         </div>
       )}
+      <OrderVatRelief order={order} text={vatWords} money={money} />
       <div className="flex justify-between font-semibold">
         <dt>{m.total}</dt>
         <dd>{money(order.totalMinor)}</dd>
       </div>
-      <div className="flex justify-between text-sm text-muted">
-        <dt>{m.vatAmount}</dt>
-        <dd>{money(order.taxMinor)}</dd>
-      </div>
+      <OrderVatRows order={order} text={vatWords} money={money} label={m.vatAmount} />
       {order.balanceMinor > 0 && (
         // Paid at the appointment (D66): what is still to pay there.
         <div className="flex justify-between">
@@ -286,7 +288,9 @@ function totalsList({ order, m, money, store }: OrderView) {
           </div>
         </>
       )}
-    </dl>
+      </dl>
+      <OrderVatNotes order={order} text={vatWords} />
+    </>
   );
 }
 

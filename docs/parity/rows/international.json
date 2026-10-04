@@ -411,12 +411,12 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "Documented decision only (docs/plan.md scenario C, R2 in docs/decisions.md): no IOSS number on the store, no IOSS-aware pricing or reporting, no €150 split, and no handling of the EU flat customs duty on low-value parcels.",
+    "gap": "Unit 1a (D157 proposed) built criteria 1, 2 and the 'off and says why' half of 4: a store records its IOSS number (`IM` plus ten digits), the intermediary's name, the markets it applies to and the registration date (`commerce.store_tax_profile`, `/admin/{store}/settings/tax`); a consignment of at most 150.00 EUR sent from outside the EU to a private buyer in a listed EU market is charged destination VAT as before and the order records `vat_kind = 'ioss'` and the number; above 150 EUR (`ioss_over_limit`), for a business buyer, outside the listed markets, from an EU dispatch country, for downloads, or where the currency has no euro rate it is not an IOSS sale and the buyer is told import VAT may be collected on delivery; without a number or markets the screen's readiness line says IOSS is off and what it needs. Tests: `ioss.test.ts` (150.00 versus 150.01, conversion, no rate), `vat-treatment.test.ts`, `tax-profile.int.test.ts`, `vat-engine.int.test.ts` (IOSS marking in euro and koruna views). Still missing: (1) criterion 3, the monthly IOSS report per member state and rate as CSV: unit 1c; the invoice does not yet carry the IOSS marking (unit 1b); (2) bucket B: live only with a registered IOSS number or intermediary agreement the owner holds, which nothing here checks; (3) the 150 EUR test uses the basket's shipped lines, not a proper intrinsic-value definition (not read), and the EU's removal of the customs-duty exemption from 1 July 2026 (Shopify's page, read 2026-10-03) is not handled; (4) the IOSS statement, the import notice and the admin help text are hand-written, unreviewed and need a tax accountant (including whether a Norwegian store may register directly, marked verify); (5) the tax screen was checked by render and action tests, no browser test opens it.",
     "bucket": "B",
     "wave": 1,
     "criteria": [
@@ -426,12 +426,42 @@
       "Live only with a registered IOSS number or intermediary agreement (bucket B); until then the feature is off and says why."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/ioss.ts",
+        "src/lib/tax-profile.ts",
+        "src/lib/vat-treatment.ts",
+        "src/lib/vat-text.ts",
+        "src/server/tax-profile.ts",
+        "src/server/tax-treatment.ts",
+        "src/components/admin/tax-profile-form.tsx",
+        "src/components/order-vat.tsx",
+        "src/db/schema.ts",
+        "supabase/migrations/20261003193641_tax_engine.sql",
+        "supabase/migrations/20261003193902_tax_engine_rules.sql",
+        "docs/wave-1a-tax.md"
+      ],
+      "tests": [
+        "src/lib/ioss.test.ts",
+        "src/lib/tax-profile.test.ts",
+        "src/lib/vat-treatment.test.ts",
+        "src/server/tax-profile.int.test.ts",
+        "src/server/vat-engine.int.test.ts",
+        "src/server/vat-money-review.int.test.ts",
+        "src/components/admin/tax-profile-form.test.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D157"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "missing",
+        "to": "partial",
+        "why": "Unit 1a (docs/wave-1a-tax.md): read the code and ran ioss, tax-profile and vat-engine tests: the IOSS number, intermediary and markets are recorded, an order of at most 150 EUR from outside the EU is marked IOSS in the cart and order, above 150 EUR and every other case is not, the screen says what is missing. Kept partial and not Full: the monthly IOSS report (1c) and the invoice marking (1b) do not exist, and bucket B needs a registration the owner holds."
+      }
+    ]
   },
   {
     "id": "international.customs-duties-hs-codes-landed-cost",

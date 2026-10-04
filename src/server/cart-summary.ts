@@ -3,7 +3,6 @@ import "server-only";
 import { cartSubtotal } from "@/lib/cart";
 import { NO_CART_AFFILIATE } from "@/lib/affiliates";
 import { memberOffAfterCampaign } from "@/lib/campaigns";
-import { vatIncluded } from "@/lib/checkout";
 import { venuePart } from "@/lib/pay-later";
 import { basketShipping, planPrice } from "@/lib/subscriptions";
 
@@ -18,6 +17,7 @@ import { chosenDelivery } from "./delivery-options";
 import { getCustomer } from "./customers";
 import { previewCartDiscount } from "./discounts";
 import { getCheckoutInfo } from "./orders";
+import { cartTaxOf, decideTax, loadTaxFacts } from "./tax-treatment";
 
 /**
  * What the cart page (and the slide-out cart, D64) shows a basket to cost:
@@ -163,13 +163,32 @@ export async function cartSummary(
   const creditPlan = planFor(credits, eligible, dueBeforeCredits);
   const bonusMinor = creditPlan.usingMinor;
   const bonusLine = (i: number) => creditPlan.lines[i] ?? 0;
-  const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor - referralMinor - bonusMinor;
-  const vat =
-    payable.reduce((sum, line, i) => sum + vatIncluded(today(line) - lineOff(i) - bonusLine(i), line.vatRate), 0) +
-    fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
-    vatIncluded((shipping ?? 0) - (applied?.shippingMinor ?? 0), checkout.vatRate);
-  // What this order will earn: what is paid online for goods and fees once credits are off, as the database counts it.
-  const paidOnlineGoods = payable.reduce((sum, line, i) => sum + today(line) - lineOff(i) - bonusLine(i) - venueOf[i], 0) + feeMinor;
+  // Which VAT the basket carries (D157), decided as `placeOrder()` decides it, on what is left to pay after every discount
+  // and credit. With reverse charge the VAT not charged comes off the total last, as the order's discount does.
+  const taxFacts = await loadTaxFacts(db(), { storeId, market, cartId });
+  const taxBasket = {
+    lines: payable.map((line, i) => ({
+      key: String(i),
+      totalMinor: today(line) - lineOff(i) - bonusLine(i),
+      rate: line.vatRate,
+      booking: line.booking !== null,
+      physical: line.delivery === "physical",
+      recurring: line.plan !== null,
+      host: line.hostId !== null,
+    })),
+    shippingMinor: (shipping ?? 0) - (applied?.shippingMinor ?? 0),
+    fees: fees.map((fee) => ({ amountMinor: fee.amount, rate: fee.rate })),
+    currency: market.currency,
+  };
+  const taxOutcome = decideTax(taxFacts, taxBasket);
+  const reliefMinor = taxOutcome.reliefMinor;
+  const reliefLine = (i: number) => taxOutcome.result.lines[i]?.reliefMinor ?? 0;
+  const total = subtotal + feeMinor + (shipping ?? 0) - discountMinor - referralMinor - bonusMinor - reliefMinor;
+  const vat = taxOutcome.taxMinor;
+  // What this order will earn: what is paid online for goods and fees once credits are off, as the database counts it
+  // (the lines' totals, which are net of the VAT not charged).
+  const paidOnlineGoods =
+    payable.reduce((sum, line, i) => sum + today(line) - lineOff(i) - bonusLine(i) - reliefLine(i) - venueOf[i], 0) + feeMinor;
   const bonus = cartBonusOf(shop.market, program, credits, creditPlan, customerId !== null, paidOnlineGoods, !sellerIsHost);
   // Nothing to pay online: the shopper tells who books instead of Stripe asking.
   const atVenueOnly = balance > 0 && balance === total;
@@ -216,6 +235,11 @@ export async function cartSummary(
     bonus,
     total,
     vat,
+    /** Which VAT the basket carries (D157): the kind and why, the buyer's number and what became of it, the VAT number field's offer. */
+    tax: cartTaxOf(taxFacts, taxBasket, taxOutcome),
+    /** The VAT a reverse-charge basket does not charge, in the currency shown: part of what is taken off, and of no discount row. */
+    reliefMinor,
+    reliefLine,
     balance,
     atVenueOnly,
     /** What Stripe is asked for: all but the part left for the venue. */

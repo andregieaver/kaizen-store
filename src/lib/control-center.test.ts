@@ -68,6 +68,16 @@ describe("the control center (D107)", () => {
     expect(attentionFor([store({ role: "admin", returns: { overdue: 1, unacknowledged: 0, requested: 0 } })]).map((i) => i.action)).toEqual(["Refund"]);
   });
 
+  it("asks an owner, and only an owner, to look at tax settings that are half done (D157)", () => {
+    const tax = ["The VAT number has not been checked valid."];
+    const items = attentionFor([store({ slug: "a", name: "A", tax })]);
+    expect(items).toEqual([
+      { text: "A: the tax settings need a look. The VAT number has not been checked valid.", href: "/admin/a/settings/tax", action: "Open tax settings" },
+    ]);
+    expect(attentionFor([store({ role: "admin", tax })])).toEqual([]);
+    expect(attentionFor([store({ tax: [] })])).toEqual([]);
+  });
+
   it("adds Work's own attention items for a store that uses it, urgent first, and nothing for one that does not", () => {
     const now = Date.parse("2026-09-29T12:00:00Z");
     const workOf = (slug: string, name: string) => workOverview({

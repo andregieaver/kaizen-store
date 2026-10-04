@@ -200,6 +200,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use."),
           item("/settings/shipping", "Shipping", "The flat rate for each market, free shipping above an amount, and carriers."),
           item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get."),
+          item("/settings/tax", "Tax", "VAT registration and number, OSS and IOSS, and how the store charges VAT."),
           item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services."),
         ],
       },

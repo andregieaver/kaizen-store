@@ -29,7 +29,6 @@ import { TermPicker } from "@/components/admin/terms";
 import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
 import { EMPTY_DATA, changesFrom, withParents, type FieldData, type FieldGroup, type FieldLookups } from "@/lib/custom-fields";
 import { fileSize } from "@/lib/file-size";
-import { ratePercent, VAT_CATEGORIES, VAT_CATEGORY_LABELS } from "@/lib/vat";
 import { shrinkImage } from "@/lib/image-resize";
 import type { CountryOption } from "@/lib/iso-countries";
 import {
@@ -64,6 +63,7 @@ import {
 import { slugify } from "@/lib/slug";
 import { createClient } from "@/lib/supabase/client";
 import type { EditorContext, Operator } from "@/server/products";
+import { VatCategoryField } from "@/components/admin/vat-category-field";
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -413,7 +413,7 @@ export function ProductEditor(props: Props) {
           <SafetySection product={product} update={update} operators={context.operators} countries={props.countries} />
         </>
       )}
-      <LegalSection product={product} update={update} markets={context.markets} />
+      <LegalSection product={product} update={update} markets={context.markets} vatCategories={context.vatCategories} />
 
       <div className="flex justify-end">
         <button
@@ -2597,7 +2597,12 @@ function OperatorPicker({
   );
 }
 
-function LegalSection({ product, update, markets }: SectionProps & { markets: EditorContext["markets"] }) {
+function LegalSection({
+  product,
+  update,
+  markets,
+  vatCategories,
+}: SectionProps & { markets: EditorContext["markets"]; vatCategories: EditorContext["vatCategories"] }) {
   const general = product.taxCode === GENERAL_TAX_CODE;
   return (
     <section aria-labelledby="legal-heading" className={card}>
@@ -2605,28 +2610,13 @@ function LegalSection({ product, update, markets }: SectionProps & { markets: Ed
         Tax, returns and recycling
       </h2>
       <div className="flex flex-col gap-5">
-        <fieldset className="flex flex-col gap-2 text-sm">
-          <legend className="mb-1 font-medium">VAT rate</legend>
-          {VAT_CATEGORIES.map((category) => (
-            <label key={category} className="flex items-start gap-2">
-              <input
-                type="radio"
-                name="vat-category"
-                checked={product.vatCategory === category}
-                onChange={() => update((p) => ({ ...p, vatCategory: category }))}
-                className="mt-0.5"
-              />
-              <span>
-                {VAT_CATEGORY_LABELS[category].label}
-                <span className="block text-muted">
-                  {VAT_CATEGORY_LABELS[category].hint}{" "}
-                  {category !== "exempt" &&
-                    markets.map((m) => `${m.name} ${ratePercent(m.vatRates[category])}`).join(", ")}
-                </span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
+        <VatCategoryField
+          category={product.vatCategory}
+          kind={product.kind}
+          categories={vatCategories}
+          markets={markets}
+          onChange={(vatCategory) => update((p) => ({ ...p, vatCategory }))}
+        />
 
         <fieldset className="flex flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">Tax code for Stripe</legend>

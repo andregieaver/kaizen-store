@@ -16,6 +16,7 @@ import { freeResourcesAt } from "./appointments";
 import { attachVisitToCart } from "./analytics-visits";
 import { audit, type Membership } from "./auth";
 import { checkRange, linePrice, rangePricing } from "./ranges";
+import { checkCartVatNumber, type CartVatDeps, type CartVatOutcome } from "./vat-checks";
 
 /** Where a cart belongs: one market of one store. */
 export type Shop = { storeId: string; market: Market };
@@ -86,7 +87,16 @@ const bookedKind = (kind: unknown): BookedKind => (kind === "stay" || kind === "
 /** The company the shopper buys for (B2B), as entered at checkout. */
 export type CartCompany = { name: string; number: string };
 
-export type Cart = { lines: CartLine[]; currency: string; company: CartCompany | null };
+/**
+ * The company as the cart holds it, with the EU VAT number typed for it (D157) and what became of it: the answer's status and
+ * time. VIES's name and address are not here (staff only). A shopper sees only their own cart's.
+ */
+export type CartCompanyView = CartCompany & {
+  vatNumber: string | null;
+  vatCheck: { status: "valid" | "invalid" | "unavailable"; checkedAt: string } | null;
+};
+
+export type Cart = { lines: CartLine[]; currency: string; company: CartCompanyView | null };
 
 /** The ids of this browser's carts in a store, in every market: what orders placed from this device are found by (D139). */
 export async function deviceCartIds(storeId: string): Promise<string[]> {
@@ -126,7 +136,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       commerce.vat_rate(c.market_code, p.vat_category) as vat_rate,
       cl.starts_at, cl.resource_id, br.name as staff, st.time_zone, aps.payment, aps.deposit_percent,
       p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
-      c.company_name, c.organisation_number,
+      c.company_name, c.organisation_number, c.vat_number, vk.status as vat_status, vk.requested_at as vat_checked_at,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
       -- A purchase option still offered, or buying once where that is allowed.
@@ -139,6 +149,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
     join commerce.stores st on st.id = cl.store_id
+    left join commerce.vat_checks vk on vk.store_id = c.store_id and vk.id = c.vat_check_id
     join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
     left join commerce.selling_plans sp
@@ -184,7 +195,17 @@ export async function getCart(shop: Shop): Promise<Cart> {
     currency: market.currency,
     company:
       first?.company_name && first.organisation_number
-        ? { name: String(first.company_name), number: String(first.organisation_number) }
+        ? {
+            name: String(first.company_name),
+            number: String(first.organisation_number),
+            vatNumber: first.vat_number ? String(first.vat_number) : null,
+            vatCheck: first.vat_status
+              ? {
+                  status: first.vat_status === "valid" ? "valid" : first.vat_status === "invalid" ? "invalid" : "unavailable",
+                  checkedAt: new Date(String(first.vat_checked_at)).toISOString(),
+                }
+              : null,
+          }
         : null,
     lines: rows.map((row) => {
       // A stay or rental is one booking of so many nights, days or hours, at its whole price.
@@ -275,15 +296,45 @@ function rangeEnd(row: Row, count: number): string | null {
   return rangeEndsAt(kind, new Date(String(row.starts_at)).toISOString(), count, rules, String(row.time_zone), period);
 }
 
-/** The company the shopper buys for (B2B), or null to buy privately: kept on the cart for the order. */
+/**
+ * The company the shopper buys for (B2B), or null to buy privately: kept on the cart for the order. A different company
+ * (or none) takes the EU VAT number typed for the old one and its check off the cart (D157): a number belongs to one company.
+ */
 export async function setCartCompany(shop: Shop, company: CartCompany | null): Promise<void> {
   const cartId = await readCartId(shop);
   if (!cartId) return;
   await db().execute(sql`
     update commerce.carts set company_name = ${company?.name ?? null}, organisation_number = ${company?.number ?? null},
+      vat_number = case when ${company?.number ?? null}::text is not null and organisation_number is not distinct from ${company?.number ?? null} then vat_number end,
+      vat_check_id = case when ${company?.number ?? null}::text is not null and organisation_number is not distinct from ${company?.number ?? null} then vat_check_id end,
       updated_at = now()
     where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open'
   `);
+}
+
+export type CartVatResult = CartVatOutcome | { ok: false; problem: "no_company" };
+
+/**
+ * The shopper's EU VAT number for the cart (D157), asked of VIES (`checkCartVatNumber()`) and kept with its answer. The
+ * company may be given with it (the cart page holds the company's fields until checkout starts): it is kept first, as
+ * `checkoutAction()` keeps it. A cart without a company (a private buyer) has no VAT number to give. An empty number takes
+ * the number off the cart. VIES being down is an *unavailable* answer: VAT is charged and nothing is blocked.
+ */
+export async function setCartVatNumber(
+  shop: Shop,
+  typed: string,
+  company?: CartCompany | null,
+  deps: CartVatDeps = {},
+): Promise<CartVatResult> {
+  const cartId = await readCartId(shop);
+  if (!cartId) return { ok: false, problem: "no_cart" };
+  if (company) await setCartCompany(shop, company);
+  const [row] = await db().execute<Row>(sql`
+    select company_name, organisation_number from commerce.carts
+    where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open'
+  `);
+  if (!row?.company_name || !row.organisation_number) return { ok: false, problem: "no_company" };
+  return checkCartVatNumber(shop, cartId, typed, deps);
 }
 
 /** Units in the cart, for the header. */

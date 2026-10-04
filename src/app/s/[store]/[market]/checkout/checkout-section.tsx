@@ -7,6 +7,7 @@ import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
 import { DeliveryChoice } from "@/components/delivery-choice";
 import { LineThumbnail } from "@/components/line-thumbnail";
+import { VatNotes } from "@/components/vat-notes";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
@@ -18,7 +19,9 @@ import { checkoutLabels } from "@/lib/checkout-labels";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
+import { IMPORT_NOTICE_REASONS, vatRowsWhenMixed } from "@/lib/order-vat";
 import { marketPath } from "@/lib/paths";
+import { vatText } from "@/lib/vat-text";
 import { readCartId } from "@/server/cart";
 import { getOpenCheckout } from "@/server/checkout";
 import { cartRemindersOn, checkoutOptedOut } from "@/server/cart-reminders";
@@ -240,6 +243,8 @@ function totalsList(view: CheckoutView, market: Market) {
         order.lines.filter((line) => !line.gift).map((line) => ({ minor: line.unitPriceMinor * line.quantity, rate: line.taxRate })),
       )
     : referralMinor;
+  const vatWords = vatText(market.lang);
+  const reverse = order.vatKind === "reverse_charge";
   const discountNet = linesNet + shippingNet - (order.totalMinor - order.taxMinor) - (business ? bonusNet + referralNet : 0);
   return (
     <>
@@ -288,7 +293,7 @@ function totalsList(view: CheckoutView, market: Market) {
               <dd>{money(order.totalMinor - order.taxMinor)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt>{m.vatLine}</dt>
+              <dt>{reverse ? vatWords.vatLineReverse : m.vatLine}</dt>
               <dd>{money(order.taxMinor)}</dd>
             </div>
             <div className="flex justify-between text-base font-semibold">
@@ -302,10 +307,20 @@ function totalsList(view: CheckoutView, market: Market) {
               <dt>{m.total}</dt>
               <dd>{money(order.totalMinor)}</dd>
             </div>
-            <div className="flex justify-between text-muted">
-              <dt>{m.vatAmount}</dt>
-              <dd>{money(order.taxMinor)}</dd>
-            </div>
+            {vatRowsWhenMixed(order).length > 0 ? (
+              // More than one rate: each on its own row (D157).
+              vatRowsWhenMixed(order).map((row) => (
+                <div key={row.rate} className="flex justify-between text-muted">
+                  <dt>{vatWords.vatAtRate(row.rate)}</dt>
+                  <dd>{money(row.taxMinor)}</dd>
+                </div>
+              ))
+            ) : (
+              <div className="flex justify-between text-muted">
+                <dt>{m.vatAmount}</dt>
+                <dd>{money(order.taxMinor)}</dd>
+              </div>
+            )}
           </>
         )}
         {order.balanceMinor > 0 && (
@@ -321,6 +336,14 @@ function totalsList(view: CheckoutView, market: Market) {
           </>
         )}
       </dl>
+      <VatNotes
+        text={vatWords}
+        reverseCharge={reverse}
+        sellerNumber={order.vat?.sellerVatNumber ?? null}
+        buyerNumber={order.vat?.buyerVatNumber ?? null}
+        iossNumber={null}
+        importNotice={order.vat !== null && IMPORT_NOTICE_REASONS.includes(order.vat.reason)}
+      />
       {order.company && (
         <p className="mt-3 border-t border-border pt-3 text-sm">
           {order.company.name}

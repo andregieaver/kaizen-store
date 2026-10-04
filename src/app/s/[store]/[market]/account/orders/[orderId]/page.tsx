@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { OwnBookings } from "@/components/own-bookings";
 import { OrderReturns } from "@/components/withdraw/order-returns";
 import { earnedText } from "@/lib/bonus-shopper";
@@ -15,6 +16,7 @@ import { fileSize } from "@/lib/file-size";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
+import { vatText } from "@/lib/vat-text";
 import { getCustomer, ownsOrder } from "@/server/customers";
 import { getOrderAdmin } from "@/server/order-admin";
 import { getOrderDownloads } from "@/server/orders";
@@ -56,6 +58,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
   if (!order) notFound();
   const m = t(market.lang);
   const a = m.account;
+  const vatWords = vatText(market.lang);
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const date = (iso: string) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" });
   const address = order.shippingAddress;
@@ -157,14 +160,12 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
               <dd>−{money(order.bonus.usedMinor)}</dd>
             </div>
           )}
+          <OrderVatRelief order={order} text={vatWords} money={money} />
           <div className="flex justify-between font-semibold">
             <dt>{m.total}</dt>
             <dd>{money(order.totalMinor)}</dd>
           </div>
-          <div className="flex justify-between text-sm text-muted">
-            <dt>{m.vatAmount}</dt>
-            <dd>{money(order.taxMinor)}</dd>
-          </div>
+          <OrderVatRows order={order} text={vatWords} money={money} label={m.vatAmount} />
           {order.balanceMinor > 0 && (
             // Paid at the appointment (D66): what is still to pay there.
             <div className="flex justify-between">
@@ -194,6 +195,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
             </div>
           )}
         </dl>
+        <OrderVatNotes order={order} text={vatWords} />
         {earned && <p className="mt-3 text-sm">{earned}</p>}
       </section>
 

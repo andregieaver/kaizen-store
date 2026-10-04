@@ -35,6 +35,7 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/search-test", "Search", "The search experiment: keyword against hybrid search."),
   item("/seo", "SEO", "How search engines and AI crawlers see Kaizen's site."),
   item("/cookies", "Cookies", "Kaizen's cookies, tracking tools and consents."),
+  item("/vat", "VAT", "VAT categories and rates per country with history, the rates nobody has verified yet, and how shipping is taxed."),
   item("/google-reviews", "Google reviews", "Kaizen's own Google reviews for testimonials."),
   item("/stripe", "Stripe", "Kaizen's Stripe webhooks per mode, the default fee per sale and the checkout's look."),
   item("/ai", "AI", "Kaizen's default AI provider and models.", true),

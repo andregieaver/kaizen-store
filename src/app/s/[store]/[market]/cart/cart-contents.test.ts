@@ -13,6 +13,7 @@ vi.mock("./actions", () => ({
 }));
 const getBuyer = vi.fn();
 vi.mock("@/server/b2b", () => ({ getBuyer: (...a: unknown[]) => getBuyer(...a) }));
+const cartState = vi.hoisted(() => ({ company: null as unknown }));
 vi.mock("@/server/cart", () => ({
   getCart: async () => ({
     lines: [
@@ -34,26 +35,48 @@ vi.mock("@/server/cart", () => ({
       },
     ],
     currency: "EUR",
-    company: null,
+    company: cartState.company,
   }),
 }));
 const cartSummary = vi.fn();
 vi.mock("@/server/cart-summary", () => ({ cartSummary: (...a: unknown[]) => cartSummary(...a) }));
 vi.mock("@/server/customers", () => ({ getCustomer: async () => null }));
-vi.mock("@/components/checkout-button", () => ({ CheckoutButton: () => null }));
+const checkoutButton = vi.hoisted(() => vi.fn());
+vi.mock("@/components/checkout-button", () => ({
+  CheckoutButton: (props: unknown) => {
+    checkoutButton(props);
+    return null;
+  },
+}));
 vi.mock("@/components/discount-code-form", () => ({ DiscountCodeForm: () => null }));
 
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { CartContents, CartCredits, CartSummary } from "./cart-contents";
+import { CartCheckout, CartContents, CartCredits, CartSummary } from "./cart-contents";
 
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
 const store = { id: "s1", slug: "demo", audience: "both" } as Store;
 const m = t("en");
 
 const line = { variantId: "v1", vatRate: 0.25, unitPriceMinor: 10000, quantity: 1 };
+/** What `cartSummary().tax` holds for an ordinary cart (D157): VAT charged, no VAT number field offered. */
+const standardTax = (over: Record<string, unknown> = {}) => ({
+  kind: "standard",
+  reason: "consumer",
+  reverseCharge: false,
+  notes: [],
+  importNotice: false,
+  reliefMinor: 0,
+  shippingRate: 0.25,
+  buyerVatNumber: null,
+  buyerState: "none",
+  sellerVatNumber: null,
+  field: { offered: false, reason: "private" },
+  fieldIfBusiness: { offered: false, reason: "market_not_eu" },
+  ...over,
+});
 const summary = (over: Record<string, unknown> = {}) => ({
   payable: [line],
   blocked: false,
@@ -78,6 +101,7 @@ const summary = (over: Record<string, unknown> = {}) => ({
   bonusMinor: 0,
   referralMinor: 0,
   referral: { state: "none", percent: 0, discountMinor: 0 },
+  tax: standardTax(),
   plan: null,
   renewal: null,
   trial: false,
@@ -110,6 +134,7 @@ const draw = async (piece: typeof CartSummary) => renderToString(await piece({ s
 beforeEach(() => {
   vi.clearAllMocks();
   getBuyer.mockResolvedValue("consumer");
+  cartState.company = null;
   cartSummary.mockResolvedValue(summary());
   readCartBonus.mockResolvedValue(bonus());
 });
@@ -198,5 +223,123 @@ describe("the cart's totals with a friend's welcome discount (D131)", () => {
     const text = words(await draw(CartSummary));
     expect(text).not.toContain("Welcome discount");
     expect(text).not.toContain("Sign in to get");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// VAT (D157): reverse charge, the VAT number field, the import notice
+// ---------------------------------------------------------------------------
+
+const reverse = (over: Record<string, unknown> = {}) =>
+  standardTax({
+    kind: "reverse_charge",
+    reason: "reverse_charge",
+    reverseCharge: true,
+    reliefMinor: 2000,
+    buyerVatNumber: "DE123456789",
+    buyerState: "valid",
+    sellerVatNumber: "SE556677889901",
+    field: { offered: true },
+    fieldIfBusiness: { offered: true },
+    ...over,
+  });
+
+describe("the cart's totals with reverse charge (D157)", () => {
+  it("show a business the amounts without VAT, a VAT row that says reverse charge, the statement and both numbers", async () => {
+    getBuyer.mockResolvedValue("business");
+    cartSummary.mockResolvedValue(summary({ total: 8000, vat: 0, tax: reverse() }));
+    const text = words(await draw(CartSummary));
+    expect(text).toContain("Total excl. VAT €80.00");
+    expect(text).toContain("VAT (reverse charge) €0.00");
+    expect(text).toContain("Reverse charge: VAT has not been charged.");
+    expect(text).toContain("Seller's VAT number: SE556677889901");
+    expect(text).toContain("Buyer's VAT number: DE123456789");
+    expect(text).not.toContain("incl. VAT");
+  });
+
+  it("show a shopper who sees prices with VAT the VAT not charged as a row before the total, and never say VAT is included", async () => {
+    cartSummary.mockResolvedValue(summary({ total: 8000, vat: 0, tax: reverse() }));
+    const text = words(await draw(CartSummary));
+    expect(text).toContain("VAT not charged (reverse charge) −€20.00");
+    expect(text).toMatch(/Total €80\.00/);
+    expect(text).not.toContain("incl. VAT");
+  });
+
+  it("say it in the store's language, by hand: Norwegian omvendt avgiftsplikt, Danish omvendt betalingspligt", async () => {
+    cartSummary.mockResolvedValue(summary({ total: 8000, vat: 0, tax: reverse() }));
+    const nb = { ...market, lang: "nb", locale: "nb-NO" } as Market;
+    expect(words(renderToString(await CartSummary({ store, market: nb, m: t("nb") })))).toContain("Omvendt avgiftsplikt: det er ikke beregnet merverdiavgift.");
+    const da = { ...market, lang: "da", locale: "da-DK" } as Market;
+    expect(words(renderToString(await CartSummary({ store, market: da, m: t("da") })))).toContain("Omvendt betalingspligt: der er ikke opkrævet moms.");
+  });
+
+  it("show nothing about reverse charge for an ordinary cart, and keep saying VAT is included", async () => {
+    const text = words(await draw(CartSummary));
+    expect(text).not.toContain("Reverse charge");
+    expect(text).not.toContain("not charged");
+    expect(text).toContain("incl. VAT");
+  });
+
+  it("say that import VAT and customs may be collected on delivery when the cart's goods come from outside the EU", async () => {
+    cartSummary.mockResolvedValue(summary({ tax: standardTax({ importNotice: true }) }));
+    expect(words(await draw(CartSummary))).toContain("Import VAT and customs charges may be collected on delivery.");
+  });
+});
+
+describe("the cart's VAT number field (D157)", () => {
+  const checkoutProps = async () => {
+    checkoutButton.mockClear();
+    // The piece returns the button's element: render it so the mock records its props.
+    renderToString(await CartCheckout({ store, market, m }));
+    return checkoutButton.mock.calls.at(-1)?.[0] as { company: { ask: boolean }; vat?: { offered: boolean; initial: string; message: { text: string; tone: string } | null; note?: string } };
+  };
+
+  it("is not offered to a private buyer", async () => {
+    expect((await checkoutProps()).vat).toBeUndefined();
+  });
+
+  it("is offered to a business where reverse charge could apply, before any number is typed", async () => {
+    getBuyer.mockResolvedValue("business");
+    cartSummary.mockResolvedValue(summary({ tax: standardTax({ fieldIfBusiness: { offered: true } }) }));
+    const props = await checkoutProps();
+    expect(props.company.ask).toBe(true);
+    expect(props.vat).toMatchObject({ offered: true, initial: "", message: null });
+  });
+
+  it("is not offered where it cannot help: the seller's own country, a market outside the EU, a seller not ready", async () => {
+    getBuyer.mockResolvedValue("business");
+    for (const reason of ["domestic", "market_not_eu", "seller_not_ready", "host_order"]) {
+      cartSummary.mockResolvedValue(summary({ tax: standardTax({ fieldIfBusiness: { offered: false, reason } }) }));
+      expect((await checkoutProps()).vat, reason).toBeUndefined();
+    }
+  });
+
+  it("says in one line why not for a cart with a booking or a subscription", async () => {
+    getBuyer.mockResolvedValue("business");
+    cartSummary.mockResolvedValue(summary({ tax: standardTax({ fieldIfBusiness: { offered: false, reason: "has_service" } }) }));
+    expect((await checkoutProps()).vat).toMatchObject({ offered: false, note: expect.stringContaining("appointment") });
+    cartSummary.mockResolvedValue(summary({ tax: standardTax({ fieldIfBusiness: { offered: false, reason: "has_subscription" } }) }));
+    expect((await checkoutProps()).vat).toMatchObject({ offered: false, note: expect.stringContaining("subscription") });
+  });
+
+  it("carries the number on the cart and what the server made of it, in the words of each outcome", async () => {
+    getBuyer.mockResolvedValue("business");
+    cartState.company = { name: "Kunde GmbH", number: "123456789", vatNumber: "DE123456789", vatCheck: { status: "valid", checkedAt: "2026-10-03T10:00:00.000Z" } };
+    const outcome = async (reason: string, state = "valid") => {
+      cartSummary.mockResolvedValue(
+        summary({ tax: standardTax({ reason, buyerVatNumber: "DE123456789", buyerState: state, field: { offered: true }, fieldIfBusiness: { offered: true } }) }),
+      );
+      return (await checkoutProps()).vat;
+    };
+    expect(await outcome("reverse_charge")).toMatchObject({ initial: "DE123456789", message: { text: expect.stringContaining("accepted"), tone: "ok" } });
+    expect((await outcome("number_invalid", "invalid"))?.message).toMatchObject({ text: "This VAT number was not accepted. VAT is charged.", tone: "warn" });
+    // VIES could not answer: VAT is charged, said plainly, never "exempt".
+    expect((await outcome("number_unavailable", "unavailable"))?.message?.text).toBe(
+      "The VAT number could not be checked right now. VAT is charged. Try again in a moment.",
+    );
+    expect((await outcome("number_stale", "stale"))?.message?.text).toContain("could not be checked right now");
+    expect((await outcome("number_other_country"))?.message?.text).toBe("The number is for Germany, but the goods go to Ireland. VAT is charged.");
+    expect((await outcome("own_number"))?.message?.text).toContain("store's own VAT number");
+    expect((await outcome("number_not_eu"))?.message?.text).toContain("Only VAT numbers from EU member states");
   });
 });

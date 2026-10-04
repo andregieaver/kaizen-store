@@ -186,6 +186,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   refunds: never("Copied orders have no refunds."),
   resource_blocks: never("Closures and blocks from iCal feeds belong to the original's calendar."),
   return_settings: settings("How the store handles withdrawals and returns (D153): its window, who pays, instructions and address; returns themselves are not copied."),
+  store_tax_profile: settings("The store's tax registration (D157): whether it is VAT-registered, its OSS scheme and member state, where it ships from and its IOSS markets; a copy keeps these choices and never the VAT, OSS or IOSS numbers, their checks or dates (a number belongs to one legal entity)."),
+  vat_checks: never("An audit log of the original's VAT number checks (D157): the buyers' numbers and VIES's answers are never copied."),
   return_lines: never("Returns are processes of the original."),
   returns: never("Returns are processes of the original."),
   search_clicks: never("A log of the original's searches."),

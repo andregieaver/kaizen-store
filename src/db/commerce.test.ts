@@ -2512,10 +2512,14 @@ describe("VAT per product (D65)", () => {
     expect(await rate("DK", "accommodation")).toBe(0.25);
     expect(await rate("NO", "exempt")).toBe(0);
     const store = await createStore("vat-kari", ["NO"]);
+    // Categories are data since D157 (`commerce.vat_categories`): `food` is one, an unknown one is not. src/db/vat.test.ts has the rest.
+    await db.query("insert into commerce.products (store_id, handle, tax_code, vat_category) values ($1, 'x', 't', 'food')", [store]);
     await expect(
-      db.query("insert into commerce.products (store_id, handle, tax_code, vat_category) values ($1, 'x', 't', 'food')", [store]),
-    ).rejects.toThrow(/products_vat_category/);
-    await expect(db.query("insert into commerce.vat_rates values ('NO', 'food', 0.15)")).rejects.toThrow(/vat_rates_category/);
+      db.query("insert into commerce.products (store_id, handle, tax_code, vat_category) values ($1, 'y', 't', 'caviar')", [store]),
+    ).rejects.toThrow(/products_vat_category_fk/);
+    await expect(
+      db.query("insert into commerce.vat_rates (country_code, category, rate, valid_from, source, checked_on) values ('NO', 'caviar', 0.15, '2026-01-01', 'A source here', '2026-10-03')"),
+    ).rejects.toThrow(/vat_rates_category_vat_categories_code_fk/);
   });
 });
 

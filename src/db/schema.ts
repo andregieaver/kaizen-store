@@ -200,6 +200,11 @@ export const countries = commerce.table(
      * an order until Stripe Tax computes it (reduced rates are not applied).
      */
     standardVatRate: numeric("standard_vat_rate", { precision: 5, scale: 4 }),
+    /**
+     * The country's own time zone (IANA; a country with several uses its capital's, D157): the date a VAT rate takes
+     * effect is the country's own date (`commerce.vat_rate(country, category, at)`).
+     */
+    timeZone: text("time_zone"),
   },
   (t) => [
     check("countries_code_upper", sql`${t.code} = upper(${t.code})`),
@@ -208,12 +213,39 @@ export const countries = commerce.table(
 );
 
 /**
- * VAT rates other than the standard one (D65): a country's rate for a kind
- * of sale, e.g. accommodation. A category without a row here takes the
- * country's standard rate, which never charges too little; `exempt` is
- * always 0. Read through `commerce.vat_rate(country, category)`. Reference
- * data kept by Kaizen, to be checked with an accountant like the standard
- * rates.
+ * A kind of sale that has its own VAT rate in some countries (D65, D157): `standard`, `exempt` and `accommodation` are
+ * built in, the reduced-rate categories (food, books, ...) are rows platform admins add and switch off, owners only
+ * choose one for a product (`products.vat_category`). Never deleted, a built-in one is never renamed or switched off
+ * (triggers in the VAT migration). Reference data, no store id.
+ */
+export const vatCategories = commerce.table(
+  "vat_categories",
+  {
+    code: text("code").primaryKey(),
+    nameEn: text("name_en").notNull(),
+    description: text("description").notNull().default(""),
+    sort: integer("sort").notNull().default(0),
+    active: boolean("active").notNull().default(true),
+    builtIn: boolean("built_in").notNull().default(false),
+    createdAt: createdAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("vat_categories_updated_by_idx").on(t.updatedBy),
+    check("vat_categories_code", sql`${t.code} ~ '^[a-z][a-z0-9_]{1,30}$'`),
+    check("vat_categories_name", sql`length(${t.nameEn}) between 1 and 60`),
+    check("vat_categories_description", sql`length(${t.description}) <= 200`),
+    check("vat_categories_built_in", sql`not ${t.builtIn} or ${t.code} in ('standard', 'exempt', 'accommodation')`),
+  ],
+);
+
+/**
+ * A country's VAT rate for a category over a period (D65, D157): rates have history, a row is never edited in place
+ * (the old period ends and a new one begins, `commerce.set_vat_rate()` is the writer), periods of one (country,
+ * category) never overlap, and every row says where it comes from and when it was checked. `valid_from` is the first
+ * day of the rate, in the country's own time zone. A missing row means the standard rate; `exempt` has no rows (always
+ * 0). Read only through `commerce.vat_rate(country, category, at)`. A seeded row starts unverified (`verified_at` null):
+ * a person with an accountant verifies it at `/admin/platform/vat`. Reference data kept by Kaizen.
  */
 export const vatRates = commerce.table(
   "vat_rates",
@@ -221,13 +253,58 @@ export const vatRates = commerce.table(
     countryCode: char("country_code", { length: 2 })
       .notNull()
       .references(() => countries.code),
-    category: text("category").notNull(),
+    category: text("category")
+      .notNull()
+      .references(() => vatCategories.code),
     rate: numeric("rate", { precision: 5, scale: 4 }).notNull(),
+    validFrom: date("valid_from").notNull(),
+    /** The first day the rate no longer applies; null while it is the current one. */
+    validTo: date("valid_to"),
+    /** A URL or a named act. */
+    source: text("source").notNull(),
+    checkedOn: date("checked_on").notNull(),
+    note: text("note").notNull().default(""),
+    verifiedBy: uuid("verified_by").references(() => accounts.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    createdAt: createdAt(),
+    createdBy: uuid("created_by").references(() => accounts.id),
   },
   (t) => [
-    primaryKey({ columns: [t.countryCode, t.category] }),
-    check("vat_rates_category", sql`${t.category} in ('accommodation')`),
+    primaryKey({ columns: [t.countryCode, t.category, t.validFrom] }),
+    index("vat_rates_category_idx").on(t.category),
+    index("vat_rates_verified_by_idx").on(t.verifiedBy),
+    index("vat_rates_created_by_idx").on(t.createdBy),
     check("vat_rates_rate", sql`${t.rate} >= 0 and ${t.rate} < 1`),
+    check("vat_rates_period", sql`${t.validTo} is null or ${t.validTo} > ${t.validFrom}`),
+    check("vat_rates_source", sql`length(${t.source}) between 8 and 400`),
+    check("vat_rates_not_exempt", sql`${t.category} <> 'exempt'`),
+    check("vat_rates_verified", sql`(${t.verifiedAt} is null) = (${t.verifiedBy} is null)`),
+  ],
+);
+
+/**
+ * How shipping is taxed in a country (D157): `standard` (the country's standard rate, the default everywhere),
+ * `follows_goods` (the goods' rate when every taxable line has the same one) or `highest`. Only a rule a person has
+ * verified is ever applied (`commerce.shipping_vat_rule()` answers `standard` for an unverified one). Reference data.
+ */
+export const shippingVatRules = commerce.table(
+  "shipping_vat_rules",
+  {
+    countryCode: char("country_code", { length: 2 })
+      .primaryKey()
+      .references(() => countries.code),
+    rule: text("rule").notNull().default("standard"),
+    source: text("source").notNull().default(""),
+    checkedOn: date("checked_on"),
+    verifiedBy: uuid("verified_by").references(() => accounts.id),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    note: text("note").notNull().default(""),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("shipping_vat_rules_verified_by_idx").on(t.verifiedBy),
+    check("shipping_vat_rules_rule", sql`${t.rule} in ('standard', 'follows_goods', 'highest')`),
+    check("shipping_vat_rules_source", sql`length(${t.source}) <= 400`),
   ],
 );
 
@@ -876,7 +953,7 @@ export const products = commerce.table(
     subscriptionOnly: boolean("subscription_only").notNull().default(false),
     /** In stores selling to both (B2B): shown to everyone, only to private shoppers or only to businesses. */
     audience: text("audience").notNull().default("all"),
-    /** Which VAT rate it takes (D65): the market's standard rate, accommodation's, or none (exempt, such as health care). */
+    /** Which VAT rate it takes (D65, D157): a row of `vat_categories` (standard, accommodation, exempt, food, books, ...). */
     vatCategory: text("vat_category").notNull().default("standard"),
     /** What it is (D65, D67): goods (physical or digital), an appointment, a stay (nights) or a rental (days). */
     kind: text("kind").notNull().default("goods"),
@@ -910,7 +987,8 @@ export const products = commerce.table(
     index("products_responsible_person_idx").on(t.storeId, t.responsiblePersonId),
     index("products_store_status_idx").on(t.storeId, t.status),
     check("products_audience", sql`${t.audience} in ('all', 'consumers', 'businesses')`),
-    check("products_vat_category", sql`${t.vatCategory} in ('standard', 'accommodation', 'exempt')`),
+    foreignKey({ name: "products_vat_category_fk", columns: [t.vatCategory], foreignColumns: [vatCategories.code] }),
+    index("products_vat_category_idx").on(t.vatCategory),
     check("products_kind", sql`${t.kind} in ('goods', 'appointment', 'stay', 'rental')`),
     check("products_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
@@ -1849,6 +1927,12 @@ export const carts = commerce.table(
     companyName: text("company_name"),
     organisationNumber: text("organisation_number"),
     /**
+     * The EU VAT number the business shopper typed (D157), normalised with its country prefix, and the VIES answer to
+     * it (`vat_checks`). Only the cart and the order made from it keep it; never copied, never public.
+     */
+    vatNumber: text("vat_number"),
+    vatCheckId: uuid("vat_check_id"),
+    /**
      * The bonus credits the signed-in shopper asked to use (D130), in the currency shown (`bonus_request_currency`);
      * checkout clamps it to what they may use, so it is only ever a request.
      */
@@ -1874,6 +1958,9 @@ export const carts = commerce.table(
   (t) => [
     unique("carts_store_id_key").on(t.storeId, t.id),
     check("carts_bonus_request", sql`${t.bonusRequestMinor} >= 0`),
+    check("carts_vat_number", sql`${t.vatNumber} is null or ${t.vatNumber} ~ '^[A-Z]{2}[0-9A-Z+*.]{2,12}$'`),
+    foreignKey({ name: "carts_vat_check_fk", columns: [t.storeId, t.vatCheckId], foreignColumns: [vatChecks.storeId, vatChecks.id] }),
+    index("carts_vat_check_idx").on(t.storeId, t.vatCheckId),
     index("carts_visit_idx").on(t.visitId),
     marketCountryRef("carts_market_fk", t),
     customerRef("carts_customer_fk", t),
@@ -1971,6 +2058,24 @@ export const orders = commerce.table(
      * `serviceId`, `label`, the `postalCode` it was priced for and the chosen `pickupPoint`. Kept as it was bought.
      */
     delivery: jsonb("delivery"),
+    /**
+     * Which VAT the order carries (D157): `standard` (the destination country's), `reverse_charge` (a business buyer's
+     * valid VAT number in another member state: no VAT charged) or `ioss` (a consignment of at most 150 EUR marked with
+     * the store's IOSS number; the price is unchanged). The VAT not charged is `vat_relief_minor`, part of
+     * `discount_minor` (so the total adds up) with each line's share in `order_lines.vat_relief_minor`; `tax_minor` is 0
+     * then. A copied order (D129) keeps kind and relief so the checks hold, never the treatment or a number.
+     */
+    vatKind: text("vat_kind").notNull().default("standard"),
+    vatReliefMinor: money("vat_relief_minor").default(0),
+    /** The rate the shipping was charged at, as it was then (the country's rate changes over time); null on older orders. */
+    shippingTaxRate: numeric("shipping_tax_rate", { precision: 6, scale: 4 }),
+    /**
+     * The treatment as it was decided (`OrderVatTreatment`, `src/lib/vat-treatment.ts`): kind, reason, both VAT numbers,
+     * the VIES answer, the IOSS number. Frozen once the order leaves `pending_payment`; the invoice (unit 1b) reads
+     * the seller's number from here, never from the live profile. Never copied.
+     */
+    vatTreatment: jsonb("vat_treatment"),
+    vatCheckId: uuid("vat_check_id"),
     /** VAT contained in the total. Prices are VAT-inclusive. */
     taxMinor: money("tax_minor"),
     totalMinor: money("total_minor"),
@@ -2030,6 +2135,19 @@ export const orders = commerce.table(
     uniqueIndex("orders_copied_from_key").on(t.storeId, t.copiedFrom).where(sql`${t.copiedFrom} is not null`),
     check("orders_copied_number", sql`${t.copiedFrom} is null or ${t.number} like 'C-%'`),
     check("orders_credit", sql`${t.creditMinor} between 0 and ${t.discountMinor}`),
+    check("orders_vat_kind", sql`${t.vatKind} in ('standard', 'reverse_charge', 'ioss')`),
+    check("orders_vat_relief", sql`${t.vatReliefMinor} between 0 and ${t.discountMinor}`),
+    check(
+      "orders_vat_kind_relief",
+      sql`(${t.vatKind} = 'reverse_charge' and ${t.taxMinor} = 0 and ${t.vatReliefMinor} > 0) or (${t.vatKind} <> 'reverse_charge' and ${t.vatReliefMinor} = 0)`,
+    ),
+    check("orders_shipping_tax_rate", sql`${t.shippingTaxRate} is null or (${t.shippingTaxRate} >= 0 and ${t.shippingTaxRate} < 1)`),
+    foreignKey({
+      name: "orders_vat_check_fk",
+      columns: [t.storeId, t.vatCheckId],
+      foreignColumns: [vatChecks.storeId, vatChecks.id],
+    }).onDelete("restrict"),
+    index("orders_vat_check_idx").on(t.storeId, t.vatCheckId),
     foreignKey({
       name: "orders_host_fk",
       columns: [t.storeId, t.hostId],
@@ -2142,6 +2260,11 @@ export const orderLines = commerce.table(
     bonusDiscountMinor: money("bonus_discount_minor").default(0),
     /** The part the friend's welcome discount gave (D131); the line's share, so VAT and refunds agree. */
     referralDiscountMinor: money("referral_discount_minor").default(0),
+    /**
+     * The VAT a reverse-charge order did not charge on this line (D157): part of the discount, so the total adds up,
+     * and `tax_minor` is 0; `tax_rate` keeps the rate that would have applied.
+     */
+    vatReliefMinor: money("vat_relief_minor").default(0),
     campaignId: uuid("campaign_id"),
     /** Every campaign that gave something on this line: `[{ id, name, minor }]`, the first being `campaign_id`. */
     campaignParts: jsonb("campaign_parts").notNull().default([]),
@@ -2181,6 +2304,7 @@ export const orderLines = commerce.table(
     check("order_lines_campaign_discount", sql`${t.campaignDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_bonus_discount", sql`${t.bonusDiscountMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_referral_discount", sql`${t.referralDiscountMinor} between 0 and ${t.discountMinor}`),
+    check("order_lines_vat_relief", sql`${t.vatReliefMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_venue", sql`${t.venueMinor} between 0 and ${t.totalMinor}`),
     check("order_lines_unit_cost", sql`${t.unitCostMinor} >= 0`),
   ],
@@ -2817,6 +2941,111 @@ export const returnSettings = commerce.table(
     check("return_settings_who_pays", sql`${t.whoPaysReturn} in ('shopper', 'store')`),
     check("return_settings_refund_when", sql`${t.refundWhen} in ('received', 'request')`),
     check("return_settings_instructions", sql`length(${t.instructions}) <= 2000`),
+  ],
+);
+
+/**
+ * A store's tax registration (D157, `docs/wave-1a-tax.md`): whether it is registered for VAT and under which number,
+ * where it sends goods from, its OSS and IOSS registrations. One row per store, made on first save (no row means all
+ * defaults). A store setting edited by owners at `/admin/{store}/settings/tax`; a copy of a store keeps the choices but
+ * never the numbers (a number belongs to one legal entity, `commerce.duplicate_store()`).
+ */
+export const storeTaxProfile = commerce.table(
+  "store_tax_profile",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id),
+    vatRegistered: boolean("vat_registered").notNull().default(false),
+    /** Normalised with its country prefix (`SE556677889901`, Greece `EL`), never typed freely. */
+    vatNumber: text("vat_number"),
+    /** The latest check of the number (a `vat_checks` row) and its result, copied here; saving another number clears all three. */
+    vatNumberCheckId: uuid("vat_number_check_id"),
+    vatNumberCheckedAt: timestamp("vat_number_checked_at", { withTimezone: true }),
+    vatNumberValid: boolean("vat_number_valid"),
+    /** The country goods are sent from (defaults to the company's); decides whether a consignment comes from outside the EU. */
+    dispatchCountry: char("dispatch_country", { length: 2 }),
+    /** `none`, `union` (registered in an EU member state) or `non_union` (a seller outside the EU, with an `EU` number). */
+    ossScheme: text("oss_scheme").notNull().default("none"),
+    ossMemberState: char("oss_member_state", { length: 2 }).references(() => countries.code),
+    ossNumber: text("oss_number"),
+    ossRegisteredOn: date("oss_registered_on"),
+    /** `IM` and ten digits; held with the intermediary's name by a store outside the EU selling consignments of at most 150 EUR. */
+    iossNumber: text("ioss_number"),
+    iossIntermediary: text("ioss_intermediary"),
+    /** The EU markets (countries) the IOSS registration is used for; checked to be EU countries by a trigger. */
+    iossMarkets: text("ioss_markets").array().notNull().default(sql`'{}'::text[]`),
+    iossRegisteredOn: date("ioss_registered_on"),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("store_tax_profile_updated_by_idx").on(t.updatedBy),
+    index("store_tax_profile_oss_member_state_idx").on(t.ossMemberState),
+    foreignKey({
+      name: "store_tax_profile_vat_check_fk",
+      columns: [t.storeId, t.vatNumberCheckId],
+      foreignColumns: [vatChecks.storeId, vatChecks.id],
+    }),
+    index("store_tax_profile_vat_check_idx").on(t.storeId, t.vatNumberCheckId),
+    check("store_tax_profile_vat_number", sql`${t.vatNumber} is null or ${t.vatNumber} ~ '^[A-Z]{2}[0-9A-Z+*.]{2,12}$'`),
+    check(
+      "store_tax_profile_vat_check",
+      sql`${t.vatNumber} is not null or (${t.vatNumberCheckId} is null and ${t.vatNumberCheckedAt} is null and ${t.vatNumberValid} is null)`,
+    ),
+    check("store_tax_profile_dispatch", sql`${t.dispatchCountry} is null or ${t.dispatchCountry} ~ '^[A-Z]{2}$'`),
+    check("store_tax_profile_oss_scheme", sql`${t.ossScheme} in ('none', 'union', 'non_union')`),
+    check("store_tax_profile_oss_union", sql`${t.ossScheme} <> 'union' or ${t.ossMemberState} is not null`),
+    check(
+      "store_tax_profile_oss_number",
+      sql`${t.ossNumber} is null or (${t.ossScheme} = 'non_union' and ${t.ossNumber} ~ '^EU[0-9]{9}$')`,
+    ),
+    check("store_tax_profile_ioss_number", sql`${t.iossNumber} is null or ${t.iossNumber} ~ '^IM[0-9]{10}$'`),
+    check("store_tax_profile_ioss_intermediary", sql`${t.iossIntermediary} is null or length(${t.iossIntermediary}) between 1 and 120`),
+  ],
+);
+
+/**
+ * Every answer to "is this VAT number valid?" (D157): a buyer's at the cart, the seller's on the tax screen. VIES
+ * (the Commission's service) or Brønnøysundregistrene for a Norwegian number. An audit log and the 24-hour cache; also
+ * what the rate limit counts. Immutable (a trigger refuses an update); an unused row is pruned after 30 days by
+ * `pruneVatChecks()` in application code, a used one (an order, a cart or the profile points at it) is kept by the
+ * foreign keys. Never copied, never public: the name and address are VIES's and for staff only.
+ */
+export const vatChecks = commerce.table(
+  "vat_checks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    /** `buyer` (typed at the cart) or `seller` (the store's own number). */
+    purpose: text("purpose").notNull(),
+    /** The cart a buyer's check was made for; no foreign key (carts expire; the rate limit counts by it). */
+    cartId: uuid("cart_id"),
+    /** Normalised, with the country prefix. */
+    number: text("number").notNull(),
+    countryPrefix: char("country_prefix", { length: 2 }).notNull(),
+    /** `valid`, `invalid`, or `unavailable` (the service did not answer: never exempts, never blocks). */
+    status: text("status").notNull(),
+    /** `vies` or `brreg`. */
+    source: text("source").notNull(),
+    /** What the registry holds for the number; null where it does not say. */
+    name: text("name"),
+    address: text("address"),
+    /** VIES's consultation number, the seller's proof of the check, when the request carried the seller's own number. */
+    requestIdentifier: text("request_identifier"),
+    /** A short code for an `unavailable` answer. */
+    error: text("error"),
+    requestedAt: timestamp("requested_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("vat_checks_store_id_key").on(t.storeId, t.id),
+    index("vat_checks_number_idx").on(t.storeId, t.number, t.requestedAt.desc()),
+    index("vat_checks_cart_idx").on(t.storeId, t.cartId, t.requestedAt),
+    check("vat_checks_purpose", sql`${t.purpose} in ('buyer', 'seller')`),
+    check("vat_checks_status", sql`${t.status} in ('valid', 'invalid', 'unavailable')`),
+    check("vat_checks_source", sql`${t.source} in ('vies', 'brreg')`),
+    check("vat_checks_number", sql`${t.number} ~ '^[A-Z]{2}[0-9A-Z+*.]{2,12}$' and left(${t.number}, 2) = ${t.countryPrefix}`),
+    check("vat_checks_error", sql`${t.error} is null or length(${t.error}) <= 80`),
   ],
 );
 

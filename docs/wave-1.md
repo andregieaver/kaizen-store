@@ -12,7 +12,7 @@ rewrite. Every consumer-facing legal text is hand-written in nb, sv, da and en a
 
 | Unit | Rows closed |
 |---|---|
-| **1a** Tax profile and VAT engine | `checkout.eu-vat-by-destination-vat-inclusive-prices-reduced-rates`, `checkout.b2b-vat-id-reverse-charge-exemption`, part of `checkout.oss-and-ioss-support` and `international.ioss` (the number and the marking) |
+| **1a** Tax profile and VAT engine | `checkout.eu-vat-by-destination-vat-inclusive-prices-reduced-rates` (also 1b for the invoice and 1c for the report and reconciliation), `checkout.b2b-vat-id-reverse-charge-exemption`, part of `checkout.oss-and-ioss-support` and `international.ioss` (the number and the marking) |
 | **1b** Invoices and credit notes | `orders.invoices-and-vat-receipts-for-orders`, `orders.credit-notes-for-refunds`, `international.legal-invoices-and-credit-notes-for-orders` |
 | **1c** VAT, OSS and IOSS reports | `analytics.tax-and-vat-reports-by-rate-and-jurisdiction`, the reports of `checkout.oss-and-ioss-support` and `international.ioss` |
 | **1d** Unit price | `international.unit-price-indication` |

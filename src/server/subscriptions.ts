@@ -8,6 +8,7 @@ import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { vatIncluded } from "@/lib/checkout";
 import { shownOptions, t } from "@/lib/i18n";
 import { parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
+import { parseShippingVatRule, shippingRate } from "@/lib/shipping-vat";
 import type { PaymentModeName } from "@/lib/stripe-account";
 import {
   MAX_PAUSE_PERIODS,
@@ -323,6 +324,24 @@ export async function renewSubscription(storeId: string, invoice: Stripe.Invoice
     `);
     if (done) return String(done.order_id);
 
+    // The VAT of a renewal is the rate in force on the day it renews (D157), not the one the subscription started with: the
+    // amount Stripe charges does not change (prices include VAT), so the VAT part of it does. Shipping takes the shipping
+    // rule's rate (the standard rate unless a person verified another for the country). A renewal never has a reverse charge:
+    // the buyer's VAT number is not kept on a subscription.
+    const lineRates = await tx.execute<Row>(sql`
+      select l.id, l.total_minor, coalesce(commerce.vat_rate(${sub.market_code}, p.vat_category), l.tax_rate) as rate
+      from commerce.subscription_lines l
+      left join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
+      left join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+      where l.store_id = ${storeId}::uuid and l.subscription_id = ${sub.id}::uuid
+    `);
+    const [place] = await tx.execute<Row>(sql`
+      select commerce.vat_rate(${sub.market_code}, 'standard') as standard_rate, commerce.shipping_vat_rule(${sub.market_code}) as shipping_rule
+    `);
+    const shipRate = shippingRate(parseShippingVatRule(place?.shipping_rule), lineRates.map((r) => Number(r.rate)), Number(place?.standard_rate ?? 0));
+    const taxOf = new Map(lineRates.map((r) => [String(r.id), { rate: Number(r.rate), tax: vatIncluded(Number(r.total_minor), Number(r.rate)) }]));
+    const renewalTax = [...taxOf.values()].reduce((sum, line) => sum + line.tax, 0) + vatIncluded(Number(sub.shipping_minor), shipRate);
+
     const [numbered] = await tx.execute<Row>(sql`
       select s.prefix || commerce.next_document_number(${storeId}::uuid, 'order')::text as number
       from commerce.document_series s
@@ -333,33 +352,35 @@ export async function renewSubscription(storeId: string, invoice: Stripe.Invoice
         store_id, number, market_code, currency, locale, email, status,
         subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
         billing_address, shipping_address, digital_consent_at, subscription_id, customer_id,
-        return_cost_payer, standard_shipping_minor
+        return_cost_payer, standard_shipping_minor, shipping_tax_rate
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${sub.market_code}, ${sub.currency}, ${sub.locale},
         ${sub.email}, 'pending_payment',
-        ${sub.subtotal_minor}, ${sub.shipping_minor}, 0, ${sub.tax_minor}, ${sub.total_minor},
+        ${sub.subtotal_minor}, ${sub.shipping_minor}, 0, ${renewalTax}, ${sub.total_minor},
         ${JSON.stringify(sub.billing_address ?? {})}::jsonb, ${JSON.stringify(sub.shipping_address ?? {})}::jsonb,
         ${sub.digital_consent_at ?? null}::timestamptz, ${sub.id}::uuid, ${sub.customer_id ?? null}::uuid,
-        ${sub.return_cost_payer ?? null}, ${sub.standard_shipping_minor ?? null}::bigint
+        ${sub.return_cost_payer ?? null}, ${sub.standard_shipping_minor ?? null}::bigint, ${shipRate}
       )
       returning id
     `);
     const orderId = String(order.id);
-    await tx.execute(sql`
-      insert into commerce.order_lines (
-        store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
-        total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
-        selling_plan_id, plan_interval, plan_interval_count, unit_cost_minor
-      )
-      select l.store_id, ${orderId}::uuid, l.variant_id, l.sku, l.title, l.quantity, l.unit_price_minor, 0,
-             l.total_minor, round(l.total_minor * l.tax_rate / (1 + l.tax_rate))::bigint, l.tax_rate, l.tax_code,
-             case when l.delivery = 'digital' then 'digital_content' else 'none' end::commerce.withdrawal_exclusion,
-             l.delivery, l.selling_plan_id, ${sub.interval}::commerce.plan_interval, ${sub.interval_count},
-             v.cost_minor
-      from commerce.subscription_lines l
-      left join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
-      where l.store_id = ${storeId}::uuid and l.subscription_id = ${sub.id}::uuid
-    `);
+    for (const [lineId, line] of taxOf) {
+      await tx.execute(sql`
+        insert into commerce.order_lines (
+          store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
+          total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
+          selling_plan_id, plan_interval, plan_interval_count, unit_cost_minor
+        )
+        select l.store_id, ${orderId}::uuid, l.variant_id, l.sku, l.title, l.quantity, l.unit_price_minor, 0,
+               l.total_minor, ${line.tax}, ${line.rate}, l.tax_code,
+               case when l.delivery = 'digital' then 'digital_content' else 'none' end::commerce.withdrawal_exclusion,
+               l.delivery, l.selling_plan_id, ${sub.interval}::commerce.plan_interval, ${sub.interval_count},
+               v.cost_minor
+        from commerce.subscription_lines l
+        left join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
+        where l.store_id = ${storeId}::uuid and l.id = ${lineId}::uuid
+      `);
+    }
     await tx.execute(sql`
       insert into commerce.payments (
         store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status
@@ -649,7 +670,9 @@ export async function changeSubscriptionContents(
       select amount_minor, free_over_minor from commerce.shipping_rates
       where store_id = ${storeId}::uuid and market_code = ${sub.marketCode}
     `),
-    db().execute<Row>(sql`select standard_vat_rate from commerce.countries where code = ${sub.marketCode}`),
+    db().execute<Row>(sql`
+      select commerce.vat_rate(${sub.marketCode}, 'standard') as standard_rate, commerce.shipping_vat_rule(${sub.marketCode}) as shipping_rule
+    `),
   ]);
   if (!rate && lines.some((line) => line.delivery === "physical")) return { ok: false, problem: "not_allowed" };
   const shipping = basketShipping(
@@ -661,9 +684,10 @@ export async function changeSubscriptionContents(
         }
       : null,
   ).renewal;
-  const vatRate = Number(country?.standard_vat_rate ?? 0);
+  // Shipping takes the standard rate unless a person verified another rule for the country (D157).
+  const vatRate = shippingRate(parseShippingVatRule(country?.shipping_rule), lines.map((line) => line.taxRate), Number(country?.standard_rate ?? 0));
   const subtotal = lines.reduce((sum, line) => sum + line.totalMinor, 0);
-  // Each line keeps its rate (a swap stays within one product, D65); shipping takes the standard rate.
+  // Each line keeps its rate (a swap stays within one product, D65).
   const tax = lines.reduce((sum, line) => sum + vatIncluded(line.totalMinor, line.taxRate), 0) + vatIncluded(shipping, vatRate);
 
   try {

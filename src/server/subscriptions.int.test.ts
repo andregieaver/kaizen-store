@@ -259,6 +259,34 @@ describe("a subscription's life", () => {
     ).toBeNull();
   });
 
+  it("takes each line's VAT at the rate in force on the day it renews, and shipping's at the standard rate (D157)", async () => {
+    // A category of this run's own with a rate of 10 % in Norway: the seeded rates are shared and never changed by a test.
+    const category = `r${run}`.slice(0, 20);
+    await db().execute(sql`insert into commerce.vat_categories (code, name_en, sort, active) values (${category}, 'Renewal test', 997, true)`);
+    await db().execute(sql`select commerce.set_vat_rate('NO', ${category}, 0.10, date '2026-01-01', 'Kaizen test data, not a rate', date '2026-10-03', '', null)`);
+    await db().execute(sql`update commerce.products set vat_category = ${category} where store_id = ${storeId}::uuid and handle = 'demo-notatbok'`);
+    try {
+      const renewal = await renewSubscription(storeId, {
+        id: `in_rate_${run}`,
+        billing_reason: "subscription_cycle",
+        amount_paid: 21510,
+        parent: { subscription_details: { subscription: reference } },
+        lines: { data: [{ period: { end: 1_905_000_000 } }] },
+      } as unknown as Stripe.Invoice);
+      const [order] = await db().execute<Row>(sql`select tax_minor, shipping_minor, total_minor, shipping_tax_rate, vat_kind from commerce.orders where id = ${renewal}::uuid`);
+      const [line] = await db().execute<Row>(sql`select total_minor, tax_minor, tax_rate from commerce.order_lines where order_id = ${renewal}::uuid`);
+      // The amount charged is unchanged (prices include VAT); the VAT part of it is the rate's of the day.
+      expect(Number(line.tax_rate)).toBe(0.1);
+      expect(Number(line.tax_minor)).toBe(Math.round((Number(line.total_minor) * 0.1) / 1.1));
+      expect(Number(order.shipping_tax_rate)).toBe(0.25);
+      expect(Number(order.tax_minor)).toBe(Number(line.tax_minor) + Math.round((Number(order.shipping_minor) * 0.25) / 1.25));
+      expect(Number(order.total_minor)).toBe(21510);
+      expect(order.vat_kind).toBe("standard");
+    } finally {
+      await db().execute(sql`update commerce.products set vat_category = 'standard' where store_id = ${storeId}::uuid and handle = 'demo-notatbok'`);
+    }
+  });
+
   it("follows cancellation in Stripe", async () => {
     const stripeSub = (fields: Record<string, unknown>) =>
       ({ id: reference, metadata: {}, items: { data: [{ current_period_end: 1_902_600_000 }] }, ...fields }) as unknown as Stripe.Subscription;

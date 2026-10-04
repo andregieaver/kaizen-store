@@ -318,6 +318,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["return window", "withdrawal", "return policy", "return address", "who pays return shipping", "refund when", "instructions", "angrerett"],
     tasks: ["Set the return window", "Choose who pays for return shipping", "Write the return instructions", "Translate the return instructions"],
   }),
+  store("tax", "/settings/tax", "Tax settings", "Sales", "How the store charges VAT: its VAT registration and number (checked in VIES, or the Norwegian register), where goods are sent from, its OSS and IOSS registrations, and what is on or missing for reverse charge and IOSS.", {
+    needs: "owner",
+    keywords: ["vat", "mva", "moms", "vat number", "reverse charge", "oss", "ioss", "one stop shop", "vies", "tax", "registration"],
+    tasks: ["Save the store's VAT number", "Check the VAT number", "Record an OSS or IOSS registration", "See what is missing for reverse charge"],
+  }),
   store("payments", "/settings/payments", "Payments", "Sales", "Stripe: the store's accounts in test and live, going live, and invoices for orders.", {
     needs: "owner",
     keywords: ["stripe", "card", "go live", "payouts"],
@@ -533,6 +538,11 @@ const PAGES: readonly AdminPage[] = [
   platform("experiments", "/experiments", "A/B tests", "Platform", "Every store's A/B tests, read-only: what is running, which need a look (a version lowering orders, visitors nobody sees, a test past its end or forgotten) and what waits for a decision.", {
     keywords: ["experiment", "a/b", "test", "split", "guardrail"],
   }),
+  platform("vat", "/vat", "VAT", "Platform", "VAT for every store: the categories owners choose from, each country's rate per category with its history, source and verification, the rates nobody has verified yet, the coverage by country and how shipping is taxed.", {
+    keywords: ["tax", "rates", "reduced rate", "mva", "moms", "category", "shipping vat", "verify", "oss", "ioss"],
+    tasks: ["Set a country's rate for a category", "Mark a rate verified", "Add a VAT category", "Set how shipping is taxed in a country"],
+  }),
+  platform("vat.country", "/vat/[country]", "VAT by country", "Platform", "One country's VAT: the rate of every category with its full history, the way shipping is taxed there and a form to set a rate."),
   platform("search-test", "/search-test", "Search test", "Platform", "The search experiment: keyword against hybrid search.", { keywords: ["experiment", "a/b"] }),
   platform("assistant", "/assistant", "AI manager", "Platform", "The platform's AI manager: conversations and what it has learned about you.", {
     keywords: ["assistant", "ai", "memory"],

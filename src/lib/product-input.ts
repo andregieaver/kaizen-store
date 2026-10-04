@@ -7,7 +7,7 @@ import { minorUnitDigits } from "./money";
 import { isPictureAddress } from "./picture-address";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 import { termIdsSchema } from "./taxonomy";
-import { VAT_CATEGORIES } from "./vat";
+import { VAT_CATEGORY_CODE } from "./vat";
 import {
   MAX_DISCOUNT_PERCENT,
   MAX_INTERVAL_COUNT,
@@ -318,7 +318,7 @@ export const productInput = z.object({
   /** In stores selling to both (B2B): for everyone, only private shoppers or only businesses. */
   audience: z.enum(PRODUCT_AUDIENCES).default("all"),
   /** Which VAT rate it takes (D65). */
-  vatCategory: z.enum(VAT_CATEGORIES).default("standard"),
+  vatCategory: z.string().regex(VAT_CATEGORY_CODE, "Choose a VAT category.").default("standard"),
   /** Goods, or an appointment booked for a time (D65), with how it is booked. */
   kind: z.enum(PRODUCT_KINDS).default("goods"),
   appointment: appointmentInput.nullable().default(null),

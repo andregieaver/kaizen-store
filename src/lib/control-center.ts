@@ -40,6 +40,8 @@ export type StoreFigures = {
    * withdrawals whose acknowledgement was not sent, and return requests waiting for an answer.
    */
   returns?: ReturnFigures;
+  /** What is wrong with the store's tax profile (D157, `checkupFindings()`), only when something is: for its owner. */
+  tax?: string[];
 };
 
 export type ReturnFigures = { overdue: number; unacknowledged: number; requested: number };
@@ -99,6 +101,10 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
         href: `${base}/returns?status=requested`,
         action: "Answer",
       });
+    }
+    // A VAT number nobody has checked, or an IOSS or OSS registration left half done (D157): only an owner can change them.
+    if (owner && s.tax && s.tax.length > 0) {
+      items.push({ text: `${s.name}: the tax settings need a look. ${s.tax.join(" ")}`, href: `${base}/settings/tax`, action: "Open tax settings" });
     }
     if (s.outOfStock > 0) items.push({ text: `${s.name}: ${plural(s.outOfStock, "product is", "products are")} out of stock.`, href: `${base}/products`, action: "Open products" });
     else if (s.lowStock > 0) items.push({ text: `${s.name}: ${plural(s.lowStock, "product is", "products are")} running low.`, href: `${base}/products`, action: "Open products" });

@@ -128,7 +128,7 @@ const lineExVat = (col: string) => sql.raw(`(case when ${col} > 0 then round(${c
 async function readTrendRows(store: Store, window: Pick<AnalyticsPeriod, "from" | "to">): Promise<Row[]> {
   return setBased<Row>(sql`
     select to_char(o.placed_at at time zone ${store.timeZone}, 'YYYY-MM') as month,
-      (o.discount_minor > 0 or o.discount_code_id is not null) as discounted, trim(o.currency) as currency, count(*)::int as orders
+      (o.discount_minor - o.vat_relief_minor > 0 or o.discount_code_id is not null) as discounted, trim(o.currency) as currency, count(*)::int as orders
     from commerce.orders o
     where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, window)}
     group by 1, 2, 3
@@ -145,7 +145,7 @@ async function readOrderRows(store: Store, period: Pick<AnalyticsPeriod, "from" 
     with po as materialized (
       select o.id, trim(o.currency) as currency, (o.total_minor - o.tax_minor) as revenue,
         to_char(o.placed_at at time zone ${store.timeZone}, 'YYYY-MM') as month,
-        (o.discount_minor > 0 or o.discount_code_id is not null) as discounted
+        (o.discount_minor - o.vat_relief_minor > 0 or o.discount_code_id is not null) as discounted
       from commerce.orders o
       where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
     ),
@@ -157,7 +157,7 @@ async function readOrderRows(store: Store, period: Pick<AnalyticsPeriod, "from" 
     by_line as (
       select po.month, po.discounted, po.currency,
         sum(round(ol.unit_price_minor::numeric * ol.quantity / (1 + ol.tax_rate))) as gross,
-        sum(${lineExVat("ol.discount_minor")}) as disc
+        sum(${lineExVat("(ol.discount_minor - ol.vat_relief_minor)")}) as disc
       from po
       join commerce.order_lines ol on ol.order_id = po.id
       where ol.store_id = ${store.id}::uuid
@@ -171,10 +171,10 @@ async function readOrderRows(store: Store, period: Pick<AnalyticsPeriod, "from" 
 
 /** A discount's kinds over the period's paid orders, by currency: what each took off without VAT, and how many orders had it. */
 async function readKinds(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  const code = "ol.discount_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor";
+  const code = "ol.discount_minor - ol.vat_relief_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor";
   return setBased<Row>(sql`
     select trim(o.currency) as currency,
-      sum(${lineExVat("ol.discount_minor")}) as total,
+      sum(${lineExVat("(ol.discount_minor - ol.vat_relief_minor)")}) as total,
       sum(${lineExVat("ol.member_discount_minor")}) as member,
       sum(${lineExVat("ol.campaign_discount_minor")}) as campaign,
       sum(${lineExVat("ol.referral_discount_minor")}) as referral,
@@ -212,7 +212,7 @@ async function readCoupons(store: Store, period: AnalyticsPeriod): Promise<Row[]
     by_line as (
       select po.code, po.currency,
         sum(round(ol.unit_price_minor::numeric * ol.quantity / (1 + ol.tax_rate))) as gross,
-        sum(${lineExVat("greatest(ol.discount_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor, 0)")}) as code_off
+        sum(${lineExVat("greatest(ol.discount_minor - ol.vat_relief_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor, 0)")}) as code_off
       from po
       join commerce.order_lines ol on ol.order_id = po.id
       where po.code is not null and ol.store_id = ${store.id}::uuid

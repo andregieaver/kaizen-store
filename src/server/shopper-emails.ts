@@ -9,7 +9,7 @@ import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
-import { emailText, orderBonusEarned, orderBonusRows, orderReferralRows, type EmailText } from "@/lib/email-text";
+import { emailText, orderBonusEarned, orderBonusRows, orderReferralRows, orderVatParagraph, orderVatReliefRows, refundVatNote, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
 import { t, type Messages } from "@/lib/i18n";
 import { conversionFor, localizationOf } from "@/lib/localization";
@@ -155,6 +155,8 @@ function orderLines(
       // The friend's welcome discount (D131) and the bonus credits used (D130), after the discounts.
       ...orderReferralRows(text, order.referralDiscountMinor, money),
       ...orderBonusRows(text, order.bonus, money),
+      // The VAT a reverse-charge order did not charge (D157), the last thing taken off, so the rows add up to the total.
+      ...orderVatReliefRows(order.locale.split("-")[0], order, money),
       { label: text.total, value: money(order.totalMinor), strong: true },
       { label: text.vat, value: money(order.taxMinor), muted: true },
       // Paid at the appointment (D66): what is still to pay there.
@@ -253,6 +255,8 @@ export async function sendOrderConfirmation(
     { type: "heading", text: text.orderHeading },
     { type: "paragraph", text: renewal ? text.renewalIntro(order.number) : text.orderIntro(order.number) },
     orderLines(order, text, m, money, storeSiteUrl(store.slug)),
+    // Reverse charge or IOSS (D157): the statement, with both VAT numbers or the IOSS number. The shopper's own email.
+    ...[orderVatParagraph(order.locale.split("-")[0], order)].flatMap((vat) => (vat ? [{ type: "paragraph" as const, text: vat }] : [])),
     // The credits this order earned (D130), once it is paid: when they can be used.
     ...[orderBonusEarned(text, order.bonus, money, (iso) => new Date(iso).toLocaleDateString(market.locale, { dateStyle: "long" }))].flatMap((earned) =>
       earned ? [{ type: "paragraph" as const, text: earned }] : [],
@@ -385,7 +389,8 @@ export function sendRefunded(storeId: string, orderId: string, refundId: string,
   return orderNotice(storeId, orderId, "order.refunded", `order-refunded:${refundId}`, ({ order, text, money, store }) => ({
     subject: text.refundSubject(store.name, order.number),
     heading: text.refundHeading,
-    intro: text.refundIntro(money(amountMinor), order.number),
+    // An order whose VAT was not charged (reverse charge, D157) is refunded without VAT, and the email says so.
+    intro: [text.refundIntro(money(amountMinor), order.number), refundVatNote(order.locale.split("-")[0], order)].filter(Boolean).join(" "),
   }));
 }
 

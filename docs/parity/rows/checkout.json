@@ -749,7 +749,7 @@
       "was": null
     },
     "weight": 5,
-    "gap": "`commerce.vat_rate(country, category)` takes the country's standard rate, or accommodation's reduced rate where a row exists, or none for exempt (D65). The database refuses any other category (`vat_rates_category` allows only 'accommodation', held by a test), so no reduced rates for food, books or children's items; rates and categories are not editable in the admin; standard and accommodation rates are marked 'to verify with an accountant' in migrations; Stripe Tax is not used. No VAT-by-country-and-rate report or OSS export; orders keep `tax_minor` but not a per-country, per-rate summary. One row for the one Shopify feature (it replaces international.eu-vat-per-country-rates-oss-ready).",
+    "gap": "Unit 1a (D157 proposed, docs/wave-1a-tax.md) built criteria 1 to 4 and the audit half of 6: `commerce.vat_categories` (standard, exempt, accommodation, food, books, periodicals, medicines, culture_events, children_goods; the product's category is a foreign key), `commerce.vat_rates` with validity dates, source, checked-on date and a verified flag, written only by `commerce.set_vat_rate()` (a period ends, a new one begins, audit-logged) and read only through `commerce.vat_rate(country, category, at)` (`vat-readers.test.ts` scans the source), a per-country shipping VAT rule that only applies once a person has verified it, the product editor's category select, and the platform page `/admin/platform/vat`. Tests: `src/db/vat.test.ts`, `vat-admin.int.test.ts`, and `checkout-kinds.int.test.ts` (each category, a mixed basket, in the market's currency and in euro view, `cartSummary()` equal to `placeOrder()`, a rate change that leaves placed orders alone). Still missing: (1) criterion 5, the VAT report per country and rate as CSV in an OSS return's layout with refunds netted, and the reconciliation half of criterion 6 (report equals the sum of `tax_minor`, leaves out copied and host orders) are unit 1c; (2) 'the invoice takes that country's rate' in criterion 1 is unit 1b; (3) the rate data is thin and unverified: besides the 28 standard rates only Norway, Sweden, Finland and Germany have reduced rows for food, books, periodicals and culture (13 reduced-rate rows in all, none for medicines or children's goods, plus three accommodation rows), every row is unverified (no person has checked it against TEDB or with an accountant; the TEDB was not readable), and a country with no row charges the standard rate, so a French or Spanish food product is taxed at the standard rate until a platform admin enters the rate; (4) every shipping VAT rule is the standard one, none verified; (5) the platform VAT page, the tax screen and the product editor's select were checked by render tests and action tests but no browser test opens them; (6) the catalogue's cached VAT label can lag a scheduled rate change by up to the cache lifetime between the country's midnight and the daily 07:00 UTC job. Stripe Tax is not used.",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -763,22 +763,44 @@
     "evidence": {
       "files": [
         "src/lib/vat.ts",
+        "src/lib/shipping-vat.ts",
+        "src/lib/vat-relief.ts",
+        "src/server/vat-admin.ts",
+        "src/server/vat-categories.ts",
+        "src/server/checkout.ts",
+        "src/server/cart-summary.ts",
+        "src/server/catalog.ts",
+        "src/db/schema.ts",
+        "src/components/admin/vat-category-field.tsx",
+        "src/app/admin/(gated)/platform/vat/page.tsx",
+        "supabase/migrations/20261003193641_tax_engine.sql",
+        "supabase/migrations/20261003193902_tax_engine_rules.sql",
         "supabase/migrations/20260926205250_vat_categories.sql",
         "supabase/migrations/20260926205252_vat_categories_rules.sql",
-        "src/server/checkout.ts",
-        "src/db/schema.ts",
-        "src/server/catalog.ts"
+        "docs/wave-1a-tax.md"
       ],
       "tests": [
+        "src/db/vat.test.ts",
         "src/db/commerce.test.ts",
-        "src/server/checkout.int.test.ts"
+        "src/lib/vat.test.ts",
+        "src/lib/shipping-vat.test.ts",
+        "src/lib/vat-relief.test.ts",
+        "src/lib/vat-readers.test.ts",
+        "src/server/vat-admin.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/checkout.int.test.ts",
+        "src/server/products.int.test.ts",
+        "src/server/subscriptions.int.test.ts",
+        "src/components/admin/vat/vat-cards.test.ts",
+        "src/components/admin/vat-category-field.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D16",
       "D63",
-      "D65"
+      "D65",
+      "D157"
     ],
     "history": []
   },
@@ -794,12 +816,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 4,
-    "gap": "No OSS or IOSS number is stored, there is no VAT-by-country-and-rate report and no export for the return; only an analysis of the options in docs/plan.md.",
+    "gap": "Unit 1a (D157 proposed) records the registration and marks the order: `commerce.store_tax_profile` holds the VAT registration, the OSS scheme (Union with its member state, or non-Union with its EU number) and the IOSS number, intermediary, markets and date, with format checks, owners only, audited without the numbers' values, edited at `/admin/{store}/settings/tax` with a readiness list and plain-words warnings, numbers blanked by `duplicate_store()`; checkout already charges destination VAT on every consumer sale, and a consignment of at most 150 EUR sent from outside the EU to a private buyer in a listed market is marked `vat_kind = 'ioss'` with the IOSS number on the order, page and email (price unchanged); above 150.00 EUR, a business buyer, a market not listed, a store sending from inside the EU, downloads, and a currency with no euro rate are not marked. Tests: `tax-profile.test.ts`, `tax-profile.int.test.ts`, `ioss.test.ts`, `vat-engine.int.test.ts` (IOSS in euro and koruna views). Still missing: (1) criterion 2, the quarterly OSS and monthly IOSS reports as CSV, and criterion 4's refund reducing a period's VAT in a report: unit 1c; (2) the 'and invoice' half of criterion 3: Kaizen's own invoice is unit 1b; (3) the OSS registration is recorded and shown but changes nothing in checkout (destination VAT was already the rule; the 10,000 EUR threshold and the origin-country rule are not applied, said on the screen); (4) bucket B: live only with an OSS or IOSS registration the owner holds, the number's validity is not checked against any register; (5) the tax screen was checked by render and action tests, no browser test opens it; (6) the IOSS statement and import notice are hand-written and unreviewed, and what counts as intrinsic value for the 150 EUR test is an open question for an accountant.",
     "bucket": "B",
     "wave": 1,
     "criteria": [
@@ -810,13 +832,47 @@
     ],
     "evidence": {
       "files": [
-        "docs/plan.md"
+        "src/lib/tax-profile.ts",
+        "src/lib/ioss.ts",
+        "src/lib/vat-treatment.ts",
+        "src/lib/vat-text.ts",
+        "src/server/tax-profile.ts",
+        "src/server/tax-treatment.ts",
+        "src/server/tax-attention.ts",
+        "src/components/admin/tax-profile-form.tsx",
+        "src/components/order-vat.tsx",
+        "src/app/admin/(gated)/[store]/settings/tax/page.tsx",
+        "src/db/schema.ts",
+        "supabase/migrations/20261003193641_tax_engine.sql",
+        "supabase/migrations/20261003193902_tax_engine_rules.sql",
+        "docs/wave-1a-tax.md"
       ],
-      "tests": [],
+      "tests": [
+        "src/lib/tax-profile.test.ts",
+        "src/lib/ioss.test.ts",
+        "src/lib/vat-treatment.test.ts",
+        "src/lib/order-vat.test.ts",
+        "src/lib/email-vat.test.ts",
+        "src/server/tax-profile.int.test.ts",
+        "src/server/tax-attention.int.test.ts",
+        "src/server/vat-engine.int.test.ts",
+        "src/server/vat-money-review.int.test.ts",
+        "src/components/admin/tax-profile-form.test.ts",
+        "src/db/vat.test.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D157"
+    ],
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "missing",
+        "to": "partial",
+        "why": "Unit 1a (docs/wave-1a-tax.md): read the code and ran tax-profile, ioss, vat-engine and vat-money-review tests: the OSS and IOSS registration is stored with format and market rules, and an order of at most 150 EUR from outside the EU is marked IOSS in the running cart and order (150.00 yes, 150.01 no, no euro rate no). Kept partial and not Full: the OSS and IOSS reports (1c) and the invoice marking (1b) do not exist, and bucket B needs a registration the owner holds."
+      }
+    ]
   },
   {
     "id": "checkout.b2b-vat-id-reverse-charge-exemption",
@@ -830,12 +886,12 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "D63: every order charges the market's VAT, no reverse charge; no EU VAT ID field at checkout and no VIES check. Reverse charge exists only in the Work module's invoices. One row for the one Shopify feature (it replaces international.b2b-vat-id-validation-and-reverse-charge).",
+    "gap": "Unit 1a (D157 proposed) built the checkout side: a business in another EU country enters its VAT number in the cart's `cart_checkout` piece, `src/server/vies.ts` checks it (one constant host, an injectable fetch, 4 s, one retry, a 24-hour cache in `commerce.vat_checks`, limits taken atomically), and `vatTreatment()` (pure, one reason code per refusal) decides; a valid number for the delivery country takes the VAT off (`orders.vat_kind = 'reverse_charge'`, the VAT not charged is `vat_relief_minor` inside the discount, the total is exactly the old total minus the old tax), the check, number and time are kept on the order, Stripe is sent the net amounts, and the order page, the confirmation email and the staff order page say 'Reverse charge' with both numbers in nb, sv, da and en. A VIES failure, a stale check, an invalid number, a consumer, the seller's own country, a seller number not checked valid, a booking, a subscription, a host's listing, goods sent from outside the EU or from the delivery country all charge VAT with the reason said. Tests: `vat-treatment.test.ts` (matrix), `vat-engine.int.test.ts` (cart equals order, Stripe lines equal the amount due, euro and koruna views, with a code, a campaign, a group discount and credits), `vies.test.ts`, `vat-security.int.test.ts`, `e2e/vat-reverse-charge.spec.ts` (valid takes the VAT off, a 503 charges VAT, own country shows no field). Still missing: (1) the invoice criterion is satisfied only by Kaizen's own invoice, unit 1b; until then no document says 'reverse charge', only the order page and email; (2) VIES was never called live: every test uses an injected fetch or the stub server, so the live service's answers are known only from its published specification read on 2026-10-03; (3) the e2e does not press Checkout (a test database has no Stripe), the payment step is held by the integration tests against a fake Stripe; (4) the store's tax screen was checked by render and action tests, no browser test opens it; (5) the reverse-charge wording and the VAT-number texts are hand-written and unreviewed (legal review), and open questions remain for an accountant (credits used at their VAT-inclusive value, downloads sold to a business in another member state, a per-location dispatch country); (6) a Norwegian store cannot use reverse charge and a non-EU buyer's number is never accepted (stated limits); (7) the exemption is given automatically on a valid registration: a buyer counts as a business when it types a company name and an organisation number, and VIES says only that the number is registered, not whose it is, so a private buyer who types any company and a third party's public VAT number gets the VAT taken off; the staff order page flags a VIES name that differs from the typed company, but only after the order, and nothing in code compares them; (8) the VIES limits bound the harm and do not remove it: a visitor with several addresses can spend the store's 60 requests an hour for shoppers (a client is held to 20, a cart to 10), after which real business buyers see 'could not be checked' and are charged VAT until the hour turns (said in docs/wave-1a-tax.md section 3.5).",
     "bucket": "A",
     "wave": 1,
     "criteria": [
@@ -846,19 +902,61 @@
     ],
     "evidence": {
       "files": [
-        "src/lib/b2b.ts",
-        "src/server/b2b.ts",
-        "src/server/companies.ts"
+        "src/lib/vat-treatment.ts",
+        "src/lib/vat-number.ts",
+        "src/lib/vies.ts",
+        "src/lib/vat-text.ts",
+        "src/lib/order-vat.ts",
+        "src/server/vies.ts",
+        "src/server/vat-checks.ts",
+        "src/server/tax-treatment.ts",
+        "src/server/checkout.ts",
+        "src/server/cart-summary.ts",
+        "src/components/vat-number-field.tsx",
+        "src/components/vat-notes.tsx",
+        "src/components/order-vat.tsx",
+        "src/components/admin/vat-treatment-panel.tsx",
+        "src/db/schema.ts",
+        "supabase/migrations/20261003193641_tax_engine.sql",
+        "supabase/migrations/20261003193902_tax_engine_rules.sql",
+        "e2e/vat-reverse-charge.spec.ts",
+        "e2e/fixtures/vies-stub.mjs",
+        "docs/wave-1a-tax.md"
       ],
       "tests": [
-        "src/server/companies.int.test.ts"
+        "src/lib/vat-treatment.test.ts",
+        "src/lib/vat-number.test.ts",
+        "src/lib/vies.test.ts",
+        "src/lib/vat-relief.test.ts",
+        "src/lib/vat-text.test.ts",
+        "src/lib/order-vat.test.ts",
+        "src/lib/email-vat.test.ts",
+        "src/lib/vat-readers.test.ts",
+        "src/server/vies.test.ts",
+        "src/server/tax-treatment.test.ts",
+        "src/server/vat-engine.int.test.ts",
+        "src/server/vat-security.int.test.ts",
+        "src/server/vat-money-review.int.test.ts",
+        "src/server/vat-actions.int.test.ts",
+        "src/components/vat-number-field.test.ts",
+        "src/components/admin/vat-treatment-panel.test.ts",
+        "src/db/vat.test.ts",
+        "e2e/vat-reverse-charge.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D63"
+      "D63",
+      "D157"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-03",
+        "from": "missing",
+        "to": "partial",
+        "why": "Unit 1a (docs/wave-1a-tax.md): read the code and ran vat-treatment, vies, vat-engine, vat-security and vat-money-review tests and e2e/vat-reverse-charge.spec.ts against the final tree: a valid VIES number for the delivery country takes the VAT off the cart and the order, the check is kept on the order, a VIES failure charges VAT and never blocks, order page and email say Reverse charge with both numbers. Kept partial: Kaizen's own invoice (1b) does not exist, VIES was never called live, and the legal wording is unreviewed."
+      }
+    ]
   },
   {
     "id": "checkout.b2b-payment-terms",

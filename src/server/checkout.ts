@@ -18,6 +18,7 @@ import { shownOptions, t } from "@/lib/i18n";
 import { parsePaymentMode, venuePart } from "@/lib/pay-later";
 import { GENERAL_TAX_CODE, parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import { campaignLabel, memberOffAfterCampaign } from "@/lib/campaigns";
+import type { OrderVatTreatment, VatKind } from "@/lib/vat-treatment";
 import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
@@ -28,6 +29,8 @@ import { holdRange, linePrice, rangePricing } from "./ranges";
 import { recordExperimentCart } from "./experiments";
 import { storeFeeBps } from "./billing";
 import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails";
+import { decideTax, loadTaxFacts } from "./tax-treatment";
+import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable } from "./cart";
 import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
@@ -80,8 +83,17 @@ export type PlacedOrder = {
   creditMinor: number;
   /** The friend's welcome discount (D131), in the order's currency: part of the same coupon. */
   referralMinor: number;
-  /** The VAT included in the total. */
+  /** The VAT included in the total (0 with reverse charge). */
   taxMinor: number;
+  /**
+   * Which VAT the order carries (D157): `standard`, `reverse_charge` (the VAT not charged, `vatReliefMinor`, is part of the
+   * order's discount, and the lines and the total are net) or `ioss`; `shippingReliefMinor` is the shipping's part of the
+   * relief. `treatment` is what the order keeps (both VAT numbers, the VIES answer), null for a host's order.
+   */
+  vatKind: VatKind;
+  vatReliefMinor: number;
+  shippingReliefMinor: number;
+  treatment: OrderVatTreatment | null;
   totalMinor: number;
   /** What is paid now, and what is left to pay at the venue (D66); they add up to the total. */
   dueNowMinor: number;
@@ -248,11 +260,10 @@ export async function placeOrder(
     // cart page has it (`cartSummary()`); a subscription pays the flat rate on each delivery (D25).
     const chosen = ships && !rhythm ? await chosenDelivery(tx, storeId, cartId, market) : null;
     if (ships && !rate && !chosen) return { ok: false, problem: "no_shipping" };
-    const [country] = await tx.execute<Row>(sql`
-      select standard_vat_rate from commerce.countries where code = ${market.code}
-    `);
-    // Shipping takes the standard rate; each line its product's (D65).
-    const vatRate = Number(country?.standard_vat_rate ?? 0);
+    // Which VAT the order carries (D157) rests on facts read here, with the cart's stored check of its VAT number: VIES is
+    // never asked while an order is placed. Each line takes its product's rate (D65); a fee without one, the standard rate.
+    const taxFacts = await loadTaxFacts(tx, { storeId, market, cartId });
+    const vatRate = taxFacts.standardRate;
 
     // Stays and rentals are priced by their nights' seasons, with a fee (D70).
     const ranged = lines.filter((l) => l.starts_at && (l.kind === "stay" || l.kind === "rental"));
@@ -309,6 +320,8 @@ export async function placeOrder(
         referral: 0,
         /** The part of the discount that is bonus credits (D130), taken off last. */
         bonus: 0,
+        /** The part of the discount that is VAT not charged (reverse charge, D157), taken off after everything else. */
+        relief: 0,
         /** What a campaign took off (D114), which one, and whether the line is a free product it gave. */
         campaign: 0,
         campaignId: null as string | null,
@@ -561,12 +574,35 @@ export async function placeOrder(
       });
     }
     const creditTotal = priced.reduce((sum, p) => sum + p.bonus, 0);
-    const discountAll = discountTotal + creditTotal;
+    // Which VAT the order carries (D157): the same decision the cart page made (`cartSummary()`), on what is left to pay
+    // after every discount and credit. With reverse charge the VAT not charged is the last part of each line's discount
+    // (and of the shipping's), so the lines and the total are net and the database's sums still add up.
+    const taxed = priced.map((p, i) => ({ p, i })).filter(({ p }) => !p.gift);
+    const taxOutcome = decideTax(taxFacts, {
+      lines: taxed.map(({ p, i }) => ({
+        key: String(i),
+        totalMinor: p.total,
+        rate: p.rate,
+        booking: p.line.kind !== "goods",
+        physical: p.delivery === "physical",
+        recurring: p.recurring,
+        host: Boolean(p.line.host_id),
+      })),
+      shippingMinor: shipping - shippingDiscount,
+      fees: fees.map((fee) => ({ amountMinor: fee.amount, rate: fee.rate })),
+      currency: market.currency,
+    });
+    const taxOfLine = new Map(taxOutcome.result.lines.map((line) => [line.key, line]));
+    priced.forEach((p, i) => {
+      const relief = taxOfLine.get(String(i))?.reliefMinor ?? 0;
+      p.relief = relief;
+      p.discount += relief;
+      p.total -= relief;
+    });
+    const shippingRelief = taxOutcome.result.shipping.reliefMinor;
+    const discountAll = discountTotal + creditTotal + taxOutcome.reliefMinor;
     // discountTotal already holds the welcome discount: it is part of each line's discount.
-    const tax =
-      priced.reduce((sum, p) => sum + vatIncluded(p.total, p.rate), 0) +
-      fees.reduce((sum, fee) => sum + vatIncluded(fee.amount, fee.rate), 0) +
-      vatIncluded(shipping - shippingDiscount, vatRate);
+    const tax = taxOutcome.taxMinor;
     const total = subtotal + shipping - discountAll;
 
     const [numbered] = await tx.execute<Row>(sql`
@@ -581,7 +617,8 @@ export async function placeOrder(
         billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
         company_name, organisation_number, balance_minor, host_id,
         member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label, credit_minor,
-        referral_discount_minor, delivery, standard_shipping_minor, return_cost_payer
+        referral_discount_minor, delivery, standard_shipping_minor, return_cost_payer,
+        vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, vat_check_id
       ) values (
         ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
         ${cartId}::uuid, '', 'pending_payment',
@@ -590,7 +627,9 @@ export async function placeOrder(
         ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid,
         ${memberTotal}, ${memberTotal > 0 ? member!.label : null}, ${memberTotal > 0 ? member!.percent : null},
         ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}, ${creditTotal}, ${referralTotal},
-        ${chosen ? JSON.stringify(chosen.delivery) : null}::jsonb, ${standardShipping}, ${returnCostPayer}
+        ${chosen ? JSON.stringify(chosen.delivery) : null}::jsonb, ${standardShipping}, ${returnCostPayer},
+        ${taxOutcome.decision.kind}, ${taxOutcome.reliefMinor}, ${taxOutcome.shippingRate},
+        ${taxOutcome.treatment ? JSON.stringify(taxOutcome.treatment) : null}::jsonb, ${taxFacts.buyerCheck?.id ?? null}::uuid
       )
       returning id
     `);
@@ -603,10 +642,10 @@ export async function placeOrder(
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
           selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
           campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor,
-          unit_cost_minor
+          unit_cost_minor, vat_relief_minor
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
-          ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${vatIncluded(p.total, p.rate)},
+          ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${taxOfLine.get(String(i))?.taxMinor ?? 0},
           ${p.rate}, ${String(p.line.tax_code)},
           ${lineWithdrawal(p.delivery, String(p.line.withdrawal_exclusion))}, ${p.delivery},
           ${p.recurring ? String(p.line.selling_plan_id) : null}::uuid,
@@ -614,7 +653,7 @@ export async function placeOrder(
           ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]},
           ${p.range && p.startsAt ? p.count : null},
           ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}, ${p.bonus}, ${p.referral},
-          ${p.line.cost_minor === null || p.line.cost_minor === undefined ? null : Number(p.line.cost_minor)}
+          ${p.line.cost_minor === null || p.line.cost_minor === undefined ? null : Number(p.line.cost_minor)}, ${p.relief}
         )
         returning id
       `);
@@ -657,7 +696,7 @@ export async function placeOrder(
       const renewing = priced.filter((p) => p.recurring);
       const renewalSubtotal = renewing.reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
       const renewalTax =
-        renewing.reduce((sum, p) => sum + vatIncluded(p.renewUnit * p.quantity, p.rate), 0) + vatIncluded(basket.renewal, vatRate);
+        renewing.reduce((sum, p) => sum + vatIncluded(p.renewUnit * p.quantity, p.rate), 0) + vatIncluded(basket.renewal, taxOutcome.shippingRate);
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.subscriptions (
           store_id, number, market_code, currency, locale, interval, interval_count, min_cycles,
@@ -757,6 +796,10 @@ export async function placeOrder(
         creditMinor: creditTotal,
         referralMinor: referralTotal,
         taxMinor: tax,
+        vatKind: taxOutcome.decision.kind,
+        vatReliefMinor: taxOutcome.reliefMinor,
+        shippingReliefMinor: shippingRelief,
+        treatment: taxOutcome.treatment,
         totalMinor: total,
         dueNowMinor: total - balance,
         balanceMinor: balance,
@@ -777,7 +820,7 @@ export async function placeOrder(
                   .filter(Boolean)
                   .join(" + "),
                 couponMinor:
-                  priced.reduce((sum, p, i) => sum + (lowered.has(i) ? 0 : p.discount), 0) +
+                  priced.reduce((sum, p, i) => sum + (lowered.has(i) ? 0 : p.discount - p.relief), 0) +
                   (rhythm ? shippingDiscount : 0),
               }
             : null,
@@ -893,6 +936,30 @@ const INTEGRATION_IDENTIFIER = "kaizen-storefront-qhwmzrtd";
 
 /** "Of which VAT" on the order invoice, in the shopper's language. */
 const VAT_LABELS: Record<string, string> = { nb: "Herav mva", sv: "Varav moms", da: "Heraf moms" };
+/**
+ * What a reverse-charge order's Stripe invoice says (D157): the words, the seller's and the buyer's VAT numbers and whom it
+ * is bought for, in four fields. The words are a legal statement (Directive 2006/112/EC Art. 226 point 11a asks for
+ * "Reverse charge" on the invoice): hand-written, never machine-translated, and need a lawyer's review (docs/wave-1a-tax.md
+ * section 8); languages other than these four show English. The invoice of Kaizen's own is unit 1b's.
+ */
+// legal: needs review
+const REVERSE_LABELS: Record<string, { words: string; seller: string; buyer: string; company: string }> = {
+  nb: { words: "Omvendt avgiftsplikt", seller: "Selgers mva-nr.", buyer: "Kjøpers mva-nr.", company: "Kjøper" },
+  sv: { words: "Omvänd skattskyldighet", seller: "Säljarens momsnr", buyer: "Köparens momsnr", company: "Köpare" },
+  da: { words: "Omvendt betalingspligt", seller: "Sælgers momsnr.", buyer: "Købers momsnr.", company: "Køber" },
+  en: { words: "Reverse charge", seller: "Seller VAT no.", buyer: "Buyer VAT no.", company: "Buyer" },
+};
+
+function reverseChargeFields(lang: string, order: Pick<PlacedOrder, "treatment" | "company">) {
+  const label = REVERSE_LABELS[lang] ?? REVERSE_LABELS.en;
+  return [
+    { name: label.words, value: "VAT 0" },
+    { name: label.seller, value: order.treatment?.sellerVatNumber ?? "-" },
+    { name: label.buyer, value: order.treatment?.buyerVatNumber ?? "-" },
+    ...(order.company ? [{ name: label.company, value: order.company.name.slice(0, 140) }] : []),
+  ];
+}
+
 const COMPANY_LABELS: Record<string, { name: string; number: string }> = {
   nb: { name: "Kjøper", number: "Org.nr." },
   sv: { name: "Köpare", number: "Org.nr" },
@@ -970,6 +1037,9 @@ export async function startCheckout(
     await cancelUnpaidOrder(orderId, "replaced by a new checkout");
   }
 
+  // A VAT number checked more than 24 hours ago (or that VIES could not answer) is asked again here, before the order is
+  // placed, and never while it is (D157); a failure only means VAT is charged. Never stops the checkout.
+  await refreshStaleCartCheck({ storeId: shop.storeId, market: shop.market }, cartId);
   const placed = await placeOrder(shop, cartId, consent, { customerId });
   if (!placed.ok) return placed;
   const { order } = placed;
@@ -1019,6 +1089,9 @@ export async function startCheckout(
     `);
   }
   const partial = order.balanceMinor > 0;
+  // Reverse charge (D157): Stripe is sent the order's own net amounts, each line at its amount due, no coupon (the discounts
+  // and the VAT not charged are inside them) and the shipping at its net amount, so what Stripe charges is `dueNowMinor`.
+  const reverse = order.vatKind === "reverse_charge";
   const depositLabel = t(shop.market.lang).booking.deposit;
   // Back to the store's own host once it has one (P7), whichever host the request came from.
   const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
@@ -1038,7 +1111,7 @@ export async function startCheckout(
     // A discount code (D31) reaches Stripe as a coupon for this checkout alone.
     // With a part paid at the venue, each line is sent as what is due now, discount included.
     const coupon =
-      !partial && order.discount && order.discount.couponMinor > 0
+      !partial && !reverse && order.discount && order.discount.couponMinor > 0
         ? await stripe.coupons.create(
             {
               amount_off: order.discount.couponMinor,
@@ -1057,7 +1130,7 @@ export async function startCheckout(
         metadata,
         ...(coupon && { discounts: [{ coupon: coupon.id }] }),
         integration_identifier: INTEGRATION_IDENTIFIER,
-        line_items: partial
+        line_items: partial || reverse
           ? order.lines
               .filter((line) => line.dueNowMinor > 0)
               .map((line) => ({
@@ -1121,7 +1194,7 @@ export async function startCheckout(
                 shipping_rate_data: {
                   type: "fixed_amount",
                   display_name: order.deliveryLabel ?? shippingLabel,
-                  fixed_amount: { amount: order.shippingMinor - order.shippingDiscountMinor, currency },
+                  fixed_amount: { amount: order.shippingMinor - order.shippingDiscountMinor - order.shippingReliefMinor, currency },
                 },
               },
             ],
@@ -1141,19 +1214,26 @@ export async function startCheckout(
               description: `Order ${order.number}`,
               metadata,
               ...(sellerLine && { footer: sellerLine }),
-              custom_fields: [
-                {
-                  name: VAT_LABELS[shop.market.lang] ?? "Incl. VAT",
-                  value: formatMoney(order.taxMinor, order.currency, shop.market.locale),
-                },
-                // Bought for a business (B2B): whom for, as the invoice must say.
-                ...(order.company
-                  ? [
-                      { name: (COMPANY_LABELS[shop.market.lang] ?? COMPANY_LABELS.en).name, value: order.company.name.slice(0, 140) },
-                      { name: (COMPANY_LABELS[shop.market.lang] ?? COMPANY_LABELS.en).number, value: order.company.number },
-                    ]
-                  : []),
-              ],
+              // Stripe takes at most four custom fields.
+              custom_fields: reverse
+                ? reverseChargeFields(shop.market.lang, order)
+                : [
+                    {
+                      name: VAT_LABELS[shop.market.lang] ?? "Incl. VAT",
+                      value: formatMoney(order.taxMinor, order.currency, shop.market.locale),
+                    },
+                    // Bought for a business (B2B): whom for, as the invoice must say.
+                    ...(order.company
+                      ? [
+                          { name: (COMPANY_LABELS[shop.market.lang] ?? COMPANY_LABELS.en).name, value: order.company.name.slice(0, 140) },
+                          { name: (COMPANY_LABELS[shop.market.lang] ?? COMPANY_LABELS.en).number, value: order.company.number },
+                        ]
+                      : []),
+                    // Consignments marked with the store's IOSS number (D157): VAT was collected at checkout.
+                    ...(order.vatKind === "ioss" && order.treatment?.iossNumber
+                      ? [{ name: "IOSS", value: order.treatment.iossNumber }]
+                      : []),
+                  ],
             },
           },
         }),
@@ -1241,7 +1321,10 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
       -- So does asking for other bonus credits (D130): the cart holds what the order used until it is changed.
       or (select case when c.bonus_request_currency = o.currency then c.bonus_request_minor else 0 end
             from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
-         is distinct from o.credit_minor as changed,
+         is distinct from o.credit_minor
+      -- So does checking or changing the VAT number (D157): the order's VAT follows the check it was placed with.
+      or (select c.vat_check_id from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
+         is distinct from o.vat_check_id as changed,
       exists (select 1 from commerce.order_lines ol
                where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'physical') as ships,
       exists (select 1 from commerce.order_lines ol
