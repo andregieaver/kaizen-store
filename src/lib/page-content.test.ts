@@ -665,7 +665,7 @@ describe("content grids (D51)", () => {
     expect(problems(page({ limit: 49 }))).toEqual(["A grid shows at most 48 items."]);
     expect(problems(page({ limit: 0 }))).toEqual(["A grid shows at least one item."]);
     expect(problems(page({ columns: { mobile: 3, tablet: 2, desktop: 3 } }))).not.toEqual([]);
-    expect(problems(page({ columns: { mobile: 1, tablet: 2, desktop: 7 } }))).not.toEqual([]);
+    expect(problems(page({ columns: { mobile: 1, tablet: 2, desktop: 9 } }))).not.toEqual([]);
     expect(problems(page({ headingLevel: 1 }))).toEqual(["A tile's heading has an unknown level."]);
     expect(problems(page({ gap: 97 }))).toEqual(["Keep the space between tiles at 96 pixels or less."]);
   });

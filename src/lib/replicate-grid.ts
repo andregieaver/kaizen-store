@@ -900,6 +900,8 @@ export type GridPlan = {
 export type CarouselRead = {
   settings: CarouselSettings;
   perScreen: { desktop: number; phone: number | null };
+  /** A grid at computers' width that scrolls sideways on phones only: a carousel from the phone's width down (`carouselOn: "phones"`). */
+  phonesOnly?: true;
   arrows: boolean;
   dots: boolean;
   snap: "start" | "center" | "none";
@@ -1005,7 +1007,7 @@ export function planGrid(parent: CaptureNode, kids: CaptureNode[], env: GridEnv,
     const checked = customGridItemSchema.safeParse(itemOf(m.draft, i));
     if (!checked.success) return { kind: "kept", reason: `${read ? "slide" : "card"} ${i + 1} of ${total} holds something the builder would not accept in an item (${checked.error.issues[0]?.message ?? "an invalid field"})${leftOut(read)}`, cards: total, noteworthy: true };
   }
-  const carousel = group.track === "scroller" ? readCarousel(group, env) : null;
+  const carousel = group.track === "scroller" ? readCarousel(group, env) : phoneScroller(group, env) ? readPhoneCarousel(group, env) : null;
   const simplified = new Map<string, number>();
   for (const m of keep) for (const what of m.draft.simplified) simplified.set(what, (simplified.get(what) ?? 0) + 1);
   return {
@@ -1129,6 +1131,47 @@ function visibleTiles(cards: CaptureNode[], box: Box): { whole: number; partial:
   return { whole: Math.max(1, whole), partial };
 }
 
+/** The phone's own box for a grid that lies still at computers' width but scrolls sideways on phones: its row of tiles, more than fit. */
+function phoneScroller(group: CardGroup, env: GridEnv): CaptureNode | null {
+  if (group.track !== "static" || !env.getM) return null;
+  const track = env.getM(group.parent.p);
+  if (!track?.scroll || isStack(track)) return null;
+  const cards = group.cards.map((c) => env.getM!(c.p)).filter((c): c is CaptureNode => Boolean(c));
+  // A track may hold only the tiles near the screen (a page that draws the rest when they scroll in): three of eight is a row that goes on.
+  if (cards.length < 3) return null;
+  // All in one row, some of them beyond what the box shows.
+  const tops = cards.map((c) => c.box[1]);
+  if (Math.max(...tops) - Math.min(...tops) > 4) return null;
+  return visibleTiles(cards, boxOfTrack(track)).whole < cards.length ? track : null;
+}
+
+/** What a phone's sideways row of a grid that is static on computers does: read from the phone's capture alone. */
+function readPhoneCarousel(group: CardGroup, env: GridEnv): CarouselRead {
+  const track = phoneScroller(group, env)!;
+  const cards = group.cards.map((c) => env.getM!(c.p)).filter((c): c is CaptureNode => Boolean(c));
+  const seen = visibleTiles(cards, boxOfTrack(track));
+  const arrows = env.mobile ? arrowsNear(env.mobile.root, track) : false;
+  const snaps = (track.s.scrollSnapType ?? "none") !== "none";
+  const align = cards[0].s.scrollSnapAlign ?? "none";
+  const snap: "start" | "center" | "none" = !snaps || align === "none" ? "none" : align === "center" ? "center" : "start";
+  const peek = seen.partial >= 0.15 && seen.partial <= 0.65;
+  const settings: CarouselSettings = { ...(arrows ? {} : { arrows: false }), ...(snap !== "start" ? { snap } : {}) };
+  return {
+    settings,
+    perScreen: { desktop: group.rows[0].length, phone: seen.whole },
+    phonesOnly: true,
+    arrows,
+    dots: false,
+    snap,
+    peek,
+    clones: 0,
+    autoplay: "not observed",
+    rewind: false,
+    script: null,
+    watched: null,
+  };
+}
+
 function readCarousel(group: CardGroup, env: GridEnv): CarouselRead {
   const track = env.getD(group.parent.p) ?? group.parent;
   const cards = group.cards;
@@ -1188,7 +1231,7 @@ function readCarousel(group: CardGroup, env: GridEnv): CarouselRead {
 export type GridStyle = {
   /** The block's own settings, to merge into a `ContentGridBlock`. */
   block: Pick<ContentGridBlock, "columns" | "gap" | "show" | "headingLevel" | "excerptLines" | "buttonLabel" | "emptyText"> &
-    Partial<Pick<ContentGridBlock, "tile" | "imageShape" | "headingSize" | "button" | "display" | "peek" | "carousel" | "font" | "headingFont">>;
+    Partial<Pick<ContentGridBlock, "tile" | "imageShape" | "headingSize" | "button" | "display" | "carouselOn" | "peek" | "carousel" | "font" | "headingFont">>;
   /** Rules for the grid part, by suffix (the places the grid draws), for computers and phones. */
   rules: { suffix: string; desktop: Decl; mobile: Decl }[];
   notes: string[];
@@ -1269,12 +1312,13 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
 
   // Columns: the cards in a row at each width. A track's are the tiles in view.
   const track = group.track === "scroller";
+  const phonesOnly = plan.carousel?.phonesOnly === true;
   const trackD = track ? (env.getD(group.parent.p) ?? group.parent) : null;
-  const trackM = track && env.getM ? env.getM(group.parent.p) : null;
+  const trackM = (track || phonesOnly) && env.getM ? env.getM(group.parent.p) : null;
   // Slides on top of each other show one at a time, whatever the box's width.
   const oneAtATime = isStack(group.parent) || (trackD !== null && isStack(trackD));
   const desktopCols = oneAtATime ? 1 : track ? visibleTiles(cardsD, boxOfTrack(trackD!)).whole : group.rows[0].length;
-  const mobileMeasured = oneAtATime ? (cardsM.length > 0 ? 1 : null) : track ? (trackM && cardsM.length > 0 ? visibleTiles(cardsM, boxOfTrack(trackM)).whole : null) : cardsM.length > 0 ? firstRow(cardsM) : null;
+  const mobileMeasured = oneAtATime ? (cardsM.length > 0 ? 1 : null) : track || phonesOnly ? (trackM && cardsM.length > 0 ? visibleTiles(cardsM, boxOfTrack(trackM)).whole : null) : cardsM.length > 0 ? firstRow(cardsM) : null;
   const desktop = Math.min(GRID_COLUMNS_MAX.desktop, Math.max(1, desktopCols));
   if (desktopCols > GRID_COLUMNS_MAX.desktop) notes.push(`${desktopCols} to a row at computers' width, wrapped at the builder's most (${GRID_COLUMNS_MAX.desktop})`);
   const mobile = Math.min(GRID_COLUMNS_MAX.mobile, Math.max(1, mobileMeasured ?? 1));
@@ -1497,7 +1541,7 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
     ...(button ? { button } : {}),
     ...(fonts.native ? { font: fonts.native } : {}),
     ...(headFonts.native ? { headingFont: headFonts.native } : {}),
-    ...(plan.carousel ? { display: "carousel" as const, ...(plan.carousel.peek ? { peek: true } : {}), ...(Object.keys(plan.carousel.settings).length > 0 ? { carousel: plan.carousel.settings } : {}) } : {}),
+    ...(plan.carousel ? { display: "carousel" as const, ...(plan.carousel.phonesOnly ? { carouselOn: "phones" as const } : {}), ...(plan.carousel.peek ? { peek: true } : {}), ...(Object.keys(plan.carousel.settings).length > 0 ? { carousel: plan.carousel.settings } : {}) } : {}),
   };
   return { block, rules, notes };
 }
@@ -1522,6 +1566,8 @@ export type GridBuilt = {
     dots: boolean;
     snap: string;
     perScreen: { desktop: number; phone: number | null };
+    /** A carousel on phones only; computers show a grid with `perScreen.desktop` to a row. */
+    phonesOnly?: true;
     autoplay: string;
     clones: number;
     /** Going round from the last tile to the first (a slider that had copies). */
@@ -1590,6 +1636,7 @@ export function builtOf(plan: GridPlan, items: CustomGridItem[], style: GridStyl
           dots: plan.carousel.dots,
           snap: plan.carousel.snap,
           perScreen: plan.carousel.perScreen,
+          ...(plan.carousel.phonesOnly ? { phonesOnly: true as const } : {}),
           autoplay: plan.carousel.autoplay === "not observed" ? "not observed" : `observed, ${plan.carousel.autoplay.seconds} s`,
           clones: plan.carousel.clones,
           ...(plan.carousel.rewind ? { rewind: true } : {}),
@@ -1631,7 +1678,9 @@ export function gridLines(report: GridReport): { well: string[]; problems: strin
       g.fields.prices > 0 ? plural(g.fields.prices, "price text", "price texts") : null,
       g.fields.dates > 0 ? plural(g.fields.dates, "date") : null,
     ].filter(Boolean);
-    const carousel = g.carousel
+    const carousel = g.carousel?.phonesOnly
+      ? `, as a carousel on phones only (${g.carousel.perScreen.phone ?? "?"} in view; computers show a grid of ${g.carousel.perScreen.desktop} to a row, ${g.carousel.arrows ? "arrows" : "no arrows"}, ${g.carousel.snap === "none" ? "free scrolling" : `rests at the ${g.carousel.snap} of a tile`})`
+      : g.carousel
       ? `, as a carousel (${g.carousel.arrows ? "arrows" : "no arrows"}${g.carousel.dots ? ", dots" : ""}, ${g.carousel.snap === "none" ? "free scrolling" : `rests at the ${g.carousel.snap} of a tile`}${g.carousel.rewind ? ", goes back to the first tile after the last" : ""}, ${g.carousel.perScreen.desktop} in view at computers' width; ${autoplayWords(g.carousel)})`
       : "";
     const script = g.carousel?.script;

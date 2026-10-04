@@ -423,6 +423,21 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     return rect.width === 0 && rect.height === 0 && /^inline/.test(cs.display) && (el.textContent || "").trim() === "";
   }
 
+  /**
+   * Whether an element takes a place in its parent's numbering. A box's address is its index among its parent's elements, and the phone's
+   * and computer's readings are matched by it; a script or a cookie tool's dialog that one load injects and the other does not (found on
+   * lampan.no: Cookiebot, in front of the page's own boxes in two loads of three) would renumber every box after it, and the phone's copy
+   * of every part would be "not there". Scripts and styles, and what is fixed to the screen other than a bar at the top (left out of the
+   * capture), are not counted: they have no box of their own in it, and a left-out element shares the number of the next one.
+   */
+  function counted(el: Element): boolean {
+    if (SKIP.indexOf(el.tagName) >= 0) return false;
+    const cs = win.getComputedStyle(el);
+    if (cs.position !== "fixed") return true;
+    const rect = el.getBoundingClientRect();
+    return rect.top <= 4 && rect.height <= 220 && rect.width >= options.width * 0.8;
+  }
+
   function nodesOf(el: Element, path: string, depth: number, force: Force = null, shallow = false): CaptureNode[] {
     if (SKIP.indexOf(el.tagName) < 0 && isHolder(el)) {
       const found: CaptureNode[] = [];
@@ -430,7 +445,7 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
       for (let child = el.firstChild; child; child = child.nextSibling) {
         if (child.nodeType !== 1) continue;
         found.push(...nodesOf(child as Element, `${path}/${index}`, depth + 1, force && { vis: force.vis, root: false }, shallow));
-        index += 1;
+        if (counted(child as Element)) index += 1;
       }
       return found;
     }
@@ -836,7 +851,7 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
         const element = child as Element;
         const childPath = path === "" ? String(index) : `${path}/${index}`;
         const childNodes = found ? tileNodes(element, childPath, depth + 1, found) : nodesOf(element, childPath, depth + 1, force && { vis: force.vis, root: false });
-        index += 1;
+        if (counted(element)) index += 1;
         node.children.push(...childNodes);
         if (found && found.unread > 0 && node.slider) node.slider.unread = found.unread;
       } else if (child.nodeType === 3 && (child.nodeValue || "").trim() !== "") {

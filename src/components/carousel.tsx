@@ -73,7 +73,7 @@ function keepRowReachable(root: HTMLElement, track: HTMLElement, name: string) {
   }
 }
 
-export function Carousel({ children, settings }: { children: ReactNode; settings?: CarouselSettings }) {
+export function Carousel({ children, settings, phonesOnly = false }: { children: ReactNode; settings?: CarouselSettings; phonesOnly?: boolean }) {
   const m = t(usePageLanguage());
   const box = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<CarouselState>(INITIAL);
@@ -171,7 +171,7 @@ export function Carousel({ children, settings }: { children: ReactNode; settings
     <div ref={box} role="group" aria-roledescription={m.carousel} className="relative">
       {children}
       {(resolved.arrows || dots || toggle) && (
-        <div className="mt-4 flex items-center gap-3">
+        <div className={`mt-4 flex items-center gap-3 ${phonesOnly ? "md:hidden" : ""}`}>
           {toggle && (
             <button
               type="button"

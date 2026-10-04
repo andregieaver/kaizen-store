@@ -45,6 +45,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
   const list = (
     <ul
       data-carousel-track={carousel ? "" : undefined}
+      data-carousel-phones={carousel && block.carouselOn === "phones" ? "" : undefined}
       data-snap={carousel ? snapAttribute(block.carousel) : undefined}
       className={
         carousel
@@ -158,7 +159,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
       ))}
     </ul>
   );
-  return carousel ? <Carousel settings={block.carousel}>{list}</Carousel> : list;
+  return carousel ? <Carousel settings={block.carousel} phonesOnly={block.carouselOn === "phones"}>{list}</Carousel> : list;
 }
 
 /** What names an item for a screen reader: its title, else the description of the picture the tile shows. */

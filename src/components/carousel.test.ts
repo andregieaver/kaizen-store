@@ -112,8 +112,17 @@ describe("a content grid shown as a carousel", () => {
     expect(buttons(markup)).toEqual([]);
   });
 
+  it("marks a carousel that is only on phones, for the style sheet, and hides its arrows from tablets' width", () => {
+    const markup = html(createElement(ContentGridView, { block: block({ carouselOn: "phones" }), data }));
+    expect(markup).toContain("data-carousel-phones");
+    expect(markup).toMatch(/<div class="mt-4 flex items-center gap-3 md:hidden">/);
+    for (const n of [1, 2, 3, 4]) expect(markup).toContain(`href="/s/kaizen/no/page-${n}"`);
+    expect(html(createElement(ContentGridView, { block: block(), data }))).not.toContain("data-carousel-phones");
+  });
+
   it("is a plain grid when it is not a carousel, whatever its settings", () => {
-    const markup = html(createElement(ContentGridView, { block: block({ display: undefined, carousel: { dots: true } }), data }));
+    const markup = html(createElement(ContentGridView, { block: block({ display: undefined, carousel: { dots: true }, carouselOn: "phones" }), data }));
+    expect(markup).not.toContain("data-carousel-phones");
     expect(markup).not.toContain("data-carousel-track");
     expect(markup).not.toContain("<button");
   });

@@ -382,6 +382,18 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
     --cols: var(--grid-desktop, 3);
   }
 }
+/* A carousel only on phones (`ContentGridBlock.carouselOn`): from tablets' width its tiles lie in a grid of the same columns. */
+@media (width >= 48rem) {
+  [data-carousel-track][data-carousel-phones] {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+  [data-carousel-track][data-carousel-phones] > * {
+    flex: none;
+  }
+}
 
 /*
  * Modals in a page (D121, `PageModal`): a row in a native dialog, closed

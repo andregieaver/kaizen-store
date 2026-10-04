@@ -4786,13 +4786,14 @@ function ContentGridFields({
             { value: "carousel", label: "Carousel" },
           ]}
           value={block.display ?? "grid"}
-          onChange={(display) => onChange({ display: display === "carousel" ? "carousel" : undefined, ...(display === "grid" && { peek: undefined }) })}
+          onChange={(display) => onChange({ display: display === "carousel" ? "carousel" : undefined, ...(display === "grid" && { peek: undefined, carouselOn: undefined }) })}
         />
         {block.display === "carousel" && (
           <>
             <p className="text-xs text-muted">
               The tiles in one row that scrolls sideways; as many to a screen as the columns below. Nothing moves by itself unless you turn that on.
             </p>
+            <Check label="Only on phones (a grid on larger screens)" checked={block.carouselOn === "phones"} onChange={(on) => onChange({ carouselOn: on ? "phones" : undefined })} />
             <Check label="Show part of the next tile" checked={block.peek === true} onChange={(peek) => onChange({ peek: peek || undefined })} />
             <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />
           </>

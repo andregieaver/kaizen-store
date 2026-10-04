@@ -217,10 +217,22 @@ The second lampan.no report (found the same way; 56.8 % to 66.4 % on computers i
 - the probe serves the photographs from a library-style address (the pictures rules refuse a plain local address), so what it
   measures is what a stored copy looks like.
 
-Still open in that report: a grid that is a sideways scroller on phones and a static grid on computers (the product rows are 990 px
-tall in the copy and about 250 px in the original on a phone, so the phone copy is 7,662 px against 3,846 px: a grid cannot be a
-carousel on phones only), a row of seven tiles wrapped by the six-column cap (+132 px), the SEO text row (+110 px), forms, nested boxes
-and pseudo-element content.
+- a grid that lies still at computers' width but scrolls sideways on phones (the product rows: 990 px tall stacked, about 250 px as
+  the original shows them, so the phone copy was 7,662 px against 3,846 px) is a carousel on phones only, `carouselOn: "phones"` on
+  the content grid (`phoneScroller()`, `readPhoneCarousel()`; from tablets' width the same tiles lie in a grid of the same columns,
+  and the arrows are hidden there). It needs three tiles in one row on the phone, some beyond the box; a page that draws only the
+  tiles near the screen counts. A builder row now takes up to eight columns on computers (`GRID_COLUMNS_MAX`), as lampan's seven
+  categories wrapped at six;
+- **the phone's copy of every part was "not there" in two loads of three**: a box's address is its index among its parent's
+  elements, and a cookie tool (Cookiebot) injected in front of the page's own boxes in one load and not the other renumbered all of
+  them. Scripts, styles and what is fixed to the screen (other than a bar at the top) take no number (`counted()`), so the same box
+  has the same address at both widths. The probe's 9.3 % on phones was this, not a converter fault.
+
+Result of those (probe without the AI): 66.4 % to 79.5 % on computers, 25.7 % to 58.8 % on phones, heights 6,564 px against
+6,428 px (computers) and 4,185 px against 3,846 px (phones).
+
+Still open in that report: calibration passes that lower the phone match (63.6 % after the first pass, 58.8 % after the third),
+the SEO text row (+110 px), forms, nested boxes and pseudo-element content.
 
 What copying oda.com's front page taught (D150):
 

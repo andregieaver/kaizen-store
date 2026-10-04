@@ -241,6 +241,39 @@ describe("a wrapped grid", () => {
   });
 });
 
+describe("a grid at computers' width that scrolls sideways on phones only", () => {
+  /** The same cards on a phone: one row of tiles 158 wide in a box that scrolls sideways, the third cut by the screen's edge. */
+  const phoneTrack = (count: number, scroll = true) => {
+    const cards = Array.from({ length: count }, (_, i) => card(i, `0/1/${i}`, [16 + i * 170, 170, 158]));
+    return node({ p: "0", tag: "section", box: [0, 100, 390, 520], s: { display: "block" } }, [
+      text("h2", [16, 110, 358, 40], "Our products", { fontSize: "26px", lineHeight: "32px" }, { p: "0/0" }),
+      node({ p: "0/1", tag: "div", sel: "div.cards", ...(scroll ? { scroll: true as const } : {}), box: [0, 170, 390, 420], s: { display: "flex", ...(scroll ? { overflowX: "auto" } : {}) } }, cards),
+    ]);
+  };
+
+  it("is a carousel on phones only, with the columns each width showed and no arrows the phone did not have", () => {
+    const built = buildReplica(input(capture(page(shop(8, 4))), capture(phonePage(phoneTrack(3)), 390)), newId);
+    const [grid] = gridsOf(built.rows);
+    expect(grid.display).toBe("carousel");
+    expect(grid.carouselOn).toBe("phones");
+    expect(grid.items).toHaveLength(8);
+    expect(grid.columns).toMatchObject({ desktop: 4, mobile: 2 });
+    expect(grid.carousel).toMatchObject({ arrows: false });
+    expect(built.grids.built[0].carousel).toMatchObject({ phonesOnly: true, perScreen: { desktop: 4, phone: 2 } });
+    expect(pageInput.safeParse({ ...newPageContent(), title: "Copy", slug: "copy", rows: built.rows }).success).toBe(true);
+  });
+
+  it("is a plain grid when the phone's row does not scroll, or has fewer than three tiles", () => {
+    expect(gridsOf(buildReplica(input(capture(page(shop(8, 4))), capture(phonePage(phoneTrack(3, false)), 390)), newId).rows)[0].display).toBeUndefined();
+    expect(gridsOf(buildReplica(input(capture(page(shop(8, 4))), capture(phonePage(phoneTrack(2)), 390)), newId).rows)[0].display).toBeUndefined();
+  });
+
+  it("says so in the report's lines", () => {
+    const built = buildReplica(input(capture(page(shop(8, 4))), capture(phonePage(phoneTrack(3)), 390)), newId);
+    expect(gridLines(built.grids).well[0]).toContain("as a carousel on phones only (2 in view; computers show a grid of 4 to a row, no arrows");
+  });
+});
+
 describe("a native scroller of six cards with arrows", () => {
   const arrow = (label: string, x: number, p: string) => node({ p, tag: "button", sel: `button.carousel-${label}`, box: [x, 280, 40, 40], s: { display: "flex" } }, [node({ p: `${p}/0`, tag: "svg", box: [x + 10, 290, 20, 20], media: { kind: "svg" } })]);
   const scroller = (opts: { snap?: boolean; arrows?: boolean; dots?: boolean } = {}) => {

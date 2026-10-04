@@ -562,7 +562,7 @@ export const GRID_LIMIT_MAX = 48;
 /** The most custom fields a content grid's tile shows (D120). */
 export const TILE_FIELDS_MAX = 3;
 export const GRID_GAP_MAX = 96;
-export const GRID_COLUMNS_MAX = { mobile: 2, tablet: 4, desktop: 6 } as const;
+export const GRID_COLUMNS_MAX = { mobile: 2, tablet: 4, desktop: 8 } as const;
 export type GridColumns = { mobile: number; tablet: number; desktop: number };
 /** A tile's parts, each on or off per grid. */
 export const GRID_ELEMENTS = { image: "Picture", heading: "Heading", excerpt: "Excerpt", price: "Price", button: "Button" } as const;
@@ -668,6 +668,8 @@ export type ContentGridBlock = PartBase & {
   gap: number;
   /** Tiles in a row that scrolls sideways (`Carousel`), the columns as many to a screen; a grid unless set. */
   display?: "carousel";
+  /** A carousel only on phones: from tablets' width the tiles lie in a grid of the columns below (the replicator's copy of a page whose product rows scroll on a phone only). */
+  carouselOn?: "phones";
   /** A carousel shows part of the next tile, so it is seen to scroll. */
   peek?: boolean;
   /** What a carousel does besides scrolling (D155, B): arrows, dots, where a tile rests, going round, autoplay. The default is arrows only. */
@@ -2068,6 +2070,7 @@ const contentGridBlock = z
   emptyText: z.string().trim().max(300, "Keep the text for an empty grid under 300 characters.").default(""),
   filters: z.boolean().optional(),
   display: z.literal("carousel", "A content grid is shown in an unknown way.").optional(),
+  carouselOn: z.literal("phones", "A carousel is on an unknown kind of screen.").optional(),
   peek: z.boolean().optional(),
   carousel: carouselSettingsSchema.optional(),
   imageShape: z.enum(["original", "theme", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])]).optional(),

@@ -254,3 +254,23 @@ test("a read-more box is read as far as it is seen: its text is 600 px tall and 
     site.close();
   }
 });
+
+test("a cookie dialog and a script that one load injects in front of the page do not renumber its boxes: the same box has the same address in both", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const body = `<h1 id="h" style="margin:0;padding:20px">First heading</h1><p id="p" style="margin:0;padding:20px">Second paragraph</p>`;
+  const injected = `<script>window.x=1</script><div id="consent" style="position:fixed;left:20px;bottom:20px;width:300px;height:120px;background:#eee">Cookies</div><script>window.y=2</script>`;
+  const withDialog = await serve(`<!doctype html><html><body style="margin:0;font-family:Arial">${injected}${body}</body></html>`);
+  const without = await serve(`<!doctype html><html><body style="margin:0;font-family:Arial">${body}</body></html>`);
+  try {
+    const a = await openOriginal(browser, withDialog.url, "desktop", everything, undefined, { watch: false });
+    const b = await openOriginal(browser, without.url, "mobile", everything, undefined, { watch: false });
+    const at = (capture: typeof a.capture, id: string) => [...walk(capture.root)].find((n) => n.sel?.includes(`#${id}`))?.p;
+    expect(at(a.capture, "h")).toBeDefined();
+    expect(at(a.capture, "h")).toBe(at(b.capture, "h"));
+    expect(at(a.capture, "p")).toBe(at(b.capture, "p"));
+    expect(JSON.stringify(a.capture.root)).not.toContain("Cookies");
+  } finally {
+    withDialog.close();
+    without.close();
+  }
+});
