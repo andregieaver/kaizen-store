@@ -40,6 +40,8 @@ export type AiSettings = {
   apiKeyHint: string;
   embeddingModel: string | null;
   textModel: string | null;
+  /** The model that looks at pictures (D163), at this provider with this key; null uses the text model. */
+  visionModel: string | null;
   /** The chat agent's voice (D81): speech to text, text to speech and its voice; any unset turns voice off. */
   transcriptionModel: string | null;
   speechModel: string | null;
@@ -94,6 +96,7 @@ function toSettings(row: Row): AiSettings {
     apiKeyHint: String(row.api_key_hint),
     embeddingModel: row.embedding_model ? String(row.embedding_model) : null,
     textModel: row.text_model ? String(row.text_model) : null,
+    visionModel: row.vision_model ? String(row.vision_model) : null,
     transcriptionModel: row.transcription_model ? String(row.transcription_model) : null,
     speechModel: row.speech_model ? String(row.speech_model) : null,
     speechVoice: row.speech_voice ? String(row.speech_voice) : null,
@@ -197,6 +200,16 @@ export async function aiFor(storeId: string | null, tag: { feature: AiFeature; a
   return null;
 }
 
+/**
+ * The connection to use for anything that looks at a picture (D163): the same provider and key, with the vision model as its text model;
+ * the text model itself when no vision model is set, and null when there is neither. Every call that sends a picture goes through this,
+ * so a quick text model for searches and a model that sees pictures for pages can be different.
+ */
+export function seeing(connection: AiConnection | null): AiConnection | null {
+  const model = connection ? (connection.visionModel ?? connection.textModel) : null;
+  return connection && model ? { ...connection, textModel: model } : null;
+}
+
 /** Cached reads that depend on which AI a site has (the chat widget, D81); saving or removing a provider updates them. */
 export const AI_TAG = "ai-providers";
 
@@ -251,13 +264,13 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
 
   await db().execute(sql`
     insert into commerce.ai_providers (
-      store_id, provider, base_url, api_key_encrypted, api_key_hint, embedding_model, text_model,
+      store_id, provider, base_url, api_key_encrypted, api_key_hint, embedding_model, text_model, vision_model,
       transcription_model, speech_model, speech_voice,
       image_model, image_provider, image_base_url, image_api_key_encrypted, image_api_key_hint, image_quality,
       live_model, live_voice, live_provider, live_base_url, live_api_key_encrypted, live_api_key_hint,
       min_similarity, embedding_eu_only, text_eu_only, zero_data_retention, enabled, updated_by
     ) values (
-      ${storeId}::uuid, ${input.provider}, ${baseUrl}, ${encrypted ?? ""}, ${hint ?? ""}, ${input.embeddingModel}, ${input.textModel},
+      ${storeId}::uuid, ${input.provider}, ${baseUrl}, ${encrypted ?? ""}, ${hint ?? ""}, ${input.embeddingModel}, ${input.textModel}, ${input.visionModel},
       ${input.transcriptionModel}, ${input.speechModel}, ${input.speechVoice},
       ${input.imageModel}, ${input.imageProvider}, ${imageBaseUrl},
       -- A kept key is carried into the row itself: the row's checks see it before the update does.
@@ -273,7 +286,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
       provider = excluded.provider, base_url = excluded.base_url,
       api_key_encrypted = coalesce(nullif(excluded.api_key_encrypted, ''), ai_providers.api_key_encrypted),
       api_key_hint = coalesce(nullif(excluded.api_key_hint, ''), ai_providers.api_key_hint),
-      embedding_model = excluded.embedding_model, text_model = excluded.text_model,
+      embedding_model = excluded.embedding_model, text_model = excluded.text_model, vision_model = excluded.vision_model,
       transcription_model = excluded.transcription_model, speech_model = excluded.speech_model, speech_voice = excluded.speech_voice,
       image_model = excluded.image_model, image_provider = excluded.image_provider, image_base_url = excluded.image_base_url,
       image_api_key_encrypted = excluded.image_api_key_encrypted, image_api_key_hint = excluded.image_api_key_hint,
@@ -290,6 +303,7 @@ export async function saveAiSettings(accountId: string, storeId: string | null, 
     baseUrl,
     embeddingModel: input.embeddingModel,
     textModel: input.textModel,
+    visionModel: input.visionModel,
     transcriptionModel: input.transcriptionModel,
     speechModel: input.speechModel,
     speechVoice: input.speechVoice,

@@ -325,8 +325,8 @@ describe("copying a page, from the address to the summary", () => {
     const job = (await runToEnd(started.job.id))!;
     expect(job.status).toBe("done");
     expect(ai.calls).toEqual([]);
-    expect(job.log.map((l) => l.text).join("\n")).toMatch(/no AI text model/);
-    expect(job.summary!.problems.join("\n")).toMatch(/no AI text model|corrected by measuring only/);
+    expect(job.log.map((l) => l.text).join("\n")).toMatch(/no AI model that sees pictures/);
+    expect(job.summary!.problems.join("\n")).toMatch(/no AI model that sees pictures|corrected by measuring only/);
     expect(job.passes).toHaveLength(2);
   });
 

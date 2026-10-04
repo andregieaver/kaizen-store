@@ -4,6 +4,7 @@ import { useId, useState, useTransition } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { AI_PROVIDERS, DEFAULT_MIN_SIMILARITY, IMAGE_QUALITIES, providerInfo, type AiProviderId, type ImageQuality } from "@/lib/ai-provider";
+import type { VisionCheck } from "@/lib/ai-vision";
 
 /** A provider's saved settings as the form shows them: never the key. */
 export type AiFormSettings = {
@@ -12,6 +13,7 @@ export type AiFormSettings = {
   apiKeyHint: string;
   embeddingModel: string | null;
   textModel: string | null;
+  visionModel: string | null;
   transcriptionModel: string | null;
   speechModel: string | null;
   speechVoice: string | null;
@@ -43,10 +45,13 @@ export function AiProviderForm({
   action,
   settings,
   submitLabel = "Save",
+  checkVision,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   settings: AiFormSettings | null;
   submitLabel?: string;
+  /** Tries a model with the saved provider and key to see whether it looks at pictures (D163); without it the form has no check. */
+  checkVision?: (model: string) => Promise<AiVisionCheckResult>;
 }) {
   const id = useId();
   const [provider, setProvider] = useState<AiProviderId>(settings?.provider ?? "gateway");
@@ -146,6 +151,15 @@ export function AiProviderForm({
           defaultValue={saved ? (saved.textModel ?? "") : (info.textModels[0] ?? "")}
         />
       </div>
+
+      <VisionField
+        key={`vision-${provider}`}
+        id={`${id}-vision`}
+        textId={`${id}-text`}
+        suggestions={info.visionModels}
+        defaultValue={saved ? (saved.visionModel ?? "") : ""}
+        check={checkVision ?? null}
+      />
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-sm font-medium">Voice for the chat agent</legend>
@@ -445,6 +459,91 @@ function ModelField({
       <p id={`${id}-hint`} className="font-normal text-muted">
         {hint}
       </p>
+    </div>
+  );
+}
+
+export type AiVisionCheckResult = VisionCheck;
+
+/**
+ * The model that looks at pictures (D163): copying a page and writing alt texts send it pictures. Suggestions are one press each; any name
+ * can be typed; and "Check that it sees pictures" sends the model a small picture of two coloured bands and asks which colours they are,
+ * so a model that cannot see (or only guesses) is found out before anything relies on it. Empty uses the text model.
+ */
+function VisionField({
+  id,
+  textId,
+  suggestions,
+  defaultValue,
+  check,
+}: {
+  id: string;
+  textId: string;
+  suggestions: { model: string; note: string }[];
+  defaultValue: string;
+  check: ((model: string) => Promise<AiVisionCheckResult>) | null;
+}) {
+  const [value, setValue] = useState(defaultValue);
+  const [pending, start] = useTransition();
+  const [result, setResult] = useState<AiVisionCheckResult | null>(null);
+  const change = (next: string) => {
+    setValue(next);
+    setResult(null);
+  };
+  // Empty checks the text model, which is what would be used.
+  const checked = () => value.trim() || (document.getElementById(textId) as HTMLInputElement | null)?.value.trim() || "";
+  return (
+    <div id="vision" className="flex scroll-mt-20 flex-col gap-2 rounded-lg border border-border p-4 text-sm">
+      <label htmlFor={id} className="font-medium">
+        Model that sees pictures
+      </label>
+      <p className="text-muted">
+        Used wherever the AI looks at a picture: copying another site&apos;s page, and writing alt texts for the media library. Not every text model can
+        see, and a quick one that cannot is fine for searches. Empty: the text model is used, so it must see pictures.
+      </p>
+      <input
+        id={id}
+        name="visionModel"
+        value={value}
+        onChange={(e) => change(e.target.value)}
+        autoComplete="off"
+        spellCheck={false}
+        placeholder="Empty: the text model"
+        className={`${field} font-mono text-sm`}
+      />
+      {suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Models that usually see pictures">
+          {suggestions.map((s) => (
+            <button
+              key={s.model}
+              type="button"
+              aria-pressed={value === s.model}
+              onClick={() => change(s.model)}
+              className={`min-h-9 rounded-md border px-3 text-left ${value === s.model ? "border-foreground bg-surface" : "border-border hover:bg-surface"}`}
+            >
+              <span className="font-mono text-xs">{s.model}</span>
+              <span className="ml-2 text-muted">{s.note}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {check && (
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => start(async () => setResult(await check(checked())))}
+            className="min-h-10 w-fit rounded-md border border-border px-4 font-medium hover:bg-surface disabled:opacity-50"
+          >
+            {pending ? "Looking …" : "Check that it sees pictures"}
+          </button>
+          <p className="text-muted">Sends one small picture to the model with the provider and key saved below, and asks what colours are in it. It costs almost nothing.</p>
+          <p role="status" className={result && !result.ok ? "text-red-700 dark:text-red-400" : ""}>
+            {result?.ok && `✓ ${result.model} sees pictures (answered in ${(result.ms / 1000).toFixed(1)} s).`}
+            {result && !result.ok && `✗ ${result.message}`}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

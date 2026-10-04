@@ -160,6 +160,7 @@ of running `playwright install`.
   (`shownPrice()`: without VAT for businesses). Listing pages keep their
   unfiltered grid prerendered as the `<Suspense>` fallback. Conditions shared
   with search's filters live in `src/server/product-conditions.ts`.
+- A model that sees pictures (D163, `src/lib/ai-vision.ts`, `src/server/ai-vision.ts`, `ai_providers.vision_model`, the *Model that sees pictures* field of both AI settings pages): anything that sends a picture to a model calls `seeing(connection)` first (the vision model, else the text model, else null: do not send a picture then) and never `connection.textModel` directly, so searches can stay on a quick text model; a model's name is never assumed to see, only *Check that it sees pictures* (`checkVisionFor()`, a random two-band picture and a colour question, one in twelve guesses right) shows it, and `visionModels` in `AI_PROVIDERS` only suggests. A new feature that sends pictures says so in its failure text and links to `/settings/ai#vision`.
 - AI providers (D73, `src/server/ai.ts`, `src/lib/ai-provider.ts`): never
   name a provider or model in code. Kaizen's are set at `/admin/platform/ai`,
   a store owner's own at `/admin/{store}/settings/ai` (`commerce.ai_providers`;

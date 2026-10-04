@@ -16,7 +16,7 @@ export function PageStudioView({
 }: {
   actions: StudioActions;
   language: string;
-  abilities: { text: boolean; pictures: boolean; hear: boolean; speak: boolean };
+  abilities: { text: boolean; sees: boolean; pictures: boolean; hear: boolean; speak: boolean };
   pagesHref: string;
   settingsHref: string;
   /** A store's copying of other websites' pages (D150); none on Kaizen's own studio. */
@@ -35,7 +35,7 @@ export function PageStudioView({
           tell it: no prices, stock, reviews or claims it cannot back up.
         </p>
       </div>
-      {replicate && <ReplicatePanel storeSlug={replicate.storeSlug} initial={replicate.initial} pagesHref={pagesHref} aiReady={abilities.text} settingsHref={settingsHref} />}
+      {replicate && <ReplicatePanel storeSlug={replicate.storeSlug} initial={replicate.initial} pagesHref={pagesHref} aiSees={abilities.sees} settingsHref={settingsHref} />}
       <PageStudio actions={actions} language={language} abilities={abilities} editBase={pagesHref} settingsHref={settingsHref} />
     </div>
   );

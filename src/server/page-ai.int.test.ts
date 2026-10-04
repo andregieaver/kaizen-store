@@ -175,7 +175,7 @@ describe("the AI page studio (D92)", () => {
     expect(await studio.fillPicture({ ...owner(), storeId: "00000000-0000-4000-8000-000000000000" }, pageId, jobs[0])).toMatchObject({ ok: false });
     expect(await studio.fillPicture(owner(), pageId, { ...jobs[0], prompt: "" })).toEqual({ ok: false, problem: "The picture could not be read." });
     const abilities = await studio.studioAbilities(storeId);
-    expect(abilities).toEqual({ text: true, pictures: true, hear: false, speak: false });
+    expect(abilities).toEqual({ text: true, sees: true, pictures: true, hear: false, speak: false });
     expect(await studio.hearOwner(storeId, new Blob(["x"]))).toMatchObject({ ok: false, problem: expect.stringContaining("speech-to-text") });
   });
 });

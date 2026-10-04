@@ -3,10 +3,11 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import type { AiEvalResult, AiImageTestResult, AiTestResult } from "@/components/admin/ai-provider-form";
+import type { AiEvalResult, AiImageTestResult, AiTestResult, AiVisionCheckResult } from "@/components/admin/ai-provider-form";
 import { aiFormValues } from "@/lib/ai-provider";
 import { AI_TAG, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import { testPicture } from "@/server/ai-pictures";
+import { checkVisionFor } from "@/server/ai-vision";
 import { type Membership } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
 import { runUnderstandingEval } from "@/server/query-understanding";
@@ -57,4 +58,11 @@ export async function testStoreImageAction(storeSlug: string): Promise<AiImageTe
   if (typeof owner === "string") return { ok: false, message: owner };
   const connection = await ownConnection(owner.store.id);
   return connection ? testPicture(connection) : { ok: false, message: "Save a provider and key first." };
+}
+
+/** Whether a model (typed in the form, or the saved one) looks at pictures, tried with the store's own saved provider and key (D163). */
+export async function checkStoreVisionAction(storeSlug: string, model: string): Promise<AiVisionCheckResult> {
+  const owner = await asOwner(storeSlug);
+  if (typeof owner === "string") return { ok: false, model, message: owner };
+  return checkVisionFor(await ownConnection(owner.store.id), model);
 }

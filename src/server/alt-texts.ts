@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { altTextPrompt, parseAltTexts, splitAltTexts, type AltLanguage } from "@/lib/alt-text";
 import { siteUrl } from "@/lib/site";
 
-import { aiFor, AiError, completeText, imagePart, type AiConnection } from "./ai";
+import { aiFor, AiError, completeText, imagePart, seeing, type AiConnection } from "./ai";
 import { mediaUses, type MediaOwner } from "./media-library";
 import { getStore } from "./stores";
 
@@ -54,7 +54,7 @@ export type AltResult =
 /** Why a picture could not be described, for people. */
 function problemOf(error: unknown): string {
   if (error instanceof AiError) {
-    if (error.status === 400) return "The site's AI text model could not look at the picture. Choose a model that sees pictures under AI settings.";
+    if (error.status === 400) return "The site's AI model could not look at the picture. Choose a model that sees pictures under AI settings (Model that sees pictures), and check it there.";
     return `The site's AI could not describe the picture: ${error.message}`;
   }
   return "The picture could not be described.";
@@ -95,8 +95,9 @@ export async function writeAltText(
   if (!row) return { ok: false, problem: "That file is no longer in the library." };
   if (row.kind !== "image") return { ok: false, problem: "Alt texts are written for pictures only." };
   if (row.alt_source === "staff" && !options.replace) return { ok: false, problem: "Staff wrote this picture's alt text." };
-  const connection = options.connection === undefined ? await aiFor(owner.storeId, { feature: "media" }) : options.connection;
-  if (!connection?.textModel) return { ok: false, problem: "Set up an AI text model under AI settings to write alt texts.", ai: true };
+  // The model that looks at pictures (D163), else the text model.
+  const connection = seeing(options.connection === undefined ? await aiFor(owner.storeId, { feature: "media" }) : options.connection);
+  if (!connection) return { ok: false, problem: "Set up an AI model that sees pictures under AI settings to write alt texts.", ai: true };
   const site = options.site === undefined ? await altSite(owner) : options.site;
   if (!site) return { ok: false, problem: "The store has no markets, so no language to write in." };
 
@@ -161,10 +162,11 @@ export async function writeAltTexts(
   owner: MediaOwner,
   options: { since: Date; rewrite?: boolean; limit?: number },
 ): Promise<AltRun> {
-  const [connection, site] = await Promise.all([aiFor(owner.storeId, { feature: "media" }), altSite(owner)]);
+  const [raw, site] = await Promise.all([aiFor(owner.storeId, { feature: "media" }), altSite(owner)]);
+  const connection = seeing(raw);
   const due = await dueForAltText(owner, options.since, Boolean(options.rewrite), site);
-  if (!connection?.textModel) {
-    return { written: 0, failed: 0, remaining: due.length, problem: "Set up an AI text model under AI settings to write alt texts." };
+  if (!connection) {
+    return { written: 0, failed: 0, remaining: due.length, problem: "Set up an AI model that sees pictures under AI settings to write alt texts." };
   }
   const batch = due.slice(0, options.limit ?? ALT_BATCH);
   let written = 0;
@@ -231,7 +233,7 @@ export async function refreshAltTexts(perSite = 4, sitesPerRun = 5): Promise<{ o
   for (const row of sites) {
     if (owners.length >= sitesPerRun) break;
     const owner = { storeId: row.store_id ? String(row.store_id) : null, storeSlug: row.slug ? String(row.slug) : null };
-    if (!(await aiFor(owner.storeId))?.textModel) continue;
+    if (!seeing(await aiFor(owner.storeId))) continue;
     if ((await dueForAltText(owner, since, false, await altSite(owner))).length > 0) owners.push(owner);
   }
   const runs = await Promise.all(owners.map((owner) => writeAltTexts(owner, { since, limit: perSite })));

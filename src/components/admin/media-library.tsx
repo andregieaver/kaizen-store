@@ -689,7 +689,7 @@ function AltTexts({
           : `${missing === 1 ? "1 picture has" : `${missing} pictures have`} no alt text.`}{" "}
         {ai
           ? "Your AI can look at each picture and write one in every language of the site; new pictures get theirs within a few minutes of being added."
-          : "Set up an AI with a text model that sees pictures under AI settings, and it can write them for you."}
+          : "Set up an AI with a model that sees pictures under AI settings, and it can write them for you."}
       </p>
       {ai && (
         <div className="flex flex-wrap items-center gap-3">

@@ -5209,6 +5209,8 @@ export const aiProviders = commerce.table(
     embeddingModel: text("embedding_model"),
     /** For understanding queries and writing product content; none turns those off. */
     textModel: text("text_model"),
+    /** The model that looks at pictures (D163): null uses the text model. Same provider and key as the text model. */
+    visionModel: text("vision_model"),
     /** The chat agent's voice (D81): speech to text, and text to speech with its voice; none turns voice off. */
     transcriptionModel: text("transcription_model"),
     speechModel: text("speech_model"),
@@ -5268,6 +5270,7 @@ export const aiProviders = commerce.table(
       sql`coalesce(length(${t.transcriptionModel}) between 1 and 200, true) and coalesce(length(${t.speechModel}) between 1 and 200, true) and coalesce(length(${t.speechVoice}) between 1 and 100, true)`,
     ),
     check("ai_providers_image_model", sql`coalesce(length(${t.imageModel}) between 1 and 200, true)`),
+    check("ai_providers_vision_model", sql`coalesce(length(${t.visionModel}) between 1 and 200, true)`),
     check(
       "ai_providers_image_provider",
       sql`coalesce(${t.imageProvider} in ('gateway', 'mistral', 'openai', 'openai_eu', 'google', 'custom'), true)`,

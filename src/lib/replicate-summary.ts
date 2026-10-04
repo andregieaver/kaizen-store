@@ -73,7 +73,7 @@ export function buildSummary(f: SummaryFacts): ReplicaSummary {
   }
   if (f.stoppedEarly) well.push("The copy was as close as pixels allow, so the remaining passes were not needed.");
 
-  if (!f.vision.used) problems.push(f.vision.why ?? "The site's AI did not look at the pictures, so the copy was corrected by measuring only. Choose a text model that sees pictures under AI settings to let it judge colours and shapes too.");
+  if (!f.vision.used) problems.push(f.vision.why ?? "The site's AI did not look at the pictures, so the copy was corrected by measuring only. Choose a model that sees pictures under AI settings to let it judge colours and shapes too.");
   if (f.assets.picturesFailed > 0 && !f.notes.some((n) => /could not be downloaded/.test(n.text))) problems.push(`${plural(f.assets.picturesFailed, "picture")} could not be downloaded.`);
   if (f.assets.videosFailed > 0) problems.push(`${plural(f.assets.videosFailed, "video")} could not be copied.`);
   for (const stand of f.assets.fontsStandIn) problems.push(`${stand.from} is not in Google Fonts; its nearest look-alike, ${stand.to}, is used instead, so letters differ slightly.`);

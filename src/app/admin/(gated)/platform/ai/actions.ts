@@ -3,10 +3,11 @@
 import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
-import type { AiEvalResult, AiImageTestResult, AiTestResult } from "@/components/admin/ai-provider-form";
+import type { AiEvalResult, AiImageTestResult, AiTestResult, AiVisionCheckResult } from "@/components/admin/ai-provider-form";
 import { aiFormValues } from "@/lib/ai-provider";
 import { AI_TAG, ownConnection, removeAiSettings, saveAiSettings, testAi } from "@/server/ai";
 import { testPicture } from "@/server/ai-pictures";
+import { checkVisionFor } from "@/server/ai-vision";
 import { requirePlatformAdmin } from "@/server/auth";
 import { runUnderstandingEval } from "@/server/query-understanding";
 
@@ -47,4 +48,10 @@ export async function testPlatformImageAction(): Promise<AiImageTestResult> {
   await requirePlatformAdmin();
   const connection = await ownConnection(null);
   return connection ? testPicture(connection) : { ok: false, message: "Save a provider and key first." };
+}
+
+/** Whether a model (typed in the form, or the saved one) looks at pictures, tried with Kaizen's saved provider and key (D163). */
+export async function checkPlatformVisionAction(model: string): Promise<AiVisionCheckResult> {
+  await requirePlatformAdmin();
+  return checkVisionFor(await ownConnection(null), model);
 }

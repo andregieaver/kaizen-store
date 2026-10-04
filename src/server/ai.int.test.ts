@@ -12,6 +12,8 @@ vi.mock("server-only", () => ({}));
 process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 const ai = await import("./ai");
+const vision = await import("./ai-vision");
+const sharp = (await import("sharp")).default;
 
 const run = Date.now().toString(36);
 let storeId: string;
@@ -321,6 +323,112 @@ describe("AI providers (D73)", () => {
     expect(row).toEqual({ image_api_key_encrypted: null, image_model: null });
     expect((await ai.ownConnection(storeId))!.image).toBeNull();
     await expect(ai.generateImage((await ai.ownConnection(storeId))!, "x")).rejects.toThrow("No picture model is set.");
+    await ai.removeAiSettings(accountId, storeId);
+  });
+});
+
+/** What colour a pixel is, by the nearest of the check's four. */
+const COLOURS: Record<string, number[]> = { red: [220, 38, 38], green: [22, 163, 74], blue: [37, 99, 235], yellow: [250, 204, 21] };
+const nameOf = (rgb: number[]) =>
+  Object.entries(COLOURS).sort(([, a], [, b]) => a.reduce((n, v, i) => n + (v - rgb[i]) ** 2, 0) - b.reduce((n, v, i) => n + (v - rgb[i]) ** 2, 0))[0][0];
+
+/** A provider whose `seeing` models answer from the pixels of the picture they are sent, and whose others refuse pictures or guess. */
+function visionProvider(models: Record<string, "sees" | "refuses" | "guesses" | "down">) {
+  const asked: { model: string; hasPicture: boolean }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body)) as { model: string; messages: { content: unknown }[] };
+      const parts = Array.isArray(body.messages[0].content) ? (body.messages[0].content as Row[]) : [];
+      const picture = parts.find((part) => part.type === "image_url");
+      asked.push({ model: body.model, hasPicture: Boolean(picture) });
+      const how = models[body.model] ?? "refuses";
+      if (how === "down") return Response.json({ error: { message: "Overloaded" } }, { status: 503 });
+      if (how === "refuses" && picture) return Response.json({ error: { message: "This model does not accept images." } }, { status: 400 });
+      if (how === "guesses") return Response.json({ choices: [{ message: { content: "purple, orange" } }] });
+      const url = String((picture!.image_url as Row).url ?? picture!.image_url);
+      const { data, info } = await sharp(Buffer.from(url.split(",")[1], "base64")).raw().toBuffer({ resolveWithObject: true });
+      const at = (y: number) => [...data.subarray((y * info.width + 10) * info.channels, (y * info.width + 10) * info.channels + 3)];
+      return Response.json({ choices: [{ message: { content: `${nameOf(at(5))}, ${nameOf(at(info.height - 5))}` } }] });
+    }),
+  );
+  return asked;
+}
+
+describe("a model that sees pictures (D163)", () => {
+  const own = { provider: "openai", apiKey: "sk-vision-5555", textModel: "gpt-5-nano", minSimilarity: "0.3", enabled: true };
+
+  it("is kept beside the text model, and pictures go to it while text keeps the text model", async () => {
+    expect(await ai.saveAiSettings(accountId, storeId, form({ ...own, visionModel: "gpt-5-mini" }))).toEqual({ ok: true });
+    const connection = (await ai.ownConnection(storeId))!;
+    expect(connection).toMatchObject({ textModel: "gpt-5-nano", visionModel: "gpt-5-mini" });
+    expect(ai.seeing(connection)).toMatchObject({ textModel: "gpt-5-mini", apiKey: own.apiKey, provider: "openai" });
+    // The text model of the connection itself is untouched: searches stay on the quick one.
+    expect(connection.textModel).toBe("gpt-5-nano");
+    const [row] = await db().execute<Row>(sql`select vision_model from commerce.ai_providers where store_id = ${storeId}::uuid`);
+    expect(row.vision_model).toBe("gpt-5-mini");
+    const [logged] = await db().execute<Row>(sql`select details from commerce.audit_log where store_id = ${storeId}::uuid and action = 'ai.saved' order by created_at desc limit 1`);
+    expect((logged.details as Row).visionModel).toBe("gpt-5-mini");
+  });
+
+  it("falls back to the text model, and to nothing without either", async () => {
+    await ai.saveAiSettings(accountId, storeId, form({ ...own, apiKey: "" }));
+    const connection = (await ai.ownConnection(storeId))!;
+    expect(connection.visionModel).toBeNull();
+    expect(ai.seeing(connection)).toMatchObject({ textModel: "gpt-5-nano" });
+    expect(ai.seeing(null)).toBeNull();
+    expect(ai.seeing({ ...connection, textModel: null, visionModel: null })).toBeNull();
+    // Idempotent: a connection that already sees is the same one.
+    const once = ai.seeing({ ...connection, visionModel: "v" })!;
+    expect(ai.seeing(once)!.textModel).toBe("v");
+  });
+
+  it("makes a check picture whose top band and bottom band are the colours asked for", async () => {
+    for (const [top, bottom] of [["red", "blue"], ["yellow", "green"], ["blue", "red"]]) {
+      const { data, info } = await sharp(await vision.challengePicture(top, bottom)).raw().toBuffer({ resolveWithObject: true });
+      const at = (y: number) => [...data.subarray((y * info.width + 10) * info.channels, (y * info.width + 10) * info.channels + 3)];
+      expect([nameOf(at(5)), nameOf(at(info.height - 5))]).toEqual([top, bottom]);
+    }
+  });
+
+  it("finds out which models see: the one that reads the picture passes, the one that refuses, guesses or is down does not", async () => {
+    await ai.saveAiSettings(accountId, storeId, form({ ...own, apiKey: "", visionModel: "gpt-5-mini" }));
+    const connection = (await ai.ownConnection(storeId))!;
+    const asked = visionProvider({ "gpt-5-mini": "sees", "gpt-5-nano": "refuses", guess: "guesses", down: "down" });
+
+    const sees = await vision.checkVisionFor(connection, "gpt-5-mini");
+    expect(sees).toMatchObject({ ok: true, model: "gpt-5-mini" });
+
+    const refuses = await vision.checkVisionFor(connection, "gpt-5-nano");
+    expect(refuses).toMatchObject({ ok: false });
+    expect(refuses.ok === false && refuses.message).toMatch(/cannot look at pictures/);
+
+    const guessed = await vision.checkVisionFor(connection, "guess");
+    expect(guessed.ok === false && guessed.message).toMatch(/does not really look at pictures/);
+
+    const down = await vision.checkVisionFor(connection, "down");
+    expect(down.ok === false && down.message).toMatch(/did not answer \(error 503\)/);
+
+    // Each was asked with a picture, under its own name; the saved models were not changed by a check.
+    expect(asked.map((a) => a.model)).toEqual(["gpt-5-mini", "gpt-5-nano", "guess", "down"]);
+    expect(asked.every((a) => a.hasPicture)).toBe(true);
+    expect((await ai.ownConnection(storeId))!.visionModel).toBe("gpt-5-mini");
+  });
+
+  it("checks the saved vision model, else the text model, when no name is typed, and refuses bad names and a missing provider", async () => {
+    await ai.saveAiSettings(accountId, storeId, form({ ...own, apiKey: "", visionModel: "gpt-5-mini" }));
+    const connection = (await ai.ownConnection(storeId))!;
+    const asked = visionProvider({ "gpt-5-mini": "sees", "gpt-5-nano": "sees" });
+    expect(await vision.checkVisionFor(connection, "  ")).toMatchObject({ ok: true, model: "gpt-5-mini" });
+    expect(await vision.checkVisionFor({ ...connection, visionModel: null }, "")).toMatchObject({ ok: true, model: "gpt-5-nano" });
+    expect(asked).toHaveLength(2);
+    const bad = await vision.checkVisionFor(connection, "no good!");
+    expect(bad.ok === false && bad.message).toMatch(/only letters/);
+    const none = await vision.checkVisionFor(null, "gpt-5-mini");
+    expect(none.ok === false && none.message).toMatch(/Save a provider and key first/);
+    const nothing = await vision.checkVisionFor({ ...connection, visionModel: null, textModel: null }, "");
+    expect(nothing.ok === false && nothing.message).toMatch(/Name a model/);
+    expect(asked).toHaveLength(2);
     await ai.removeAiSettings(accountId, storeId);
   });
 });

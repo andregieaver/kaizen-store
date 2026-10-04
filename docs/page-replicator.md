@@ -25,7 +25,7 @@ no cron holds Chromium.
 | Step | What it does |
 |---|---|
 | open | Opens the page in Chromium at 1440 and 390 px (`src/lib/replicate-open.ts`): scrolls it through so lazy pictures load, stills animations, hides what floats over it (cookie banners, chat widgets), photographs it, reads every box and its styles (`extractPage()`, `src/lib/replicate-extract.ts`), and photographs the pictures that are drawn rather than files (icons, canvases, widgets). |
-| examine | The site's AI looks at the photographs and the browser's digest and describes the design (palette, type, sections, what will be hard): `analyse()`. Without a text model that sees pictures it reads from the facts alone, or is skipped, and the summary says so. |
+| examine | The site's AI (the *Model that sees pictures* of the AI settings, D163, else the text model: `seeing()`) looks at the photographs and the browser's digest and describes the design (palette, type, sections, what will be hard): `analyse()`. Without a text model that sees pictures it reads from the facts alone, or is skipped, and the summary says so. |
 | copy | Counts and shows the text, exactly as the page has it (headings, paragraphs, lists, buttons, links). |
 | assets | Downloads the pictures (kept as the store's own in the media library, WebP), video files (to the page-video bucket) and installs the typefaces that are in Google Fonts. Resumable; a tick works for up to 190 s. |
 | build | `buildReplica()` (`src/lib/replicate-build.ts`) turns the measured boxes into rows, columns and blocks and a style sheet; the page is saved as a draft through `savePage()`. |

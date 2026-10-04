@@ -54,7 +54,7 @@ export function ReplicatePanel({
   storeSlug,
   initial,
   pagesHref,
-  aiReady,
+  aiSees,
   settingsHref,
 }: {
   storeSlug: string;
@@ -63,7 +63,8 @@ export function ReplicatePanel({
   /** The pages' admin address; a draft's is `${pagesHref}/${id}`. */
   pagesHref: string;
   /** Whether the site's AI has a text model, so the AI looks at the page; else the copy is made by measuring only. */
-  aiReady: boolean;
+  /** A model that looks at pictures is set up (D163); without one the copy is corrected by measuring alone. */
+  aiSees: boolean;
   settingsHref: string;
 }) {
   const base = `/admin/${storeSlug}/pages/ai/replicate`;
@@ -209,11 +210,11 @@ export function ReplicatePanel({
               I have the right to copy this page&apos;s text, pictures and design (it is mine, or I have its owner&apos;s permission). The copy is saved as a draft and is not published or shown to search engines until I decide.
             </span>
           </label>
-          {!aiReady && (
+          {!aiSees && (
             <p className="text-sm text-muted">
-              The site has no AI text model, so the copy is made by measuring alone, without the AI looking at it.{" "}
-              <Link href={settingsHref} className="underline">
-                Set up the AI
+              No AI model that looks at pictures is set up, so the copy is made by measuring alone, without the AI judging colours and shapes.{" "}
+              <Link href={`${settingsHref}#vision`} className="underline">
+                Choose a model that sees pictures
               </Link>
               .
             </p>

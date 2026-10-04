@@ -21,6 +21,11 @@ export type AiProviderInfo = {
   /** Model names to start from; any the provider offers can be typed. */
   embeddingModels: string[];
   textModels: string[];
+  /**
+   * Models that take pictures as input (D163), best first, each with what it is good for: offered next to the vision field as
+   * one-press choices. Only a start: any model can be typed, and "Check that it sees pictures" is what shows whether one does.
+   */
+  visionModels: { model: string; note: string }[];
   /** The chat agent's voice (D81): speech to text, text to speech, and its voices. */
   transcriptionModels: string[];
   speechModels: string[];
@@ -50,6 +55,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://vercel.com/docs/ai-gateway/authentication-and-byok",
     embeddingModels: ["mistral/mistral-embed", "openai/text-embedding-3-small", "google/text-multilingual-embedding-002"],
     textModels: ["anthropic/claude-haiku-4.5", "anthropic/claude-sonnet-5", "google/gemini-2.5-flash"],
+    visionModels: [{ model: "anthropic/claude-haiku-4.5", note: "Quick and cheap" }, { model: "anthropic/claude-sonnet-5", note: "Most careful, for copying pages" }, { model: "google/gemini-2.5-flash", note: "Quick and cheap" }],
     transcriptionModels: [],
     speechModels: [],
     voices: [],
@@ -65,6 +71,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://console.mistral.ai/api-keys",
     embeddingModels: ["mistral-embed"],
     textModels: ["mistral-small-latest", "mistral-medium-latest"],
+    visionModels: [{ model: "mistral-small-latest", note: "Quick and cheap" }, { model: "mistral-medium-latest", note: "More careful" }],
     transcriptionModels: [],
     speechModels: [],
     voices: [],
@@ -80,6 +87,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://platform.openai.com/api-keys",
     embeddingModels: ["text-embedding-3-small", "text-embedding-3-large"],
     textModels: ["gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano"],
+    visionModels: [{ model: "gpt-5-mini", note: "Balanced" }, { model: "gpt-4.1-mini", note: "Quick and cheap" }, { model: "gpt-5-nano", note: "Cheapest" }],
     transcriptionModels: ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"],
     speechModels: ["gpt-4o-mini-tts", "tts-1"],
     voices: ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"],
@@ -96,6 +104,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://platform.openai.com/docs/guides/your-data#data-residency-controls",
     embeddingModels: ["text-embedding-3-small", "text-embedding-3-large"],
     textModels: ["gpt-5-mini", "gpt-5-nano", "gpt-4.1-mini", "gpt-4.1-nano"],
+    visionModels: [{ model: "gpt-5-mini", note: "Balanced" }, { model: "gpt-4.1-mini", note: "Quick and cheap" }, { model: "gpt-5-nano", note: "Cheapest" }],
     transcriptionModels: ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"],
     speechModels: ["gpt-4o-mini-tts", "tts-1"],
     voices: ["alloy", "ash", "ballad", "coral", "echo", "sage", "shimmer", "verse"],
@@ -111,6 +120,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: "https://aistudio.google.com/apikey",
     embeddingModels: ["gemini-embedding-001"],
     textModels: ["gemini-2.5-flash"],
+    visionModels: [{ model: "gemini-2.5-flash", note: "Quick and cheap" }],
     transcriptionModels: [],
     speechModels: [],
     voices: [],
@@ -126,6 +136,7 @@ export const AI_PROVIDERS: AiProviderInfo[] = [
     keysUrl: null,
     embeddingModels: [],
     textModels: [],
+    visionModels: [],
     transcriptionModels: [],
     speechModels: [],
     voices: [],
@@ -213,6 +224,8 @@ export const aiProviderInput = z
     apiKey: z.string().trim().max(500, "That key is too long.").default(""),
     embeddingModel: modelName,
     textModel: modelName,
+    // The model that looks at pictures (D163): optional; empty uses the text model.
+    visionModel: z.string().default("").pipe(modelName),
     // The voice (D81) is optional: forms and callers without it keep voice off.
     transcriptionModel: z.string().default("").pipe(modelName),
     speechModel: z.string().default("").pipe(modelName),
@@ -306,6 +319,7 @@ export function aiFormValues(formData: FormData) {
     apiKey: String(formData.get("apiKey") ?? ""),
     embeddingModel: String(formData.get("embeddingModel") ?? ""),
     textModel: String(formData.get("textModel") ?? ""),
+    visionModel: String(formData.get("visionModel") ?? ""),
     transcriptionModel: String(formData.get("transcriptionModel") ?? ""),
     speechModel: String(formData.get("speechModel") ?? ""),
     speechVoice: String(formData.get("speechVoice") ?? ""),

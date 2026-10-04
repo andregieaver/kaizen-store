@@ -1793,6 +1793,13 @@
       "when": 1791135850337,
       "tag": "20261004174410_gdpr_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 256,
+      "version": "7",
+      "when": 1791150229391,
+      "tag": "20261004214349_ai_vision_model",
+      "breakpoints": true
     }
   ]
 }

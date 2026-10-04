@@ -4,11 +4,12 @@ import Link from "next/link";
 import { AiEvalButton, AiImageTestButton, AiProviderForm, AiTestButton } from "@/components/admin/ai-provider-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { providerInfo } from "@/lib/ai-provider";
+import { pictureLine } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { getAiSettings, type AiSettings } from "@/server/ai";
 import { memberCan, requirePermission } from "@/server/permissions";
 
-import { evalStoreAiAction, removeStoreAiAction, saveStoreAiAction, testStoreAiAction, testStoreImageAction } from "./actions";
+import { checkStoreVisionAction, evalStoreAiAction, removeStoreAiAction, saveStoreAiAction, testStoreAiAction, testStoreImageAction } from "./actions";
 
 export const metadata: Metadata = { title: "AI" };
 
@@ -43,6 +44,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
       <div>
         <h1 className="text-2xl font-semibold">AI</h1>
         <p className="text-sm text-muted">{current}</p>
+        <p className="text-sm text-muted">{usingOwn ? pictureLine(own, "Your AI") : pictureLine(kaizen, "Kaizen's AI", "Use your own AI below to choose one.")}</p>
         {owner && (
           <p className="mt-1 text-sm">
             <Link href={`/admin/account/usage?store=${store.slug}`} className="underline">
@@ -74,6 +76,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
               action={saveStoreAiAction.bind(null, store.slug)}
               settings={own}
               submitLabel={own ? "Save" : "Use my own AI"}
+              checkVision={checkStoreVisionAction.bind(null, store.slug)}
             />
           </>
         ) : (

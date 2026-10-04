@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."ai_providers" ADD COLUMN "vision_model" text;--> statement-breakpoint
+ALTER TABLE "commerce"."ai_providers" ADD CONSTRAINT "ai_providers_vision_model" CHECK (coalesce(length("commerce"."ai_providers"."vision_model") between 1 and 200, true));

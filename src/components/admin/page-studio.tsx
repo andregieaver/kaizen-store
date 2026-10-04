@@ -61,7 +61,7 @@ export function PageStudio({
   actions: StudioActions;
   /** The page's language, by name. */
   language: string;
-  abilities: { text: boolean; pictures: boolean; hear: boolean; speak: boolean };
+  abilities: { text: boolean; sees: boolean; pictures: boolean; hear: boolean; speak: boolean };
   /** The pages' admin address; a page's is `${editBase}/${id}`. */
   editBase: string;
   /** Where the AI is set up. */

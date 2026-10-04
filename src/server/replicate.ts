@@ -25,7 +25,7 @@ import { renderStyles } from "@/lib/replicate-styles";
 import { parseReplicaUrl } from "@/lib/replicate-url";
 import { slugify } from "@/lib/slug";
 
-import { aiFor, type AiConnection } from "./ai";
+import { aiFor, seeing, type AiConnection } from "./ai";
 import { assess, analyse } from "./replicate-ai";
 import { audit, type Account } from "./auth";
 import { launchBrowser } from "./browser";
@@ -323,10 +323,11 @@ async function stepExamine(tick: Tick): Promise<void> {
   const { row, say } = tick;
   const capture = await readCapture(row.id);
   if (!capture) throw new Failed("What was read from the page was lost. Start again.");
-  const connection = await tick.connection();
-  if (!connection?.textModel) {
-    await say("warn", "The site has no AI text model set up, so the design is read by measuring only. Set one under AI settings to let the AI look at the page and the copy.");
-    await patchWork(row.id, { analysis: null, vision: { used: false, why: "The site has no AI text model, so the pictures were not looked at; the copy was corrected by measuring only." } });
+  // The model that looks at pictures (D163): the AI settings' own field for it, else the text model.
+  const connection = seeing(await tick.connection());
+  if (!connection) {
+    await say("warn", "The site has no AI model set up that looks at pictures, so the design is read by measuring only. Choose one under AI settings (Model that sees pictures) to let the AI look at the page and the copy.");
+    await patchWork(row.id, { analysis: null, vision: { used: false, why: "The site has no AI model that sees pictures, so the pictures were not looked at; the copy was corrected by measuring only." } });
     await setPhase(row.id, "copy");
     return;
   }
@@ -643,7 +644,7 @@ async function stepRefine(tick: Tick): Promise<void> {
   stopIfAsked(tick);
 
   const connection = await tick.connection();
-  const vision = work.vision?.used !== false && connection?.textModel ? connection : null;
+  const vision = work.vision?.used !== false ? seeing(connection) : null;
   let blind = false;
   let observed: ReplicaPass["ai"] | undefined;
   if (vision && originalDesktop) {
@@ -686,7 +687,7 @@ async function stepRefine(tick: Tick): Promise<void> {
       }
     }
   } else if (!vision && k === 0) {
-    await say("info", "The AI does not look at the copy (no text model that sees pictures); spacing is corrected by measuring.");
+    await say("info", "The AI does not look at the copy (no AI model that sees pictures is set up); spacing is corrected by measuring.");
   }
   void blind;
 
@@ -945,10 +946,10 @@ async function pageTitle(pageId: string, storeId: string): Promise<{ id: string;
   return row ? { id: String(row.id), title: String(row.title ?? "Copy") } : null;
 }
 
-/** What the studio can offer: copying needs a browser; the AI's part needs a text model. */
+/** What the studio can offer: copying needs a browser; the AI's part needs a model that sees pictures. */
 export async function replicaAbilities(storeId: string): Promise<{ ai: boolean; browser: boolean }> {
   const connection = await aiFor(storeId);
-  return { ai: Boolean(connection?.textModel), browser: true };
+  return { ai: Boolean(seeing(connection)), browser: true };
 }
 
 export type { PageCapture };

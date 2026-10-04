@@ -826,8 +826,8 @@ export function findingsOf(f: ReportFacts, census: Census, rows: ReportRow[]): R
       severity: "low",
       area: "replicator",
       title: "The AI did not look at the pictures",
-      evidence: [f.vision.why ?? "No text model that sees pictures is set up for the site."],
-      change: "The copy was corrected by measuring only. Choose a text model that sees pictures under AI settings, then run the same page again to see what the AI adds.",
+      evidence: [f.vision.why ?? "No AI model that sees pictures is set up for the site."],
+      change: "The copy was corrected by measuring only. Choose a model that sees pictures under AI settings (Model that sees pictures), then run the same page again to see what the AI adds.",
       where: [F.engine + " (stepExamine, stepRefine)"],
     });
   }
