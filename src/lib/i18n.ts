@@ -385,6 +385,16 @@ const messages = {
     products: "Produkter",
     vatIncluded: "inkl. mva.",
     vatExcluded: "eks. mva.",
+    /**
+     * Unit price (D160): the price per kg, litre, metre, m² or piece beside a price. The statutory term of the
+     * language and its unit symbols are hand-written and need review by a native speaker (docs/wave-1d-unit-price.md 8).
+     */
+    unitPrice: {
+      label: "Enhetspris",
+      /** What a screen reader says for "199,60 kr/kg": the label, the amount and the base. */
+      spoken: (amount: string, base: string) => `Enhetspris: ${amount} per ${base}`,
+      bases: { kg: "kg", "100g": "100 g", l: "l", "100ml": "100 ml", m: "m", m2: "m²", piece: "stk." },
+    },
     /** Private or business buyer (B2B): the header's switch, the first-visit question, business-only products. */
     buyer: {
       label: "Jeg handler som",
@@ -1484,6 +1494,16 @@ const messages = {
     products: "Produkter",
     vatIncluded: "inkl. moms",
     vatExcluded: "exkl. moms",
+    /**
+     * Unit price (D160): the price per kg, litre, metre, m² or piece beside a price. The statutory term of the
+     * language and its unit symbols are hand-written and need review by a native speaker (docs/wave-1d-unit-price.md 8).
+     */
+    unitPrice: {
+      label: "Jämförpris",
+      /** What a screen reader says for "199,60 kr/kg": the label, the amount and the base. */
+      spoken: (amount: string, base: string) => `Jämförpris: ${amount} per ${base}`,
+      bases: { kg: "kg", "100g": "100 g", l: "l", "100ml": "100 ml", m: "m", m2: "m²", piece: "st" },
+    },
     /** Private or business buyer (B2B): the header's switch, the first-visit question, business-only products. */
     buyer: {
       label: "Jag handlar som",
@@ -2584,6 +2604,16 @@ const messages = {
     products: "Produkter",
     vatIncluded: "inkl. moms",
     vatExcluded: "ekskl. moms",
+    /**
+     * Unit price (D160): the price per kg, litre, metre, m² or piece beside a price. The statutory term of the
+     * language and its unit symbols are hand-written and need review by a native speaker (docs/wave-1d-unit-price.md 8).
+     */
+    unitPrice: {
+      label: "Enhedspris",
+      /** What a screen reader says for "199,60 kr/kg": the label, the amount and the base. */
+      spoken: (amount: string, base: string) => `Enhedspris: ${amount} per ${base}`,
+      bases: { kg: "kg", "100g": "100 g", l: "l", "100ml": "100 ml", m: "m", m2: "m²", piece: "stk." },
+    },
     /** Private or business buyer (B2B): the header's switch, the first-visit question, business-only products. */
     buyer: {
       label: "Jeg handler som",
@@ -3682,6 +3712,16 @@ const messages = {
     products: "Products",
     vatIncluded: "incl. VAT",
     vatExcluded: "excl. VAT",
+    /**
+     * Unit price (D160): the price per kg, litre, metre, m² or piece beside a price. The statutory term of the
+     * language and its unit symbols are hand-written and need review by a native speaker (docs/wave-1d-unit-price.md 8).
+     */
+    unitPrice: {
+      label: "Unit price",
+      /** What a screen reader says for "199,60 kr/kg": the label, the amount and the base. */
+      spoken: (amount: string, base: string) => `Unit price: ${amount} per ${base}`,
+      bases: { kg: "kg", "100g": "100 g", l: "l", "100ml": "100 ml", m: "m", m2: "m²", piece: "piece" },
+    },
     /** Private or business buyer (B2B): the header's switch, the first-visit question, business-only products. */
     buyer: {
       label: "Shopping as",

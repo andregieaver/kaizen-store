@@ -186,6 +186,7 @@ export const TOOL_WORDS: Record<string, string> = {
   list_products: "Looking at products",
   get_product: "Reading the product",
   low_stock: "Checking stock",
+  unit_price_gaps: "Checking prices per kilo and litre",
   list_bookings: "Looking at bookings",
   list_discounts: "Looking at coupons",
   list_campaigns: "Looking at campaigns",

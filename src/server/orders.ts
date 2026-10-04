@@ -11,6 +11,8 @@ import { shown, type Market } from "@/lib/markets";
 import { parseOrderTreatment, shopperTreatment, type OrderVatTreatment, type VatKind, type VatReason } from "@/lib/vat-treatment";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { PaymentModeName } from "@/lib/stripe-account";
+import type { ShownMeasure } from "@/lib/unit-price";
+import { snapshotMeasureFromColumns } from "@/lib/unit-price-rules";
 
 import { getStripeSecrets } from "./settings";
 import { platformModes, platformStripe, stripeFor } from "./stripe";
@@ -112,6 +114,11 @@ export type OrderView = {
     vatReliefMinor: number;
     /** A free product a campaign gave (D114): its price is all taken off. */
     gift: boolean;
+    /**
+     * What was in it when it was sold, with the comparison base then in effect (D160, `order_lines.measure_*`, frozen):
+     * its unit price is `unitPrice(unitPriceMinor, ...)` of the price shown for the line. Null for no content.
+     */
+    measure: ShownMeasure | null;
     /** The part of its total paid at the venue (D66). */
     venueMinor: number;
     /** An appointment's time (D65), who with, and where it stands, shown in the store's time zone. */
@@ -242,6 +249,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     taxMinor: Number(line.tax_minor ?? 0),
     vatReliefMinor: Number(line.vat_relief_minor ?? 0),
     gift: Boolean(line.gift),
+    measure: snapshotMeasureFromColumns(line.measure_amount, line.measure_unit, line.measure_base),
     venueMinor: Number(line.venue_minor ?? 0),
     booking: line.starts_at
       ? {
@@ -279,6 +287,7 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
     `),
     db().execute<Row>(sql`
       select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate, ol.tax_minor, ol.gift, ol.vat_relief_minor,
+        ol.measure_amount, ol.measure_unit, ol.measure_base,
         (select coalesce(m.thumbnail_url, m.url)
           from commerce.product_variants v
           join commerce.product_media m on m.product_id = v.product_id

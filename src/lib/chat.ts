@@ -3,6 +3,7 @@ import { z } from "zod";
 import { findClaims } from "./claims";
 import { cleanSignals } from "./recommendations";
 import type { ReturnPolicyFacts } from "./structured-data";
+import type { ShownMeasure } from "./unit-price";
 
 /**
  * The chat agent (D81), the pure parts: what a visitor's request and the
@@ -42,7 +43,14 @@ export type ChatProduct = {
   title: string;
   href: string;
   image: { url: string; alt: string } | null;
-  price: { amountMinor: number; currency: string; referenceMinor: number | null; vat: { rate: number; shown: "incl" | "excl" | "choice" } };
+  price: {
+    amountMinor: number;
+    currency: string;
+    referenceMinor: number | null;
+    vat: { rate: number; shown: "incl" | "excl" | "choice" };
+    /** What is in the variant the price is of, with the base the market shows (D160): the widget works out the unit price from it, never the model. */
+    measure: ShownMeasure | null;
+  };
   from: boolean;
   /** The store's campaigns on the product (D115), in the shopper's words, for a badge on the card. */
   offers?: string[];

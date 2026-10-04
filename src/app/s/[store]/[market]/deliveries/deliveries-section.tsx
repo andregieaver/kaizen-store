@@ -1,12 +1,13 @@
 import Link from "next/link";
 
-import { VatAmount } from "@/components/price";
+import { UnitLine, VatAmount } from "@/components/price";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { WITH_VAT } from "@/lib/pricing";
+import { unitLabelsOf } from "@/lib/unit-price-text";
 import { cutoffFor, cutoffWeekday, formatCutoff, formatDeliveryDate, weekdayName } from "@/lib/standing-orders";
 import { getCustomer } from "@/server/customers";
 import { getShopperOrder } from "@/server/orders";
@@ -241,6 +242,17 @@ async function Deliveries({ store, market, query: asked }: { store: Store; marke
                       d.unavailable
                     )}
                   </p>
+                  {/* The price per kg, litre or metre of what is on the list now, from the price shown above (D160). */}
+                  {line.available && line.unitMinor !== null && (
+                    <UnitLine
+                      amountMinor={line.unitMinor}
+                      currency={list.currency}
+                      locale={market.locale}
+                      vat={line.vat}
+                      measure={line.measure}
+                      labels={unitLabelsOf(m)}
+                    />
+                  )}
                 </div>
                 <div className="ml-auto flex items-center gap-1">
                   {act(setDeliveryQuantityAction.bind(null, store.slug, market.slug, line.variantId, line.quantity - 1), "−", "w-11 px-0")}

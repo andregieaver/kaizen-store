@@ -10,6 +10,8 @@ import { shownOptions, t } from "@/lib/i18n";
 import { parseDelivery, variantLabel, type Delivery } from "@/lib/product-input";
 import { parseShippingVatRule, shippingRate } from "@/lib/shipping-vat";
 import type { PaymentModeName } from "@/lib/stripe-account";
+import type { ShownMeasure } from "@/lib/unit-price";
+import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import {
   MAX_PAUSE_PERIODS,
   basketShipping,
@@ -45,6 +47,8 @@ export type SubscriptionLine = {
   delivery: Delivery;
   /** The VAT rate it was sold at (D65): its product's, kept when swapped for another variant of it. */
   taxRate: number;
+  /** What the variant holds now and what it is compared per in the subscription's market (D160); the unit price is of `unitPriceMinor` (one delivery's price with VAT). Null for no content. */
+  measure: ShownMeasure | null;
 };
 
 export type SubscriptionView = {
@@ -102,7 +106,8 @@ async function view(storeId: string, where: ReturnType<typeof sql>): Promise<Sub
   if (!row) return null;
   const [lines, orders] = await Promise.all([
     db().execute<Row>(sql`
-      select l.id, l.variant_id, v.product_id, l.title, l.sku, l.quantity, l.unit_price_minor, l.total_minor, l.delivery, l.tax_rate
+      select l.id, l.variant_id, v.product_id, l.title, l.sku, l.quantity, l.unit_price_minor, l.total_minor, l.delivery, l.tax_rate,
+        v.measure_amount, v.measure_unit, v.measure_base
       from commerce.subscription_lines l
       left join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
       where l.store_id = ${storeId}::uuid and l.subscription_id = ${row.id} order by l.title
@@ -164,6 +169,7 @@ async function view(storeId: string, where: ReturnType<typeof sql>): Promise<Sub
       totalMinor: Number(l.total_minor),
       delivery: parseDelivery(l.delivery),
       taxRate: Number(l.tax_rate ?? 0),
+      measure: shownMeasureFromColumns(l.measure_amount, l.measure_unit, l.measure_base, String(row.market_code)),
     })),
     orders: orders.map((o) => ({
       id: String(o.id),
@@ -365,17 +371,27 @@ export async function renewSubscription(storeId: string, invoice: Stripe.Invoice
     `);
     const orderId = String(order.id);
     for (const [lineId, line] of taxOf) {
+      // The variant's content as it is when this delivery is placed (D160), like its cost: the renewal's line keeps the
+      // price the subscription was sold at and the measure the variant has now, with the base in effect in the market.
+      const [content] = await tx.execute<Row>(sql`
+        select v.measure_amount, v.measure_unit, v.measure_base
+        from commerce.subscription_lines l
+        join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
+        where l.store_id = ${storeId}::uuid and l.id = ${lineId}::uuid
+      `);
+      const measure = content ? shownMeasureFromColumns(content.measure_amount, content.measure_unit, content.measure_base, String(sub.market_code)) : null;
       await tx.execute(sql`
         insert into commerce.order_lines (
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
-          selling_plan_id, plan_interval, plan_interval_count, unit_cost_minor
+          selling_plan_id, plan_interval, plan_interval_count, unit_cost_minor,
+          measure_amount, measure_unit, measure_base
         )
         select l.store_id, ${orderId}::uuid, l.variant_id, l.sku, l.title, l.quantity, l.unit_price_minor, 0,
                l.total_minor, ${line.tax}, ${line.rate}, l.tax_code,
                case when l.delivery = 'digital' then 'digital_content' else 'none' end::commerce.withdrawal_exclusion,
                l.delivery, l.selling_plan_id, ${sub.interval}::commerce.plan_interval, ${sub.interval_count},
-               v.cost_minor
+               v.cost_minor, ${measure?.amount ?? null}::numeric, ${measure?.unit ?? null}, ${measure?.base ?? null}
         from commerce.subscription_lines l
         left join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
         where l.store_id = ${storeId}::uuid and l.id = ${lineId}::uuid

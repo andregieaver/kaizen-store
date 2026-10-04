@@ -101,8 +101,16 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "get_product",
-    "One product: its texts in the main language, status, and each variant's SKU, price per country and stock.",
+    "One product: its texts in the main language, status, and each variant's SKU, price per country and stock. A variant with its content set (a pack's weight, volume or length) also gives that content and the price per kg, litre or metre in each country, as the store shows it.",
     z.object({ product: productRef }),
+  ),
+  tool(
+    "unit_price_gaps",
+    "The price per kg, litre or metre (unit price, D160) that shoppers see beside a price. Without `product`: the products that need their content set and still have an active variant without it (a product marked as sold by measure, or one in a category marked as needing a unit price), with the reason and the SKUs, and how many variants already have content. With `product`: each active variant's content and its unit price in each country, as the store shows it (with VAT, or without for businesses), or why none is shown. Read only and worked out by the store: repeat the figures and add no arithmetic. You cannot set a variant's content: the owner does that in the product editor, which refuses to save an active product that needs content and has none.",
+    z.object({
+      product: productRef.optional().describe("Leave out to list the products that need content; give one to see its variants' unit prices."),
+      limit: limit(100, 25),
+    }),
   ),
   tool(
     "low_stock",

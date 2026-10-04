@@ -11,6 +11,8 @@ import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 import { parseRentalPeriod, rangeEndsAt, type RentalPeriod } from "@/lib/booking-ranges";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/subscriptions";
+import type { ShownMeasure } from "@/lib/unit-price";
+import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 
 import { freeResourcesAt } from "./appointments";
 import { attachVisitToCart } from "./analytics-visits";
@@ -44,6 +46,12 @@ export type CartLine = {
   image: { url: string; alt: string } | null;
   quantity: number;
   unitPriceMinor: number | null;
+  /**
+   * What is in one unit and what it is compared per in this market (D160), read live from the variant: the unit price is
+   * `unitPrice(line.unitPriceMinor, ...)` (one unit's price as the cart shows it, whatever the quantity). Null for no
+   * content, for bookings and for a line that cannot be bought.
+   */
+  measure: ShownMeasure | null;
   /** Units that can be sold; downloads never run out (D24). */
   available: number;
   status: CartLineStatus;
@@ -133,6 +141,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
   const rows = await db().execute<Row>(sql`
     select
       cl.variant_id, cl.quantity, v.options, v.delivery, p.handle, p.id as product_id, p.audience,
+      v.measure_amount, v.measure_unit, v.measure_base,
       commerce.vat_rate(c.market_code, p.vat_category) as vat_rate,
       cl.starts_at, cl.resource_id, br.name as staff, st.time_zone, aps.payment, aps.deposit_percent,
       p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
@@ -259,6 +268,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
           : null,
         quantity,
         unitPriceMinor,
+        // Goods only: a booking's price is for its nights, days or hours, and the database refuses a measure on one.
+        measure: range || row.starts_at || status === "unavailable" ? null : shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, market.code),
         available,
         status,
         delivery: parseDelivery(row.delivery),

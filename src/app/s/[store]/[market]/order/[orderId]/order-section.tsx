@@ -9,6 +9,7 @@ import { OwnBookings } from "@/components/own-bookings";
 import { OrderReturns } from "@/components/withdraw/order-returns";
 import { PasswordReset } from "@/components/account-sign-in";
 import { LineThumbnail } from "@/components/line-thumbnail";
+import { LineUnitPrice } from "@/components/price";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
@@ -222,6 +223,15 @@ function linesList({ market, order, m, money }: OrderView) {
           <span className="min-w-0 flex-1">
             {isRange(line.booking) ? line.title : `${line.quantity} × ${line.title}`}
             {line.booking && <span className="block text-sm">{bookingWhen(line.booking, market.locale, m)}</span>}
+            {/* What it was sold with (D160): the line's price as charged, over the content kept on the line, so a later change to the product never rewrites it. */}
+            <LineUnitPrice
+              shownMinor={line.unitPriceMinor}
+              measure={line.measure}
+              gift={line.gift}
+              currency={order.currency}
+              locale={market.locale}
+              m={m}
+            />
           </span>
           <span className="whitespace-nowrap">
             {line.gift ? (

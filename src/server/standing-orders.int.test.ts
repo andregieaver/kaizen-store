@@ -5,6 +5,7 @@ import { closeDb, db } from "@/db/client";
 import { addDays, zonedDate } from "@/lib/booking-slots";
 import { toMarket } from "@/lib/markets";
 import { isoWeekday } from "@/lib/standing-orders";
+import { allowSmallBase } from "@/lib/unit-price-test-support";
 
 import type { Membership } from "./auth";
 
@@ -170,9 +171,24 @@ describe("the list (D102)", () => {
     expect(await deliveries.setListQuantity(storeId, customerId, variant["DEMO-MUG-WHITE"], 500)).toEqual({ ok: true, quantity: 99 });
     expect(await deliveries.setListQuantity(storeId, customerId, variant["DEMO-MUG-WHITE"], 2)).toEqual({ ok: true, quantity: 2 });
     expect(await deliveries.setListQuantity(storeId, customerId, variant["DEMO-TOTE"], 0)).toEqual({ ok: true, quantity: 0 });
+    // What is in it (D160): the list shows the variant's content as it is now, with the base the list's market shows.
+    await db().execute(sql`
+      update commerce.product_variants set measure_amount = 250, measure_unit = 'g', measure_base = '100g' where id = ${variant["DEMO-MUG-WHITE"]}::uuid
+    `);
     const view = await deliveries.getStandingOrder(storeId, customerId, no);
     expect(view?.lines.map((l) => [l.quantity, l.available])).toEqual([[2, true]]);
     expect(view?.estimate.itemsMinor).toBe(2 * view!.lines[0].unitMinor!);
+    // The country table as read shows kg in Norway whatever the owner chose; with Norway opened for the test, the owner's 100 g.
+    expect(view?.lines[0].measure).toEqual({ amount: "250", unit: "g", base: "kg" });
+    const restoreSmallBase = allowSmallBase("NO");
+    try {
+      expect((await deliveries.getStandingOrder(storeId, customerId, no))?.lines[0].measure).toEqual({ amount: "250", unit: "g", base: "100g" });
+    } finally {
+      restoreSmallBase();
+    }
+    await db().execute(sql`
+      update commerce.product_variants set measure_amount = null, measure_unit = null, measure_base = null where id = ${variant["DEMO-MUG-WHITE"]}::uuid
+    `);
   });
 });
 

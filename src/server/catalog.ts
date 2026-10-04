@@ -12,6 +12,8 @@ import { priceVat, priceView, type PriceView } from "@/lib/pricing";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
 import type { ShownGroup } from "@/lib/custom-fields";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
+import type { ShownMeasure } from "@/lib/unit-price";
+import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
 
@@ -46,6 +48,8 @@ export type ProductVariant = {
   gtin: string | null;
   options: Record<string, string>;
   price: PriceView;
+  /** What is in it and what it is compared per in this market (D160); the price's own `measure` is the same. Null for no content. */
+  measure: ShownMeasure | null;
   /** Shipped, or downloaded after payment (D24). */
   delivery: Delivery;
   /** How a rental's variant is booked (D69); "day" for everything else. */
@@ -115,6 +119,20 @@ const numOrNull = (value: unknown): number | null =>
 const str = (value: unknown): string => (value === null ? "" : String(value));
 const orNull = (value: number | null, map: (n: number) => number): number | null => (value === null ? null : map(value));
 
+/**
+ * The measure of the variant a card's price is the price of (D160): the cheapest active variant in the market, ties
+ * broken by SKU, the same one `getProduct()` lists first. Read in the same lateral as the price so the two cannot be
+ * of different variants.
+ */
+const CHEAPEST_MEASURE = sql`
+        (array_agg(v.measure_amount order by cp.amount_minor, v.sku))[1] as measure_amount,
+        (array_agg(v.measure_unit order by cp.amount_minor, v.sku))[1] as measure_unit,
+        (array_agg(v.measure_base order by cp.amount_minor, v.sku))[1] as measure_base`;
+
+/** A row's measure as the market shows it: the base follows the market's country, never its language or currency (D109). */
+const shownMeasure = (row: Row, market: Pick<Market, "code">): ShownMeasure | null =>
+  shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, market.code);
+
 /** Who a product is for (B2B): only in stores selling to both does it matter. */
 const productAudience = (row: Row): ProductAudience =>
   row.store_audience === "both" ? parseProductAudience(row.audience) : "all";
@@ -136,7 +154,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       pr.min_amount,
       pr.max_amount,
       pr.currency,
-      pr.prior_30d,
+      pr.prior_30d, pr.measure_amount, pr.measure_unit, pr.measure_base,
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
@@ -160,7 +178,8 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
         min(cp.amount_minor) as min_amount,
         max(cp.amount_minor) as max_amount,
         min(cp.currency) as currency,
-        (array_agg(cp.prior_30d_minor order by cp.amount_minor))[1] as prior_30d
+        (array_agg(cp.prior_30d_minor order by cp.amount_minor, v.sku))[1] as prior_30d,
+        ${CHEAPEST_MEASURE}
       from commerce.current_prices cp
       join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
@@ -181,8 +200,8 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       // Kept in the country's own currency; shown in the one chosen (D109).
       price:
         discount === null
-          ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat)
-          : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat),
+          ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat, shownMeasure(row, market))
+          : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat, shownMeasure(row, market)),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
     };
@@ -236,6 +255,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
     `),
     readDb().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.delivery, v.rental_period, v.image_url, v.image_thumbnail_url,
+        v.measure_amount, v.measure_unit, v.measure_base,
         coalesce(commerce.media_alt(v.image_url, ${locale}), '') as image_alt,
         cp.amount_minor, cp.currency, cp.prior_30d_minor
       from commerce.product_variants v
@@ -284,7 +304,8 @@ export async function getProduct(storeId: string, market: Market, handle: string
       sku: str(v.sku),
       gtin: v.gtin ? str(v.gtin) : null,
       options: (v.options ?? {}) as Record<string, string>,
-      price: priceView(shown(market, num(v.amount_minor)), market.currency, orNull(numOrNull(v.prior_30d_minor), (n) => shown(market, n)), vat),
+      price: priceView(shown(market, num(v.amount_minor)), market.currency, orNull(numOrNull(v.prior_30d_minor), (n) => shown(market, n)), vat, shownMeasure(v, market)),
+      measure: shownMeasure(v, market),
       delivery: parseDelivery(v.delivery),
       rentalPeriod: parseRentalPeriod(v.rental_period),
       image: v.image_url ? { url: str(v.image_url), thumbnailUrl: str(v.image_thumbnail_url ?? v.image_url), alt: str(v.image_alt) } : null,
@@ -385,7 +406,7 @@ export async function listGridProducts(
       pr.min_amount,
       pr.max_amount,
       pr.currency,
-      pr.prior_30d,
+      pr.prior_30d, pr.measure_amount, pr.measure_unit, pr.measure_base,
       case when p.subscription_only then (
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
@@ -409,7 +430,8 @@ export async function listGridProducts(
         min(cp.amount_minor) as min_amount,
         max(cp.amount_minor) as max_amount,
         min(cp.currency) as currency,
-        (array_agg(cp.prior_30d_minor order by cp.amount_minor))[1] as prior_30d
+        (array_agg(cp.prior_30d_minor order by cp.amount_minor, v.sku))[1] as prior_30d,
+        ${CHEAPEST_MEASURE}
       from commerce.current_prices cp
       join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
@@ -434,8 +456,8 @@ export async function listGridProducts(
       // Kept in the country's own currency; shown in the one chosen (D109).
       price:
         discount === null
-          ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat)
-          : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat),
+          ? priceView(shown(market, num(row.min_amount)), market.currency, orNull(numOrNull(row.prior_30d), (n) => shown(market, n)), vat, shownMeasure(row, market))
+          : priceView(planPrice(shown(market, num(row.min_amount)), discount), market.currency, null, vat, shownMeasure(row, market)),
       priceVaries: discount !== null || num(row.min_amount) !== num(row.max_amount),
       audience: productAudience(row),
     };

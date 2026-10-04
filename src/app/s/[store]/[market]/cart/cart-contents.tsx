@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
+import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
 import { discountNote } from "@/lib/customer-tiers";
 import { companyRequired, withoutVat } from "@/lib/b2b";
@@ -215,6 +216,20 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                   <p className="text-sm text-muted">{optionLabel(m, line.options)}</p>
                 )}
                 {line.delivery === "digital" && <p className="text-sm text-muted">{m.digitalDelivery}</p>}
+                {/* The price per kg, litre or metre of one unit as this cart shows it (D160): netted for a business buyer, whatever the quantity. */}
+                <LineUnitPrice
+                  shownMinor={
+                    line.unitPriceMinor === null || line.status === "unavailable"
+                      ? null
+                      : view.business
+                        ? withoutVat(line.unitPriceMinor, line.vatRate)
+                        : line.unitPriceMinor
+                  }
+                  measure={line.measure}
+                  currency={cart.currency}
+                  locale={market.locale}
+                  m={m}
+                />
                 {line.booking && (
                   <p className="text-sm">
                     <span className="sr-only">{m.booking.time}: </span>

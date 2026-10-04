@@ -1,6 +1,7 @@
 import type { Market } from "./markets";
 import { minorUnitDigits } from "./money";
 import { absoluteUrl, schemaPrice, schemaProperty, type JsonLd, type StoreSeo } from "./seo";
+import { baseQuantity, measureQuantity, type ShownMeasure } from "./unit-price";
 
 /**
  * Schema.org data for search engines and AI assistants (decision D21):
@@ -186,6 +187,8 @@ export type ProductFacts = {
     gtin: string | null;
     options: Record<string, string>;
     price: { amountMinor: number; currency: string };
+    /** What is in it, with the base the market compares per (D160): the offer says its price per measure. */
+    measure?: ShownMeasure | null;
     /** Downloads have no shipping and no withdrawal (D24); shipped when left out. */
     delivery?: "physical" | "digital" | "service";
   }[];
@@ -231,6 +234,20 @@ export function productJsonLd({
       url,
       price: schemaPrice(variant.price.amountMinor, digits),
       priceCurrency: variant.price.currency,
+      // The price per kg, litre or metre as Google's merchant listing page shows it (D160): the pack's price, the pack's
+      // content and, in `valueReference`, what it is compared per. The figure itself is the page's own business.
+      ...(variant.measure && {
+        priceSpecification: {
+          "@type": "UnitPriceSpecification",
+          price: schemaPrice(variant.price.amountMinor, digits),
+          priceCurrency: variant.price.currency,
+          referenceQuantity: {
+            "@type": "QuantitativeValue",
+            ...measureQuantity(variant.measure),
+            valueReference: { "@type": "QuantitativeValue", ...baseQuantity(variant.measure.base) },
+          },
+        },
+      }),
       availability: `${SCHEMA}/${digital || inStock(variant.id) ? "InStock" : "OutOfStock"}`,
       itemCondition: `${SCHEMA}/NewCondition`,
       seller,

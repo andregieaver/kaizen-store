@@ -24,6 +24,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_products: "products:read",
   get_product: "products:read",
   low_stock: "products:read",
+  unit_price_gaps: "products:read",
   list_bookings: "bookings:read",
   list_discounts: "marketing:read",
   list_campaigns: "marketing:read",

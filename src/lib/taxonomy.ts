@@ -25,6 +25,11 @@ export type Term = {
   parentId: string | null;
   name: string;
   slug: string;
+  /**
+   * A store's product category whose products (and its subcategories') need a content for the unit price (D160). Only
+   * ever true on a product category; absent where it is not read (Kaizen's own terms).
+   */
+  requiresUnitPrice?: boolean;
 };
 
 /** What an item is in: category and tag ids. */
@@ -63,6 +68,8 @@ export const termInput = z
       .max(TERM_NAME_MAX, `Keep the name under ${TERM_NAME_MAX} characters.`),
     slug: z.string().trim().default(""),
     parentId: z.uuid().nullable().default(null),
+    /** Unit price (D160): left out means unchanged on an update and off on a new one; true only for a product category. */
+    requiresUnitPrice: z.boolean().optional(),
   })
   .transform((term, ctx) => {
     const slug = term.slug || slugify(term.name, TERM_SLUG_MAX);

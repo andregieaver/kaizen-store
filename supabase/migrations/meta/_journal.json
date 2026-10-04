@@ -1744,6 +1744,20 @@
       "when": 1791127382514,
       "tag": "20261004152302_order_invoices_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1791134092136,
+      "tag": "20261004171452_unit_price",
+      "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1791134101584,
+      "tag": "20261004171501_unit_price_rules",
+      "breakpoints": true
     }
   ]
 }

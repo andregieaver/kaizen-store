@@ -12,6 +12,8 @@ import { marketPath, storeOrigin } from "@/lib/paths";
 import { priceVat, type PriceVat } from "@/lib/pricing";
 import { variantLabel } from "@/lib/product-input";
 import { basketShipping } from "@/lib/subscriptions";
+import type { ShownMeasure } from "@/lib/unit-price";
+import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
 import {
   currentRound,
@@ -158,6 +160,8 @@ export type ListLine = {
   /** Today's price with VAT; null when it cannot be had in this market. */
   unitMinor: number | null;
   vat: PriceVat;
+  /** What is in it now and what it is compared per in the list's market (D160): the unit price is of `unitMinor`. */
+  measure: ShownMeasure | null;
   /** It can go in a delivery now: on sale, priced and in stock. */
   available: boolean;
 };
@@ -312,7 +316,7 @@ async function deliveryOrder(storeId: string, row: Row): Promise<DeliveryOrder> 
 /** A list's lines with today's price and whether they can be had. */
 async function listLines(storeId: string, listId: string, marketCode: string, locale: string, lang: string, audience: string): Promise<ListLine[]> {
   const rows = await db().execute<Row>(sql`
-    select l.variant_id, l.quantity, p.handle, v.options,
+    select l.variant_id, l.quantity, p.handle, v.options, v.measure_amount, v.measure_unit, v.measure_base,
       coalesce(tl.title, tf.title, p.handle) as title,
       coalesce(v.image_thumbnail_url, v.image_url, (select coalesce(m.thumbnail_url, m.url) from commerce.product_media m
          where m.store_id = p.store_id and m.product_id = p.id order by m.position limit 1)) as image,
@@ -344,6 +348,7 @@ async function listLines(storeId: string, listId: string, marketCode: string, lo
       quantity: Number(row.quantity),
       unitMinor: row.amount_minor === null ? null : Number(row.amount_minor),
       vat: priceVat(audience, row.vat_rate),
+      measure: shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, marketCode),
       available: Boolean(row.sellable) && row.amount_minor !== null && Number(row.free) > 0,
     };
   });

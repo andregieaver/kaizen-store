@@ -1,4 +1,5 @@
 import { parseStoreAudience, vatShown, withoutVat, type Buyer, type VatShown } from "./b2b";
+import type { ShownMeasure } from "./unit-price";
 
 /**
  * What to show for a price. A reduction may only be advertised against the
@@ -14,6 +15,12 @@ export type PriceView = {
   referenceMinor: number | null;
   /** How the store shows it (B2B): the market's VAT rate, and with VAT, without, or as the shopper chooses. */
   vat: PriceVat;
+  /**
+   * What is in the variant whose price this is, with the comparison base that is in effect in the market (D160): the
+   * unit price is worked out from `amountMinor` and this by `unitPrice()`, never from `referenceMinor`. Null for no
+   * content (or not goods).
+   */
+  measure: ShownMeasure | null;
 };
 
 export type PriceVat = { rate: number; shown: VatShown };
@@ -26,6 +33,7 @@ export function priceView(
   currency: string,
   prior30dMinor: number | null,
   vat: PriceVat = WITH_VAT,
+  measure: ShownMeasure | null = null,
 ): PriceView {
   return {
     amountMinor,
@@ -33,6 +41,7 @@ export function priceView(
     referenceMinor:
       prior30dMinor !== null && amountMinor < prior30dMinor ? prior30dMinor : null,
     vat,
+    measure,
   };
 }
 

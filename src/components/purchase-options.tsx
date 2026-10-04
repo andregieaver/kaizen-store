@@ -4,8 +4,10 @@ import { createContext, useContext, useId, useState, type ReactNode } from "reac
 
 import type { PriceVat } from "@/lib/pricing";
 import { planPrice } from "@/lib/subscriptions";
+import type { ShownMeasure } from "@/lib/unit-price";
+import type { UnitLabels } from "@/lib/unit-price-text";
 
-import { VatAmount, type VatLabels } from "./price";
+import { UnitLine, VatAmount, type VatLabels } from "./price";
 
 /** A purchase option as the product page shows it, with its text in the shopper's language. */
 export type PlanChoice = { id: string; discountPercent: number; label: string; note: string };
@@ -68,7 +70,9 @@ export function useChosenPlan(): PlanChoice | null {
 
 /**
  * A variant's price for the chosen purchase option: the server's price
- * (with its 30-day reference) when buying once, the subscriber's otherwise.
+ * (with its 30-day reference and unit price) when buying once, the subscriber's
+ * otherwise, with the unit price (D160) worked out again from that reduced
+ * price by the same pure function, here in the browser.
  */
 export function PlanPrice({
   amountMinor,
@@ -76,6 +80,8 @@ export function PlanPrice({
   locale,
   vat,
   labels,
+  measure = null,
+  unitLabels,
   children,
 }: {
   amountMinor: number;
@@ -83,6 +89,8 @@ export function PlanPrice({
   locale: string;
   vat: PriceVat;
   labels: VatLabels;
+  measure?: ShownMeasure | null;
+  unitLabels?: UnitLabels;
   children: ReactNode;
 }) {
   const plan = useChosenPlan();
@@ -99,6 +107,16 @@ export function PlanPrice({
         />
       </p>
       <p className="text-sm text-muted">{plan.label}</p>
+      {unitLabels && (
+        <UnitLine
+          amountMinor={planPrice(amountMinor, plan.discountPercent)}
+          currency={currency}
+          locale={locale}
+          vat={vat}
+          measure={measure}
+          labels={unitLabels}
+        />
+      )}
     </div>
   );
 }

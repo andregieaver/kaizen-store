@@ -8,6 +8,7 @@ import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
+import { lineUnitWords } from "@/lib/unit-price-text";
 import type { Store } from "@/server/stores";
 import { allowedChanges, getSubscriptionByToken, swapChoices, type SwapChoice } from "@/server/subscriptions";
 
@@ -132,6 +133,8 @@ async function Details({ store, market, token }: { store: Store; market: Market;
               title: line.title,
               quantity: line.quantity,
               variantId: line.variantId,
+              // One delivery's price over what the variant holds now, as the price beside it is (D160).
+              unit: lineUnitWords({ unitPriceMinor: line.unitPriceMinor, measure: line.measure }, subscription.currency, market.locale, m),
               choices: (choices.get(line.id) ?? []).map((choice) => ({
                 variantId: choice.variantId,
                 label: choice.label,

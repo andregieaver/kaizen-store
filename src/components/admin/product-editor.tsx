@@ -63,7 +63,9 @@ import {
 import { slugify } from "@/lib/slug";
 import { createClient } from "@/lib/supabase/client";
 import type { EditorContext, Operator } from "@/server/products";
+import { SoldByMeasureField, ContentFields, type ContentContext } from "@/components/admin/unit-price-fields";
 import { VatCategoryField } from "@/components/admin/vat-category-field";
+import { contentState, withoutContentWhereNotGoods } from "@/lib/unit-price-editor";
 
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -181,6 +183,8 @@ export function ProductEditor(props: Props) {
   const save = () => {
     const payload = {
       ...product,
+      // A content left empty is no content (unit price, D160).
+      variants: product.variants.map((v) => (v.measure && v.measure.amount.trim() === "" ? { ...v, measure: null } : v)),
       handle: product.handle || slugify(title) || "product",
       fields: changesFrom(fieldGroups.flatMap((group) => group.fields), fieldData, context.locales),
       // Each variant's, by its SKU as it is now.
@@ -413,7 +417,14 @@ export function ProductEditor(props: Props) {
           <SafetySection product={product} update={update} operators={context.operators} countries={props.countries} />
         </>
       )}
-      <LegalSection product={product} update={update} markets={context.markets} vatCategories={context.vatCategories} />
+      <LegalSection
+        product={product}
+        update={update}
+        markets={context.markets}
+        vatCategories={context.vatCategories}
+        terms={context.terms}
+        primaryLocale={context.primaryLocale}
+      />
 
       <div className="flex justify-end">
         <button
@@ -787,6 +798,7 @@ const emptyVariant = (options: Record<string, string>, delivery: Delivery): Vari
   options,
   sku: "",
   gtin: null,
+  measure: null,
   prices: {},
   cost: "",
   stock: 0,
@@ -844,7 +856,11 @@ function VariantsSection({
   const setVariant = (index: number, change: Partial<VariantInput>) =>
     update((p) => {
       const before = p.variants[index];
-      const variants = p.variants.map((v, i) => (i === index ? { ...v, ...change } : v));
+      // A variant that is no longer shipped goods has no content (D160).
+      const variants = withoutContentWhereNotGoods(
+        p.kind,
+        p.variants.map((v, i) => (i === index ? { ...v, ...change } : v)),
+      );
       // Files follow their variant when its SKU changes, and go back to
       // every digital variant when it stops being digital.
       const files = p.files.map((f) => {
@@ -859,11 +875,19 @@ function VariantsSection({
     update((p) => ({
       ...p,
       delivery,
-      variants: p.variants.map((v) => ({ ...v, delivery })),
+      variants: withoutContentWhereNotGoods(p.kind, p.variants.map((v) => ({ ...v, delivery }))),
       files: p.files.map((f) => ({ ...f, variantSku: null })),
     }));
 
   const parseValues = (text: string) => text.split(",").map((v) => v.trim()).filter(Boolean);
+
+  // What the content's live preview needs (unit price, D160): the markets with their VAT, how the store shows prices.
+  const contentContext: ContentContext = {
+    markets: context.markets,
+    audience: context.audience,
+    vatCategory: product.vatCategory,
+    locale: context.primaryLocale,
+  };
 
   return (
     <section aria-labelledby="variants-heading" className={card}>
@@ -1056,6 +1080,7 @@ function VariantsSection({
                   showDelivery={mixed}
                   showPeriod={product.kind === "rental"}
                   showStock={!allDigital}
+                  content={product.kind === "goods" ? contentContext : null}
                   pictures={product.media}
                   upload={upload}
                   onChange={(change) => setVariant(index, change)}
@@ -1087,12 +1112,15 @@ function VariantRow({
   showDelivery,
   showPeriod = false,
   showStock,
+  content,
   pictures,
   upload,
   onChange,
 }: {
   variant: VariantInput;
   name: string;
+  /** What the content's preview needs (unit price, D160); null where a variant cannot have a content (not goods). */
+  content: ContentContext | null;
   /** The product's pictures, to choose the variant's from. */
   pictures: ProductInput["media"];
   upload: PictureUpload | null;
@@ -1204,7 +1232,7 @@ function VariantRow({
         <td colSpan={columns} className="pb-3">
           <details>
             <summary className="cursor-pointer text-xs text-muted">
-              {digital ? `Barcode and cost for ${name}` : `Barcode, cost, weight and customs for ${name}`}
+              {digital ? `Barcode and cost for ${name}` : `Barcode, cost, weight, content and customs for ${name}`}
             </summary>
             <div className="mt-2 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <label className="flex flex-col gap-1 text-xs font-medium">
@@ -1263,6 +1291,14 @@ function VariantRow({
                     </select>
                   </label>
                 </>
+              )}
+              {!digital && content && (
+                <ContentFields
+                  name={name}
+                  variant={variant}
+                  context={content}
+                  onChange={(measure) => onChange({ measure })}
+                />
               )}
             </div>
           </details>
@@ -1842,7 +1878,10 @@ function AudienceSection({ product, update }: SectionProps) {
 
 /** Goods, or an appointment booked for a time (D65). */
 function KindSection({ product, update }: SectionProps) {
-  const choose = (kind: ProductInput["kind"]) =>
+  // Content for the unit price goes with a change to something that is not goods (D160): said once, where it happened.
+  const [lostContent, setLostContent] = useState(false);
+  const choose = (kind: ProductInput["kind"]) => {
+    setLostContent(kind !== "goods" && product.variants.some((v) => v.measure !== null));
     update((p) => {
       const booked = isBooked(kind);
       const delivery = (d: Delivery): Delivery => (booked ? "service" : d === "service" ? "physical" : d);
@@ -1853,11 +1892,13 @@ function KindSection({ product, update }: SectionProps) {
         // Rooms and homes take the reduced rate for accommodation where there is one (D65).
         vatCategory: kind === "stay" && p.vatCategory === "standard" ? "accommodation" : p.vatCategory,
         delivery: delivery(p.delivery),
-        variants: p.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) })),
+        variants: withoutContentWhereNotGoods(kind, p.variants.map((v) => ({ ...v, delivery: delivery(v.delivery) }))),
         plans: booked ? [] : p.plans,
         subscriptionOnly: booked ? false : p.subscriptionOnly,
+        soldByMeasure: kind === "goods" ? p.soldByMeasure : false,
       };
     });
+  };
   return (
     <section aria-labelledby="kind-heading" className={card}>
       <fieldset>
@@ -1892,6 +1933,11 @@ function KindSection({ product, update }: SectionProps) {
           ))}
         </div>
       </fieldset>
+      {lostContent && (
+        <p role="status" className="mt-3 text-sm text-muted">
+          The content of its variants was taken away: only shipped goods have a price per kg or litre.
+        </p>
+      )}
     </section>
   );
 }
@@ -2602,7 +2648,14 @@ function LegalSection({
   update,
   markets,
   vatCategories,
-}: SectionProps & { markets: EditorContext["markets"]; vatCategories: EditorContext["vatCategories"] }) {
+  terms,
+  primaryLocale,
+}: SectionProps & {
+  markets: EditorContext["markets"];
+  vatCategories: EditorContext["vatCategories"];
+  terms: EditorContext["terms"];
+  primaryLocale: string;
+}) {
   const general = product.taxCode === GENERAL_TAX_CODE;
   return (
     <section aria-labelledby="legal-heading" className={card}>
@@ -2617,6 +2670,14 @@ function LegalSection({
           markets={markets}
           onChange={(vatCategory) => update((p) => ({ ...p, vatCategory }))}
         />
+
+        {product.kind === "goods" && (
+          <SoldByMeasureField
+            checked={product.soldByMeasure}
+            onChange={(soldByMeasure) => update((p) => ({ ...p, soldByMeasure }))}
+            state={contentState(product, terms, primaryLocale)}
+          />
+        )}
 
         <fieldset className="flex flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">Tax code for Stripe</legend>

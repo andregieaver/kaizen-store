@@ -252,6 +252,19 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "unit-prices",
+    area: "store",
+    title: "Show the price per kilo, litre or metre",
+    when: "The owner asks about unit prices, a price per kg or litre, the comparison price shoppers must see on food, drink and other goods sold by weight, volume or length, or products that lack it.",
+    steps: [
+      "Call unit_price_gaps: without a product it lists the products that need their content (a pack's weight, volume or length) and still lack it, with why and the SKUs, worked out by the store. Repeat its list; never guess which products need one.",
+      "To see what shoppers are shown for one product, call unit_price_gaps with the product (or get_product): each variant's content and the price per kg, litre or metre in each country, with or without VAT as the store shows it. Repeat the figures; do the arithmetic never.",
+      "You cannot set content: open the product (product, with productId) and say where it goes: each variant's content (an amount and a unit) in the editor. A product marked as sold by measure, or in a category that needs a price per kg or litre, cannot be saved active without it.",
+      "To make a whole category need it, open the categories page (product.categories) and tick it there; products already on sale stay on sale and show no unit price until their content is set.",
+      "Say plainly that which comparison unit a country allows (1 kg or 100 g, 1 l or 100 ml) and what the law requires of a store is for the owner or a lawyer to confirm: the store shows the safe default of 1 kg or 1 l unless the owner chose otherwise, and Germany never shows 100 g.",
+    ],
+  },
+  {
     id: "vat-and-reverse-charge",
     area: "store",
     title: "Understand how the store charges VAT",

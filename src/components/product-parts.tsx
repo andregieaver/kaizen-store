@@ -38,6 +38,7 @@ import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { stockLevel } from "@/lib/pricing";
 import { productJsonLd } from "@/lib/structured-data";
 import { planPrice } from "@/lib/subscriptions";
+import { unitLabelsOf } from "@/lib/unit-price-text";
 import { db } from "@/db/client";
 import { memberDiscountFor } from "@/server/customer-tiers";
 import { getCustomer } from "@/server/customers";
@@ -719,6 +720,8 @@ async function VariantsWithStock({
                   locale={market.locale}
                   vat={variant.price.vat}
                   labels={{ vatIncluded: m.vatIncluded, vatExcluded: m.vatExcluded }}
+                  measure={variant.price.measure}
+                  unitLabels={unitLabelsOf(m)}
                 >
                   <Price price={variant.price} locale={market.locale} m={m} />
                 </PlanPrice>

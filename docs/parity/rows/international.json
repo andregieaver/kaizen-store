@@ -942,28 +942,90 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 4,
-    "gap": "No field, display or structured data: variants carry no content or measure and the storefront shows no price per kg, litre or metre (Price Indication Directive; Norwegian rules).",
-    "bucket": "A",
+    "gap": "Built and held by tests in the working tree of lane 1d (D160 proposed; not committed, no migration applied to production). A goods variant carries a measure, a unit and a base (`product_variants.measure_*`, database checks), `unitPrice()` (BigInt, half up, `src/lib/unit-price.ts`) is the only place a price is divided, and the figure follows the price as shown: the product page and its variant and plan choice, cards (the variant the card's price is of), cart and slide-out cart, checkout, order page, emails, chat cards and the subscription and weekly-delivery lists, with the business buyer's net price and the euro view's own figure (435 cents shown is 1740 per kg; converting the krone figure would say 1739), frozen on the order line (`order_lines.measure_*`, copied by `placeOrder()`, the renewal and `copy_orders()`), `priceSpecification` in the JSON-LD, and a deferred constraint trigger that refuses an active product without a measure under `sold_by_measure` or a marked category or ancestor. I ran these in my own database on 2026-10-04 after a fresh build: 20 unit files (355 tests), `unit-price.int.test.ts`, `checkout-kinds.int.test.ts` (every scenario runs `expectUnitPrices()`, euro included), `standing-orders.int.test.ts` (146 integration tests in all) and `e2e/unit-price.spec.ts` (8 of 8) passed. Still short of Full, by WAVES.md step 4: (1) the rules and words are unreviewed. The country table has no country that allows 100 g or 100 ml (Germany read in a PAngV mirror, Sweden's KOVFS 2012:1 6 § read on lagen.nu, Norway taken from the reviewer's reading of FOR-2012-11-14-1066 which this step did not repeat, Denmark's BEK 1696/2017 never read and closed, flagged `verified: false`), so the criterion's \"100 g and 100 ml where allowed\" is a mechanism an owner cannot reach today and a test opens by a test helper; the rule that discounts, codes, campaigns, credits and reverse-charge relief leave a line's unit price alone, whether Directive Art. 6a wants a prior unit price (not read), the business buyer's net unit price, a multi-pack's total as the measure, the nb/sv/da/en words (Enhetspris, Jämförpris, Enhedspris) and the JSON-LD unit codes (from memory) all need a lawyer or a native speaker (spec section 8). (2) The owner's side (the editor's measure fields and the category and product flags) is held by server integration tests and render tests; nothing drives it in a browser because the e2e suite has no admin sign-in. (3) Checkout is held by `checkout-section.test.ts` and the integration scenarios, not by e2e (the page cannot be driven there). (4) The email line is held by one integration test (`unit-price.int.test.ts`), not a render test (the spec named `shopper-emails.test.ts`, which does not exist). (5) Orders placed before this unit carry no snapshot and show no unit price, and Merchant Center's `unit_pricing_measure` feed attributes wait for the feed row (wave 5). (6) Nothing is in production: two migrations (`unit_price`, `unit_price_rules`) are unapplied, and three `clone_store`, `duplicate_store` and `copy_orders` patches contain function bodies with deletes that the Supabase tool may cancel.",
+    "bucket": "D",
     "wave": 1,
     "criteria": [
-      "A variant can carry a total measure and unit (g, kg, ml, l, cm, m, m2, piece) and a reference quantity (default 1 kg, 1 l, 1 m, 1 m2, 1 piece, or 100 g and 100 ml where allowed).",
-      "The product page, listing cards, cart, checkout and order confirmation show the unit price with the shown VAT treatment, converted per market currency like the price, and computed in code from the shown price.",
-      "A reduced price shows the unit price of the price charged; the 30-day reference is not misused for it.",
-      "Unit price appears in the product's JSON-LD (unitPricingMeasure and unitPricingBaseMeasure) and a unit price is refused when the measure is missing for a category the owner marked as requiring it.",
-      "A euro-view scenario in checkout-kinds.int.test.ts holds that the unit price shown equals the one computed from the charged price."
+      "A variant can carry a total measure and unit (g, kg, ml, cl, l, cm, m, m2, piece) and a reference quantity (default 1 kg, 1 l, 1 m, 1 m2, 1 piece; 100 g or 100 ml only where a market's rule allows it: no country does today, so none).",
+      "The product page, listing cards (for the variant the card's price shows), cart, checkout (the pending order's page), order page and order emails show the unit price with the shown VAT treatment, converted per market currency like the price, and computed in code from the shown price.",
+      "A reduced price shows the unit price of the price charged; the unit price is never computed from, struck through against, or shown beside the 30-day reference price.",
+      "The product's JSON-LD offer carries a priceSpecification of type UnitPriceSpecification with price, priceCurrency and a referenceQuantity whose valueReference is the base measure, as Google's merchant listing documentation shows (the Merchant Center feed attributes unit_pricing_measure and unit_pricing_base_measure are produced by the feed row of wave 5 from the same data). A product the owner marked as sold by measure, or that is in a product category the owner marked as needing a unit price, cannot be saved active while an active physical variant has no measure; a draft can, an existing active product is reported rather than hidden, and the database refuses the same state.",
+      "A euro-view scenario in checkout-kinds.int.test.ts holds that the unit price shown equals the one computed from the charged price, defined as the order line's unit price (the listed price per unit; basket-level discounts are separate rows)."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "docs/wave-1d-unit-price.md",
+        "src/lib/unit-price.ts",
+        "src/lib/unit-price-rules.ts",
+        "src/lib/unit-price-text.ts",
+        "src/lib/unit-price-editor.ts",
+        "src/lib/unit-price-tools.ts",
+        "src/lib/pricing.ts",
+        "src/lib/product-input.ts",
+        "src/lib/structured-data.ts",
+        "src/server/unit-price-gaps.ts",
+        "src/server/catalog.ts",
+        "src/server/cart.ts",
+        "src/server/checkout.ts",
+        "src/server/orders.ts",
+        "src/server/products.ts",
+        "src/server/standing-orders.ts",
+        "src/server/shopper-emails.ts",
+        "src/components/price.tsx",
+        "src/components/purchase-options.tsx",
+        "src/components/product-card.tsx",
+        "src/components/admin/unit-price-fields.tsx",
+        "src/components/admin/unit-price-gaps-view.tsx",
+        "src/app/s/[store]/[market]/cart/cart-contents.tsx",
+        "src/app/s/[store]/[market]/checkout/checkout-section.tsx",
+        "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
+        "supabase/migrations/20261004171452_unit_price.sql",
+        "supabase/migrations/20261004171501_unit_price_rules.sql"
+      ],
+      "tests": [
+        "src/lib/unit-price.test.ts",
+        "src/lib/unit-price-rules.test.ts",
+        "src/lib/unit-price-text.test.ts",
+        "src/lib/unit-price-editor.test.ts",
+        "src/lib/unit-price-readers.test.ts",
+        "src/lib/unit-price-tools.test.ts",
+        "src/lib/product-input.test.ts",
+        "src/lib/pricing.test.ts",
+        "src/lib/structured-data.test.ts",
+        "src/db/unit-price.test.ts",
+        "src/components/price.test.ts",
+        "src/components/product-card.test.ts",
+        "src/components/chat-widget.test.ts",
+        "src/components/subscription-contents-form.test.ts",
+        "src/components/admin/unit-price-fields.test.ts",
+        "src/components/admin/product-editor-unit-price.test.ts",
+        "src/app/s/[store]/[market]/cart/cart-contents.test.ts",
+        "src/app/s/[store]/[market]/checkout/checkout-section.test.ts",
+        "src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts",
+        "src/server/unit-price.int.test.ts",
+        "src/server/unit-price-tools.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/standing-orders.int.test.ts",
+        "e2e/unit-price.spec.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D160"
+    ],
+    "history": [
+      {
+        "on": "2026-10-04",
+        "from": "missing",
+        "to": "partial",
+        "why": "Wave 1 unit 1d (D160 proposed, tree not yet committed). Read docs/wave-1d-unit-price.md, the code of unit-price.ts, catalog.ts, cart.ts, checkout.ts, the surfaces and migrations, and ran in a fresh database: 20 unit files (355 tests), unit-price.int.test.ts, checkout-kinds.int.test.ts, standing-orders.int.test.ts, unit-price-tools.int.test.ts (146 integration tests) and e2e/unit-price.spec.ts (8 of 8) after a new build: all passed. Held at Partial, not Full, because the country table, the discount rule and the nb/sv/da/en words are unreviewed legal rules (Denmark unread, Norway not re-read), no country allows the 100 g base so that branch is reachable only by test, the owner's editor has no browser test, and nothing is in production."
+      }
+    ]
   },
   {
     "id": "international.vipps-and-mobilepay",

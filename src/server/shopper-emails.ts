@@ -20,6 +20,7 @@ import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { absoluteUrl } from "@/lib/seo";
 import { cutoffWeekday, formatDeliveryDate, weekdayName } from "@/lib/standing-orders";
 import { siteUrl } from "@/lib/site";
+import { lineUnitPriceText } from "@/lib/unit-price-text";
 
 import { sendEmail, type OutgoingEmail, type SendOutcome } from "./email";
 import { documentBlocks, emailsCarryInvoice, recordDocumentDeliveries, type DocumentBlocks, type DocumentWant } from "./invoice-emails";
@@ -137,7 +138,8 @@ function orderLines(
       ...order.lines.map((line) => ({
         label: line.booking
           ? `${isRange(line.booking) ? line.title : `${line.quantity} × ${line.title}`}, ${bookingWhen(line.booking, order.locale, m)}`
-          : `${line.quantity} × ${line.title}`,
+          : // The price per kg, litre or metre as sold (D160): from the line's own price and its frozen measure, in the order's currency.
+            [`${line.quantity} × ${line.title}`, lineUnitPriceText(line, order.currency, order.locale, m)].filter(Boolean).join(" · "),
         // A free product a campaign gave (D114): its price is all taken off below.
         value: line.gift ? `${money(line.unitPriceMinor * line.quantity)} (${m.freeGift})` : money(line.unitPriceMinor * line.quantity),
         image: line.image ? absoluteUrl(line.image, origin) : null,

@@ -78,6 +78,8 @@ import {
 import { affiliateOverview, affiliateTag, customerAffiliate, getAffiliateSettings, saveAffiliateSettings, setAffiliateBlocked } from "./affiliates";
 import { cookiesTag } from "./site-cookies";
 import { catalogTag } from "./catalog";
+import { contentCounts, productsNeedingMeasure, variantUnitPrices } from "./unit-price-gaps";
+import { contentWords, unitPriceAnswer } from "@/lib/unit-price-tools";
 import { recommendationReport } from "./recommend-events";
 import { REPLAY_ORDERS, replayOnOrders } from "./recommend-eval";
 import {
@@ -347,6 +349,9 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
       order by v.sku
     `),
   ]);
+  // The price per kg, litre or metre (D160), worked out by the store's own `unitPriceShown()`: the model repeats it.
+  const unitPrices = await variantUnitPrices(store.id, id);
+  const words = t("en");
   return {
     id,
     title: String(head.title),
@@ -354,18 +359,70 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
     status: String(head.status),
     kind: String(head.kind),
     description: String(head.description).slice(0, 1500),
-    variants: variants.map((v) => ({
-      sku: String(v.sku),
-      options: v.options,
-      delivery: String(v.delivery),
-      stock: v.delivery === "physical" ? Number(v.stock) : null,
-      prices: (v.prices as { market: string; amount: number; currency: string }[]).map((p) => ({
-        country: p.market,
-        price: money(store, Number(p.amount), p.currency),
-      })),
-    })),
+    variants: variants.map((v) => {
+      const own = unitPrices.filter((u) => u.sku === String(v.sku));
+      const measure = own.find((u) => u.measure)?.measure ?? null;
+      return {
+        sku: String(v.sku),
+        options: v.options,
+        delivery: String(v.delivery),
+        stock: v.delivery === "physical" ? Number(v.stock) : null,
+        prices: (v.prices as { market: string; amount: number; currency: string }[]).map((p) => ({
+          country: p.market,
+          price: money(store, Number(p.amount), p.currency),
+        })),
+        ...(measure && {
+          content: contentWords(measure),
+          unit_prices: own.map((u) => ({ country: u.marketCode, ...unitPriceAnswer(u.unit, u.currency, mainLocale(store), words) })),
+        }),
+      };
+    }),
     prices: "With VAT, as charged.",
     admin: `/admin/${store.slug}/products/${id}`,
+  };
+}
+
+/**
+ * The unit price (D160): which products still need their content, or one product's unit prices per country. Read only;
+ * every figure is `unitPriceShown()`'s, written by `unitPriceAnswer()`. The owner sets content in the product editor.
+ */
+async function unitPriceGapsTool({ store }: OwnerToolContext, { product, limit }: OwnerToolInput<"unit_price_gaps">) {
+  const words = t("en");
+  const editor = (id: string) => adminLink(store, `/products/${id}`);
+  const how = "Content (what a pack holds, in g, kg, ml, l, m and so on) is set per variant in the product editor, by a person; the editor refuses to save an active product that needs it and has none. You cannot set it.";
+  if (product) {
+    const id = await findProductId(store, product);
+    const rows = await variantUnitPrices(store.id, id);
+    const skus = [...new Set(rows.map((r) => r.sku))];
+    return {
+      product: id,
+      variants: skus.map((sku) => {
+        const own = rows.filter((r) => r.sku === sku);
+        const measure = own.find((r) => r.measure)?.measure ?? null;
+        return measure
+          ? { sku, content: contentWords(measure), countries: own.map((r) => ({ country: r.marketCode, price: money(store, r.amountMinor, r.currency), ...unitPriceAnswer(r.unit, r.currency, mainLocale(store), words) })) }
+          : { sku, content: null, note: "No content set, so no unit price is shown." };
+      }),
+      note: "A unit price is not shown where it would equal the price or the price is 0. Prices are in each country's own currency; the figure follows the VAT the store shows.",
+      admin: editor(id),
+      how,
+    };
+  }
+  const [needing, counts] = await Promise.all([productsNeedingMeasure(store.id, mainLocale(store)), contentCounts(store.id)]);
+  return {
+    count: needing.length,
+    products: needing.slice(0, limit).map((p) => ({
+      id: p.productId,
+      title: p.title,
+      handle: p.handle,
+      why: p.reason.kind === "flag" ? "the product is marked as sold by measure" : `its category ${p.reason.category} needs a unit price`,
+      skus_without_content: p.skus,
+      admin: editor(p.productId),
+    })),
+    variants_with_content: counts.withContent,
+    variants_in_all: counts.total,
+    note: "These products stay on sale and show no unit price until their content is set; nothing is hidden. The list is the store's own, never a guess.",
+    how,
   };
 }
 
@@ -1688,6 +1745,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   list_products: listProductsTool,
   get_product: getProductTool,
   low_stock: lowStock,
+  unit_price_gaps: unitPriceGapsTool,
   list_bookings: listBookingsTool,
   list_discounts: listDiscountsTool,
   list_campaigns: listCampaignsTool,

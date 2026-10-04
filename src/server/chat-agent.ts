@@ -26,6 +26,7 @@ import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import type { PriceView } from "@/lib/pricing";
+import { priceUnitSentence } from "@/lib/unit-price-text";
 
 import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, type AiConnection, type ToolChatMessage } from "./ai";
 import { audit, type Account } from "./auth";
@@ -197,7 +198,9 @@ function priceText(price: PriceView, locale: string, lang: string, from: boolean
       : price.vat.shown === "choice"
         ? `${amount(price.amountMinor)} ${m.vatIncluded} (${amount(excl)} ${m.vatExcluded})`
         : `${amount(price.amountMinor)} ${m.vatIncluded}`;
-  return `${from ? `${m.fromPrice} ` : ""}${shown}`;
+  // The price per kg, litre or metre (D160), worked out in code from this price: the model repeats it and computes nothing.
+  const unit = priceUnitSentence(price, locale, m);
+  return `${from ? `${m.fromPrice} ` : ""}${shown}${unit ? ` (${unit})` : ""}`;
 }
 
 /** What the store's campaigns offer on a product, as the site words it (D115): the model repeats these and states no offer of its own. */
@@ -216,7 +219,7 @@ function card(site: Extract<ChatSite, { kind: "store" }>, product: Pick<GridProd
     title: product.title,
     href: marketPath(site.store.slug, site.market.slug, `/p/${product.handle}`),
     image: product.image,
-    price: { amountMinor: product.price.amountMinor, currency: product.price.currency, referenceMinor: product.price.referenceMinor, vat: product.price.vat },
+    price: { amountMinor: product.price.amountMinor, currency: product.price.currency, referenceMinor: product.price.referenceMinor, vat: product.price.vat, measure: product.price.measure },
     from,
     ...(offers.length > 0 && { offers }),
   };

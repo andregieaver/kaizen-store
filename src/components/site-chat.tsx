@@ -1,5 +1,6 @@
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
+import { unitLabelsOf } from "@/lib/unit-price-text";
 import { chatWidgetFor } from "@/server/chat-agent";
 import type { Store } from "@/server/stores";
 
@@ -29,6 +30,7 @@ function chatLabels(lang: string, locale: string, name: string, greeting: Record
     vatExcluded: m.vatExcluded,
     fromPrice: m.fromPrice,
     priorPrice: m.priorPrice,
+    unit: unitLabelsOf(m),
   };
 }
 

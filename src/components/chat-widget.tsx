@@ -7,8 +7,10 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { HISTORY_MAX, MESSAGE_MAX, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
 import { readSession, signalsOf } from "@/lib/recommend-session";
 
+import type { UnitLabels } from "@/lib/unit-price-text";
+
 import { Icon } from "./icons";
-import { VatAmount } from "./price";
+import { UnitLine, VatAmount } from "./price";
 
 /** The widget's words, in the site's language; `opened` holds `{label}` for the page opened. */
 export type ChatLabels = {
@@ -31,6 +33,8 @@ export type ChatLabels = {
   vatExcluded: string;
   fromPrice: string;
   priorPrice: string;
+  /** The words of a unit price (D160), so a card shows the price per kg, litre or metre worked out in code from the price it shows. */
+  unit: UnitLabels;
 };
 
 export type ChatWidgetProps = {
@@ -406,7 +410,7 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
 }
 
 /** A product the agent found, with the site's own price display (never the model's words). */
-function ProductCard({ product, locale, labels, onOpen }: { product: ChatProduct; locale: string; labels: ChatLabels; onOpen: () => void }) {
+export function ProductCard({ product, locale, labels, onOpen }: { product: ChatProduct; locale: string; labels: ChatLabels; onOpen: () => void }) {
   const { price } = product;
   return (
     <Link href={product.href} onClick={onOpen} className="product-card flex h-full flex-col overflow-hidden rounded-lg border border-border text-sm hover:bg-surface">
@@ -436,6 +440,7 @@ function ProductCard({ product, locale, labels, onOpen }: { product: ChatProduct
             {labels.priorPrice}: <VatAmount amountMinor={price.referenceMinor} currency={price.currency} locale={locale} vat={price.vat} labels={labels} label={false} />
           </span>
         )}
+        <UnitLine amountMinor={price.amountMinor} currency={price.currency} locale={locale} vat={price.vat} measure={price.measure} labels={labels.unit} inline />
       </span>
     </Link>
   );

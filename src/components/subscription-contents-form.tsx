@@ -7,6 +7,8 @@ export type ContentsLine = {
   title: string;
   quantity: number;
   variantId: string | null;
+  /** The price per kg, litre or metre of one delivery's price (D160), written by the server: for the eye and for a screen reader. */
+  unit?: { text: string; spoken: string } | null;
   choices: { variantId: string; label: string; price: string }[];
 };
 
@@ -45,7 +47,15 @@ export function SubscriptionContentsForm({
           return (
             <li key={line.id} className="flex flex-col gap-3 py-3 first:pt-0">
               <input type="hidden" name="line" value={line.id} />
-              <p className="font-medium">{line.title}</p>
+              <div>
+                <p className="font-medium">{line.title}</p>
+                {line.unit && (
+                  <p className="text-sm text-muted" data-unit-price="">
+                    <span aria-hidden="true">{line.unit.text}</span>
+                    <span className="sr-only">{line.unit.spoken}</span>
+                  </p>
+                )}
+              </div>
               <div className="flex flex-wrap items-end gap-3">
                 {line.choices.length > 1 || !current ? (
                   <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">

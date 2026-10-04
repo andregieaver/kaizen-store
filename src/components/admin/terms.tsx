@@ -15,6 +15,8 @@ import {
 } from "@/lib/taxonomy";
 import type { TermsResult } from "@/server/taxonomy";
 
+import { categoryGapWords } from "@/lib/unit-price-editor";
+
 import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
 
 /**
@@ -25,8 +27,15 @@ import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
  */
 
 export type TermActions = {
-  create: (input: { kind: TermKind; name: string; slug?: string; parentId?: string | null }) => Promise<TermsResult>;
-  update: (id: string, input: { name: string; slug: string; parentId: string | null }) => Promise<TermsResult>;
+  create: (input: {
+    kind: TermKind;
+    name: string;
+    slug?: string;
+    parentId?: string | null;
+    /** Unit price (D160): a product category's products need a content. Only the product categories screen sends it. */
+    requiresUnitPrice?: boolean;
+  }) => Promise<TermsResult>;
+  update: (id: string, input: { name: string; slug: string; parentId: string | null; requiresUnitPrice?: boolean }) => Promise<TermsResult>;
   remove: (id: string) => Promise<TermsResult>;
 };
 
@@ -170,18 +179,46 @@ function QuickAdd({
   );
 }
 
+/**
+ * The unit price mark on a store's product categories (D160): `gaps` is how many active products of each marked category
+ * (and of its subcategories) have a shipped variant without a content, by category id; `needsHref` opens the products page's
+ * list of them.
+ */
+export type UnitPriceCategories = { gaps: Record<string, number>; needsHref: string };
+
+const MARK_LABEL = "Products in this category need a price per kg or litre";
+
+/** The checkbox of the mark, with what it does. */
+function UnitPriceMark({ id, checked, onChange }: { id: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <div className="flex flex-col gap-0.5 text-sm">
+      <label className="flex items-center gap-2" htmlFor={id}>
+        <input id={id} type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="size-4" />
+        {MARK_LABEL}
+      </label>
+      <span className="pl-6 text-xs text-muted">
+        It applies to the category&apos;s products and its subcategories&apos;. Nothing changes in the shop at once; products on sale
+        without a content are listed, and one is refused the next time it is saved.
+      </span>
+    </div>
+  );
+}
+
 /** Every category (as a tree) and tag of one owner and kind of content, to add, change and delete. */
 export function TermsManager({
   initial,
   actions,
   usedBy,
   fields,
+  unitPrice,
 }: {
   initial: Term[];
   actions: TermActions;
   usedBy: string;
   /** Custom fields on the categories and tags (D118), when the store has groups for them. */
   fields?: TermFieldsSetup;
+  /** Only a store's product categories (D160): the checkbox "need a price per kg or litre", with how many products still lack a content. */
+  unitPrice?: UnitPriceCategories;
 }) {
   const [terms, setTerms] = useState(initial);
   const tree = categoryTree(terms);
@@ -202,13 +239,13 @@ export function TermsManager({
                   : `Label ${usedBy} across categories. Tags are one flat list.`}
               </p>
             </div>
-            <NewTerm kind={kind} terms={terms} actions={actions} onTerms={setTerms} />
+            <NewTerm kind={kind} terms={terms} actions={actions} onTerms={setTerms} unitPrice={kind === "category" && unitPrice !== undefined} />
             {list.length === 0 ? (
               <p className="text-sm text-muted">No {TERM_LABELS[kind].many.toLowerCase()} yet.</p>
             ) : (
               <ul className="flex flex-col divide-y divide-border border-y border-border">
                 {list.map((term) => (
-                  <TermRow key={term.id} term={term} terms={terms} actions={actions} onTerms={setTerms} fields={fields} />
+                  <TermRow key={term.id} term={term} terms={terms} actions={actions} onTerms={setTerms} fields={fields} unitPrice={kind === "category" ? unitPrice : undefined} />
                 ))}
               </ul>
             )}
@@ -253,15 +290,19 @@ function NewTerm({
   terms,
   actions,
   onTerms,
+  unitPrice = false,
 }: {
   kind: TermKind;
   terms: Term[];
   actions: TermActions;
   onTerms: (terms: Term[]) => void;
+  /** Offer the unit price mark (a store's product categories). */
+  unitPrice?: boolean;
 }) {
   const id = useId();
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState<string | null>(null);
+  const [marked, setMarked] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, start] = useTransition();
   const one = TERM_LABELS[kind].one.toLowerCase();
@@ -270,10 +311,11 @@ function NewTerm({
       onSubmit={(event) => {
         event.preventDefault();
         start(async () => {
-          const result = await actions.create({ kind, name, parentId });
+          const result = await actions.create({ kind, name, parentId, ...(unitPrice && marked ? { requiresUnitPrice: true } : {}) });
           if (!result.ok) return setProblems(result.problems);
           setProblems([]);
           setName("");
+          setMarked(false);
           onTerms(result.terms);
         });
       }}
@@ -304,6 +346,7 @@ function NewTerm({
           {busy ? "Adding …" : `Add ${one}`}
         </button>
       </div>
+      {unitPrice && <UnitPriceMark id={`${id}-unit-price`} checked={marked} onChange={setMarked} />}
       <Problems problems={problems} />
     </form>
   );
@@ -315,17 +358,21 @@ function TermRow({
   actions,
   onTerms,
   fields,
+  unitPrice,
 }: {
   term: Term & { depth: number };
   terms: Term[];
   actions: TermActions;
   onTerms: (terms: Term[]) => void;
   fields?: TermFieldsSetup;
+  /** Set on a store's product categories (D160). */
+  unitPrice?: UnitPriceCategories;
 }) {
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [draft, setDraft] = useState({ name: term.name, slug: term.slug, parentId: term.parentId });
+  const marked = term.requiresUnitPrice === true;
+  const [draft, setDraft] = useState({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked });
   const [problems, setProblems] = useState<string[]>([]);
   const [busy, start] = useTransition();
   const run = (action: () => Promise<TermsResult>, after: () => void) =>
@@ -344,7 +391,9 @@ function TermRow({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            run(() => actions.update(term.id, draft), () => setEditing(false));
+            // Only a screen that offers the mark sends it: left out, it stays as it was.
+            const { requiresUnitPrice, ...rest } = draft;
+            run(() => actions.update(term.id, unitPrice ? { ...rest, requiresUnitPrice } : rest), () => setEditing(false));
           }}
           className="flex flex-col gap-2"
           aria-label={`Change ${term.name}`}
@@ -390,6 +439,9 @@ function TermRow({
               </div>
             )}
           </div>
+          {unitPrice && (
+            <UnitPriceMark id={`${id}-unit-price`} checked={draft.requiresUnitPrice} onChange={(requiresUnitPrice) => setDraft({ ...draft, requiresUnitPrice })} />
+          )}
           <div className="flex gap-2">
             <button type="submit" disabled={busy} className={`${button} bg-foreground font-medium text-background`}>
               Save
@@ -398,7 +450,7 @@ function TermRow({
               type="button"
               onClick={() => {
                 setEditing(false);
-                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId });
+                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked });
                 setProblems([]);
               }}
               className={button}
@@ -412,6 +464,16 @@ function TermRow({
           <span className="flex min-w-0 flex-col">
             <span className="text-sm font-medium">{term.name}</span>
             <span className="font-mono text-xs text-muted">{term.slug}</span>
+            {unitPrice && marked && (
+              <span className="text-xs text-muted">
+                Needs a price per kg or litre. {categoryGapWords(unitPrice.gaps[term.id] ?? 0)}{" "}
+                {(unitPrice.gaps[term.id] ?? 0) > 0 && (
+                  <Link href={unitPrice.needsHref} className="underline">
+                    Show them
+                  </Link>
+                )}
+              </span>
+            )}
           </span>
           {confirming ? (
             <span className="flex items-center gap-2 text-sm">

@@ -6,6 +6,10 @@ import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { convertCredits, earnAmount, restoreShare } from "@/lib/bonus";
 import { localizationOf, conversionFor } from "@/lib/localization";
 import { showMarket, toMarket } from "@/lib/markets";
+import { unitPrice, unitPriceShown } from "@/lib/unit-price";
+import { lineUnitPriceText } from "@/lib/unit-price-text";
+import { allowSmallBase } from "@/lib/unit-price-test-support";
+import { t } from "@/lib/i18n";
 
 import type { Membership } from "./auth";
 import type { Store } from "./stores";
@@ -131,7 +135,13 @@ const variant: Record<string, string> = {};
 const product: Record<string, string> = {};
 const times: Record<string, { checkIn: string; checkOut: string }> = {};
 
+// No country allows 100 g today (`UNIT_PRICE_COUNTRY_RULES`): Norway is opened for this file so that the notebook, whose
+// owner chose 100 g, holds the small base's arithmetic through every money path (cart, order, euro, business, plan). The one
+// test of "the unit price per kg in the rules as read" closes it again for its length.
+let restoreSmallBase = () => {};
+
 beforeAll(async () => {
+  restoreSmallBase = allowSmallBase("NO");
   const [request] = await db().execute<Row>(sql`
     insert into commerce.access_requests (email, name, store_name)
     values (${`${slug}@example.com`}, 'Test', 'Test') returning id
@@ -186,6 +196,14 @@ beforeAll(async () => {
     if (row.check_in) times[String(row.handle)] = { checkIn: String(row.check_in).slice(0, 5), checkOut: String(row.check_out).slice(0, 5) };
     tz = String(row.time_zone);
   }
+  // What is in the demo goods (D160): the mug 250 g compared per kg, the notebook 120 g compared per 100 g, so every goods scenario
+  // below carries a unit price. The demo has none of its own (a measure is not a kind of product).
+  for (const [sku, spec] of Object.entries(MEASURES)) {
+    await db().execute(sql`
+      update commerce.product_variants set measure_amount = ${spec.amount}::numeric, measure_unit = 'g', measure_base = ${spec.base}
+      where store_id = ${storeId}::uuid and sku = ${sku}
+    `);
+  }
   const [owner] = await db().execute<Row>(sql`
     insert into commerce.accounts (email, name) values (${`owner-${slug}@example.com`}, 'Owner') returning id
   `);
@@ -197,6 +215,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  restoreSmallBase();
   await closeDb();
 });
 
@@ -316,6 +335,72 @@ async function expectDocuments(orderId: string, scenario: { euro?: boolean; gift
   }
   if (scenario.euro) {
     for (const n of notes) expect(n).toMatchObject({ vatHomeCurrency: "NOK", fxRate: 11.5 });
+  }
+}
+
+/** What the demo goods hold, for the unit price (D160): content in grams and what the owner compares it per (null: kg). */
+const MEASURES: Record<string, { amount: string; grams: number; base: "100g" | null }> = {
+  "DEMO-MUG-WHITE": { amount: "250", grams: 250, base: null },
+  "DEMO-NOTEBOOK-LINED": { amount: "120", grams: 120, base: "100g" },
+};
+
+/**
+ * The unit price an independent reader works out from the catalogue (D160): the krone price, converted at the store's rate when
+ * the view is euro (rounded to the cent like the shop shows it), reduced by the purchase option, and then the price per kg or
+ * per 100 g by integer arithmetic of its own (half up), apart from `unitPrice()`. A business's price is netted first.
+ */
+async function expectedUnitPrice(variantId: string, sku: string, opts: { euro: boolean; planPercent: number; net?: number }): Promise<number> {
+  const [row] = await db().execute<Row>(sql`select amount_minor from commerce.current_prices where variant_id = ${variantId}::uuid and market_code = 'NO'`);
+  const native = Number(row.amount_minor);
+  const shownPrice = opts.euro ? Math.round(native / 11.5) : native;
+  const afterPlan = opts.planPercent ? Math.round((shownPrice * (100 - opts.planPercent)) / 100) : shownPrice;
+  const price = BigInt(opts.net === undefined ? afterPlan : afterPlan - Math.round(afterPlan * opts.net / (1 + opts.net)));
+  const grams = BigInt(MEASURES[sku].grams);
+  const per = MEASURES[sku].base === "100g" ? BigInt(100) : BigInt(1000);
+  return Number((price * per * BigInt(2) + grams) / (BigInt(2) * grams));
+}
+
+/**
+ * The unit price in a basket (D160): for every line with a content, the cart's is the order line's is what an independent reader
+ * works out from the catalogue, in the currency shown, whatever came off the basket (a code, a campaign, a group's discount, credits)
+ * and for a business, who sees the price without VAT, netted first as the page shows it. A free gift draws none. A unit price
+ * is display: the totals the rest of the test holds are unchanged by it.
+ */
+async function expectUnitPrices(cart: Awaited<ReturnType<typeof getCart>>, order: NonNullable<Awaited<ReturnType<typeof getOrder>>>, scenario: { euro?: boolean }) {
+  const euro = Boolean(scenario.euro);
+  const skuOf = (id: string) => Object.entries(variant).find(([, v]) => v === id)![0];
+  for (const line of cart.lines) {
+    const sku = skuOf(line.variantId);
+    const spec = MEASURES[sku];
+    if (!spec) {
+      expect(line.measure, `${sku} has no content`).toBeNull();
+      continue;
+    }
+    const planPercent = line.plan?.discountPercent ?? 0;
+    const base = spec.base ?? "kg";
+    expect(line.measure, sku).toEqual({ amount: spec.amount, unit: "g", base });
+    const want = await expectedUnitPrice(line.variantId, sku, { euro, planPercent });
+    // (a) the cart's, from one unit's price as the cart shows it
+    const inCart = unitPrice(line.unitPriceMinor!, line.measure!, base);
+    expect(inCart, `${sku} in the cart`).toEqual({ ok: true, minor: want, base });
+    // (b) the order line's, from its own price and its frozen measure
+    const sold = order.lines.filter((l) => l.variantId === line.variantId && !l.gift);
+    expect(sold.length, `${sku} on the order`).toBeGreaterThan(0);
+    for (const ol of sold) {
+      expect(ol.measure, `${sku} snapshot`).toEqual(line.measure);
+      expect(ol.unitPriceMinor).toBe(line.unitPriceMinor);
+      expect(unitPrice(ol.unitPriceMinor, ol.measure!, ol.measure!.base)).toEqual(inCart);
+      expect(lineUnitPriceText(ol, order.currency, order.locale, t("nb"))).not.toBeNull();
+      // (c) a business sees the price without VAT: the cart and the order line, each with its own rate, agree with the oracle
+      const net = unitPriceShown(line.unitPriceMinor!, { rate: line.vatRate, shown: "excl" }, line.measure!, base).excl;
+      const netSold = unitPriceShown(ol.unitPriceMinor, { rate: ol.taxRate, shown: "excl" }, ol.measure!, ol.measure!.base).excl;
+      expect(netSold).toEqual(net);
+      expect(net).toEqual({ ok: true, minor: await expectedUnitPrice(line.variantId, sku, { euro, planPercent, net: line.vatRate }), base });
+    }
+  }
+  // A free product a campaign gave keeps its snapshot and draws no unit line.
+  for (const gift of order.lines.filter((l) => l.gift)) {
+    expect(lineUnitPriceText(gift, order.currency, order.locale, t("nb"))).toBeNull();
   }
 }
 
@@ -618,6 +703,7 @@ describe("checkout for every kind of product", () => {
       campaign: summary.campaignDiscountMinor + summary.gifts.reduce((sum, gift) => sum + gift.unitPriceMinor * gift.quantity, 0),
       off: summary.discountMinor + summary.gifts.reduce((sum, gift) => sum + gift.unitPriceMinor * gift.quantity, 0),
     });
+    await expectUnitPrices(cart, order!, scenario);
     // The free products are lines of the order, at no cost, and they are what the cart showed.
     expect(order?.lines.filter((l) => l.gift).map((l) => [l.variantId, l.quantity, l.totalMinor])).toEqual(summary.gifts.map((g) => [g.variantId, g.quantity, 0]));
     // The order keeps the delivery as it was chosen, and the shipping Stripe is told of carries its name.
@@ -670,6 +756,123 @@ describe("checkout for every kind of product", () => {
       expect(mails.length).toBeGreaterThan(0);
       for (const mail of mails) expect(String(mail.html)).not.toMatch(/\/no\/(order|account)/);
       expect(mails.some((mail) => String(mail.html).includes("/no-eur/order/"))).toBe(true);
+    }
+  });
+});
+
+/**
+ * The unit price in a krone store shown in euro (D160, D109): worked from the price the shopper reads, in euro, never converted from
+ * the krone figure. A mug of 250 g at 49,99 kr is 4,35 euro shown (4999 / 11,5 rounded), so 17,40 euro per kg; converting the krone
+ * figure (199,96 kr per kg) gives 17,39, which is not what the shop shows.
+ */
+describe("the unit price in euro (D160)", () => {
+  it("is worked from the shown euro price, in the cart and on the order, and differs from the converted krone figure", async () => {
+    const [{ id: mug }] = await db().execute<Row>(sql`select id from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-MUG-WHITE'`);
+    const [before] = await db().execute<Row>(sql`select amount_minor from commerce.current_prices where variant_id = ${String(mug)}::uuid and market_code = 'NO'`);
+    await db().execute(sql`select commerce.set_price(${String(mug)}::uuid, 'NO', 4999)`);
+    try {
+      jar.clear();
+      view = noInEuro;
+      await add("DEMO-MUG-WHITE", 2);
+      const cart = await getCart(shop());
+      const line = cart.lines[0];
+      expect(cart.currency).toBe("EUR");
+      expect(line.unitPriceMinor).toBe(435);
+      // 435 cents for 250 g: 1740 cents per kg, whatever the quantity.
+      expect(unitPrice(line.unitPriceMinor!, line.measure!, line.measure!.base)).toEqual({ ok: true, minor: 1740, base: "kg" });
+      const converted = Math.round((4999 * 4) / 11.5);
+      expect(converted).toBe(1739);
+      expect(1740).not.toBe(converted);
+
+      const summary = await cartSummary(shop(), cart);
+      await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: null });
+      const open = await getOpenCheckout(storeId, cartId());
+      const order = (await getOrder(storeId, open!.orderId))!;
+      expect(order.currency).toBe("EUR");
+      // The unit price changes nothing the order charges.
+      expect(order.totalMinor).toBe(summary.total);
+      const ol = order.lines.find((l) => l.sku === "DEMO-MUG-WHITE")!;
+      expect(ol.unitPriceMinor).toBe(435);
+      expect(ol.measure).toEqual({ amount: "250", unit: "g", base: "kg" });
+      expect(unitPrice(ol.unitPriceMinor, ol.measure!, ol.measure!.base)).toEqual({ ok: true, minor: 1740, base: "kg" });
+      expect(lineUnitPriceText(ol, order.currency, order.locale, t("nb"))?.replace(/\s/g, " ")).toBe("17,40 €/kg");
+      await expectUnitPrices(cart, order, { euro: true });
+    } finally {
+      await db().execute(sql`select commerce.set_price(${String(mug)}::uuid, 'NO', ${Number(before.amount_minor)})`);
+      view = no;
+    }
+  });
+
+  it("follows a business buyer's price without VAT and a purchase option's reduced price, and a free trial's plan price in the cart", async () => {
+    jar.clear();
+    view = no;
+    const [plan] = await db().execute<Row>(sql`
+      insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent, trial_days)
+      values (${storeId}::uuid, ${product["demo-notatbok"]}::uuid, 'month', 1, 10, 14) returning id
+    `);
+    await add("DEMO-NOTEBOOK-LINED", 2, undefined, String(plan.id));
+    const cart = await getCart(shop());
+    const line = cart.lines[0];
+    // 129 kr less 10 % is 116,10 kr for 120 g: 96,75 kr per 100 g. The cart shows the plan's price in a trial.
+    expect(line.unitPriceMinor).toBe(11610);
+    expect(unitPrice(line.unitPriceMinor!, line.measure!, "100g")).toEqual({ ok: true, minor: 9675, base: "100g" });
+    // A business sees the price without VAT, netted first: 116,10 kr less 25 % VAT included is 92,88 kr.
+    const net = 11610 - Math.round((11610 * 0.25) / 1.25);
+    expect(net).toBe(9288);
+    expect(unitPriceShown(11610, { rate: 0.25, shown: "excl" }, line.measure!, "100g").excl).toEqual({ ok: true, minor: Math.round((9288 * 100) / 120), base: "100g" });
+    // In the free trial today's price is nothing, so the order line, which keeps today's price, has no unit price: the cart has it.
+    const { placeOrder } = await import("./checkout");
+    const placed = await placeOrder({ storeId, market: no }, cartId(), { subscription: true });
+    if (!placed.ok) throw new Error(placed.problem);
+    const order = (await getOrder(storeId, placed.order.orderId))!;
+    const ol = order.lines.find((l) => l.sku === "DEMO-NOTEBOOK-LINED")!;
+    expect(ol.measure).toEqual({ amount: "120", unit: "g", base: "100g" });
+    expect(ol.unitPriceMinor).toBe(0);
+    expect(lineUnitPriceText(ol, order.currency, order.locale, t("nb"))).toBeNull();
+    await db().execute(sql`update commerce.selling_plans set active = false where id = ${String(plan.id)}::uuid`);
+  });
+});
+
+/**
+ * The rules as read (D160): no market compares per 100 g, so the notebook, whose owner chose 100 g, is compared per kg in Norway
+ * with the table as it is. The cart's unit price, the order line's and an independent reader's agree, and the totals are the
+ * same as with the small base.
+ */
+describe("the unit price with the country table as read (D160)", () => {
+  it("compares the notebook per kg, not per 100 g, in the cart and on the order, and changes no money", async () => {
+    const totalOf = async () => {
+      jar.clear();
+      view = no;
+      await add("DEMO-NOTEBOOK-LINED", 2);
+      const cart = await getCart(shop());
+      const { placeOrder } = await import("./checkout");
+      const placed = await placeOrder({ storeId, market: no }, cartId());
+      if (!placed.ok) throw new Error(placed.problem);
+      const order = (await getOrder(storeId, placed.order.orderId))!;
+      await (await import("./checkout")).cancelUnpaidOrder(placed.order.orderId, "test");
+      return { cart, order, orderId: placed.order.orderId };
+    };
+    const open = await totalOf();
+    expect(open.cart.lines[0].measure).toEqual({ amount: "120", unit: "g", base: "100g" });
+    restoreSmallBase();
+    try {
+      const closed = await totalOf();
+      const line = closed.cart.lines[0];
+      expect(line.measure).toEqual({ amount: "120", unit: "g", base: "kg" });
+      // 129 kr for 120 g is 1 075 kr per kg, by integer arithmetic of its own (half up).
+      const price = BigInt(line.unitPriceMinor!);
+      const want = Number((price * BigInt(1000) * BigInt(2) + BigInt(120)) / (BigInt(2) * BigInt(120)));
+      expect(unitPrice(line.unitPriceMinor!, line.measure!, "kg")).toEqual({ ok: true, minor: want, base: "kg" });
+      const sold = closed.order.lines.find((l) => l.sku === "DEMO-NOTEBOOK-LINED")!;
+      expect(sold.measure).toEqual({ amount: "120", unit: "g", base: "kg" });
+      expect(unitPrice(sold.unitPriceMinor, sold.measure!, sold.measure!.base)).toEqual({ ok: true, minor: want, base: "kg" });
+      const rows = await db().execute<Row>(sql`select measure_base from commerce.order_lines where order_id = ${closed.orderId}::uuid and sku = 'DEMO-NOTEBOOK-LINED'`);
+      expect(rows[0].measure_base).toBe("kg");
+      // The small base changes no money.
+      expect(closed.order.totalMinor).toBe(open.order.totalMinor);
+      expect(closed.order.taxMinor).toBe(open.order.taxMinor);
+    } finally {
+      restoreSmallBase = allowSmallBase("NO");
     }
   });
 });

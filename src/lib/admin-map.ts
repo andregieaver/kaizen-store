@@ -119,19 +119,19 @@ const PAGES: readonly AdminPage[] = [
   store("subscription", "/subscriptions/[subscriptionId]", "Subscription", "Main", "One subscription: what it holds, its renewals, and pausing, skipping, changing or cancelling it.", {
     tasks: ["Pause or skip", "Change contents", "Cancel now or at period end"],
   }),
-  store("products", "/products", "Products", "Main", "Every product with its status, price and stock.", {
-    tasks: ["Find a product", "Add a product", "Archive products"],
-    keywords: ["catalogue", "items", "inventory", "stock"],
+  store("products", "/products", "Products", "Main", "Every product with its status, price and stock, and the products that still need their content for the price per kg or litre (unit price).", {
+    tasks: ["Find a product", "Add a product", "Archive products", "Find products that need content for the unit price"],
+    keywords: ["catalogue", "items", "inventory", "stock", "unit price", "price per kg", "price per litre", "enhetspris"],
   }),
   store("product.new", "/products/new", "New product", "Main", "Adds a product: texts per language, pictures, variants, prices per country, stock, delivery and product safety details.", {
     keywords: ["create product", "add item"],
   }),
-  store("product", "/products/[productId]", "Product", "Main", "The product editor: texts, pictures, variants, prices, stock, purchase options, SEO and AI writing help.", {
-    tasks: ["Change price or stock", "Edit texts and pictures", "Add purchase options (subscriptions)", "Let the AI suggest texts", "Archive or publish"],
-    keywords: ["price", "stock", "variant", "edit product"],
+  store("product", "/products/[productId]", "Product", "Main", "The product editor: texts, pictures, variants, prices, content per variant (unit price), stock, purchase options, SEO and AI writing help.", {
+    tasks: ["Change price or stock", "Edit texts and pictures", "Add purchase options (subscriptions)", "Let the AI suggest texts", "Archive or publish", "Give a variant its content (g, kg, ml, l, m) for the price per kg or litre"],
+    keywords: ["price", "stock", "variant", "edit product", "unit price", "price per kg", "price per litre", "content", "sold by measure", "enhetspris"],
   }),
-  store("product.categories", "/products/categories", "Product categories and tags", "Main", "Categories (nested) and tags for products, used in menus, filters and layouts.", {
-    keywords: ["taxonomy", "collections"],
+  store("product.categories", "/products/categories", "Product categories and tags", "Main", "Categories (nested) and tags for products, used in menus, filters and layouts; a category can require a price per kg or litre (unit price) of its products.", {
+    keywords: ["taxonomy", "collections", "unit price", "price per kg", "requires unit price"],
   }),
   store("product-layouts", "/product-layouts", "Product layouts", "Main", "Layouts for product pages, built in the page builder with product parts.", {
     keywords: ["product page design", "template"],

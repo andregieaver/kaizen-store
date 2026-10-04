@@ -13,14 +13,15 @@ vi.mock("./actions", () => ({
 }));
 const getBuyer = vi.fn();
 vi.mock("@/server/b2b", () => ({ getBuyer: (...a: unknown[]) => getBuyer(...a) }));
-const cartState = vi.hoisted(() => ({ company: null as unknown }));
+const cartState = vi.hoisted(() => ({ company: null as unknown, measure: null as unknown, quantity: 1, status: "ok" }));
 vi.mock("@/server/cart", () => ({
   getCart: async () => ({
     lines: [
       {
         variantId: "v1",
         audience: "both",
-        quantity: 1,
+        quantity: cartState.quantity,
+        measure: cartState.measure,
         title: "Tea",
         handle: "tea",
         options: {},
@@ -28,7 +29,7 @@ vi.mock("@/server/cart", () => ({
         image: null,
         plan: null,
         booking: null,
-        status: "ok",
+        status: cartState.status,
         available: 9,
         unitPriceMinor: 10000,
         vatRate: 0.25,
@@ -135,6 +136,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   getBuyer.mockResolvedValue("consumer");
   cartState.company = null;
+  cartState.measure = null;
+  cartState.quantity = 1;
+  cartState.status = "ok";
   cartSummary.mockResolvedValue(summary());
   readCartBonus.mockResolvedValue(bonus());
 });
@@ -341,5 +345,48 @@ describe("the cart's VAT number field (D157)", () => {
     expect((await outcome("number_other_country"))?.message?.text).toBe("The number is for Germany, but the goods go to Ireland. VAT is charged.");
     expect((await outcome("own_number"))?.message?.text).toContain("store's own VAT number");
     expect((await outcome("number_not_eu"))?.message?.text).toContain("Only VAT numbers from EU member states");
+  });
+});
+
+describe("the cart's lines with a unit price (D160)", () => {
+  const lines = async () => renderToString(await CartContents({ store, market, m }));
+
+  it("show the price per kg of one unit's price, with the content the variant has now", async () => {
+    cartState.measure = { amount: "500", unit: "g", base: "kg" };
+    const markup = await lines();
+    // 100.00 for 500 g is 200.00 per kg.
+    expect(words(markup)).toContain("€200.00/kg");
+    expect(markup).toMatch(/sr-only[^>]*>Unit price: €200\.00 per kg</);
+  });
+
+  it("does not depend on the quantity", async () => {
+    cartState.measure = { amount: "500", unit: "g", base: "kg" };
+    cartState.quantity = 3;
+    expect(words(await lines())).toContain("€200.00/kg");
+  });
+
+  it("is of the price without VAT for a business buyer, as the line's own amount is", async () => {
+    getBuyer.mockResolvedValue("business");
+    cartState.measure = { amount: "500", unit: "g", base: "kg" };
+    // 100.00 with 25% VAT is 80.00 without it, so 160.00 per kg.
+    const text = words(await lines());
+    expect(text).toContain("€160.00/kg");
+    expect(text).not.toContain("€200.00/kg");
+  });
+
+  it("has none without content, for a line that cannot be bought, or when it equals the price", async () => {
+    expect(await lines()).not.toContain("data-unit-price");
+    cartState.measure = { amount: "500", unit: "g", base: "kg" };
+    cartState.status = "unavailable";
+    expect(await lines()).not.toContain("data-unit-price");
+    cartState.status = "ok";
+    cartState.measure = { amount: "1", unit: "kg", base: "kg" };
+    expect(await lines()).not.toContain("data-unit-price");
+  });
+
+  it("is drawn in the slide-out cart too", async () => {
+    cartState.measure = { amount: "500", unit: "g", base: "kg" };
+    const markup = renderToString(await CartContents({ store, market, m, drawer: true }));
+    expect(words(markup)).toContain("€200.00/kg");
   });
 });

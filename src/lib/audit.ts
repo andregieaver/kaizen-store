@@ -182,7 +182,7 @@ export type AuditKind = (typeof AUDIT_KINDS)[number];
  * `{ changed: true }` with no value; a field whose name looks like a secret never is written at all.
  */
 export const ALLOWED_FIELDS: Record<AuditKind, readonly string[]> = {
-  product: ["title", "status", "handle", "kind", "vatCategory", "categoryIds", "tagIds", "variantCount"],
+  product: ["title", "status", "handle", "kind", "vatCategory", "categoryIds", "tagIds", "variantCount", "soldByMeasure", "measures"],
   price: ["sku", "market", "currency", "priceMinor"],
   page: ["title", "address", "state", "rowCount", "blockCount"],
   discount: ["code", "kind", "value", "minimumMinor", "usageLimit", "perCustomerLimit", "startsAt", "endsAt", "active"],

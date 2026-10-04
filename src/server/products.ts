@@ -20,12 +20,16 @@ import {
   parsePrice,
   PRODUCT_KINDS,
   productProblems,
+  variantLabel,
   type AppointmentInput,
+  type MeasureInput,
   type OperatorChoice,
   type ProductInput,
 } from "@/lib/product-input";
 import type { PlanInterval } from "@/lib/subscriptions";
 import type { Term } from "@/lib/taxonomy";
+import { baseFits, isBase, measureFromColumns, normaliseMeasureAmount } from "@/lib/unit-price";
+import { unitPriceProblems } from "@/lib/unit-price-rules";
 
 import { aiFor } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
@@ -35,6 +39,7 @@ import { listLayoutChoices } from "./product-layouts";
 import { listVatCategories, ratesNow } from "./vat-categories";
 import type { Store } from "./stores";
 import { listTerms, scopedTermIds } from "./taxonomy";
+import { categoryMarks } from "./unit-price-gaps";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -175,6 +180,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
         options: {},
         sku: "",
         gtin: null,
+        measure: null,
         prices: {},
         cost: "",
         stock: 0,
@@ -194,6 +200,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
     plans: [],
     subscriptionOnly: false,
     audience: "all",
+    soldByMeasure: false,
     vatCategory: "standard",
     kind: "goods",
     hostId: null,
@@ -280,6 +287,16 @@ export async function listAdminProducts(
   }));
 }
 
+/**
+ * A variant's content as the editor holds it (D160): the amount as canonical text, the unit, and the owner's own choice of
+ * what to compare per (`measure_base`, null for the unit's default). Not the base a market shows (`effectiveBase()`).
+ */
+function editorMeasure(row: Row): MeasureInput | null {
+  const measure = measureFromColumns(row.measure_amount, row.measure_unit);
+  if (!measure) return null;
+  return { amount: measure.amount, unit: measure.unit, base: isBase(row.measure_base) && baseFits(measure.unit, row.measure_base) ? row.measure_base : null };
+}
+
 /** A product in the editor's shape, or null if it is not the store's. */
 export async function getProductForEdit(
   store: Store,
@@ -288,7 +305,7 @@ export async function getProductForEdit(
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
-           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id
+           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id, sold_by_measure
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
@@ -310,7 +327,7 @@ export async function getProductForEdit(
     `),
     db().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.active, v.weight_grams, v.hs_code, v.origin_country, v.delivery, v.rental_period,
-             v.image_url, v.image_thumbnail_url, v.cost_minor,
+             v.image_url, v.image_thumbnail_url, v.cost_minor, v.measure_amount, v.measure_unit, v.measure_base,
              coalesce((
                select l.on_hand from commerce.inventory_levels l
                join commerce.inventory_locations loc on loc.id = l.location_id and loc.active
@@ -409,6 +426,7 @@ export async function getProductForEdit(
       options: variantOptions[i],
       sku: String(v.sku),
       gtin: v.gtin ? String(v.gtin) : null,
+      measure: editorMeasure(v),
       prices: Object.fromEntries(
         prices
           .filter((p) => String(p.variant_id) === String(v.id))
@@ -458,6 +476,7 @@ export async function getProductForEdit(
     })),
     subscriptionOnly: Boolean(product.subscription_only),
     audience: parseProductAudience(product.audience),
+    soldByMeasure: Boolean(product.sold_by_measure),
     vatCategory: category,
     kind,
     hostId: product.host_id ? String(product.host_id) : null,
@@ -643,10 +662,27 @@ export async function saveProduct(
   if (problems.length > 0) return { ok: false, problems };
   // Only the store's own product categories and tags; one deleted meanwhile is left out.
   const termScope = { storeId: store.id, contentType: "product" } as const;
-  const termIds = [
-    ...(await scopedTermIds(termScope, "category", input.categories)),
-    ...(await scopedTermIds(termScope, "tag", input.tags)),
-  ];
+  const categoryIds = await scopedTermIds(termScope, "category", input.categories);
+  const termIds = [...categoryIds, ...(await scopedTermIds(termScope, "tag", input.tags))];
+
+  // Content for the unit price (D160): a product that needs it (it is sold by measure, or sits in a marked category or under
+  // one) cannot be saved active while an active physical variant has none; a draft can. The database refuses the same state
+  // at commit (`commerce.check_unit_price()`), so this is the owner's sentences, not a second rule.
+  const name = input.translations.find((tr) => tr.locale === context.primaryLocale)?.title || input.handle;
+  const unitProblems = unitPriceProblems({
+    status: input.status,
+    kind: input.kind,
+    soldByMeasure: input.soldByMeasure,
+    categories: await categoryMarks(store.id, categoryIds),
+    variants: input.variants.map((v) => ({
+      sku: v.sku,
+      title: [name, variantLabel(v.options)].filter(Boolean).join(" "),
+      active: v.active,
+      delivery: v.delivery,
+      measure: v.measure && normaliseMeasureAmount(v.measure.amount) ? { amount: v.measure.amount, unit: v.measure.unit } : null,
+    })),
+  });
+  if (unitProblems.length > 0) return { ok: false, problems: unitProblems.map((problem) => problem.message) };
 
   const before = actor && productId ? await productSnapshot(store.id, productId, context.primaryLocale) : null;
   try {
@@ -770,7 +806,7 @@ async function upsertProduct(
         delivery = ${input.delivery}, download_limit = ${input.downloadLimit}, download_days = ${input.downloadDays},
         subscription_only = ${input.subscriptionOnly}, audience = ${input.audience},
         vat_category = ${input.vatCategory}, kind = ${input.kind}, host_id = ${hostOf(storeId, input)},
-        product_layout_id = ${input.layoutId}::uuid, updated_at = now()
+        product_layout_id = ${input.layoutId}::uuid, sold_by_measure = ${input.soldByMeasure && input.kind === "goods"}, updated_at = now()
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -780,12 +816,13 @@ async function upsertProduct(
   const [row] = await tx.execute<Row>(sql`
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
-      delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id
+      delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id,
+      sold_by_measure
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
       ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}, ${hostOf(storeId, input)},
-      ${input.layoutId}::uuid
+      ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}
     )
     returning id
   `);
@@ -884,6 +921,13 @@ async function saveVariants(
     const physical = variant.delivery === "physical";
     // The cost per unit (D152), in the main currency; unknown when empty, and sold lines keep what it was then.
     const cost = parsePrice(variant.cost, context.mainCurrency);
+    // The content for the unit price (D160): physical goods only (`productProblems()` refused it elsewhere), as typed text
+    // parsed by `normaliseMeasureAmount()`, never a float. No content clears all three columns.
+    const content = physical && input.kind === "goods" && variant.measure ? { ...variant.measure, amount: normaliseMeasureAmount(variant.measure.amount) } : null;
+    if (content && content.amount === null) throw new Error("unit_price.invalid_amount");
+    const measureAmount = content?.amount ?? null;
+    const measureUnit = content?.unit ?? null;
+    const measureBase = content?.base ?? null;
     const fields = sql`
       sku = ${variant.sku}, gtin = ${variant.gtin}, options = ${JSON.stringify(variant.options)}::jsonb,
       active = ${variant.active}, delivery = ${variant.delivery},
@@ -891,7 +935,8 @@ async function saveVariants(
       weight_grams = ${physical ? variant.weightGrams : null},
       hs_code = ${physical ? variant.hsCode : null}, origin_country = ${physical ? variant.originCountry : null},
       image_url = ${variant.image?.url ?? null}, image_thumbnail_url = ${variant.image?.thumbnailUrl ?? null},
-      cost_minor = ${cost}
+      cost_minor = ${cost},
+      measure_amount = ${measureAmount}::numeric, measure_unit = ${measureUnit}, measure_base = ${measureBase}
     `;
     let id: string;
     if (variant.id && existingIds.has(variant.id)) {
@@ -901,14 +946,14 @@ async function saveVariants(
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.product_variants (
           store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country,
-          image_url, image_thumbnail_url, cost_minor
+          image_url, image_thumbnail_url, cost_minor, measure_amount, measure_unit, measure_base
         ) values (
           ${storeId}::uuid, ${productId}::uuid, ${variant.sku}, ${variant.gtin},
           ${JSON.stringify(variant.options)}::jsonb, ${variant.active}, ${variant.delivery},
           ${input.kind === "rental" ? variant.rentalPeriod : "day"},
           ${physical ? variant.weightGrams : null}, ${physical ? variant.hsCode : null},
           ${physical ? variant.originCountry : null}, ${variant.image?.url ?? null}, ${variant.image?.thumbnailUrl ?? null},
-          ${cost}
+          ${cost}, ${measureAmount}::numeric, ${measureUnit}, ${measureBase}
         )
         returning id
       `);
@@ -1039,12 +1084,22 @@ async function saveFiles(tx: Tx, storeId: string, productId: string, input: Prod
 
 function saveProblem(error: unknown, input: ProductInput): string {
   const parts: string[] = [];
+  let detail = "";
   for (let e: unknown = error; e && parts.length < 5; e = (e as { cause?: unknown }).cause) {
-    const record = e as { message?: unknown; constraint_name?: unknown };
+    const record = e as { message?: unknown; constraint_name?: unknown; detail?: unknown };
     if (typeof record.message === "string") parts.push(record.message);
     if (typeof record.constraint_name === "string") parts.push(record.constraint_name);
+    if (typeof record.detail === "string" && !detail) detail = record.detail;
   }
   const text = parts.join(" ");
+  // The unit price rules of the database (D160), if something went round the check above: the SKUs are in the detail.
+  if (text.includes("unit_price.measure_required")) {
+    return `Add the content of ${detail ? `the variants with SKU ${detail}` : "every active variant"}: this product needs a price per kg or litre. Nothing was changed.`;
+  }
+  if (text.includes("unit_price.not_applicable")) {
+    return `Remove the content of ${detail ? `the variants with SKU ${detail}` : "the variants"}: content can only be given for physical goods. Nothing was changed.`;
+  }
+  if (text.includes("unit_price.invalid_amount")) return "The content of a variant is not a valid amount.";
   if (text.includes("products_store_handle_key")) {
     return `Another product already uses the web address "${input.handle}". Choose another.`;
   }

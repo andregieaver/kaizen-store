@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { NeedsContentList, NeedsContentNotice } from "@/components/admin/unit-price-gaps-view";
 import { formatMoney } from "@/lib/money";
 import { requirePermission } from "@/server/permissions";
 import { listAdminProducts } from "@/server/products";
+import { productsNeedingMeasure } from "@/server/unit-price-gaps";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -46,15 +48,27 @@ async function ProductList({
   searchParams: Props["searchParams"];
 }) {
   const { store } = await requirePermission(storeSlug, "products:read");
-  const archived = (await searchParams).show === "archived";
-  const products = await listAdminProducts(store, { archived });
+  const query = await searchParams;
+  const archived = query.show === "archived";
+  const needsFilter = !archived && query.needs === "unit-price";
   const locale = store.markets[0]?.locale ?? "en";
+  // Unit price (D160): active products that need a content and have none, for the notice and its filter.
+  const [products, needing] = await Promise.all([
+    needsFilter ? Promise.resolve([]) : listAdminProducts(store, { archived }),
+    archived ? Promise.resolve([]) : productsNeedingMeasure(store.id, store.localization.locales[0] ?? locale),
+  ]);
   const base = `/admin/${store.slug}/products`;
+  const needsHref = `${base}?needs=unit-price`;
 
   return (
     <>
+      {!needsFilter && <NeedsContentNotice count={needing.length} href={needsHref} />}
       <nav aria-label="Product filters" className="flex gap-2 text-sm">
-        <Link href={base} aria-current={archived ? undefined : "page"} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
+        <Link
+          href={base}
+          aria-current={archived || needsFilter ? undefined : "page"}
+          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold"
+        >
           Current
         </Link>
         <Link
@@ -64,8 +78,19 @@ async function ProductList({
         >
           Archived
         </Link>
+        {(needing.length > 0 || needsFilter) && (
+          <Link
+            href={needsHref}
+            aria-current={needsFilter ? "page" : undefined}
+            className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold"
+          >
+            Needs content
+          </Link>
+        )}
       </nav>
-      {products.length === 0 ? (
+      {needsFilter ? (
+        <NeedsContentList products={needing} base={base} />
+      ) : products.length === 0 ? (
         <div className="rounded-lg border border-border bg-background p-8 text-center">
           <p className="mb-3">{archived ? "No archived products." : "No products yet."}</p>
           {!archived && (

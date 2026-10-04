@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { OrderDocuments } from "@/components/documents/order-documents";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
+import { LineUnitPrice } from "@/components/price";
 import { OwnBookings } from "@/components/own-bookings";
 import { OrderReturns } from "@/components/withdraw/order-returns";
 import { earnedText } from "@/lib/bonus-shopper";
@@ -117,6 +118,15 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
                     {bookingWhen(line.booking, market.locale, m)}
                   </span>
                 )}
+                {/* What it was sold with (D160), from the order line. */}
+                <LineUnitPrice
+                  shownMinor={line.unitPriceMinor}
+                  measure={line.measure}
+                  gift={line.gift}
+                  currency={order.currency}
+                  locale={market.locale}
+                  m={m}
+                />
               </span>
               <span className="whitespace-nowrap">
                 {line.gift ? (

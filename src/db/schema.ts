@@ -1061,6 +1061,8 @@ export const products = commerce.table(
     hostId: uuid("host_id"),
     /** The product's own layout (D79), over its categories', tags' and the store's; foreign key in a custom migration. */
     productLayoutId: uuid("product_layout_id"),
+    /** Unit price (D160): every active goods variant needs its content (`measure_*`); never shown to shoppers. */
+    soldByMeasure: boolean("sold_by_measure").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -1093,6 +1095,7 @@ export const products = commerce.table(
     check("products_handle_format", sql`${t.handle} ~ '^[a-z0-9]+(-[a-z0-9]+)*$'`),
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
     check("products_download_days_positive", sql`${t.downloadDays} > 0`),
+    check("products_sold_by_measure_goods", sql`not ${t.soldByMeasure} or ${t.kind} = 'goods'`),
   ],
 );
 
@@ -1333,6 +1336,13 @@ export const productVariants = commerce.table(
     /** Customs tariff (HS) code and country of origin, for export declarations. */
     hsCode: text("hs_code"),
     originCountry: char("origin_country", { length: 2 }),
+    /**
+     * Unit price (D160): the pack's total content, its unit and the owner's preferred comparison base. Goods only. The
+     * price per kilogram, litre, metre or piece is worked out on read by `unitPrice()`, never stored.
+     */
+    measureAmount: numeric("measure_amount", { precision: 12, scale: 4 }),
+    measureUnit: text("measure_unit"),
+    measureBase: text("measure_base"),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
   },
@@ -1347,6 +1357,22 @@ export const productVariants = commerce.table(
     check("product_variants_weight_positive", sql`${t.weightGrams} > 0`),
     check("product_variants_cost_minor", sql`${t.costMinor} >= 0`),
     check("product_variants_hs_code_digits", sql`${t.hsCode} ~ '^[0-9]{6,10}$'`),
+    check("product_variants_measure_pair", sql`(${t.measureAmount} is null) = (${t.measureUnit} is null)`),
+    check("product_variants_measure_amount", sql`${t.measureAmount} > 0 and ${t.measureAmount} <= 1000000`),
+    check(
+      "product_variants_measure_unit",
+      sql`${t.measureUnit} in ('g', 'kg', 'ml', 'cl', 'l', 'cm', 'm', 'm2', 'piece')`,
+    ),
+    check(
+      "product_variants_measure_base",
+      sql`${t.measureBase} is null or (
+        ${t.measureAmount} is not null and (
+          (${t.measureUnit} in ('g', 'kg') and ${t.measureBase} in ('kg', '100g'))
+          or (${t.measureUnit} in ('ml', 'cl', 'l') and ${t.measureBase} in ('l', '100ml'))
+          or (${t.measureUnit} in ('cm', 'm') and ${t.measureBase} = 'm')
+          or (${t.measureUnit} = 'm2' and ${t.measureBase} = 'm2')
+          or (${t.measureUnit} = 'piece' and ${t.measureBase} = 'piece')))`,
+    ),
   ],
 );
 
@@ -2382,6 +2408,13 @@ export const orderLines = commerce.table(
     sellingPlanId: uuid("selling_plan_id"),
     planInterval: planInterval("plan_interval"),
     planIntervalCount: integer("plan_interval_count"),
+    /**
+     * Unit price (D160): the variant's measure when the line was sold, and the base that was effective for the market
+     * (never null when the amount is set). Frozen after insert; the price per measure is derived on read.
+     */
+    measureAmount: numeric("measure_amount", { precision: 12, scale: 4 }),
+    measureUnit: text("measure_unit"),
+    measureBase: text("measure_base"),
   },
   (t) => [
     unique("order_lines_store_id_key").on(t.storeId, t.id),
@@ -2407,6 +2440,21 @@ export const orderLines = commerce.table(
     check("order_lines_vat_relief", sql`${t.vatReliefMinor} between 0 and ${t.discountMinor}`),
     check("order_lines_venue", sql`${t.venueMinor} between 0 and ${t.totalMinor}`),
     check("order_lines_unit_cost", sql`${t.unitCostMinor} >= 0`),
+    check("order_lines_measure_pair", sql`(${t.measureAmount} is null) = (${t.measureUnit} is null)`),
+    check("order_lines_measure_amount", sql`${t.measureAmount} > 0 and ${t.measureAmount} <= 1000000`),
+    check(
+      "order_lines_measure_unit",
+      sql`${t.measureUnit} in ('g', 'kg', 'ml', 'cl', 'l', 'cm', 'm', 'm2', 'piece')`,
+    ),
+    check(
+      "order_lines_measure_base",
+      sql`(${t.measureAmount} is null) = (${t.measureBase} is null) and (${t.measureBase} is null or (
+        (${t.measureUnit} in ('g', 'kg') and ${t.measureBase} in ('kg', '100g'))
+        or (${t.measureUnit} in ('ml', 'cl', 'l') and ${t.measureBase} in ('l', '100ml'))
+        or (${t.measureUnit} in ('cm', 'm') and ${t.measureBase} = 'm')
+        or (${t.measureUnit} = 'm2' and ${t.measureBase} = 'm2')
+        or (${t.measureUnit} = 'piece' and ${t.measureBase} = 'piece')))`,
+    ),
   ],
 );
 
@@ -4256,6 +4304,8 @@ export const terms = commerce.table(
     position: integer("position").notNull().default(0),
     /** A product category's or tag's layout (D79) for its products; foreign key in a custom migration. */
     productLayoutId: uuid("product_layout_id"),
+    /** Unit price (D160), on a product category only: its products (and its subcategories') need a measure. */
+    requiresUnitPrice: boolean("requires_unit_price").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -4270,6 +4320,10 @@ export const terms = commerce.table(
     check("terms_products_in_stores", sql`${t.contentType} <> 'product' or ${t.storeId} is not null`),
     check("terms_product_layout", sql`${t.productLayoutId} is null or ${t.contentType} = 'product'`),
     check("terms_tags_flat", sql`${t.kind} = 'category' or ${t.parentId} is null`),
+    check(
+      "terms_requires_unit_price",
+      sql`not ${t.requiresUnitPrice} or (${t.contentType} = 'product' and ${t.kind} = 'category')`,
+    ),
     check("terms_not_own_parent", sql`${t.parentId} is null or ${t.parentId} <> ${t.id}`),
     check("terms_name", sql`length(trim(${t.name})) between 1 and 80`),
     check("terms_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.slug}) <= 80`),

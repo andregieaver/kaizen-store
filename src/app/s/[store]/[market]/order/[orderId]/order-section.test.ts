@@ -28,7 +28,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { OrderDetails, OrderDocuments, OrderTerms, OrderTotals } from "./order-section";
+import { OrderDetails, OrderDocuments, OrderLines, OrderTerms, OrderTotals } from "./order-section";
 
 const ID = "6f1f3a1e-2b7c-4e0e-9a55-0c4c7a1d9b10";
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
@@ -364,5 +364,60 @@ describe("the order's invoice and credit notes (D159)", () => {
     expect(page).toContain("Dokumenter");
     expect(page).toContain("Faktura F-17");
     expect(page).toContain("Kreditnota K-3");
+  });
+});
+
+describe("the order's lines with a unit price (D160)", () => {
+  const sold = (over: Record<string, unknown> = {}) => ({
+    id: "l1",
+    variantId: "v1",
+    title: "Coffee",
+    quantity: 2,
+    unitPriceMinor: 5000,
+    taxRate: 0.25,
+    taxMinor: 1700,
+    gift: false,
+    delivery: "physical",
+    image: null,
+    booking: null,
+    measure: { amount: "250", unit: "g", base: "kg" },
+    ...over,
+  });
+  const lines = async (shopFor = shop) =>
+    renderToString(await OrderLines(shopFor))
+      .replace(/<!-- -->/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&#x27;/g, "'")
+      .replace(/\s+/g, " ");
+
+  it("shows what the line was sold with: the price charged per unit over the content kept on the line", async () => {
+    getShopperOrder.mockResolvedValue(order({ lines: [sold()] }));
+    const text = await lines();
+    expect(text).toContain("2 × Coffee");
+    expect(text).toContain("€200.00/kg");
+  });
+
+  it("is of the base the order was sold with, never one worked out again (a 100 g order keeps its 100 g)", async () => {
+    getShopperOrder.mockResolvedValue(order({ lines: [sold({ measure: { amount: "250", unit: "g", base: "100g" } })] }));
+    expect(await lines()).toContain("€20.00/100 g");
+  });
+
+  it("says nothing for an order placed before unit prices, a gift, or a line with content equal to its price", async () => {
+    getShopperOrder.mockResolvedValue(
+      order({
+        lines: [
+          sold({ id: "a", measure: null }),
+          sold({ id: "b", gift: true }),
+          sold({ id: "c", measure: { amount: "1", unit: "kg", base: "kg" } }),
+        ],
+      }),
+    );
+    expect(await lines()).not.toMatch(/\/kg|\/100 g/);
+  });
+
+  it("reads in the store's language", async () => {
+    getShopperOrder.mockResolvedValue(order({ currency: "NOK", locale: "nb-NO", lines: [sold()] }));
+    const nb = { ...shop, market: { ...market, lang: "nb", locale: "nb-NO", currency: "NOK" } as Market };
+    expect(await lines(nb)).toMatch(/200,00\s*kr\/kg/);
   });
 });

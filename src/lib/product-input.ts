@@ -5,6 +5,7 @@ import { PRODUCT_AUDIENCES } from "./b2b";
 import { RENTAL_PERIODS } from "./booking-ranges";
 import { minorUnitDigits } from "./money";
 import { isPictureAddress } from "./picture-address";
+import { BASES, UNITS, baseFits, measureProblem, parseMeasureAmount, type Base, type Unit } from "./unit-price";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
 import { termIdsSchema } from "./taxonomy";
 import { VAT_CATEGORY_CODE } from "./vat";
@@ -33,6 +34,27 @@ const pictureAddress = z
  */
 
 export const GENERAL_TAX_CODE = "txcd_99999999";
+
+/**
+ * A variant's content for the unit price (D160): the pack's total as typed text ("0,75", "250"), its unit and what the
+ * price is compared per (null: the unit's default, 1 kg, 1 l, 1 m, 1 m2 or 1 piece). Parsed by `parseMeasureAmount()`,
+ * never as a float; whether a variant may have one at all is `productProblems()`'s.
+ */
+export const measureInput = z
+  .object({
+    amount: z.string().trim().max(20),
+    unit: z.enum(UNITS),
+    base: z.enum(BASES).nullable().default(null),
+  })
+  .refine((m) => parseMeasureAmount(m.amount) !== null, {
+    message: "Content must be a number above 0 and up to 1,000,000, with at most 4 decimals.",
+    path: ["amount"],
+  })
+  .refine((m) => m.base === null || baseFits(m.unit, m.base), {
+    message: "The content cannot be compared per that unit.",
+    path: ["base"],
+  });
+export type MeasureInput = { amount: string; unit: Unit; base: Base | null };
 
 /** Why a product may be excluded from the right of withdrawal, in plain words. */
 export const WITHDRAWAL_EXCLUSIONS = [
@@ -258,6 +280,8 @@ export const productInput = z.object({
           message: "Choose a country of origin.",
         }),
         delivery: z.enum(DELIVERIES).default("physical"),
+        /** Unit price (D160): the pack's total content; goods only, null for none. */
+        measure: measureInput.nullable().default(null),
         /** A rental's variant: by the day, half day or hour (D69). Ignored for other kinds. */
         rentalPeriod: z.enum(RENTAL_PERIODS).default("day"),
         /** Its own picture, shown where shoppers choose a variant: one of the product's, or uploaded for it. */
@@ -317,6 +341,8 @@ export const productInput = z.object({
   subscriptionOnly: z.boolean().default(false),
   /** In stores selling to both (B2B): for everyone, only private shoppers or only businesses. */
   audience: z.enum(PRODUCT_AUDIENCES).default("all"),
+  /** Unit price (D160): every active goods variant needs its content. Goods only (`products_sold_by_measure_goods`). */
+  soldByMeasure: z.boolean().default(false),
   /** Which VAT rate it takes (D65). */
   vatCategory: z.string().regex(VAT_CATEGORY_CODE, "Choose a VAT category.").default("standard"),
   /** Goods, or an appointment booked for a time (D65), with how it is booked. */
@@ -418,6 +444,16 @@ export function productProblems(input: ProductInput, context: PublishContext): s
     if (variant.cost && parsePrice(variant.cost, context.mainCurrency) === null) {
       problems.push(`${variantLabel(variant.options)}: "${variant.cost}" is not a cost in ${context.mainCurrency}.`);
     }
+  }
+
+  // Content for the unit price (D160): physical goods only. Whether a product NEEDS content is the server's
+  // (`unitPriceProblems()`: it needs the product's categories), the same rules the database holds.
+  for (const variant of input.variants) {
+    const problem = measureProblem(variant.measure, { kind: input.kind, delivery: variant.delivery });
+    if (problem) problems.push(`${variantLabel(variant.options)}: ${problem}`);
+  }
+  if (input.soldByMeasure && input.kind !== "goods") {
+    problems.push("Only goods can be sold by measure: take the tick away for appointments, stays and rentals.");
   }
 
   // A stay's or rental's fee per booking (D70), typed like a price.

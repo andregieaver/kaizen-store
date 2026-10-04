@@ -35,6 +35,7 @@ const toTerm = (row: Row): Term => ({
   parentId: row.parent_id == null ? null : String(row.parent_id),
   name: String(row.name),
   slug: String(row.slug),
+  ...(row.requires_unit_price === undefined ? {} : { requiresUnitPrice: Boolean(row.requires_unit_price) }),
 });
 
 const scopeWhere = (scope: TermScope) =>
@@ -43,7 +44,7 @@ const scopeWhere = (scope: TermScope) =>
 /** Every category and tag of a scope, by name: for the admin. */
 export async function listTerms(scope: TermScope): Promise<Term[]> {
   const rows = await db().execute<Row>(sql`
-    select id, kind, parent_id, name, slug from commerce.terms
+    select id, kind, parent_id, name, slug, requires_unit_price from commerce.terms
     where ${scopeWhere(scope)}
     order by kind, lower(name)
   `);
@@ -56,7 +57,7 @@ export async function siteTerms(storeId: string | null, contentType: ContentType
   cacheLife("hours");
   cacheTag(termsTag({ storeId, contentType }));
   const rows = await readDb().execute<Row>(sql`
-    select id, kind, parent_id, name, slug from commerce.terms
+    select id, kind, parent_id, name, slug, requires_unit_price from commerce.terms
     where ${scopeWhere({ storeId, contentType })}
     order by kind, lower(name)
   `);
@@ -69,7 +70,7 @@ export async function siteTerms(storeId: string | null, contentType: ContentType
  */
 export async function currentTerms(storeId: string | null, contentType: ContentType): Promise<Term[]> {
   const rows = await readDb().execute<Row>(sql`
-    select id, kind, parent_id, name, slug from commerce.terms
+    select id, kind, parent_id, name, slug, requires_unit_price from commerce.terms
     where ${scopeWhere({ storeId, contentType })}
   `);
   return rows.map(toTerm);
@@ -98,6 +99,10 @@ function problemOf(error: unknown): string | null {
   }
   return null;
 }
+
+/** The unit price mark (D160) is for a store's product categories only: the database refuses it anywhere else. */
+const UNIT_PRICE_MARK_PROBLEM = "Only a product category can need a price per kg or litre.";
+const canNeedUnitPrice = (scope: TermScope, kind: TermKind) => scope.storeId !== null && scope.contentType === "product" && kind === "category";
 
 const takenProblem = (kind: TermKind, slug: string) =>
   `Another ${TERM_LABELS[kind].one.toLowerCase()} already has the address ${slug}. Choose another.`;
@@ -136,17 +141,23 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
   }
   const parentProblem = await checkParent(scope, term.kind, term.parentId);
   if (parentProblem) return { ok: false, problems: [parentProblem] };
+  if (term.requiresUnitPrice && !canNeedUnitPrice(scope, term.kind)) return { ok: false, problems: [UNIT_PRICE_MARK_PROBLEM] };
   const chosen = (input as { slug?: unknown }).slug;
   const slug = await freeSlug(scope, term.kind, term.slug, typeof chosen === "string" && chosen.trim() !== "");
   if (!slug) return { ok: false, problems: [takenProblem(term.kind, term.slug)] };
   try {
     const [row] = await db().execute<Row>(sql`
-      insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug)
-      values (${scope.storeId}::uuid, ${scope.contentType}, ${term.kind}, ${term.parentId}::uuid, ${term.name}, ${slug})
+      insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug, requires_unit_price)
+      values (${scope.storeId}::uuid, ${scope.contentType}, ${term.kind}, ${term.parentId}::uuid, ${term.name}, ${slug}, ${term.requiresUnitPrice === true})
       returning id
     `);
     const id = String(row.id);
-    await audit(account.id, scope.storeId, `${scope.contentType}.${term.kind}_created`, { id, name: term.name, slug });
+    await audit(account.id, scope.storeId, `${scope.contentType}.${term.kind}_created`, {
+      id,
+      name: term.name,
+      slug,
+      ...(term.requiresUnitPrice ? { requiresUnitPrice: true } : {}),
+    });
     return { ok: true, id, terms: await listTerms(scope) };
   } catch (error) {
     const problem = problemOf(error);
@@ -158,7 +169,7 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
 /** Renames, re-addresses or moves a category or tag; its kind stays. */
 export async function updateTerm(account: Account, scope: TermScope, id: string, input: unknown): Promise<TermsResult> {
   const [existing] = await db().execute<Row>(sql`
-    select kind from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
+    select kind, requires_unit_price from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
   `);
   if (!existing) return { ok: false, problems: ["This category or tag no longer exists. It may have been deleted."] };
   const kind = existing.kind as TermKind;
@@ -170,12 +181,21 @@ export async function updateTerm(account: Account, scope: TermScope, id: string,
   }
   const parentProblem = await checkParent(scope, kind, term.parentId);
   if (parentProblem) return { ok: false, problems: [parentProblem] };
+  if (term.requiresUnitPrice && !canNeedUnitPrice(scope, kind)) return { ok: false, problems: [UNIT_PRICE_MARK_PROBLEM] };
+  // Left out, the mark stays as it was; marking changes nothing in the shop at once (products already on sale are only reported).
+  const marked = term.requiresUnitPrice ?? Boolean(existing.requires_unit_price);
   try {
     await db().execute(sql`
-      update commerce.terms set name = ${term.name}, slug = ${term.slug}, parent_id = ${term.parentId}::uuid, updated_at = now()
-      where id = ${id}::uuid
+      update commerce.terms set name = ${term.name}, slug = ${term.slug}, parent_id = ${term.parentId}::uuid,
+        requires_unit_price = ${marked}, updated_at = now()
+      where ${scopeWhere(scope)} and id = ${id}::uuid
     `);
-    await audit(account.id, scope.storeId, `${scope.contentType}.${kind}_updated`, { id, name: term.name, slug: term.slug });
+    await audit(account.id, scope.storeId, `${scope.contentType}.${kind}_updated`, {
+      id,
+      name: term.name,
+      slug: term.slug,
+      ...(marked !== Boolean(existing.requires_unit_price) ? { requiresUnitPrice: marked } : {}),
+    });
     return { ok: true, id, terms: await listTerms(scope) };
   } catch (error) {
     const problem = problemOf(error);

@@ -284,3 +284,83 @@ describe("isPictureAddress", () => {
     expect(isPictureAddress("")).toBe(false);
   });
 });
+
+describe("content for the unit price (D160)", () => {
+  const raw = (variant: Record<string, unknown> = {}, over: Record<string, unknown> = {}) => ({
+    handle: "kaffe",
+    status: "active",
+    translations: [{ locale: "nb-NO", title: "Kaffe", description: "", safetyInformation: "" }],
+    media: [{ url: "https://example.com/a.webp", thumbnailUrl: null, alt: "" }],
+    options: [],
+    variants: [
+      {
+        id: null,
+        options: {},
+        sku: "KAFFE-250",
+        gtin: "",
+        prices: { NO: "49,90" },
+        stock: 3,
+        active: true,
+        weightGrams: null,
+        hsCode: "",
+        originCountry: "",
+        ...variant,
+      },
+    ],
+    taxCode: "txcd_99999999",
+    withdrawalExclusion: "none",
+    schemes: [],
+    manufacturer: { new: { name: "Maker", postalAddress: "Street 1, Berlin", electronicAddress: "a@b.de", country: "DE" } },
+    responsiblePerson: null,
+    ...over,
+  });
+  const context = {
+    markets: [{ code: "NO", currency: "NOK" }],
+    mainCurrency: "NOK",
+    primaryLocale: "nb-NO",
+    operatorCountries: {},
+    euCountries: new Set(["DE"]),
+  };
+
+  it("defaults to no measure and not sold by measure, as before", () => {
+    const parsed = productInput.parse(raw());
+    expect(parsed.variants[0].measure).toBeNull();
+    expect(parsed.soldByMeasure).toBe(false);
+  });
+
+  it("accepts a measure as the editor types it, with the base null for the unit's default", () => {
+    const parsed = productInput.parse(raw({ measure: { amount: "250", unit: "g" } }, { soldByMeasure: true }));
+    expect(parsed.variants[0].measure).toEqual({ amount: "250", unit: "g", base: null });
+    expect(parsed.soldByMeasure).toBe(true);
+    expect(productInput.safeParse(raw({ measure: { amount: "0,75", unit: "l", base: "100ml" } })).success).toBe(true);
+    expect(productInput.safeParse(raw({ measure: { amount: " 1.5 ", unit: "kg", base: "kg" } })).success).toBe(true);
+  });
+
+  it("refuses what the database refuses: a bad amount, a unit it does not know, a base of another kind", () => {
+    for (const amount of ["0", "-1", "1e3", "", "abc", "1.00001", "1000001"]) {
+      expect(productInput.safeParse(raw({ measure: { amount, unit: "g" } })).success, amount).toBe(false);
+    }
+    expect(productInput.safeParse(raw({ measure: { amount: "5", unit: "stone" } })).success).toBe(false);
+    expect(productInput.safeParse(raw({ measure: { amount: "5", unit: "g", base: "tonne" } })).success).toBe(false);
+    expect(productInput.safeParse(raw({ measure: { amount: "5", unit: "g", base: "l" } })).success).toBe(false);
+    expect(productInput.safeParse(raw({ measure: { amount: "5", unit: "piece", base: "100g" } })).success).toBe(false);
+  });
+
+  it("refuses a measure on digital variants and on appointments, stays and rentals", () => {
+    const measure = { amount: "250", unit: "g" };
+    const digital = productInput.parse(raw({ measure, delivery: "digital" }));
+    expect(productProblems(digital, context).join(" ")).toMatch(/physical goods/);
+    for (const kind of ["appointment", "stay", "rental"] as const) {
+      const input = productInput.parse(raw({ measure, delivery: "service" }, { kind }));
+      expect(productProblems(input, context).join(" "), kind).toMatch(/physical goods/);
+    }
+    const goods = productInput.parse(raw({ measure }));
+    expect(productProblems(goods, context).join(" ")).not.toMatch(/physical goods/);
+  });
+
+  it("refuses sold by measure for anything but goods", () => {
+    const input = productInput.parse(raw({ delivery: "service" }, { kind: "stay", soldByMeasure: true }));
+    expect(productProblems(input, context).join(" ")).toMatch(/Only goods can be sold by measure/);
+    expect(productProblems(productInput.parse(raw({}, { soldByMeasure: true })), context).join(" ")).not.toMatch(/sold by measure/);
+  });
+});

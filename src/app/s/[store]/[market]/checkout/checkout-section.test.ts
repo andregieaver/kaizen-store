@@ -34,7 +34,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutTerms, CheckoutTotals } from "./checkout-section";
+import { Checkout, CheckoutCredits, CheckoutDelivery, CheckoutItems, CheckoutTerms, CheckoutTotals } from "./checkout-section";
 
 let bonusNow: CartBonus | null = null;
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
@@ -55,6 +55,7 @@ const order = (over: Record<string, unknown> = {}) => ({
       gift: false,
       image: null,
       booking: null,
+      measure: null,
     },
   ],
   subtotalMinor: 10000,
@@ -277,5 +278,55 @@ describe("the checkout's totals with reverse charge (D157)", () => {
     expect(text).toContain("Buyer's VAT number: DE123456789");
     // Collected under IOSS is only said once it has been (the order page and the email).
     expect(text).not.toContain("under IOSS");
+  });
+});
+
+describe("the checkout's lines with a unit price (D160)", () => {
+  const measured = (over: Record<string, unknown> = {}) => ({
+    id: "l1",
+    title: "Coffee",
+    quantity: 2,
+    unitPriceMinor: 5000,
+    taxRate: 0.25,
+    taxMinor: 1700,
+    gift: false,
+    image: null,
+    booking: null,
+    measure: { amount: "250", unit: "g", base: "kg" },
+    ...over,
+  });
+  const items = async () => renderToString(await CheckoutItems({ store, market }));
+
+  it("show the price per kg from the order line's own price and the content it was sold with, whatever the quantity", async () => {
+    getOrder.mockResolvedValue(order({ lines: [measured()] }));
+    // 50.00 for 250 g is 200.00 per kg.
+    expect(words(await items())).toContain("2 × Coffee");
+    expect(words(await items())).toContain("€200.00/kg");
+  });
+
+  it("show a business the price without VAT, as the line's amount is", async () => {
+    getOrder.mockResolvedValue(order({ company: { name: "Acme", number: "123456789" }, lines: [measured()] }));
+    // 50.00 with 25% VAT is 40.00 without it: 160.00 per kg.
+    const text = words(await items());
+    expect(text).toContain("€160.00/kg");
+    expect(text).not.toContain("€200.00/kg");
+  });
+
+  it("leave out a gift, a line without content and one whose price equals the unit price", async () => {
+    getOrder.mockResolvedValue(
+      order({
+        lines: [
+          measured({ id: "g", gift: true, title: "Gift" }),
+          measured({ id: "n", measure: null, title: "Plain" }),
+          measured({ id: "e", measure: { amount: "1", unit: "kg", base: "kg" }, title: "Kilo" }),
+        ],
+      }),
+    );
+    expect(await items()).not.toContain("data-unit-price");
+  });
+
+  it("is part of the whole checkout page", async () => {
+    getOrder.mockResolvedValue(order({ lines: [measured()] }));
+    expect(words(renderToString(await Checkout({ store, market })))).toContain("€200.00/kg");
   });
 });

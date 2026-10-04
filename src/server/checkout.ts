@@ -23,6 +23,7 @@ import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
+import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 
 import { holdAppointment } from "./appointments";
 import { holdRange, linePrice, rangePricing } from "./ranges";
@@ -157,6 +158,7 @@ function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
         coalesce(tl.title, tf.title, p.handle) as title,
         cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
+        v.measure_amount, v.measure_unit, v.measure_base,
         (p.status = 'active' and v.active and ${bookable}) as sellable
       from ${source}
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
@@ -637,13 +639,16 @@ export async function placeOrder(
     const orderId = String(order.id);
 
     for (const [i, p] of priced.entries()) {
+      // What the variant holds when it is sold (D160), with the base in effect in this market: frozen on the line, so the
+      // order page and its emails say what the order said. A booking has none; it changes no money.
+      const snapshot = p.startsAt ? null : shownMeasureFromColumns(p.line.measure_amount, p.line.measure_unit, p.line.measure_base, market.code);
       const [orderLine] = await tx.execute<Row>(sql`
         insert into commerce.order_lines (
           store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor,
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
           selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
           campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor,
-          unit_cost_minor, vat_relief_minor
+          unit_cost_minor, vat_relief_minor, measure_amount, measure_unit, measure_base
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${taxOfLine.get(String(i))?.taxMinor ?? 0},
@@ -654,7 +659,8 @@ export async function placeOrder(
           ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]},
           ${p.range && p.startsAt ? p.count : null},
           ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}, ${p.bonus}, ${p.referral},
-          ${p.line.cost_minor === null || p.line.cost_minor === undefined ? null : Number(p.line.cost_minor)}, ${p.relief}
+          ${p.line.cost_minor === null || p.line.cost_minor === undefined ? null : Number(p.line.cost_minor)}, ${p.relief},
+          ${snapshot?.amount ?? null}::numeric, ${snapshot?.unit ?? null}, ${snapshot?.base ?? null}
         )
         returning id
       `);

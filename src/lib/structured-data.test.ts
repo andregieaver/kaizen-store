@@ -199,3 +199,67 @@ describe("the return policy comes from the store's return settings (D153)", () =
     expect(returnPolicyOf({ windowDays: null })).toEqual(DEFAULT_RETURN_POLICY);
   });
 });
+
+describe("productJsonLd: the price per measure (D160)", () => {
+  const measured = (id: string, measure: { amount: string; unit: "g" | "kg" | "ml" | "cl" | "l" | "cm" | "m" | "m2" | "piece"; base: "kg" | "100g" | "l" | "100ml" | "m" | "m2" | "piece" }, amountMinor = 4990) => ({
+    ...variant(id, {}, amountMinor),
+    measure,
+  });
+  const spec = (v: ReturnType<typeof measured>) => {
+    const [node] = build(product([v]));
+    return (node.offers as Record<string, unknown>).priceSpecification as Record<string, unknown>;
+  };
+
+  it("says the pack's price, its content and what it is compared per, as Google's merchant listing page shows it", () => {
+    expect(spec(measured("a", { amount: "250", unit: "g", base: "kg" }))).toEqual({
+      "@type": "UnitPriceSpecification",
+      price: "49.90",
+      priceCurrency: "NOK",
+      referenceQuantity: {
+        "@type": "QuantitativeValue",
+        value: "250",
+        unitCode: "GRM",
+        valueReference: { "@type": "QuantitativeValue", value: "1", unitCode: "KGM" },
+      },
+    });
+  });
+
+  it("writes every unit and base with its code", () => {
+    const cases: [Parameters<typeof measured>[1], string, string, string, string][] = [
+      [{ amount: "250", unit: "g", base: "100g" }, "250", "GRM", "100", "GRM"],
+      [{ amount: "1.5", unit: "kg", base: "kg" }, "1.5", "KGM", "1", "KGM"],
+      [{ amount: "330", unit: "ml", base: "l" }, "330", "MLT", "1", "LTR"],
+      [{ amount: "33", unit: "cl", base: "100ml" }, "33", "CLT", "100", "MLT"],
+      [{ amount: "0.75", unit: "l", base: "l" }, "0.75", "LTR", "1", "LTR"],
+      [{ amount: "3", unit: "m", base: "m" }, "3", "MTR", "1", "MTR"],
+      [{ amount: "0.5", unit: "m2", base: "m2" }, "0.5", "MTK", "1", "MTK"],
+      [{ amount: "6", unit: "piece", base: "piece" }, "6", "C62", "1", "C62"],
+    ];
+    for (const [measure, value, unitCode, baseValue, baseCode] of cases) {
+      expect(spec(measured("a", measure)).referenceQuantity).toMatchObject({
+        value,
+        unitCode,
+        valueReference: { value: baseValue, unitCode: baseCode },
+      });
+    }
+  });
+
+  it("is written even when the content equals what it is compared per (the shop leaves the line out, the data keeps the quantity)", () => {
+    expect(spec(measured("a", { amount: "1", unit: "kg", base: "kg" })).referenceQuantity).toMatchObject({ value: "1", unitCode: "KGM" });
+  });
+
+  it("has none for a variant without content, and each offer of a group has its own", () => {
+    const [node] = build(product([variant("a", {})]));
+    expect((node.offers as Record<string, unknown>).priceSpecification).toBeUndefined();
+    const [group] = build(product([{ ...measured("a", { amount: "250", unit: "g", base: "kg" }), options: { Farge: "Hvit" } }, { ...variant("b", { Farge: "Svart" }) }]));
+    const [first, second] = group.hasVariant as { offers: Record<string, unknown> }[];
+    expect(first.offers.priceSpecification).toBeDefined();
+    expect(second.offers.priceSpecification).toBeUndefined();
+  });
+
+  it("carries the price the offer carries (a subscription-only product passes the subscriber's), and the base the market shows", () => {
+    // The page hands the structured data the amount it shows; a German page's base arrives as kg even when the owner chose 100 g.
+    const priced = spec(measured("a", { amount: "250", unit: "g", base: "kg" }, 4491));
+    expect(priced.price).toBe("44.91");
+  });
+});

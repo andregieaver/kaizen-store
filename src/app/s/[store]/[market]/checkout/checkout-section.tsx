@@ -8,6 +8,7 @@ import { CheckoutForm } from "@/components/checkout-form";
 import { CheckoutTerms as CheckoutTermsView } from "@/components/checkout-terms";
 import { DeliveryChoice } from "@/components/delivery-choice";
 import { LineThumbnail } from "@/components/line-thumbnail";
+import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
@@ -182,6 +183,15 @@ function itemsList(view: CheckoutView, market: Market) {
           <span className="min-w-0 flex-1">
             {isRange(line.booking) ? line.title : `${line.quantity} × ${line.title}`}
             {line.booking && <span className="block">{bookingWhen(line.booking, order.locale, m)}</span>}
+            {/* The price per kg, litre or metre from the order line's own price and the content it was sold with (D160), as the line shows its amount. */}
+            <LineUnitPrice
+              shownMinor={business ? withoutVat(line.unitPriceMinor, line.taxRate) : line.unitPriceMinor}
+              measure={line.measure}
+              gift={line.gift}
+              currency={order.currency}
+              locale={market.locale}
+              m={m}
+            />
           </span>
           <span className="whitespace-nowrap">
             {line.gift ? (
