@@ -4,13 +4,22 @@ on:
   push:
     branches: [main]
   pull_request:
+  # One-time: record the migrations production already has (docs/ci-migrations.md). Run from main.
+  workflow_dispatch:
+    inputs:
+      baseline_through:
+        description: "Last migration file production already has (records it and every earlier file as applied, runs nothing)"
+        required: false
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push cancels a running check on a pull request, but never a run on main:
+  # that run may be in the middle of applying a migration to production.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -51,6 +60,7 @@ jobs:
   # Stores on their own hosts (P7) and their own code (D61) exist only in a
   # build with the store domain set; stores run on *.localhost here.
   hosts:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -83,3 +93,48 @@ jobs:
       - run: pnpm exec playwright test e2e/store-hosts.spec.ts
         env:
           E2E_CUSTOM_HOSTS: "1"
+
+  # Production's migrations (docs/ci-migrations.md): on a push to main, after the checks pass, apply the
+  # migration files production has not had yet. Off until the repository variable AUTO_MIGRATE is "true".
+  # PRODUCTION_DATABASE_URL is the Supabase session-pooler connection string of the postgres role.
+  migrate:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AUTO_MIGRATE == 'true'
+    needs: [check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      MIGRATE_EXPECT: ybsozesfuxuitoacntfo
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply the pending migrations
+        run: node scripts/db-migrate.mjs
+      - name: Nothing is left pending
+        run: node scripts/db-migrate.mjs --status
+
+  baseline:
+    if: github.event_name == 'workflow_dispatch' && inputs.baseline_through != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      MIGRATE_EXPECT: ybsozesfuxuitoacntfo
+      BASELINE_THROUGH: ${{ inputs.baseline_through }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Record the migrations production already has
+        run: node scripts/db-migrate.mjs --baseline-through="$BASELINE_THROUGH" --status
