@@ -7,10 +7,12 @@ import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import { fontClass } from "@/lib/fonts";
 import { t } from "@/lib/i18n";
+import { inlinePlain } from "@/lib/inline-text";
 import { sourceTraits } from "@/lib/grid-source";
 import { frameStyle, gridImageShape, type ContentGridBlock } from "@/lib/page-content";
 
 import { Carousel } from "./carousel";
+import { Inline } from "./inline-text";
 import { HEADING_SIZES, SHAPES, buttonLook } from "./page-block";
 import { CampaignBadge } from "./campaign-notice";
 import { Price } from "./price";
@@ -22,7 +24,11 @@ import { Price } from "./price";
  */
 export function ContentGridView({ block, data, notices }: { block: ContentGridBlock; data: GridData; /** The store's campaigns (D115), for a badge on the products they reach. */ notices?: CampaignNotices }) {
   if (data.items.length === 0) {
-    return block.emptyText ? <p className="text-muted">{block.emptyText}</p> : null;
+    return block.emptyText ? (
+      <p className="text-muted">
+        <Inline text={block.emptyText} links />
+      </p>
+    ) : null;
   }
   const m = t(data.lang);
   const shape = gridImageShape(block);
@@ -32,6 +38,10 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
   const Heading = `h${block.headingLevel}` as const;
   // The item's own button text (custom items, D155), else the grid's, else the kind of content's.
   const label = block.buttonLabel || (traits.button === "viewProduct" ? m.viewProduct : m.readMore);
+  // Words an owner typed into the grid or its custom items may hold inline markup (a span with a class, bold); a product's or a page's own title never does.
+  const own = !traits.lookedUp;
+  const words = (text: string) => (own ? <Inline text={text} /> : text);
+  const plain = (text: string) => (own ? inlinePlain(text) : text);
   const button = buttonLook(block.button);
   const tile = block.tile;
   // Articles show the day they appeared (D57), in the grid's language.
@@ -82,7 +92,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
               m={m}
               // Without a heading or a button to link, the picture is the item's link for everyone (a logo strip, picture-only cards).
               only={item.href !== "" && !(block.show.heading && item.title) && !block.show.button}
-              fallbackName={item.title || item.buttonLabel || label}
+              fallbackName={plain(item.title || item.buttonLabel || label)}
             />
           )}
           {item.badge && !(block.show.image && item.image) && <ItemBadge text={item.badge} />}
@@ -94,10 +104,10 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
             >
               {item.href !== "" ? (
                 <a href={item.href} className="relative z-[2] hover:underline focus-visible:outline-2" {...externalAttributes(item)}>
-                  {item.title}
+                  {words(item.title)}
                 </a>
               ) : (
-                item.title
+                words(item.title)
               )}
             </Heading>
           )}
@@ -138,7 +148,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
           )}
           {block.show.price && item.priceText && (
             // A custom item's price is the owner's own words (D155): plain text, no VAT label, no reference price, nothing to buy.
-            <p className="font-medium">{item.priceText}</p>
+            <p className="font-medium">{words(item.priceText)}</p>
           )}
           {block.show.button && item.href !== "" && (
             <div className="mt-auto pt-1">
@@ -146,12 +156,12 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
               <a
                 href={item.href}
                 // Named with the item; with no title, with what its picture shows, so the buttons are still told apart.
-                aria-label={itemName(block, item) ? `${item.buttonLabel || label}: ${itemName(block, item)}` : undefined}
+                aria-label={itemName(block, item) ? `${inlinePlain(item.buttonLabel || label)}: ${plain(itemName(block, item))}` : undefined}
                 className={button.className}
                 style={button.style}
                 {...externalAttributes(item)}
               >
-                {item.buttonLabel || label}
+                <Inline text={item.buttonLabel || label} />
               </a>
             </div>
           )}

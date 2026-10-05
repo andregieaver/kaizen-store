@@ -38,6 +38,7 @@ import {
 } from "react";
 
 import { ContentGridView } from "@/components/content-grid";
+import { INLINE_HINT, inlinePlain } from "@/lib/inline-text";
 import { t } from "@/lib/i18n";
 import { FontLinks } from "@/components/font-links";
 
@@ -1523,7 +1524,7 @@ function SavedTile({ part, lifted = false, showSharing = false }: { part: SavedP
 /** A block on its way to another place: its kind and the start of its text. */
 function BlockPreview({ block }: { block: PageBlock | null }) {
   if (!block) return null;
-  const text = (blockText(block) || (block.type === "button" ? block.label : "")).replace(/\s+/g, " ").trim();
+  const text = (blockText(block) || (block.type === "button" ? inlinePlain(block.label) : "")).replace(/\s+/g, " ").trim();
   return (
     <div className="w-64 rounded-md border border-foreground bg-background p-3 shadow-xl">
       <p className="text-xs text-muted">{blockLabels[block.type]}</p>
@@ -4308,6 +4309,7 @@ function HeadingFields({
           onChange={(event) => onChange({ ...block, text: event.target.value })}
           className="min-h-11 rounded-md border border-border bg-background px-3 text-base font-semibold"
         />
+        <p className="text-xs text-muted">{INLINE_HINT}</p>
       </div>
       <div className="flex flex-col gap-1">
         <Choices
@@ -4385,6 +4387,7 @@ function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange: (bloc
           onChange={(event) => onChange({ ...block, label: event.target.value })}
           className="min-h-10 rounded-md border border-border bg-background px-3 text-sm"
         />
+        <p className="text-xs text-muted">{INLINE_HINT}</p>
       </div>
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-href`} className="text-sm font-medium">

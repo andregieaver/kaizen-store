@@ -17,6 +17,7 @@ import { t, type Messages } from "@/lib/i18n";
 import type { FormField } from "@/lib/page-content";
 
 import { Dropdown } from "./dropdown";
+import { Inline } from "./inline-text";
 import { buttonLook } from "./page-block";
 import { usePageLanguage } from "./page-language";
 
@@ -124,7 +125,7 @@ export function SiteForm({ form, store, lang, preview = false }: { form: PublicF
     return (
       <div ref={root}>
         <p ref={done} tabIndex={-1} role="status" className="rounded-md bg-surface p-4 outline-none">
-          {state.text}
+          <Inline text={state.text} />
         </p>
       </div>
     );
@@ -134,7 +135,7 @@ export function SiteForm({ form, store, lang, preview = false }: { form: PublicF
   const sending = state.kind === "sending";
   const button = (
     <button type="submit" disabled={sending} aria-disabled={preview || undefined} className={`${look.className} disabled:opacity-60`} style={look.style}>
-      {sending ? m.form.sending : form.submitLabel || (form.type === "newsletter" ? m.form.subscribe : m.form.send)}
+      {sending ? m.form.sending : <Inline text={form.submitLabel || (form.type === "newsletter" ? m.form.subscribe : m.form.send)} />}
     </button>
   );
 

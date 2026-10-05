@@ -17,6 +17,7 @@ import { fontFamily } from "./fonts";
 import { carouselSettingsSchema, type CarouselSettings } from "./carousel-settings";
 import { customPictureProblem } from "./custom-picture";
 import { isSafeAddress } from "./field-parts";
+import { inlinePlain } from "./inline-text";
 import { sourceTraits } from "./grid-source";
 import { menuLinkSchema, type MenuLink } from "./navigation";
 import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
@@ -1500,9 +1501,9 @@ export function blockText(block: PageBlock): string {
     case "richText":
       return richTextPlain(block.doc);
     case "image":
-      return [block.image?.alt, block.caption].filter(Boolean).join(" ");
+      return [block.image?.alt, block.caption && inlinePlain(block.caption)].filter(Boolean).join(" ");
     case "heading":
-      return block.text;
+      return inlinePlain(block.text);
     case "accordion":
     case "tabs":
       return panelText(block.items);
@@ -1513,14 +1514,14 @@ export function blockText(block: PageBlock): string {
     case "iconList":
       return block.items
         .filter(iconItemShows)
-        .map((item) => item.text)
+        .map((item) => inlinePlain(item.text))
         .join(" ");
     case "testimonials":
       // Google's reviews are Google's words, not the page's.
       if (block.source === "google") return "";
       return block.items
         .filter(testimonialShows)
-        .map((item) => [item.quote, item.name].filter(Boolean).join(" "))
+        .map((item) => [inlinePlain(item.quote), item.name].filter(Boolean).join(" "))
         .join(" ");
     case "button":
     case "contentGrid":
@@ -1545,7 +1546,7 @@ export function blockText(block: PageBlock): string {
 }
 
 /** Titled items' words: each title and its text. */
-const panelText = (items: PanelItem[]) => items.map((item) => `${item.title} ${richTextPlain(item.body)}`.trim()).join(" ");
+const panelText = (items: PanelItem[]) => items.map((item) => `${inlinePlain(item.title)} ${richTextPlain(item.body)}`.trim()).join(" ");
 
 /** CSS for a part's border, rounded corners and shadow (D49); nothing for what it does not have. */
 export function frameStyle(part: Pick<PartBase, "border" | "radius" | "shadow">): Record<string, string> {

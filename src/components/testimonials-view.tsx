@@ -5,6 +5,7 @@ import type { TestimonialColumns, TestimonialLook } from "@/lib/page-content";
 
 import { Carousel } from "./carousel";
 import { StarRating } from "./star-rating";
+import { Inline } from "@/components/inline-text";
 
 /** One testimonial as drawn: written in by the owner, or a Google review. */
 export type TestimonialEntry = {
@@ -73,7 +74,9 @@ export function TestimonialCards({
                 “
               </span>
             )}
-            <p className="whitespace-pre-line">{entry.quote}</p>
+            <p className="whitespace-pre-line">
+              <Inline text={entry.quote} />
+            </p>
           </blockquote>
           {(entry.name || entry.role) && (
             <figcaption className="mt-auto flex items-center gap-3">
@@ -90,7 +93,11 @@ export function TestimonialCards({
                   ) : (
                     <span className="font-semibold">{entry.name}</span>
                   ))}
-                {entry.role && <span className="text-muted">{entry.role}</span>}
+                {entry.role && (
+              <span className="text-muted">
+                <Inline text={entry.role} />
+              </span>
+            )}
               </span>
             </figcaption>
           )}

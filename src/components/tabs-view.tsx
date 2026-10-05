@@ -29,7 +29,7 @@ export function TabsView({
   align,
   panels,
 }: {
-  titles: string[];
+  titles: ReactNode[];
   look: TabsLook;
   align: TabsAlign;
   /** Each tab's panel, drawn by the server. */

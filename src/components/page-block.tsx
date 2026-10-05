@@ -1,6 +1,8 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
 
+import { Inline } from "@/components/inline-text";
+import { inlinePlain } from "@/lib/inline-text";
 import {
   HEADING_DEFAULT_SIZE,
   faqShows,
@@ -150,7 +152,11 @@ export function PageBlockView({ block }: { block: PageBlock }) {
             unoptimized
             className={`h-auto max-w-full bg-surface ${block.shape ? SHAPES[block.shape] : "rounded-lg"}`}
           />
-          {block.caption && <figcaption className="mt-2 text-sm text-muted [overflow-wrap:anywhere]">{block.caption}</figcaption>}
+          {block.caption && (
+            <figcaption className="mt-2 text-sm text-muted [overflow-wrap:anywhere]">
+              <Inline text={block.caption} links />
+            </figcaption>
+          )}
         </figure>
       );
     }
@@ -164,7 +170,7 @@ function Heading({ block }: { block: HeadingBlock }) {
       className={`leading-tight text-balance ${HEADING_SIZES[block.size ?? HEADING_DEFAULT_SIZE[block.level]]} ${block.weight ? WEIGHTS[block.weight] : "font-heading"}`}
       style={block.textColor ? { color: block.textColor } : undefined}
     >
-      {block.text}
+      <Inline text={block.text} links />
     </Tag>
   );
 }
@@ -214,7 +220,7 @@ function Button({ block }: { block: ButtonBlock }) {
       style={{ ...look.style, ...frameStyle(block) }}
       className={look.className}
     >
-      {block.label}
+      <Inline text={block.label} />
       {block.newTab && <span className="sr-only"> (opens in a new tab)</span>}
     </a>
   );
@@ -265,7 +271,7 @@ function SideButton({ side, block }: { side: DualButtonSide; block: DualButtonBl
   const look = buttonLook({ ...side, size: block.size, shape: block.shape }, false, block.weight);
   return (
     <a href={side.href} {...(side.newTab && { target: "_blank", rel: "noopener noreferrer" })} style={look.style} className={look.className}>
-      {side.label}
+      <Inline text={side.label} />
       {side.newTab && <span className="sr-only"> (opens in a new tab)</span>}
     </a>
   );
@@ -291,7 +297,7 @@ function Faq({ block }: { block: FaqBlock }) {
     <>
       <DetailsList block={block} items={items} />
       {block.structuredData !== false && items.length > 0 && (
-        <JsonLdScript data={faqJsonLd(items.map((item) => ({ question: item.title, answer: richTextPlain(item.body) })))} />
+        <JsonLdScript data={faqJsonLd(items.map((item) => ({ question: inlinePlain(item.title), answer: richTextPlain(item.body) })))} />
       )}
     </>
   );
@@ -312,7 +318,9 @@ function DetailsList({ block, items }: { block: AccordionBlock | FaqBlock; items
           <summary
             className={`flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-medium [&::-webkit-details-marker]:hidden ${HEADING_SIZES[block.titleSize ?? "sm"]}`}
           >
-            <span>{item.title}</span>
+            <span>
+              <Inline text={item.title} />
+            </span>
             <svg aria-hidden viewBox="0 0 24 24" className="size-5 shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -331,7 +339,7 @@ function Tabs({ block }: { block: TabsBlock }) {
   const items = block.items.filter((item) => item.title.trim() !== "");
   return (
     <TabsView
-      titles={items.map((item) => item.title)}
+      titles={items.map((item) => <Inline key={item.id} text={item.title} />)}
       look={block.look ?? "underline"}
       align={block.tabsAlign ?? "start"}
       panels={items.map((item) => (

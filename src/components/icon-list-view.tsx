@@ -2,6 +2,7 @@ import { iconItemShows, type IconListBlock } from "@/lib/page-content";
 import type { ButtonSize } from "@/lib/page-content";
 
 import { ListIcon } from "./list-icon";
+import { Inline } from "@/components/inline-text";
 
 // Written out whole so Tailwind finds every class.
 const ICON: Record<ButtonSize, string> = { sm: "size-4", md: "size-5", lg: "size-7" };
@@ -26,7 +27,9 @@ export function IconListView({ block }: { block: IconListBlock }) {
               className={`shrink-0 ${align === "items-start" ? "mt-[0.15em]" : ""} ${size} ${block.iconColor ? "" : "text-accent"}`}
               {...(block.iconColor && { style: { color: block.iconColor } })}
             />
-            <span>{item.text}</span>
+            <span>
+              <Inline text={item.text} links={!item.href} />
+            </span>
           </>
         );
         return (

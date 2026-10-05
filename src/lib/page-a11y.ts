@@ -10,6 +10,7 @@
  * gradient (those are not checked, and the tab says so), nor a colour that is see-through. A passing check does not make a
  * page accessible: it finds some of the problems, the ones a machine can see.
  */
+import { inlinePlain } from "./inline-text";
 import { contrastRatio } from "./theme";
 import type { PageBlock, PageColumn, PageContent, PageRow, RichTextDoc, BlockNode, InlineNode } from "./page-content";
 import { localizePage } from "./page-translation";
@@ -291,7 +292,7 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
             break;
           }
           case "heading": {
-            heading(block.level, block.text, Boolean(block.bind));
+            heading(block.level, inlinePlain(block.text), Boolean(block.bind));
             textOver(hex6(block.textColor), "The heading", back.color, back.unknown);
             break;
           }
@@ -309,7 +310,7 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
           case "button": {
             if (block.bind) break;
             if (block.label.trim() === "" || block.href.trim() === "") add("empty_link", place, where, block.label.trim() === "" ? "This button has no text." : "This button goes nowhere: it has no address.");
-            else if (isGenericLinkText(block.label)) add("link_text_generic", place, where, `The button "${block.label.trim()}" does not say where it goes.`);
+            else if (isGenericLinkText(inlinePlain(block.label))) add("link_text_generic", place, where, `The button "${inlinePlain(block.label).trim()}" does not say where it goes.`);
             if (block.variant === "filled" || block.variant === undefined) {
               const fill = hex6(block.fill);
               const text = hex6(block.textColor);
@@ -323,7 +324,7 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
               const nowhere = side.href.trim() === "";
               if (empty && nowhere) continue; // not shown: nothing to read
               if (empty || nowhere) add("empty_link", place, where, `The ${name} button ${empty ? "has no text" : "goes nowhere: it has no address"}.`);
-              else if (isGenericLinkText(side.label)) add("link_text_generic", place, where, `The ${name} button "${side.label.trim()}" does not say where it goes.`);
+              else if (isGenericLinkText(inlinePlain(side.label))) add("link_text_generic", place, where, `The ${name} button "${inlinePlain(side.label).trim()}" does not say where it goes.`);
             }
             break;
           }

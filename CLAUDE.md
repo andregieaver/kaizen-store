@@ -368,7 +368,15 @@ of running `playwright install`.
   by `ContentGridView`; on the site through `ContentGridSection`, in the
   canvas through the grid preview action), all rendered by
   `<PageBlockView>` (`src/components/page-block.tsx`) on the canvas and
-  the site. Rows, columns and blocks take optional settings (D47–D49:
+  the site. The plain text fields of blocks (a heading, a button's words, a caption, tab and
+  question titles, an icon list's lines, testimonials' quotes, a form's button and success text, a custom
+  grid item's title, price text and button) may hold inline markup (`src/lib/inline-text.ts`,
+  `<Inline>`): `span` (a class, which the page's CSS styles; also `<span="name">`), `strong`, `b`, `em`, `i`,
+  `u`, `s`, `mark`, `small`, `sub`, `sup`, `br`, and `a` only where `links` is on (never inside a link or
+  button), read into elements and never drawn as HTML; every other tag or attribute stays the text typed, a
+  class is a plain name, a link goes through `isSafeAddress()`. A new place that draws such a text uses
+  `<Inline>` (a product's or a page's own title does not), and a place that needs the words alone (search,
+  excerpts, `aria-label`s, structured data, the checks) uses `inlinePlain()`. Rows, columns and blocks take optional settings (D47–D49:
   spacing, border, corners, shadow, id and classes, backgrounds (a colour,
   or a picture with a colour and blur over it, `PartBackground`; rows also
   a video, uploaded from the browser to the `page-videos` bucket with a
