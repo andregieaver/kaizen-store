@@ -14,6 +14,7 @@ import {
   PRODUCT_FIELDS,
   productUnits,
   returnInstructionsUnit,
+  termUnit,
   type Accepted,
   type ProductField,
   type ProductTexts,
@@ -21,10 +22,14 @@ import {
   type Unit,
 } from "@/lib/store-translate";
 
+import { parseTermSeo, termSeoFor, termSeoInput, type TermSeo } from "@/lib/term-seo";
+
 import { audit, type Membership } from "./auth";
 import { fieldWork, writeFieldUnit } from "./field-translate";
 import { savePage } from "./pages";
+import { refreshTag } from "./refresh";
 import { getReturnSettings, getInstructionTranslations, saveInstructionTranslations } from "./return-settings";
+import { termsTag } from "./taxonomy";
 
 type Row = Record<string, unknown>;
 
@@ -117,6 +122,22 @@ async function returnsWork(storeId: string, to: string, mode: TranslateMode): Pr
   return unit ? [unit] : [];
 }
 
+/**
+ * The store's product categories and tags whose search title or description exists in the main language (wave 2, D168): listed where the other language has
+ * none (or all of them again). A term with no main-language text is not listed. Never legal.
+ */
+async function termWork(storeId: string, from: string, to: string, mode: TranslateMode): Promise<Unit[]> {
+  const rows = await db().execute<Row>(sql`
+    select id, kind, name, seo from commerce.terms
+    where store_id = ${storeId}::uuid and content_type = 'product' order by kind, lower(name), id
+  `);
+  return rows.flatMap((row) => {
+    const seo = parseTermSeo(row.seo);
+    const unit = termUnit(String(row.id), String(row.name), row.kind === "tag" ? "tag" : "category", termSeoFor(seo, from), termSeoFor(seo, to), mode);
+    return unit ? [unit] : [];
+  });
+}
+
 /** What there is to translate into `to`, from the store's main language, in the scopes asked for. */
 export async function translationWorklist(
   { store }: Pick<Membership, "store">,
@@ -132,6 +153,7 @@ export async function translationWorklist(
     scopes.includes("pages") ? pageWork(store.id, to, mode) : [],
     scopes.includes("fields") ? fieldWork(store.id, from, to, mode) : [],
     scopes.includes("returns") ? returnsWork(store.id, to, mode) : [],
+    scopes.includes("terms") ? termWork(store.id, from, to, mode) : [],
   ]);
   const units = parts.flat();
   return { units: limit === null ? units : units.slice(0, limit), total: units.length };
@@ -142,8 +164,8 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
   const others = store.localization.locales.slice(1);
   const rows = await Promise.all(
     others.map(async (locale) => {
-      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields", "returns"], "missing", null);
-      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0, returns: 0 };
+      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields", "returns", "terms"], "missing", null);
+      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0, returns: 0, terms: 0 };
       for (const unit of units) count[unit.scope] += 1;
       return [locale, count] as const;
     }),
@@ -154,7 +176,7 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
 export type ApplyResult = { ok: true; saved: number; skipped: string[] } | { ok: false; problem: string };
 
 const APPLY_LIMIT = 300;
-const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields", returns: "returns" };
+const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields", returns: "returns", term: "terms" };
 
 /**
  * Writes what staff accepted, in the language `to`. Each accepted text is
@@ -177,6 +199,7 @@ export async function applyTranslations(member: Membership, to: string, accepted
   let saved = 0;
   const products = new Map<string, Partial<ProductTexts>>();
   const menus = new Map<string, { index: number; text: string }[]>();
+  const terms = new Map<string, Partial<Record<"title" | "description", string>>>();
   for (const { unitId, values } of accepted) {
     const unit = units.get(unitId);
     if (!unit) {
@@ -198,6 +221,9 @@ export async function applyTranslations(member: Membership, to: string, accepted
     } else if (unit.scope === "menus") {
       const [, menuId, index] = unitId.split(":");
       menus.set(menuId, [...(menus.get(menuId) ?? []), { index: Number(index), text: String(ok.label).trim() }]);
+    } else if (unit.scope === "terms") {
+      const id = unitId.split(":")[1];
+      terms.set(id, { ...terms.get(id), ...(ok as Partial<Record<"title" | "description", string>>) });
     } else if (unit.scope === "returns") {
       const text = String(ok.instructions ?? "").trim();
       if (!text) {
@@ -222,6 +248,11 @@ export async function applyTranslations(member: Membership, to: string, accepted
   }
   for (const [id, texts] of products) saved += (await writeProduct(store.id, id, from, to, texts)) ? 1 : 0;
   for (const [menuId, labels] of menus) saved += await writeMenuLabels(store.id, menuId, to, labels);
+  for (const [id, texts] of terms) {
+    const result = await writeTerm(member, id, from, to, texts);
+    if (result === true) saved += 1;
+    else skipped.push(result);
+  }
   await audit(member.account.id, store.id, "store.ai_translated", { to, saved, skipped: skipped.length });
   return { ok: true, saved, skipped };
 }
@@ -246,6 +277,31 @@ async function writeProduct(storeId: string, productId: string, from: string, to
       title = excluded.title, description = excluded.description, safety_information = excluded.safety_information,
       seo_title = excluded.seo_title, seo_description = excluded.seo_description
   `);
+  return true;
+}
+
+/**
+ * Puts the accepted search texts of a category or tag in the language `to`: only the fields accepted, the rest of the term's search texts (other languages'
+ * too) kept as they are, checked against the store's languages and the lengths again. A term whose main-language text is gone, or that is not the store's, is
+ * left out. The suggestion was read and ticked by a person before it got here.
+ */
+async function writeTerm(member: Membership, termId: string, from: string, to: string, texts: Partial<Record<"title" | "description", string>>): Promise<true | string> {
+  const { store } = member;
+  const [row] = await db().execute<Row>(sql`
+    select name, seo from commerce.terms where id = ${termId}::uuid and store_id = ${store.id}::uuid and content_type = 'product'
+  `);
+  if (!row) return "A category or tag was gone, so it was left out.";
+  const seo = parseTermSeo(row.seo);
+  if (!termSeoFor(seo, from)) return `${String(row.name)}: the main language has no search text any more.`;
+  const current = termSeoFor(seo, to);
+  const next: TermSeo = { ...seo, [to]: { title: texts.title ?? current?.title ?? "", description: texts.description ?? current?.description ?? "" } };
+  const checked = termSeoInput(store.localization.locales).safeParse(next);
+  if (!checked.success) return `${String(row.name)}: ${checked.error.issues[0]?.message ?? "the text could not be saved."}`;
+  await db().execute(sql`
+    update commerce.terms set seo = ${JSON.stringify(checked.data)}::jsonb, updated_at = now()
+    where id = ${termId}::uuid and store_id = ${store.id}::uuid and content_type = 'product'
+  `);
+  refreshTag(termsTag({ storeId: store.id, contentType: "product" }));
   return true;
 }
 

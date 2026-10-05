@@ -18,6 +18,7 @@ import { schemaPrice, summarize } from "@/lib/seo";
 import { getProduct, listProducts } from "@/server/catalog";
 import { campaignNotices } from "@/server/campaign-notices";
 import { productsPageOf } from "@/server/pages";
+import { missOrRedirect } from "@/server/redirect-resolve";
 import { productLayoutForVisitor } from "@/server/product-layouts";
 import { getRecommendSettings } from "@/server/recommend-settings";
 import { siteLayoutFor } from "@/server/site-layouts";
@@ -105,7 +106,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function ProductPage({ params }: Props) {
   const loaded = await load(params);
-  if (!loaded) notFound();
+  if (!loaded) {
+    // An old handle of a product that was renamed goes to its current page for good; anything else is the store's 404 (wave 2, D168).
+    const { store: storeSlug, market: marketSlug, handle } = await params;
+    const shop = await resolveShop(storeSlug, marketSlug);
+    if (!shop) notFound();
+    return missOrRedirect(shop, `/p/${handle}`);
+  }
   const { store, market, product, ab } = loaded;
   // The back link returns to the store's All products page (D83), by its title in the market's language.
   const productsPage = await productsPageOf(store);

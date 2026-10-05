@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import type { FieldData } from "@/lib/custom-fields";
 import { productInput, type ProductInput } from "@/lib/product-input";
+import { addressChangeWords, type AddressChange } from "@/lib/redirect-admin";
 import { canWrite, writeRequest, type WrittenText } from "@/lib/product-writing";
 import { AiError, aiFor } from "@/server/ai";
 import { type Membership } from "@/server/auth";
@@ -15,6 +16,7 @@ import { catalogTag } from "@/server/catalog";
 import { fieldsTag, getFieldData, getVariantFieldData } from "@/server/custom-fields";
 import { refreshStoreEmbeddings } from "@/server/embeddings";
 import { suggestProductText } from "@/server/product-writer";
+import { addressBefore, addressChangedAfter } from "@/server/redirect-notes";
 import {
   startFileUpload,
   startVideoUpload,
@@ -45,6 +47,8 @@ export type SaveState =
       fieldData: FieldData;
       /** And in its variants' fields, by variant id. */
       variantFieldData: Record<string, FieldData>;
+      /** The old and the new address when this save changed the handle and a redirect from the old one was left (wave 2, D168): the editor says so. */
+      handleChanged?: AddressChange | null;
     }
   | { status: "error"; problems: string[] };
 
@@ -79,11 +83,14 @@ export async function saveProductAction(
     return { status: "error", problems: [...new Set(parsed.error.issues.map((issue) => issue.message))] };
   }
   const context = await getEditorContext(member.store);
+  // The address the product has before this save: a changed handle leaves a redirect (the database's trigger), which the reply names.
+  const before = productId ? await addressBefore(member.store.id, { product: productId }) : null;
   // Custom fields (D118) come along in the same JSON; the server checks them against the store's own groups.
   const sent = typeof json === "object" && json !== null ? (json as { fields?: unknown; variantFields?: unknown }) : {};
   const result = await saveProduct(member.store, context, productId, parsed.data, sent.fields, sent.variantFields, member.account);
   if (!result.ok) return { status: "error", problems: result.problems };
   refreshCatalogue(member);
+  const handleChanged = await addressChangedAfter(member.store.id, before).catch(() => null);
   // Search by meaning finds the product as saved, without waiting for the cron (D74).
   after(() => refreshStoreEmbeddings(member.store.id));
   const fresh = await getEditorContext(member.store);
@@ -99,6 +106,7 @@ export async function saveProductAction(
     context: fresh,
     fieldData: await getFieldData(member.store.id, "product", result.productId),
     variantFieldData: await getVariantFieldData(member.store.id, result.productId),
+    handleChanged,
   };
 }
 
@@ -164,11 +172,18 @@ export async function createProductTermAction(storeSlug: string, input: unknown)
   return termsChanged(member, await createTerm(member.account, productTerms(member), input));
 }
 
-export async function updateProductTermAction(storeSlug: string, id: string, input: unknown): Promise<TermsResult> {
+/** What an edit of a category or tag answers: the list, and a sentence when its address changed and a redirect from the old one was left (wave 2, D168). */
+export type TermsOutcome = TermsResult & { note?: string };
+
+export async function updateProductTermAction(storeSlug: string, id: string, input: unknown): Promise<TermsOutcome> {
   const member = await checkPermission(storeSlug, "products:write");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
   if (!z.uuid().safeParse(id).success) return { ok: false, problems: ["Unknown category or tag."] };
-  return termsChanged(member, await updateTerm(member.account, productTerms(member), id, input));
+  const before = await addressBefore(member.store.id, { term: id });
+  const result = termsChanged(member, await updateTerm(member.account, productTerms(member), id, input));
+  if (!result.ok) return result;
+  const change = await addressChangedAfter(member.store.id, before).catch(() => null);
+  return change ? { ...result, note: addressChangeWords(change) } : result;
 }
 
 export async function deleteProductTermAction(storeSlug: string, id: string): Promise<TermsResult> {

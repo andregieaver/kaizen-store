@@ -1067,6 +1067,11 @@ export const products = commerce.table(
     productLayoutId: uuid("product_layout_id"),
     /** Unit price (D160): every active goods variant needs its content (`measure_*`); never shown to shoppers. */
     soldByMeasure: boolean("sold_by_measure").notNull().default(false),
+    /**
+     * When the product first became active (wave 2, D168): set by a trigger and never cleared. A handle that changes leaves a redirect only for a
+     * product that was ever live (`OLD.status <> 'draft'` or this set). No backfill: a product active or archived today counts as ever live.
+     */
+    firstActiveAt: timestamp("first_active_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -4413,6 +4418,12 @@ export const terms = commerce.table(
     productLayoutId: uuid("product_layout_id"),
     /** Unit price (D160), on a product category only: its products (and its subcategories') need a measure. */
     requiresUnitPrice: boolean("requires_unit_price").notNull().default(false),
+    /**
+     * A product category's or tag's own title and description for search results and shares, per language (wave 2, D168):
+     * `{ "nb-NO": { "title": "…", "description": "…" } }`, keyed by the store's locale strings as `product_translations.locale` is. The shape,
+     * the languages and the lengths are `termSeoInput`'s (`src/lib/term-seo.ts`). Empty is `{}`: the page uses the term's name.
+     */
+    seo: jsonb("seo").notNull().default({}),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -4432,6 +4443,7 @@ export const terms = commerce.table(
       sql`not ${t.requiresUnitPrice} or (${t.contentType} = 'product' and ${t.kind} = 'category')`,
     ),
     check("terms_not_own_parent", sql`${t.parentId} is null or ${t.parentId} <> ${t.id}`),
+    check("terms_seo_object", sql`jsonb_typeof(${t.seo}) = 'object'`),
     check("terms_name", sql`length(trim(${t.name})) between 1 and 80`),
     check("terms_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.slug}) <= 80`),
   ],
@@ -7677,7 +7689,7 @@ export const dataJobs = commerce.table(
     storeId: uuid("store_id")
       .notNull()
       .references(() => stores.id, { onDelete: "cascade" }),
-    /** `product_import`, `product_export`, `order_export`, `customer_export`; later waves add the redirect files. */
+    /** `product_import`, `product_export`, `order_export`, `customer_export`, `redirect_import`, `redirect_export` (wave 2, D168). */
     kind: text("kind").notNull(),
     /** `uploaded`, `checking`, `checked`, `queued`, `running`, `done`, `failed`, `cancelled`, `expired` (`src/lib/data-job.ts`). */
     status: text("status").notNull(),
@@ -7728,7 +7740,14 @@ export const dataJobs = commerce.table(
     uniqueIndex("data_jobs_one_active_import_idx")
       .on(t.storeId)
       .where(sql`${t.kind} = 'product_import' and ${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running')`),
-    check("data_jobs_kind", sql`${t.kind} in ('product_import', 'product_export', 'order_export', 'customer_export')`),
+    // One redirect import is open per store at a time (wave 2, D168), beside the product import.
+    uniqueIndex("data_jobs_one_active_redirect_import_idx")
+      .on(t.storeId)
+      .where(sql`${t.kind} = 'redirect_import' and ${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running')`),
+    check(
+      "data_jobs_kind",
+      sql`${t.kind} in ('product_import', 'product_export', 'order_export', 'customer_export', 'redirect_import', 'redirect_export')`,
+    ),
     check(
       "data_jobs_status",
       sql`${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running', 'done', 'failed', 'cancelled', 'expired')`,
@@ -7748,8 +7767,11 @@ export const dataJobs = commerce.table(
       sql`jsonb_typeof(${t.options}) = 'object' and jsonb_typeof(${t.counts}) = 'object' and jsonb_typeof(${t.cursor}) = 'object' and jsonb_typeof(${t.files}) = 'array'`,
     ),
     // An export has no input file, an import has no output files, and the format of an export is Kaizen's own.
-    check("data_jobs_export_no_input", sql`${t.kind} = 'product_import' or (${t.inputPath} is null and ${t.inputSha256} is null and ${t.format} is distinct from 'shopify')`),
-    check("data_jobs_import_no_files", sql`${t.kind} <> 'product_import' or ${t.files} = '[]'::jsonb`),
+    check(
+      "data_jobs_export_no_input",
+      sql`${t.kind} in ('product_import', 'redirect_import') or (${t.inputPath} is null and ${t.inputSha256} is null and ${t.format} is distinct from 'shopify')`,
+    ),
+    check("data_jobs_import_no_files", sql`${t.kind} not in ('product_import', 'redirect_import') or ${t.files} = '[]'::jsonb`),
     // An ended job says when.
     check(
       "data_jobs_finished",
@@ -7770,7 +7792,7 @@ export const dataJobItems = commerce.table(
     storeId: storeId(),
     jobId: uuid("job_id").notNull(),
     seq: integer("seq").notNull(),
-    /** `product` (one product of the file) or `file` (a finding about the file as a whole). */
+    /** `product` (one product of the file), `redirect` (one line of a redirect file, wave 2, D168) or `file` (a finding about the file as a whole). */
     kind: text("kind").notNull(),
     /** The handle, or null. */
     ref: text("ref"),
@@ -7793,7 +7815,7 @@ export const dataJobItems = commerce.table(
     }).onDelete("cascade"),
     index("data_job_items_job_idx").on(t.storeId, t.jobId, t.outcome),
     check("data_job_items_seq", sql`${t.seq} >= 0`),
-    check("data_job_items_kind", sql`${t.kind} in ('product', 'file')`),
+    check("data_job_items_kind", sql`${t.kind} in ('product', 'redirect', 'file')`),
     check("data_job_items_outcome", sql`${t.outcome} in ('created', 'updated', 'unchanged', 'skipped', 'drafted', 'failed', 'checked')`),
     check("data_job_items_json", sql`jsonb_typeof(${t.messages}) = 'array' and jsonb_typeof(${t.changes}) = 'object'`),
   ],
@@ -7913,5 +7935,131 @@ export const bulkEditItems = commerce.table(
     ),
     check("bulk_edit_items_failed_reason", sql`${t.outcome} <> 'failed' or length(trim(coalesce(${t.reason}, ''))) > 0`),
     check("bulk_edit_items_reason", sql`${t.reason} is null or length(${t.reason}) <= 500`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Redirects and the 404 report (wave 2, second run, D168, docs/wave-2-redirects.md): addresses that moved, and the ones nobody had
+// ---------------------------------------------------------------------------
+
+/**
+ * A redirect (`docs/wave-2-redirects.md` 3.1): an address of the store's that sends the shopper somewhere else, permanently (308). `source` and
+ * `target` are market-relative (`/p/old-cup`, not `/no/p/old-cup`), so one redirect serves every country and language; `source` is in the normal form
+ * of `src/lib/redirect-path.ts`. A redirect is looked up only where a request would be a 404, never for a live address.
+ *
+ * Four kinds. A **manual** one (`target` set) is made by staff, an import or the assistant and written only by `src/server/redirects.ts`; the three
+ * **automatic** ones (`product`, `category`, `tag`) are made by database triggers when a product's handle or a category's or tag's slug changes, point
+ * at the THING (`product_id` or `term_id`), not at an address, so they never chain, and are immutable except `hits` and `last_hit_at` (staff may delete
+ * one). A thing taking an address deletes the automatic redirect from it. Pages and articles keep `page_redirects` (D42, D57). The database refuses a
+ * manual redirect that closes a loop (`commerce.redirects_no_loop()`). `hits` is a lower bound (a request answered from a cache is not seen).
+ */
+export const redirects = commerce.table(
+  "redirects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    /** `manual`, `product`, `category` or `tag`. */
+    kind: text("kind").notNull(),
+    /** The address that redirects: market-relative, lower case, a leading `/`, no trailing `/`, no query or fragment, at most 500 characters. */
+    source: text("source").notNull(),
+    /** Manual only: where to go, market-relative (a path with an optional `?query` and `#fragment`, at most 2,000 characters); `/` is the front page. */
+    target: text("target"),
+    /** Product only: the product whose handle it was. */
+    productId: uuid("product_id"),
+    /** Category and tag only: the term whose address it was. */
+    termId: uuid("term_id").references(() => terms.id, { onDelete: "cascade" }),
+    /** `editor`, `import`, `report` (made from the 404 report), `assistant`, or `system` (made by a database trigger). */
+    origin: text("origin").notNull(),
+    /** Requests that were redirected, a lower bound. */
+    hits: bigint("hits", { mode: "number" }).notNull().default(0),
+    lastHitAt: timestamp("last_hit_at", { withTimezone: true }),
+    /** Null for a system row. */
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("redirects_store_id_key").on(t.storeId, t.id),
+    unique("redirects_store_source_key").on(t.storeId, t.source),
+    foreignKey({
+      name: "redirects_product_fk",
+      columns: [t.storeId, t.productId],
+      foreignColumns: [products.storeId, products.id],
+    }).onDelete("cascade"),
+    index("redirects_store_kind_idx").on(t.storeId, t.kind),
+    // The composite foreign key (store, product) is indexed by its own columns, as the neighbours' are.
+    index("redirects_product_idx").on(t.storeId, t.productId),
+    index("redirects_term_idx").on(t.termId),
+    index("redirects_created_by_idx").on(t.createdBy),
+    check("redirects_kind", sql`${t.kind} in ('manual', 'product', 'category', 'tag')`),
+    check("redirects_origin", sql`${t.origin} in ('editor', 'import', 'report', 'assistant', 'system')`),
+    check(
+      "redirects_kind_columns",
+      sql`(${t.kind} = 'manual' and ${t.target} is not null and ${t.productId} is null and ${t.termId} is null)
+        or (${t.kind} = 'product' and ${t.target} is null and ${t.productId} is not null and ${t.termId} is null)
+        or (${t.kind} in ('category', 'tag') and ${t.target} is null and ${t.productId} is null and ${t.termId} is not null)`,
+    ),
+    // An automatic redirect is the triggers' (`system`); a manual one is a person's or an import's.
+    check("redirects_origin_kind", sql`(${t.kind} = 'manual') = (${t.origin} <> 'system')`),
+    // The normal form of 4.1: a leading slash, no query, no fragment, no space or control character, no backslash, no `//`, no trailing slash, no capital.
+    check(
+      "redirects_source_shape",
+      sql`${t.source} ~ '^/[^[:space:][:cntrl:]?#]+$' and strpos(${t.source}, chr(92)) = 0 and ${t.source} !~ '//' and ${t.source} !~ '/$' and ${t.source} !~ '[A-Z]' and length(${t.source}) <= 500`,
+    ),
+    check(
+      "redirects_target_shape",
+      sql`${t.target} is null or (${t.target} ~ '^/[^[:space:][:cntrl:]]*$' and strpos(${t.target}, chr(92)) = 0 and ${t.target} !~ '^//' and length(${t.target}) <= 2000)`,
+    ),
+    check("redirects_hits", sql`${t.hits} >= 0`),
+  ],
+);
+
+/**
+ * What the 404 report counts (`docs/wave-2-redirects.md` 3.2, 4.6): a market-less address that was asked for and the store did not have, per
+ * UTC day, with the requests and how many were robots (a flag taken from the request, never a user agent text). No IP address, cookie, referrer,
+ * query string or header is kept, and addresses that could hold a person's data are never recorded (`recordablePath()`). A null `path` is the one
+ * row of a day that counts what was not recorded because the day's cap was reached. Written only by `commerce.record_not_found()`; rows are
+ * deleted 90 days after their day by `pruneNotFound()` (application code). Counts are lower bounds.
+ */
+export const notFoundHits = commerce.table(
+  "not_found_hits",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    /** The UTC day of the request. */
+    day: date("day", { mode: "string" }).notNull(),
+    path: text("path"),
+    hits: integer("hits").notNull().default(0),
+    crawlerHits: integer("crawler_hits").notNull().default(0),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("not_found_hits_key").on(t.storeId, t.day, t.path).nullsNotDistinct(),
+    // The key's own index serves the report (store, day); this one serves the daily prune across stores.
+    index("not_found_hits_day_idx").on(t.day),
+    check("not_found_hits_counts", sql`${t.hits} >= 0 and ${t.crawlerHits} between 0 and ${t.hits}`),
+    check("not_found_hits_path", sql`${t.path} is null or (length(${t.path}) <= 200 and ${t.path} ~ '^/')`),
+  ],
+);
+
+/** An address staff hid from the 404 report (`docs/wave-2-redirects.md` 3.2), at most 1,000 a store (checked by the service under the store's lock). */
+export const notFoundIgnored = commerce.table(
+  "not_found_ignored",
+  {
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    path: text("path").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.path] }),
+    index("not_found_ignored_created_by_idx").on(t.createdBy),
+    check("not_found_ignored_path", sql`length(${t.path}) <= 200 and ${t.path} ~ '^/'`),
   ],
 );

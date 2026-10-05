@@ -54,6 +54,10 @@ const OWNER_ONLY_EXTRA: Record<string, string> = {
 const READ_ONLY_ROUTES = new Set([
   "src/app/admin/(gated)/[store]/products/export/file/route.ts",
   "src/app/admin/(gated)/[store]/products/export/[jobId]/tick/route.ts",
+  // The redirect file and the report of pages not found (wave 2, D168): a POST so they are never cached or fetched by a link, and they only read.
+  "src/app/admin/(gated)/[store]/redirects/export/file/route.ts",
+  "src/app/admin/(gated)/[store]/redirects/export/[jobId]/tick/route.ts",
+  "src/app/admin/(gated)/[store]/redirects/404s/export/route.ts",
 ]);
 
 /**

@@ -92,6 +92,10 @@ const PREFIXES: Record<string, AuditArea> = {
   "site_": "website",
   "field_group.": "website",
   "term.": "website",
+  // Redirects and the 404 report (wave 2, D168): a changed address, a redirect by hand or by file, an address hidden from the report.
+  "redirect.": "website",
+  "redirects.": "website",
+  "not_found.": "website",
   "store.page_": "website",
   "store.article_": "website",
   "store.header_": "website",

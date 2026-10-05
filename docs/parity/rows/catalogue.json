@@ -105,11 +105,11 @@
       "rechecked": true,
       "was": "full"
     },
-    "gap": "Staff put products into nested categories and flat tags by hand (`product_terms`) and shoppers browse, filter and sort them, but a term is only a name, a slug, a parent and a position (`commerce.terms`): no description, picture or SEO title and description of its own (the page's `<title>` is the name, `term-listing.tsx`), no translation of the name (the store translation worklist has no terms scope), and no manual order of products inside one (`product_terms` has no position; sorts are featured, newest, price, title). A description or picture is possible only through a custom field on the term bound to a block (D119). Rated Full in the first report; re-rated Partial because collection content, SEO and manual ordering are what a merchant uses a collection for.",
+    "gap": "Staff put products into nested categories and flat tags by hand (`product_terms`) and shoppers browse, filter and sort them, but a term is only a name, a slug, a parent and a position (`commerce.terms`): no description or picture of its own (SEO title and description and the names' translation came with D168, row `catalogue.seo-fields-title-description-handle-sitemap-hreflang`), and no manual order of products inside one (`product_terms` has no position; sorts are featured, newest, price, title). A description or picture is possible only through a custom field on the term bound to a block (D119). Rated Full in the first report; re-rated Partial because collection content, SEO and manual ordering are what a merchant uses a collection for.",
     "bucket": "A",
     "wave": 6,
     "criteria": [
-      "A category or tag has its own description, picture and SEO title and description, kept per language, shown on its page and in its metadata (e2e).",
+      "A category or tag has its own description and picture, kept per language, shown on its page and in its metadata (e2e). Its SEO title and description are counted once, in `catalogue.seo-fields-title-description-handle-sitemap-hreflang` (D168).",
       "Category and tag names are translatable per language and appear in the store translation worklist (integration test).",
       "Products can be put in a manual order inside a category or tag, and a 'manual' sort follows it on the listing (integration test).",
       "Still holds: staff assign products to nested categories and tags, menus link to them, and the listing filters and sorts (existing tests)."
@@ -136,7 +136,8 @@
       "D50",
       "D52",
       "D119",
-      "D140"
+      "D140",
+      "D168"
     ],
     "history": [
       {
@@ -510,17 +511,17 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
-    "gap": "Per-locale SEO title and description on products and pages, editable handle, sitemaps with hreflang and pictures, canonical links and JSON-LD all exist (`src/server/seo.ts`, `structured-data.ts`). Changing a product or category address leaves the old one dead: `page_redirects` is for pages only (verified in `src/db/schema.ts`; no product or term redirect), there is no redirect manager and no 404 report. Categories and tags have no SEO fields (`termMetadata` uses the name).",
-    "bucket": "A",
-    "wave": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
-      "Changing a product, category, tag or page address creates a permanent redirect from the old one automatically, collapsing chains and refusing loops (integration test).",
+      "Changing a product, category, tag or page address creates a permanent redirect from the old one automatically; manual redirects collapse chains and refuse loops (integration test).",
       "Owners add, edit, import and export redirects, and see a 404 report of what shoppers and crawlers asked for (integration test).",
-      "Categories and tags carry their own SEO title and description per language (see collections).",
+      "Categories and tags carry their own SEO title and description per language, used in their page title, description, Open Graph tags, hreflang alternates and the sitemap (integration test, e2e).",
       "The sitemap lists only live addresses with hreflang alternates and never a redirected one (existing sitemap tests extended)."
     ],
     "evidence": {
@@ -529,22 +530,47 @@
         "src/lib/seo.ts",
         "src/lib/structured-data.ts",
         "src/server/products.ts",
-        "src/server/pages.ts"
+        "src/server/pages.ts",
+        "src/lib/redirects.ts",
+        "src/server/redirects.ts",
+        "src/server/redirect-resolve.ts",
+        "src/lib/term-seo.ts",
+        "src/server/taxonomy.ts",
+        "src/server/store-translate.ts",
+        "src/app/s/[store]/[market]/term-listing.tsx"
       ],
       "tests": [
         "src/server/seo.int.test.ts",
         "src/lib/seo.test.ts",
         "src/lib/structured-data.test.ts",
-        "src/server/pages.int.test.ts"
+        "src/server/pages.int.test.ts",
+        "src/server/redirects.int.test.ts",
+        "src/server/redirect-resolve.int.test.ts",
+        "src/db/redirects.test.ts",
+        "src/db/commerce.test.ts",
+        "src/lib/term-seo.test.ts",
+        "src/server/term-seo.int.test.ts",
+        "src/server/store-translate.int.test.ts",
+        "e2e/redirects.spec.ts",
+        "e2e/terms.spec.ts",
+        "e2e/smoke.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D21",
       "D54",
-      "D109"
+      "D109",
+      "D168"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-05",
+        "from": "partial",
+        "to": "full",
+        "why": "D168 (wave 2, second run, docs/wave-2-redirects.md). Criteria 1 and 3 reworded as the spec's section 6.4 says: automatic redirects point at the thing and cannot chain, so chains and loops concern manual redirects; '(see collections)' dropped, so the SEO text is counted here and not in catalogue.collections-manual. Read the code and ran the cited tests on a fresh database (unit and PGlite 2183 tests, integration 128 tests, e2e redirects, terms and smoke on a production build 28 passed). (1) Address changes leave automatic redirects for products, categories and tags (commerce.redirects triggers; PGlite and redirect-resolve.int.test.ts), pages and articles keep page_redirects (commerce.test.ts, renamed twice); manual redirects store a chain as its final destination and refuse a loop in the service, the import plan and the database trigger (redirects.int.test.ts, redirects.test.ts), and a chain formed later is followed in one response up to ten hops (redirect-resolve.int.test.ts). (2) The manager, CSV import and export and the 404 report are the ones rated on storefront.url-redirect-manager. (3) terms.seo holds a title and description per language, saved through updateTerm(), shown by termMetadata() as the title, description, Open Graph and X tags and hreflang alternates with the term's own canonical, never another language's text, copied by clone_store() and duplicate_store(), listed in the translation worklist (scope terms); e2e/terms.spec.ts checks the Swedish page against the Norwegian one. (4) storeSitemap() lists category and tag pages with live products per market with alternates and x-default, leaves empty ones out and lists no old address after a product or category rename (seo.int.test.ts, extended by this step with a product renamed twice) and e2e/smoke.spec.ts checks a category entry with hreflang. Caveats: the signed-in term editor's search section is held by a renderToString test and the integration tests, not an end-to-end test; the sitemap's no-old-address check after a rename is an integration test, and the e2e smoke test does not rename anything."
+      }
+    ]
   },
   {
     "id": "catalogue.bulk-product-import-and-export-csv",

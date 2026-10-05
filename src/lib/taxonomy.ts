@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { slugify } from "./slug";
+import { termSeoShape, type TermSeo } from "./term-seo";
 
 /**
  * Categories and tags (D50), shared by the admin (in the browser) and the
@@ -30,6 +31,11 @@ export type Term = {
    * ever true on a product category; absent where it is not read (Kaizen's own terms).
    */
   requiresUnitPrice?: boolean;
+  /**
+   * The category's or tag's own title and description for search results and shares, per language (wave 2, D168: `terms.seo`). Absent where it is not read
+   * (Kaizen's own terms); `{}` when the term has none.
+   */
+  seo?: TermSeo;
 };
 
 /** What an item is in: category and tag ids. */
@@ -70,6 +76,11 @@ export const termInput = z
     parentId: z.uuid().nullable().default(null),
     /** Unit price (D160): left out means unchanged on an update and off on a new one; true only for a product category. */
     requiresUnitPrice: z.boolean().optional(),
+    /**
+     * Search title and description per language (D168): left out means unchanged on an update and none on a new one; a language with both empty is removed.
+     * The shape is held here; the server checks the languages against the store's own (`termSeoInput(locales)`).
+     */
+    seo: termSeoShape.optional(),
   })
   .transform((term, ctx) => {
     const slug = term.slug || slugify(term.name, TERM_SLUG_MAX);

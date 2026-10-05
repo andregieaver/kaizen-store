@@ -31,6 +31,8 @@ const pageOf = (store: Store, job: Pick<DataJob, "id" | "kind">): string => {
   if (job.kind === "product_import") return `${base}/products/import/${job.id}`;
   if (job.kind === "product_export") return `${base}/products/export?job=${job.id}`;
   if (job.kind === "order_export") return `${base}/orders/export?job=${job.id}`;
+  if (job.kind === "redirect_import") return `${base}/redirects/import/${job.id}`;
+  if (job.kind === "redirect_export") return `${base}/redirects/export?job=${job.id}`;
   return `${base}/customers/export?job=${job.id}`;
 };
 
@@ -39,13 +41,15 @@ const KIND_WORDS: Record<JobKind, string> = {
   product_export: "Product export",
   order_export: "Order file",
   customer_export: "Customer file",
+  redirect_import: "Redirect import",
+  redirect_export: "Redirect file",
 };
 
 const count = (job: DataJob, key: string): number | null => (typeof job.counts[key] === "number" ? (job.counts[key] as number) : null);
 
 /** What a job is, for the assistant to repeat: its words, its progress and its counts, never a file's name, path or contents. */
 function describeJob(store: Store, job: DataJob) {
-  const counts = isImport(job.kind)
+  const all = isImport(job.kind)
     ? {
         created: count(job, "created"),
         updated: count(job, "updated"),
@@ -59,6 +63,8 @@ function describeJob(store: Store, job: DataJob) {
         pictures_fetched: count(job, "picturesFetched"),
       }
     : null;
+  // A redirect import has no drafts, prices or pictures: those figures are left out rather than shown as nothing.
+  const counts = all && job.kind === "redirect_import" ? Object.fromEntries(Object.entries(all).filter(([k, v]) => v !== null && !["saved_as_draft", "prices_changed", "pictures_fetched"].includes(k))) : all;
   return {
     id: job.id,
     kind: KIND_WORDS[job.kind],
@@ -84,7 +90,7 @@ function describeJob(store: Store, job: DataJob) {
 export async function listDataJobsTool(ctx: Ctx, { kind, limit }: OwnerToolInput<"list_data_jobs">) {
   const member = memberOf(ctx);
   if (kind && !mayUseKind(member, kind)) {
-    throw new OwnerToolError(isImport(kind) || kind === "product_export" ? "I can't show that: your role has no access to products." : "I can't show that: order and customer files are the owner's.");
+    throw new OwnerToolError(kind.startsWith("redirect") ? "I can't show that: your role has no access to the website's redirects." : isImport(kind) || kind === "product_export" ? "I can't show that: your role has no access to products." : "I can't show that: order and customer files are the owner's.");
   }
   const kinds = (kind ? [kind] : JOB_KINDS).filter((k) => mayUseKind(member, k));
   const found = (await Promise.all(kinds.map((k) => listJobs(member, k, limit)))).flat();

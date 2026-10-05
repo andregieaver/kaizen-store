@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { TermsManager } from "@/components/admin/terms";
+import type { TermSeoSetup } from "@/components/admin/term-seo-fields";
+import { marketPath, storeHref, storeOrigin } from "@/lib/paths";
+import { siteUrl } from "@/lib/site";
 import { requirePermission } from "@/server/permissions";
 import { listTerms } from "@/server/taxonomy";
 import { categoryGaps } from "@/server/unit-price-gaps";
 
-import { termFieldsSetup } from "../../fields/data";
+import { storeLanguages, termFieldsSetup } from "../../fields/data";
 
 import { createProductTermAction, deleteProductTermAction, updateProductTermAction } from "../actions";
 
@@ -20,6 +23,15 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
     termFieldsSetup(store),
     categoryGaps(store.id),
   ]);
+  // The search texts (wave 2, D168): the store's languages, the description a page without a text of its own uses, and the address the preview is drawn at.
+  const market = store.markets[0];
+  const seo: TermSeoSetup = {
+    locales: store.localization.locales,
+    languageNames: Object.fromEntries(storeLanguages(store).map((l) => [l.locale, l.name])),
+    storeName: store.name,
+    descriptions: store.seo.description,
+    base: `${storeOrigin(store.slug) ? "" : siteUrl()}${market ? storeHref(store.slug, marketPath(store.slug, market.slug)) : `/s/${store.slug}`}`.replace(/\/$/, ""),
+  };
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -30,13 +42,16 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
         <p className="max-w-2xl text-sm text-muted">
           Sort your products into categories and label them with tags, so shoppers find them in your menus and
           content grids. Choose a product&apos;s categories and tags when you edit the product. A category can also
-          require a price per kg or litre of its products.
+          require a price per kg or litre of its products, and each category and tag can have its own title and description
+          for search results in each language. Changing a category&apos;s or tag&apos;s address leaves a redirect from the
+          old one.
         </p>
       </div>
       <TermsManager
         initial={terms}
         usedBy="products"
         fields={fields}
+        seo={seo}
         // A category can need a price per kg or litre of its products (unit price, D160); the counts are of active products still without content.
         unitPrice={{ gaps: Object.fromEntries(gaps), needsHref: `/admin/${store.slug}/products?needs=unit-price` }}
         actions={{

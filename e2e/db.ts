@@ -44,3 +44,21 @@ export async function storePageWith(name: string, blocks: postgres.JSONValue[], 
   }
   return `/s/${slug}/no/${page}`;
 }
+
+/**
+ * A new store (approved as the platform does) with the template's demo catalogue, its categories and its markets, and no page of its own: nothing about it is
+ * cached before the test's first request, so a test can change its rows with SQL first. Returns its slug and id.
+ */
+export async function testStore(name: string): Promise<{ slug: string; id: string }> {
+  const slug = `${name}-${Date.now().toString(36)}`;
+  const sql = testDb();
+  try {
+    const [request] = await sql`
+      insert into commerce.access_requests (email, name, store_name)
+      values (${`${slug}@example.com`}, 'Test', 'Testbutikk') returning id`;
+    const [{ id }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Testbutikk', null) as id`;
+    return { slug, id };
+  } finally {
+    await sql.end();
+  }
+}

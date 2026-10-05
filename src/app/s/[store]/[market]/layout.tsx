@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { BackToAdmin } from "@/components/back-to-admin";
@@ -17,6 +17,7 @@ import { StoreThemeStyles } from "@/components/store-theme";
 import { buyerScript } from "@/lib/b2b";
 import { t } from "@/lib/i18n";
 import { inView } from "@/lib/markets";
+import { looksLikeMarket } from "@/lib/redirect-path";
 import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { siteIcons } from "@/lib/site-icons";
 import { footerHasWithdrawal } from "@/lib/site-layout";
@@ -29,6 +30,7 @@ import { siteLayoutForVisitor } from "@/server/site-layouts";
 import { uiTextsFor } from "@/server/ui-text";
 
 import { MarketExtras } from "./extras";
+import { legacyLocation } from "./legacy-redirect";
 
 import "../../../globals.css";
 
@@ -87,7 +89,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function MarketLayout({ children, drawer, params }: Props) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop) notFound();
+  if (!shop) {
+    // A first part that only looks like a market (`/om-oss`, an old shop's page) may be a manual redirect's source (wave 2, D168); the proxy leaves it to this layout.
+    const moved = looksLikeMarket(marketSlug) ? await legacyLocation(storeSlug, marketSlug) : null;
+    if (moved) permanentRedirect(moved);
+    notFound();
+  }
   const { store, market, ab } = shop;
   const m = t(market.lang);
   // The store's own header and footer built in the page builder (D80), else the standard ones; the visitor's version of them while one is under an A/B test (D148).

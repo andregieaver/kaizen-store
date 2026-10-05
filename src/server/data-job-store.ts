@@ -226,7 +226,7 @@ export async function failJob(job: Pick<DataJob, "id" | "storeId">, problem: str
 
 export type ItemInput = {
   seq: number;
-  kind: "product" | "file";
+  kind: "product" | "redirect" | "file";
   ref: string | null;
   rows: number[];
   outcome: ItemOutcome;
@@ -269,7 +269,7 @@ export async function listItems(storeId: string, jobId: string, opts: { severity
     total: Number(count?.n ?? 0),
     items: rows.map((r) => ({
       seq: Number(r.seq),
-      kind: String(r.kind) as "product" | "file",
+      kind: String(r.kind) as "product" | "redirect" | "file",
       ref: r.ref ? String(r.ref) : null,
       rows: ((r.rows ?? []) as number[]).map(Number),
       outcome: String(r.outcome) as ItemOutcome,
@@ -402,8 +402,10 @@ export type DataDeps = {
   batchRows?: number;
   /** An export's rows per part; small in tests. */
   partRows?: number;
-  /** The product an import stops at in a test (a run that is killed): the run throws after this many products. */
+  /** The product (or redirect line) an import stops at in a test (a run that is killed): the run throws after this many. */
   stopAfter?: number;
+  /** Lines of a redirect import read, planned and written together; small in tests to make a file of a few lines several chunks (the real figure is `REDIRECT_APPLY_CHUNK`). */
+  chunkRows?: number;
 };
 
 /** Runs a job after the response (`after()`); where that is not possible (no request) the five-minute job takes it up. `deps.schedule` replaces it in tests. */

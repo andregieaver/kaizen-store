@@ -1,5 +1,6 @@
 import type { TranslateItem } from "./page-translate-ai";
 import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
+import type { TermSeoText } from "./term-seo";
 import { LABEL_MAX } from "./navigation";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
 
@@ -15,7 +16,7 @@ import { MAX_INSTRUCTIONS } from "./withdrawal";
  * needs human review. Pure and shared with the browser.
  */
 
-export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields", "returns"] as const;
+export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields", "returns", "terms"] as const;
 export type TranslateScope = (typeof TRANSLATE_SCOPES)[number];
 
 export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> = {
@@ -24,11 +25,12 @@ export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> 
   pages: { name: "Pages and articles", one: "Page" },
   fields: { name: "Custom fields", one: "Custom field" },
   returns: { name: "Return instructions", one: "Return instructions" },
+  terms: { name: "Categories and tags", one: "Category or tag" },
 };
 
 /** One thing to translate: a product, a menu link, a page or custom fields' words, with its texts. */
 export type Unit = {
-  /** `product:{id}`, `menu:{id}:{index}`, `page:{id}`, `fielddef:{groupId}`, `fieldval:{entity}:{id}` (D118) or `returns:instructions` (D153). */
+  /** `product:{id}`, `menu:{id}:{index}`, `page:{id}`, `fielddef:{groupId}`, `fieldval:{entity}:{id}` (D118), `returns:instructions` (D153) or `term:{id}` (D168). */
   id: string;
   scope: TranslateScope;
   /** What it is called in the main language, and what kind of page it is. */
@@ -137,6 +139,33 @@ export function returnInstructionsUnit(source: string, target: string | null, mo
     legal: true,
     items: [{ key: "instructions", label: "Instructions", max: MAX_INSTRUCTIONS, rich: false, runs: [source] }],
   };
+}
+
+// ---------------------------------------------------------------------------
+// Categories and tags (wave 2, D168)
+// ---------------------------------------------------------------------------
+
+/** The fields of a term's search text, in the order the editor has them. */
+export const TERM_FIELDS = [
+  { key: "title", label: "Search title", max: TITLE_MAX },
+  { key: "description", label: "Search description", max: DESCRIPTION_MAX },
+] as const;
+
+/**
+ * A category's or tag's search title and description to translate: the main language's that have words, and with `missing` only where the language has none.
+ * A term with no main-language text is not listed (there is nothing to translate from). Never legal: a search text is the owner's own marketing words.
+ */
+export function termUnit(id: string, name: string, kind: "category" | "tag", source: TermSeoText | null, target: TermSeoText | null, mode: "missing" | "all"): Unit | null {
+  if (!source) return null;
+  const items = TERM_FIELDS.filter((f) => source[f.key].trim() !== "" && (mode === "all" || !target || target[f.key].trim() === "")).map((f) => ({
+    key: f.key,
+    label: f.label,
+    max: f.max,
+    rich: false,
+    runs: [source[f.key]],
+  }));
+  if (items.length === 0) return null;
+  return { id: `term:${id}`, scope: "terms", title: name, kind: kind === "category" ? "Category" : "Tag", legal: false, items };
 }
 
 // ---------------------------------------------------------------------------

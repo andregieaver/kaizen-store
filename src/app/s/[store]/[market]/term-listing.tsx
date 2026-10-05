@@ -9,12 +9,16 @@ import { RolePage } from "@/components/role-page";
 import { groupsToShow } from "@/lib/field-parts";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
+import { inView } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
+import { termMetaDescription, termMetaTitle, termShare } from "@/lib/term-seo";
 import type { StoreQuery } from "@/lib/store-parts";
 import { byName, withDescendants, type TermKind } from "@/lib/taxonomy";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listGridProducts } from "@/server/catalog";
 import { shownFieldsFor } from "@/server/custom-fields";
+import { missOrRedirect } from "@/server/redirect-resolve";
+import { listIndexedTerms, storeShareImage, storeShareTags } from "@/server/seo";
 import { resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
@@ -45,14 +49,55 @@ async function load(kind: TermKind, params: Params) {
   return term ? { ...shop, terms, term } : null;
 }
 
+/**
+ * The category's or tag's search and sharing details (wave 2, D168, `docs/wave-2-redirects.md` 2.4.1): the SEO title and description of the market's language
+ * as written (the title without the store's name, as a product's is), else the name and the store's own description as before; never another language's text.
+ * Every market and language view where the term has a live product is an alternate, and the canonical is the page's own address.
+ */
 export async function termMetadata(kind: TermKind, params: Params): Promise<Metadata> {
   const loaded = await load(kind, params);
   if (!loaded) return {};
   const { store, market, term } = loaded;
+  const path = (m: Market) => marketPath(store.slug, m.slug, `/${kind}/${term.slug}`);
+  const fallback = store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
+  const description = termMetaDescription(term, market.locale, fallback);
+  const share = termShare(term, market.locale, fallback);
+  // The language's own title is used as written; without one the name goes in and the layout's template adds the store (`Name · Store`, once).
+  const ownTitle = termMetaTitle(term, market.locale, store.name);
+  // The term's page in the other markets and languages it is listed in (the sitemap's views); the market asked is one even when the term has no live product there.
+  const indexed = (await listIndexedTerms(store.id)).find((x) => x.kind === kind && x.slug === term.slug);
+  const markets = store.markets.filter((m) => m.code === market.code || (indexed?.markets.includes(m.code) ?? false));
+  const views = markets.flatMap((m) =>
+    store.localization.locales.map((locale) => ({ key: `${locale.split("-")[0]}-${m.code}`, href: path(inView(m, { locale, currency: m.nativeCurrency })) })),
+  );
   return {
-    title: `${term.name} · ${store.name}`,
-    alternates: { canonical: marketPath(store.slug, market.slug, `/${kind}/${term.slug}`) },
+    title: typeof ownTitle === "string" ? term.name : ownTitle,
+    description,
+    alternates: {
+      canonical: path(market),
+      languages: {
+        ...Object.fromEntries(views.map((v) => [v.key, v.href])),
+        ...(views.length > 1 ? { "x-default": views[0].href } : {}),
+      },
+    },
+    ...storeShareTags(store, market, {
+      title: share.title,
+      description: share.description,
+      url: path(market),
+      images: [storeShareImage(store, market.locale)],
+    }),
   };
+}
+
+/**
+ * A category or tag that is not there: an old address of one that was renamed goes to its current address for good, and anything else is the store's 404
+ * (wave 2, D168). Only a store and market that exist are asked; the lookup is `missOrRedirect()`, never a database read of its own here.
+ */
+async function missed(kind: TermKind, params: Params): Promise<never> {
+  const { store: storeSlug, market: marketSlug, slug } = await params;
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop) notFound();
+  return missOrRedirect(shop, `/${kind}/${slug}`);
 }
 
 /**
@@ -61,7 +106,7 @@ export async function termMetadata(kind: TermKind, params: Params): Promise<Meta
  */
 export async function TermProducts({ kind, params, searchParams }: { kind: TermKind; params: Params; searchParams: SearchParams }) {
   const loaded = await load(kind, params);
-  if (!loaded) notFound();
+  if (!loaded) return missed(kind, params);
   const { store, market, term } = loaded;
   return (
     <RolePage store={store} market={market} role={kind} route={{ part: kind, param: term.slug, query: searchParams }} place={{ term: { id: term.id, kind } }}>

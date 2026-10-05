@@ -33,6 +33,7 @@ import {
 } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
+import { parseTermSeo, type TermSeo } from "@/lib/term-seo";
 
 import { audit, type Account, type Membership } from "./auth";
 import { CATALOG_TAG, catalogTag, listProducts } from "./catalog";
@@ -40,6 +41,7 @@ import { listPublishedPages } from "./pages";
 import { getPlatformPageRoles } from "./platform-roles";
 import type { SaveResult } from "./settings";
 import { getOpenStore, type Store } from "./stores";
+import { termsTag } from "./taxonomy";
 
 type Row = Record<string, unknown>;
 
@@ -216,6 +218,54 @@ export async function listIndexedProducts(storeId: string): Promise<IndexedProdu
       markets: (row.markets as string[]).map((code) => code.trim().toUpperCase()),
     }))
     .filter((product) => product.markets.length > 0);
+}
+
+export type IndexedTerm = {
+  kind: "category" | "tag";
+  slug: string;
+  name: string;
+  /** The later of the term's own last change and its products' (a category counts its subcategories' products, as its page does). */
+  updatedAt: string;
+  /** Market codes (upper case) in which the term has at least one live product. */
+  markets: string[];
+  seo: TermSeo;
+};
+
+/**
+ * A store's product categories and tags that have at least one live product (active, with an active variant priced in a market), for its sitemap (wave 2,
+ * D168, `docs/wave-2-redirects.md` 2.5): each with the markets its products are sold in. A category counts its subcategories' products, as its page does. A
+ * term with none is left out: its page is an empty list. Cached under the catalogue and terms tags.
+ */
+export async function listIndexedTerms(storeId: string): Promise<IndexedTerm[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(CATALOG_TAG, catalogTag(storeId), termsTag({ storeId, contentType: "product" }));
+  const rows = await readDb().execute<Row>(sql`
+    with recursive tree (root_id, id) as (
+      select t.id, t.id from commerce.terms t where t.store_id = ${storeId}::uuid and t.content_type = 'product'
+      union all
+      select tree.root_id, c.id from tree join commerce.terms c on c.parent_id = tree.id and c.store_id = ${storeId}::uuid and c.content_type = 'product'
+    )
+    select t.kind, t.slug, t.name, t.seo, greatest(t.updated_at, max(p.updated_at)) as updated_at,
+      array_agg(distinct cp.market_code) as markets
+    from commerce.terms t
+    join tree on tree.root_id = t.id
+    join commerce.product_terms pt on pt.store_id = ${storeId}::uuid and pt.term_id = tree.id
+    join commerce.products p on p.store_id = ${storeId}::uuid and p.id = pt.product_id and p.status = 'active'
+    join commerce.product_variants v on v.product_id = p.id and v.active
+    join commerce.current_prices cp on cp.variant_id = v.id
+    where t.store_id = ${storeId}::uuid and t.content_type = 'product'
+    group by t.id
+    order by t.kind, t.slug
+  `);
+  return rows.map((row) => ({
+    kind: row.kind === "tag" ? "tag" : "category",
+    slug: String(row.slug),
+    name: String(row.name),
+    updatedAt: new Date(String(row.updated_at)).toISOString(),
+    markets: ((row.markets ?? []) as string[]).map((code) => String(code).trim().toUpperCase()),
+    seo: parseTermSeo(row.seo),
+  }));
 }
 
 /** A product's text in a locale, falling back to any language it has. */
@@ -423,8 +473,9 @@ export async function storeSitemap(slug: string): Promise<string | null> {
   const store = (await listPublicStores()).find((s) => s.slug === slug && s.indexable);
   if (!store) return null;
   const origin = storeSiteUrl(store.slug);
-  const [products, pages, articles] = await Promise.all([
+  const [products, terms, pages, articles] = await Promise.all([
     listIndexedProducts(store.id),
+    listIndexedTerms(store.id),
     listPublishedPages(store.id),
     listPublishedPages(store.id, "article"),
   ]);
@@ -469,6 +520,12 @@ export async function storeSitemap(slug: string): Promise<string | null> {
       return versions.map((version) =>
         entry(version.href, versions, { lastmod: product.updatedAt, images: product.images.slice(0, 5) }),
       );
+    }),
+    // Its category and tag pages (wave 2, D168): in each market where a live product is, listing only current addresses (an old slug redirects and is in no sitemap).
+    ...terms.flatMap((term) => {
+      const markets = store.markets.filter((m) => term.markets.includes(m.code));
+      const versions = versionsOf(markets, `/${term.kind}/${term.slug}`);
+      return versions.map((version) => entry(version.href, versions, { lastmod: term.updatedAt, xDefault: versions.length > 1 ? versions[0].href : undefined }));
     }),
     // Its pages (D54) open to search engines, in every market; the front page is the markets' own address.
     ...pages

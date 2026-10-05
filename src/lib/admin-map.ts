@@ -445,6 +445,26 @@ const PAGES: readonly AdminPage[] = [
   store("menus", "/menus", "Menus", "Store", "The store's menus: links to pages, products, categories and more, nested and ordered.", {
     keywords: ["navigation", "links"],
   }),
+  store("redirects", "/redirects", "Redirects", "Store", "Redirects send shoppers and search engines from an address that moved to its new one, in every country and language. Kaizen makes one itself when a product's, category's or tag's address changes; here you add, edit, delete and search your own (a path to a path on the store, permanent), and see how often each was used. Needs the right to change the website.", {
+    tasks: ["Redirect an old address to a new one", "Search the redirects", "Delete a redirect", "See which redirects are used", "Import or export redirects"],
+    keywords: ["301", "404", "broken link", "moved page", "omdiriger", "redirect", "old url", "change handle", "permalink"],
+  }),
+  store("redirects.import", "/redirects/import", "Import redirects", "Store", "Brings redirects in from a CSV file with the columns Redirect from and Redirect to (Shopify's file reads as it is). Upload, choose what happens when an address already has a redirect, check (a dry run that lists every line's problem: loops, chains, duplicates, addresses that are live pages, other websites), then import. Never deletes a redirect. Needs the right to change the website.", {
+    tasks: ["Upload a redirect file", "Import a Shopify redirect file", "Continue an open import", "See the recent imports"],
+    keywords: ["import redirects", "csv", "upload redirects", "shopify", "migrate", "bulk redirects", "301 file", "importer omdirigeringer"],
+  }),
+  store("redirects.import.job", "/redirects/import/[jobId]", "Redirect import", "Store", "One redirect import: its option, the check's findings line by line, the counts, the confirmation, progress while it works and the result. Download the problems as a CSV, cancel an import that is running.", {
+    tasks: ["Choose the option and check the file", "Read each line's problems", "Import after the check", "Cancel the import", "Download the problems as CSV"],
+    keywords: ["dry run", "check the file", "import problems", "import result", "cancel import"],
+  }),
+  store("redirects.export", "/redirects/export", "Export redirects", "Store", "Downloads the store's redirects as a CSV file with the columns Redirect from and Redirect to: your own (the default) or all, the automatic ones too. A small store gets the file at once, a large one a job with a Download button. The file reads back in as it is.", {
+    tasks: ["Export the manual redirects", "Export all redirects", "Choose the Excel (Nordic) or the standard file format", "Download a finished export"],
+    keywords: ["export redirects", "csv", "download redirects", "backup", "eksporter omdirigeringer"],
+  }),
+  store("redirects.404s", "/redirects/404s", "Pages not found", "Store", "A report of the addresses shoppers and search engines asked for that the store did not have, the most asked first, for the last 7, 30 or 90 days, with a one-click redirect to a suggested page. Counts are at least what happened. No visitor is identified.", {
+    tasks: ["See the most asked-for missing addresses", "Redirect a missing address", "Hide an address", "Download the report"],
+    keywords: ["404", "not found", "broken links", "missing pages", "dead links", "404 report", "fix broken links", "side ikke funnet"],
+  }),
   store("navigation", "/settings/navigation", "Header and footer", "Store", "Logos, site icon, which menus the standard header and footer show, and business details.", {
     keywords: ["logo", "favicon"],
   }),

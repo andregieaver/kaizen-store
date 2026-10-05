@@ -7,6 +7,7 @@ import { GOALS } from "./experiments";
 import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
 import { approveSummary, declineSummary } from "./return-tools";
+import { FROM_MAX, OVERVIEW_ROWS_DEFAULT, OVERVIEW_ROWS_MAX, TO_MAX, redirectSummary } from "./redirect-tools";
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -305,9 +306,9 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "list_data_jobs",
-    "The store's file imports and exports (D165), newest first: a product import or export, an order file or a customer file. Each has its kind, status in words, how far it got, its counts (created, updated, unchanged, skipped, saved as draft, failed), the plain reason when it failed, when it finished and when its files are deleted (7 days after an export is made). It shows only the kinds the member may use: product jobs need access to products, order and customer files are the owner's. It never gives a file's contents, a download link or a person's details, and it starts, applies, cancels and downloads nothing: say where the page is (Products, Import or Export, an order or customer export page) and let the person press the button themselves.",
+    "The store's file imports and exports (D165, D168), newest first: a product import or export, an order file, a customer file, or a redirect import or export. Each has its kind, status in words, how far it got, its counts (created, updated, unchanged, skipped, saved as draft, failed), the plain reason when it failed, when it finished and when its files are deleted (7 days after an export is made). It shows only the kinds the member may use: product jobs need access to products, redirect jobs the website, order and customer files are the owner's. It never gives a file's contents, a download link or a person's details, and it starts, applies, cancels and downloads nothing: say where the page is (Products, Import or Export, Redirects, an order or customer export page) and let the person press the button themselves.",
     z.object({
-      kind: z.enum(["product_import", "product_export", "order_export", "customer_export"]).optional().describe("Only this kind of job; leave it out for every kind the member may see."),
+      kind: z.enum(["product_import", "product_export", "order_export", "customer_export", "redirect_import", "redirect_export"]).optional().describe("Only this kind of job; leave it out for every kind the member may see."),
       limit: limit(20, 10),
     }),
   ),
@@ -672,6 +673,23 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "redirect_overview",
+    "The store's redirects and its missing addresses (D168): how many redirects it has (its own, the ones made when a product, category or tag changed address, and pages' and articles'), what is left of the limit of manual redirects, and the addresses shoppers and search engines asked for that the store did not have in the last 7, 30 or 90 days, most asked first, each with up to three live pages it may be sent to, found in code from the store's own pages. Every number is counted by the store and is at least what happened (a request answered from a cache is not seen): repeat it, say 'at least', never add one and never name an address it did not give. Read-only. To redirect an address call add_redirect (the owner's yes first); to edit, delete or import redirects the owner uses the Redirects page.",
+    z.object({
+      days: z.union([z.literal(7), z.literal(30), z.literal(90)]).default(30).describe("The report's window: the last 7, 30 or 90 days."),
+      limit: limit(OVERVIEW_ROWS_MAX, OVERVIEW_ROWS_DEFAULT),
+    }),
+  ),
+  tool(
+    "add_redirect",
+    "Adds a permanent redirect (308) so that an address that no longer exists sends visitors and search engines to a page that does, in every country and language of the store. `from` is the old address as a path on the store (such as /collections/shoes or /old-page, with no country in front: a redirect applies in every country) and `to` the page it should go to (a path on the store such as /p/running-shoes). Use an address from redirect_overview or one the owner named: never invent one. It never replaces a live page, a cart or a checkout address and never goes to another website, and a loop is refused with the reason. Needs the owner's approval.",
+    z.object({
+      from: z.string().trim().min(1).max(FROM_MAX).describe("The old address, as a path on the store, such as /collections/shoes."),
+      to: z.string().trim().min(1).max(TO_MAX).describe("Where it should go: a path on the store, such as /p/running-shoes."),
+    }),
+    "public",
+  ),
+  tool(
     "unpublish_page",
     "Takes a published page or article off the site; its draft is kept. Needs the owner's approval.",
     z.object({ page: z.uuid("A page is given by its id, from list_pages."), type: z.enum(["page", "article"]).default("page") }),
@@ -717,6 +735,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Cancel booking ${text("booking")}${input.notify === false ? "" : " and email the customer"}.`;
     case "archive_product":
       return input.archived === false ? `Put the product "${text("product")}" back as a draft.` : `Take the product "${text("product")}" off the site.`;
+    case "add_redirect":
+      return redirectSummary(text("from"), text("to"));
     case "unpublish_page":
       return `Take the ${input.type === "article" ? "article" : "page"} ${text("page")} off the site, keeping its draft.`;
     case "approve_return":

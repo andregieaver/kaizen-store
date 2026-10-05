@@ -12,6 +12,7 @@ import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
 import { articleJsonLd } from "@/lib/structured-data";
 import { bindForPlace } from "@/server/field-binding";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
+import { missOrRedirect } from "@/server/redirect-resolve";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
 import { resolveShop } from "@/server/shop";
 
@@ -77,7 +78,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function StoreArticlePage({ params }: Props) {
   const loaded = await load(params);
-  if (!loaded) notFound();
+  if (!loaded) {
+    // An address that was an article's, or a manual redirect's source, goes on for good; anything else is the store's 404 (wave 2, D168).
+    const { store: storeSlug, market: marketSlug, slug } = await params;
+    const shop = await resolveShop(storeSlug, marketSlug);
+    if (!shop) notFound();
+    return missOrRedirect(shop, `/blog/${slug}`);
+  }
   const { store, market, found } = loaded;
   const blog = marketPath(store.slug, market.slug, "/blog");
   // An article that moved: its old address leads to the new one for good.

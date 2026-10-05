@@ -1126,14 +1126,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "`page_redirects` for pages only, left by the database when a published page's address moves. No redirect when a product, category, tag or article address changes, no manual redirect, no CSV import or export, no 404 report. One row for the one Shopify feature (it replaces customers.url-redirect-manager).",
-    "bucket": "A",
-    "wave": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Changing the address of a product, category, tag or article leaves a permanent redirect from the old one, as pages do now, and a later page taking that address replaces it.",
       "An owner adds, edits, deletes and searches manual redirects from a path to a path or address, scoped to the store.",
@@ -1144,20 +1144,59 @@
       "files": [
         "src/server/pages.ts",
         "src/db/schema.ts",
-        "src/server/menus.ts"
+        "src/server/menus.ts",
+        "src/lib/redirect-path.ts",
+        "src/lib/redirects.ts",
+        "src/lib/redirect-plan.ts",
+        "src/lib/redirect-csv.ts",
+        "src/lib/not-found.ts",
+        "src/server/redirects.ts",
+        "src/server/redirect-resolve.ts",
+        "src/server/redirect-live.ts",
+        "src/server/redirect-import.ts",
+        "src/server/redirect-export.ts",
+        "src/server/not-found.ts",
+        "src/proxy.ts",
+        "src/app/s/[store]/[market]/[...rest]/page.tsx",
+        "src/app/admin/(gated)/[store]/redirects/page.tsx",
+        "src/app/admin/(gated)/[store]/redirects/404s/page.tsx"
       ],
       "tests": [
         "src/server/pages.int.test.ts",
         "e2e/pages.spec.ts",
-        "src/db/commerce.test.ts"
+        "src/db/commerce.test.ts",
+        "src/db/redirects.test.ts",
+        "src/lib/redirect-path.test.ts",
+        "src/lib/redirects.test.ts",
+        "src/lib/redirect-plan.test.ts",
+        "src/lib/redirect-csv.test.ts",
+        "src/lib/not-found.test.ts",
+        "src/lib/legacy-path.test.ts",
+        "src/server/redirects.int.test.ts",
+        "src/server/redirect-resolve.int.test.ts",
+        "src/server/redirect-import.int.test.ts",
+        "src/server/not-found.int.test.ts",
+        "src/server/redirect-writers.test.ts",
+        "src/proxy.test.ts",
+        "src/components/admin/redirects/redirect-views.test.ts",
+        "e2e/redirects.spec.ts",
+        "e2e/redirects-admin.spec.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D53",
-      "D54"
+      "D54",
+      "D168"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-05",
+        "from": "partial",
+        "to": "full",
+        "why": "D168 (wave 2, second run, docs/wave-2-redirects.md). Read the code and ran the cited tests on a fresh database: unit and PGlite (114 files, 2183 tests), integration (9 files, 128 tests: redirects, redirect-resolve, redirect-import, not-found, term-seo, seo, store-translate, redirect-tools, taxonomy) and, on a production build, e2e redirects, redirects-admin, terms and smoke (28 passed). (1) A rename of a product that was live, of a category or of a tag leaves an automatic redirect from commerce.redirects through database triggers (PGlite: three renames leave three rows, a taken address replaces the automatic one, swaps end consistent) and the old address answers 308 to the current one in the same market (redirect-resolve.int.test.ts, e2e/redirects.spec.ts); pages and articles keep page_redirects (commerce.test.ts). (2) Manual redirects are added, edited, deleted and searched through src/server/redirects.ts, scoped by store id, refused for a live source, a working page, another website and a loop, capped at 100,000, one transaction with the audit entry. (3) CSV import is a D165 job (redirect_import: per-line dry run with a finding code for loops, chains, duplicates and external hosts, chunked and resumable apply, each line judged again at write time) and export imports back unchanged (redirect-import.int.test.ts). (4) The 404 report (commerce.not_found_hits, address and day and counts only) lists addresses by count over 7, 30 or 90 days with up to three suggested targets found in code and a one-click manual redirect, otherwise a short form (not-found.int.test.ts, e2e). Caveats, so the rating is not read wider than it is: the signed-in admin screens (manager, import, export, report) are held by renderToString views and by the integration tests of the functions their actions call, not by an end-to-end test, because the repository has no signed-in admin fixture (e2e/redirects-admin.spec.ts holds the signed-out refusals only); a target on another website is refused as an error, narrower than Shopify; the 404 counts and a redirect's hits are lower bounds (a miss is recorded in the cached lookup's fill, at most about once a second per address and instance, so a very busy address is under-counted and the order of two very busy addresses is approximate), and robots are told apart only for addresses with no country, which the proxy sees; the Location header is sent twice on the first on-demand render of a redirect (browsers accept it)."
+      }
+    ]
   },
   {
     "id": "storefront.favicon-logos-branding",

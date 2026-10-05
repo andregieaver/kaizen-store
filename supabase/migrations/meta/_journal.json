@@ -1828,6 +1828,41 @@
       "when": 1791206849531,
       "tag": "20261005132729_data_plan_features",
       "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1791217258002,
+      "tag": "20261005162057_redirects",
+      "breakpoints": true
+    },
+    {
+      "idx": 262,
+      "version": "7",
+      "when": 1791217265659,
+      "tag": "20261005162105_redirects_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 263,
+      "version": "7",
+      "when": 1791217274517,
+      "tag": "20261005162114_redirects_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 264,
+      "version": "7",
+      "when": 1791217283680,
+      "tag": "20261005162123_redirects_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 265,
+      "version": "7",
+      "when": 1791220756354,
+      "tag": "20261005171916_redirects_plan_features",
+      "breakpoints": true
     }
   ]
 }

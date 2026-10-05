@@ -84,6 +84,8 @@ describe("where an import is", () => {
   it("words the work", () => {
     expect(workingWords("product_import", "checking", "check")).toBe("Checking the file");
     expect(workingWords("product_import", "running", "apply")).toBe("Saving products");
+    expect(workingWords("redirect_import", "checking", "check")).toBe("Checking the file");
+    expect(workingWords("redirect_import", "running", "apply")).toBe("Saving redirects");
     expect(workingWords("order_export", "queued", null)).toBe("Waiting to start");
     expect(workingWords("order_export", "running", "write")).toBe("Preparing your file");
     expect(workingWords("customer_export", "running", "assemble")).toBe("Putting the file together");

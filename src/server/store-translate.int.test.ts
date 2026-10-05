@@ -142,3 +142,68 @@ describe("legal texts", () => {
     expect(units.filter((u) => !u.legal).every((u) => u.items.every((i) => i.key !== "safetyInformation"))).toBe(true);
   });
 });
+
+describe("categories and tags (wave 2, D168)", () => {
+  const term = async (kind: "category" | "tag", slug: string, seo: Record<string, { title: string; description: string }>) => {
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.terms (store_id, content_type, kind, name, slug, seo) values (${storeId}::uuid, 'product', ${kind}, ${`Term ${slug}`}, ${slug}, ${JSON.stringify(seo)}::jsonb) returning id
+    `);
+    return String(row.id);
+  };
+  const seoOf = async (id: string) => (await db().execute<Row>(sql`select seo from commerce.terms where id = ${id}::uuid`))[0].seo as Record<string, { title: string; description: string }>;
+
+  it("lists a term whose main-language search text exists and whose other language has none, and not one with no main text", async () => {
+    const withText = await term("category", `ts-text-${run}`, { "nb-NO": { title: "Hjem og hage", description: "Alt til hjemmet" } });
+    const half = await term("tag", `ts-half-${run}`, { "nb-NO": { title: "Nytt", description: "Nye ting" }, "sv-SE": { title: "Nytt", description: "" } });
+    const none = await term("category", `ts-none-${run}`, {});
+    const onlyOther = await term("tag", `ts-other-${run}`, { "sv-SE": { title: "Bara svenska", description: "" } });
+    const { units } = await translate.translationWorklist(await asMember(), "sv-SE", ["terms"], "missing", null);
+    const ids = units.map((u) => u.id);
+    expect(ids).toContain(`term:${withText}`);
+    expect(ids).toContain(`term:${half}`);
+    expect(ids).not.toContain(`term:${none}`);
+    expect(ids).not.toContain(`term:${onlyOther}`);
+    // Only what is missing: the half-translated tag brings its description alone.
+    expect(units.find((u) => u.id === `term:${half}`)!.items.map((i) => i.key)).toEqual(["description"]);
+    expect(units.find((u) => u.id === `term:${withText}`)!.items.map((i) => i.key)).toEqual(["title", "description"]);
+    expect(units.every((u) => u.scope === "terms" && !u.legal)).toBe(true);
+    // Everything again, with the mode `all`.
+    const again = await translate.translationWorklist(await asMember(), "sv-SE", ["terms"], "all", null);
+    expect(again.units.find((u) => u.id === `term:${half}`)!.items.map((i) => i.key)).toEqual(["title", "description"]);
+    // The coverage counts them.
+    expect((await translate.translationCoverage(await asMember()))["sv-SE"].terms).toBeGreaterThanOrEqual(2);
+  });
+
+  it("writes only the ticked ones, keeps every other language's text, and checks the lengths again", async () => {
+    const ticked = await term("category", `ts-ticked-${run}`, { "nb-NO": { title: "Lys", description: "Lamper" }, "da-DK": { title: "Lys", description: "Lamper" } });
+    const left = await term("category", `ts-left-${run}`, { "nb-NO": { title: "Mørkt", description: "" } });
+    const m = await asMember();
+    const result = await translate.applyTranslations(m, "sv-SE", [{ unitId: `term:${ticked}`, values: { title: "Ljus", description: "Lampor" } }]);
+    expect(result).toMatchObject({ ok: true, saved: 1, skipped: [] });
+    expect(await seoOf(ticked)).toEqual({ "nb-NO": { title: "Lys", description: "Lamper" }, "da-DK": { title: "Lys", description: "Lamper" }, "sv-SE": { title: "Ljus", description: "Lampor" } });
+    // The one that was not ticked is as it was.
+    expect(await seoOf(left)).toEqual({ "nb-NO": { title: "Mørkt", description: "" } });
+    // A title that is too long is not written, and says so.
+    const long = await translate.applyTranslations(m, "sv-SE", [{ unitId: `term:${left}`, values: { title: "x".repeat(121) } }]);
+    expect(long).toMatchObject({ ok: true, saved: 0 });
+    expect(await seoOf(left)).toEqual({ "nb-NO": { title: "Mørkt", description: "" } });
+    // Only the texts the unit has: a description it did not ask for is left out.
+    const extra = await translate.applyTranslations(m, "sv-SE", [{ unitId: `term:${left}`, values: { title: "Mörkt", description: "Smuggled" } }]);
+    expect(extra).toMatchObject({ ok: true, saved: 1 });
+    expect((await seoOf(left))["sv-SE"]).toEqual({ title: "Mörkt", description: "" });
+  });
+
+  it("refuses a term with no main-language text, another store's term, and a language the store does not offer", async () => {
+    const none = await term("tag", `ts-gone-${run}`, {});
+    const m = await asMember();
+    const gone = await translate.applyTranslations(m, "sv-SE", [{ unitId: `term:${none}`, values: { title: "Hej" } }]);
+    expect(gone).toMatchObject({ ok: true, saved: 0 });
+    expect((await seoOf(none))["sv-SE"]).toBeUndefined();
+    const [foreign] = await db().execute<Row>(sql`select id from commerce.terms where store_id is not null and store_id <> ${storeId}::uuid and content_type = 'product' limit 1`);
+    if (foreign) {
+      const result = await translate.applyTranslations(m, "sv-SE", [{ unitId: `term:${String(foreign.id)}`, values: { title: "Hej" } }]);
+      expect(result).toMatchObject({ ok: true, saved: 0 });
+    }
+    expect(await translate.applyTranslations(m, "fr-FR", [{ unitId: `term:${none}`, values: { title: "Salut" } }])).toEqual({ ok: false, problem: "That is not one of the store's other languages." });
+  });
+});

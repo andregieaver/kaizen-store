@@ -7,6 +7,8 @@ import {
   EMPTY_COUNTS,
   FINDINGS,
   FINDING_CODES,
+  EXPORT_KINDS,
+  IMPORT_KINDS,
   JOB_KINDS,
   JOB_STATUSES,
   STATUS_WORDS,
@@ -14,6 +16,8 @@ import {
   finding,
   hasPersonalData,
   isActive,
+  isExport,
+  isImport,
   isEnded,
   progressPercent,
   startStatus,
@@ -43,6 +47,23 @@ describe("the limits", () => {
       IMPORT_FILE_KEEP_DAYS: 30,
       DOWNLOAD_LINK_SECONDS: 60,
     });
+    expect(limits).toMatchObject({
+      REDIRECTS_MAX: 100_000,
+      REDIRECT_IMPORT_MAX_ROWS: 100_000,
+      REDIRECT_APPLY_CHUNK: 500,
+      REDIRECT_BULK_DELETE_MAX: 200,
+      REDIRECT_PAGE_SIZE: 50,
+      REDIRECT_HOPS_MAX: 10,
+      REDIRECT_EXPORT_DIRECT_MAX: 2_000,
+      NOT_FOUND_DAY_CAP: 1_000,
+      NOT_FOUND_KEEP_DAYS: 90,
+      NOT_FOUND_SCREEN_ROWS: 500,
+      NOT_FOUND_CSV_ROWS: 5_000,
+      NOT_FOUND_IGNORED_MAX: 1_000,
+      NOT_FOUND_THROTTLE_MS: 1_000,
+      NOT_FOUND_SUGGESTIONS: 3,
+    });
+    expect(limits.REDIRECT_EXPORT_DIRECT_MAX).toBe(limits.DIRECT_EXPORT_MAX_ROWS);
     expect(limits.EXPORT_PART_ROWS).toBeLessThanOrEqual(limits.EXPORT_MAX_ROWS);
     expect(limits.DIRECT_EXPORT_MAX_ROWS).toBeLessThan(limits.EXPORT_PART_ROWS);
   });
@@ -160,6 +181,66 @@ describe("the findings", () => {
     expect(worstOf([])).toBeNull();
     expect(worstOf([finding("column.ignored"), finding("value.cleared")])).toBe("warning");
     expect(worstOf([finding("column.ignored"), finding("sku.missing"), finding("value.cleared")])).toBe("error");
+  });
+});
+
+describe("the redirect kinds (wave 2, second run, D168)", () => {
+  it("add an import and an export to the four of the first run, and the imports are the kinds that read a file", () => {
+    expect(JOB_KINDS).toEqual(["product_import", "product_export", "order_export", "customer_export", "redirect_import", "redirect_export"]);
+    expect(IMPORT_KINDS).toEqual(["product_import", "redirect_import"]);
+    expect(EXPORT_KINDS).toEqual(["product_export", "order_export", "customer_export", "redirect_export"]);
+    for (const kind of JOB_KINDS) expect(isImport(kind) !== isExport(kind)).toBe(true);
+    expect(isImport("redirect_import")).toBe(true);
+    expect(isExport("redirect_export")).toBe(true);
+  });
+
+  it("give a redirect import the import steps, a redirect export the export's, and no personal data", () => {
+    expect(statusesOf("redirect_import")).toEqual(JOB_STATUSES);
+    expect(statusesOf("redirect_export")).not.toContain("checked");
+    expect(startStatus("redirect_import")).toBe("uploaded");
+    expect(startStatus("redirect_export")).toBe("queued");
+    expect(isActive("redirect_import", "checked")).toBe(true);
+    expect(isActive("redirect_export", "checked")).toBe(false);
+    expect(isActive("redirect_export", "running")).toBe(true);
+    expect(hasPersonalData("redirect_import")).toBe(false);
+    expect(hasPersonalData("redirect_export")).toBe(false);
+  });
+
+  it("have the findings of the spec (4.4), with the severities it gives", () => {
+    const codes = [
+      "file.not_redirects", "source.missing", "source.invalid", "source.external", "source.market_prefix", "source.reserved", "source.live", "source.root", "source.query_dropped",
+      "target.missing", "target.invalid", "target.external", "target.market_removed", "target.self", "target.loop", "target.chain", "target.not_found", "duplicate.in_file",
+      "exists.update", "exists.same", "exists.skipped", "exists.replaced_automatic", "limit.reached",
+    ] as const;
+    for (const code of codes) expect(FINDING_CODES, code).toContain(code);
+    const severity: Record<string, string[]> = {
+      error: ["file.not_redirects", "source.missing", "source.invalid", "source.external", "source.market_prefix", "source.reserved", "source.live", "source.root", "target.missing", "target.invalid", "target.external", "target.self", "target.loop", "duplicate.in_file", "limit.reached"],
+      warning: ["target.chain", "target.not_found"],
+      info: ["source.query_dropped", "target.market_removed", "exists.update", "exists.same", "exists.skipped", "exists.replaced_automatic"],
+    };
+    for (const [level, list] of Object.entries(severity)) for (const code of list) expect([code, FINDINGS[code as keyof typeof FINDINGS].severity]).toEqual([code, level]);
+    expect(Object.values(severity).flat().sort()).toEqual([...codes].sort());
+  });
+
+  it("name an address in a sentence and never a cell: an address is given in its normal form, and a loop names at most five", () => {
+    expect(finding("source.live", { address: "/p/lamp" }).text).toContain('"/p/lamp"');
+    expect(finding("target.loop", { address: "/a", addresses: ["/b", "/c"] }).text).toBe('"/a" would close a loop through "/b" and "/c", so the shopper would never arrive.');
+    const long = finding("target.chain", { addresses: ["/1", "/2", "/3", "/4", "/5", "/6", "/7"] }).text;
+    expect(long).toContain('"/5" and 2 more');
+    expect(long).not.toContain('"/6"');
+    expect(finding("limit.reached", { max: 100000 }).text).toContain("100000");
+    expect(finding("file.not_redirects", { names: ["Redirect from", "Redirect to"] }).text).toContain('"Redirect from" and "Redirect to"');
+    const loaded = finding("source.root", { address: "=HYPERLINK(1)" } as never);
+    expect(loaded.text).not.toContain("HYPERLINK");
+  });
+});
+
+describe("the audit areas of the redirects (wave 2, second run, D168)", () => {
+  it("are Website's, by three new prefixes", () => {
+    const actions = ["redirect.created", "redirect.updated", "redirect.deleted", "redirects.import_started", "redirects.import_applied", "redirects.import_cancelled", "redirects.export_made", "redirects.export_downloaded", "not_found.ignored", "not_found.restored", "not_found.exported"];
+    for (const action of actions) expect([action, explicitAreaOf(action), areaOfAction(action)]).toEqual([action, "website", "website"]);
+    // The old prefix a redirect might be taken for is still Orders'.
+    expect(explicitAreaOf("return.refunded")).toBe("orders");
   });
 });
 

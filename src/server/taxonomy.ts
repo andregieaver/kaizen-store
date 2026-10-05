@@ -15,7 +15,11 @@ import {
   type TermScope,
 } from "@/lib/taxonomy";
 
+import { termSeoInput, parseTermSeo, type TermSeo } from "@/lib/term-seo";
+
 import { audit, type Account } from "./auth";
+import { refreshRedirects } from "./redirect-live";
+import { getStore } from "./stores";
 
 /**
  * Categories and tags (D50): Kaizen's for its pages, and each store's for
@@ -36,6 +40,7 @@ const toTerm = (row: Row): Term => ({
   name: String(row.name),
   slug: String(row.slug),
   ...(row.requires_unit_price === undefined ? {} : { requiresUnitPrice: Boolean(row.requires_unit_price) }),
+  ...(row.seo === undefined ? {} : { seo: parseTermSeo(row.seo) }),
 });
 
 const scopeWhere = (scope: TermScope) =>
@@ -44,7 +49,7 @@ const scopeWhere = (scope: TermScope) =>
 /** Every category and tag of a scope, by name: for the admin. */
 export async function listTerms(scope: TermScope): Promise<Term[]> {
   const rows = await db().execute<Row>(sql`
-    select id, kind, parent_id, name, slug, requires_unit_price from commerce.terms
+    select id, kind, parent_id, name, slug, requires_unit_price, seo from commerce.terms
     where ${scopeWhere(scope)}
     order by kind, lower(name)
   `);
@@ -57,7 +62,7 @@ export async function siteTerms(storeId: string | null, contentType: ContentType
   cacheLife("hours");
   cacheTag(termsTag({ storeId, contentType }));
   const rows = await readDb().execute<Row>(sql`
-    select id, kind, parent_id, name, slug, requires_unit_price from commerce.terms
+    select id, kind, parent_id, name, slug, requires_unit_price, seo from commerce.terms
     where ${scopeWhere({ storeId, contentType })}
     order by kind, lower(name)
   `);
@@ -70,7 +75,7 @@ export async function siteTerms(storeId: string | null, contentType: ContentType
  */
 export async function currentTerms(storeId: string | null, contentType: ContentType): Promise<Term[]> {
   const rows = await readDb().execute<Row>(sql`
-    select id, kind, parent_id, name, slug, requires_unit_price from commerce.terms
+    select id, kind, parent_id, name, slug, requires_unit_price, seo from commerce.terms
     where ${scopeWhere({ storeId, contentType })}
   `);
   return rows.map(toTerm);
@@ -103,6 +108,26 @@ function problemOf(error: unknown): string | null {
 /** The unit price mark (D160) is for a store's product categories only: the database refuses it anywhere else. */
 const UNIT_PRICE_MARK_PROBLEM = "Only a product category can need a price per kg or litre.";
 const canNeedUnitPrice = (scope: TermScope, kind: TermKind) => scope.storeId !== null && scope.contentType === "product" && kind === "category";
+
+/** Search texts are a store's product categories' and tags' (wave 2, D168): the languages are the store's own, never the browser's say-so. */
+const SEO_SCOPE_PROBLEM = "Only a store's product categories and tags have search results texts.";
+
+/**
+ * The search texts to keep, checked against the languages the store offers (`termSeoInput`): the languages, the lengths, an empty language removed. Undefined
+ * when the form sent none (the term keeps what it has).
+ */
+async function checkedSeo(scope: TermScope, raw: TermSeo | undefined): Promise<{ ok: true; seo: TermSeo | undefined } | { ok: false; problems: string[] }> {
+  if (raw === undefined) return { ok: true, seo: undefined };
+  if (scope.storeId === null || scope.contentType !== "product") {
+    return Object.keys(raw).length === 0 ? { ok: true, seo: undefined } : { ok: false, problems: [SEO_SCOPE_PROBLEM] };
+  }
+  const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${scope.storeId}::uuid`);
+  const store = row ? await getStore(String(row.slug)) : null;
+  if (!store) return { ok: false, problems: ["This store could not be found."] };
+  const parsed = termSeoInput(store.localization.locales).safeParse(raw);
+  if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
+  return { ok: true, seo: parsed.data };
+}
 
 const takenProblem = (kind: TermKind, slug: string) =>
   `Another ${TERM_LABELS[kind].one.toLowerCase()} already has the address ${slug}. Choose another.`;
@@ -142,13 +167,16 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
   const parentProblem = await checkParent(scope, term.kind, term.parentId);
   if (parentProblem) return { ok: false, problems: [parentProblem] };
   if (term.requiresUnitPrice && !canNeedUnitPrice(scope, term.kind)) return { ok: false, problems: [UNIT_PRICE_MARK_PROBLEM] };
+  const seoChecked = await checkedSeo(scope, term.seo);
+  if (!seoChecked.ok) return seoChecked;
+  const seo = seoChecked.seo ?? {};
   const chosen = (input as { slug?: unknown }).slug;
   const slug = await freeSlug(scope, term.kind, term.slug, typeof chosen === "string" && chosen.trim() !== "");
   if (!slug) return { ok: false, problems: [takenProblem(term.kind, term.slug)] };
   try {
     const [row] = await db().execute<Row>(sql`
-      insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug, requires_unit_price)
-      values (${scope.storeId}::uuid, ${scope.contentType}, ${term.kind}, ${term.parentId}::uuid, ${term.name}, ${slug}, ${term.requiresUnitPrice === true})
+      insert into commerce.terms (store_id, content_type, kind, parent_id, name, slug, requires_unit_price, seo)
+      values (${scope.storeId}::uuid, ${scope.contentType}, ${term.kind}, ${term.parentId}::uuid, ${term.name}, ${slug}, ${term.requiresUnitPrice === true}, ${JSON.stringify(seo)}::jsonb)
       returning id
     `);
     const id = String(row.id);
@@ -157,6 +185,7 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
       name: term.name,
       slug,
       ...(term.requiresUnitPrice ? { requiresUnitPrice: true } : {}),
+      ...(Object.keys(seo).length > 0 ? { seo: true } : {}),
     });
     return { ok: true, id, terms: await listTerms(scope) };
   } catch (error) {
@@ -169,7 +198,7 @@ export async function createTerm(account: Account, scope: TermScope, input: unkn
 /** Renames, re-addresses or moves a category or tag; its kind stays. */
 export async function updateTerm(account: Account, scope: TermScope, id: string, input: unknown): Promise<TermsResult> {
   const [existing] = await db().execute<Row>(sql`
-    select kind, requires_unit_price from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
+    select kind, slug, requires_unit_price, seo from commerce.terms where ${scopeWhere(scope)} and id = ${id}::uuid
   `);
   if (!existing) return { ok: false, problems: ["This category or tag no longer exists. It may have been deleted."] };
   const kind = existing.kind as TermKind;
@@ -184,10 +213,14 @@ export async function updateTerm(account: Account, scope: TermScope, id: string,
   if (term.requiresUnitPrice && !canNeedUnitPrice(scope, kind)) return { ok: false, problems: [UNIT_PRICE_MARK_PROBLEM] };
   // Left out, the mark stays as it was; marking changes nothing in the shop at once (products already on sale are only reported).
   const marked = term.requiresUnitPrice ?? Boolean(existing.requires_unit_price);
+  // Search texts: left out, they stay as they were; sent, they are the whole set (a language with both texts empty is removed).
+  const seoChecked = await checkedSeo(scope, term.seo);
+  if (!seoChecked.ok) return seoChecked;
+  const seoChanged = seoChecked.seo !== undefined && JSON.stringify(seoChecked.seo) !== JSON.stringify(parseTermSeo(existing.seo));
   try {
     await db().execute(sql`
       update commerce.terms set name = ${term.name}, slug = ${term.slug}, parent_id = ${term.parentId}::uuid,
-        requires_unit_price = ${marked}, updated_at = now()
+        requires_unit_price = ${marked}, seo = ${seoChecked.seo === undefined ? sql`seo` : sql`${JSON.stringify(seoChecked.seo)}::jsonb`}, updated_at = now()
       where ${scopeWhere(scope)} and id = ${id}::uuid
     `);
     await audit(account.id, scope.storeId, `${scope.contentType}.${kind}_updated`, {
@@ -195,7 +228,10 @@ export async function updateTerm(account: Account, scope: TermScope, id: string,
       name: term.name,
       slug: term.slug,
       ...(marked !== Boolean(existing.requires_unit_price) ? { requiresUnitPrice: marked } : {}),
+      ...(seoChanged ? { seo: true } : {}),
     });
+    // A changed address left a redirect from the old one (the database's trigger): the lookup of a missing address is refreshed for it.
+    if (scope.storeId !== null && String(existing.slug) !== term.slug) refreshRedirects(scope.storeId);
     return { ok: true, id, terms: await listTerms(scope) };
   } catch (error) {
     const problem = problemOf(error);

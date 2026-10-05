@@ -2044,6 +2044,29 @@ describe("pages", () => {
     ).rejects.toThrow(/front page must be a page/);
   });
 
+  it("redirects every old address of a page or an article renamed twice, each to the page itself (D57, wave 2 D168: no chain is ever stored)", async () => {
+    const { id } = await page("twice-a", store);
+    await publish(id);
+    await db.query("update commerce.pages set slug = 'twice-b' where id = $1", [id]);
+    await db.query("update commerce.pages set slug = 'twice-c' where id = $1", [id]);
+    const own = async (slug: string, type = "page") =>
+      (await db.query<{ page_id: string }>("select page_id from commerce.page_redirects where store_id = $1 and type = $2 and slug = $3", [store, type, slug])).rows;
+    // Both old addresses point at the page, which now has the third: a request is one hop, never a chain of redirects.
+    expect(await own("twice-a")).toEqual([{ page_id: id }]);
+    expect(await own("twice-b")).toEqual([{ page_id: id }]);
+    expect(await own("twice-c")).toEqual([]);
+
+    const { id: article } = await one<{ id: string }>("insert into commerce.pages (store_id, type, slug, draft) values ($1, 'article', 'post-a', $2) returning id", [store, draft]);
+    await publish(article);
+    await db.query("update commerce.pages set slug = 'post-b' where id = $1", [article]);
+    await db.query("update commerce.pages set slug = 'post-c' where id = $1", [article]);
+    expect(await own("post-a", "article")).toEqual([{ page_id: article }]);
+    expect(await own("post-b", "article")).toEqual([{ page_id: article }]);
+    expect(await own("post-c", "article")).toEqual([]);
+    // A page and an article of the same address do not touch each other's redirects.
+    expect(await own("post-a")).toEqual([]);
+  });
+
   it("removes a page's redirects with the page", async () => {
     const { id } = await page("gone-soon");
     await publish(id);

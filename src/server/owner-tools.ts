@@ -51,6 +51,7 @@ import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
 import { explainImportProblemsTool, listDataJobsTool } from "./data-job-tools";
+import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
 import { getSetupProgress } from "./setup";
@@ -1697,6 +1698,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightReturnTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A redirect that could not be added, or is already there, is refused now, never kept for a yes (D168).
+  if (name === "add_redirect") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightRedirectTool(ctx, name, input.input as Record<string, unknown>);
+  }
   // A test that could not be started, stopped or decided is refused now, never kept for a yes (D148).
   if (name === "start_experiment" || name === "stop_experiment" || name === "apply_winner") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -1814,6 +1822,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   analytics_alerts: analyticsAlertsTool,
   list_data_jobs: listDataJobsTool,
   explain_import_problems: explainImportProblemsTool,
+  redirect_overview: redirectOverviewTool,
+  add_redirect: addRedirectTool,
   restock_suggestions: restockSuggestions,
   list_integrations: listIntegrationsTool,
   email_customer: emailCustomerTool,

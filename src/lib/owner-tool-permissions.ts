@@ -55,6 +55,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_data_jobs: "products:read",
   explain_import_problems: "products:read",
   restock_suggestions: "products:read",
+  // The redirects and the 404 report are the Website section's (D168): read like its pages, added with the right to change the website.
+  redirect_overview: "website:read",
   list_integrations: "settings:read",
   // The tax settings are the owner's alone (D157), like the page they stand in for.
   get_tax_profile: "owner",
@@ -103,6 +105,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   stop_experiment: "marketing:write",
   apply_winner: "marketing:write",
   unpublish_page: "website:write",
+  add_redirect: "website:write",
 };
 
 /** The key a tool needs, or null for a name that is no store tool. */

@@ -95,6 +95,11 @@ test("search engines and AI assistants get a sitemap, crawler rules and llms.txt
   const sitemap = await (await request.get("/s/demo/store-sitemap.xml")).text();
   expect(sitemap).toContain("/s/demo/se/p/demo-keramikkopp</loc>");
   expect(sitemap).toContain('hreflang="da-DK"');
+  // The category and tag pages are listed too (D168), each with its views in the other countries and languages.
+  const hjem = sitemap.split("<url>").find((entry) => entry.includes("/s/demo/no/category/hjem</loc>"));
+  expect(hjem).toBeDefined();
+  expect(hjem).toContain('hreflang="da-DK"');
+  expect(hjem).toContain('hreflang="x-default"');
 
   const llms = await request.get("/s/demo/llms.txt");
   expect(llms.headers()["content-type"]).toContain("text/markdown");

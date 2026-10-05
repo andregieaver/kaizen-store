@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+import { testDb, testStore } from "./db";
+
 /**
  * Categories and tags (D50) as shoppers meet them: a menu link to a
  * category leads to the store's products in it and its subcategories;
@@ -34,4 +36,38 @@ test("a tag lists its products in the market's language, and unknown ones are no
   for (const path of ["/s/demo/no/category/nope", "/s/demo/no/tag/papir", "/category/nope", "/tag/nope"]) {
     expect((await page.goto(path))?.status(), path).toBe(404);
   }
+});
+
+test("a category's own search title and description are used in its language only, with hreflang alternates and its own canonical (D168)", async ({ page }) => {
+  // The store is made for the test, so the category's text is in place before anything about it is cached.
+  const store = await testStore("e2e-term-seo");
+  const sql = testDb();
+  try {
+    await sql`
+      update commerce.terms
+         set seo = ${sql.json({ "sv-SE": { title: "Hem och kök för alla", description: "Allt för ett fint hem." } })}
+       where store_id = ${store.id} and kind = 'category' and slug = 'hjem'`;
+  } finally {
+    await sql.end();
+  }
+
+  await page.goto(`/s/${store.slug}/se/category/hjem`);
+  // The title as written (no store name added), the description, and the share tags with both.
+  await expect(page).toHaveTitle("Hem och kök för alla");
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", "Allt för ett fint hem.");
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute("content", "Hem och kök för alla");
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", "Allt för ett fint hem.");
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute("content", "Hem och kök för alla");
+  // Its own address is its canonical, and the other countries and languages are alternates.
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/s/${store.slug}/se/category/hjem$`));
+  await expect(page.locator('link[rel="alternate"][hreflang="sv-SE"]')).toHaveAttribute("href", new RegExp(`/s/${store.slug}/se/category/hjem$`));
+  await expect(page.locator('link[rel="alternate"][hreflang="nb-NO"]')).toHaveAttribute("href", new RegExp(`/s/${store.slug}/no/category/hjem$`));
+  await expect(page.locator('link[rel="alternate"][hreflang="da-DK"]')).toHaveAttribute("href", new RegExp(`/s/${store.slug}/dk/category/hjem$`));
+
+  // Another language of the same category has no text of its own: the name as before, and nothing from the Swedish text.
+  const norwegian = await page.request.get(`/s/${store.slug}/no/category/hjem`);
+  const html = await norwegian.text();
+  expect(html).toContain("<title>Hjem · Testbutikk</title>");
+  expect(html).not.toContain("Hem och kök för alla");
+  expect(html).not.toContain("Allt för ett fint hem.");
 });

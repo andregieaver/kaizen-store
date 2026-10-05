@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { fitsItem, globalKey, isLegalPage, menuUnit, productUnits, returnInstructionsUnit, RETURN_INSTRUCTIONS_UNIT, SCOPE_WORDS, TRANSLATE_SCOPES, unitItems, type ProductTexts } from "./store-translate";
+import { fitsItem, globalKey, isLegalPage, menuUnit, productUnits, returnInstructionsUnit, RETURN_INSTRUCTIONS_UNIT, SCOPE_WORDS, TERM_FIELDS, TRANSLATE_SCOPES, termUnit, unitItems, type ProductTexts } from "./store-translate";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
 
 const source: ProductTexts = { title: "Keramikkopp", description: "En kopp.", safetyInformation: "Ikke for barn.", seoTitle: "", seoDescription: "" };
@@ -90,5 +90,40 @@ describe("the return instructions' unit (D153)", () => {
     expect(returnInstructionsUnit("Pakk godt.", "Pack well.", "missing")).toBeNull();
     expect(returnInstructionsUnit("Pakk godt.", "  ", "missing")).not.toBeNull();
     expect(returnInstructionsUnit("Pakk godt.", "Pack well.", "all")).not.toBeNull();
+  });
+});
+
+describe("categories and tags (wave 2, D168)", () => {
+  const sv = { title: "Hem och inredning", description: "Allt för hemmet." };
+
+  it("are a scope of their own, and never a legal text", () => {
+    expect(TRANSLATE_SCOPES).toContain("terms");
+    expect(SCOPE_WORDS.terms).toEqual({ name: "Categories and tags", one: "Category or tag" });
+    expect(TERM_FIELDS.map((f) => [f.key, f.max])).toEqual([["title", 120], ["description", 320]]);
+    expect(termUnit("t1", "Hem", "category", sv, null, "missing")?.legal).toBe(false);
+  });
+
+  it("list a term whose main-language text exists and the language has none", () => {
+    const unit = termUnit("t1", "Hem", "category", sv, null, "missing")!;
+    expect(unit).toMatchObject({ id: "term:t1", scope: "terms", title: "Hem", kind: "Category" });
+    expect(unit.items).toEqual([
+      { key: "title", label: "Search title", max: 120, rich: false, runs: ["Hem och inredning"] },
+      { key: "description", label: "Search description", max: 320, rich: false, runs: ["Allt för hemmet."] },
+    ]);
+    expect(termUnit("t2", "Rea", "tag", sv, null, "all")?.kind).toBe("Tag");
+  });
+
+  it("do not list a term with no main-language text, or one the language has already (unless all is asked for)", () => {
+    expect(termUnit("t1", "Hem", "category", null, null, "all")).toBeNull();
+    expect(termUnit("t1", "Hem", "category", { title: "", description: " " }, null, "all")).toBeNull();
+    expect(termUnit("t1", "Hem", "category", sv, { title: "Home", description: "All for the home." }, "missing")).toBeNull();
+    expect(termUnit("t1", "Hem", "category", sv, { title: "Home", description: "All for the home." }, "all")).not.toBeNull();
+  });
+
+  it("ask only for the text the language lacks, and only for the texts the main language has", () => {
+    const partial = termUnit("t1", "Hem", "category", sv, { title: "Home", description: "" }, "missing")!;
+    expect(partial.items.map((i) => i.key)).toEqual(["description"]);
+    const titleOnly = termUnit("t1", "Hem", "category", { title: "Hem", description: "" }, null, "missing")!;
+    expect(titleOnly.items.map((i) => i.key)).toEqual(["title"]);
   });
 });

@@ -108,7 +108,9 @@ describe("the data job tools in the owner assistant's catalogue (D165)", () => {
     const read = (name: string, raw: unknown) => readToolInput(OWNER_TOOLS_BY_NAME[name], raw);
     expect(read("list_data_jobs", {})).toMatchObject({ ok: true, input: { limit: 10 } });
     expect(read("list_data_jobs", { kind: "order_export", limit: 5 })).toMatchObject({ ok: true });
-    expect(read("list_data_jobs", { kind: "redirect_import" })).toMatchObject({ ok: false });
+    // The redirect jobs (D168) are kinds like the others; a kind that is none of them is refused.
+    expect(read("list_data_jobs", { kind: "redirect_import" })).toMatchObject({ ok: true });
+    expect(read("list_data_jobs", { kind: "redirect_delete" })).toMatchObject({ ok: false });
     expect(read("list_data_jobs", { limit: 21 })).toMatchObject({ ok: false });
     expect(read("explain_import_problems", {})).toMatchObject({ ok: true });
     expect(read("explain_import_problems", { job_id: "7d9d6a5e-5fda-4f4a-8f0e-0a7d2d4a9c11" })).toMatchObject({ ok: true });

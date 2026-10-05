@@ -30,6 +30,7 @@ import { PRODUCT_AUDIENCES, type ProductAudience } from "@/lib/b2b";
 import { EMPTY_DATA, changesFrom, withParents, type FieldData, type FieldGroup, type FieldLookups } from "@/lib/custom-fields";
 import { fileSize } from "@/lib/file-size";
 import { shrinkImage } from "@/lib/image-resize";
+import { addressChangeWords } from "@/lib/redirect-admin";
 import type { CountryOption } from "@/lib/iso-countries";
 import {
   combineOptions,
@@ -270,6 +271,14 @@ export function ProductEditor(props: Props) {
               </Link>
             ) : (
               "Drafts are hidden from shoppers."
+            )}
+            {result.status === "saved" && result.handleChanged && (
+              <span className="mt-1 block">
+                {addressChangeWords(result.handleChanged)}{" "}
+                <Link href={`/admin/${storeSlug}/redirects`} className="underline">
+                  See the redirects
+                </Link>
+              </span>
             )}
           </p>
         )}
@@ -603,6 +612,7 @@ function TextSection({
               autoCapitalize="none"
               className={`${input} font-mono`}
             />
+            <span className={hint}>If you change the address of a product that has been published, the old address redirects to the new one.</span>
           </label>
         )}
         <div className="flex flex-col gap-2 border-t border-border pt-4">

@@ -56,3 +56,35 @@ export const IMPORT_PICTURE_MAX_BYTES = 10 * 1024 * 1024;
 export const IMPORT_PICTURE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"] as const;
 export const IMPORT_PICTURE_WIDTH = 1600;
 export const IMPORT_THUMBNAIL_WIDTH = 480;
+
+// ---------------------------------------------------------------------------
+// Redirects and the 404 report (wave 2, second run, D168, `docs/wave-2-redirects.md` 4.1 rule 11, 3.2, 4.6)
+// ---------------------------------------------------------------------------
+
+/** Redirects of a store's own (manual: staff, an import or the assistant); Shopify's figure. Automatic ones are made by triggers and are not refused. */
+export const REDIRECTS_MAX = 100_000;
+/** Data rows of a redirect file, the header excluded. */
+export const REDIRECT_IMPORT_MAX_ROWS = 100_000;
+/** Lines of a redirect import written in one transaction, under the store's lock. */
+export const REDIRECT_APPLY_CHUNK = 500;
+/** The most redirects deleted in one request, and rows of the manager's list on a page. */
+export const REDIRECT_BULK_DELETE_MAX = 200;
+export const REDIRECT_PAGE_SIZE = 50;
+/** Hops followed in one response; Google follows at most 10. A loop or the eleventh hop is a 404. */
+export const REDIRECT_HOPS_MAX = 10;
+/** Rows of a redirect export that download at once; more is a job. */
+export const REDIRECT_EXPORT_DIRECT_MAX = DIRECT_EXPORT_MAX_ROWS;
+
+/** Different addresses recorded for one store on one UTC day; the counts of an address are not capped, the rest are counted in one row without an address. */
+export const NOT_FOUND_DAY_CAP = 1_000;
+/** Days the 404 report keeps a row after its day. */
+export const NOT_FOUND_KEEP_DAYS = 90;
+/** The report's windows in days (the first is the default), the rows on screen, the rows of its CSV, and the addresses a store may hide. */
+export const NOT_FOUND_WINDOWS = [30, 7, 90] as const;
+export const NOT_FOUND_SCREEN_ROWS = 500;
+export const NOT_FOUND_CSV_ROWS = 5_000;
+export const NOT_FOUND_IGNORED_MAX = 1_000;
+/** A flood of one address is written once a second at most (per server instance). */
+export const NOT_FOUND_THROTTLE_MS = 1_000;
+/** Suggested targets of a missing address. */
+export const NOT_FOUND_SUGGESTIONS = 3;

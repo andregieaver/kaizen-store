@@ -16,8 +16,10 @@ import {
 import type { TermsResult } from "@/server/taxonomy";
 
 import { categoryGapWords } from "@/lib/unit-price-editor";
+import type { TermSeo } from "@/lib/term-seo";
 
 import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
+import { TermSeoFields, seoLanguagesOf, type TermSeoSetup } from "./term-seo-fields";
 
 /**
  * Categories and tags in the admin (D50): `TermPicker` chooses an item's
@@ -25,6 +27,9 @@ import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
  * adds, renames, moves and deletes them. Both work through server actions
  * bound to their owner and kind of content.
  */
+
+/** What editing a category or tag answers: the list, and (wave 2, D168) a sentence when its address changed and a redirect from the old one was left. */
+export type TermsOutcome = TermsResult & { note?: string };
 
 export type TermActions = {
   create: (input: {
@@ -35,7 +40,7 @@ export type TermActions = {
     /** Unit price (D160): a product category's products need a content. Only the product categories screen sends it. */
     requiresUnitPrice?: boolean;
   }) => Promise<TermsResult>;
-  update: (id: string, input: { name: string; slug: string; parentId: string | null; requiresUnitPrice?: boolean }) => Promise<TermsResult>;
+  update: (id: string, input: { name: string; slug: string; parentId: string | null; requiresUnitPrice?: boolean; seo?: TermSeo }) => Promise<TermsOutcome>;
   remove: (id: string) => Promise<TermsResult>;
 };
 
@@ -211,6 +216,7 @@ export function TermsManager({
   usedBy,
   fields,
   unitPrice,
+  seo,
 }: {
   initial: Term[];
   actions: TermActions;
@@ -219,6 +225,8 @@ export function TermsManager({
   fields?: TermFieldsSetup;
   /** Only a store's product categories (D160): the checkbox "need a price per kg or litre", with how many products still lack a content. */
   unitPrice?: UnitPriceCategories;
+  /** Only a store's product categories and tags (wave 2, D168): a title and a description for search results, in each of the store's languages. */
+  seo?: TermSeoSetup;
 }) {
   const [terms, setTerms] = useState(initial);
   const tree = categoryTree(terms);
@@ -245,7 +253,7 @@ export function TermsManager({
             ) : (
               <ul className="flex flex-col divide-y divide-border border-y border-border">
                 {list.map((term) => (
-                  <TermRow key={term.id} term={term} terms={terms} actions={actions} onTerms={setTerms} fields={fields} unitPrice={kind === "category" ? unitPrice : undefined} />
+                  <TermRow key={term.id} term={term} terms={terms} actions={actions} onTerms={setTerms} fields={fields} unitPrice={kind === "category" ? unitPrice : undefined} seo={seo} />
                 ))}
               </ul>
             )}
@@ -359,6 +367,7 @@ function TermRow({
   onTerms,
   fields,
   unitPrice,
+  seo,
 }: {
   term: Term & { depth: number };
   terms: Term[];
@@ -367,22 +376,27 @@ function TermRow({
   fields?: TermFieldsSetup;
   /** Set on a store's product categories (D160). */
   unitPrice?: UnitPriceCategories;
+  /** Set on a store's product categories and tags (D168): the search texts. */
+  seo?: TermSeoSetup;
 }) {
   const id = useId();
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const marked = term.requiresUnitPrice === true;
-  const [draft, setDraft] = useState({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked });
+  const [draft, setDraft] = useState({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? ({} as TermSeo) });
   const [problems, setProblems] = useState<string[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const [busy, start] = useTransition();
-  const run = (action: () => Promise<TermsResult>, after: () => void) =>
+  const run = (action: () => Promise<TermsOutcome>, after: () => void) =>
     start(async () => {
       const result = await action();
       if (!result.ok) return setProblems(result.problems);
       setProblems([]);
+      setNote(result.note ?? null);
       after();
       onTerms(result.terms);
     });
+  const seoLanguages = seo ? seoLanguagesOf(term.seo, seo) : [];
   const one = TERM_LABELS[term.kind].one.toLowerCase();
 
   return (
@@ -391,9 +405,12 @@ function TermRow({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            // Only a screen that offers the mark sends it: left out, it stays as it was.
-            const { requiresUnitPrice, ...rest } = draft;
-            run(() => actions.update(term.id, unitPrice ? { ...rest, requiresUnitPrice } : rest), () => setEditing(false));
+            // Only a screen that offers the mark sends it, and only one that offers search texts sends those: left out, they stay as they were.
+            const { requiresUnitPrice, seo: drafted, ...rest } = draft;
+            run(
+              () => actions.update(term.id, { ...rest, ...(unitPrice ? { requiresUnitPrice } : {}), ...(seo ? { seo: drafted } : {}) }),
+              () => setEditing(false),
+            );
           }}
           className="flex flex-col gap-2"
           aria-label={`Change ${term.name}`}
@@ -442,6 +459,10 @@ function TermRow({
           {unitPrice && (
             <UnitPriceMark id={`${id}-unit-price`} checked={draft.requiresUnitPrice} onChange={(requiresUnitPrice) => setDraft({ ...draft, requiresUnitPrice })} />
           )}
+          {seo && (
+            <TermSeoFields setup={seo} name={draft.name || term.name} kind={term.kind} slug={draft.slug || term.slug} value={draft.seo} onChange={(next) => setDraft({ ...draft, seo: next })} />
+          )}
+          {seo && <p className="text-xs text-muted">If you change the address, the old address redirects to the new one.</p>}
           <div className="flex gap-2">
             <button type="submit" disabled={busy} className={`${button} bg-foreground font-medium text-background`}>
               Save
@@ -450,7 +471,7 @@ function TermRow({
               type="button"
               onClick={() => {
                 setEditing(false);
-                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked });
+                setDraft({ name: term.name, slug: term.slug, parentId: term.parentId, requiresUnitPrice: marked, seo: term.seo ?? {} });
                 setProblems([]);
               }}
               className={button}
@@ -464,6 +485,9 @@ function TermRow({
           <span className="flex min-w-0 flex-col">
             <span className="text-sm font-medium">{term.name}</span>
             <span className="font-mono text-xs text-muted">{term.slug}</span>
+            {seo && (
+              <span className="text-xs text-muted">{seoLanguages.length > 0 ? `Search results text in ${seoLanguages.join(", ")}` : "No text of its own in search results"}</span>
+            )}
             {unitPrice && marked && (
               <span className="text-xs text-muted">
                 Needs a price per kg or litre. {categoryGapWords(unitPrice.gaps[term.id] ?? 0)}{" "}
@@ -503,6 +527,11 @@ function TermRow({
             </span>
           )}
         </div>
+      )}
+      {note && (
+        <p role="status" className="text-sm">
+          {note}
+        </p>
       )}
       <Problems problems={problems} />
     </li>

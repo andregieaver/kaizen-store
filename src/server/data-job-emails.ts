@@ -22,6 +22,7 @@ const PAGES: Record<string, { path: string; what: string }> = {
   product_export: { path: "products/export", what: "product export" },
   order_export: { path: "orders/export", what: "order export" },
   customer_export: { path: "customers/export", what: "customer export" },
+  redirect_export: { path: "redirects/export", what: "redirect file" },
 };
 
 export type ReadyFacts = { storeName: string; what: string; url: string };

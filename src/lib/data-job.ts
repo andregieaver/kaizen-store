@@ -7,7 +7,7 @@
  * (a person's name in a title, a formula), and findings are stored, shown and downloaded.
  */
 
-export const JOB_KINDS = ["product_import", "product_export", "order_export", "customer_export"] as const;
+export const JOB_KINDS = ["product_import", "product_export", "order_export", "customer_export", "redirect_import", "redirect_export"] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
 export const JOB_STATUSES = ["uploaded", "checking", "checked", "queued", "running", "done", "failed", "cancelled", "expired"] as const;
@@ -16,12 +16,15 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 export const JOB_PHASES = ["check", "apply", "write", "assemble"] as const;
 export type JobPhase = (typeof JOB_PHASES)[number];
 
-export const isImport = (kind: JobKind): boolean => kind === "product_import";
-export const isExport = (kind: JobKind): boolean => kind !== "product_import";
+/** The kinds that read a file the member uploaded: a dry run, then an apply (the redirect import is wave 2's second run, D168). */
+export const IMPORT_KINDS: readonly JobKind[] = ["product_import", "redirect_import"];
+export const EXPORT_KINDS: readonly JobKind[] = ["product_export", "order_export", "customer_export", "redirect_export"];
+export const isImport = (kind: JobKind): boolean => IMPORT_KINDS.includes(kind);
+export const isExport = (kind: JobKind): boolean => !isImport(kind);
 /** Exports that hold personal data of shoppers: owner-only, deleted on an erasure. */
 export const hasPersonalData = (kind: JobKind): boolean => kind === "order_export" || kind === "customer_export";
 
-/** Statuses of a job still to do or being done: one import of these per store, exports counted against the active limit. */
+/** Statuses of a job still to do or being done: one import of each kind of these per store, exports counted against the active limit. */
 export const ACTIVE_IMPORT_STATUSES: readonly JobStatus[] = ["uploaded", "checking", "checked", "queued", "running"];
 export const ACTIVE_EXPORT_STATUSES: readonly JobStatus[] = ["queued", "running"];
 export const ENDED_STATUSES: readonly JobStatus[] = ["done", "failed", "cancelled", "expired"];
@@ -94,12 +97,29 @@ export type FindingParams = {
   name?: string;
   /** The editor's own sentence (for `save.failed` and `product.drafted`): written by the editor from its rules, never from a cell. */
   reason?: string;
+  /**
+   * A redirect's address (wave 2, D168): ALWAYS in the normal form `normaliseSource()`/`normaliseTarget()` give (a path on the store, in lower case), never a
+   * cell as typed. A sentence of a redirect finding may name an address and no other cell.
+   */
+  address?: string;
+  /** More addresses (the hops of a chain, the lines of a loop), in the same normal form; a sentence names at most five. */
+  addresses?: readonly string[];
+  /** The accepted names of a file's columns (for `file.not_redirects`). */
+  names?: readonly string[];
 };
 
 type FindingRule = { severity: Severity; sentence: (p: FindingParams) => string };
 
 const col = (p: FindingParams) => (p.column ? `the "${p.column}" column` : "a column");
 const prod = (p: FindingParams) => (p.handle ? `"${p.handle}"` : "this product");
+const addr = (p: FindingParams) => (p.address ? `"${p.address}"` : "this address");
+/** Up to five addresses, in a row: `"/a", "/b" and "/c"` (a longer chain is cut with its length). */
+const addrs = (p: FindingParams) => {
+  const all = p.addresses ?? [];
+  const shown = all.slice(0, 5).map((a) => `"${a}"`);
+  const more = all.length > 5 ? ` and ${all.length - 5} more` : "";
+  return shown.length === 0 ? "other redirects" : shown.length === 1 ? `${shown[0]}${more}` : `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}${more}`;
+};
 
 /**
  * Every finding an import can make (4.4). The severity here is the default; `finding()` may be given another where the spec says so
@@ -209,6 +229,49 @@ export const FINDINGS = {
   "vat_category.unknown": { severity: "error", sentence: (p) => `The VAT category of ${prod(p)} is not one of the store's categories.` },
   "active.invalid": { severity: "error", sentence: (p) => `The active column of ${prod(p)} is not true or false.` },
   "save.failed": { severity: "error", sentence: (p) => `${prod(p)} could not be saved${p.reason ? `: ${p.reason}` : ""}.` },
+
+  // Redirect files (wave 2, second run, D168, docs/wave-2-redirects.md 4.4): a line is a redirect from an address to an address.
+  "file.not_redirects": {
+    severity: "error",
+    sentence: (p) => `This is not a redirect file we know. The first row must name a column for the old address and one for the new, such as ${(p.names ?? ["Redirect from", "Redirect to"]).map((n) => `"${n}"`).join(" and ")}.`,
+  },
+  "source.missing": { severity: "error", sentence: () => "The line has no old address (Redirect from), so it was skipped." },
+  "source.invalid": {
+    severity: "error",
+    sentence: () => "The old address could not be read: it has a space, a control character or an invalid % code, or it is longer than 500 characters or has more than 12 parts.",
+  },
+  "source.external": { severity: "error", sentence: () => "The old address is on another website. Only addresses on this store can be redirected." },
+  "source.market_prefix": {
+    severity: "error",
+    sentence: (p) => `The old address${p.address ? ` ${addr(p)}` : ""} begins with a country. Leave the country out: a redirect applies in every country and language.`,
+  },
+  "source.reserved": { severity: "error", sentence: (p) => `${addr(p)} is a page the store itself uses (the cart, checkout, account and so on), so it cannot be redirected.` },
+  "source.live": { severity: "error", sentence: (p) => `${addr(p)} is a live page, product, category, tag or article now. Redirect only from an address that does not exist.` },
+  "source.root": { severity: "error", sentence: () => "The front page cannot be redirected." },
+  "source.query_dropped": { severity: "info", sentence: () => "The old address had a query string (after ?), which a redirect does not match on, so it was left out." },
+  "target.missing": { severity: "error", sentence: (p) => `${p.address ? `The line from ${addr(p)}` : "The line"} has no new address (Redirect to), so it was skipped.` },
+  "target.invalid": {
+    severity: "error",
+    sentence: () => "The new address could not be read: it must be a path on this store, or a full https address of this store, without a space, a control character or a password.",
+  },
+  "target.external": {
+    severity: "error",
+    sentence: () => "The new address is on another website. A redirect can only go to a page on this store.",
+  },
+  "target.market_removed": { severity: "info", sentence: () => "The country was removed from the new address: a redirect keeps the shopper's own country and language." },
+  "target.self": { severity: "error", sentence: (p) => `${addr(p)} would redirect to itself.` },
+  "target.loop": { severity: "error", sentence: (p) => `${addr(p)} would close a loop through ${addrs(p)}, so the shopper would never arrive.` },
+  "target.chain": {
+    severity: "warning",
+    sentence: (p) => `The new address is itself redirected (through ${addrs(p)}), so the final destination is saved instead.`,
+  },
+  "target.not_found": { severity: "warning", sentence: (p) => `${addr(p)} is not a page on this store now. The redirect still works, and sends shoppers to the store's not-found page until it exists.` },
+  "duplicate.in_file": { severity: "error", sentence: (p) => `${addr(p)} appears again further up, and the first line wins.` },
+  "exists.update": { severity: "info", sentence: (p) => `A redirect from ${addr(p)} exists, and its new address is replaced.` },
+  "exists.same": { severity: "info", sentence: (p) => `The redirect from ${addr(p)} is already there as it is.` },
+  "exists.skipped": { severity: "info", sentence: (p) => `A redirect from ${addr(p)} exists, and the import was told to keep it, so the line was skipped.` },
+  "exists.replaced_automatic": { severity: "info", sentence: (p) => `Kaizen made a redirect from ${addr(p)} when an address changed. This line replaces it.` },
+  "limit.reached": { severity: "error", sentence: (p) => `The store would have more than ${p.max ?? 100000} redirects of its own, which is the most it can have. Delete some or import fewer.` },
 } as const satisfies Record<string, FindingRule>;
 
 export type FindingCode = keyof typeof FINDINGS;

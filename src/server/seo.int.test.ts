@@ -155,3 +155,107 @@ describe("Kaizen's own search settings", () => {
     expect(parseStoreSeo((await db().execute<Row>(sql`select seo from commerce.platform_settings`))[0].seo).robots).toBe(before.robots);
   });
 });
+
+describe("the sitemap's category and tag pages (wave 2, D168)", () => {
+  const entryOf = (xml: string, path: string): string[] => xml.split("<url>").filter((u) => u.includes(`<loc>${path}</loc>`)).map((u) => `<url>${u}`);
+  const termId = async (kind: "category" | "tag", slug: string, parent: string | null = null): Promise<string> => {
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.terms (store_id, content_type, kind, name, slug, parent_id) values (${member.store.id}::uuid, 'product', ${kind}, ${slug}, ${slug}, ${parent}::uuid) returning id
+    `);
+    return String(row.id);
+  };
+  const attach = (termIdValue: string, productId: string) =>
+    db().execute(sql`insert into commerce.product_terms (store_id, product_id, term_id) select p.store_id, p.id, ${termIdValue}::uuid from commerce.products p where p.id = ${productId}::uuid`);
+  /** An active product of the store and the markets it is priced in. */
+  const product = async (): Promise<{ id: string; markets: string[] }> => {
+    const [row] = await db().execute<Row>(sql`
+      select p.id, (select array_agg(distinct lower(cp.market_code)) from commerce.product_variants v join commerce.current_prices cp on cp.variant_id = v.id where v.product_id = p.id and v.active) as markets
+      from commerce.products p where p.store_id = ${member.store.id}::uuid and p.status = 'active' order by p.handle limit 1
+    `);
+    return { id: String(row.id), markets: (row.markets as string[]).map((m) => m.trim()).sort() };
+  };
+
+  it("lists a category with a live product in each market it is sold in, with alternates, an x-default and a lastmod, and leaves one with none out", async () => {
+    await seo.saveStoreSeo(member, settings({ hidden: false }));
+    const p = await product();
+    expect(p.markets.length).toBeGreaterThan(1);
+    const withProduct = await termId("category", `sm-with-${run}`);
+    const empty = await termId("category", `sm-empty-${run}`);
+    await attach(withProduct, p.id);
+    const xml = (await seo.storeSitemap(slug))!;
+    for (const market of p.markets) expect(xml, market).toContain(`/s/${slug}/${market}/category/sm-with-${run}</loc>`);
+    const origin = xml.match(/<loc>(https?:\/\/[^/]+)\/s\//)![1];
+    const entries = entryOf(xml, `${origin}/s/${slug}/${p.markets[0]}/category/sm-with-${run}`);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toContain("<lastmod>");
+    expect(entries[0]).toContain('hreflang="x-default"');
+    for (const market of p.markets) expect(entries[0]).toContain(`/s/${slug}/${market}/category/sm-with-${run}"`);
+    expect(xml).not.toContain(`category/sm-empty-${run}`);
+    expect(empty).toBeTruthy();
+  });
+
+  it("lists a tag the same way, and counts a subcategory's products for its parent category, as the page does", async () => {
+    const p = await product();
+    const parent = await termId("category", `sm-parent-${run}`);
+    const child = await termId("category", `sm-child-${run}`, parent);
+    const tag = await termId("tag", `sm-tag-${run}`);
+    await attach(child, p.id);
+    await attach(tag, p.id);
+    const xml = (await seo.storeSitemap(slug))!;
+    expect(xml).toContain(`/s/${slug}/${p.markets[0]}/category/sm-parent-${run}</loc>`);
+    expect(xml).toContain(`/s/${slug}/${p.markets[0]}/category/sm-child-${run}</loc>`);
+    expect(xml).toContain(`/s/${slug}/${p.markets[0]}/tag/sm-tag-${run}</loc>`);
+  });
+
+  it("leaves out a category whose only product is a draft, and never lists an old address after a rename or a redirect", async () => {
+    const [draft] = await db().execute<Row>(sql`
+      select p.id from commerce.products p where p.store_id = ${member.store.id}::uuid and p.status = 'active' order by p.handle offset 1 limit 1
+    `);
+    const only = await termId("category", `sm-draft-${run}`);
+    await attach(only, String(draft.id));
+    expect((await seo.storeSitemap(slug))!).toContain(`category/sm-draft-${run}</loc>`);
+    await db().execute(sql`update commerce.products set status = 'draft' where id = ${String(draft.id)}::uuid`);
+    expect((await seo.storeSitemap(slug))!).not.toContain(`category/sm-draft-${run}</loc>`);
+    await db().execute(sql`update commerce.products set status = 'active' where id = ${String(draft.id)}::uuid`);
+    // A category renamed twice is listed at its current address only, and a manual redirect's source is in no sitemap.
+    await db().execute(sql`update commerce.terms set slug = ${`sm-draft-${run}-b`} where store_id = ${member.store.id}::uuid and slug = ${`sm-draft-${run}`}`);
+    await db().execute(sql`update commerce.terms set slug = ${`sm-draft-${run}-c`} where store_id = ${member.store.id}::uuid and slug = ${`sm-draft-${run}-b`}`);
+    await db().execute(sql`insert into commerce.redirects (store_id, kind, source, target, origin) values (${member.store.id}::uuid, 'manual', ${`/category/manual-${run}`}, '/om-oss', 'editor')`);
+    const xml = (await seo.storeSitemap(slug))!;
+    expect(xml).toContain(`category/sm-draft-${run}-c</loc>`);
+    expect(xml).not.toContain(`category/sm-draft-${run}</loc>`);
+    expect(xml).not.toContain(`category/sm-draft-${run}-b</loc>`);
+    expect(xml).not.toContain(`manual-${run}`);
+  });
+
+  it("lists a product renamed twice at its current address only, and none of its old addresses (the redirects it left)", async () => {
+    const p = await product();
+    const [before] = await db().execute<Row>(sql`select handle from commerce.products where id = ${p.id}::uuid`);
+    const original = String(before.handle);
+    const first = `sm-rename-${run}-b`;
+    const second = `sm-rename-${run}-c`;
+    await db().execute(sql`update commerce.products set handle = ${first} where id = ${p.id}::uuid`);
+    await db().execute(sql`update commerce.products set handle = ${second} where id = ${p.id}::uuid`);
+    try {
+      const redirected = await db().execute<Row>(sql`select source from commerce.redirects where store_id = ${member.store.id}::uuid and product_id = ${p.id}::uuid`);
+      expect(redirected.map((r) => String(r.source)).sort()).toEqual([`/p/${first}`, `/p/${original}`].sort());
+      const xml = (await seo.storeSitemap(slug))!;
+      expect(xml).toContain(`/p/${second}</loc>`);
+      expect(xml).not.toContain(`/p/${first}<`);
+      expect(xml).not.toContain(`/p/${first}"`);
+      expect(xml).not.toContain(`/p/${original}</loc>`);
+    } finally {
+      await db().execute(sql`update commerce.products set handle = ${original} where id = ${p.id}::uuid`);
+    }
+  });
+
+  it("is as before for products, pages and articles, and absent for a hidden store", async () => {
+    const xml = (await seo.storeSitemap(slug))!;
+    expect(xml).toContain(`/s/${slug}/no/p/`);
+    expect(xml).toContain(`/s/${slug}/no/om-oss</loc>`);
+    expect(xml).toContain(`/s/${slug}/no/blog/nye-produkter</loc>`);
+    await seo.saveStoreSeo(member, settings({ hidden: true }));
+    expect(await seo.storeSitemap(slug)).toBeNull();
+    await seo.saveStoreSeo(member, settings({ hidden: false }));
+  });
+});

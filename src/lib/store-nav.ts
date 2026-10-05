@@ -151,6 +151,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/articles", "Blog", "The store's blog: articles, their categories and tags."),
           item("/media", "Media", "Pictures and videos for the store, searchable, with alt texts."),
           item("/menus", "Menus", "Lists of links for the header, footer and pages."),
+          item("/redirects", "Redirects", "Redirects for addresses that changed and a report of the addresses shoppers could not find."),
           item("/headers", "Headers", "Headers built from components; choose the one the store shows."),
           item("/footers", "Footers", "Footers built from components; choose the one the store shows."),
           item("/settings/design", "Design", "The store's look: template, colours, fonts, buttons and corners."),

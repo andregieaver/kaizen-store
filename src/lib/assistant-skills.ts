@@ -366,6 +366,20 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "fix-broken-links",
+    area: "store",
+    title: "Fix broken links with redirects",
+    when: "The owner asks about broken links, pages shoppers or Google cannot find, 404s, an address that changed, or moving from another shop and keeping its addresses.",
+    steps: [
+      "Know what a redirect is here: a permanent redirect (308) from an old address on the store to a page that exists, the same in every country and language. The store makes one itself when a product's, category's or tag's address changes; the owner's own are for everything else (an old shop's /collections/… or /pages/… addresses, a page that was deleted).",
+      "Call redirect_overview and say, in a few lines, how many redirects the store has and which addresses were asked for that were not there, most asked first. Every count is at least what happened (a cached request is not seen): say 'at least', never add or estimate a number, and if the list is empty say that nothing was recorded, not that nothing is broken.",
+      "For each address worth fixing offer one target: use a suggested target the tool gave, or the page the owner names. Never invent an address. An address that looks like a robot's probe, or one nobody needs, can be left; the owner hides it on the Pages not found page (open_admin_page, redirects.404s).",
+      "Make it with add_redirect (from and to as paths on the store, no country in front). It needs their approval and the tool checks it first: it refuses a live page, a cart or checkout address, another website and a loop, and says why; repeat that reason in plain words. After a yes, say what was added and that it works at once.",
+      "Many addresses at once, or a list from the old shop: do not add them one by one. Explain that the Redirects page imports a CSV file with the columns Redirect from and Redirect to (Shopify's file reads as it is), checks every line first and writes nothing until they confirm, and offer to open it (open_admin_page, redirects.import). list_data_jobs shows how an import or export is going.",
+      "You cannot edit, delete or import redirects yourself: for those open the Redirects page (redirects). Changing a product's or category's address later needs nothing more: the store leaves the redirect.",
+    ],
+  },
+  {
     id: "restock",
     area: "store",
     title: "Reorder in time",

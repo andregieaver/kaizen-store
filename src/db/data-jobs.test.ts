@@ -357,6 +357,107 @@ describe("starting an export", () => {
   });
 });
 
+describe("the redirect kinds (wave 2, second run, D168)", () => {
+  const redirectImport = (store = shop, status = "uploaded") =>
+    one<{ id: string }>(
+      `insert into commerce.data_jobs (store_id, kind, status, format, requested_by, input_path, input_name, input_bytes)
+       values ($1, 'redirect_import', $2, 'kaizen', $3, 'r/x.csv', 'x.csv', 100) returning id`,
+      [store, status, owner],
+    ).then((r) => r.id);
+  const endRedirectImports = (store: string) =>
+    db.query("update commerce.data_jobs set status = 'cancelled' where store_id = $1 and kind = 'redirect_import' and status in ('uploaded', 'checking', 'checked', 'queued', 'running')", [store]);
+
+  it("start an import uploaded and an export queued, and an export never uploads, checks or waits to be applied", async () => {
+    await endRedirectImports(shop);
+    await rejects("insert into commerce.data_jobs (store_id, kind, status, requested_by) values ($1, 'redirect_import', 'running', $2)", [shop, owner], /data_job\.start/);
+    await rejects("insert into commerce.data_jobs (store_id, kind, status, requested_by) values ($1, 'redirect_export', 'running', $2)", [shop, owner], /data_job\.start/);
+    await rejects("insert into commerce.data_jobs (store_id, kind, status, requested_by) values ($1, 'redirect_export', 'checked', $2)", [shop, owner], /data_job\.status_kind/);
+    await rejects("insert into commerce.data_jobs (store_id, kind, status, requested_by) values ($1, 'redirect_export', 'uploaded', $2)", [shop, owner], /data_job\.status_kind/);
+    await rejects("insert into commerce.data_jobs (store_id, kind, status, requested_by) values ($1, 'redirect_mixup', 'queued', $2)", [shop, owner], /data_jobs_kind/);
+    expect(statusesOf("redirect_import")).toContain("checked");
+    expect(statusesOf("redirect_export")).not.toContain("checked");
+  });
+
+  it("walks a redirect import as a product import, checking again once the option changed, and freezing its choices after the check", async () => {
+    await endRedirectImports(shop);
+    const id = await redirectImport();
+    await rejects("update commerce.data_jobs set status = 'running' where id = $1", [id], /data_job\.status/);
+    await db.query(`update commerce.data_jobs set input_sha256 = $2 where id = $1`, [id, SHA]);
+    await db.query(`update commerce.data_jobs set options = '{"existing":"skip"}' where id = $1`, [id]);
+    await move(id, "checking");
+    await move(id, "checked");
+    await db.query(`update commerce.data_jobs set status = 'checking', options = '{"existing":"replace"}' where id = $1`, [id]);
+    await move(id, "checked");
+    await rejects(`update commerce.data_jobs set status = 'queued', options = '{"existing":"skip"}' where id = $1`, [id], /data_job\.options_fixed/);
+    await rejects("update commerce.data_jobs set input_sha256 = $2 where id = $1", [id, SHA2], /data_job\.file_fixed/);
+    await move(id, "queued");
+    await rejects(`update commerce.data_jobs set options = '{}' where id = $1`, [id], /data_job\.options_fixed/);
+    await move(id, "running");
+    await move(id, "done");
+    await rejects("update commerce.data_jobs set status = 'running' where id = $1", [id], /data_job\.status/);
+  });
+
+  it("allow one active redirect import a store, beside one active product import, and exports beside both", async () => {
+    await endRedirectImports(shop);
+    await endActiveImports(shop);
+    const first = await redirectImport();
+    await rejects(
+      "insert into commerce.data_jobs (store_id, kind, status, requested_by) values ($1, 'redirect_import', 'uploaded', $2)",
+      [shop, owner],
+      /data_jobs_one_active_redirect_import_idx/,
+    );
+    // A product import is another kind: both may be open at once; another store is not held back; an ended one does not count.
+    expect(await importJob(shop)).toBeTruthy();
+    expect(await redirectImport(other)).toBeTruthy();
+    await db.query("insert into commerce.data_jobs (store_id, kind, status, requested_by) values ($1, 'redirect_export', 'queued', $2)", [shop, owner]);
+    await move(first, "cancelled");
+    expect(await redirectImport()).toBeTruthy();
+    await endRedirectImports(shop);
+    await endRedirectImports(other);
+    await endActiveImports(shop);
+  });
+
+  it("keep an import's file and an export's files apart", async () => {
+    await endRedirectImports(shop);
+    const id = await redirectImport();
+    await rejects(`update commerce.data_jobs set files = '[{"path":"a"}]' where id = $1`, [id], /data_jobs_import_no_files/);
+    await rejects(
+      "insert into commerce.data_jobs (store_id, kind, status, requested_by, input_path, input_sha256) values ($1, 'redirect_export', 'queued', $2, 'x', $3)",
+      [shop, owner, SHA],
+      /data_jobs_export_no_input/,
+    );
+    await rejects("insert into commerce.data_jobs (store_id, kind, status, format, requested_by) values ($1, 'redirect_export', 'queued', 'shopify', $2)", [shop, owner], /data_jobs_export_no_input/);
+    await endRedirectImports(shop);
+  });
+
+  it("start a redirect export under the same limit, never counting a redirect import", async () => {
+    const store = (await one<{ id: string }>("insert into commerce.stores (slug, name, country) values ('dj-redirects', 'Redirects', 'NO') returning id")).id;
+    await db.query("insert into commerce.data_jobs (store_id, kind, status, requested_by) values ($1, 'redirect_import', 'uploaded', $2)", [store, owner]);
+    const start = (kind: string) => one<{ id: string }>("select commerce.start_export_job($1, $2, $3, '{\"scope\":\"manual\"}', 2) as id", [store, kind, owner]).then((r) => r.id);
+    const first = await start("redirect_export");
+    expect(await one("select kind, status, phase, format, options from commerce.data_jobs where id = $1", [first])).toEqual({ kind: "redirect_export", status: "queued", phase: "write", format: "kaizen", options: { scope: "manual" } });
+    await start("redirect_export");
+    await rejects("select commerce.start_export_job($1, 'redirect_export', $2, '{}', 2)", [store, owner], /data_job\.too_many_exports/);
+    await rejects("select commerce.start_export_job($1, 'redirect_import', $2, '{}', 2)", [store, owner], /data_job\.kind/);
+    await move(first, "running");
+    await move(first, "done");
+    expect(await start("redirect_export")).toBeTruthy();
+  });
+
+  it("have items of their own kind, each one written once", async () => {
+    await endRedirectImports(shop);
+    const id = await redirectImport();
+    const item = (seq: number, kind: string, outcome = "checked") =>
+      db.query("insert into commerce.data_job_items (store_id, job_id, seq, kind, ref, rows, outcome, messages) values ($1, $2, $3, $4, '/old', '{2}', $5, '[]')", [shop, id, seq, kind, outcome]);
+    await item(0, "redirect");
+    await item(1, "product");
+    await item(2, "file");
+    await rejects("insert into commerce.data_job_items (store_id, job_id, seq, kind, outcome) values ($1, $2, 3, 'address', 'checked')", [shop, id], /data_job_items_kind/);
+    await expect(item(0, "redirect")).rejects.toThrow(/duplicate key|data_job_items_job_id_seq_pk|pkey/);
+    await endRedirectImports(shop);
+  });
+});
+
 describe("the bulk editor's record", () => {
   const product = "00000000-0000-4000-8000-0000000000aa";
   async function batch(action = "price", over: { store?: string; undoOf?: string | null; createdAt?: string } = {}): Promise<string> {

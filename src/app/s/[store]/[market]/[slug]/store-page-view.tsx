@@ -14,6 +14,7 @@ import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
 import { experimentOfPage } from "@/server/experiments";
 import { findPublishedPage, type PublishedPage } from "@/server/pages";
+import { missOrRedirect } from "@/server/redirect-resolve";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
 import { resolveShop } from "@/server/shop";
 
@@ -89,7 +90,13 @@ export async function storePageMetadata(params: StorePageParams, variant: string
  */
 export async function StorePageView({ params, searchParams, variant }: { params: StorePageParams; searchParams: StorePageQuery; variant: string | null }) {
   const loaded = await loadStorePage(params);
-  if (!loaded) notFound();
+  if (!loaded) {
+    // A manual redirect's source, or the old address of a product that was moved here, goes on for good; anything else is the store's 404 (wave 2, D168).
+    const { store: storeSlug, market: marketSlug, slug } = await params;
+    const shop = await resolveShop(storeSlug, marketSlug);
+    if (!shop) notFound();
+    return missOrRedirect(shop, `/${slug}`);
+  }
   const { store, market, found } = loaded;
   const home = marketPath(store.slug, market.slug);
   // A page that moved: its old address leads to the new one for good.
