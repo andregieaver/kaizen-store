@@ -41,7 +41,30 @@ function useMenu() {
 export type SwitcherStore = { slug: string; name: string; role: "owner" | "admin"; suspended?: boolean };
 
 const item = "flex min-h-10 items-center gap-2 rounded-md px-3 text-sm hover:bg-surface aria-[current=page]:bg-surface aria-[current=page]:font-medium";
-const heading = "px-3 pb-1 pt-2 text-xs font-semibold tracking-wide text-muted uppercase";
+const heading = "px-3 pb-1 pt-1 text-xs font-semibold tracking-wide text-muted uppercase";
+/** The links of a section sit a step in from its heading, with a rule down their side. */
+const indented = "ml-3 flex flex-col gap-0.5 border-l border-border pl-1";
+
+/** A section of the level switcher: a divider above (but the first), a heading, and its links. */
+function Section({ id, title, first, children }: { id: string; title: string; first?: boolean; children: ReactNode }) {
+  return (
+    <div role="group" aria-labelledby={id} className={first ? "" : "mt-1 border-t border-border pt-2"}>
+      <p id={id} className={heading}>
+        {title}
+      </p>
+      <div className={indented}>{children}</div>
+    </div>
+  );
+}
+
+/** Marks the place you are in, beside the link's text. */
+function Here({ on }: { on: boolean }) {
+  return on ? (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="ml-auto size-4 shrink-0 text-foreground" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <path d="M5 12l5 5 9-10" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  ) : null;
+}
 
 function Chevron() {
   return (
@@ -94,53 +117,58 @@ export function AdminSwitcher({
         <Chevron />
       </button>
       {open && (
-        <div role="menu" aria-label="Go to" className="absolute left-0 top-full z-50 mt-1 flex max-h-[80dvh] w-72 max-w-[calc(100vw-2rem)] flex-col gap-1 overflow-y-auto rounded-lg border border-border bg-background p-2 shadow-xl">
+        <div role="menu" aria-label="Go to" className="absolute left-0 top-full z-50 mt-1 flex max-h-[80dvh] w-72 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto rounded-lg border border-border bg-background p-2 shadow-xl">
           {owner && (
-            <Link role="menuitem" href="/admin" aria-current={level === "control" ? "page" : undefined} className={item}>
+            <Link role="menuitem" href="/admin" aria-current={level === "control" ? "page" : undefined} className={`${item} font-medium`}>
               Control center
-              <span className="ml-auto text-xs text-muted">all your stores</span>
+              <span className="ml-auto text-xs font-normal text-muted">{level === "control" ? "" : "all your stores"}</span>
+              <Here on={level === "control"} />
             </Link>
           )}
           {shown.length > 0 && (
-            <>
-              <p className={heading}>Stores</p>
-              {shown.map((s) => (
-                <Link key={s.slug} role="menuitem" href={`/admin/${s.slug}`} aria-current={level === "store" && s.slug === currentSlug ? "page" : undefined} className={item}>
-                  <span className="truncate">{s.name}</span>
-                  {s.suspended && <span className="rounded bg-surface px-1.5 py-0.5 text-xs text-muted">Suspended</span>}
-                  {s.role === "admin" && <span className="ml-auto text-xs text-muted">Staff</span>}
-                </Link>
-              ))}
+            <Section id="switch-stores" title="Stores" first={!owner}>
+              {shown.map((s) => {
+                const here = level === "store" && s.slug === currentSlug;
+                return (
+                  <Link key={s.slug} role="menuitem" href={`/admin/${s.slug}`} aria-current={here ? "page" : undefined} className={item}>
+                    <span className="truncate">{s.name}</span>
+                    {s.suspended && <span className="rounded bg-surface px-1.5 py-0.5 text-xs text-muted">Suspended</span>}
+                    {s.role === "admin" && <span className="ml-auto text-xs text-muted">Staff</span>}
+                    {here && !(s.role === "admin") && <Here on />}
+                  </Link>
+                );
+              })}
               {stores.length > shown.length && (
                 <Link role="menuitem" href="/admin/stores" className={`${item} text-muted`}>
                   All {stores.length} stores
                 </Link>
               )}
-            </>
+            </Section>
           )}
           {platform && (
-            <>
-              <p className={heading}>Kaizen</p>
+            <Section id="switch-kaizen" title="Kaizen" first={!owner && shown.length === 0}>
               <Link role="menuitem" href="/admin/platform" aria-current={level === "platform" ? "page" : undefined} className={item}>
                 Platform
                 {platform.waiting > 0 && <span className="ml-auto rounded-full bg-foreground px-1.5 py-0.5 text-xs leading-none text-background">{platform.waiting} waiting</span>}
+                {platform.waiting === 0 && <Here on={level === "platform"} />}
               </Link>
-            </>
+            </Section>
           )}
-          <p className={heading}>You</p>
-          <Link role="menuitem" href="/admin/account" className={item}>
-            Your account
-          </Link>
-          {owner && (
-            <>
-              <Link role="menuitem" href="/admin/account/billing" className={item}>
-                Billing
-              </Link>
-              <Link role="menuitem" href="/admin/account/usage" className={item}>
-                AI usage
-              </Link>
-            </>
-          )}
+          <Section id="switch-you" title="You" first={!owner && shown.length === 0 && !platform}>
+            <Link role="menuitem" href="/admin/account" className={item}>
+              Your account
+            </Link>
+            {owner && (
+              <>
+                <Link role="menuitem" href="/admin/account/billing" className={item}>
+                  Billing
+                </Link>
+                <Link role="menuitem" href="/admin/account/usage" className={item}>
+                  AI usage
+                </Link>
+              </>
+            )}
+          </Section>
         </div>
       )}
     </div>
