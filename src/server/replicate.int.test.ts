@@ -29,7 +29,7 @@ const text = (tag: string, box: Box, t: string, s: Record<string, string> = {}, 
 });
 
 /** What the original is: the hero page, or (for the grid tests) a heading over four of the same card. */
-const mode = vi.hoisted(() => ({ grid: false, right: false, wrongUntil: 1, backdrop: false }));
+const mode = vi.hoisted(() => ({ grid: false, right: false, wrongUntil: 1, backdrop: false, worseWithPictures: false, failLooks: 0 }));
 
 /** A heading over four cards: a picture, a title, words and a button each, side by side at computers' width and one under another on phones. */
 function gridOriginal(width: number): PageCapture {
@@ -134,16 +134,21 @@ vi.mock("./replicate-browser", () => ({
     const id = /replica\/([0-9a-f-]{36})/.exec(frameUrl)![1];
     const [row] = await db().execute<Row>(sql`select work from commerce.page_replications where id = ${id}::uuid`);
     const parts = ((row.work as { parts: { id: string; target: Box | null; targetM: Box | null }[] }).parts ?? []).filter((p) => (viewport === "desktop" ? p.target : p.targetM));
+    if (viewport === "desktop" && mode.failLooks > 0) {
+      mode.failLooks -= 1;
+      throw new Error("page.screenshot: Target page, context or browser has been closed");
+    }
     if (viewport === "desktop") opened.copies += 1;
     // At the first openings (`wrongUntil`), the copy's blocks sit 30 px too low and it is wrong in a band; later it is right.
-    const wrong = opened.copies <= mode.wrongUntil && !mode.right;
+    const pictured = mode.worseWithPictures && ((row.work as { backdropped?: unknown[] }).backdropped ?? []).length > 0;
+    const wrong = (opened.copies <= mode.wrongUntil && !mode.right) || pictured;
     const children: CaptureNode[] = parts.map((p, i) => {
       const box = (viewport === "desktop" ? p.target : p.targetM)!;
       return { p: String(i), tag: "div", id: p.id, box: [box[0], box[1] + (wrong ? 30 : 0), box[2], box[3]], s: {}, children: [] };
     });
     const w = viewport === "desktop" ? 1440 : 390;
     const capture: PageCapture = { ...original(w), root: { p: "", tag: "body", box: [0, 0, w, 1000], s: {}, children } };
-    return { capture, screenshot: await png(w, 1000, wrong ? (mode.grid ? 100 : 300) : null, mode.grid ? 600 : 200), elements: new Map<string, Buffer>() };
+    return { capture, screenshot: await png(w, 1000, wrong ? (mode.grid ? 100 : 300) : null, pictured ? 650 : mode.grid ? 600 : 200), elements: new Map<string, Buffer>() };
   },
 }));
 vi.mock("./replicate-assets", async (importOriginal) => ({
@@ -210,6 +215,8 @@ beforeEach(async () => {
   mode.right = false;
   mode.wrongUntil = 1;
   mode.backdrop = false;
+  mode.worseWithPictures = false;
+  mode.failLooks = 0;
   opened.copies = 0;
   ai.calls.length = 0;
   ai.connection = { textModel: "test-model", provider: "openai" };
@@ -338,6 +345,40 @@ describe("copying a page, from the address to the summary", () => {
     expect(draft.css).toMatch(/background-image:url\("https:\/\/files.test\/storage\/v1\/object\/public\/media\/row-/);
     // The job's two rounds are spent at most: the picture rows do not multiply.
     expect((log.match(/now kept as a picture of the original/g) ?? []).length).toBeLessThanOrEqual(2);
+  });
+
+  it("takes the rows kept as pictures out again when the page then matches worse than it did, and leaves the draft as it was", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://files.test");
+    mode.backdrop = true;
+    mode.wrongUntil = 99;
+    mode.worseWithPictures = true;
+    ai.connection = null;
+    const started = await engine.startReplication(owner, "https://source.test/", 3, true);
+    if (!started.ok) throw new Error(started.problem);
+    const job = (await runToEnd(started.job.id))!;
+    expect(job.status).toBe("done");
+    const log = job.log.map((l) => l.text).join("\n");
+    expect(log).toMatch(/now kept as a picture of the original/);
+    expect(log).toMatch(/so they are taken out again/);
+    const [page] = await db().execute<Row>(sql`select draft from commerce.pages where id = ${job.pageId}::uuid and store_id = ${storeId}::uuid`);
+    expect((page.draft as { css: string }).css).not.toMatch(/media\/row-/);
+    // Taken out for good: not tried a second time.
+    expect((log.match(/now kept as a picture of the original/g) ?? []).length).toBe(1);
+  });
+
+  it("tries a look at the copy again when the browser stops, and ends the job only when it stops again and again", async () => {
+    ai.connection = null;
+    mode.failLooks = 1;
+    const once = await engine.startReplication(owner, "https://source.test/", 1, true);
+    if (!once.ok) throw new Error(once.problem);
+    const done = (await runToEnd(once.job.id))!;
+    expect(done.status).toBe("done");
+    expect(done.log.map((l) => l.text).join("\n")).toMatch(/The browser stopped while it was looking at the page.*Trying again/);
+    mode.failLooks = 5;
+    const twice = await engine.startReplication(owner, "https://source.test/", 1, true);
+    if (!twice.ok) throw new Error(twice.problem);
+    const failed = (await runToEnd(twice.job.id))!;
+    expect(failed.status).toBe("failed");
   });
 
   it("carries on without the AI, and says so", async () => {

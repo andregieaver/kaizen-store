@@ -606,6 +606,40 @@ export async function deleteMedia(owner: MediaOwner, accountId: string, id: stri
   return { ok: true };
 }
 
+/** The most files one request deletes: the library asks again for the rest of a larger choice. */
+export const MEDIA_DELETE_MAX = 100;
+
+/**
+ * Deletes several items and their files at once (the library's bulk delete: a page copy adds a picture for every part it could not build from boxes, and they fill the
+ * library fast). Same rules as `deleteMedia()`: only the owner's, a file Storage will not remove is kept, and places that use one show nothing where it was. One audit entry
+ * for the whole request. Gives how many were deleted and how many were kept (not the owner's, or Storage refused).
+ */
+export async function deleteMediaMany(owner: MediaOwner, accountId: string, ids: string[]): Promise<{ deleted: number; kept: number; problem?: string }> {
+  const wanted = [...new Set(ids)].slice(0, MEDIA_DELETE_MAX);
+  if (wanted.length === 0) return { deleted: 0, kept: 0 };
+  const rows = await db().execute<Row>(sql`
+    select id, bucket, path, thumbnail_path, file_name from commerce.media
+    where id in (${sql.join(wanted.map((id) => sql`${id}::uuid`), sql`, `)}) and ${owned(owner.storeId)}
+  `);
+  const byBucket = new Map<string, Row[]>();
+  for (const row of rows) byBucket.set(String(row.bucket), [...(byBucket.get(String(row.bucket)) ?? []), row]);
+  const removed: string[] = [];
+  for (const [bucket, group] of byBucket) {
+    const paths = group.flatMap((row) => [String(row.path), ...(row.thumbnail_path ? [String(row.thumbnail_path)] : [])]);
+    if (await removeStoredFiles(bucket, paths)) removed.push(...group.map((row) => String(row.id)));
+  }
+  if (removed.length > 0) {
+    await db().execute(sql`delete from commerce.media where id in (${sql.join(removed.map((id) => sql`${id}::uuid`), sql`, `)}) and ${owned(owner.storeId)}`);
+    await audit(accountId, owner.storeId, owner.storeId ? "store.media_deleted" : "platform.media_deleted", {
+      count: removed.length,
+      mediaIds: removed,
+      fileNames: rows.filter((row) => removed.includes(String(row.id))).slice(0, 20).map((row) => String(row.file_name)),
+    });
+  }
+  const kept = wanted.length - removed.length;
+  return { deleted: removed.length, kept, ...(kept > 0 ? { problem: "Some files could not be removed from storage or are no longer in the library. Try again." } : {}) };
+}
+
 // ---------------------------------------------------------------------------
 // Vectors for search by meaning
 // ---------------------------------------------------------------------------

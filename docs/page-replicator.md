@@ -449,6 +449,14 @@ Rows are found by `backdropKey(path, top)`: a section sliced into several rows h
 The pictures, links and layout inside a picture row are part of the picture; the summary notes say so and the report has a finding (`rows-as-pictures`) naming each row. A picture row's parts are still measured, so the
 measuring places its words. The probe (`e2e/replicate-probe.spec.ts`) does the same steps with the library's pieces and writes the result to `test-results/probe/`.
 
+**Safety found on a real run (runandrelax.com on the server).** The server run differs from the probe in ways the probe does not copy: a weak grid is tried as columns first, the page's block and column caps then bite
+(eight cards cannot be six columns), and a look at the copy after the rebuild stopped the job ("the browser stopped"). Therefore:
+- the rows rebuilt as pictures are a *trial*: the page as it was is kept (`backdropTrial`), the rows are judged at the next pass, once the measuring has placed them again, and go back if the page then matches
+  more than `BACKDROP_WORSE` (3) points worse at either width; if the look at the rebuilt page fails twice, the page goes back at once; a failed look is tried again once before the job ends (`lookTries`);
+- a group of more than six cards is not tried as columns (a row holds six), so the rows kept as pictures take it instead;
+- the strip *with* its words is cut and kept only for a row that ends up only a picture, and a row's strips are kept together, so a copy adds two files a row to the library, not four.
+A page copy still adds pictures to the media library; *Choose files* there deletes many at once.
+
 Probe results (no AI, 4–6 passes): detnorskekaffehus.net 15.5 % / 49.8 % → 96.1 % / 94.2 % (computers / phones), runandrelax.com 41 % / 30 % → 93.2 % / 90.6 %, lampan.no 97.6 % / 92.5 %.
 
 ## What it does not do (yet)

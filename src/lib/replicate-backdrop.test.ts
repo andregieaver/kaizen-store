@@ -93,6 +93,14 @@ describe("a row kept as a picture of the original", () => {
     expect(JSON.stringify(all[0])).toContain("Which ripple are you?");
   });
 
+  it("stays words over the picture when there is no strip with its words to make it plain with", () => {
+    const key = keyOf(buildReplica(base(), newId));
+    const only: Backdrop = { text: backdrop.text, plain: null };
+    const built = buildReplica(base({ backdrop: (k) => (k === key ? only : null), backdropPlain: new Set([key]) }), newId);
+    expect(renderStyles(built.model, built.shared).css).toContain('background-image:url("/bare.png")');
+    expect(blocks(built.rows).filter((b) => b.type === "richText" || b.type === "heading")).toHaveLength(2);
+  });
+
   it("is left to `buildFitted()` to make plain only when the words would not fit the page's CSS", () => {
     const key = keyOf(buildReplica(base(), newId));
     const fitted = buildFitted(base({ backdrop: (k) => (k === key ? backdrop : null) }), newId);

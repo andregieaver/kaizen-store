@@ -568,11 +568,15 @@ async function stepRefine(tick: Tick): Promise<void> {
   const frameUrl = `${owner.origin}/admin/account/replica/${row.id}?t=${encodeURIComponent(frameToken(row.id))}`;
 
   await say("info", k === 0 ? "Checking the first copy against the original, at both widths." : `Pass ${k} of ${max}: checking the draft against the original.`);
-  const desktop = await looking(startBrowser, LOOK.copyMs, (browser) => openCopy(browser, frameUrl, "desktop")).catch((error: Error) => {
-    if (error instanceof Failed) throw error;
+  let desktop: Awaited<ReturnType<typeof openCopy>>;
+  try {
+    desktop = await looking(startBrowser, LOOK.copyMs, (browser) => openCopy(browser, frameUrl, "desktop"));
+  } catch (error) {
+    if (error instanceof Failed || error instanceof Stopped) throw error;
     console.error("[replicate] copy at computers' width", error);
+    if (await copyLookFailed(tick, work, error)) return;
     throw new Failed(lookProblem(error));
-  });
+  }
   stopIfAsked(tick);
   const mobile = originals.mobile ? await looking(startBrowser, LOOK.copyMs, (browser) => openCopy(browser, frameUrl, "mobile")).catch(() => null) : null;
   stopIfAsked(tick);
@@ -603,6 +607,19 @@ async function stepRefine(tick: Tick): Promise<void> {
     Object.assign(work, ended.patch);
   }
 
+  // Rows rebuilt as pictures are judged once the page has been corrected by measuring again (D164): they stay only if the page matches no worse than it did before them.
+  if (work.backdropTrial && k > work.backdropTrial.pass) {
+    const trial = work.backdropTrial;
+    const worse = scoreDesktop.match < trial.before.desktop - BACKDROP_WORSE || (scoreMobile !== null && trial.before.phone !== null && scoreMobile.match < trial.before.phone - BACKDROP_WORSE);
+    if (worse) {
+      await say("warn", `With rows kept as pictures the copy matched ${scoreDesktop.match}%${scoreMobile ? ` and ${scoreMobile.match}%` : ""}, no better than the ${trial.before.desktop}%${trial.before.phone === null ? "" : ` and ${trial.before.phone}%`} it had without them, so they are taken out again.`);
+      await revertBackdrops(tick, work);
+      return;
+    }
+    Object.assign(work, { backdropTrial: null });
+    await patchWork(row.id, { backdropTrial: null });
+  }
+
   // What the owner watches: the draft as it is now.
   const previews = JSON.parse(JSON.stringify(work.previews ?? { original: { desktop: null, mobile: null }, copy: { desktop: null, mobile: null, iteration: null } })) as NonNullable<ReplicaWork["previews"]>;
   const files = [...(work.files ?? [])];
@@ -626,7 +643,7 @@ async function stepRefine(tick: Tick): Promise<void> {
   if (mobile) await keepPreview("mobile", mobile.screenshot, 300);
   previews.copy.iteration = k;
   await say("ok", `${k === 0 ? "The first copy" : `After pass ${k}, the copy`} matches the original ${scoreDesktop.match}% on computers${scoreMobile ? ` and ${scoreMobile.match}% on phones` : ""}. It is ${desktop.capture.docHeight} px tall; the original is ${scoreDesktop.heights.original} px.`);
-  await patchWork(row.id, { passes, previews, files, remeasure: false });
+  await patchWork(row.id, { passes, previews, files, remeasure: false, lookTries: 0 });
   work.remeasure = false;
 
   const perfect = isPerfect(scoreDesktop) && isPerfect(scoreMobile);
@@ -642,7 +659,7 @@ async function stepRefine(tick: Tick): Promise<void> {
   const round = work.backdropRounds ?? 0;
   const firstAt = max >= 2 ? 1 : 0;
   const lastAt = Math.max(firstAt + 1, max - 1);
-  const due = round === 0 && k >= firstAt && k < Math.max(1, max) ? (max >= 3 ? BACKDROP_BELOW.first : BACKDROP_BELOW.last) : round === 1 && max >= 3 && k >= lastAt && k < max ? BACKDROP_BELOW.last : null;
+  const due = work.backdropTrial ? null : round === 0 && k >= firstAt && k < Math.max(1, max) ? (max >= 3 ? BACKDROP_BELOW.first : BACKDROP_BELOW.last) : round === 1 && max >= 3 && k >= lastAt && k < max ? BACKDROP_BELOW.last : null;
   if (!perfect && due !== null && (await startBackdrops(tick, work, parts, desktop.capture, mobile?.capture ?? null, sides, k, passes, pass, due))) return;
 
   if (k >= max || perfect) {
@@ -726,6 +743,43 @@ async function stepRefine(tick: Tick): Promise<void> {
 // Rows that cannot be built from the page's parts (D164)
 // ---------------------------------------------------------------------------
 
+/** Rows kept as pictures are taken out again if the page then matches worse than it did by more than this many points, at either width. */
+const BACKDROP_WORSE = 3;
+/** The most columns a row of the builder holds. */
+const COLUMNS_MAX = 6;
+
+/** Puts the page back as it was before rows were rebuilt as pictures, and spends the job's rounds so they are not tried again: the next measurement is of that page. */
+async function revertBackdrops(tick: Tick, work: ReplicaWork): Promise<void> {
+  const { row, owner } = tick;
+  const trial = work.backdropTrial;
+  if (!trial) return;
+  const back = trial.snapshot;
+  await writeDraft(row, owner.account.id, back.rows, back.css);
+  const assets = work.assets ? { ...work.assets, backdrops: trial.backdropsBefore } : work.assets;
+  const patch: Partial<ReplicaWork> = { model: back.model, parts: back.parts, shared: back.shared, notes: back.notes, counts: back.counts, dropped: back.dropped, grids: back.grids, reverted: back.reverted, cssLength: back.cssLength, cssTrimmed: back.cssTrimmed, ...(assets ? { assets } : {}), backdropTrial: null, backdropped: trial.keptBefore, backdropRounds: 2, remeasure: true, lookTries: 0 };
+  Object.assign(work, patch);
+  await patchWork(row.id, patch);
+  await setPhase(row.id, "refine", trial.pass);
+}
+
+/**
+ * A look at the copy that failed (the browser stopped: it may have run out of memory, or the server ended the request). Once, it is tried again at the next tick; the second time, when rows had
+ * just been rebuilt as pictures, the page goes back to what it was and is tried again without them; after that the job ends as before. Returns whether the tick is over.
+ */
+async function copyLookFailed(tick: Tick, work: ReplicaWork, error: unknown): Promise<boolean> {
+  const { row, say } = tick;
+  const tries = work.lookTries ?? 0;
+  if (tries >= 2) return false;
+  await say("warn", `${lookProblem(error)} Trying again${work.backdropTrial && tries >= 1 ? " with the page as it was before rows were kept as pictures" : ""}.`);
+  if (work.backdropTrial && tries >= 1) {
+    await revertBackdrops(tick, work);
+    await patchWork(row.id, { lookTries: tries + 1 });
+    return true;
+  }
+  await patchWork(row.id, { lookTries: tries + 1 });
+  return true;
+}
+
 /**
  * Some pages cannot be built from boxes and words: a hero of two pictures with a headline between, a slider, a video behind a card, a collage. A row that, after the page
  * was corrected by measuring, still matches the original under `BACKDROP_BELOW` is kept as the strip of the original photographed with its words not painted (cut from the
@@ -749,19 +803,20 @@ async function startBackdrops(tick: Tick, work: ReplicaWork, parts: NonNullable<
   const capture = await readCapture(row.id);
   const desktopBare = await fetchBytes(textless.desktop);
   const phoneBare = textless.mobile ? await fetchBytes(textless.mobile) : null;
-  const originals = work.originals;
-  const desktopFull = originals?.desktop ? await fetchBytes(originals.desktop) : null;
-  const phoneFull = originals?.mobile ? await fetchBytes(originals.mobile) : null;
-  if (!capture || !desktopBare || !desktopFull) return done();
+  if (!capture || !desktopBare) return done();
   const owner: AssetOwner = { storeId: row.storeId, accountId: tick.owner.account.id };
-  const cut = async (photograph: Buffer, width: number, box: [number, number, number, number], name: string): Promise<KeptAsset | null> => {
+  /** A strip of a photograph as a PNG: the crop is made here, one at a time (a photograph of a long page is large to decode); keeping it is the caller's. */
+  const crop = async (photograph: Buffer, width: number, box: [number, number, number, number]): Promise<Buffer | null> => {
     const meta = await sharp(photograph).metadata();
     const imageWidth = meta.width ?? 0;
     const imageHeight = meta.height ?? 0;
     const top = Math.max(0, Math.round(box[1]));
     const height = Math.min(Math.round(box[3]), imageHeight - top);
     if (!imageWidth || height < 1) return null;
-    const png = await sharp(photograph).extract({ left: 0, top, width: Math.min(imageWidth, Math.max(1, Math.round(width))), height }).png().toBuffer();
+    return sharp(photograph).extract({ left: 0, top, width: Math.min(imageWidth, Math.max(1, Math.round(width))), height }).png().toBuffer();
+  };
+  const keep = async (png: Buffer | null, name: string): Promise<KeptAsset | null> => {
+    if (!png) return null;
     const saved = await saveShot(owner, png, name);
     return saved.ok ? saved.picture : null;
   };
@@ -770,22 +825,38 @@ async function startBackdrops(tick: Tick, work: ReplicaWork, parts: NonNullable<
   for (const { part, desktop, phone } of found) {
     const dBox = part.target!;
     const label = `row-${part.path.replace(/\//g, "-") || "page"}-${Math.round(dBox[1])}`;
-    const text = await cut(desktopBare, capture.desktop.docWidth, dBox, `${label}-d`);
-    const plain = await cut(desktopFull, capture.desktop.docWidth, dBox, `${label}-full-d`);
-    if (!text || !plain) continue;
-    let phoneText: KeptAsset | null = null;
-    let phonePlain: KeptAsset | null = null;
-    if (capture.mobile && part.targetM) {
-      if (!phoneBare || !phoneFull) continue;
-      phoneText = await cut(phoneBare, capture.mobile.docWidth, part.targetM, `${label}-m`);
-      phonePlain = await cut(phoneFull, capture.mobile.docWidth, part.targetM, `${label}-full-m`);
-      if (!phoneText || !phonePlain) continue;
-    }
-    backdrops[backdropKey(part.path, dBox[1])] = { text: { desktop: text, phone: phoneText }, plain: { desktop: plain, phone: phonePlain } };
+    const wantsPhone = Boolean(capture.mobile && part.targetM);
+    if (wantsPhone && !phoneBare) continue;
+    // The strip without its words, at each width: kept together (keeping is a request to storage each, two files, the slow part of a page of many rows). The strip with its words
+    // is only cut for a row that ends up only a picture, below: the library fills fast with pictures nobody uses.
+    const [text, phoneText] = await Promise.all([keep(await crop(desktopBare, capture.desktop.docWidth, dBox), `${label}-d`), wantsPhone ? keep(await crop(phoneBare!, capture.mobile!.docWidth, part.targetM!), `${label}-m`) : Promise.resolve(null)]);
+    if (!text || (wantsPhone && !phoneText)) continue;
+    backdrops[backdropKey(part.path, dBox[1])] = { text: { desktop: text, phone: phoneText }, plain: null };
     used.push({ path: part.path, y: Math.round(dBox[1]), height: Math.round(dBox[3]), desktop, phone, pass: k });
   }
   if (used.length === 0) return done();
+  // Which rows would not fit the page's CSS as words over a picture is found by building the page with a stand-in for the strip with its words; only those rows get that strip.
+  const standIn = { url: "/stand-in.png", width: 1, height: 1 };
+  const provisional = Object.fromEntries(Object.entries(backdrops).map(([key, value]) => [key, { text: value.text, plain: value.plain ?? { desktop: standIn, phone: value.text.phone ? standIn : null } }]));
+  const dry = buildFitted(buildInputOf({ ...work, reverted: work.reverted ?? [], assets: { ...work.assets, backdrops: provisional } }, capture), randomUUID);
+  const lacking = dry.plain.filter((key) => backdrops[key] && !backdrops[key].plain);
+  if (lacking.length > 0) {
+    const originals = work.originals;
+    const desktopFull = originals?.desktop ? await fetchBytes(originals.desktop) : null;
+    const phoneFull = originals?.mobile ? await fetchBytes(originals.mobile) : null;
+    for (const key of lacking) {
+      const part = parts.find((p) => p.kind === "row" && p.target && backdropKey(p.path, p.target[1]) === key);
+      if (!part?.target || !desktopFull) continue;
+      const label = `row-${part.path.replace(/\//g, "-") || "page"}-${Math.round(part.target[1])}-full`;
+      const wantsPhone = Boolean(capture.mobile && part.targetM);
+      if (wantsPhone && !phoneFull) continue;
+      const [full, phoneFullKept] = await Promise.all([keep(await crop(desktopFull, capture.desktop.docWidth, part.target), `${label}-d`), wantsPhone ? keep(await crop(phoneFull!, capture.mobile!.docWidth, part.targetM!), `${label}-m`) : Promise.resolve(null)]);
+      if (full && (!wantsPhone || phoneFullKept)) backdrops[key] = { ...backdrops[key], plain: { desktop: full, phone: phoneFullKept } };
+    }
+  }
   const assets = { ...work.assets, backdrops };
+  // The page as it is, to be put back if the rows as pictures do not help (judged at the next pass) or the look at the rebuilt page fails.
+  const snapshot = await snapshotOf(row, work);
   const rebuilt = await rebuildWith(tick, { ...work, assets }, work.reverted ?? []);
   if (!rebuilt) {
     await say("warn", "Some rows matched the original badly, but the page could not be rebuilt with them as pictures, so they stay as they were.");
@@ -797,8 +868,9 @@ async function startBackdrops(tick: Tick, work: ReplicaWork, parts: NonNullable<
   await say("warn", change);
   passes[passes.length - 1] = { ...pass, changes: [change] };
   const all = [...(work.backdropped ?? []), ...used];
-  Object.assign(work, { backdropped: all, backdropRounds: round, assets, ...rebuilt.patch });
-  await patchWork(row.id, { ...rebuilt.patch, assets, backdropped: all, backdropRounds: round, passes, remeasure: true });
+  const backdropTrial = snapshot ? { pass: k, snapshot, before: { desktop: pass.desktop.match, phone: pass.mobile ? pass.mobile.match : null }, backdropsBefore: work.assets.backdrops ?? {}, keptBefore: work.backdropped ?? [] } : null;
+  Object.assign(work, { backdropped: all, backdropRounds: round, assets, backdropTrial, ...rebuilt.patch });
+  await patchWork(row.id, { ...rebuilt.patch, assets, backdropped: all, backdropRounds: round, backdropTrial, passes, remeasure: true });
   await setPhase(row.id, "refine", k);
   return true;
 }
@@ -825,7 +897,9 @@ function weakNow(work: ReplicaWork, parts: NonNullable<ReplicaWork["parts"]>, de
   for (const w of weakGrids(parts, desktop.weakest)) found.set(w.path, w.match);
   if (mobile) for (const w of weakGrids(parts, mobile.weakest, 60, "phone")) found.set(w.path, Math.min(w.match, found.get(w.path) ?? 100));
   const done = new Set([...(work.settled ?? []), ...(work.reverted ?? []).map((r) => r.path)]);
-  return [...found.entries()].filter(([path]) => !done.has(path)).map(([path, match]) => ({ path, match }));
+  // A row of the builder holds six columns: a group of more cards than that cannot be as faithful as columns, so it is not tried (the rows kept as pictures take what stays weak, D164).
+  const tooMany = new Set((work.grids?.built ?? []).filter((g) => g.cards > COLUMNS_MAX).map((g) => g.path));
+  return [...found.entries()].filter(([path]) => !done.has(path) && !tooMany.has(path)).map(([path, match]) => ({ path, match }));
 }
 
 /** What the report says of a grid at the end: that columns were tried and did no better, or that it was weak and was not tried. */
@@ -969,6 +1043,15 @@ async function settleTrial(tick: Tick, work: ReplicaWork, trial: GridTrial, side
  * was, so the page is not left worse than the one that is known. Returns the job as it is then.
  */
 async function endTrial(owner: ReplicaOwner, row: ReplicaRow): Promise<ReplicaRow> {
+  // Rows rebuilt as pictures that were never measured: the page that was is put back, as for a trial of columns below.
+  const pictures = row.work.backdropTrial;
+  if (pictures && row.pageId) {
+    const back = pictures.snapshot;
+    await writeDraft(row, owner.account.id, back.rows, back.css);
+    await patchWork(row.id, { model: back.model, parts: back.parts, shared: back.shared, notes: back.notes, counts: back.counts, dropped: back.dropped, grids: back.grids, reverted: back.reverted, cssLength: back.cssLength, cssTrimmed: back.cssTrimmed, backdropTrial: null, backdropped: pictures.keptBefore, remeasure: false });
+    await writeLog(row.id, "refine", "warn", "The job ended while rows were being tried as pictures, so the page, which was measured, is put back.");
+    return (await getRow(row.id, owner.storeId)) ?? row;
+  }
   const trial = row.work.trial;
   if (!trial || !row.pageId) return row;
   const back = trial.snapshot;

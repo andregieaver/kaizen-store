@@ -67,7 +67,7 @@ export function buildFitted(input: BuildInput, newId: () => string): { built: Bu
     for (const part of built.parts) {
       if (part.kind !== "row" || !part.target || !part.label?.includes("kept as a picture")) continue;
       const key = backdropKey(part.path, part.target[1]);
-      if (plain.has(key)) continue;
+      if (plain.has(key) || !input.backdrop?.(key)?.plain) continue;
       cost.set(key, built.parts.filter((x) => x.kind === "block" && x.row === part.id).length);
     }
     const next = [...cost.entries()].sort((a, b) => b[1] - a[1])[0];

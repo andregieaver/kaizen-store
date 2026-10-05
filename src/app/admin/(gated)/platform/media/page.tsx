@@ -12,6 +12,7 @@ import { listMedia } from "@/server/media-library";
 
 import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../actions";
 import {
+  deleteManyPlatformMediaAction,
   deletePlatformMediaAction,
   describePlatformMediaAction,
   measurePlatformMediaAction,
@@ -68,6 +69,7 @@ async function Library({ searchParams }: { searchParams: PageProps<"/admin/platf
         writeAlt: writePlatformAltTextAction,
         writeAlts: writePlatformAltTextsAction,
         remove: deletePlatformMediaAction,
+        removeMany: deleteManyPlatformMediaAction,
         measure: measurePlatformMediaAction,
       }}
       languages={site?.languages ?? []}

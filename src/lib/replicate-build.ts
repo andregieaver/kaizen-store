@@ -61,7 +61,7 @@ import { cleanDecls, ruleOf, type Decl, type StyleModel } from "./replicate-styl
 export type Picture = { url: string; width: number; height: number };
 
 /** A row's strip of the original at each width: without its words (they are laid over it as blocks), and with them (the row is only the picture). */
-export type Backdrop = { text: { desktop: Picture; phone: Picture | null }; plain: { desktop: Picture; phone: Picture | null } };
+export type Backdrop = { text: { desktop: Picture; phone: Picture | null }; plain: { desktop: Picture; phone: Picture | null } | null };
 
 /** A row kept as a picture is found by where it is: its path (a section sliced into several rows has one path) and its top in the original. */
 export const backdropKey = (path: string, top: number): string => `${path}@${Math.round(top)}`;
@@ -1376,8 +1376,8 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     const rowPath = frame ? frame.p : (band.leaves[0]?.p ?? spec.cols[0]?.path ?? "");
     const key = backdropKey(rowPath, band.outerTop);
     const kept = input.backdrop?.(key) ?? null;
-    const plain = input.backdropPlain?.has(key) ?? false;
-    const back = kept ? (plain ? kept.plain : kept.text) : null;
+    const plain = (input.backdropPlain?.has(key) ?? false) && Boolean(kept?.plain);
+    const back = kept ? (plain && kept.plain ? kept.plain : kept.text) : null;
     if (back && allowedCssUrl(back.desktop.url) && (!mBands || !phoneBand || (back.phone !== null && allowedCssUrl(back.phone.url)))) {
       const heightD = band.outerBottom - band.outerTop;
       const heightM = phoneBand ? phoneBand.outerBottom - phoneBand.outerTop : 0;

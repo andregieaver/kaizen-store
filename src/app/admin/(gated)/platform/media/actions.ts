@@ -6,7 +6,7 @@ import { z } from "zod";
 import { altTextsInput, altRunInput } from "@/lib/alt-text";
 import { writeAltText, writeAltTexts, type AltResult, type AltRun } from "@/server/alt-texts";
 import { audit, requirePlatformAdmin } from "@/server/auth";
-import { deleteMedia, describeMedia, measureMedia } from "@/server/media-library";
+import { MEDIA_DELETE_MAX, deleteMedia, deleteMediaMany, describeMedia, measureMedia } from "@/server/media-library";
 import { pagesTag } from "@/server/pages";
 
 const id = z.uuid();
@@ -52,6 +52,16 @@ export async function deletePlatformMediaAction(mediaId: string): Promise<{ ok: 
   const admin = await requirePlatformAdmin();
   if (!id.safeParse(mediaId).success) return { ok: false, problem: "That file is no longer in the library." };
   return deleteMedia(KAIZEN, admin.id, mediaId);
+}
+
+/** Deletes several files from Kaizen's media library and from Storage (the library's bulk delete). */
+export async function deleteManyPlatformMediaAction(mediaIds: unknown): Promise<{ deleted: number; kept: number; problem?: string }> {
+  const admin = await requirePlatformAdmin();
+  const parsed = z.array(id).min(1).max(MEDIA_DELETE_MAX).safeParse(mediaIds);
+  if (!parsed.success) return { deleted: 0, kept: 0, problem: "Choose between 1 and 100 files." };
+  const result = await deleteMediaMany(KAIZEN, admin.id, parsed.data);
+  if (result.deleted > 0) updateTag(pagesTag(null));
+  return result;
 }
 
 /** Keeps the width and height the library measured, for a file uploaded before the library. */

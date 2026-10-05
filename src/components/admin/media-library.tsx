@@ -22,6 +22,8 @@ export type MediaActions = {
   /** Writes a batch of the pictures' alt texts that need one; called until none remain. */
   writeAlts: (run: { since: string; rewrite: boolean }) => Promise<AltRun>;
   remove: (id: string) => Promise<{ ok: true } | { ok: false; problem: string }>;
+  /** Deletes up to `BULK_AT_ONCE` files in one request (the library's bulk delete); how many went and how many were kept. */
+  removeMany: (ids: string[]) => Promise<{ deleted: number; kept: number; problem?: string }>;
   measure: (id: string, width: number, height: number) => Promise<void>;
 };
 
@@ -31,6 +33,8 @@ const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "ima
 const VIDEO_TYPES = ["video/mp4", "video/webm"];
 /** Files uploaded at once, so a large batch neither floods the server nor waits in single file. */
 const AT_ONCE = 3;
+/** Files deleted in one request: the server's limit (`MEDIA_DELETE_MAX`), so a larger choice is asked for in turns. */
+const BULK_AT_ONCE = 100;
 
 const input = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
 const button = "min-h-10 rounded-md border border-border px-4 text-sm font-medium disabled:opacity-50";
@@ -87,6 +91,22 @@ export function MediaLibrary({
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
   const open = items.find((item) => item.id === openId) ?? null;
+  // Choosing several files to delete together (a page copy adds many pictures, which fill the library): a file is chosen instead of opened.
+  const [choosing, setChoosing] = useState(false);
+  const [chosen, setChosen] = useState<ReadonlySet<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const pick = (id: string) =>
+    setChosen((now) => {
+      const next = new Set(now);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+  const choose = (ids: string[]) => setChosen(new Set(ids));
+  const stopChoosing = () => {
+    setChoosing(false);
+    setChosen(new Set());
+  };
+  const selected = items.filter((item) => chosen.has(item.id));
 
   // Files kept before the library have no measurements yet: the browser measures them once.
   useEffect(() => {
@@ -201,6 +221,12 @@ export function MediaLibrary({
               ? "1 file."
               : `${total} files.`}
       </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {items.length > 0 && (
+            <button type="button" onClick={() => (choosing ? stopChoosing() : setChoosing(true))} aria-pressed={choosing} className={`${button} min-h-9`}>
+              {choosing ? "Cancel choosing" : "Choose files"}
+            </button>
+          )}
         <nav aria-label="Show files as" className="flex overflow-hidden rounded-md border border-border text-sm">
           {(["grid", "list"] as const).map((view) => (
             <Link
@@ -214,9 +240,30 @@ export function MediaLibrary({
             </Link>
           ))}
         </nav>
+        </div>
       </div>
 
-      {items.length > 0 && query.view === "list" && <FileList items={items} onOpen={setOpenId} />}
+      {choosing && (
+        <div role="region" aria-label="Delete several files" className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-3 text-sm shadow-sm">
+          <p role="status" className="mr-auto font-medium">
+            {chosen.size === 0 ? "Choose files to delete together." : `${chosen.size} ${chosen.size === 1 ? "file" : "files"} chosen.`}
+          </p>
+          <button type="button" onClick={() => choose(items.map((item) => item.id))} className={`${button} min-h-9`}>
+            Choose all shown ({items.length})
+          </button>
+          <button type="button" onClick={() => choose(items.filter((item) => item.uses.length === 0).map((item) => item.id))} className={`${button} min-h-9`}>
+            Choose those not in use
+          </button>
+          <button type="button" disabled={chosen.size === 0} onClick={() => setChosen(new Set())} className={`${button} min-h-9`}>
+            Clear
+          </button>
+          <button type="button" disabled={chosen.size === 0} onClick={() => setBulkOpen(true)} className={`${button} min-h-9 border-red-700 bg-red-700 text-white`}>
+            Delete {chosen.size > 0 ? chosen.size : ""}…
+          </button>
+        </div>
+      )}
+
+      {items.length > 0 && query.view === "list" && <FileList items={items} onOpen={setOpenId} chosen={choosing ? chosen : null} onPick={pick} />}
 
       {items.length > 0 && query.view === "grid" && (
         <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6" aria-label="Files">
@@ -224,11 +271,17 @@ export function MediaLibrary({
             <li key={item.id}>
               <button
                 type="button"
-                onClick={() => setOpenId(item.id)}
-                className="flex w-full flex-col overflow-hidden rounded-lg border border-border bg-background text-left hover:border-foreground/40 focus-visible:outline-2"
+                onClick={() => (choosing ? pick(item.id) : setOpenId(item.id))}
+                aria-pressed={choosing ? chosen.has(item.id) : undefined}
+                className={`relative flex w-full flex-col overflow-hidden rounded-lg border bg-background text-left hover:border-foreground/40 focus-visible:outline-2 ${choosing && chosen.has(item.id) ? "border-foreground ring-2 ring-foreground" : "border-border"}`}
                 aria-label={`${item.fileName}, ${describeType(item.contentType)}, ${formatBytes(item.sizeBytes)}${item.uses.length === 0 ? ", not in use" : `, used in ${item.uses.length} ${item.uses.length === 1 ? "place" : "places"}`}${item.kind === "image" && !hasAlt(item) ? ", no alt text" : ""}`}
               >
                 <Preview item={item} small />
+                {choosing && (
+                  <span aria-hidden="true" className={`absolute left-2 top-2 flex size-6 items-center justify-center rounded-md border-2 text-sm font-bold ${chosen.has(item.id) ? "border-foreground bg-foreground text-background" : "border-foreground/60 bg-background"}`}>
+                    {chosen.has(item.id) ? "✓" : ""}
+                  </span>
+                )}
                 <span className="flex flex-col gap-0.5 p-2 text-xs">
                   <span className="truncate text-sm font-medium">{item.fileName}</span>
                   <span className="text-muted">
@@ -256,6 +309,20 @@ export function MediaLibrary({
         </Link>
       )}
 
+      {bulkOpen && (
+        <BulkDelete
+          files={selected}
+          chosenCount={chosen.size}
+          actions={actions}
+          onClose={() => setBulkOpen(false)}
+          onDone={() => {
+            setBulkOpen(false);
+            stopChoosing();
+            router.refresh();
+          }}
+        />
+      )}
+
       {/* Keyed by the file, so each one opens from its own alt texts with nothing pending. */}
       {open && (
         <Details
@@ -276,7 +343,7 @@ export function MediaLibrary({
 }
 
 /** The files as a list, a row each with its details, alt text and uses; a row's name opens it. */
-function FileList({ items, onOpen }: { items: MediaItem[]; onOpen: (id: string) => void }) {
+function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpen: (id: string) => void; chosen: ReadonlySet<string> | null; onPick: (id: string) => void }) {
   const cell = "px-3 py-2 align-middle";
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-background">
@@ -284,6 +351,11 @@ function FileList({ items, onOpen }: { items: MediaItem[]; onOpen: (id: string) 
         <caption className="sr-only">Files</caption>
         <thead className="border-b border-border text-xs text-muted">
           <tr>
+            {chosen && (
+              <th scope="col" className={`${cell} w-10`}>
+                <span className="sr-only">Choose</span>
+              </th>
+            )}
             <th scope="col" className={`${cell} w-16`}>
               <span className="sr-only">Preview</span>
             </th>
@@ -299,6 +371,11 @@ function FileList({ items, onOpen }: { items: MediaItem[]; onOpen: (id: string) 
         <tbody>
           {items.map((item) => (
             <tr key={item.id} className="border-b border-border last:border-0 hover:bg-surface/60">
+              {chosen && (
+                <td className={cell}>
+                  <input type="checkbox" checked={chosen.has(item.id)} onChange={() => onPick(item.id)} aria-label={`Choose ${item.fileName}`} className="size-5" />
+                </td>
+              )}
               <td className={cell}>
                 <div className="size-12 overflow-hidden rounded-md">
                   <Preview item={item} small />
@@ -489,6 +566,89 @@ function Details({
         </div>
       </Modal>
     </>
+  );
+}
+
+/**
+ * Deleting the chosen files together: says how many, how large, and how many are used on the site (they show nothing where they were), then deletes them in turns of
+ * `BULK_AT_ONCE`, with the progress, and stops at the first request that fails.
+ */
+function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: MediaItem[]; chosenCount: number; actions: MediaActions; onClose: () => void; onDone: () => void }) {
+  const [running, setRunning] = useState(false);
+  const [done, setDone] = useState(0);
+  const [problem, setProblem] = useState<string | null>(null);
+  const used = files.filter((file) => file.uses.length > 0);
+  const bytes = files.reduce((sum, file) => sum + file.sizeBytes, 0);
+  const run = async () => {
+    setRunning(true);
+    setProblem(null);
+    let gone = 0;
+    for (let at = 0; at < files.length; at += BULK_AT_ONCE) {
+      const turn = files.slice(at, at + BULK_AT_ONCE).map((file) => file.id);
+      let outcome: Awaited<ReturnType<MediaActions["removeMany"]>>;
+      try {
+        outcome = await actions.removeMany(turn);
+      } catch {
+        outcome = { deleted: 0, kept: turn.length, problem: "The files could not be deleted. Try again." };
+      }
+      gone += outcome.deleted;
+      setDone(gone);
+      if (outcome.kept > 0) {
+        setProblem(`${gone} ${gone === 1 ? "file was" : "files were"} deleted; ${outcome.problem ?? "some could not be."}`);
+        setRunning(false);
+        if (gone > 0) onDone();
+        return;
+      }
+    }
+    onDone();
+  };
+  return (
+    <Modal
+      open
+      onClose={running ? () => {} : onClose}
+      title={`Delete ${chosenCount} ${chosenCount === 1 ? "file" : "files"}?`}
+      footer={
+        <>
+          <button type="button" disabled={running} onClick={onClose} className={button}>
+            Keep them
+          </button>
+          <button type="button" disabled={running} onClick={() => void run()} className={`${button} border-red-700 bg-red-700 text-white`}>
+            {running ? `Deleting … ${done} of ${files.length}` : "Delete for good"}
+          </button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3 text-sm">
+        <p>
+          {chosenCount} {chosenCount === 1 ? "file" : "files"} ({formatBytes(bytes)}) will be removed from the library and from storage.
+          {chosenCount > files.length && " Only the ones shown on this page are deleted; the library keeps the rest."}
+        </p>
+        {used.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            <p className="font-medium text-red-700">
+              {used.length} of them {used.length === 1 ? "is" : "are"} used on the site. A picture there shows nothing until you choose another.
+            </p>
+            <ul className="max-h-40 list-disc overflow-y-auto pl-5 text-muted">
+              {used.slice(0, 12).map((file) => (
+                <li key={file.id}>
+                  {file.fileName}: {file.uses[0]?.label}
+                  {file.uses.length > 1 ? ` and ${file.uses.length - 1} more` : ""}
+                </li>
+              ))}
+              {used.length > 12 && <li>…and {used.length - 12} more</li>}
+            </ul>
+          </div>
+        ) : (
+          <p>None of them is used anywhere on the site.</p>
+        )}
+        <p className="text-muted">Deleting cannot be undone.</p>
+        {problem && (
+          <p role="alert" className="text-red-700">
+            {problem}
+          </p>
+        )}
+      </div>
+    </Modal>
   );
 }
 

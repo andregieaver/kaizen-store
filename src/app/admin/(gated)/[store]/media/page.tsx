@@ -10,7 +10,7 @@ import { uploadsEnabled } from "@/server/media";
 import { listMedia } from "@/server/media-library";
 
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
-import { deleteMediaAction, describeMediaAction, measureMediaAction, writeAltTextAction, writeAltTextsAction } from "./actions";
+import { deleteManyMediaAction, deleteMediaAction, describeMediaAction, measureMediaAction, writeAltTextAction, writeAltTextsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Media library" };
 
@@ -62,6 +62,7 @@ async function Library({ storeSlug, searchParams }: { storeSlug: string; searchP
         writeAlt: writeAltTextAction.bind(null, store.slug),
         writeAlts: writeAltTextsAction.bind(null, store.slug),
         remove: deleteMediaAction.bind(null, store.slug),
+        removeMany: deleteManyMediaAction.bind(null, store.slug),
         measure: measureMediaAction.bind(null, store.slug),
       }}
       languages={site?.languages ?? []}

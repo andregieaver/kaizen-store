@@ -8,7 +8,7 @@ import { writeAltText, writeAltTexts, type AltResult, type AltRun } from "@/serv
 import { audit } from "@/server/auth";
 import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
-import { deleteMedia, describeMedia, measureMedia } from "@/server/media-library";
+import { MEDIA_DELETE_MAX, deleteMedia, deleteMediaMany, describeMedia, measureMedia } from "@/server/media-library";
 import { pagesTag } from "@/server/pages";
 
 const id = z.uuid();
@@ -61,6 +61,18 @@ export async function deleteMediaAction(storeSlug: string, mediaId: string): Pro
   const { account, store } = held;
   if (!id.safeParse(mediaId).success) return { ok: false, problem: "That file is no longer in the library." };
   return deleteMedia({ storeId: store.id, storeSlug: store.slug }, account.id, mediaId);
+}
+
+/** Deletes several files from the store's media library and from Storage (the library's bulk delete; at most `MEDIA_DELETE_MAX` a call). */
+export async function deleteManyMediaAction(storeSlug: string, mediaIds: unknown): Promise<{ deleted: number; kept: number; problem?: string }> {
+  const held = await checkPermission(storeSlug, "website:write");
+  if (!held) return { deleted: 0, kept: 0, problem: NO_ACCESS };
+  const parsed = z.array(id).min(1).max(MEDIA_DELETE_MAX).safeParse(mediaIds);
+  if (!parsed.success) return { deleted: 0, kept: 0, problem: "Choose between 1 and 100 files." };
+  const { account, store } = held;
+  const result = await deleteMediaMany({ storeId: store.id, storeSlug: store.slug }, account.id, parsed.data);
+  if (result.deleted > 0) altTextsChanged(store.id);
+  return result;
 }
 
 /** Keeps the width and height the library measured, for a file uploaded before the library. */

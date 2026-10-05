@@ -238,6 +238,30 @@ describe("the media library (D88)", () => {
     expect((await library.listMedia(owner(), mediaQuery({}))).total).toBe(2);
   });
 
+  it("deletes several files at once: one request to Storage per bucket, only the owner's, one audit entry, and says what was kept", async () => {
+    const a = await addMedia({ store: storeId, name: `bulk-a-${run}.webp` });
+    const b = await addMedia({ store: storeId, name: `bulk-b-${run}.webp` });
+    const clip = await addMedia({ store: storeId, name: `bulk-c-${run}.mp4`, kind: "video" });
+    const [before] = await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where store_id = ${storeId}::uuid and action = 'store.media_deleted'`);
+    removed.length = 0;
+    // Kaizen's own file and an id nobody has are not the store's: kept, and counted so.
+    const outcome = await library.deleteMediaMany(owner(), accountId, [a.id, b.id, clip.id, kaizens.id, "00000000-0000-4000-8000-000000000000", a.id]);
+    expect(outcome).toMatchObject({ deleted: 3, kept: 2 });
+    expect(outcome.problem).toBeDefined();
+    // The two pictures went in one call (each with its small copy), the video in another.
+    expect(removed).toHaveLength(2);
+    expect(removed.flat()).toHaveLength(5);
+    const [after] = await db().execute<Row>(sql`
+      select (select count(*)::int from commerce.media where id in (${a.id}::uuid, ${b.id}::uuid, ${clip.id}::uuid)) as gone,
+        (select count(*)::int from commerce.media where id = ${kaizens.id}::uuid) as kaizens,
+        (select count(*)::int from commerce.audit_log where store_id = ${storeId}::uuid and action = 'store.media_deleted') as logged
+    `);
+    expect(after).toEqual({ gone: 0, kaizens: 1, logged: Number(before.n) + 1 });
+    expect(await library.deleteMediaMany(owner(), accountId, [])).toEqual({ deleted: 0, kept: 0 });
+    // More than a request takes is cut to the limit, never an error.
+    expect((await library.deleteMediaMany(owner(), accountId, Array.from({ length: library.MEDIA_DELETE_MAX + 20 }, () => "00000000-0000-4000-8000-000000000001").map((id, i) => id.replace(/1$/, String(i % 10))))).deleted).toBe(0);
+  });
+
   it("finds a file by its whole name alone, and pictures by their alt texts in any language", async () => {
     const uuid = (n: number) => `${String(n).repeat(8)}-875d-450f-aceb-4e6b17a0716c`;
     const inside = await addMedia({ store: storeId, name: `${uuid(1)}.webp` });

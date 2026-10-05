@@ -49,7 +49,7 @@ export type ReplicaWork = {
     /** Pictures of elements the browser photographed (icons, canvases), by path in the capture. */
     shots: Record<string, KeptAsset | null>;
     /** Rows kept as a picture of the original with its words laid over it, by the row's path in the capture: the strip's picture at each width (D164). */
-    backdrops?: Record<string, { text: { desktop: KeptAsset; phone: KeptAsset | null }; plain: { desktop: KeptAsset; phone: KeptAsset | null } }>;
+    backdrops?: Record<string, { text: { desktop: KeptAsset; phone: KeptAsset | null }; /** Cut and kept only for a row that is only a picture (the library fills fast). */ plain: { desktop: KeptAsset; phone: KeptAsset | null } | null }>;
     fonts: Record<string, string | null>;
     fontQueue: string[];
     failures: Record<string, string>;
@@ -78,6 +78,13 @@ export type ReplicaWork = {
   /** Rows that matched the original badly and were rebuilt as a picture of the original (its words not painted) with the words laid over it: where, and how they matched before (D164). Added to by each of the job's two rounds. */
   /** The rows kept as a picture that are only a picture, their words hidden, because words over a picture would not fit the page's CSS (D164): by the row's key. */
   backdropPlain?: string[];
+  /**
+   * Rows just rebuilt as pictures, waiting to be judged (D164): the page as it was before, and how it matched. They stay only if the page, once corrected by measuring again,
+   * matches no worse than before; if the look at the rebuilt page fails, the page goes back too.
+   */
+  backdropTrial?: { pass: number; snapshot: GridSnapshot; before: { desktop: number; phone: number | null }; backdropsBefore: NonNullable<NonNullable<ReplicaWork["assets"]>["backdrops"]>; keptBefore: NonNullable<ReplicaWork["backdropped"]> } | null;
+  /** Looks at the copy that failed in a row at this pass (the browser stopped): one more try is made, then the job ends. */
+  lookTries?: number;
   /** How many of the job's two rounds of rows kept as pictures have been done (D164). */
   backdropRounds?: number;
   backdropped?: { path: string; y: number; height: number; desktop: number | null; phone: number | null; pass: number }[];
