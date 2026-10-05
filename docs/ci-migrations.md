@@ -20,16 +20,17 @@ and the run stops there. Rules it enforces:
 A push to `main` takes one of two paths, chosen by reading production's ledger (the `pending` job runs
 `db-migrate.mjs --status` on the checked-out commit):
 
-- **No pending migration** (most pushes): `deploy-now` calls the Vercel hook at once, about two minutes
-  after the push. The checks run beside it and report on the commit (GitHub emails a failure), but do not
+- **No pending migration** (most pushes): the `pending` job calls the Vercel hook itself, right after reading
+  the ledger, about two minutes after the push. The checks run beside it and report on the commit (GitHub emails a failure), but do not
   hold it back; run lint, typecheck and the tests before pushing, as the workflow in CLAUDE.md says.
 - **A pending migration** (the push adds a file in `supabase/migrations`, or an earlier one never
-  got applied): `migrate` waits for `check` (static, integration and e2e jobs side by side, about ten
-  minutes), applies the files in the GitHub environment `production`, and `deploy` follows. A failed check
+  got applied): `release` waits for the `static`, `integration` and `e2e` jobs (side by side, about ten
+  minutes once a runner is free), applies the files and then asks for the deploy, all in the GitHub
+  environment `production`. A failed check
   or migration deploys nothing, so new code never meets the old schema.
 
 Both need the repository variable `AUTO_MIGRATE` to be `true` (the `pending` job is off without it, and
-every push then deploys only after `check`). A run on `main` is never cancelled by a newer push (it may be
+every push then deploys only after the three checks, in `release`). A run on `main` is never cancelled by a newer push (it may be
 mid-migration) and never waits for another: each has a concurrency group of its own, so a quick deploy is not
 queued behind the previous push's checks. The next migration run applies everything still pending, so a
 skipped intermediate commit loses nothing. Pushes that only change `*.md` or `docs/**` do not run CI or
@@ -57,7 +58,7 @@ From then on, a migration file committed to `main` reaches production after the 
 ### Deploying
 
 Vercel's own build of `main` is switched off in `vercel.json` (`git.deploymentEnabled.main: false`;
-pull-request previews are unaffected). Production gets new code from the `deploy-now` and `deploy` jobs in
+pull-request previews are unaffected). Production gets new code from the `pending` and `release` jobs in
 `ci.yml`, which call a Vercel deploy hook (paths above). The jobs are off until the repository variable
 `DEPLOY_VIA_CI` is `true`; the secret `VERCEL_DEPLOY_HOOK_URL` is the hook (Vercel → project → Settings →
 Git → Deploy Hooks, branch `main`). `AUTO_MIGRATE` and `DEPLOY_VIA_CI` are repository *variables*, not secrets

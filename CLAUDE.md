@@ -52,7 +52,7 @@ of running `playwright install`.
   express (functions, triggers, reference data) go in a custom migration:
   `pnpm exec drizzle-kit generate --custom --name <name>`.
 - New migrations reach production through CI (`docs/ci-migrations.md`): push the file with the change; the
-  `migrate` job applies it (a direct Postgres connection, so `DROP` and `DELETE` inside functions run as
+  `release` job applies it (a direct Postgres connection, so `DROP` and `DELETE` inside functions run as
   written) after the checks pass, and the deploy follows. **Never apply a migration to production by hand
   first**: CI would apply the file again. After the deploy, check the security and performance advisors
   (Supabase project `ybsozesfuxuitoacntfo`) and record the file's version in `docs/decisions.md` (Migration

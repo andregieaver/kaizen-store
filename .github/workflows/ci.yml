@@ -28,7 +28,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # The checks run side by side (about 10 minutes in all, once 20 in a row) and `check` below sums them up.
+  # The checks run side by side (about 10 minutes once a runner is free). Every job below is one runner to wait for
+  # when GitHub's queue is long, so the gate is these three jobs themselves (`release` needs them) and not a
+  # fourth job that sums them up.
   static:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -110,20 +112,6 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
 
-  # Everything that must pass, as one name: what a migration waits for, and what a pull request shows.
-  check:
-    if: always() && github.event_name != 'workflow_dispatch'
-    needs: [static, integration, e2e]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Every check passed
-        env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
-        run: |
-          echo "static, integration, e2e: $RESULTS"
-          for result in $RESULTS; do test "$result" = success || exit 1; done
-
   # Stores on their own hosts (P7) and their own code (D61) exist only in a
   # build with the store domain set; stores run on *.localhost here.
   hosts:
@@ -165,11 +153,13 @@ jobs:
   # vercel.json, so production gets new code only here. Whether a push has migrations is read from production's
   # ledger: files in this commit it has not recorded. Off until the repository variables AUTO_MIGRATE and
   # DEPLOY_VIA_CI are "true". PRODUCTION_DATABASE_URL is the Supabase session-pooler connection string of the
-  # postgres role.
+  # postgres role. Two jobs, so a push waits for at most two runners:
   #
-  #   no pending migration:  deploy at once (the checks run beside it and report; they do not hold it back)
-  #   pending migration:     wait for every check, apply the files, then deploy, so new code never meets the
-  #                          old schema and a failed check or migration deploys nothing
+  #   no pending migration:  `pending` reads the ledger and asks for the deploy in the same job, at once (the
+  #                          checks run beside it and report; they do not hold it back)
+  #   pending migration:     `release` waits for static, integration and e2e, applies the files, then deploys,
+  #                          so new code never meets the old schema and a failed check or migration deploys
+  #                          nothing
   pending:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AUTO_MIGRATE == 'true'
     runs-on: ubuntu-latest
@@ -190,37 +180,8 @@ jobs:
       - name: Which migrations has production not had?
         id: status
         run: node scripts/db-migrate.mjs --status
-
-  migrate:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AUTO_MIGRATE == 'true' && needs.pending.outputs.pending == 'true'
-    needs: [pending, check]
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    environment: production
-    env:
-      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
-      MIGRATE_EXPECT: ybsozesfuxuitoacntfo
-    steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Apply the pending migrations
-        run: node scripts/db-migrate.mjs
-      - name: Nothing is left pending
-        run: node scripts/db-migrate.mjs --status
-
-  # No migration to apply: deploy now.
-  deploy-now:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_VIA_CI == 'true' && needs.pending.outputs.pending == 'false'
-    needs: [pending]
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Ask Vercel to deploy the head of main
+      - name: No migration to apply, so ask Vercel to deploy the head of main now
+        if: steps.status.outputs.pending == 'false' && vars.DEPLOY_VIA_CI == 'true'
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
@@ -228,18 +189,45 @@ jobs:
           curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
 
-  # Migrations were pending (or AUTO_MIGRATE is off): after every check and the migration. A failed
-  # check, a failed migration or a status that could not be read deploys nothing.
-  deploy:
+  # Migrations were pending (or AUTO_MIGRATE is off): after the three checks, apply the files, then deploy, in one
+  # job. A failed check, a failed migration or a status that could not be read deploys nothing. Re-running a
+  # failed run's jobs is safe: the files are in the ledger by then, so the migration step has nothing to do and
+  # the deploy is asked for again. (With AUTO_MIGRATE off, `pending` is skipped and this job only deploys; the
+  # environment `production` then applies to that deploy too.)
+  release:
     if: >-
-      always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_VIA_CI == 'true'
-      && needs.pending.result != 'failure' && needs.pending.result != 'cancelled' && needs.pending.outputs.pending != 'false'
-      && needs.check.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
-    needs: [pending, check, migrate]
+      always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && (vars.AUTO_MIGRATE == 'true' || vars.DEPLOY_VIA_CI == 'true')
+      && needs.pending.outputs.pending != 'false'
+      && (needs.pending.result == 'success' || needs.pending.result == 'skipped')
+      && needs.static.result == 'success' && needs.integration.result == 'success' && needs.e2e.result == 'success'
+    needs: [pending, static, integration, e2e]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
+    environment: production
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      MIGRATE_EXPECT: ybsozesfuxuitoacntfo
     steps:
+      - uses: actions/checkout@v5
+        if: needs.pending.outputs.pending == 'true'
+      - uses: pnpm/action-setup@v4
+        if: needs.pending.outputs.pending == 'true'
+      - uses: actions/setup-node@v5
+        if: needs.pending.outputs.pending == 'true'
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        if: needs.pending.outputs.pending == 'true'
+      - name: Apply the pending migrations
+        if: needs.pending.outputs.pending == 'true'
+        run: node scripts/db-migrate.mjs
+      - name: Nothing is left pending
+        if: needs.pending.outputs.pending == 'true'
+        run: node scripts/db-migrate.mjs --status
       - name: Ask Vercel to deploy the head of main
+        if: vars.DEPLOY_VIA_CI == 'true'
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
