@@ -75,7 +75,7 @@ export default async function WordpressPage() {
           </ul>
         )}
         <p className="text-sm text-muted">
-          Disconnecting ends the site's access at once. Its shortcodes stop showing products as soon as the site's saved lists run out (within ten
+          Disconnecting ends the site&apos;s access at once. Its shortcodes stop showing products as soon as the site&apos;s saved lists run out (within ten
           minutes), until it is connected again. The site reads as you, so it sees the stores you belong to now, and loses a store when you do.
         </p>
       </section>

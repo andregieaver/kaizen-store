@@ -6,7 +6,6 @@ import vm from "node:vm";
 
 import { describe, expect, it } from "vitest";
 
-// @ts-expect-error -- a plain ES module of the build script
 import { buildPluginZip, PLUGIN_DIR, PLUGIN_ZIP, pluginFiles } from "../../scripts/wordpress-plugin-zip.mjs";
 
 import { WORDPRESS_PLUGIN_FILE, WORDPRESS_PLUGIN_VERSION } from "./wordpress-plugin";

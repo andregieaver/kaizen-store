@@ -160,7 +160,7 @@ export async function revokeOwn(caller: WpCaller): Promise<void> {
 }
 
 export type WpMarket = { slug: string; country: string; name: string; currency: string; language: string };
-export type WpStore = { slug: string; name: string; role: "owner" | "admin"; open: boolean; url: string; markets: WpMarket[] };
+export type WpStore = { slug: string; name: string; role: string; open: boolean; url: string; markets: WpMarket[] };
 
 /** The stores the account belongs to now (an owner or staff, not ended, not closed), with their markets. */
 export async function storesOf(accountId: string): Promise<WpStore[]> {
@@ -180,7 +180,7 @@ export async function storesOf(accountId: string): Promise<WpStore[]> {
     out.push({
       slug: store.slug,
       name: store.name,
-      role: row.role === "owner" ? "owner" : "admin",
+      role: String(row.role),
       open: store.status === "active",
       url: storeSiteUrl(store.slug) + (marketPath(store.slug, store.markets[0]?.slug ?? "") || "/"),
       markets: store.markets.map((m) => ({ slug: m.slug, country: m.code, name: m.name, currency: m.currency, language: m.lang })),
