@@ -310,6 +310,8 @@ const WORDS: Record<string, (label: string) => string> = {
   "store.terms_mode_changed": () => "Changed what checkout says about the terms",
   "store.legal_starter_made": (l) => `Made a draft of ${l}`,
   "store.legal_role_changed": (l) => `Chose the page for ${l}`,
+  "account.wordpress_approved": (l) => `${l} connected a WordPress site to their stores`,
+  "account.wordpress_revoked": (l) => `${l} disconnected a WordPress site`,
   "account.two_step_enrolled": (l) => `${l} switched on two-step sign-in`,
   "account.two_step_removed": (l) => `${l} switched off two-step sign-in`,
   "account.two_step_passed": (l) => `${l} passed the second step`,

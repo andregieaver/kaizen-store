@@ -556,6 +556,15 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["referral", "refer", "affiliate", "invite", "recommend", "commission", "credit", "link", "code"],
     tasks: ["Copy your referral link", "See the stores that opened through it", "See your credit and how it is used"],
   }),
+  account("account.wordpress", "/account/wordpress", "WordPress", "The WordPress plugin to download and the sites connected to your stores, each with a way to disconnect it. A connected site can show your products as a grid or a carousel with a shortcode.", {
+    needs: "owner",
+    keywords: ["wordpress", "plugin", "shortcode", "embed", "grid", "carousel", "connect", "website", "woocommerce"],
+    tasks: ["Download the WordPress plugin", "See the sites connected to your stores", "Disconnect a site"],
+  }),
+  account("account.wordpress.connect", "/account/wordpress/connect", "Connect a WordPress site", "Where the plugin sends you to approve a WordPress site: it names the site and what it may read, and you approve or cancel.", {
+    needs: "owner",
+    keywords: ["approve", "authorize", "connect wordpress"],
+  }),
   account("account", "/account", "Your account", "Your name, picture, password, light or dark, and Kaizen Life.", {
     keywords: ["profile", "password", "avatar", "dark mode"],
   }),

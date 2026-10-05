@@ -5509,6 +5509,40 @@ export const kaizenLifeLinks = commerce.table("kaizen_life_links", {
   updatedAt: updatedAt(),
 });
 
+/**
+ * A WordPress site an owner connected to their stores (D169, `docs/wordpress-plugin.md`): the plugin asks the owner to approve in
+ * Kaizen's admin, gets a one-time `code` (kept as a hash, five minutes) and swaps it for a token (kept as a hash, never in clear).
+ * The token reads the account's stores' public catalogue and nothing else; the owner can revoke it. A row with no token yet is an
+ * approval that was not collected.
+ */
+export const wordpressConnections = commerce.table(
+  "wordpress_connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    /** The site's origin (`https://example.com`), as the plugin said and the return address agreed. */
+    siteUrl: text("site_url").notNull(),
+    siteName: text("site_name"),
+    codeHash: text("code_hash"),
+    /** S256 of the plugin's verifier: a stolen code is no use without it. */
+    codeChallenge: text("code_challenge"),
+    codeExpiresAt: timestamp("code_expires_at", { withTimezone: true }),
+    tokenHash: text("token_hash"),
+    createdAt: createdAt(),
+    connectedAt: timestamp("connected_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("wordpress_connections_code_idx").on(t.codeHash),
+    uniqueIndex("wordpress_connections_token_idx").on(t.tokenHash),
+    index("wordpress_connections_account_idx").on(t.accountId),
+    check("wordpress_connections_site", sql`length(${t.siteUrl}) <= 300 and (${t.siteName} is null or length(${t.siteName}) <= 120)`),
+  ],
+);
+
 /** One turn of a conversation: what the owner wrote, or the assistant's answer with the tools it used. */
 export const assistantMessages = commerce.table(
   "assistant_messages",

@@ -22,14 +22,14 @@ describe("the store owner's sections (D147)", () => {
   it("marks Account on its own pages, and not on Work, which is under the same address", () => {
     const account = ownerTabs({ owner: true, work: true }).find((t) => t.label === "Account")!;
     expect(account).toMatchObject({ href: "/admin/account", exact: true });
-    expect(account.also).toEqual(expect.arrayContaining(["/admin/account/billing", "/admin/account/usage", "/admin/account/referrals", "/admin/account/kaizen-life"]));
+    expect(account.also).toEqual(expect.arrayContaining(["/admin/account/billing", "/admin/account/usage", "/admin/account/referrals", "/admin/account/wordpress", "/admin/account/kaizen-life"]));
     expect(account.also!.some((p) => p.startsWith("/admin/account/work"))).toBe(false);
   });
 
   it("has a sidebar for Account (owners' pages only for owners) and for no other section", () => {
     const owner = ownerAreas({ owner: true, work: true });
     expect(owner.filter((a) => a.groups.length > 0)).toHaveLength(1);
-    expect(owner.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Billing", "AI usage", "Referrals"]);
+    expect(owner.find((a) => a.groups.length > 0)!.groups[0].items.map((i) => i.label)).toEqual(["Your account", "Billing", "AI usage", "Referrals", "WordPress"]);
     const staff = ownerAreas({ owner: false, work: true });
     expect(staff.every((a) => a.groups.length === 0)).toBe(true);
   });

@@ -1,0 +1,165 @@
+/* Kaizen Store: grid and carousel of products. Light on purpose: it takes the theme's fonts and colours. */
+.kaizen-view {
+	--kz-gap: 1.25rem;
+	--kz-cols: 4;
+	--kz-visible: var(--kz-cols);
+	position: relative;
+	margin: 1.5em 0;
+	box-sizing: border-box;
+}
+.kaizen-view *,
+.kaizen-view *::before,
+.kaizen-view *::after {
+	box-sizing: border-box;
+}
+.kaizen-view .kaizen-items {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+.kaizen-view .kaizen-item {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+.kaizen-view--grid .kaizen-items {
+	display: grid;
+	grid-template-columns: repeat(var(--kz-cols), minmax(0, 1fr));
+	gap: var(--kz-gap);
+}
+.kaizen-view--carousel .kaizen-items {
+	display: flex;
+	gap: var(--kz-gap);
+	overflow-x: auto;
+	scroll-snap-type: x mandatory;
+	scroll-behavior: smooth;
+	scrollbar-width: thin;
+	padding-bottom: 0.5rem;
+}
+.kaizen-view--carousel .kaizen-item {
+	flex: 0 0 calc((100% - (var(--kz-visible) - 1) * var(--kz-gap)) / var(--kz-visible));
+	scroll-snap-align: start;
+	min-width: 0;
+}
+@media (max-width: 900px) {
+	.kaizen-view { --kz-visible: min(var(--kz-cols), 3); }
+	.kaizen-view--grid .kaizen-items { grid-template-columns: repeat(min(var(--kz-cols), 3), minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+	.kaizen-view { --kz-visible: min(var(--kz-cols), 2); }
+	.kaizen-view--grid .kaizen-items { grid-template-columns: repeat(min(var(--kz-cols), 2), minmax(0, 1fr)); }
+}
+@media (max-width: 380px) {
+	.kaizen-view { --kz-visible: 1; }
+	.kaizen-view--grid .kaizen-items { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.kaizen-view--carousel .kaizen-items { scroll-behavior: auto; }
+}
+
+.kaizen-card {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	gap: 0.5rem;
+}
+.kaizen-link {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	color: inherit;
+	text-decoration: none;
+}
+.kaizen-link:hover .kaizen-title,
+.kaizen-link:focus-visible .kaizen-title {
+	text-decoration: underline;
+}
+.kaizen-image {
+	display: block;
+	aspect-ratio: 1 / 1;
+	overflow: hidden;
+	background: rgba(127, 127, 127, 0.12);
+	border-radius: 4px;
+}
+.kaizen-image img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	margin: 0;
+}
+.kaizen-title {
+	font-weight: 600;
+	line-height: 1.3;
+}
+.kaizen-price {
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+.kaizen-price-now { font-weight: 600; }
+.kaizen-from { font-weight: 400; }
+.kaizen-vat,
+.kaizen-price-prior,
+.kaizen-unit {
+	font-size: 0.8em;
+	font-weight: 400;
+	opacity: 0.75;
+}
+.kaizen-price-prior,
+.kaizen-unit { display: block; }
+.kaizen-excerpt {
+	margin: 0;
+	font-size: 0.9em;
+	opacity: 0.85;
+}
+.kaizen-action {
+	margin: auto 0 0;
+	padding-top: 0.25rem;
+}
+.kaizen-button {
+	display: inline-block;
+	padding: 0.5em 1em;
+	border: 1px solid currentColor;
+	border-radius: 4px;
+	color: inherit;
+	text-decoration: none;
+	font-size: 0.9em;
+	line-height: 1.2;
+}
+.kaizen-button:hover,
+.kaizen-button:focus-visible {
+	text-decoration: underline;
+	opacity: 0.8;
+}
+
+.kaizen-nav {
+	position: absolute;
+	top: calc(50% - 1.5rem);
+	z-index: 2;
+	width: 2.5rem;
+	height: 2.5rem;
+	padding: 0;
+	border: 1px solid rgba(0, 0, 0, 0.2);
+	border-radius: 50%;
+	background: rgba(255, 255, 255, 0.95);
+	color: #1d2327;
+	font-size: 1.6rem;
+	line-height: 1;
+	cursor: pointer;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+.kaizen-nav[hidden] { display: none; }
+.kaizen-nav:disabled { opacity: 0.35; cursor: default; }
+.kaizen-prev { left: -0.5rem; }
+.kaizen-next { right: -0.5rem; }
+.kaizen-nav:focus-visible { outline: 2px solid #2271b1; outline-offset: 2px; }
+.kaizen-view--carousel .kaizen-items:focus-visible { outline: 2px solid #2271b1; outline-offset: 2px; }
+
+.kaizen-note {
+	padding: 0.75em 1em;
+	border-left: 4px solid #dba617;
+	background: #fcf9e8;
+	color: #1d2327;
+}

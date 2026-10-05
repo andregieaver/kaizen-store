@@ -1863,6 +1863,20 @@
       "when": 1791220756354,
       "tag": "20261005171916_redirects_plan_features",
       "breakpoints": true
+    },
+    {
+      "idx": 266,
+      "version": "7",
+      "when": 1791229469895,
+      "tag": "20261005194429_wordpress_connections",
+      "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1791229479395,
+      "tag": "20261005194439_wordpress_connections_rules",
+      "breakpoints": true
     }
   ]
 }

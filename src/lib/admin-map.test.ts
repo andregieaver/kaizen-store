@@ -29,7 +29,7 @@ describe("the admin map (D103)", () => {
       ...routes(path.join(gated, "platform"))
         .filter((r) => !listed("platform").has(r))
         .map((r) => `platform ${r || "/"}`),
-      ...["", "/stores", "/account", "/account/usage", "/account/billing", "/account/referrals"].filter((r) => !listed("account").has(r)).map((r) => `account ${r || "/"}`),
+      ...["", "/stores", "/account", "/account/usage", "/account/billing", "/account/referrals", "/account/wordpress"].filter((r) => !listed("account").has(r)).map((r) => `account ${r || "/"}`),
       // Duplicating a store (D129) lives under the owner's stores.
       ...routes(path.join(gated, "(owner)/stores"), "/stores")
         .filter((r) => !listed("account").has(r))
