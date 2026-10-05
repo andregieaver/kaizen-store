@@ -293,13 +293,15 @@ test("autoplay holds while the tab is hidden and goes on when it is shown again"
       Object.defineProperty(document, "hidden", { configurable: true, get: () => value });
       document.dispatchEvent(new Event("visibilitychange"));
     }, hidden);
+  // Where it rests when the tab goes hidden: on a slow machine the first step (3 s after the page woke) may already have been taken.
+  const resting = await settled(row);
   await hide(true);
   await page.waitForTimeout(4500);
-  expect(await scrolled(row)).toBe(0);
+  expect(await scrolled(row)).toBe(resting);
   // Held, not stopped: still a Pause button, and it moves again once the tab is back.
   await expect(page.getByRole("button", { name: "Sett karusellen på pause" })).toBeVisible();
   await hide(false);
-  await expect.poll(() => scrolled(row), { timeout: 8000 }).toBeGreaterThan(100);
+  await expect.poll(() => scrolled(row), { timeout: 8000 }).not.toBe(resting);
 });
 
 test("autoplay stops for good on a key press or a touch inside the carousel", async ({ page }) => {

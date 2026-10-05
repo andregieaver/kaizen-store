@@ -1294,29 +1294,57 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 4,
-    "gap": "No orders export for stores. Only DAC7 reports for hosts and Work invoices have CSV (`toCsv()`); Tripletex is a proposal (`docs/tripletex.md`).",
-    "bucket": "A",
-    "wave": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
-      "Staff export the orders of a date range or a selection as UTF-8 CSV with one row per line, in the order's own currency and the store's main currency, VAT split out (unit test of the columns, integration test of the rows).",
-      "A large export runs as a job and is delivered by a link to the signed-in staff member, not emailed as an attachment (integration test).",
+      "The owner exports the orders of a date range or a list of order numbers as UTF-8 CSV with one row per line, in the order's own currency and the store's main currency, VAT split out (unit test of the columns, integration test of the rows).",
+      "A large export runs as a job and is delivered by a link to the signed-in owner, not emailed as an attachment (integration test).",
       "Fields that start with = + - or @ are escaped against spreadsheet formulas, and copied history is marked as such (unit test).",
       "An export contains only the signed-in member's store."
     ],
     "evidence": {
       "files": [
-        "src/lib/dac7.ts"
+        "src/lib/order-csv.ts",
+        "src/lib/csv.ts",
+        "src/lib/data-admin.ts",
+        "src/server/order-export.ts",
+        "src/server/data-jobs.ts",
+        "src/server/data-export-run.ts",
+        "src/server/data-routes.ts",
+        "src/server/data-job-emails.ts",
+        "src/app/admin/(gated)/[store]/orders/export/page.tsx",
+        "src/app/admin/(gated)/[store]/orders/export/file/route.ts",
+        "src/app/admin/(gated)/[store]/orders/export/actions.ts",
+        "src/app/admin/(gated)/[store]/orders/export/[jobId]/tick/route.ts"
       ],
-      "tests": [],
+      "tests": [
+        "src/lib/order-csv.test.ts",
+        "src/lib/csv.test.ts",
+        "src/server/order-export.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/data-permissions.int.test.ts",
+        "src/server/data-jobs.int.test.ts",
+        "src/server/money-review.int.test.ts",
+        "src/server/privacy-erasure.int.test.ts",
+        "e2e/data-export.spec.ts"
+      ],
       "untested": false
     },
     "decisions": [],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-05",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 2, first run (docs/wave-2-data.md; working tree not yet committed). Read order-export.ts, order-csv.ts and the route and ran order-csv.test.ts, order-export.int.test.ts, checkout-kinds.int.test.ts, data-permissions.int.test.ts, data-jobs.int.test.ts, money-review.int.test.ts and privacy-erasure.int.test.ts (all passed). Criterion 1: one row per line with the contract's columns, the order's amounts on its first row only, order currency and main currency at the store's rate (blank and no_rate without one), the lines' VAT plus shipping VAT equal to the order's tax for every order, a range by the store's days including the 23 and 25 hour clock-change days of Europe/Oslo, a pasted list of order numbers with unknown ones listed back, and a euro scenario in checkout-kinds.int.test.ts that places an order in a euro view of a NOK store and holds the exported row. Criterion 2: above 2,000 rows a job in parts, the ready email carries no file and no link that works unsigned, the download is a 60 second signed address logged first (route handler called in the test). Criterion 3: formula characters escaped by the one writer (canary), copied orders left out unless asked and marked C-, host orders marked, an erased person's order has no personal field, Stripe test-mode orders are marked test_payment, no secret or token in any profile. Criterion 4: store isolation and a 404 for a member who is not the owner. Criteria reworded to what was built (docs/wave-2-data.md 6.6 points 2 and 4): the owner exports, and a selection is a list of order numbers plus an Export this order button (the order list with tick boxes is wave 3). Caveats: the file is the owner's data for an accountant, not a ledger; the VAT split columns and the personal-data defaults need an accountant's and a data-protection read (docs/wave-2-data.md section 8); the storage adapter has run only against a fake and the pages have no signed-in browser run (D158)."
+      }
+    ]
   },
   {
     "id": "orders.customer-order-status-page-and-order-history",

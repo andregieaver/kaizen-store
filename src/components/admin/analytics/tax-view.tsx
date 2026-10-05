@@ -190,18 +190,18 @@ export function TaxView({ base, locale, range, report, reconciliation, drift, ca
           ) : null
         }
       >
-        <DataTable caption="VAT by country, rate and basis" columns={columns} rows={report.rows} rowKey={rowKey} empty="No VAT to show for this period." />
+        <DataTable caption="VAT by country, rate and basis" columns={columns} rows={report.rows} rowKey={rowKey} empty="No VAT to show for this period." exportable={false} exportReason="tax.vat" />
         {!canExport ? <ExportsNeedWrite /> : null}
         {drift ? <Note tone="warning" title="This period has changed since you exported it">{drift}</Note> : null}
       </AnalyticsSection>
 
       <AnalyticsSection id="vat-chart" title="VAT by country" description={`VAT after credits in ${report.mainCurrency}. The table under it holds the same figures.`}>
         <ChartCard title="VAT after credits per country">
-          <HorizontalBars label="VAT after credits per country" rows={bars} emptyText="No VAT to show for this period." />
+          <HorizontalBars label="VAT after credits per country" rows={bars} emptyText="No VAT to show for this period." exportable={false} exportReason="tax.vat_chart" />
           <details className="mt-3 text-sm">
             <summary className="cursor-pointer text-muted">Data behind the chart</summary>
             <div className="mt-2">
-              <DataTable caption="VAT after credits per country" columns={chartColumns} rows={report.byCountry} rowKey={(c) => c.country} empty="No data for this period." />
+              <DataTable caption="VAT after credits per country" columns={chartColumns} rows={report.byCountry} rowKey={(c) => c.country} empty="No data for this period." exportable={false} exportReason="tax.vat_chart" />
             </div>
           </details>
         </ChartCard>
@@ -242,7 +242,7 @@ function BridgeTable({ caption, lines, money }: { caption: string; lines: readon
     { key: "orders", label: "Orders", align: "right", cell: (l) => (l.kind === "rounding" || l.kind === "exchange_rate" ? NO_FIGURE : count(l.orders)) },
     { key: "vat", label: "VAT", align: "right", cell: (l) => money(l.taxMinor) },
   ];
-  return <DataTable caption={caption} columns={columns} rows={lines} rowKey={(l, i) => `${l.kind}-${l.cause ?? ""}-${i}`} />;
+  return <DataTable caption={caption} columns={columns} rows={lines} rowKey={(l, i) => `${l.kind}-${l.cause ?? ""}-${i}`} exportable={false} exportReason="tax.reconciliation" />;
 }
 
 function CurrencyBridgeCard({ bridge, money }: { bridge: CurrencyBridge; money: (minor: number) => string }) {

@@ -13,6 +13,8 @@ import { erasureConfirmationEmail, privacyLanguage } from "@/lib/privacy-text";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { audit } from "./auth";
+import type { DataDeps } from "./data-job-store";
+import { removePersonalExports, type ExportScope } from "./data-jobs";
 import { sendEmail } from "./email";
 import { removeAvatarFiles } from "./media";
 import { notifyOwners } from "./privacy-notices";
@@ -287,6 +289,19 @@ async function ensureRequest(subject: PrivacySubject, by: EraseBy, now: Date): P
   }
 }
 
+/** When this person's customer record began and their first order was placed (ISO), from the request if an earlier run already read it. */
+async function exportScopeOf(saved: unknown, storeId: string, subject: { customerId: string | null; orderIds: string[] }): Promise<ExportScope> {
+  const kept = saved as Partial<ExportScope> | undefined;
+  if (kept && typeof kept === "object" && "customerSince" in kept && "orderSince" in kept) return { customerSince: kept.customerSince ?? null, orderSince: kept.orderSince ?? null };
+  const [row] = await db().execute<Record<string, unknown>>(sql`
+    select
+      (select created_at from commerce.customers where store_id = ${storeId}::uuid and id = ${subject.customerId}::uuid) as customer_since,
+      (select min(placed_at) from commerce.orders where store_id = ${storeId}::uuid and id = any(${uuidList(subject.orderIds)})) as order_since
+  `);
+  const iso = (v: unknown) => (v === null || v === undefined ? null : new Date(String(v)).toISOString());
+  return { customerSince: iso(row?.customer_since), orderSince: iso(row?.order_since) };
+}
+
 async function markStep(requestId: string, patch: Record<string, unknown>): Promise<void> {
   await db().execute(sql`
     update commerce.privacy_requests set steps = steps || ${JSON.stringify(patch)}::jsonb where id = ${requestId}::uuid and status = 'open'
@@ -394,7 +409,7 @@ export type EraseResult =
  * counts, never an email or a name), tells the owners when staff did it, and sends the one email that survives. A run that fails after the
  * outside world was reached leaves the request open (`steps` says where) and `resumeErasures()` finishes it.
  */
-export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy, deps: { avatarRemover?: (paths: string[]) => Promise<void> } = {}): Promise<EraseResult> {
+export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy, deps: { avatarRemover?: (paths: string[]) => Promise<void>; dataStorage?: DataDeps["storage"] } = {}): Promise<EraseResult> {
   const now = by.now ?? new Date();
   const store = await privacyStore(storeId);
   const subject = store ? await resolveSubject(storeId, ref, { channel: by.channel }) : null;
@@ -442,6 +457,10 @@ export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy
     return { ok: false, problem: "stripe", message: STRIPE_DID_NOT_ANSWER, requestId: request.id };
   }
 
+  // What the store's customer and order files could hold of this person, read BEFORE the rows change (a resumed run reads it back from the request).
+  const exportScope = await exportScopeOf(request.steps.exportScope, storeId, subject);
+  if (!request.steps.exportScope) await markStep(request.id, { exportScope });
+
   // 2. One transaction for the subject's rows.
   let counts: EraseCounts;
   let avatar: string | null = null;
@@ -473,6 +492,11 @@ export async function eraseSubject(storeId: string, ref: SubjectRef, by: EraseBy
       await markStep(request.id, { files: "left" });
     }
   } else await markStep(request.id, { files: "done" });
+
+  // 3b. The store's customer and order files that can hold this person (D165, `storage:exports`): they hold their data among others', so they are
+  // deleted and the owner exports again; files that cannot (made before the person was in the store, or an order file for someone with no order) are
+  // left, so a stranger's account deletion never takes the owner's exports. Never stops the erasure; the daily clean-up takes what is left after 7 days.
+  await removePersonalExports(storeId, deps.dataStorage === undefined ? {} : { storage: deps.dataStorage }, exportScope);
 
   // 4. The one email that survives: its log row holds no address. The request still holds the address until it is completed (a resume needs it).
   let confirmation: "sent" | "none" | "failed" = "none";

@@ -50,6 +50,7 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
+import { explainImportProblemsTool, listDataJobsTool } from "./data-job-tools";
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
 import { customerInsights, productPerformance, restockSuggestions, salesFunnel, salesTrend } from "./owner-insights";
 import { getSetupProgress } from "./setup";
@@ -1811,6 +1812,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   analytics_overview: analyticsOverviewTool,
   explain_change: explainChangeTool,
   analytics_alerts: analyticsAlertsTool,
+  list_data_jobs: listDataJobsTool,
+  explain_import_problems: explainImportProblemsTool,
   restock_suggestions: restockSuggestions,
   list_integrations: listIntegrationsTool,
   email_customer: emailCustomerTool,

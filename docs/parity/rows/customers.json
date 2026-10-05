@@ -16,7 +16,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Verified at HEAD: an admin list (search by name or email) and a read-mostly customer page (D35) with figures, orders, subscriptions, emails sent, wishlist, discount group (D108), staff-only custom fields (D120) and manual bonus adjustments (D130). No add or edit of a customer's own details, no notes or tags (custom fields are the nearest thing), no merge, no customer CSV import or export (`customerFieldExport()` is only called from a test), no staff GDPR export or erasure; a customer can delete their own account (D28).",
+    "gap": "Verified at HEAD: an admin list (search by name or email) and a read-mostly customer page (D35) with figures, orders, subscriptions, emails sent, wishlist, discount group (D108), staff-only custom fields (D120) and manual bonus adjustments (D130). No add or edit of a customer's own details, no notes or tags (custom fields are the nearest thing), no merge, no customer CSV import (the owner-only customer export was built with wave 2's first run, D165, and is held in `platform.product-customer-and-order-csv`; its `marketing_consent` column says not_recorded until the subscriber list with consent, wave 5), no staff GDPR export or erasure; a customer can delete their own account (D28).",
     "bucket": "A",
     "wave": 5,
     "criteria": [

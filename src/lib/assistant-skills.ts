@@ -51,6 +51,22 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "import-products",
+    area: "store",
+    title: "Bring products in from a file, or send them out",
+    when: "The owner wants to import or export products as a CSV file, move a Shopify store's products over, asks why an import has problems, or asks about exporting orders or customers.",
+    steps: [
+      "Know the shape: Products, Import takes Kaizen's own file or a Shopify product export. The file is checked first (a dry run that lists every row's problem and changes nothing), then imported, one product at a time. A product with an error is left as it was.",
+      "An import never deletes a product, never changes a product's web address, never imports a compare-at price (Kaizen shows a reduction only against the lowest price of the last 30 days) and never turns Shopify's Vendor into the product's manufacturer: that is a legal designation the owner makes. You cannot upload a file, start, apply or cancel an import: say where the page is (open_admin_page, products.import) and let them press the button.",
+      "A Shopify file: they must say whether its prices include VAT, and a physical product needs a picture and a manufacturer before it is published (otherwise it is saved as a draft with the reason). Shopify's tax settings and backorders are not imported.",
+      "Something went wrong or the check lists problems: call list_data_jobs (kind product_import) and then explain_import_problems. Repeat its counts as they are, error first, and give each group's what_to_do in plain words with the products it names; never quote a cell of their file or add a cause it did not give. Offer the job's page (products.import.job, with jobId).",
+      "Exporting products: Products, Export (products.export) gives a file at once for a small store and a job with a Download button for a large one; the file reads back into Kaizen unchanged. Purchase options, download files and bookings are not in it.",
+      "Orders and customers: the export pages (orders.export, customers.export) are the owner's, because the files can hold personal data. They are made without contact details unless chosen, are never emailed, and are deleted after 7 days. Say that Kaizen does not record marketing consent yet, so a customer file is not a mailing list. For the accountant, the VAT, OSS and IOSS files on the Analytics tax page are the ones to use; the order file is not a tax return.",
+      "Changing many products at once (a price by a percentage, stock, a category) is done in the products list by ticking the products (products), or in the grid (products.bulk), which shows every change first and can be undone for seven days. Lowering a price shows shoppers a reduction against the lowest price of the last 30 days: say so before they confirm.",
+      "Every table on the Analytics pages has a Download CSV button for the period on the page (a member who may export sees it). Say that the file is the table as the page shows it, in the store's main currency without VAT.",
+    ],
+  },
+  {
     id: "weekly-review",
     area: "store",
     title: "Review the week",

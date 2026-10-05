@@ -254,3 +254,19 @@ describe("never a secret, never a long value", () => {
     expect((await auditRows(store.id, "account.two_step_removed")).filter((r) => r.target_id === person.id)).toHaveLength(0);
   });
 });
+
+describe("data in and out (wave 2, D165)", () => {
+  it("the actions of the imports, exports and bulk edits are named in their area, and the entries of an export hold counts and never a person", async () => {
+    const { areaOfAction } = await import("@/lib/audit");
+    const orders = ["order.exported", "order.export_downloaded"];
+    const customers = ["customer.exported", "customer.export_downloaded"];
+    const productActions = ["products.import_started", "products.import_applied", "products.import_cancelled", "products.export_made", "products.export_downloaded", "products.bulk_edited", "products.bulk_undone"];
+    for (const action of orders) expect(areaOfAction(action)).toBe("orders");
+    for (const action of customers) expect(areaOfAction(action)).toBe("customers");
+    for (const action of productActions) expect(areaOfAction(action)).toBe("products");
+    // An entry written the way the export writes it keeps its area and target, and the secret-like check is not tripped by counts.
+    const auth = await import("./auth");
+    await auth.audit(store.account.id, store.id, "order.exported", { job: "j", rows: 3, direct: false }, { area: "orders", target: { type: "data_job", id: "j" } });
+    expect((await auditRows(store.id, "order.exported")).at(-1)).toMatchObject({ area: "orders", target_type: "data_job", details: { rows: 3, direct: false } });
+  });
+});

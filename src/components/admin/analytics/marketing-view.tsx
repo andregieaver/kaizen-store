@@ -387,6 +387,8 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
             rows={table.rows}
             rowKey={(r) => r.channel}
             empty="No visits, orders or ad spend on the days with counted visits."
+            exportId="marketing.channels"
+            exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }}
             footer={
               table.rows.length > 0 ? (
                 <tr>
@@ -411,12 +413,12 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
             <div className="grid gap-4 lg:grid-cols-2">
               {withRevenue.length > 0 ? (
                 <ChartCard title="Revenue by channel" description="Sales without VAT.">
-                  <HorizontalBars label="Revenue by channel" rows={withRevenue} />
+                  <HorizontalBars label="Revenue by channel" rows={withRevenue} exportId="marketing.revenue_by_channel" exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }} />
                 </ChartCard>
               ) : null}
               {withSpend.length > 0 ? (
                 <ChartCard title="Ad spend by channel" description="What you entered for the period, all days included.">
-                  <HorizontalBars label="Ad spend by channel" rows={withSpend} />
+                  <HorizontalBars label="Ad spend by channel" rows={withSpend} exportId="marketing.spend_by_channel" />
                 </ChartCard>
               ) : null}
             </div>

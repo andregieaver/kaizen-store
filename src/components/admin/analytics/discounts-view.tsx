@@ -38,18 +38,20 @@ export function monthText(month: string): string {
  * the axis and not a missing tick. The share is null for a month with too few orders (or none): a gap, never a zero.
  */
 export function trendSeries(report: Pick<DiscountsReport, "trend" | "trendWindow">): { labels: string[]; values: (number | null)[]; partial: boolean } {
+  const months = trendMonths(report);
+  return { labels: months.map((m) => m.label), values: months.map((m) => m.share), partial: months.some((m) => m.partial) };
+}
+
+/** The same months with their first day (`2026-10-01`), for the CSV: the chart's x axis, one entry for every month of the window. */
+export function trendMonths(report: Pick<DiscountsReport, "trend" | "trendWindow">): { start: string; label: string; share: number | null; partial: boolean }[] {
   const byMonth = new Map(report.trend.map((m) => [m.month, m]));
   const last = startOfMonth(addDays(report.trendWindow.to, -1));
-  const labels: string[] = [];
-  const values: (number | null)[] = [];
-  let partial = false;
-  for (let month = startOfMonth(report.trendWindow.from); month <= last && labels.length < 36; month = addMonths(month, 1)) {
+  const out: { start: string; label: string; share: number | null; partial: boolean }[] = [];
+  for (let month = startOfMonth(report.trendWindow.from); month <= last && out.length < 36; month = addMonths(month, 1)) {
     const entry = byMonth.get(month.slice(0, 7));
-    labels.push(entry?.partial ? `${monthText(month)} (so far)` : monthText(month));
-    values.push(entry ? entry.share : null);
-    if (entry?.partial) partial = true;
+    out.push({ start: month, label: entry?.partial ? `${monthText(month)} (so far)` : monthText(month), share: entry ? entry.share : null, partial: entry?.partial === true });
   }
-  return { labels, values, partial };
+  return out;
 }
 
 /** The sentence for a basket: how much smaller or larger the discounted baskets are than the full-price ones. */
@@ -198,6 +200,8 @@ export function DiscountsView({ currency, locale, report }: DiscountsViewProps) 
             axisFormat={(v) => formatPercent(v, 0)}
             height={220}
             emptyText={`Not enough orders yet to show a trend: a month needs at least ${MIN_MONTH_ORDERS} paid orders.`}
+            exportId="marketing.discount_share"
+            exportLeftOut={{ orders: report.unconverted, currencies: report.missingRates }}
           />
           <p className="mt-2 text-xs text-muted">
             {`You get a warning if the share rises ${CREEP_MONTHS} months in a row by ${Math.round(CREEP_RISE * 100)} points or more, the first and last of those months each have at least ${CREEP_MIN_ORDERS} orders, and the rise is too big to be chance.${series.partial ? " The month in progress is shown but not counted." : ""}`}
@@ -212,6 +216,8 @@ export function DiscountsView({ currency, locale, report }: DiscountsViewProps) 
             label="Discount given by kind"
             rows={kindRows}
             emptyText={s.orders === 0 ? "No paid orders in this period yet." : "No discounts were given in this period."}
+            exportId="marketing.discount_by_kind"
+            exportLeftOut={{ orders: report.unconverted, currencies: report.missingRates }}
           />
           {kindRows.length > 0 ? (
             <p className="mt-2 text-xs text-muted">
@@ -230,6 +236,8 @@ export function DiscountsView({ currency, locale, report }: DiscountsViewProps) 
           rows={report.coupons}
           rowKey={(c) => c.code}
           empty="No discount code was used in this period."
+          exportId="marketing.discount_codes"
+          exportLeftOut={{ orders: report.unconverted, currencies: report.missingRates }}
         />
         <p className="text-xs text-muted">
           {report.couponCount > report.coupons.length

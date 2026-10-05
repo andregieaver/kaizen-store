@@ -10,6 +10,7 @@ import type { SeriesPoint } from "@/server/analytics-totals";
 
 import { HorizontalBars, LineChart, type BarRow } from "./charts";
 import { arrowOf, StatusPill } from "./data-table";
+import { ExportButton } from "./export-scope";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
 
@@ -83,7 +84,7 @@ export function hasNoSales(d: Pick<FinancePeriodData, "totals">): boolean {
   return d.totals.orders === 0 && d.totals.revenueMinor === 0 && d.totals.refundsMinor === 0;
 }
 
-const lineOf = (statement: FinanceStatement, key: FinanceLineKey): FinanceLine | undefined => statement.lines.find((l) => l.key === key);
+export const lineOf = (statement: FinanceStatement, key: FinanceLineKey): FinanceLine | undefined => statement.lines.find((l) => l.key === key);
 const amountOf = (statement: FinanceStatement, key: FinanceLineKey): number | null => lineOf(statement, key)?.amountMinor ?? null;
 
 /** Lines that take something away: a rise in them is worse news, and their change is read on their size, not their sign. */
@@ -108,7 +109,19 @@ export function lineChange(line: FinanceLine, previous: FinanceLine | undefined)
 }
 
 /** The label without a trailing "(estimated)": the line carries the tag instead. */
-const plainLabel = (label: string) => label.replace(/ \((estimated|estimate)\)$/, "");
+export const plainLabel = (label: string) => label.replace(/ \((estimated|estimate)\)$/, "");
+
+/** The bars of "Where net revenue went", in order: a line of the statement and its label (the CSV repeats them). */
+export const WHERE_IT_WENT: readonly (readonly [FinanceLineKey, string])[] = [
+  ["netRevenue", "Net revenue"],
+  ["cogs", "Cost of goods"],
+  ["paymentFees", "Payment fees"],
+  ["platformFees", "Platform fees"],
+  ["shippingCosts", "Shipping costs"],
+  ["marketing", "Marketing"],
+  ["fixedCosts", "Fixed costs"],
+  ["operatingProfit", "Operating profit"],
+];
 
 /**
  * The sentences that open the page: what came in, what is left after the cost of goods, after what follows each sale, and after fixed
@@ -245,8 +258,9 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
   const versus = comparison ? (comparison.mode === "year" ? "Same period last year" : "Previous period") : null;
   const th = "whitespace-nowrap border-b border-border px-3 py-2 align-bottom";
   return (
+    <>
     <div className="relative overflow-x-auto rounded-lg border border-border bg-background">
-      <table className="w-full min-w-[40rem] border-collapse text-sm">
+      <table data-export-id="finance.bridge" className="w-full min-w-[40rem] border-collapse text-sm">
         <caption className="sr-only">From gross sales to operating profit, one line for each step, in {current.label}</caption>
         <thead>
           <tr>
@@ -311,6 +325,10 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
         </tbody>
       </table>
     </div>
+    <div className="mt-1 flex justify-end empty:hidden">
+      <ExportButton exportId="finance.bridge" leftOut={{ orders: current.unconverted, currencies: current.missingCurrencies }} />
+    </div>
+    </>
   );
 }
 
@@ -476,16 +494,7 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
       colorIndex,
     };
   };
-  const bars: BarRow[] = [
-    flowRow("netRevenue", "Net revenue", 0),
-    flowRow("cogs", "Cost of goods", 0),
-    flowRow("paymentFees", "Payment fees", 0),
-    flowRow("platformFees", "Platform fees", 0),
-    flowRow("shippingCosts", "Shipping costs", 0),
-    flowRow("marketing", "Marketing", 0),
-    flowRow("fixedCosts", "Fixed costs", 0),
-    flowRow("operatingProfit", "Operating profit", 2),
-  ];
+  const bars: BarRow[] = WHERE_IT_WENT.map(([key, label]) => flowRow(key, label, key === "operatingProfit" ? 2 : 0));
 
   // ---- over time ----
   const labels = series.map((p) => p.label);
@@ -567,13 +576,13 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
           <AnalyticsSection id="finance-where" title="Where net revenue went" description="Each bar is on the same scale as net revenue. Costs are shown as minus amounts, with their share of net revenue.">
             <div className="grid gap-4 lg:grid-cols-2">
               <ChartCard title="From net revenue to operating profit" description="Cost of goods and the estimated fees and costs are taken off in turn. A bar marked costs missing has no figure yet.">
-                <HorizontalBars label="Where net revenue went, from net revenue to operating profit" rows={bars} />
+                <HorizontalBars label="Where net revenue went, from net revenue to operating profit" rows={bars} exportId="finance.where_it_went" exportLeftOut={{ orders: current.unconverted, currencies: current.missingCurrencies }} />
               </ChartCard>
               <ChartCard
                 title={`Net revenue and contribution profit per ${per}`}
                 description={contributionKnown ? "Contribution profit is what each sale leaves after its own costs, before fixed costs. It is partly estimated." : "Contribution profit needs product costs, so only net revenue is drawn."}
               >
-                <LineChart label={`Net revenue and contribution profit per ${per}`} labels={labels} series={chartSeries} format={money} previousLabel={previousLabel} />
+                <LineChart label={`Net revenue and contribution profit per ${per}`} labels={labels} series={chartSeries} format={money} previousLabel={previousLabel} exportId="finance.revenue_profit" exportLeftOut={{ orders: current.unconverted, currencies: current.missingCurrencies }} />
               </ChartCard>
             </div>
           </AnalyticsSection>

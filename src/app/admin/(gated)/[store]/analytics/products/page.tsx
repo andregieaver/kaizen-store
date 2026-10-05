@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
+import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { parseProductsSort, ProductsView } from "@/components/admin/analytics/products-view";
+import { queryText } from "@/lib/analytics-export";
 import { periodQuery } from "@/lib/analytics-period";
 import { analyticsContext } from "@/server/analytics-context";
 import { productsReport } from "@/server/analytics-products-data";
@@ -28,15 +30,17 @@ export default async function AnalyticsProductsPage({ params, searchParams }: Pa
   const preserve: Record<string, string> = { ...(explicit ? { sort: sort.key, dir: sort.dir } : {}), ...(showAll ? { limit: "all" } : {}) };
 
   return (
-    <div className="flex flex-col gap-8">
-      <AnalyticsHeader
-        ctx={ctx}
-        path="/analytics/products"
-        title="Products"
-        description="What sells, what earns and what is sent back. The best sellers come first, then every product with its revenue, margin, refunds and share of your sales."
-        preserve={preserve}
-      />
-      <ProductsView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} report={report} compareMode={compare.mode} sort={sort} showAll={showAll} keep={keep} />
-    </div>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+      <div className="flex flex-col gap-8">
+        <AnalyticsHeader
+          ctx={ctx}
+          path="/analytics/products"
+          title="Products"
+          description="What sells, what earns and what is sent back. The best sellers come first, then every product with its revenue, margin, refunds and share of your sales."
+          preserve={preserve}
+        />
+        <ProductsView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} report={report} compareMode={compare.mode} sort={sort} showAll={showAll} keep={keep} />
+      </div>
+    </ExportScope>
   );
 }

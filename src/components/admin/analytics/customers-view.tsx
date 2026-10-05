@@ -353,6 +353,7 @@ export function CustomersView({ base, locale, timeZone, isOwner, report }: Custo
   const retentionRows: CohortTableRow[] = cohorts.rows.map((r) => ({ label: monthText(r.cohort), size: r.size, values: r.retention }));
   const revenueRows: CohortTableRow[] = cohorts.rows.map((r) => ({ label: monthText(r.cohort), size: r.size, values: r.revenuePerCustomerMinor }));
   const revenueMax = maxOf(cohorts.rows.flatMap((r) => r.revenuePerCustomerMinor));
+  const leftOut = { orders: report.unconverted, currencies: report.missingRates };
   const smallCohorts = cohorts.rows.some((r) => r.size < MIN_COHORT_SIZE);
 
   // ---- top customers ----
@@ -530,7 +531,7 @@ export function CustomersView({ base, locale, timeZone, isOwner, report }: Custo
       >
         <p className={trend.verdict === "unknown" ? "text-sm text-muted" : "text-sm font-medium"}>{trend.sentence}</p>
         <ChartCard title="Share who had bought again" description="Cumulative: Month 3 counts everyone who ordered again at any time up to the end of the third month after their first order. A month that is not over yet is left blank.">
-          <CohortTable label="Share of each month's new customers who had bought again, by months since their first order" columns={columns} rows={retentionRows} emptyText="No cohorts yet." />
+          <CohortTable label="Share of each month's new customers who had bought again, by months since their first order" columns={columns} rows={retentionRows} emptyText="No cohorts yet." exportId="customers.retention" exportLeftOut={leftOut} />
         </ChartCard>
         <ChartCard title="Revenue per customer" description="What each customer in the group had spent in total by then, after refunds and without VAT.">
           <CohortTable
@@ -540,6 +541,8 @@ export function CustomersView({ base, locale, timeZone, isOwner, report }: Custo
             format={(v) => money(v)}
             max={revenueMax}
             emptyText="No cohorts yet."
+            exportId="customers.cohort_revenue"
+            exportLeftOut={leftOut}
           />
         </ChartCard>
         {smallCohorts ? <p className="text-xs text-muted">{`Months with fewer than ${MIN_COHORT_SIZE} new customers swing a lot with a single order. Read them as a guide, not a result.`}</p> : null}
@@ -552,6 +555,8 @@ export function CustomersView({ base, locale, timeZone, isOwner, report }: Custo
           rows={report.topCustomers}
           rowKey={(c) => c.key}
           empty="Nobody placed a paid order in this period."
+          exportId="customers.top"
+          exportLeftOut={leftOut}
         />
       </AnalyticsSection>
 

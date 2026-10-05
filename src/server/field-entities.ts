@@ -4,12 +4,15 @@ import { db } from "@/db/client";
 import {
   groupApplies,
   isEmptyValue,
+  type FieldDef,
   readField,
   staffGroupProblem,
   type FieldData,
   type FieldGroup,
   type FieldLookups,
 } from "@/lib/custom-fields";
+import { addressableFieldsOf } from "@/lib/field-csv-cells";
+import { plainFieldText } from "@/lib/field-csv";
 import { fieldValueText } from "@/lib/field-tools";
 import { t } from "@/lib/i18n";
 
@@ -18,6 +21,7 @@ import {
   activeFieldGroups,
   fieldsForEditor,
   getFieldData,
+  getFieldDataMany,
   listFieldGroups,
   saveFieldData,
   staffRuleFacts,
@@ -149,6 +153,59 @@ export async function customerFieldExport(
       if (value === undefined || isEmptyValue(value)) continue;
       out.push({ group: group.name, label: def.label, value: fieldValueText(def, value, main, words, 2000) });
     }
+  }
+  return out;
+}
+
+/**
+ * `customerFieldExport()` for many customers at once, with ONE query for their values: what the customer file (D165) and the data-subject export
+ * agree on. A customer with nothing entered is absent from the map.
+ */
+export async function customerFieldExportMany(
+  store: { id: string; localization: { locales: string[] } },
+  customerIds: readonly string[],
+): Promise<Map<string, ExportedField[]>> {
+  const main = store.localization.locales[0] ?? "en";
+  const [groups, all] = await Promise.all([listFieldGroups(store.id), getFieldDataMany(store.id, "customer", customerIds)]);
+  const words = t(main.split("-")[0]).customFields;
+  const out = new Map<string, ExportedField[]>();
+  for (const [id, data] of all) {
+    const list: ExportedField[] = [];
+    for (const group of groups.filter((g) => g.entities.includes("customer"))) {
+      for (const def of group.fields) {
+        const value = readField(def, data, main, main);
+        if (value === undefined || isEmptyValue(value)) continue;
+        list.push({ group: group.name, label: def.label, value: fieldValueText(def, value, main, words, 2000) });
+      }
+    }
+    if (list.length > 0) out.set(id, list);
+  }
+  return out;
+}
+
+/** The plain customer fields a customer file has a column for: those of every group that is on customers, with a name no other has. */
+export async function customerCsvFields(storeId: string): Promise<FieldDef[]> {
+  const groups = await listFieldGroups(storeId);
+  return addressableFieldsOf(groups.filter((g) => g.entities.includes("customer")).flatMap((g) => g.fields));
+}
+
+/** What staff entered about many customers as the text of each plain field's cell, by customer id then the field's name, in one query. */
+export async function customerFieldTexts(
+  store: { id: string; localization: { locales: string[] } },
+  defs: readonly FieldDef[],
+  customerIds: readonly string[],
+): Promise<Map<string, Record<string, string>>> {
+  const main = store.localization.locales[0] ?? "en";
+  const all = await getFieldDataMany(store.id, "customer", customerIds);
+  const out = new Map<string, Record<string, string>>();
+  for (const [id, data] of all) {
+    const texts: Record<string, string> = {};
+    for (const def of defs) {
+      const value = readField(def, data, main, main);
+      const text = value === undefined || isEmptyValue(value) ? "" : plainFieldText(def, value);
+      if (text !== "") texts[def.name] = text;
+    }
+    out.set(id, texts);
   }
   return out;
 }

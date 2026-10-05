@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
+import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { RefundsView } from "@/components/admin/analytics/refunds-view";
 import { ReturnsView } from "@/components/admin/analytics/returns-view";
 import { TrafficView } from "@/components/admin/analytics/traffic-view";
+import { queryText } from "@/lib/analytics-export";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext } from "@/server/analytics-context";
 import { geoReport } from "@/server/analytics-geo-data";
@@ -38,16 +40,18 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
   const locale = store.markets[0]?.locale ?? "en";
 
   return (
-    <div className="flex flex-col gap-8">
-      <AnalyticsHeader
-        ctx={ctx}
-        path="/analytics/traffic"
-        title="Traffic"
-        description="Where visitors drop out on the way to a purchase, which devices and countries sell, what shoppers search for and when the store is busiest. Refunds and returns are at the bottom."
-      />
-      <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} />
-      <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.markets.map((m) => [m.code, m.name]))} />
-      <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} />
-    </div>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+      <div className="flex flex-col gap-8">
+        <AnalyticsHeader
+          ctx={ctx}
+          path="/analytics/traffic"
+          title="Traffic"
+          description="Where visitors drop out on the way to a purchase, which devices and countries sell, what shoppers search for and when the store is busiest. Refunds and returns are at the bottom."
+        />
+        <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} />
+        <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.markets.map((m) => [m.code, m.name]))} />
+        <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} />
+      </div>
+    </ExportScope>
   );
 }

@@ -458,3 +458,81 @@ describe("an order still waiting for payment when its person is erased (review: 
     expect((await orderOf(placed.orderId)).status).toBe("cancelled");
   });
 });
+
+describe("the customer and order files an owner made (wave 2, D165, `storage:exports`)", () => {
+  it("are deleted from storage when a person is erased, and their jobs marked purged; a product file and another store's files stay", async () => {
+    const { fakeStorage } = await import("./data-test-support");
+    const mine = await fx.makeStore("erase-exports");
+    const other = await fx.makeStore("erase-exports-b");
+    const subject = await buildSubject(mine, "exp");
+    const storage = fakeStorage();
+    const job = async (storeId: string, ownerId: string, kind: string, status: string, files: string[]) => {
+      const list = files.map((path) => ({ path, name: "f.csv", rows: 1, bytes: 1, sha256: "a".repeat(64) }));
+      for (const f of files) storage.files.set(`exports/${f}`, new TextEncoder().encode("a,b\r\n"));
+      // A job lives its life: queued, then running, then done with its files (the database refuses any other start).
+      const [row] = await db().execute<Row>(sql`insert into commerce.data_jobs (store_id, kind, status, phase, format, requested_by) values (${storeId}::uuid, ${kind}, 'queued', 'write', 'kaizen', ${ownerId}::uuid) returning id`);
+      if (status !== "queued") await db().execute(sql`update commerce.data_jobs set status = 'running' where id = ${String(row.id)}::uuid`);
+      if (status === "done") await db().execute(sql`update commerce.data_jobs set status = 'done', phase = 'assemble', files = ${JSON.stringify(list)}::jsonb, expires_at = now() + interval '7 days' where id = ${String(row.id)}::uuid`);
+      return String(row.id);
+    };
+    const customers = await job(mine.storeId, mine.ownerId, "customer_export", "done", [`${mine.storeId}/c1/part-1.csv`]);
+    const orders = await job(mine.storeId, mine.ownerId, "order_export", "done", [`${mine.storeId}/o1/part-1.csv`, `${mine.storeId}/o1/part-2.csv`]);
+    const products = await job(mine.storeId, mine.ownerId, "product_export", "done", [`${mine.storeId}/p1/part-1.csv`]);
+    const running = await job(mine.storeId, mine.ownerId, "order_export", "running", []);
+    // Only asked for: it has read nothing, and when it runs its readers skip a person who was erased, so it is left to run.
+    const queued = await job(mine.storeId, mine.ownerId, "customer_export", "queued", []);
+    const elsewhere = await job(other.storeId, other.ownerId, "customer_export", "done", [`${other.storeId}/c9/part-1.csv`]);
+    const result = await eraseSubject(mine.storeId, { customerId: subject.customerId }, { channel: "staff", accountId: mine.ownerId }, { avatarRemover: async () => {}, dataStorage: storage });
+    expect(result).toMatchObject({ ok: true });
+    const state = async (id: string) => (await db().execute<Row>(sql`select status, files, purged_at from commerce.data_jobs where id = ${id}::uuid`))[0];
+    // The ready customer and order files are gone from storage and the jobs say so.
+    for (const id of [customers, orders]) {
+      const row = await state(id);
+      expect(row).toMatchObject({ status: "expired", files: [] });
+      expect(row.purged_at).not.toBeNull();
+    }
+    expect([...storage.files.keys()].filter((k) => k.includes(`${mine.storeId}/c1/`) || k.includes(`${mine.storeId}/o1/`))).toEqual([]);
+    // One still being made is stopped: a batch with the person may be in the air.
+    expect((await state(running)).status).toBe("cancelled");
+    expect((await state(queued)).status).toBe("queued");
+    // A product file has no person's data; another store's files are its own.
+    expect((await state(products)).status).toBe("done");
+    expect(storage.files.has(`exports/${mine.storeId}/p1/part-1.csv`)).toBe(true);
+    expect((await state(elsewhere)).status).toBe("done");
+    expect(storage.files.has(`exports/${other.storeId}/c9/part-1.csv`)).toBe(true);
+  });
+
+  it("are taken only when they can hold the person: made before they had an order or an account, or an order file for someone with no order, they stay", async () => {
+    const { fakeStorage } = await import("./data-test-support");
+    const mine = await fx.makeStore("erase-exports-scope");
+    const subject = await buildSubject(mine, "scp");
+    const storage = fakeStorage();
+    const done = async (kind: string, folder: string, finishedAgo: string) => {
+      const path = `${mine.storeId}/${folder}/part-1.csv`;
+      storage.files.set(`exports/${path}`, new TextEncoder().encode("a\r\n"));
+      const list = [{ path, name: "f.csv", rows: 1, bytes: 1, sha256: "a".repeat(64) }];
+      const [row] = await db().execute<Row>(sql`insert into commerce.data_jobs (store_id, kind, status, phase, format, requested_by) values (${mine.storeId}::uuid, ${kind}, 'queued', 'write', 'kaizen', ${mine.ownerId}::uuid) returning id`);
+      await db().execute(sql`update commerce.data_jobs set status = 'running' where id = ${String(row.id)}::uuid`);
+      await db().execute(sql`update commerce.data_jobs set status = 'done', phase = 'assemble', files = ${JSON.stringify(list)}::jsonb, expires_at = now() + interval '7 days', finished_at = now() - ${finishedAgo}::interval where id = ${String(row.id)}::uuid`);
+      return String(row.id);
+    };
+    // The fixture's person and orders were made just now: a file finished a year ago cannot hold them.
+    const old = await done("order_export", "o-old", "1 year");
+    const oldCustomers = await done("customer_export", "c-old", "1 year");
+    const recent = await done("order_export", "o-new", "0 seconds");
+    // A stranger who only opened an account has no order: no order file can hold them, and their account is in no file made before it.
+    const [stranger] = await db().execute<Row>(sql`insert into commerce.customers (store_id, email) values (${mine.storeId}::uuid, 'only-an-account@example.test') returning id`);
+    expect(await eraseSubject(mine.storeId, { customerId: String(stranger.id) }, { channel: "shopper", accountId: null }, { avatarRemover: async () => {}, dataStorage: storage })).toMatchObject({ ok: true });
+    const state = async (id: string) => (await db().execute<Row>(sql`select status from commerce.data_jobs where id = ${id}::uuid`))[0].status;
+    expect(await state(old)).toBe("done");
+    expect(await state(oldCustomers)).toBe("done");
+    expect(await state(recent)).toBe("done");
+    // The person with orders: the recent order file can hold them, the one from a year ago cannot.
+    expect(await eraseSubject(mine.storeId, { customerId: subject.customerId }, { channel: "staff", accountId: mine.ownerId }, { avatarRemover: async () => {}, dataStorage: storage })).toMatchObject({ ok: true });
+    expect(await state(recent)).toBe("expired");
+    expect(await state(old)).toBe("done");
+    expect(await state(oldCustomers)).toBe("done");
+    expect(storage.files.has(`exports/${mine.storeId}/o-old/part-1.csv`)).toBe(true);
+    expect(storage.files.has(`exports/${mine.storeId}/o-new/part-1.csv`)).toBe(false);
+  });
+});

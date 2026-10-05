@@ -55,6 +55,8 @@ describe("who reads invoices and credit notes", () => {
         // A person's own documents in their data file (the snapshot as issued), and the count the erasure preview shows (D162).
         "src/server/privacy-export.ts",
         "src/server/privacy-erasure.ts",
+        // The order file's invoice number (D165): the owner's own file, the number of the order's first invoice and nothing else of it.
+        "src/server/order-export.ts",
       ].sort(),
     );
   });

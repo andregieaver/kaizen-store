@@ -220,6 +220,8 @@ export const TOOL_WORDS: Record<string, string> = {
   analytics_overview: "Reading the analytics",
   explain_change: "Working out why sales changed",
   analytics_alerts: "Checking what needs a look",
+  list_data_jobs: "Looking at imports and exports",
+  explain_import_problems: "Reading the import's findings",
   restock_suggestions: "Working out what to reorder",
   list_integrations: "Looking at integrations",
   email_customer: "Preparing the email",

@@ -63,8 +63,9 @@ describe("who reads a buyer's VAT number and VIES's answer", () => {
     // `checkout.ts` writes it, `orders.ts` reads it for the order page and for staff, `tax-treatment.ts` builds it,
     // `owner-tools.ts` mentions the column's name in a comment on what the assistant is told (kind and relief only).
     // `personal-data.ts` (the register of personal data, D162) names the keys erasure removes from it; it reads nothing. The data export reads the treatment's
-    // reason code only (never the number or VIES's answer).
-    expect(orders).toEqual(["src/lib/personal-data.ts", "src/server/checkout.ts", "src/server/orders.ts", "src/server/owner-tools.ts", "src/server/privacy-export.ts", "src/server/tax-treatment.ts"]);
+    // reason code only (never the number or VIES's answer). The owner's order file (D165) reads the kind, the relief and the buyer's own number, for the
+    // owner's accounting, and writes them to a file that is only ever downloaded by the owner.
+    expect(orders).toEqual(["src/lib/personal-data.ts", "src/server/checkout.ts", "src/server/order-export.ts", "src/server/orders.ts", "src/server/owner-tools.ts", "src/server/privacy-export.ts", "src/server/tax-treatment.ts"]);
   });
 
   it("is not in a shopper's view of an order: `OrderView.vat` has no registered name or address", () => {

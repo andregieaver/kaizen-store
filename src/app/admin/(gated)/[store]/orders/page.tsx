@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { formatMoney } from "@/lib/money";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { listOrders } from "@/server/orders";
 
@@ -25,7 +25,8 @@ export default async function OrdersPage({ params, searchParams }: Props) {
 }
 
 async function OrderList({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
-  const { store } = await requirePermission(storeSlug, "orders:read");
+  const member = await requirePermission(storeSlug, "orders:read");
+  const { store } = member;
   const show = (await searchParams).show;
   const unpaid = show === "unpaid";
   const toSend = show === "to-send";
@@ -48,6 +49,12 @@ async function OrderList({ storeSlug, searchParams }: { storeSlug: string; searc
         <Link href={`/admin/${store.slug}/emails`} className="ml-auto rounded px-2 py-1 underline">
           Emails to customers
         </Link>
+        {/* The order file (D165) holds personal data, so only the owner is offered it. */}
+        {memberCan(member, "owner") && (
+          <Link href={`/admin/${store.slug}/orders/export`} className="rounded px-2 py-1 underline">
+            Export
+          </Link>
+        )}
       </nav>
       {orders.length === 0 ? (
         <p className="rounded-lg border border-border bg-background p-8 text-center text-sm">

@@ -51,6 +51,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   analytics_overview: "analytics:read",
   explain_change: "analytics:read",
   analytics_alerts: "analytics:read",
+  // Data in and out (D165): product jobs are read like the products page; the tool narrows the kinds to what the member may see (order and customer files are the owner's).
+  list_data_jobs: "products:read",
+  explain_import_problems: "products:read",
   restock_suggestions: "products:read",
   list_integrations: "settings:read",
   // The tax settings are the owner's alone (D157), like the page they stand in for.

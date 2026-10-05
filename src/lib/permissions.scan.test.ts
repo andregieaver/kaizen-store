@@ -44,7 +44,17 @@ const OTHERS: Record<string, "any" | "owner" | string> = {
 const OWNER_ONLY_EXTRA: Record<string, string> = {
   "src/app/admin/(gated)/[store]/analytics/tax/actions.ts": "an exchange rate changes the figures a tax return is made from (wave 1, 1c): the ECB fetch and an owner's own rate are the owner's",
   "src/app/admin/(gated)/[store]/activity/export/route.ts": "the activity log's CSV export is the owner's (wave 1, 1f 2.9); the page itself is open to every member, narrowed by what they may read",
+  "src/app/admin/(gated)/[store]/orders/export/file/route.ts": "the order file holds shoppers' personal data: only the owner may export it (wave 2, D165, 2.3)",
+  "src/app/admin/(gated)/[store]/orders/export/[jobId]/tick/route.ts": "the step of an order export's job page: the owner's, like the file",
+  "src/app/admin/(gated)/[store]/customers/export/file/route.ts": "the customer file holds shoppers' personal data: only the owner may export it (wave 2, D165, 2.4)",
+  "src/app/admin/(gated)/[store]/customers/export/[jobId]/tick/route.ts": "the step of a customer export's job page: the owner's, like the file",
 };
+
+/** POST routes that only read (an export is a POST so that it is never cached or fetched by a link): they ask the area's `read`. */
+const READ_ONLY_ROUTES = new Set([
+  "src/app/admin/(gated)/[store]/products/export/file/route.ts",
+  "src/app/admin/(gated)/[store]/products/export/[jobId]/tick/route.ts",
+]);
 
 /**
  * Files the baseline marks `owner` only because they compare a *company* account's role (D108: the main account of a company, or an employee)
@@ -260,6 +270,7 @@ describe("every entry point of a store's admin asks a guard", () => {
           ok = own && others && BUILDER_AREAS.includes(area as never);
         } else if (used.key === derived) ok = true;
         else if (used.key === `${area}:read` && entry.kind === "action") ok = used.fn !== null && READ_ONLY_ACTIONS.has(used.fn);
+        else if (used.key === `${area}:read` && entry.kind === "route") ok = READ_ONLY_ROUTES.has(entry.file);
         else if (used.key === `${area}:write` && entry.kind === "route") ok = writes;
         else ok = false;
         // A helper inside an action file (`asOwner`, `workMember`) is held to the same rule: it is where the guard is.

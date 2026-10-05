@@ -262,6 +262,15 @@ const PILL: Record<
   },
 };
 
+/** A variant's status in the words the table's pill uses (the CSV repeats them). */
+export const STATUS_LABEL: Record<StockStatus, string> = {
+  out: PILL.out.label,
+  low: PILL.low.label,
+  dead: PILL.dead.label,
+  ok: PILL.ok.label,
+  untracked: PILL.untracked.label,
+};
+
 /** Words for the filter's choices and for an empty table under each. */
 const FILTER_COPY: Record<StatusFilter, { label: string; empty: string }> = {
   out: { label: "Out of stock", empty: "No variant is out of stock." },
@@ -769,6 +778,7 @@ export function InventoryView({
           sort={sort}
           sortHref={sortHref}
           empty={status ? FILTER_COPY[status].empty : "No variants to show."}
+          exportId="inventory.variants"
         />
         {report.rowsTruncated ? (
           <p className="text-xs text-muted">{`The table lists the ${formatCount(report.rows.length)} that need attention most, of ${formatCount(report.variants)} variants. The figures above count them all.`}</p>

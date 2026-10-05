@@ -172,9 +172,18 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             )}
           </p>
         </div>
-        {paid && (
+        {(paid || memberCan(member, "owner")) && (
           <div className="flex flex-wrap items-center gap-2">
-            {order.ships && (
+            {/* The order file of this one order (D165): the owner's, because it can hold the buyer's personal data. */}
+            {memberCan(member, "owner") && (
+              <Link
+                href={`/admin/${store.slug}/orders/export?numbers=${encodeURIComponent(order.number)}`}
+                className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm"
+              >
+                Export this order
+              </Link>
+            )}
+            {paid && order.ships && (
               <Link
                 href={`/admin/${store.slug}/orders/${order.id}/packing-slip`}
                 target="_blank"
@@ -183,7 +192,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 Packing slip
               </Link>
             )}
-            {order.email && <ResendButton {...ids} />}
+            {paid && order.email && <ResendButton {...ids} />}
           </div>
         )}
       </div>

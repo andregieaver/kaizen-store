@@ -7655,3 +7655,263 @@ export const privacyRequests = commerce.table(
     check("privacy_requests_erased_email", sql`not (${t.kind} = 'erasure' and ${t.status} = 'done') or ${t.subjectEmail} is null`),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Data in and out (wave 2, D165, docs/wave-2-data.md): one job table for imports and exports, and the bulk editor's record
+// ---------------------------------------------------------------------------
+
+/**
+ * One import or export (`docs/wave-2-data.md` 3.1): a product import (a dry run, then an apply), a product, order or customer
+ * export. A job is a row, claimed with an expiry (as `store_copies` are) and run in ticks by the open page, `after()` and the
+ * five-minute cron, so it can stop and go on. Its files are in the private `imports` and `exports` buckets and are deleted by
+ * application code (`pruneDataJobs()`, never SQL). `options` holds the member's choices and never a cell of a file or an email;
+ * `counts` and `cursor` are numbers and keys. The status moves forward only (the database refuses a backwards move, with one
+ * exception: a `checked` import may be checked again after its options changed) and the file an import was checked against
+ * cannot be swapped before it is applied. One active product import per store (a unique index); the active export limit is
+ * counted under a lock by `commerce.start_export_job()`.
+ */
+export const dataJobs = commerce.table(
+  "data_jobs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    /** `product_import`, `product_export`, `order_export`, `customer_export`; later waves add the redirect files. */
+    kind: text("kind").notNull(),
+    /** `uploaded`, `checking`, `checked`, `queued`, `running`, `done`, `failed`, `cancelled`, `expired` (`src/lib/data-job.ts`). */
+    status: text("status").notNull(),
+    /** `check` or `apply` for an import, `write` or `assemble` for an export. */
+    phase: text("phase"),
+    /** `kaizen` or `shopify` for an import, `kaizen` for an export. */
+    format: text("format"),
+    /** What the member chose: filters, dialect, profile, import options. Never a cell and never an email address. */
+    options: jsonb("options").notNull().default({}),
+    requestedBy: uuid("requested_by")
+      .notNull()
+      .references(() => accounts.id),
+    /** An import's file in the `imports` bucket, `{store}/{uuid}/{safe name}`; its size and SHA-256 (the apply checks it is the same file). */
+    inputPath: text("input_path"),
+    inputName: text("input_name"),
+    inputBytes: integer("input_bytes"),
+    inputSha256: text("input_sha256"),
+    rowsTotal: integer("rows_total"),
+    rowsDone: integer("rows_done"),
+    /** `created`, `updated`, `unchanged`, `skipped`, `drafted`, `failed`, `warnings`, `pricesChanged`, `picturesFetched`, `termsCreated`. */
+    counts: jsonb("counts").notNull().default({}),
+    /** Where to go on: the product index of an import, the export's key and part number. */
+    cursor: jsonb("cursor").notNull().default({}),
+    /** An export's parts, `[{ path, name, rows, bytes, sha256 }]`, in the `exports` bucket. */
+    files: jsonb("files").notNull().default([]),
+    /** The plain reason a job failed. */
+    problem: text("problem"),
+    attempts: integer("attempts").notNull().default(0),
+    /** One run at a time: a run holds the job until this time. */
+    claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    /** When the job's files are deleted: an export's 7 days after it is done, an import's file 30 days after it ends. */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    /** When the files were removed. */
+    purgedAt: timestamp("purged_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("data_jobs_store_id_key").on(t.storeId, t.id),
+    index("data_jobs_store_kind_idx").on(t.storeId, t.kind, t.createdAt.desc()),
+    index("data_jobs_requested_by_idx").on(t.requestedBy),
+    index("data_jobs_open_idx").on(t.status, t.claimedUntil),
+    index("data_jobs_expires_idx")
+      .on(t.expiresAt)
+      .where(sql`${t.purgedAt} is null and ${t.expiresAt} is not null`),
+    uniqueIndex("data_jobs_one_active_import_idx")
+      .on(t.storeId)
+      .where(sql`${t.kind} = 'product_import' and ${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running')`),
+    check("data_jobs_kind", sql`${t.kind} in ('product_import', 'product_export', 'order_export', 'customer_export')`),
+    check(
+      "data_jobs_status",
+      sql`${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running', 'done', 'failed', 'cancelled', 'expired')`,
+    ),
+    check("data_jobs_phase", sql`${t.phase} is null or ${t.phase} in ('check', 'apply', 'write', 'assemble')`),
+    check("data_jobs_format", sql`${t.format} is null or ${t.format} in ('kaizen', 'shopify')`),
+    check("data_jobs_rows", sql`${t.rowsTotal} is null or ${t.rowsTotal} >= 0`),
+    check(
+      "data_jobs_rows_done",
+      sql`${t.rowsDone} is null or (${t.rowsDone} >= 0 and (${t.rowsTotal} is null or ${t.rowsDone} <= ${t.rowsTotal}))`,
+    ),
+    check("data_jobs_input_bytes", sql`${t.inputBytes} is null or ${t.inputBytes} between 0 and 15728640`),
+    check("data_jobs_input_sha256", sql`${t.inputSha256} is null or ${t.inputSha256} ~ '^[0-9a-f]{64}$'`),
+    check("data_jobs_attempts", sql`${t.attempts} >= 0`),
+    check(
+      "data_jobs_json",
+      sql`jsonb_typeof(${t.options}) = 'object' and jsonb_typeof(${t.counts}) = 'object' and jsonb_typeof(${t.cursor}) = 'object' and jsonb_typeof(${t.files}) = 'array'`,
+    ),
+    // An export has no input file, an import has no output files, and the format of an export is Kaizen's own.
+    check("data_jobs_export_no_input", sql`${t.kind} = 'product_import' or (${t.inputPath} is null and ${t.inputSha256} is null and ${t.format} is distinct from 'shopify')`),
+    check("data_jobs_import_no_files", sql`${t.kind} <> 'product_import' or ${t.files} = '[]'::jsonb`),
+    // An ended job says when.
+    check(
+      "data_jobs_finished",
+      sql`${t.status} not in ('done', 'failed', 'cancelled', 'expired') or ${t.finishedAt} is not null`,
+    ),
+    check("data_jobs_problem", sql`${t.problem} is null or length(${t.problem}) <= 500`),
+  ],
+);
+
+/**
+ * One product of an import, or one finding about the file (`docs/wave-2-data.md` 3.2). Written with `on conflict (job_id, seq) do
+ * update`, so a resumed job writes each once. A sentence may name a handle, a SKU or a column and never quotes a cell. Kept 90 days
+ * after the job ends.
+ */
+export const dataJobItems = commerce.table(
+  "data_job_items",
+  {
+    storeId: storeId(),
+    jobId: uuid("job_id").notNull(),
+    seq: integer("seq").notNull(),
+    /** `product` (one product of the file) or `file` (a finding about the file as a whole). */
+    kind: text("kind").notNull(),
+    /** The handle, or null. */
+    ref: text("ref"),
+    /** The file's row numbers (a spreadsheet's: the header is row 1). */
+    rows: integer("rows").array().notNull().default(sql`'{}'::integer[]`),
+    /** `created`, `updated`, `unchanged`, `skipped`, `drafted`, `failed` or `checked` (the dry run's). */
+    outcome: text("outcome").notNull(),
+    /** `[{ severity, code, column, text }]`. */
+    messages: jsonb("messages").notNull().default([]),
+    /** A short summary: `{ prices: n, fields: [names], stock: bool }`. */
+    changes: jsonb("changes").notNull().default({}),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.jobId, t.seq] }),
+    foreignKey({
+      name: "data_job_items_job_fk",
+      columns: [t.storeId, t.jobId],
+      foreignColumns: [dataJobs.storeId, dataJobs.id],
+    }).onDelete("cascade"),
+    index("data_job_items_job_idx").on(t.storeId, t.jobId, t.outcome),
+    check("data_job_items_seq", sql`${t.seq} >= 0`),
+    check("data_job_items_kind", sql`${t.kind} in ('product', 'file')`),
+    check("data_job_items_outcome", sql`${t.outcome} in ('created', 'updated', 'unchanged', 'skipped', 'drafted', 'failed', 'checked')`),
+    check("data_job_items_json", sql`jsonb_typeof(${t.messages}) = 'array' and jsonb_typeof(${t.changes}) = 'object'`),
+  ],
+);
+
+/**
+ * A picture an import fetched, by its address (`docs/wave-2-data.md` 3.3): what lets a resumed job fetch nothing twice.
+ * `library_url` is null for a picture that could not be fetched, with the `reason`. Deleted with the job's items.
+ */
+export const dataJobAssets = commerce.table(
+  "data_job_assets",
+  {
+    storeId: storeId(),
+    jobId: uuid("job_id").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    libraryUrl: text("library_url"),
+    reason: text("reason"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.jobId, t.sourceUrl] }),
+    foreignKey({
+      name: "data_job_assets_job_fk",
+      columns: [t.storeId, t.jobId],
+      foreignColumns: [dataJobs.storeId, dataJobs.id],
+    }).onDelete("cascade"),
+    index("data_job_assets_job_idx").on(t.storeId, t.jobId),
+    check("data_job_assets_result", sql`${t.libraryUrl} is not null or ${t.reason} is not null`),
+  ],
+);
+
+/**
+ * One bulk edit of the products list (`docs/wave-2-data.md` 3.4): what was done, kept so it can be undone for seven days. An undo is
+ * a batch of its own (`action = 'undo'`, `undo_of` the batch it undoes). Append-only: a trigger refuses every change but `undone_at`,
+ * set once. `params` holds figures, markets and term ids, no free text.
+ */
+export const bulkEditBatches = commerce.table(
+  "bulk_edit_batches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    requestedBy: uuid("requested_by")
+      .notNull()
+      .references(() => accounts.id),
+    /** `status`, `archive`, `unarchive`, `terms_add`, `terms_remove`, `price`, `stock`, `grid` or `undo`. */
+    action: text("action").notNull(),
+    params: jsonb("params").notNull().default({}),
+    /** The batch this one undoes, for an `undo`. */
+    undoOf: uuid("undo_of"),
+    /** `{ products, changed, unchanged, failed }`. */
+    counts: jsonb("counts").notNull().default({}),
+    createdAt: createdAt(),
+    /** Set once, when an undo of this batch was made. */
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("bulk_edit_batches_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "bulk_edit_batches_undo_of_fk",
+      columns: [t.storeId, t.undoOf],
+      foreignColumns: [t.storeId, t.id],
+    }),
+    index("bulk_edit_batches_store_idx").on(t.storeId, t.createdAt.desc()),
+    index("bulk_edit_batches_requested_by_idx").on(t.requestedBy),
+    // A batch is undone once: its undo is the one batch that names it.
+    uniqueIndex("bulk_edit_batches_one_undo_idx")
+      .on(t.storeId, t.undoOf)
+      .where(sql`${t.undoOf} is not null`),
+    check(
+      "bulk_edit_batches_action",
+      sql`${t.action} in ('status', 'archive', 'unarchive', 'terms_add', 'terms_remove', 'price', 'stock', 'grid', 'undo')`,
+    ),
+    check("bulk_edit_batches_undo", sql`(${t.action} = 'undo') = (${t.undoOf} is not null)`),
+    check("bulk_edit_batches_json", sql`jsonb_typeof(${t.params}) = 'object' and jsonb_typeof(${t.counts}) = 'object'`),
+  ],
+);
+
+/**
+ * One changed cell of a bulk edit, with its value before and after (`docs/wave-2-data.md` 3.4): figures and codes, never personal
+ * data. `product_id` and `variant_id` are recorded as they were, with no foreign key: a product that is gone cannot be undone and
+ * the undo says so. An undone item's outcome becomes `undone`, the one change the append-only trigger allows.
+ */
+export const bulkEditItems = commerce.table(
+  "bulk_edit_items",
+  {
+    storeId: storeId(),
+    batchId: uuid("batch_id").notNull(),
+    seq: integer("seq").notNull(),
+    productId: uuid("product_id").notNull(),
+    /** Null for a field of the product itself (status, terms). */
+    variantId: uuid("variant_id"),
+    /** `status`, `archived`, `terms`, `price:{COUNTRY}`, `stock`, `cost` or `sku`. */
+    field: text("field").notNull(),
+    before: jsonb("before"),
+    after: jsonb("after"),
+    /** `changed`, `unchanged`, `failed`, or `undone` once an undo has put it back. */
+    outcome: text("outcome").notNull(),
+    /** A failure's sentence (the editor's own). */
+    reason: text("reason"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.batchId, t.seq] }),
+    foreignKey({
+      name: "bulk_edit_items_batch_fk",
+      columns: [t.storeId, t.batchId],
+      foreignColumns: [bulkEditBatches.storeId, bulkEditBatches.id],
+    }).onDelete("cascade"),
+    index("bulk_edit_items_batch_idx").on(t.storeId, t.batchId),
+    index("bulk_edit_items_product_idx").on(t.storeId, t.productId),
+    check("bulk_edit_items_seq", sql`${t.seq} >= 0`),
+    check("bulk_edit_items_outcome", sql`${t.outcome} in ('changed', 'unchanged', 'failed', 'undone')`),
+    check(
+      "bulk_edit_items_field",
+      sql`${t.field} in ('status', 'archived', 'terms', 'stock', 'cost', 'sku') or ${t.field} ~ '^price:[A-Z]{2}$'`,
+    ),
+    check("bulk_edit_items_failed_reason", sql`${t.outcome} <> 'failed' or length(trim(coalesce(${t.reason}, ''))) > 0`),
+    check("bulk_edit_items_reason", sql`${t.reason} is null or length(${t.reason}) <= 500`),
+  ],
+);

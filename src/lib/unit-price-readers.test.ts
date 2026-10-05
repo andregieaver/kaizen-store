@@ -31,6 +31,11 @@ const readers = (pattern: RegExp) =>
 describe("who reads a variant's content", () => {
   it("is the catalogue, cart, checkout, order, subscription and list reads, the product's save and audit, and the unit price modules", () => {
     expect(readers(/measure_amount|measureAmount|parseMeasureAmount|normaliseMeasureAmount|measureFromColumns/)).toEqual([
+      // The product file (D165, wave 2) carries a variant's content as three cells (`measure_amount`, `measure_unit`, `measure_base`) and
+      // hands them to the editor's own input and checks (`normaliseMeasureAmount()`); it works out no figure of its own.
+      "src/lib/product-csv-shopify.ts",
+      "src/lib/product-csv.ts",
+      "src/lib/product-import.ts",
       "src/lib/product-input.ts",
       "src/lib/unit-price-rules.ts",
       "src/lib/unit-price.ts",
@@ -48,6 +53,9 @@ describe("who reads a variant's content", () => {
 
   it("reads the sold line's snapshot only where an order line is read: the order view, the checkout's insert and the renewal", () => {
     expect(readers(/\bmeasure_(amount|unit|base)\b/).filter((file) => !/unit-price/.test(file))).toEqual([
+      "src/lib/product-csv-shopify.ts",
+      "src/lib/product-csv.ts",
+      "src/lib/product-import.ts",
       "src/server/cart.ts",
       "src/server/catalog.ts",
       "src/server/checkout.ts",

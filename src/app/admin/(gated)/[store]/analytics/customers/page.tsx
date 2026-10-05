@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
+import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { CustomersView } from "@/components/admin/analytics/customers-view";
+import { queryText } from "@/lib/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
 import { customersReport } from "@/server/analytics-customers-data";
 
@@ -19,14 +21,16 @@ export default async function AnalyticsCustomersPage({ params, searchParams }: P
   const report = await customersReport(store, ctx.params.period, ctx.settings, now);
 
   return (
-    <div className="flex flex-col gap-8">
-      <AnalyticsHeader
-        ctx={ctx}
-        path="/analytics/customers"
-        title="Customers"
-        description="Do customers come back, what is a customer worth, and who are your best? The period picks the customers who ordered in it; repeat rates, lifetime value, groups and cohorts always look at the whole history."
-      />
-      <CustomersView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} timeZone={store.timeZone} isOwner={ctx.owner} report={report} />
-    </div>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+      <div className="flex flex-col gap-8">
+        <AnalyticsHeader
+          ctx={ctx}
+          path="/analytics/customers"
+          title="Customers"
+          description="Do customers come back, what is a customer worth, and who are your best? The period picks the customers who ordered in it; repeat rates, lifetime value, groups and cohorts always look at the whole history."
+        />
+        <CustomersView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} timeZone={store.timeZone} isOwner={ctx.owner} report={report} />
+      </div>
+    </ExportScope>
   );
 }

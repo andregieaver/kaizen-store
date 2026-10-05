@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
+import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { DiscountsView } from "@/components/admin/analytics/discounts-view";
 import { MarketingView, marketingLtv } from "@/components/admin/analytics/marketing-view";
 import { SpendSection } from "@/components/admin/analytics/spend-form";
+import { queryText } from "@/lib/analytics-export";
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 import { analyticsContext } from "@/server/analytics-context";
@@ -43,30 +45,32 @@ export default async function AnalyticsMarketingPage({ params, searchParams }: P
   const locale = store.markets[0]?.locale ?? "en";
 
   return (
-    <div className="flex flex-col gap-8">
-      <AnalyticsHeader
-        ctx={ctx}
-        path="/analytics/marketing"
-        title="Marketing"
-        description="What it costs to win a customer, which channels pay back, and how much of your business depends on discounts."
-      />
-      <MarketingView
-        base={ctx.base}
-        currency={currency}
-        locale={locale}
-        report={report}
-        comparison={previous && compare.mode !== "none" ? { mode: compare.mode, report: previous } : null}
-        ltv={customers ? marketingLtv(customers.ltv) : null}
-      />
-      <SpendSection
-        currency={currency}
-        locale={locale}
-        today={todayIn(now, store.timeZone)}
-        entries={spend}
-        limit={SPEND_LISTED}
-        actions={{ add: addSpendAction.bind(null, store.slug), remove: deleteSpendAction.bind(null, store.slug) }}
-      />
-      <DiscountsView currency={currency} locale={locale} report={discounts} />
-    </div>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+      <div className="flex flex-col gap-8">
+        <AnalyticsHeader
+          ctx={ctx}
+          path="/analytics/marketing"
+          title="Marketing"
+          description="What it costs to win a customer, which channels pay back, and how much of your business depends on discounts."
+        />
+        <MarketingView
+          base={ctx.base}
+          currency={currency}
+          locale={locale}
+          report={report}
+          comparison={previous && compare.mode !== "none" ? { mode: compare.mode, report: previous } : null}
+          ltv={customers ? marketingLtv(customers.ltv) : null}
+        />
+        <SpendSection
+          currency={currency}
+          locale={locale}
+          today={todayIn(now, store.timeZone)}
+          entries={spend}
+          limit={SPEND_LISTED}
+          actions={{ add: addSpendAction.bind(null, store.slug), remove: deleteSpendAction.bind(null, store.slug) }}
+        />
+        <DiscountsView currency={currency} locale={locale} report={discounts} />
+      </div>
+    </ExportScope>
   );
 }

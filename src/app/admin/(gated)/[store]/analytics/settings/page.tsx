@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
+import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { AnalyticsSettingsView } from "@/components/admin/analytics/settings-forms";
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
@@ -29,35 +30,37 @@ export default async function AnalyticsSettingsPage({ params }: PageProps<"/admi
   const [summary, targets] = await Promise.all([analyticsSetupSummary(store.id), listTargets(store.id, 60)]);
   const owner = ctx.owner;
   return (
-    <div className="flex flex-col gap-6">
-      <AnalyticsHeader
-        ctx={ctx}
-        path="/analytics/settings"
-        title="Analytics settings"
-        description="What your products cost, the fees we cannot see, what you are aiming for, and whether visits are counted. These turn sales figures into profit."
-        picker={false}
-      />
-      <AnalyticsSettingsView
-        base={base}
-        currency={mainCurrency(store)}
-        locale={store.markets[0]?.locale ?? "en"}
-        today={todayIn(now, store.timeZone)}
-        settings={settings}
-        summary={summary}
-        targets={targets}
-        visitCounting={store.visitCounting}
-        actions={
-          owner
-            ? {
-                saveSettings: saveAnalyticsSettingsAction.bind(null, store.slug),
-                saveTarget: saveTargetAction.bind(null, store.slug),
-                deleteTarget: deleteTargetAction.bind(null, store.slug),
-                setVisitCounting: setVisitCountingAction.bind(null, store.slug),
-                backfillCosts: backfillCostsAction.bind(null, store.slug),
-              }
-            : null
-        }
-      />
-    </div>
+    <ExportScope base={ctx.base} query="" owner={ctx.owner} canExport={ctx.canExport}>
+      <div className="flex flex-col gap-6">
+        <AnalyticsHeader
+          ctx={ctx}
+          path="/analytics/settings"
+          title="Analytics settings"
+          description="What your products cost, the fees we cannot see, what you are aiming for, and whether visits are counted. These turn sales figures into profit."
+          picker={false}
+        />
+        <AnalyticsSettingsView
+          base={base}
+          currency={mainCurrency(store)}
+          locale={store.markets[0]?.locale ?? "en"}
+          today={todayIn(now, store.timeZone)}
+          settings={settings}
+          summary={summary}
+          targets={targets}
+          visitCounting={store.visitCounting}
+          actions={
+            owner
+              ? {
+                  saveSettings: saveAnalyticsSettingsAction.bind(null, store.slug),
+                  saveTarget: saveTargetAction.bind(null, store.slug),
+                  deleteTarget: deleteTargetAction.bind(null, store.slug),
+                  setVisitCounting: setVisitCountingAction.bind(null, store.slug),
+                  backfillCosts: backfillCostsAction.bind(null, store.slug),
+                }
+              : null
+          }
+        />
+      </div>
+    </ExportScope>
   );
 }

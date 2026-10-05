@@ -304,6 +304,21 @@ export const OWNER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "list_data_jobs",
+    "The store's file imports and exports (D165), newest first: a product import or export, an order file or a customer file. Each has its kind, status in words, how far it got, its counts (created, updated, unchanged, skipped, saved as draft, failed), the plain reason when it failed, when it finished and when its files are deleted (7 days after an export is made). It shows only the kinds the member may use: product jobs need access to products, order and customer files are the owner's. It never gives a file's contents, a download link or a person's details, and it starts, applies, cancels and downloads nothing: say where the page is (Products, Import or Export, an order or customer export page) and let the person press the button themselves.",
+    z.object({
+      kind: z.enum(["product_import", "product_export", "order_export", "customer_export"]).optional().describe("Only this kind of job; leave it out for every kind the member may see."),
+      limit: limit(20, 10),
+    }),
+  ),
+  tool(
+    "explain_import_problems",
+    "What went wrong, or needs a look, in a product import's check or result: its findings grouped by their code with how many there are, how many products they touch, the sentence the import page shows, what to do about it, and up to five products each is about. It is counted in code from the import's stored findings, so repeat its numbers and never add one. A product with an error was left as it was; a warning was written with a note; information is only said. It never quotes a cell of the file and cannot change anything: to fix it, say what to do in the file or the editor, and that the import can be checked again on the import page (Products, Import). Leave job_id out for the latest import.",
+    z.object({
+      job_id: z.string().trim().uuid().optional().describe("The import's id, as list_data_jobs gives it; leave it out for the store's latest product import."),
+    }),
+  ),
+  tool(
     "restock_suggestions",
     "What to reorder: each shipped product's sales per day, the days its stock lasts, and how many to order to cover the days asked for plus the supplier's delivery time. Worked out in code from paid orders.",
     z.object({

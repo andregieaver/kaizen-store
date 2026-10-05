@@ -1180,15 +1180,22 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 4,
-    "gap": "No analytics, order or customer export: CSV exists only for the Work module's reports and invoices and the DAC7 report (`toCsv()`).",
-    "history": [],
-    "bucket": "A",
-    "wave": 2,
+    "gap": "",
+    "history": [
+      {
+        "on": "2026-10-05",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 2, first run (docs/wave-2-data.md; working tree not yet committed). Read analytics-export.ts (registry), the route and the export button, and ran analytics-export.test.ts, analytics-export-views.test.ts (a scan that fails for any DataTable, chart data table or hand-made table in the analytics views with no exportId in ANALYTICS_TABLES or an exportable={false} reason in NOT_EXPORTED), export-scope.test.ts, analytics-export.int.test.ts, order-export, customer-export and data-permissions int tests (all passed). Criterion 1: about fifty tables, each built from the page's own loaders and the views' own sort and shaping helpers, with period and previous-period columns, a custom range, the Nordic dialect and the left-out currency note in the button and the log; the int test checks that every registered table builds on a busy and an empty store with its header and no totals row, and checks a sample against the page's figures (overview series, products table with every product, traffic, inventory); equality for the other tables is by construction (same loaders), not asserted one by one. Criterion 2: orders and customers are the store-scoped jobs of orders.order-export-to-csv and the customer export, with the main currency stated. Criterion 3: the canary writes a product titled =1+1 and a channel named @SUM as text. Criterion 4: analytics:write needed (a 404 without), the top customers and targets tables need the owner, and a quiet store's tables hold nothing of a busy store's. VAT, OSS and IOSS keep D161's four files (listed in NOT_EXPORTED). Caveat: no signed-in browser run of the button (D158); the route is called as a handler."
+      }
+    ],
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Every analytics table can be downloaded as CSV for the chosen period and comparison, matching what the page shows.",
       "Orders and customers can be exported as a store-scoped job (full export beyond screen limits), with a header row and the store's main currency stated.",
@@ -1196,8 +1203,28 @@
       "An export refuses members without access and never includes another store's rows."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/analytics-export.ts",
+        "src/server/analytics-export.ts",
+        "src/lib/csv.ts",
+        "src/components/admin/analytics/export-scope.tsx",
+        "src/app/admin/(gated)/[store]/analytics/export/route.ts",
+        "src/lib/dac7.ts",
+        "src/server/order-export.ts",
+        "src/server/customer-export.ts",
+        "src/app/admin/(gated)/[store]/orders/export/file/route.ts",
+        "src/app/admin/(gated)/[store]/customers/export/file/route.ts"
+      ],
+      "tests": [
+        "src/lib/analytics-export.test.ts",
+        "src/lib/analytics-export-views.test.ts",
+        "src/components/admin/analytics/export-scope.test.ts",
+        "src/server/analytics-export.int.test.ts",
+        "src/server/order-export.int.test.ts",
+        "src/server/customer-export.int.test.ts",
+        "src/server/data-permissions.int.test.ts",
+        "e2e/analytics-export.spec.ts"
+      ],
       "untested": false
     },
     "decisions": []

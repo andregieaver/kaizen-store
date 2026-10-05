@@ -27,10 +27,18 @@ afterAll(async () => {
 });
 
 let n = 0;
+const used = new Set<string>();
 /** A currency code no real feed publishes and no other test run used: `Q` and two letters from a run-and-counter. */
 const code = () => {
-  const x = (Date.now() + ++n * 7919 + Math.floor(Math.random() * 1_000_000)) % 676;
-  return `Q${String.fromCharCode(65 + Math.floor(x / 26))}${String.fromCharCode(65 + (x % 26))}`;
+  // Made-up codes (676 of them) must not repeat inside a run: a repeat finds a rate an earlier test stored and the request never reaches the stand-in.
+  for (;;) {
+    const x = (Date.now() + ++n * 7919 + Math.floor(Math.random() * 1_000_000)) % 676;
+    const c = `Q${String.fromCharCode(65 + Math.floor(x / 26))}${String.fromCharCode(65 + (x % 26))}`;
+    if (!used.has(c)) {
+      used.add(c);
+      return c;
+    }
+  }
 };
 
 /** The test currencies are made up: the ECB publishes none of them, so the "is it a currency the ECB publishes" check is told yes. */

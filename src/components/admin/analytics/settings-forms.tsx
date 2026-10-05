@@ -399,6 +399,7 @@ function TargetsSection({ currency, locale, today, targets, actions }: Pick<Anal
             rows={listed}
             rowKey={(t) => t.month}
             empty="No targets set. The overview shows progress once there is one for the current month."
+            exportId="settings.targets"
           />
         </div>
       </div>

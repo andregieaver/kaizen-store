@@ -210,20 +210,20 @@ export function ReturnsView(props: ReturnsViewProps) {
         <>
           <div className="grid gap-4 2xl:grid-cols-2">
             <ChartCard title="Why goods came back" description="The reason the shopper chose, by number of returns made in the period. A withdrawal asks for no reason, so many have none.">
-              <HorizontalBars label="Returns made by reason" rows={reasonRows} emptyText="No returns were made in this period." />
+              <HorizontalBars label="Returns made by reason" rows={reasonRows} emptyText="No returns were made in this period." exportId="traffic.return_reasons" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
               {r.reasons.note ? <p className="mt-2 text-xs text-muted">{r.reasons.note}</p> : null}
             </ChartCard>
             <div className="min-w-0 space-y-2">
               <h3 className="text-sm font-semibold">Withdrawals and voluntary returns</h3>
               <p className="text-xs text-muted">A withdrawal is the shopper&apos;s legal right and is not refused. A voluntary return is inside your own longer window and you may decline it.</p>
-              <DataTable caption="Returns made in the period by kind, with those refunded" columns={kindColumns} rows={r.kinds} rowKey={(k) => k.kind} />
+              <DataTable caption="Returns made in the period by kind, with those refunded" columns={kindColumns} rows={r.kinds} rowKey={(k) => k.kind} exportId="traffic.return_kinds" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </div>
           </div>
           <div className="grid gap-4 2xl:grid-cols-2">
             <div className="min-w-0 space-y-2">
               <h3 className="text-sm font-semibold">How fast you refund</h3>
               <p className="text-xs text-muted">For returns refunded in this period. A typical time is shown from {formatCount(MIN_TIMING_SAMPLE)} returns.</p>
-              <DataTable caption="Time from the request and from the goods arriving to the refund" columns={timingColumns} rows={timingRows} rowKey={(x) => x.key} />
+              <DataTable caption="Time from the request and from the goods arriving to the refund" columns={timingColumns} rows={timingRows} rowKey={(x) => x.key} exportId="traffic.return_timing" />
               <p className="text-xs text-muted">
                 {deadline.of === 0
                   ? "No withdrawal was refunded in this period."
@@ -241,6 +241,8 @@ export function ReturnsView(props: ReturnsViewProps) {
                 rows={r.products}
                 rowKey={(p) => p.productId}
                 empty="No goods from this period's orders have been returned."
+                exportId="traffic.return_products"
+                exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }}
               />
               {r.productCount > r.products.length ? <p className="text-xs text-muted">{`Showing ${formatCount(r.products.length)} of ${formatCount(r.productCount)} products.`}</p> : null}
             </div>

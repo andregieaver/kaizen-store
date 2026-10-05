@@ -2,23 +2,43 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { ProductsTable, type BulkTools } from "@/components/admin/products-bulk";
 import { NeedsContentList, NeedsContentNotice } from "@/components/admin/unit-price-gaps-view";
-import { formatMoney } from "@/lib/money";
-import { requirePermission } from "@/server/permissions";
-import { listAdminProducts } from "@/server/products";
+import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
+import { listJobs } from "@/server/data-jobs";
+import { memberCan, requirePermission } from "@/server/permissions";
+import { getEditorContext, listAdminProducts } from "@/server/products";
 import { productsNeedingMeasure } from "@/server/unit-price-gaps";
+
+import { continueBulkAction, matchingAction, previewBulkAction, startBulkAction, undoBatchAction } from "./bulk/actions";
 
 export const metadata: Metadata = { title: "Products" };
 
 type Props = PageProps<"/admin/[store]/products">;
 
 export default async function ProductsPage({ params, searchParams }: Props) {
-  const { store } = await requirePermission((await params).store, "products:read");
+  const member = await requirePermission((await params).store, "products:read");
+  const { store } = member;
+  const canWrite = memberCan(member, "products:write");
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Products</h1>
         <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/admin/${store.slug}/products/export`}
+            className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium"
+          >
+            Export
+          </Link>
+          {canWrite && (
+            <Link
+              href={`/admin/${store.slug}/products/import`}
+              className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium"
+            >
+              Import
+            </Link>
+          )}
           <Link
             href={`/admin/${store.slug}/products/categories`}
             className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium"
@@ -47,22 +67,48 @@ async function ProductList({
   storeSlug: string;
   searchParams: Props["searchParams"];
 }) {
-  const { store } = await requirePermission(storeSlug, "products:read");
+  const member = await requirePermission(storeSlug, "products:read");
+  const { store } = member;
+  const canWrite = memberCan(member, "products:write");
   const query = await searchParams;
   const archived = query.show === "archived";
   const needsFilter = !archived && query.needs === "unit-price";
   const locale = store.markets[0]?.locale ?? "en";
   // Unit price (D160): active products that need a content and have none, for the notice and its filter.
-  const [products, needing] = await Promise.all([
+  const [products, needing, editor, imports] = await Promise.all([
     needsFilter ? Promise.resolve([]) : listAdminProducts(store, { archived }),
     archived ? Promise.resolve([]) : productsNeedingMeasure(store.id, store.localization.locales[0] ?? locale),
+    // Bulk editing (D165): the store's categories, tags and markets for the action panels, read only for a member who can change products.
+    canWrite && !needsFilter ? getEditorContext(store) : Promise.resolve(null),
+    canWrite && !archived && !needsFilter ? listJobs(member, "product_import", 5) : Promise.resolve([]),
   ]);
+  const openImport = imports.find((j) => (ACTIVE_IMPORT_STATUSES as readonly string[]).includes(j.status)) ?? null;
+  const bulk: BulkTools | null = editor
+    ? {
+        preview: previewBulkAction.bind(null, store.slug),
+        start: startBulkAction.bind(null, store.slug),
+        next: continueBulkAction.bind(null, store.slug),
+        matching: matchingAction.bind(null, store.slug),
+        undo: undoBatchAction.bind(null, store.slug),
+        terms: editor.terms.map((t) => ({ id: t.id, name: t.name, kind: t.kind })),
+        markets: editor.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency })),
+      }
+    : null;
   const base = `/admin/${store.slug}/products`;
   const needsHref = `${base}?needs=unit-price`;
 
   return (
     <>
       {!needsFilter && <NeedsContentNotice count={needing.length} href={needsHref} />}
+      {openImport && (
+        <p className="rounded-lg border border-border bg-surface p-3 text-sm">
+          A product import is open ({openImport.inputName ?? "a file"}).{" "}
+          <Link href={`${base}/import/${openImport.id}`} className="underline underline-offset-2">
+            Continue it
+          </Link>
+          .
+        </p>
+      )}
       <nav aria-label="Product filters" className="flex gap-2 text-sm">
         <Link
           href={base}
@@ -100,68 +146,14 @@ async function ProductList({
           )}
         </div>
       ) : (
-        <table className="w-full overflow-hidden rounded-lg border border-border bg-background text-left text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              <th scope="col" className="px-4 py-2 font-medium">
-                Product
-              </th>
-              <th scope="col" className="px-4 py-2 font-medium">
-                Status
-              </th>
-              <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">
-                Stock
-              </th>
-              <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">
-                Price{store.markets[0] && ` (${store.markets[0].name}${store.audience === "businesses" ? ", excl. VAT" : ""})`}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product) => (
-              <tr key={product.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-2">
-                  <Link href={`${base}/${product.id}`} className="flex items-center gap-3 font-medium hover:underline">
-                    {product.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- small admin thumbnail
-                      <img src={product.image} alt="" width={40} height={40} loading="lazy" className="size-10 rounded border border-border object-cover" />
-                    ) : (
-                      <span aria-hidden="true" className="size-10 rounded border border-dashed border-border" />
-                    )}
-                    <span>
-                      {product.title}
-                      {product.variants > 1 && (
-                        <span className="block text-xs font-normal text-muted">{product.variants} variants</span>
-                      )}
-                    </span>
-                  </Link>
-                </td>
-                <td className="px-4 py-2">
-                  {product.status === "active" ? "Published" : product.status === "draft" ? "Draft" : "Archived"}
-                </td>
-                <td className="hidden px-4 py-2 sm:table-cell">
-                  {product.digitalVariants > 0 && product.digitalVariants === product.variants ? (
-                    <span className="text-muted">Digital</span>
-                  ) : product.stock === 0 ? (
-                    <span className="text-muted">Out of stock</span>
-                  ) : (
-                    product.stock
-                  )}
-                  {product.digitalVariants > 0 && product.digitalVariants < product.variants && (
-                    <span className="block text-xs text-muted">and digital</span>
-                  )}
-                </td>
-                <td className="hidden px-4 py-2 sm:table-cell">
-                  {product.price
-                    ? product.price.min === product.price.max
-                      ? formatMoney(product.price.min, product.price.currency, locale)
-                      : `${formatMoney(product.price.min, product.price.currency, locale)} – ${formatMoney(product.price.max, product.price.currency, locale)}`
-                    : <span className="text-muted">No price</span>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <ProductsTable
+          slug={store.slug}
+          archived={archived}
+          locale={locale}
+          bulk={bulk}
+          priceHeader={`Price${store.markets[0] ? ` (${store.markets[0].name}${store.audience === "businesses" ? ", excl. VAT" : ""})` : ""}`}
+          rows={products.map((p) => ({ id: p.id, title: p.title, status: p.status, image: p.image, variants: p.variants, digitalVariants: p.digitalVariants, stock: p.stock, price: p.price }))}
+        />
       )}
     </>
   );

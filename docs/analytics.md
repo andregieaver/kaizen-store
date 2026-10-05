@@ -270,6 +270,32 @@ says it is not a tax return. The owner's overview and the store's Home add a not
 within 14 days or passed in the last 45, and no Return data was exported in filing mode (`returnsDue()`, `src/lib/tax-returns-due.ts`; owners only, a registration
 with an intermediary or a period with nothing to report is left out): it says the data has not been exported and when it is due, never that a return is late.
 
+## CSV of every table (D165)
+
+Every table and chart data table of the analytics pages has a **Download CSV** button (`ExportButton`, `src/components/admin/analytics/export-scope.tsx`: a
+POST form to `/admin/{store}/analytics/export`, never a link, drawn only for a member with `analytics:write`). The file is the table **as the page shows it**
+for the period, the comparison and the sort in the address, made by `exportAnalyticsTable()` (`src/server/analytics-export.ts`) from the page's own loaders
+(`overviewHead()`, `productsReport()`, `trafficReport()` and the rest, with the arguments the page passes): there is no second query, so a figure cannot differ
+from the page's. No figure is defined here that is not defined above; the file adds none.
+
+- **Registry.** `ANALYTICS_TABLES` (`src/lib/analytics-export.ts`) names every exportable table: its id, the page and view that draw it, its columns (a fixed
+  English snake_case header, a kind: text, whole number, amount, percentage, decimal, date) and whether it has amounts. `NOT_EXPORTED` lists the tables that are
+  deliberately not here, each with its reason: the VAT, OSS and IOSS tables keep the four files of D161. `analytics-export-views.test.ts` scans every view and fails
+  for a table or chart with neither an `exportId` in the registry nor `exportable={false}` with a reason in `NOT_EXPORTED`.
+- **The columns.** The table's own columns, then `{column}_previous` for each figure the page compares (the comparison's row lined up with the current one, empty where it
+  has none), then `currency` (the store's main currency, where the table has amounts), `period_from` and `period_to` (the last day, inclusive), and `previous_from` and
+  `previous_to` when the page compares. A table with no period (the stock today, the targets) says the day it was made. A chart's series are its buckets (`bucket`: the
+  bucket's first day) and a bar chart is a `label` and a `value`.
+- **Amounts** are decimals without VAT in the main currency (`amountCell()`, minor units to a decimal by the currency's own digits, never a float), a share is a
+  percentage with two decimals (`42.55`), a figure the page shows as a dash is **empty, never 0**, and there is **no totals row**, so a column sums. The file goes beyond
+  the screen's row limits (every product, not the first 50), with the page's own filter and sort.
+- **A currency with no rate** is left out as on the page, and counted: the button's label repeats it ("Download CSV: 3 orders in SEK left out, as on this page") and the
+  activity-log entry records the count.
+- **Who.** `analytics:write`; the top customers (people) and the owner's targets are also the owner's (`OWNER_ONLY_TABLES`). The entry `analytics.table_exported` (table
+  id, period, rows, left-out count; never a cell) is written **before** the file is handed back, and with no entry there is no file. Spreadsheet text goes through the one
+  writer (`src/lib/csv.ts`), so a product titled `=1+1` is written as text. Defaults: Excel (Nordic), a semicolon and a decimal comma with a byte order mark.
+- Orders and customers are not tables of these pages: they are the owner's exports of `docs/wave-2-data.md` 2.3 and 2.4.
+
 ## Not tracked (said on the pages)
 
 Refunds made only in Stripe's dashboard; returns made without Kaizen's withdrawal function or return request; subscription expansion, contraction and

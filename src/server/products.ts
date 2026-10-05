@@ -625,6 +625,8 @@ export async function saveProduct(
   variantFields?: unknown,
   /** Who saves it, for the activity log (wave 1, 1f): a product, and each price that changed, is written down when it is given. */
   actor?: { id: string },
+  /** How stock is written (D165, `StockMode`): the import and the bulk editor pass what they read, the editor passes nothing. */
+  stockMode?: StockMode,
 ): Promise<SaveProductResult> {
   const input = asKind(given);
   const euRows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
@@ -700,7 +702,7 @@ export async function saveProduct(
         `);
       }
       const locationId = await stockLocation(tx, store);
-      await saveVariants(tx, store.id, saved, context, input, locationId);
+      await saveVariants(tx, store.id, saved, context, input, locationId, stockMode);
       await saveAppointment(tx, store.id, saved, input, context);
       await saveFiles(tx, store.id, saved, input);
       await savePlans(tx, store.id, saved, input, context.markets, context.audience);
@@ -901,6 +903,14 @@ async function stockLocation(tx: Tx, store: Store): Promise<string> {
   return String(row.id);
 }
 
+/**
+ * How a save treats stock (D165). Without it (the editor) a physical variant's `stock` is written as given. With it, `loaded` holds the stock
+ * each existing variant had when the caller read it: a variant whose `stock` is still that figure is LEFT ALONE (a sale paid since the read stays
+ * paid, an import that has no stock column never writes one), and a changed one is written as given, or, with `relative`, as the change from what
+ * was read applied to what is there now (`on_hand + (stock - loaded)`, never below 0), so an adjustment of 5 is 5 more whatever was sold meanwhile.
+ */
+export type StockMode = { loaded: ReadonlyMap<string, number>; relative?: boolean };
+
 async function saveVariants(
   tx: Tx,
   storeId: string,
@@ -908,6 +918,7 @@ async function saveVariants(
   context: EditorContext,
   input: ProductInput,
   locationId: string,
+  stockMode?: StockMode,
 ) {
   const existing = await tx.execute<Row>(sql`
     select id from commerce.product_variants
@@ -980,11 +991,28 @@ async function saveVariants(
 
     // Downloads never run out: digital variants keep no stock.
     if (physical) {
-      await tx.execute(sql`
-        insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-        values (${storeId}::uuid, ${id}::uuid, ${locationId}::uuid, ${variant.stock})
-        on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
-      `);
+      const base = variant.id && existingIds.has(variant.id) ? stockMode?.loaded.get(variant.id) : undefined;
+      if (base !== undefined && base === variant.stock) {
+        // Unchanged since the caller read it: make sure a level exists, never overwrite one.
+        await tx.execute(sql`
+          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+          values (${storeId}::uuid, ${id}::uuid, ${locationId}::uuid, ${variant.stock})
+          on conflict (variant_id, location_id) do nothing
+        `);
+      } else if (base !== undefined && stockMode?.relative) {
+        await tx.execute(sql`
+          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+          values (${storeId}::uuid, ${id}::uuid, ${locationId}::uuid, ${variant.stock})
+          on conflict (variant_id, location_id) do update
+            set on_hand = greatest(0, commerce.inventory_levels.on_hand + ${variant.stock - base}::int), updated_at = now()
+        `);
+      } else {
+        await tx.execute(sql`
+          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+          values (${storeId}::uuid, ${id}::uuid, ${locationId}::uuid, ${variant.stock})
+          on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
+        `);
+      }
     }
   }
 

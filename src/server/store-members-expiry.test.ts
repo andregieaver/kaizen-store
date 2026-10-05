@@ -15,6 +15,7 @@ const ALLOWED: Record<string, string> = {
   "settings.ts": "the staff list and inviting: an owner sees ended collaborators and can extend them",
   "store-roles.ts": "roles, invitations and extensions of collaborators: ended ones are managed here",
   "trust-fixtures.ts": "test fixtures",
+  "data-test-support.ts": "test fixtures",
   "work-test-support.ts": "test fixtures",
   "two-step.ts": "who a store's requirement for two-step sign-in is counted over (every member, ended or not)",
   "platform-customers.ts": "the platform admin's own list of accounts and their stores",

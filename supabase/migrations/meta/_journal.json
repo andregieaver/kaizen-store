@@ -1800,6 +1800,34 @@
       "when": 1791150229391,
       "tag": "20261004214349_ai_vision_model",
       "breakpoints": true
+    },
+    {
+      "idx": 257,
+      "version": "7",
+      "when": 1791199474523,
+      "tag": "20261005112434_data_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1791199482104,
+      "tag": "20261005112442_data_jobs_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1791199489256,
+      "tag": "20261005112449_data_buckets",
+      "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1791206849531,
+      "tag": "20261005132729_data_plan_features",
+      "breakpoints": true
     }
   ]
 }

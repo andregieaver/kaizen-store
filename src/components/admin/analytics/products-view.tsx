@@ -747,6 +747,8 @@ export function ProductsView({
             label="Top 10 products by revenue"
             rows={best}
             emptyText="No product has revenue in this period."
+            exportId="products.top_revenue"
+            exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }}
           />
         </ChartCard>
       </AnalyticsSection>
@@ -766,6 +768,8 @@ export function ProductsView({
           sortHref={sortHref}
           footer={footer}
           empty="No products to show."
+          exportId="products.table"
+          exportLeftOut={{ orders: report.unconverted, currencies: report.missingCurrencies }}
         />
         <dl className="grid gap-x-6 gap-y-1 text-xs text-muted sm:grid-cols-2">
           <div>

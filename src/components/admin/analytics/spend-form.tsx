@@ -124,6 +124,7 @@ export function SpendSection({ currency, locale, today, entries, limit, actions 
             rows={entries}
             rowKey={(e) => e.id}
             empty="No ad spend entered yet. Add the first one above."
+            exportId="settings.spend"
           />
           {entries.length >= limit ? <p className="text-xs text-muted">{`Showing the ${formatCount(limit)} latest entries.`}</p> : null}
         </div>

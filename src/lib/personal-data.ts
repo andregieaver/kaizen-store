@@ -101,6 +101,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("invoices", "shopper", via("order", "order_id"), ["snapshot"], "invoices", "restrict", "An invoice is an accounting document: " + LAW + " Only commerce.anonymise_expired_documents() changes it.", { until: "bookkeeping" }),
   entry("credit_notes", "shopper", via("order", "invoice_id"), ["snapshot"], "creditNotes", "restrict", "A credit note is an accounting document: " + LAW + " Only commerce.anonymise_expired_documents() changes it.", { until: "bookkeeping" }),
   entry("storage:documents", "shopper", via("order", "pdf_path"), ["pdf_path"], null, "restrict", "The PDF of an invoice or credit note holds the same data as the document and is removed when the document is anonymised.", { until: "bookkeeping" }),
+  entry("storage:exports", "shopper", none, ["files"], null, "delete", "A store-wide customer or order file an owner made (D165) is not one person's section of the export, so it is not in it: it holds personal data of many people, is deleted after 7 days, and an erasure deletes the store's ready ones; the owner exports again if they need a file without the person.", {}),
 
   // Withdrawal and returns -----------------------------------------------------------------------------------------------------------
   entry("withdrawal_requests", "shopper", via("withdrawal", "order_id"), ["name", "email"], "returns", "restrict", "A confirmed withdrawal is a legal record of the contract: " + LAW, { also: ["consents"], until: "bookkeeping" }),
@@ -206,12 +207,17 @@ export const NOT_PERSONAL: Record<string, string> = {
   ai_model_prices: "A model's price and the platform admin's note about it.",
   booking_seasons: "A season's name for a booking's price.",
   calendar_feeds: "The name of another site's calendar the store reads.",
+  bulk_edit_batches: "A bulk edit's action, its figures and who made it (D165): staff account ids and counts, never a shopper's data.",
+  bulk_edit_items: "A changed cell of a bulk edit (D165): a product's status, a price, stock, cost or SKU before and after; figures and codes, never a person.",
   campaigns: "The name and rules of an offer.",
   cart_reminder_steps: "The store's own reminder email text, written for every shopper.",
   chat_agents: "The name and instructions of the store's chat agent.",
   cookie_notes: "A cookie's description.",
   countries: "Reference data.",
   customer_tiers: "A customer group's name and percentage, and the owner's note about the group.",
+  data_jobs: "An import or export (D165): its kind, options, counts and the staff account that ran it. The customer and order files it points to are the `storage:exports` entry; the job itself holds no shopper's data.",
+  data_job_items: "A product of an import or a finding about the file (D165): a handle, a SKU, row numbers and a plain sentence that never quotes a cell.",
+  data_job_assets: "A picture address an import fetched and the library address it became (D165): product pictures only.",
   delivery_schedules: "A delivery day's name.",
   experiment_variants: "The name of a version in an A/B test.",
   experiments: "The name of an A/B test.",
@@ -289,6 +295,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "privacy.owners_notice": "staff",
   "privacy.due": "staff",
   "privacy.overdue": "staff",
+  "data_job.ready": "staff",
   // To a Work client (the owner's own bookkeeping)
   "work.invoice": "staff",
   "work.credit_note": "staff",

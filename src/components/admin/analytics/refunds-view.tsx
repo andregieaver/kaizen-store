@@ -59,7 +59,7 @@ export function refundCards({ currency, locale, report: r }: RefundsViewProps): 
   ];
 }
 
-const marketName = (names: RefundsViewProps["marketNames"], code: string) => names?.[code] ?? names?.[code.toUpperCase()] ?? code;
+export const marketName = (names: RefundsViewProps["marketNames"], code: string) => names?.[code] ?? names?.[code.toUpperCase()] ?? code;
 
 export function RefundsView(props: RefundsViewProps) {
   const { currency, locale, report: r, marketNames } = props;
@@ -152,12 +152,12 @@ export function RefundsView(props: RefundsViewProps) {
         <>
           <div className="grid gap-4 2xl:grid-cols-2">
             <ChartCard title="Why money was refunded" description="The reasons staff wrote, grouped when they read the same. A refund with no reason written is counted as such.">
-              <HorizontalBars label="Refunded amount by reason" rows={reasonRows} emptyText="No reasons to show." />
+              <HorizontalBars label="Refunded amount by reason" rows={reasonRows} emptyText="No reasons to show." exportId="traffic.refund_reasons" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </ChartCard>
             <div className="min-w-0 space-y-2">
               <h3 className="text-sm font-semibold">Most refunded products</h3>
               <p className="text-xs text-muted">Each refund is shared over the products on its order by what they were sold for, so the products add up to the refunds.</p>
-              <DataTable caption="The most refunded products with the value refunded, its share, the number of refunds and the units put back in stock" columns={productColumns} rows={r.products} rowKey={(p, i) => p.productId ?? `none-${i}`} />
+              <DataTable caption="The most refunded products with the value refunded, its share, the number of refunds and the units put back in stock" columns={productColumns} rows={r.products} rowKey={(p, i) => p.productId ?? `none-${i}`} exportId="traffic.refund_products" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
               {r.productCount > r.products.length ? <p className="text-xs text-muted">{`Showing ${formatCount(r.products.length)} of ${formatCount(r.productCount)} products.`}</p> : null}
             </div>
           </div>
@@ -165,12 +165,12 @@ export function RefundsView(props: RefundsViewProps) {
             <div className="min-w-0 space-y-2">
               <h3 className="text-sm font-semibold">New and returning customers</h3>
               <p className="text-xs text-muted">A new customer is one whose first paid order is in this period.</p>
-              <DataTable caption="Refunds by new and returning customers" columns={segmentColumns} rows={segments} rowKey={(s) => s.segment} />
+              <DataTable caption="Refunds by new and returning customers" columns={segmentColumns} rows={segments} rowKey={(s) => s.segment} exportId="traffic.refund_segments" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </div>
             <div className="min-w-0 space-y-2">
               <h3 className="text-sm font-semibold">By market</h3>
               <p className="text-xs text-muted">The refund rate is the market&apos;s refunds over its own revenue in this period.</p>
-              <DataTable caption="Refunds and refund rate by market" columns={marketColumns} rows={r.markets} rowKey={(m) => m.market} />
+              <DataTable caption="Refunds and refund rate by market" columns={marketColumns} rows={r.markets} rowKey={(m) => m.market} exportId="traffic.refund_markets" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </div>
           </div>
         </>

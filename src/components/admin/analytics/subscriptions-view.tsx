@@ -6,6 +6,7 @@ import { addDays } from "@/lib/analytics-period";
 import type { SubscriptionsReport } from "@/server/analytics-subscriptions-data";
 
 import { HorizontalBars, type BarRow } from "./charts";
+import { ExportButton } from "./export-scope";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { dayText, moneyWriter } from "./overview-view";
 import { AnalyticsSection, Note } from "./section";
@@ -287,8 +288,9 @@ export function growthLine(report: SubscriptionsReport, money: (minor: number | 
 function BridgeTable({ report, money }: { report: SubscriptionsReport; money: (minor: number | null | undefined) => string }) {
   const rows = bridgeRows(report);
   return (
+    <>
     <div className="relative overflow-x-auto rounded-lg border border-border bg-background">
-      <table className="w-full min-w-[32rem] border-collapse text-sm">
+      <table data-export-id="subscriptions.bridge" className="w-full min-w-[32rem] border-collapse text-sm">
         <caption className="sr-only">{`How monthly recurring revenue moved over ${periodText(report.period)}, one row for each step`}</caption>
         <thead>
           <tr>
@@ -324,11 +326,15 @@ function BridgeTable({ report, money }: { report: SubscriptionsReport; money: (m
         </tbody>
       </table>
     </div>
+    <div className="mt-1 flex justify-end empty:hidden">
+      <ExportButton exportId="subscriptions.bridge" />
+    </div>
+    </>
   );
 }
 
 /** The bridge as bars: the start, what was won, what was lost and the end. */
-function bridgeBars(report: SubscriptionsReport, money: (minor: number | null | undefined) => string): BarRow[] {
+export function bridgeBars(report: SubscriptionsReport, money: (minor: number | null | undefined) => string): BarRow[] {
   const m = report.movements;
   const rows: BarRow[] = [
     { key: "start", label: "MRR at the start", value: m.start, valueText: money(m.start), colorIndex: 0 },
@@ -414,7 +420,7 @@ export function SubscriptionsView(props: SubscriptionsViewProps) {
           <BridgeTable report={report} money={money} />
           <div className="min-w-0 rounded-lg border border-border bg-background p-4">
             <h3 className="mb-3 text-sm font-semibold">MRR, start to end</h3>
-            <HorizontalBars label="MRR at the start, what was added and lost, and MRR at the end" rows={bridgeBars(report, money)} />
+            <HorizontalBars label="MRR at the start, what was added and lost, and MRR at the end" rows={bridgeBars(report, money)} exportId="subscriptions.mrr_bridge" />
           </div>
         </div>
         <Note title="Expansion, contraction and reactivation are not tracked">

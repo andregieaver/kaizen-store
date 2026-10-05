@@ -95,6 +95,11 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Mark it sent with tracking", "Refund all or part and restock", "Cancel it", "Correct the address", "Add a note", "Resend the confirmation"],
     keywords: ["refund", "tracking", "ship", "cancel order"],
   }),
+  store("orders.export", "/orders/export", "Export orders", "Main", "Downloads orders as a CSV file for your bookkeeping: one row for each order line (or each order), with the VAT of each line and of the shipping, discounts, refunds, payment, the amounts in the order's currency and the store's, and copied history and hosts' orders marked. The owner's only, because it can hold personal data; the file is made without contact details unless you choose them, and is never emailed.", {
+    needs: "owner",
+    tasks: ["Export the orders of a period", "Export some orders by their numbers", "Include the buyer's email and address", "Download a finished export"],
+    keywords: ["export orders", "csv", "orders spreadsheet", "accountant", "bookkeeping", "download orders", "excel", "eksporter ordre"],
+  }),
   store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "Main", "A printable packing slip for one order, without prices.", {
     keywords: ["print", "slip", "pack"],
   }),
@@ -132,6 +137,22 @@ const PAGES: readonly AdminPage[] = [
   }),
   store("product.categories", "/products/categories", "Product categories and tags", "Main", "Categories (nested) and tags for products, used in menus, filters and layouts; a category can require a price per kg or litre (unit price) of its products.", {
     keywords: ["taxonomy", "collections", "unit price", "price per kg", "requires unit price"],
+  }),
+  store("products.export", "/products/export", "Export products", "Main", "Downloads the store's products as a CSV file: one row for each variant, with texts in every language, options, prices for each country, stock, cost, product safety details, categories, tags and pictures. A small store gets the file at once, a large one a job with a Download button. The file reads back into Kaizen as it is.", {
+    tasks: ["Export all products, a status, or a category or tag", "Choose the Excel (Nordic) or the standard file format", "Download a finished export", "See what the file does not carry"],
+    keywords: ["export products", "csv", "download products", "spreadsheet", "excel", "backup", "product file", "eksporter produkter"],
+  }),
+  store("products.import", "/products/import", "Import products", "Main", "Brings products in from a CSV file: Kaizen's own file or a Shopify product file. Upload the file, choose what the import does, check it (a dry run that lists every row's problem and changes nothing), then import. Never deletes a product or changes an address. Needs the right to change products.", {
+    tasks: ["Upload a product file", "Import a Shopify product file", "Continue an open import", "See the recent imports"],
+    keywords: ["import products", "csv", "upload products", "shopify", "migrate", "bulk add", "product file", "importer produkter"],
+  }),
+  store("products.import.job", "/products/import/[jobId]", "Product import", "Main", "One product import: its options, the check's findings row by row, the counts, the confirmation, progress while it works and the result. Download the problems as a CSV, cancel an import that is running.", {
+    tasks: ["Choose the options and check the file", "Read each row's problems", "Import after the check", "Cancel the import", "Download the problems as CSV"],
+    keywords: ["dry run", "check the file", "import problems", "import result", "cancel import"],
+  }),
+  store("products.bulk", "/products/bulk", "Edit products in a grid", "Main", "Edits the variants of the products chosen in the list as a table: price for each market, SKU, stock and cost. Review every change before it is written, apply it, and undo it for seven days. Without chosen products it shows the recent bulk changes, where an undo can be made. Tick products in the list for the other bulk actions: set status, archive, categories and tags, price (a percentage or an amount) and stock.", {
+    tasks: ["Change prices for many products by a percentage or an amount", "Edit prices, SKUs, stock and cost in a grid", "Archive or publish many products", "Add many products to a category or tag", "Set stock for many products", "Undo a bulk change"],
+    keywords: ["bulk edit", "bulk editing", "mass edit", "change many products", "price change", "percentage", "sale", "undo", "spreadsheet", "grid", "rediger flere produkter"],
   }),
   store("product-layouts", "/product-layouts", "Product layouts", "Main", "Layouts for product pages, built in the page builder with product parts.", {
     keywords: ["product page design", "template"],
@@ -298,6 +319,11 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["referral", "refer a friend", "affiliate", "affiliates", "tip a friend", "friend discount", "welcome discount", "invite friends", "referral link", "word of mouth", "ambassador"],
   }),
   store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"] }),
+  store("customers.export", "/customers/export", "Export customers", "Sales", "Downloads the store's customers as a CSV file: name, email, phone, address, company, customer group, language, when they joined, their paid orders, whether their address unsubscribed from emails, and the custom fields staff entered about them. The owner's only. Kaizen does not record marketing consent yet, so the file must not be used as a mailing list.", {
+    needs: "owner",
+    tasks: ["Export all customers", "Download a finished export"],
+    keywords: ["export customers", "csv", "customer list", "download customers", "mailing list", "excel", "eksporter kunder"],
+  }),
   store("customer", "/customers/[customerId]", "Customer", "Sales", "One customer: orders, subscriptions, emails, their customer group and their bonus credits (balance, history, and adding or removing credits with a reason)."),
   store("privacy", "/privacy", "Privacy requests", "Sales", "The log of privacy requests: people asking for a copy of the data the store holds about them, or for it to be erased (GDPR). Each has the day it was received and a one-month clock with the days left, red when overdue. Log a request that came by email, post or phone, then download the data, erase it, extend the answer once, refuse it with a reason, close it as no data held, or cancel it. Filter by open or answered (?status=answered, ?status=all).", {
     tasks: ["Log a request for a person's data", "See which privacy requests are due or overdue", "Extend or refuse a request", "Close a request as no data held", "Find a request that was answered"],

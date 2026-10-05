@@ -228,6 +228,8 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
                     columns={p === "2b" || p === "2d" ? lineColumns : lineColumns.filter((c) => c.key !== "dispatch")}
                     rows={data.part2.filter((l) => l.part === p)}
                     rowKey={(l) => `${l.part}|${l.memberState}|${l.dispatchState ?? ""}|${l.rate}`}
+                    exportable={false}
+                    exportReason="oss.part2"
                   />
                   {p === "2b" || p === "2d" ? <p className="mt-2 text-xs text-muted">{DISPATCH_NOTE}</p> : null}
                 </ChartCard>
@@ -250,6 +252,8 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
                 rows={data.part3}
                 rowKey={(l) => `${l.correctionPeriod}|${l.memberState}`}
                 empty={`No corrections in ${label}.`}
+                exportable={false}
+                exportReason="oss.part3"
               />
             )}
           </AnalyticsSection>
@@ -267,6 +271,8 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
               rows={data.part4}
               rowKey={(b) => b.memberState}
               empty={`No balance for ${label}.`}
+              exportable={false}
+              exportReason="oss.part4"
             />
           </AnalyticsSection>
 
@@ -293,6 +299,8 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
               rows={data.notIncluded}
               rowKey={(n) => `${n.reason}|${n.currency}`}
               empty="Everything in the period is in this return."
+              exportable={false}
+              exportReason="oss.left_out"
             />
           </AnalyticsSection>
 
@@ -364,7 +372,7 @@ function RatesTable({ rates, actions }: { rates: readonly RateCard[]; actions: R
         ]
       : []),
   ];
-  return <DataTable caption="Euro rates used" columns={columns} rows={rates} rowKey={(r) => `${r.currency}|${r.day}|${r.for}`} empty="Every amount of this period is in euro: no conversion is needed." />;
+  return <DataTable caption="Euro rates used" columns={columns} rows={rates} rowKey={(r) => `${r.currency}|${r.day}|${r.for}`} empty="Every amount of this period is in euro: no conversion is needed." exportable={false} exportReason="oss.rates" />;
 }
 
 /** An owner's two ways to a rate: ask the ECB for the day, or enter a rate of their own with a reason (it wins over the ECB's for this store). */
@@ -421,7 +429,7 @@ function ConversionGroups({ groups, eur, locale }: { groups: readonly Conversion
     <details className="text-sm">
       <summary className="cursor-pointer text-muted">Each conversion, in the document currency and in euro</summary>
       <div className="mt-2">
-        <DataTable caption="Conversions behind the return" columns={columns} rows={groups} rowKey={(g, i) => `${g.part}|${g.memberState}|${g.rate}|${g.currency}|${g.correctionPeriod ?? ""}|${i}`} />
+        <DataTable caption="Conversions behind the return" columns={columns} rows={groups} rowKey={(g, i) => `${g.part}|${g.memberState}|${g.rate}|${g.currency}|${g.correctionPeriod ?? ""}|${i}`} exportable={false} exportReason="oss.conversions" />
         <p className="mt-2 text-xs text-muted">Taxable amount and VAT are each added up in the document currency and converted once, so the euro VAT can differ from the taxable amount times the rate by a few cents.</p>
       </div>
     </details>

@@ -49,6 +49,7 @@ import { marketPath } from "@/lib/paths";
 
 import { audit, type Membership } from "./auth";
 import { isOwnFieldFile } from "./media";
+import { pgUuidArray } from "./pg-arrays";
 import type { SaveResult } from "./settings";
 import { refreshFieldSearch, refreshStoreFieldSearch } from "./field-search";
 import { marketIn } from "./shop";
@@ -406,6 +407,33 @@ export async function getFieldData(
     else data.translations[String(row.locale)] = values;
   }
   return data;
+}
+
+/**
+ * What was entered for many things of one kind at once, in every language, by the thing's id: ONE query, for the exports (D165) that would
+ * otherwise ask once for each of thousands. Things with nothing entered are absent. Every query carries the store id.
+ */
+export async function getFieldDataMany(
+  storeId: string,
+  entity: FieldEntity,
+  entityIds: readonly string[],
+  run: Runner = db(),
+): Promise<Map<string, FieldData>> {
+  const out = new Map<string, FieldData>();
+  if (entityIds.length === 0) return out;
+  const rows = await run.execute<Row>(sql`
+    select entity_id, locale, values from commerce.field_values
+    where store_id = ${storeId}::uuid and entity = ${entity} and entity_id = any(${pgUuidArray(entityIds)}::uuid[])
+  `);
+  for (const row of rows) {
+    const id = String(row.entity_id);
+    const own = out.get(id) ?? { values: {}, translations: {} };
+    const values = (row.values ?? {}) as Values;
+    if (row.locale === "") own.values = values;
+    else own.translations[String(row.locale)] = values;
+    out.set(id, own);
+  }
+  return out;
 }
 
 /**

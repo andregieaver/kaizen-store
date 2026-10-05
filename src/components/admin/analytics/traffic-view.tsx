@@ -53,7 +53,7 @@ const dash = (why: string) => <span title={why}>{NO_FIGURE}</span>;
 
 const oneDecimal = (n: number) => formatDecimal(n, 1);
 
-const FULL_WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+export const FULL_WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -175,7 +175,7 @@ export function countryRows(geo: GeoReport, traffic: TrafficReport): CountryRow[
 
 // ---- landing pages ----
 
-const KIND_LABEL: Record<LandingKind, string> = { product: "Product page", checkout: "Checkout", cart: "Cart", order: "Order page", other: "Other page" };
+export const KIND_LABEL: Record<LandingKind, string> = { product: "Product page", checkout: "Checkout", cart: "Cart", order: "Order page", other: "Other page" };
 
 /** What to call a landing page: a product by its handle, anything else by its address. */
 export function landingLabel(row: { kind: LandingKind; handle: string | null; path: string }): string {
@@ -307,6 +307,7 @@ function FunnelSection({ base, traffic, orders }: { base: string; traffic: Traff
                   note: s.clamped ? `Counted as ${formatCount(s.raw)}, shown as ${formatCount(s.count)}: a step cannot be bigger than the one before it.` : undefined,
                 }))}
                 format={formatCount}
+                exportId="traffic.funnel"
               />
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -357,7 +358,7 @@ function DevicesSection({ base, traffic, money }: { base: string; traffic: Traff
       ) : (
         <>
           {callout ? <Note tone="warning" title="Phones sell much less than computers">{callout}</Note> : null}
-          <DataTable caption="Devices with visits, share of visits, conversion rate, average order, orders and revenue" columns={columns} rows={rows} rowKey={(r) => r.key} />
+          <DataTable caption="Devices with visits, share of visits, conversion rate, average order, orders and revenue" columns={columns} rows={rows} rowKey={(r) => r.key} exportId="traffic.devices" exportLeftOut={{ orders: traffic.unconverted, currencies: traffic.missingCurrencies }} />
         </>
       )}
     </AnalyticsSection>
@@ -432,6 +433,8 @@ function GeographySection({ base, geo, traffic, money }: { base: string; geo: Ge
         rows={rows}
         rowKey={(r) => r.key}
         empty="No paid orders in this period yet."
+        exportId="traffic.countries"
+        exportLeftOut={{ orders: geo.unconverted, currencies: geo.missingCurrencies }}
         footer={
           rows.length > 1 && geo.totals.orders > 0 ? (
             <tr>
@@ -460,7 +463,7 @@ function GeographySection({ base, geo, traffic, money }: { base: string; geo: Ge
       {geo.cities.length > 0 || none.orders > 0 ? (
         <div className="space-y-2">
           <h3 className="text-base font-semibold">Top cities</h3>
-          <DataTable caption="The cities with most revenue, with orders, share of revenue and average order" columns={cityColumns} rows={geo.cities} rowKey={(c) => c.key} footer={cityFooter} empty="No order has a delivery city." />
+          <DataTable caption="The cities with most revenue, with orders, share of revenue and average order" columns={cityColumns} rows={geo.cities} rowKey={(c) => c.key} footer={cityFooter} empty="No order has a delivery city." exportId="traffic.cities" exportLeftOut={{ orders: geo.unconverted, currencies: geo.missingCurrencies }} />
           {geo.truncated ? <p className="text-xs text-muted">There are very many cities, so the smallest were not read and &quot;Other cities&quot; is a little low.</p> : null}
         </div>
       ) : null}
@@ -489,7 +492,7 @@ function LandingSection({ base, traffic, money }: { base: string; traffic: Traff
       {traffic.landingPages.length === 0 ? (
         <NeedsCounting traffic={traffic} base={base} what="There are no landing pages to show yet." />
       ) : (
-        <DataTable caption="The pages most visits began on, with visits, orders, conversion rate and revenue" columns={columns} rows={traffic.landingPages} rowKey={(r) => r.path} />
+        <DataTable caption="The pages most visits began on, with visits, orders, conversion rate and revenue" columns={columns} rows={traffic.landingPages} rowKey={(r) => r.path} exportId="traffic.landing" exportLeftOut={{ orders: traffic.unconverted, currencies: traffic.missingCurrencies }} />
       )}
     </AnalyticsSection>
   );
@@ -558,7 +561,7 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
               <div className="rounded-lg border border-dashed border-border px-4 py-4 text-sm text-muted">Every search in this period showed at least one product. Nothing is being missed.</div>
             ) : (
               <>
-                <DataTable caption="Searches that found nothing, with how many times and when last" columns={zeroColumns} rows={search.zeroTerms} rowKey={(r) => r.term} />
+                <DataTable caption="Searches that found nothing, with how many times and when last" columns={zeroColumns} rows={search.zeroTerms} rowKey={(r) => r.term} exportId="traffic.zero_terms" />
                 {search.zeroTermCount > search.zeroTerms.length ? (
                   <p className="text-xs text-muted">{`Showing ${formatCount(search.zeroTerms.length)} of ${formatCount(search.zeroTermCount)} different searches that found nothing.`}</p>
                 ) : null}
@@ -572,7 +575,7 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
           </div>
           <div className="space-y-2">
             <h3 className="text-base font-semibold">Most searched</h3>
-            <DataTable caption="The most searched terms with searches, results shown, searches that found nothing and click-through" columns={topColumns} rows={search.topTerms} rowKey={(r) => r.term} />
+            <DataTable caption="The most searched terms with searches, results shown, searches that found nothing and click-through" columns={topColumns} rows={search.topTerms} rowKey={(r) => r.term} exportId="traffic.top_terms" />
           </div>
         </>
       )}
@@ -617,12 +620,12 @@ function WhenSection({ time, timeZone, money }: { time: TimeReport; timeZone: st
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="min-w-0 rounded-lg border border-border bg-background p-4">
           <h3 className="mb-3 text-sm font-semibold">Orders by weekday and time of day</h3>
-          <Heatmap label="Paid orders by weekday and two-hour band" columns={[...WEEKDAY_LABELS]} rows={rows} format={formatCount} emptyText="No paid orders in this period yet." />
+          <Heatmap label="Paid orders by weekday and two-hour band" columns={[...WEEKDAY_LABELS]} rows={rows} format={formatCount} emptyText="No paid orders in this period yet." exportId="traffic.heatmap" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
         </div>
         {orders > 0 ? (
           <div className="min-w-0 rounded-lg border border-border bg-background p-4">
             <h3 className="mb-3 text-sm font-semibold">Orders by weekday</h3>
-            <HorizontalBars label="Paid orders for each weekday" rows={weekdays} />
+            <HorizontalBars label="Paid orders for each weekday" rows={weekdays} exportId="traffic.weekdays" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
           </div>
         ) : null}
       </div>

@@ -286,6 +286,8 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
               format={money}
               previousLabel={previousLabel}
               area
+              exportId="overview.net_revenue"
+              exportLeftOut={{ orders: data.unconverted, currencies: data.missingCurrencies }}
             />
           ) : (
             <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted">No sales in this period yet. Net revenue by {per} shows here once orders are paid.</p>
@@ -318,6 +320,8 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
                 format={money}
                 previousLabel={previousLabel}
                 area
+                exportId="overview.contribution"
+                exportLeftOut={{ orders: data.unconverted, currencies: data.missingCurrencies }}
               />
             ) : (
               <p className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted">No sales in this period yet, so there is no profit to show.</p>
@@ -355,7 +359,7 @@ export function DiagnosisSection({ frame, diagnosis }: { frame: OverviewFrame; d
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard title="What moved revenue" description="Each factor's own change. Together they make the change in revenue.">
-            <HorizontalBars label="Change in each factor" rows={factorRows(diagnosis.explanation)} />
+            <HorizontalBars label="Change in each factor" rows={factorRows(diagnosis.explanation)} exportId="overview.factors" />
           </ChartCard>
           <div className="min-w-0 space-y-2 rounded-lg border border-border bg-background p-4 text-sm">
             {diagnosis.explanation.sentences.map((line, i) => (
@@ -414,7 +418,7 @@ export function FunnelSection({ frame, traffic }: { frame: OverviewFrame; traffi
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard title="The way to a purchase" description="Each step counts visitor-days: one visitor on one day.">
-            <Funnel label="Sales funnel" stages={f.stages.map((s) => ({ label: s.label, value: s.count }))} format={formatCount} />
+            <Funnel label="Sales funnel" stages={f.stages.map((s) => ({ label: s.label, value: s.count }))} format={formatCount} exportId="overview.funnel" />
           </ChartCard>
           <div className="space-y-3">
             <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -466,7 +470,7 @@ export function ProductsSection({ frame, top }: { frame: OverviewFrame; top: Top
     >
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartCard title="By revenue" description="Without VAT, after discounts.">
-          <HorizontalBars label="Top products by revenue" rows={revenueRows} emptyText="No products were sold in this period." />
+          <HorizontalBars label="Top products by revenue" rows={revenueRows} emptyText="No products were sold in this period." exportId="overview.top_revenue" />
         </ChartCard>
         <ChartCard title="By profit" description="Revenue less the cost of what was sold, before refunds.">
           {revenueRows.length > 0 && profitRows.length === 0 ? (
@@ -481,7 +485,7 @@ export function ProductsSection({ frame, top }: { frame: OverviewFrame; top: Top
               )}
             </div>
           ) : (
-            <HorizontalBars label="Top products by profit" rows={profitRows} emptyText="No products were sold in this period." />
+            <HorizontalBars label="Top products by profit" rows={profitRows} emptyText="No products were sold in this period." exportId="overview.top_profit" />
           )}
         </ChartCard>
       </div>
@@ -524,7 +528,7 @@ export function ChannelsSection({ frame, marketing }: { frame: OverviewFrame; ma
         )
       ) : (
         <div className="space-y-2">
-          <DataTable caption="Top channels by revenue" columns={channelColumns} rows={channelRows} rowKey={(r) => r.channel} empty="No paid order could be tied to a channel in this period." />
+          <DataTable caption="Top channels by revenue" columns={channelColumns} rows={channelRows} rowKey={(r) => r.channel} empty="No paid order could be tied to a channel in this period." exportId="overview.channels" exportLeftOut={{ orders: marketing.unconverted, currencies: marketing.missingCurrencies }} />
           <p className="text-xs text-muted">
             <span title="Return on ad spend">ROAS</span> is the revenue a channel brought in for each 1 spent on it; {NO_FIGURE} means no ad spend is entered. Unknown holds the orders no counted visit explains.
             {marketing.spend.totalMinor === 0 ? " No ad spend is entered for this period." : ""}

@@ -659,35 +659,65 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 4,
-    "gap": "Verified at HEAD: `toCsv()` is used only by the Work module's reports and invoices and the DAC7 report; custom-field values have a customer export (`customerFieldExport()`). No product, customer or order import or export, so stores cannot be filled in bulk, leave with their data or hand an accountant a period's orders. The same gap is rated in the catalogue, orders, customers and analytics domains.",
+    "gap": "Three of four criteria hold; the third is half met, and the missing half is not code. Products export and re-import unchanged with plain custom fields, and customerFieldExport() now has a caller (customer-export.ts reads customers' fields in one batch); a dry run then a resumable job with per-store limits; every file goes through the one formula-safe writer. Orders export with totals, VAT, discounts and refunds, and customers export, owner-only, audited, with a canary for secrets and tokens, never emailed, deleted at erasure (order-export, customer-export, product-roundtrip, data-permissions and privacy-erasure int tests passed). But customers do not export 'with their marketing-consent state': Kaizen records no marketing consent (no column or table; commerce.email_opt_outs only holds cart-reminder unsubscribes), so the customer file says marketing_consent = not_recorded and email_opt_out from that list, and the export page says so. Writing a consent flag would be a legal statement the store cannot back. The subscriber list with recorded consent, its source and date is wave 5. Also open: this row is the same Shopify feature as catalogue.bulk-product-import-and-export-csv (products), orders.order-export-to-csv, analytics.export-reports-to-csv and the export half of customers.customer-profiles-notes-csv-import-and-export, so the headline counts it more than once until the merge README rule 8 asks for is made (docs/wave-2-data.md 6.6 point 3).",
     "bucket": "A",
-    "wave": 2,
+    "wave": 5,
     "criteria": [
-      "An owner exports products (variants, prices per market, stock, translations, custom fields) as CSV and importing that file again changes nothing; custom-field values (a product's, and a customer's through `customerFieldExport()`, which has no caller yet) are in the exports.",
+      "An owner exports products (variants, prices per market, stock, translations, custom fields) as CSV and importing that file again changes nothing; custom-field values (a product's, and a customer's through `customerFieldExport()`) are in the exports.",
       "An import runs a dry run first that lists every row's problem, then applies as a resumable job keyed on SKU or handle, with per-store size limits, never touching another store's rows.",
       "Orders export for a period with totals, VAT, discounts and refunds in the store's currency; customers export with their marketing-consent state; neither contains secrets or tokens, and both are owner-only and audited.",
       "Text for spreadsheets goes through `toCsv()` so a formula cannot run when opened."
     ],
     "evidence": {
       "files": [
-        "src/lib/work-csv.ts",
-        "src/server/dac7.ts",
-        "src/lib/dac7.ts",
-        "src/server/work-exports.ts"
+        "src/lib/csv.ts",
+        "src/lib/product-csv.ts",
+        "src/lib/product-import.ts",
+        "src/lib/order-csv.ts",
+        "src/lib/customer-csv.ts",
+        "src/lib/field-csv.ts",
+        "src/server/data-jobs.ts",
+        "src/server/product-import.ts",
+        "src/server/product-export.ts",
+        "src/server/order-export.ts",
+        "src/server/customer-export.ts",
+        "src/server/field-entities.ts",
+        "src/server/privacy-erasure.ts",
+        "src/app/admin/(gated)/[store]/customers/export/page.tsx",
+        "src/app/admin/(gated)/[store]/customers/export/file/route.ts",
+        "src/app/admin/(gated)/[store]/orders/export/page.tsx",
+        "src/lib/dac7.ts"
       ],
       "tests": [
-        "src/lib/work-csv.test.ts",
-        "src/lib/dac7.test.ts"
+        "src/lib/csv.test.ts",
+        "src/lib/csv-writers.test.ts",
+        "src/lib/customer-csv.test.ts",
+        "src/lib/order-csv.test.ts",
+        "src/lib/dac7.test.ts",
+        "src/server/product-roundtrip.int.test.ts",
+        "src/server/customer-export.int.test.ts",
+        "src/server/order-export.int.test.ts",
+        "src/server/data-permissions.int.test.ts",
+        "src/server/data-jobs.int.test.ts",
+        "src/server/privacy-erasure.int.test.ts",
+        "src/server/data-exports-review-security.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-05",
+        "from": "missing",
+        "to": "partial",
+        "why": "Wave 2, first run (docs/wave-2-data.md; working tree not yet committed). Read customer-export.ts, order-export.ts, product-roundtrip.int.test.ts and the privacy-erasure step and ran customer-export, order-export, product-roundtrip, data-permissions, data-jobs, data-exports-review-security and privacy-erasure int tests (all passed) and the csv, csv-writers and customer-csv unit tests. Criteria 1, 2 and 4 hold. Criterion 3 holds except its marketing-consent state: Kaizen has no consent record, so the customer file says not_recorded. Kept Partial and the criterion text unchanged: the spec proposes rewording it to 'the consent information the store holds ... and say plainly when none is recorded' (docs/wave-2-data.md 6.6 point 1), which would be Full, but rewording a criterion to match the build is the lead's decision, not the rater's. Wave moved to 5 (the subscriber list)."
+      }
+    ]
   },
   {
     "id": "platform.migration-from-other-platforms",

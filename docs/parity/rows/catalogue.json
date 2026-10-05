@@ -559,13 +559,13 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "No product import or export route, action or job (verified: `toCsv` is used by Work exports and DAC7 only); products are made one at a time in the editor.",
-    "bucket": "A",
-    "wave": 2,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Export writes every product and variant to CSV (handle, translations, options, SKU, GTIN, prices per market, stock, cost, HS code, origin, media addresses, categories, tags) as a job for large stores.",
       "Import reads a Shopify-format and Kaizen-format file with a dry run that lists each row's problem, then creates or updates by handle and SKU through `saveProduct()` and `commerce.set_price`, resumable after a failure (integration test).",
@@ -573,12 +573,60 @@
       "Every import is per store with a size limit and an audit entry; archived variants are switched off, never deleted."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/csv.ts",
+        "src/lib/data-job.ts",
+        "src/lib/data-limits.ts",
+        "src/lib/product-csv.ts",
+        "src/lib/product-csv-shopify.ts",
+        "src/lib/product-import.ts",
+        "src/lib/field-csv.ts",
+        "src/server/data-jobs.ts",
+        "src/server/data-job-store.ts",
+        "src/server/data-export-run.ts",
+        "src/server/data-routes.ts",
+        "src/server/product-export.ts",
+        "src/server/product-import.ts",
+        "src/server/products.ts",
+        "src/app/admin/(gated)/[store]/products/export/page.tsx",
+        "src/app/admin/(gated)/[store]/products/export/file/route.ts",
+        "src/app/admin/(gated)/[store]/products/import/page.tsx",
+        "src/app/admin/(gated)/[store]/products/import/[jobId]/page.tsx",
+        "src/app/admin/(gated)/[store]/products/import/[jobId]/tick/route.ts",
+        "supabase/migrations/20261005112434_data_jobs.sql",
+        "supabase/migrations/20261005112442_data_jobs_rules.sql",
+        "supabase/migrations/20261005112449_data_buckets.sql",
+        "docs/wave-2-data.md"
+      ],
+      "tests": [
+        "src/lib/csv.test.ts",
+        "src/lib/csv-writers.test.ts",
+        "src/lib/product-csv.test.ts",
+        "src/lib/product-csv-shopify.test.ts",
+        "src/lib/product-import.test.ts",
+        "src/lib/product-import-writers.test.ts",
+        "src/lib/data-job.test.ts",
+        "src/db/data-jobs.test.ts",
+        "src/server/product-export.int.test.ts",
+        "src/server/product-import.int.test.ts",
+        "src/server/product-roundtrip.int.test.ts",
+        "src/server/data-jobs.int.test.ts",
+        "src/server/data-permissions.int.test.ts",
+        "src/server/money-review.int.test.ts",
+        "src/server/audit-coverage.int.test.ts",
+        "e2e/data-export.spec.ts"
+      ],
       "untested": false
     },
     "decisions": [],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-05",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 2, first run (D165 proposed, docs/wave-2-data.md; working tree not yet committed, migrations not yet applied). Read the code and ran in a fresh database: csv, csv-writers, product-csv, product-csv-shopify, product-import, product-import-writers, data-job and db/data-jobs unit and PGlite tests (356 tests with the others of the run), and product-export, product-import, product-roundtrip, data-jobs, data-permissions, money-review int tests (277 integration tests over 14 files, all passed). Criterion 1: a store over the direct limit becomes a job in parts in the exports bucket; the export of every column of the contract is held by product-csv.test.ts. Criterion 2: a Kaizen and a Shopify file (current and older names, Shopify header names read from its published template, fixtures made up) get a dry run with a code per row problem, then apply product by product through getProductForEdit() and saveProduct() (a scan test holds that no import code writes products, variants, prices or stock itself); a run killed after N products is taken up again with no product doubled; the export and import routes are called as handlers with the member's guard. Criterion 3: export then import changes nothing (no price row, no updated_at), and the injection canary round-trips. Criterion 4: limits, store isolation, one active import, an audit entry per job with counts and no cell; archived variants are switched off, never deleted. The review's two high findings (clock-change days of the order range belongs to the order export; stale stock written by an import after a picture fetch) are fixed and have regression tests. Caveats, not blockers: the Shopify reader is held to Shopify's published template and docs, not to every file a store can produce; the storage adapter (signed upload, list, signed download) was run only against a fake and has never run against Supabase Storage; the import and its job page have view and route tests but no signed-in browser run (no admin fixture, D158); parsePrice() of the editor reads a price cell like 12.345 as 12345 whole units (a Kaizen file always writes two decimals, Shopify's too)."
+      }
+    ]
   },
   {
     "id": "catalogue.bulk-editing",
@@ -593,11 +641,11 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "No multi-select or grid editor in the product list; `setArchived()` in `src/server/products.ts` is per product (verified).",
+    "gap": "Built and held below the screen, not through it. The server side is complete and tested: previewBulk/startBulk/continueBulk for status, archive, unarchive, categories and tags, price (percentage half up, or amount per market) and stock, applyGrid/previewGrid/undoBatch with conflicts, 500/50 limits, one products.bulk_edited entry per batch and failures with reasons, all through getProductForEdit() and saveProduct() so commerce.set_price keeps the price history (src/server/bulk-edit.int.test.ts, src/lib/bulk-edit.test.ts, passed). What the criteria name is the merchant's screen: tick boxes in the products list, one confirmation step, a grid with a preview of changed cells and an undo. That state machine (src/components/admin/products-bulk.tsx, products-grid.tsx, bulk-recent.tsx) is held only by renderToString view tests (src/components/admin/bulk-views.test.ts, which render the states but never click), and the e2e the spec named for criterion 1 (tick two rows, Change price, confirm) was not written: e2e/data-export.spec.ts only holds that a visitor without a session gets nothing, because the repo has no signed-in admin fixture (D158). The server actions in products/bulk/actions.ts are thin wrappers that cannot be called outside Next's request context, so they are untested too. Also unbuilt by design: the products list is not paged until wave 3, so 'select all matching' and 'select the page' choose the same rows.",
     "bucket": "A",
     "wave": 2,
     "criteria": [
@@ -607,15 +655,38 @@
     ],
     "evidence": {
       "files": [
-        "src/server/products.ts"
+        "src/lib/bulk-edit.ts",
+        "src/lib/bulk-admin.ts",
+        "src/server/bulk-edit.ts",
+        "src/server/products.ts",
+        "src/app/admin/(gated)/[store]/products/bulk/page.tsx",
+        "src/app/admin/(gated)/[store]/products/bulk/actions.ts",
+        "src/components/admin/products-bulk.tsx",
+        "src/components/admin/products-grid.tsx",
+        "src/components/admin/bulk-result.tsx",
+        "src/components/admin/bulk-recent.tsx",
+        "supabase/migrations/20261005112434_data_jobs.sql"
       ],
       "tests": [
-        "src/server/products.int.test.ts"
+        "src/lib/bulk-edit.test.ts",
+        "src/lib/bulk-admin.test.ts",
+        "src/components/admin/bulk-views.test.ts",
+        "src/server/bulk-edit.int.test.ts",
+        "src/server/money-review.int.test.ts",
+        "src/lib/product-import-writers.test.ts",
+        "src/server/audit-coverage.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-05",
+        "from": "missing",
+        "to": "partial",
+        "why": "Wave 2, first run (docs/wave-2-data.md; working tree not yet committed). Read src/server/bulk-edit.ts, src/lib/bulk-edit.ts, the three bulk components and products/bulk/actions.ts and ran bulk-edit.test.ts, bulk-admin.test.ts, bulk-views.test.ts and bulk-edit.int.test.ts (all passed): every action and the grid go through saveProduct() and commerce.set_price, limits, conflicts, undo as its own batch and one audit entry per batch hold. Held at Partial, not Full, because the criteria are the merchant's screen (select many, one confirmed step, a grid with preview and undo) and nothing drives that screen: the view tests only render states, the e2e the spec named was not written (no signed-in admin fixture, D158), and the server actions are untested. The first signed-in browser test of the list and the grid would make this Full."
+      }
+    ]
   },
   {
     "id": "catalogue.inventory-tracking-with-reservations",

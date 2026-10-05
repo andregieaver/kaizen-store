@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
+import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { FinanceView, type FinancePeriodData } from "@/components/admin/analytics/finance-view";
+import { queryText } from "@/lib/analytics-export";
 import { financeStatement } from "@/lib/analytics-finance";
 import { bucketFor, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
@@ -39,25 +41,27 @@ export default async function AnalyticsFinancePage({ params, searchParams }: Pag
   ]);
 
   return (
-    <div className="flex flex-col gap-8">
-      <AnalyticsHeader
-        ctx={ctx}
-        path="/analytics/finance"
-        title="Finance"
-        description="How much of what the store sells is left after what it costs, where the rest goes, and how far these figures can be trusted."
-      />
-      <FinanceView
-        base={ctx.base}
-        currency={mainCurrency(store)}
-        locale={store.markets[0]?.locale ?? "en"}
-        isOwner={ctx.owner}
-        current={current}
-        comparison={comparison && compare.mode !== "none" ? { mode: compare.mode, data: comparison } : null}
-        bucket={bucket}
-        series={series}
-        comparisonSeries={comparisonSeries}
-        setup={setup}
-      />
-    </div>
+    <ExportScope base={ctx.base} query={queryText(query)} owner={ctx.owner} canExport={ctx.canExport}>
+      <div className="flex flex-col gap-8">
+        <AnalyticsHeader
+          ctx={ctx}
+          path="/analytics/finance"
+          title="Finance"
+          description="How much of what the store sells is left after what it costs, where the rest goes, and how far these figures can be trusted."
+        />
+        <FinanceView
+          base={ctx.base}
+          currency={mainCurrency(store)}
+          locale={store.markets[0]?.locale ?? "en"}
+          isOwner={ctx.owner}
+          current={current}
+          comparison={comparison && compare.mode !== "none" ? { mode: compare.mode, data: comparison } : null}
+          bucket={bucket}
+          series={series}
+          comparisonSeries={comparisonSeries}
+          setup={setup}
+        />
+      </div>
+    </ExportScope>
   );
 }

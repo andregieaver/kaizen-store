@@ -20,6 +20,20 @@ import {
   type Pace,
   type Point,
 } from "./chart-math";
+import { ExportButton, type LeftOut } from "./export-scope";
+
+/** What every chart takes to get its Download CSV button (D165): an id in `ANALYTICS_TABLES`, or `exportable={false}` with a reason in `NOT_EXPORTED`. */
+export type ChartExport = { exportId?: string; exportable?: boolean; exportReason?: string; exportLeftOut?: LeftOut | null };
+
+/** The button under a chart's data: nothing without an id (or without a scope, which the button itself checks). */
+function ExportRow({ exportId, leftOut }: { exportId?: string; leftOut?: LeftOut | null }) {
+  if (!exportId) return null;
+  return (
+    <div className="mt-1 flex justify-end empty:hidden">
+      <ExportButton exportId={exportId} leftOut={leftOut} />
+    </div>
+  );
+}
 
 /**
  * The charts of the analytics pages (D152), drawn by hand as inline SVG or plain HTML on the server: no library, no script. Colours are
@@ -52,8 +66,9 @@ function EmptyChart({ label, text, height = 96 }: { label: string; text: string;
 }
 
 /** The table behind a chart, closed until asked for: the same figures as the tooltips, for anyone who cannot or will not read the picture. */
-function DataBehind({ caption, head, rows }: { caption: string; head: readonly string[]; rows: readonly (readonly string[])[] }) {
+function DataBehind({ caption, head, rows, exportId, leftOut }: { caption: string; head: readonly string[]; rows: readonly (readonly string[])[]; exportId?: string; leftOut?: LeftOut | null }) {
   return (
+    <>
     <details className="mt-2 text-xs">
       <summary className="inline-block cursor-pointer text-muted hover:text-foreground">Data table</summary>
       <div className="relative mt-1 max-h-72 overflow-auto rounded-lg border border-border">
@@ -82,6 +97,8 @@ function DataBehind({ caption, head, rows }: { caption: string; head: readonly s
         </table>
       </div>
     </details>
+    <ExportRow exportId={exportId} leftOut={leftOut} />
+    </>
   );
 }
 
@@ -178,7 +195,9 @@ export function LineChart({
   integer = false,
   includeZero = true,
   emptyText = "No data for this period.",
-}: {
+  exportId,
+  exportLeftOut,
+}: ChartExport & {
   label: string;
   labels: readonly string[];
   series: readonly LineSeries[];
@@ -281,7 +300,7 @@ export function LineChart({
             })
           : null}
       </Svg>
-      <DataBehind caption={label} head={head} rows={rows} />
+      <DataBehind caption={label} head={head} rows={rows} exportId={exportId} leftOut={exportLeftOut} />
     </figure>
   );
 }
@@ -301,7 +320,9 @@ export function BarChart({
   height = 220,
   integer = false,
   emptyText = "No data for this period.",
-}: {
+  exportId,
+  exportLeftOut,
+}: ChartExport & {
   label: string;
   labels: readonly string[];
   series: readonly BarSeries[];
@@ -412,7 +433,7 @@ export function BarChart({
             ))
           : null}
       </Svg>
-      <DataBehind caption={label} head={head} rows={rows} />
+      <DataBehind caption={label} head={head} rows={rows} exportId={exportId} leftOut={exportLeftOut} />
     </figure>
   );
 }
@@ -442,7 +463,9 @@ export function HorizontalBars({
   rows,
   limit,
   emptyText = "Nothing to show for this period.",
-}: {
+  exportId,
+  exportLeftOut,
+}: ChartExport & {
   label: string;
   rows: readonly BarRow[];
   limit?: number;
@@ -486,6 +509,7 @@ export function HorizontalBars({
         })}
       </ol>
       {shown.length < rows.length ? <p className="mt-2 text-xs text-muted">{`Showing ${shown.length} of ${rows.length}.`}</p> : null}
+      <ExportRow exportId={exportId} leftOut={exportLeftOut} />
     </div>
   );
 }
@@ -527,10 +551,11 @@ export type FunnelStage = { label: string; value: number | null; note?: string }
  * count is not known (no visit counting, say) says "Not tracked" and has no bar: it is never drawn as zero, and nothing is worked
  * out across it.
  */
-export function Funnel({ label, stages, format, missingText = "Not tracked", emptyText = "No data for this period." }: { label: string; stages: readonly FunnelStage[]; format: Format; missingText?: string; emptyText?: string }) {
+export function Funnel({ label, stages, format, missingText = "Not tracked", emptyText = "No data for this period.", exportId, exportLeftOut }: ChartExport & { label: string; stages: readonly FunnelStage[]; format: Format; missingText?: string; emptyText?: string }) {
   if (stages.length === 0 || !stages.some((s) => finite(s.value))) return <EmptyChart label={label} text={emptyText} />;
   const steps = funnelSteps(stages.map((s) => (finite(s.value) ? s.value : null)));
   return (
+    <>
     <ol aria-label={label} className="space-y-3 text-sm">
       {stages.map((s, i) => {
         const step = steps[i];
@@ -561,6 +586,8 @@ export function Funnel({ label, stages, format, missingText = "Not tracked", emp
         );
       })}
     </ol>
+    <ExportRow exportId={exportId} leftOut={exportLeftOut} />
+    </>
   );
 }
 
@@ -588,7 +615,7 @@ function RampKey({ low, high }: { low: string; high: string }) {
  * the figure is in the cell's tooltip and in the table behind. A cell with no figure is blank, not zero. With nothing in any
  * cell it says so rather than drawing a flat grid.
  */
-export function Heatmap({ label, columns, rows, format, emptyText = "No data for this period." }: { label: string; columns: readonly string[]; rows: readonly HeatRow[]; format: Format; emptyText?: string }) {
+export function Heatmap({ label, columns, rows, format, emptyText = "No data for this period.", exportId, exportLeftOut }: ChartExport & { label: string; columns: readonly string[]; rows: readonly HeatRow[]; format: Format; emptyText?: string }) {
   const max = maxOf(rows.flatMap((r) => r.values));
   if (columns.length === 0 || rows.length === 0 || max <= 0) return <EmptyChart label={label} text={emptyText} />;
   const labelW = Math.min(110, Math.max(36, 10 + Math.max(...rows.map((r) => r.label.length)) * 6.2));
@@ -631,7 +658,7 @@ export function Heatmap({ label, columns, rows, format, emptyText = "No data for
         ))}
       </Svg>
       <RampKey low={format(0)} high={format(max)} />
-      <DataBehind caption={label} head={["", ...columns]} rows={rows.map((r) => [r.label, ...columns.map((_, j) => show(format, r.values[j]))])} />
+      <DataBehind caption={label} head={["", ...columns]} rows={rows.map((r) => [r.label, ...columns.map((_, j) => show(format, r.values[j]))])} exportId={exportId} leftOut={exportLeftOut} />
     </figure>
   );
 }
@@ -653,7 +680,9 @@ export function CohortTable({
   format = (v: number) => formatPercent(v, 0),
   max = 1,
   emptyText = "No cohorts yet.",
-}: {
+  exportId,
+  exportLeftOut,
+}: ChartExport & {
   label: string;
   columns: readonly string[];
   rows: readonly CohortRow[];
@@ -665,6 +694,7 @@ export function CohortTable({
 }) {
   if (rows.length === 0 || columns.length === 0) return <EmptyChart label={label} text={emptyText} />;
   return (
+    <>
     <div className="relative overflow-x-auto rounded-lg border border-border">
       <table className="w-full border-collapse text-xs">
         <caption className="sr-only">{label}</caption>
@@ -705,6 +735,8 @@ export function CohortTable({
         </tbody>
       </table>
     </div>
+    <ExportRow exportId={exportId} leftOut={exportLeftOut} />
+    </>
   );
 }
 

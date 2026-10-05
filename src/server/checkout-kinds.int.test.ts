@@ -757,6 +757,26 @@ describe("checkout for every kind of product", () => {
       for (const mail of mails) expect(String(mail.html)).not.toMatch(/\/no\/(order|account)/);
       expect(mails.some((mail) => String(mail.html).includes("/no-eur/order/"))).toBe(true);
 
+      // The order file (D165): the order is in it in the currency it was charged, the main-currency columns are the store's own conversion at its
+      // rate, and its lines and VAT add up to what the cart showed.
+      const exporting = { ...member, store: { ...member.store, timeZone: "Europe/Oslo", markets: [no], localization: localizationOf([], [{ currency: "NOK", rate: 11.5, roundTo: 1 }, { currency: "EUR", rate: 1, roundTo: 1 }], [no]) } as unknown as Store };
+      const filedOrder = await (await import("./data-jobs")).requestOrderExport(exporting, { mode: "numbers", numbers: [order!.number], dialect: "standard" });
+      if (!filedOrder.ok || filedOrder.mode !== "file") throw new Error(`order file ${JSON.stringify(filedOrder)}`);
+      const { parseCsv } = await import("@/lib/csv");
+      const parsedFile = parseCsv(filedOrder.csv);
+      const [fileHeader, ...fileRows] = parsedFile.rows;
+      const cell = (row: string[], name: string) => row[fileHeader.indexOf(name)] ?? "";
+      const asMinor = (text: string) => (text === "" ? 0 : Math.round(Number(text) * 100));
+      const first = fileRows[0];
+      expect(cell(first, "currency")).toBe("EUR");
+      expect(asMinor(cell(first, "total"))).toBe(summary.total);
+      expect(asMinor(cell(first, "tax_total"))).toBe(summary.vat);
+      expect(cell(first, "main_currency")).toBe("NOK");
+      expect(cell(first, "main_rate")).toBe("11.5");
+      expect(cell(first, "main_converted")).toBe("true");
+      expect(asMinor(cell(first, "total_main"))).toBe(Math.round(summary.total * 11.5));
+      expect(fileRows.reduce((n, r) => n + asMinor(cell(r, "line_tax")), 0) + asMinor(cell(first, "shipping_vat"))).toBe(summary.vat);
+
       // The shopper's data (D162, G2): the order is in the file in the currency it was charged, never converted, whatever its kind of line, and
       // erasing the person keeps the sale as it was: the amounts, VAT and discount do not move, and nothing is deleted.
       const { exportCustomerData } = await import("./privacy-export");

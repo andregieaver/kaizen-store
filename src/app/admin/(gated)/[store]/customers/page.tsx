@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
 import { Avatar } from "@/components/avatar";
-import { requirePermission } from "@/server/permissions";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { listCustomers } from "@/server/customer-admin";
 
@@ -11,7 +11,8 @@ export const metadata: Metadata = { title: "Customers" };
 
 /** Everyone who has an account or has bought (D35), most recently active first, with a search. */
 export default async function CustomersPage({ params, searchParams }: PageProps<"/admin/[store]/customers">) {
-  const { store } = await requirePermission((await params).store, "customers:read");
+  const member = await requirePermission((await params).store, "customers:read");
+  const { store } = member;
   const raw = (await searchParams).q;
   const q = typeof raw === "string" ? raw : "";
   const customers = await listCustomers(store.id, { q });
@@ -21,11 +22,19 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Customers</h1>
-        <p className="text-sm text-muted">
-          Everyone with an account or a paid order, one per email. Guests who bought without an account are here too.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold">Customers</h1>
+          <p className="text-sm text-muted">
+            Everyone with an account or a paid order, one per email. Guests who bought without an account are here too.
+          </p>
+        </div>
+        {/* The customer file (D165) holds personal data, so only the owner is offered it. */}
+        {memberCan(member, "owner") && (
+          <Link href={`${base}/export`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium">
+            Export
+          </Link>
+        )}
       </div>
       <form role="search" className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="customer-search">

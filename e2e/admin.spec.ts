@@ -47,6 +47,8 @@ test("a forgotten password gets the same reply for any email", async ({ page }) 
 });
 
 test("admin pages are not reachable without a session", async ({ page }) => {
+  // About sixty page loads in a row: under the full suite's parallel load they outrun the default 30 s.
+  test.slow();
   const paths = [
     "/admin/demo",
     "/admin/demo/settings/payments",

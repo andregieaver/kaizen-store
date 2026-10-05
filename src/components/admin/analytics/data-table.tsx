@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { NO_FIGURE, verdictOf, type GoodDirection, type Verdict } from "@/lib/analytics-core";
 
 import { nextSort, sharePct } from "./chart-math";
+import { ExportButton, type LeftOut } from "./export-scope";
 
 /**
  * A compact table for the analytics pages (D152), sorted by links (`?sort=col&dir=`) so it works with no script, with numbers
@@ -135,6 +136,8 @@ export function DataTable<R>({
   sticky = false,
   empty = "Nothing to show for this period.",
   footer,
+  exportId,
+  exportLeftOut,
 }: {
   caption: string;
   /** The caption is read by screen readers always; shown only when asked. */
@@ -148,6 +151,15 @@ export function DataTable<R>({
   empty?: string;
   /** A closing row (totals), drawn as given inside the table's foot. */
   footer?: ReactNode;
+  /**
+   * The table's id in `ANALYTICS_TABLES` (`src/lib/analytics-export.ts`): the table gets a Download CSV button beside it (D165). A table that is not
+   * exportable says `exportable={false}` with an `exportReason` that is in `NOT_EXPORTED`; `analytics-export-views.test.ts` fails for any other.
+   */
+  exportId?: string;
+  exportable?: boolean;
+  exportReason?: string;
+  /** The orders the page leaves out (a currency with no rate), repeated on the button. */
+  exportLeftOut?: LeftOut | null;
 }) {
   if (rows.length === 0) {
     return (
@@ -160,7 +172,7 @@ export function DataTable<R>({
   const stickyHead = sticky ? "sticky top-0 z-10" : "";
   // The more columns, the less room between them: a table of twelve has to fit a laptop's width without hiding its last columns.
   const pad = columns.length >= 10 ? "px-1" : columns.length >= 8 ? "px-1.5" : "px-3";
-  return (
+  const table = (
     <div className={`relative overflow-x-auto rounded-lg border border-border bg-background ${sticky ? "max-h-[32rem] overflow-y-auto" : ""}`}>
       <table className="w-full border-collapse text-[13px]">
         <caption className={showCaption ? "px-3 py-2 text-left text-xs font-medium text-muted" : "sr-only"}>{caption}</caption>
@@ -204,5 +216,14 @@ export function DataTable<R>({
         {footer ? <tfoot className="border-t border-border font-medium">{footer}</tfoot> : null}
       </table>
     </div>
+  );
+  if (!exportId) return table;
+  return (
+    <>
+      {table}
+      <div className="flex justify-end empty:hidden">
+        <ExportButton exportId={exportId} leftOut={exportLeftOut} />
+      </div>
+    </>
   );
 }

@@ -14,6 +14,8 @@ import { getAnalyticsSettings, type StoredAnalyticsSettings } from "./analytics-
 export type AnalyticsContext = Membership & {
   /** Whether the member holds the owner role: the pages show what only an owner can change (costs, targets) to them alone. */
   owner: boolean;
+  /** Whether the member holds `analytics:write`: only they may download a table as CSV (an export is logged). */
+  canExport: boolean;
   base: string;
   now: Date;
   params: AnalyticsParams;
@@ -26,12 +28,20 @@ export async function analyticsContext(
   searchParams: Record<string, string | string[] | undefined>,
   key: PermissionKey = "analytics:read",
 ): Promise<AnalyticsContext> {
-  const member = await requirePermission(storeSlug, key);
-  const now = new Date();
+  return analyticsContextFor(await requirePermission(storeSlug, key), searchParams);
+}
+
+/** The same for a member a route has already checked (the export route answers a 404 itself instead of throwing one). */
+export async function analyticsContextFor(
+  member: Membership,
+  searchParams: Record<string, string | string[] | undefined>,
+  now: Date = new Date(),
+): Promise<AnalyticsContext> {
   const [settings] = await Promise.all([getAnalyticsSettings(member.store.id)]);
   return {
     ...member,
     owner: memberCan(member, "owner"),
+    canExport: memberCan(member, "analytics:write"),
     base: `/admin/${member.store.slug}`,
     now,
     params: parseAnalyticsParams(searchParams, { now, timeZone: member.store.timeZone }),
