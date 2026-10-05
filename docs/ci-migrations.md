@@ -17,12 +17,23 @@ and the run stops there. Rules it enforces:
 - the ledger must have rows before anything is applied (the baseline below), so a first run can never
   replay history.
 
-The `migrate` job in `.github/workflows/ci.yml` runs on a push to `main` after the `check` job
-(lint, typecheck, unit, `db:check`, integration, build, e2e) is green, in the GitHub environment
-`production`, only while the repository variable `AUTO_MIGRATE` is `true`. A run on `main` is never
-cancelled by a newer push (it may be mid-migration); the next run applies everything still pending,
-so a skipped intermediate commit loses nothing. Supabase's own history table gets a row per file
-too, where it can be written.
+A push to `main` takes one of two paths, chosen by reading production's ledger (the `pending` job runs
+`db-migrate.mjs --status` on the checked-out commit):
+
+- **No pending migration** (most pushes): `deploy-now` calls the Vercel hook at once, about two minutes
+  after the push. The checks run beside it and report on the commit (GitHub emails a failure), but do not
+  hold it back; run lint, typecheck and the tests before pushing, as the workflow in CLAUDE.md says.
+- **A pending migration** (the push adds a file in `supabase/migrations`, or an earlier one never
+  got applied): `migrate` waits for `check` (static, integration and e2e jobs side by side, about ten
+  minutes), applies the files in the GitHub environment `production`, and `deploy` follows. A failed check
+  or migration deploys nothing, so new code never meets the old schema.
+
+Both need the repository variable `AUTO_MIGRATE` to be `true` (the `pending` job is off without it, and
+every push then deploys only after `check`). A run on `main` is never cancelled by a newer push (it may be
+mid-migration) and never waits for another: each has a concurrency group of its own, so a quick deploy is not
+queued behind the previous push's checks. The next migration run applies everything still pending, so a
+skipped intermediate commit loses nothing. Pushes that only change `*.md` or `docs/**` do not run CI or
+deploy. Supabase's own history table gets a row per file too, where it can be written.
 
 ### One-time setup (owner)
 
@@ -39,24 +50,24 @@ added this; the order matters: secret, baseline run, hook, then the two variable
 3. Run *Actions → CI → Run workflow* once with `baseline_through` set to the newest file production
    already has (today `20261004152302_order_invoices_fixes.sql`, or later files already applied by hand).
    It records those files as applied without running them.
-4. Set the repository variable `AUTO_MIGRATE` to `true`. It is a *variable* (Settings → Secrets and variables →
-   Actions → **Variables** tab), not a secret: the workflow reads `vars.AUTO_MIGRATE`, and a secret of the same
-   name is invisible to it, so the job would stay skipped. The same goes for `DEPLOY_VIA_CI` below.
+4. Set the repository variable `AUTO_MIGRATE` to `true` (a *variable*, see Deploying below).
 
 From then on, a migration file committed to `main` reaches production after the tests pass.
 
-### Deploying after the migration
+### Deploying
 
 Vercel's own build of `main` is switched off in `vercel.json` (`git.deploymentEnabled.main: false`;
-pull-request previews are unaffected). Production gets new code from the `deploy` job in
-`ci.yml`, which calls a Vercel deploy hook after `check` and, when it ran, `migrate` have succeeded.
-So new code never runs against the old schema, and a failed check or migration deploys nothing.
-The cost is that production now waits for CI (about as long as `check`, 25 to 30 minutes) instead of
-building at once. The job is off until the repository variable `DEPLOY_VIA_CI` is `true`; the secret
-`VERCEL_DEPLOY_HOOK_URL` is the hook (Vercel → project → Settings → Git → Deploy Hooks, branch `main`).
+pull-request previews are unaffected). Production gets new code from the `deploy-now` and `deploy` jobs in
+`ci.yml`, which call a Vercel deploy hook (paths above). The jobs are off until the repository variable
+`DEPLOY_VIA_CI` is `true`; the secret `VERCEL_DEPLOY_HOOK_URL` is the hook (Vercel → project → Settings →
+Git → Deploy Hooks, branch `main`). `AUTO_MIGRATE` and `DEPLOY_VIA_CI` are repository *variables*, not secrets
+(the *Variables* tab: the workflow reads `vars.…`, and a secret of the same name is invisible to it).
 *Actions → CI → Run workflow → redeploy* deploys the head of main by hand (to test the hook, or after a
 failed deploy). A hook builds the head of `main` at the moment it is called, so two quick pushes make
 two builds of the newest commit.
+
+A deploy that should not have gone out: roll back in Vercel (*Deployments → the earlier one → Promote to
+Production*, seconds) and push the fix.
 
 Turning it off again: delete the `git` block from `vercel.json` (Vercel builds `main` itself again)
 and set `DEPLOY_VIA_CI` to anything but `true`.

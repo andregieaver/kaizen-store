@@ -10,6 +10,9 @@ phased build plan are in `docs/plan.md`; read it before architectural work.
 - Commit and push straight to `main`, which deploys to production (D5): no
   feature branches or pull requests. Development is fast and tested in
   production, so run lint, typecheck and the tests before every push.
+- Production is deployed by CI (`docs/ci-migrations.md`): a push without a new migration deploys at once and
+  the checks report beside it; one with a migration waits for the checks, applies it, then deploys. Pushes
+  of `*.md` and `docs/**` alone run nothing.
 
 ## Stack
 

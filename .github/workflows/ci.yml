@@ -3,6 +3,11 @@ name: CI
 on:
   push:
     branches: [main]
+    # Words only: nothing to test or deploy. (docs/parity/*.json and the generated docs/shopify-parity.md are
+    # read by the unit tests, so `pnpm test` before pushing those; a push of them alone is not run here.)
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
   pull_request:
   # One-time: record the migrations production already has (docs/ci-migrations.md). Run from main.
   workflow_dispatch:
@@ -16,17 +21,34 @@ on:
         default: false
 
 concurrency:
-  group: ci-${{ github.ref }}
-  # A newer push cancels a running check on a pull request, but never a run on main:
-  # that run may be in the middle of applying a migration to production.
+  # A newer push cancels a running check on a pull request. A run on main is never cancelled (it may be in the
+  # middle of applying a migration to production) and never waits for another: each has a group of its own, so a
+  # push that needs no migration deploys at once, whatever the run before it is still checking.
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  check:
+  # The checks run side by side (about 10 minutes in all, once 20 in a row) and `check` below sums them up.
+  static:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
-    # The whole job (lint, types, unit, integration, build, e2e) takes about 25 minutes; 20 cut it off in the e2e step.
-    timeout-minutes: 45
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  integration:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -49,18 +71,58 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
       - name: Migrations match the schema
         run: pnpm db:check
       - name: Create the database with the demo catalogue
         run: node scripts/db-setup.mjs --seed
       - name: Integration tests against the database
         run: pnpm test:int
+
+  e2e:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create the database with the demo catalogue
+        run: node scripts/db-setup.mjs --seed
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+
+  # Everything that must pass, as one name: what a migration waits for, and what a pull request shows.
+  check:
+    if: always() && github.event_name != 'workflow_dispatch'
+    needs: [static, integration, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every check passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "static, integration, e2e: $RESULTS"
+          for result in $RESULTS; do test "$result" = success || exit 1; done
 
   # Stores on their own hosts (P7) and their own code (D61) exist only in a
   # build with the store domain set; stores run on *.localhost here.
@@ -99,12 +161,39 @@ jobs:
         env:
           E2E_CUSTOM_HOSTS: "1"
 
-  # Production's migrations (docs/ci-migrations.md): on a push to main, after the checks pass, apply the
-  # migration files production has not had yet. Off until the repository variable AUTO_MIGRATE is "true".
-  # PRODUCTION_DATABASE_URL is the Supabase session-pooler connection string of the postgres role.
-  migrate:
+  # Production's migrations and deploy (docs/ci-migrations.md). Vercel's own build of main is switched off in
+  # vercel.json, so production gets new code only here. Whether a push has migrations is read from production's
+  # ledger: files in this commit it has not recorded. Off until the repository variables AUTO_MIGRATE and
+  # DEPLOY_VIA_CI are "true". PRODUCTION_DATABASE_URL is the Supabase session-pooler connection string of the
+  # postgres role.
+  #
+  #   no pending migration:  deploy at once (the checks run beside it and report; they do not hold it back)
+  #   pending migration:     wait for every check, apply the files, then deploy, so new code never meets the
+  #                          old schema and a failed check or migration deploys nothing
+  pending:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AUTO_MIGRATE == 'true'
-    needs: [check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      pending: ${{ steps.status.outputs.pending }}
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      MIGRATE_EXPECT: ybsozesfuxuitoacntfo
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Which migrations has production not had?
+        id: status
+        run: node scripts/db-migrate.mjs --status
+
+  migrate:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.AUTO_MIGRATE == 'true' && needs.pending.outputs.pending == 'true'
+    needs: [pending, check]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: production
@@ -124,15 +213,29 @@ jobs:
       - name: Nothing is left pending
         run: node scripts/db-migrate.mjs --status
 
-  # Production's deploy (docs/ci-migrations.md): Vercel's own build of main is switched off in vercel.json, so
-  # production gets new code only here: after the checks, and after the migrations when there were any, so
-  # new code never runs against the old schema. A failed check or migration deploys nothing. Off until the
-  # repository variable DEPLOY_VIA_CI is "true" (set it before vercel.json turns Vercel's own deploy off).
+  # No migration to apply: deploy now.
+  deploy-now:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_VIA_CI == 'true' && needs.pending.outputs.pending == 'false'
+    needs: [pending]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask Vercel to deploy the head of main
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          test -n "$VERCEL_DEPLOY_HOOK_URL" || { echo "The secret VERCEL_DEPLOY_HOOK_URL is not set."; exit 1; }
+          curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL"
+          echo
+
+  # Migrations were pending (or AUTO_MIGRATE is off): after every check and the migration. A failed
+  # check, a failed migration or a status that could not be read deploys nothing.
   deploy:
     if: >-
       always() && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_VIA_CI == 'true'
+      && needs.pending.result != 'failure' && needs.pending.result != 'cancelled' && needs.pending.outputs.pending != 'false'
       && needs.check.result == 'success' && (needs.migrate.result == 'success' || needs.migrate.result == 'skipped')
-    needs: [check, migrate]
+    needs: [pending, check, migrate]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

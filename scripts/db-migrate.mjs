@@ -105,6 +105,8 @@ try {
 
   if (args.has("--status")) {
     summary(report);
+    // For a workflow deciding its path (.github/workflows/ci.yml): are there files production has not had?
+    if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `pending=${pending.length > 0}\n`);
     process.exit(edited.length ? 1 : 0);
   }
   if (edited.length) {
