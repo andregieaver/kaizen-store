@@ -39,7 +39,9 @@ added this; the order matters: secret, baseline run, hook, then the two variable
 3. Run *Actions → CI → Run workflow* once with `baseline_through` set to the newest file production
    already has (today `20261004152302_order_invoices_fixes.sql`, or later files already applied by hand).
    It records those files as applied without running them.
-4. Set the repository variable `AUTO_MIGRATE` to `true`.
+4. Set the repository variable `AUTO_MIGRATE` to `true`. It is a *variable* (Settings → Secrets and variables →
+   Actions → **Variables** tab), not a secret: the workflow reads `vars.AUTO_MIGRATE`, and a secret of the same
+   name is invisible to it, so the job would stay skipped. The same goes for `DEPLOY_VIA_CI` below.
 
 From then on, a migration file committed to `main` reaches production after the tests pass.
 
