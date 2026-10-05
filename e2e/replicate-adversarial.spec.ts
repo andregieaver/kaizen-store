@@ -274,3 +274,23 @@ test("a cookie dialog and a script that one load injects in front of the page do
     without.close();
   }
 });
+
+test("a link drawn as a button inside a paragraph is a box of its own, and a text a read-more box cuts is marked cut", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const html = `<!doctype html><html><body style="margin:0;font-family:Arial">
+    <p id="hero" style="margin:0;padding:20px;width:300px"><a href="/go" style="display:inline-block;background:#d34308;color:#fff;padding:10px 20px;border-radius:6px">Go to products</a></p>
+    <div style="position:relative;max-height:60px;overflow:hidden"><p id="long" style="margin:0;padding:10px">${"Words that go on and on, line after line. ".repeat(30)}</p></div>
+  </body></html>`;
+  const site = await serve(html);
+  try {
+    const desktop = await openOriginal(browser, site.url, "desktop", everything, undefined, { watch: false });
+    const nodes = [...walk(desktop.capture.root)];
+    const link = nodes.find((n) => n.tag === "a");
+    expect(link?.s.backgroundColor).toMatch(/211, 67, 8/);
+    const long = nodes.find((n) => n.sel?.includes("#long"));
+    expect(long?.cut).toBe(true);
+    expect(long!.box[3]).toBeLessThanOrEqual(60);
+  } finally {
+    site.close();
+  }
+});

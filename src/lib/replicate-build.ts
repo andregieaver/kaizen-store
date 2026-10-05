@@ -662,6 +662,11 @@ export function liftBackdrops(capture: PageCapture): { capture: PageCapture; lif
             if (!same(outer) || (outer.s.backgroundImage && outer.s.backgroundImage !== "none")) break;
             target = outer;
           }
+          // The corners of the box that held the picture go with it (a hero tile with rounded corners inside plain wrappers).
+          const corners4 = ["borderTopLeftRadius", "borderTopRightRadius", "borderBottomRightRadius", "borderBottomLeftRadius"] as const;
+          if (target !== a && corners4.some((k) => a.s[k] !== undefined && a.s[k] !== "0px") && !corners4.some((k) => target.s[k] !== undefined && target.s[k] !== "0px")) {
+            target.s = { ...target.s, ...Object.fromEntries(corners4.filter((k) => a.s[k] !== undefined).map((k) => [k, a.s[k]])) };
+          }
           a = target;
           a.s = { ...a.s, backgroundImage: `url("${m.url}")`, backgroundSize: "cover", backgroundPosition: child.s.objectPosition ?? "50% 50%", backgroundRepeat: "no-repeat" };
           a.bg = [m.url, ...(a.bg ?? [])];
@@ -976,6 +981,8 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
         "aspect-ratio": `${round(n.box[2])} / ${round(n.box[3])}`,
         "object-fit": fit,
         "border-radius": (n.s.borderTopLeftRadius ?? "0px").split(" ")[0],
+        // The builder's picture has the theme's surface colour behind it; a page's own picture shows what was behind it on the original.
+        "background-color": "transparent",
       });
       put(id, "", at.d, at.m);
       put(id, " img", imageDecl(leaf), phone ? imageDecl(phone) : {});
@@ -1039,12 +1046,18 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
         claimed = true;
         note("warn", "Some of the copied text makes claims (such as the best price, or being green) that a store must be able to stand behind. Read it before publishing.");
       }
-      const type = typography(leaf);
+      // A list is typed by its first item: the list's own box says no type (the items carry the words' face).
+      const type = typography(isTextList(leaf) && leaf.children[0] ? leaf.children[0] : leaf);
 
       // A button.
       if (leaf.button && !isTextList(leaf)) {
         const filled = paints(leaf.s.backgroundColor);
         const outlined = !filled && SIDES.some((side) => borderOf(leaf, side) > 0);
+        const face = (n: CaptureNode): "left" | "center" | "right" => {
+          const a = n.s.textAlign;
+          if (filled || outlined) return "center";
+          return a === "center" ? "center" : a === "right" || a === "end" ? "right" : "left";
+        };
         const faceOf = (n: CaptureNode): Decl => {
           const room = content(n).room;
           return {
@@ -1057,7 +1070,9 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
             "padding-left": pxs(room.left),
             ...paintFlat(n),
             ...type.decl(n),
-            "text-align": "center",
+            // A link set as plain text keeps the side its words stand on; a button's label is centred in its fill.
+            "text-align": face(n),
+            "justify-content": face(n) === "right" ? "flex-end" : face(n) === "center" ? "center" : "flex-start",
             "text-decoration": "none",
             "white-space": "nowrap",
           };
@@ -1094,12 +1109,18 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
 
       // Words: rich text, a paragraph or several, a list or a quotation.
       const single = group.length === 1 && !isTextList(leaf);
-      put(id, "", { ...at.d, ...type.decl(leaf), ...(single && oneLine(leaf) ? { "white-space": "nowrap" } : {}) }, { ...at.m, ...(phone ? { ...type.decl(phone), ...(single ? { "white-space": oneLine(phone) ? "nowrap" : "normal" } : {}) } : {}) });
+      const faceOfText = (n: CaptureNode) => (isTextList(n) && n.children[0] ? n.children[0] : n);
+      put(id, "", { ...at.d, ...type.decl(faceOfText(leaf)), ...(single && oneLine(leaf) ? { "white-space": "nowrap" } : {}), ...(leaf.cut ? { "max-height": pxs(leaf.box[3]), overflow: "hidden" } : {}) }, { ...at.m, ...(phone ? { ...type.decl(faceOfText(phone)), ...(single ? { "white-space": oneLine(phone) ? "nowrap" : "normal" } : {}) } : {}) });
       if (isTextList(leaf)) {
-        const listPad = (n: CaptureNode) => ({ "padding-left": pxs(Math.max(0, px(n.s.paddingLeft) ?? 0)), "list-style-type": n.s.listStyleType ?? "disc" });
+        // Items side by side (a menu strip: `display: inline-flex`, floats) stay in a row, with the gap between them.
+        const across = (n: CaptureNode) => n.children.length > 1 && n.children.every((c) => Math.abs(c.box[1] - n.children[0].box[1]) <= 4) && n.children[1].box[0] >= rightOf(n.children[0].box) - 2;
+        const listPad = (n: CaptureNode): Decl =>
+          across(n)
+            ? { display: "flex", "flex-wrap": "nowrap", "white-space": "nowrap", "column-gap": pxs(Math.max(0, n.children[1].box[0] - rightOf(n.children[0].box))), "padding-left": "0px", "list-style-type": "none" }
+            : { display: "block", "padding-left": pxs(Math.max(0, px(n.s.paddingLeft) ?? 0)), "list-style-type": n.s.listStyleType ?? "disc" };
         put(id, " :is(ul,ol)", listPad(leaf), phone ? listPad(phone) : {});
         if (leaf.children.length > 1) {
-          const gap = (n: CaptureNode) => (n.children.length > 1 ? Math.max(0, n.children[1].box[1] - bottomOf(n.children[0].box)) : 0);
+          const gap = (n: CaptureNode) => (n.children.length > 1 && !across(n) ? Math.max(0, n.children[1].box[1] - bottomOf(n.children[0].box)) : 0);
           put(id, " li + li", { "margin-top": pxs(gap(leaf)) }, phone ? { "margin-top": pxs(gap(phone)) } : {});
         }
       }

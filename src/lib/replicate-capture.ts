@@ -113,6 +113,8 @@ export type CaptureNode = {
   media?: NodeMedia;
   /** A box that scrolls sideways inside itself, or a script slider's track (D155, C2): its children may lie beyond the screen and are kept. */
   scroll?: true;
+  /** Cut short by a box that clips it (a "read more" text): `box` is what is seen, not the whole of it. */
+  cut?: true;
   /** A script slider's track: what the browser read round it. */
   slider?: CaptureSlider;
   /** A tile of a script slider, whether it shows or not. */

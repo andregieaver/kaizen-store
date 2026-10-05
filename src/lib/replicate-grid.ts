@@ -752,6 +752,7 @@ function mapCard(card: CaptureNode, leaves: CaptureNode[], slide?: SlideMark): M
 
   // A price, a date and a badge, each by what it is; links and a second of any are lines of detail.
   const lines: { node: CaptureNode; text: string }[] = [];
+  const aboveTitle = new Set<CaptureNode>();
   for (const leaf of rest()) {
     const words = wordsOf(leaf);
     const kind = kindOf(leaf);
@@ -783,6 +784,12 @@ function mapCard(card: CaptureNode, leaves: CaptureNode[], slide?: SlideMark): M
     if (draft.badge === "" && kind === "L" && words.length <= CUSTOM_BADGE_MAX && (overPicture(leaf) || paints(leaf.s.backgroundColor) || above)) {
       draft.badge = words;
       draft.nodes.badge = leaf;
+      used.add(leaf);
+    } else if (draft.badge !== "" && above && kind === "L" && draft.picture && !overPicture(leaf) && words.length <= CUSTOM_DETAIL_TEXT_MAX) {
+      // A label between the picture and the title that is not on the picture (a brand above a product's name) is a line of detail, which the tile's rules put where
+      // it stood (its order and the space above it are measured); the badge keeps the label that is on the picture.
+      lines.push({ node: leaf, text: words });
+      aboveTitle.add(leaf);
       used.add(leaf);
     } else if (draft.badge !== "" && above && kind === "L" && `${draft.badge} · ${words}`.length <= CUSTOM_BADGE_MAX) {
       // A second short label above the title (a campaign and a brand: "OKTOBERFEST", "Lucide") joins the first, in their order, so the cards stay an item each
@@ -828,7 +835,7 @@ function mapCard(card: CaptureNode, leaves: CaptureNode[], slide?: SlideMark): M
   draft.priceText = cutOnWord(draft.priceText, CUSTOM_PRICE_TEXT_MAX);
 
   // Words that stand above the title but would be drawn below it (an item is its title first) change the card's reading order.
-  if (titleAt >= 0 && [...draft.paragraphs, ...details.map((d) => d.node)].some((leaf) => (order.get(leaf) ?? Infinity) < titleAt)) problem("before-title", true);
+  if (titleAt >= 0 && [...draft.paragraphs, ...details.map((d) => d.node).filter((n) => !aboveTitle.has(n))].some((leaf) => (order.get(leaf) ?? Infinity) < titleAt)) problem("before-title", true);
   // Words the page draws with CSS (a `::before` that says NEW) are in no text of the card: they cannot be copied, and are said to be left out.
   const generated = [...walk(card)].flatMap((n) => n.gen ?? []);
   if (generated.length > 0) {
@@ -1296,6 +1303,35 @@ function paintedBoxOf(card: CaptureNode, paintsBox: StyleEnv["paintsBox"]): Capt
 
 const decl = (n: number) => `${round1(n)}px`;
 
+/** The nodes from `from` (excluded) down to `to` (excluded), outermost first; null when `to` is not inside `from`. */
+function between(from: CaptureNode, to: CaptureNode): CaptureNode[] | null {
+  for (const child of from.children) {
+    if (child === to) return [];
+    const inner = between(child, to);
+    if (inner) return [child, ...inner];
+  }
+  return null;
+}
+
+/**
+ * The box a card's picture sits in when it does not fill it: the outermost box inside the card that spans the card's width and holds the picture with room round it
+ * (lampan.no: a 313 x 375 panel holding a 190 x 285 product photo). The copy draws it as the picture's own box, with padding, so the words below start where they did.
+ */
+export function pictureFrameOf(card: CaptureNode, picture: CaptureNode): CaptureNode | null {
+  const chain = between(card, picture);
+  if (!chain) return null;
+  const holds = (n: CaptureNode) => n.box[0] <= picture.box[0] + 1 && rightOf(n.box) >= rightOf(picture.box) - 1 && n.box[1] <= picture.box[1] + 1 && bottomOf(n.box) >= bottomOf(picture.box) - 1;
+  // The panel holds the picture and what lies over it (a badge placed absolutely), not the card's words: the outermost box with only that in it.
+  const onlyOverlays = (n: CaptureNode, over: boolean): boolean => (n.runs !== undefined ? over : n.children.every((c) => onlyOverlays(c, over || c.s.position === "absolute")));
+  const frame = chain.find((n) => holds(n) && n.box[2] >= card.box[2] * 0.85 && (n.box[3] > picture.box[3] * 1.08 || n.box[2] > picture.box[2] * 1.08) && n.box[3] < card.box[3] * 0.98 && onlyOverlays(n, n.s.position === "absolute"));
+  if (!frame) return null;
+  // The room must be real on at least one axis, and the picture roughly centred across: a picture hugging one side is the card's picture, not framed.
+  const left = picture.box[0] - frame.box[0];
+  const right = rightOf(frame.box) - rightOf(picture.box);
+  const roomy = frame.box[2] - picture.box[2] > 8 || frame.box[3] - picture.box[3] > 8;
+  return roomy && Math.abs(left - right) <= Math.max(4, frame.box[2] * 0.04) ? frame : null;
+}
+
 export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridStyle {
   const { group, drafts } = plan;
   const notes: string[] = [];
@@ -1341,6 +1377,9 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
   // The tile: the box that paints a card.
   const boxes = cardsD.map((c) => paintedBoxOf(c, style.paintsBox));
   const painted = boxes[0];
+  // A picture inside a panel of its own (a photo centred in a taller box): the panel is the picture's room.
+  const frames = drafts.map((d, i) => (d.picture?.leaf.media ? pictureFrameOf(cardsD[i], d.picture.leaf) : null));
+  const framed = frames.filter((f) => f !== null).length > drafts.length / 2;
   const tile: GridTile = {};
   const tileRules: Decl = {};
   const frame = painted ?? cardsD[0];
@@ -1380,14 +1419,16 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
     const left = box.box[0] + (painted ? style.borderOf(box, "Left") : 0);
     const right = rightOf(box.box) - (painted ? style.borderOf(box, "Right") : 0);
     const picture = d.picture?.leaf ?? null;
+    const frameNode = framed ? frames[i] : null;
+    const boxOf = (l: CaptureNode): Box => (l === picture && frameNode ? frameNode.box : l.box);
     const others = leaves.filter((l) => l !== picture);
-    const runs = Boolean(picture) && others.length > 0 && Math.abs(picture!.box[0] - left) <= 2 && Math.abs(rightOf(picture!.box) - right) <= 2;
+    const runs = Boolean(picture) && others.length > 0 && Math.abs(boxOf(picture!)[0] - left) <= 2 && Math.abs(rightOf(boxOf(picture!)) - right) <= 2;
     const side = runs ? others : leaves;
     return [
       {
         flush: runs,
-        top: Math.max(0, Math.min(...leaves.map((l) => l.box[1])) - top),
-        bottom: Math.max(0, bottom - Math.max(...leaves.map((l) => bottomOf(l.box)))),
+        top: Math.max(0, Math.min(...leaves.map((l) => boxOf(l)[1])) - top),
+        bottom: Math.max(0, bottom - Math.max(...leaves.map((l) => bottomOf(boxOf(l))))),
         left: Math.max(0, Math.min(...side.map((l) => l.box[0])) - left),
         right: Math.max(0, right - Math.max(...side.map((l) => rightOf(l.box)))),
       },
@@ -1427,7 +1468,31 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
 
   // The space between the pieces of a card, and how its words are aligned.
   const stacked = sampleLeaves.slice(1).map((l, i) => l.box[1] - bottomOf(sampleLeaves[i].box)).filter((g) => g >= 0 && g < 120);
-  if (stacked.length > 0) tileRules["row-gap"] = decl(median(stacked));
+  // Where each piece of the sample card stands, in the order the original had them: the tile is a column, so each piece gets its order and the space above it.
+  const flowAt = (card: CaptureNode, nodeFor: (n: CaptureNode) => CaptureNode | undefined | null) => {
+    const parts: { key: string; sel: string; dom: number; top: number; bottom: number; extra: number }[] = [];
+    const add = (key: string, sel: string, dom: number, node: CaptureNode | undefined | null, extra = 0) => {
+      const n = node ? nodeFor(node) : null;
+      if (n) parts.push({ key, sel, dom, top: n.box[1], bottom: bottomOf(n.box), extra });
+    };
+    const pic = sample.picture ? nodeFor(sample.picture.leaf) : null;
+    if (pic) {
+      const room = pic.media ? (pictureFrameOf(card, pic) ?? pic) : pic;
+      parts.push({ key: "picture", sel: `${li} > :first-child`, dom: 0, top: room.box[1], bottom: bottomOf(room.box), extra: 0 });
+    }
+    add("title", `${li} > :is(h2,h3,h4,h5,h6)`, 2, sample.nodes.title);
+    add("detail", `${li} > ul.text-muted`, 3, sample.nodes.detail);
+    add("date", `${li} > time`, 4, sample.nodes.date);
+    add("text", `${li} > p.text-muted`, 5, sample.nodes.text);
+    add("price", `${li} > p.font-medium`, 6, sample.nodes.price);
+    add("button", `${li} > .mt-auto`, 7, sample.nodes.button, 4);
+    return parts.sort((a, b) => a.top - b.top || a.dom - b.dom);
+  };
+  const flowD = flowAt(sampleCard, (n) => n);
+  const reordered = flowD.some((part, i) => i > 0 && part.dom < flowD[i - 1].dom);
+  const useFlow = (framed || reordered) && flowD.length >= 2;
+  if (useFlow) tileRules["row-gap"] = "0px";
+  else if (stacked.length > 0) tileRules["row-gap"] = decl(median(stacked));
   const titleNode = exemplar("title");
   const textNode = exemplar("text");
   const alignOf = (n: CaptureNode | undefined) => (n ? (n.s.textAlign === "center" ? "center" : n.s.textAlign === "right" || n.s.textAlign === "end" ? "right" : "left") : null);
@@ -1435,6 +1500,27 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
   if (align && align !== "left") tileRules["text-align"] = align;
   const phoneAlign = alignOf(phoneOf(titleNode)) ?? alignOf(phoneOf(textNode));
   rule(li, tileRules, phoneAlign && phoneAlign !== align ? { "text-align": phoneAlign } : {});
+  if (useFlow) {
+    const cardM = env.getM ? env.getM(sampleCard.p) : null;
+    const flowM = cardM ? flowAt(cardM, (n) => (env.getM ? env.getM(n.p) : null)) : [];
+    const spaces = (parts: typeof flowD, cardNode: CaptureNode): Map<string, { order: number; margin: number }> => {
+      const out = new Map<string, { order: number; margin: number }>();
+      let edge = cardNode.box[1] + (painted ? style.borderOf(painted, "Top") : 0) + (flush ? 0 : padTop);
+      parts.forEach((part, i) => {
+        out.set(part.sel, { order: i, margin: Math.max(0, Math.round((part.top - edge - part.extra) * 10) / 10) });
+        edge = Math.max(edge, part.bottom);
+      });
+      return out;
+    };
+    const desktopSpace = spaces(flowD, sampleCard);
+    const phoneSpace = flowM.length === flowD.length && cardM ? spaces(flowM, cardM) : null;
+    const inDomOrder = !reordered;
+    for (const part of flowD) {
+      const d = desktopSpace.get(part.sel)!;
+      const m = phoneSpace?.get(part.sel);
+      rule(part.sel, { ...(inDomOrder ? {} : { order: String(d.order) }), "margin-top": decl(d.margin) }, m ? { "margin-top": decl(m.margin) } : {});
+    }
+  }
 
   // Pictures: they fill the tile's width at the shape they have, as every copied picture is told to.
   const pictureLeaves = drafts.flatMap((d) => (d.picture ? [d.picture.leaf] : []));
@@ -1445,7 +1531,7 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
     const room = (frameWidth: number) => Math.max(1, frameWidth - (flush ? 0 : padLeft + padRight) - borderLeft - borderRight);
     const rule1 = (pics: CaptureNode[], frameWidth: number, frameLeft: number): Decl => {
       const width = median(pics.map((p) => p.box[2]));
-      const out: Decl = { "object-fit": pics[0].s.objectFit && pics[0].s.objectFit !== "fill" ? pics[0].s.objectFit : "cover", "border-radius": (pics[0].s.borderTopLeftRadius ?? "0px").split(" ")[0] };
+      const out: Decl = { "object-fit": pics[0].s.objectFit && pics[0].s.objectFit !== "fill" ? pics[0].s.objectFit : "cover", "border-radius": (pics[0].s.borderTopLeftRadius ?? "0px").split(" ")[0], "background-color": "transparent" };
       const ratio = median(pics.map((p) => p.box[2] / Math.max(1, p.box[3])));
       const alike = pics.every((p) => within(p.box[2] / Math.max(1, p.box[3]), ratio, 0.06));
       const available = room(frameWidth);
@@ -1464,7 +1550,36 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
     const desktopPictures = pictureLeaves;
     const phonePictures = at(pictureLeaves, env.getM);
     const phoneFrame = env.getM ? env.getM(frame.p) : null;
-    rule(`${li} img`, rule1(desktopPictures, frame.box[2], frame.box[0]), phonePictures.length > 0 && phoneFrame ? rule1(phonePictures, phoneFrame.box[2], phoneFrame.box[0]) : {});
+    // A picture centred in a panel taller than it: the picture is the panel (its width, the panel's shape), with the room as padding in percent of the width.
+    const panelRule = (pic: CaptureNode, panel: CaptureNode): Decl => {
+      const w = Math.max(1, panel.box[2]);
+      const pct = (v: number) => `${round1(Math.max(0, v) / w * 100)}%`;
+      const corner = (panel.s.borderTopLeftRadius ?? pic.s.borderTopLeftRadius ?? "0px").split(" ")[0];
+      return {
+        width: "100%",
+        height: "auto",
+        "margin-left": "0px",
+        "margin-right": "0px",
+        "aspect-ratio": `${round1(panel.box[2] * 10) / 10} / ${round1(panel.box[3] * 10) / 10}`,
+        // As the original drew it into its box: stretched to fill unless it said otherwise.
+        "object-fit": pic.s.objectFit && /^(contain|cover|scale-down|none)$/.test(pic.s.objectFit) ? pic.s.objectFit : "fill",
+        "background-color": "transparent",
+        "padding-top": pct(pic.box[1] - panel.box[1]),
+        "padding-right": pct(rightOf(panel.box) - rightOf(pic.box)),
+        "padding-bottom": pct(bottomOf(panel.box) - bottomOf(pic.box)),
+        "padding-left": pct(pic.box[0] - panel.box[0]),
+        "border-radius": corner,
+      };
+    };
+    const samplePic = sample.picture?.leaf ?? null;
+    const samplePanel = framed && samplePic ? pictureFrameOf(sampleCard, samplePic) : null;
+    if (samplePic && samplePanel) {
+      const cardM = env.getM ? env.getM(sampleCard.p) : null;
+      const picM = env.getM ? env.getM(samplePic.p) : null;
+      const panelM = cardM && picM?.media ? pictureFrameOf(cardM, picM) : null;
+      rule(`${li} img`, panelRule(samplePic, samplePanel), picM && panelM ? panelRule(picM, panelM) : {});
+      notes.push("each picture sits in a panel taller than it, drawn as the picture's own box with padding");
+    } else rule(`${li} img`, rule1(desktopPictures, frame.box[2], frame.box[0]), phonePictures.length > 0 && phoneFrame ? rule1(phonePictures, phoneFrame.box[2], phoneFrame.box[0]) : {});
     if (shaped.shape === "original" && shaped.ratio === null) notes.push("the pictures differ in shape, so each is drawn at its own");
   }
 
@@ -1491,13 +1606,36 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
   const [detailD, detailM] = typed(detailNode, fonts);
   rule(`${li} ul.text-muted`, detailD, detailM);
   const badgeNode = exemplar("badge");
+  /** The picture's panel in a card (its frame, else the picture), at the width the card is read at. */
+  const panelIn = (card: CaptureNode, pic: CaptureNode | null | undefined): CaptureNode | null => (pic ? (pic.media ? (pictureFrameOf(card, pic) ?? pic) : pic) : null);
+  /** Where a badge stands against the picture's panel, as offsets of the box the tile draws it in (the picture's): from the edge it is nearer, past the panel when it is not on it. */
+  const placeBadge = (badge: CaptureNode, panel: CaptureNode): Decl => {
+    const [x, y, w, h] = badge.box;
+    const [px0, py0, pw, ph] = panel.box;
+    const insideY = y >= py0 - 2 && y + h <= py0 + ph + 2;
+    const insideX = x >= px0 - 2 && x + w <= px0 + pw + 2;
+    const bottom = insideY && y + h / 2 > py0 + ph / 2;
+    const right = insideX && x + w / 2 > px0 + pw / 2;
+    return {
+      position: "absolute",
+      ...(bottom ? { top: "auto", bottom: decl(py0 + ph - (y + h)) } : { top: decl(y - py0), bottom: "auto" }),
+      ...(right ? { left: "auto", right: decl(px0 + pw - (x + w)) } : { left: decl(x - px0), right: "auto" }),
+    };
+  };
   if (badgeNode) {
     const [badgeD, badgeM] = typed(badgeNode, fonts);
     const paint: Decl = {};
     const bg = cssColour(badgeNode.s.backgroundColor);
     if (bg) paint["background-color"] = bg;
     paint["border-radius"] = (badgeNode.s.borderTopLeftRadius ?? "0px").split(" ")[0];
-    rule(`${li} span.bg-accent`, { ...badgeD, ...paint }, badgeM);
+    // The tile draws a badge over the picture, from its top left corner: it is placed where the original had it, at each width.
+    const panelD = panelIn(sampleCard, sample.picture?.leaf);
+    const cardM = env.getM ? env.getM(sampleCard.p) : null;
+    const badgeOnPhone = phoneOf(badgeNode);
+    const panelM = cardM ? panelIn(cardM, phoneOf(sample.picture?.leaf)) : null;
+    const placeD = panelD ? placeBadge(badgeNode, panelD) : {};
+    const placeM = panelM && badgeOnPhone ? placeBadge(badgeOnPhone, panelM) : {};
+    rule(`${li} span.bg-accent`, { ...badgeD, ...paint, ...placeD }, { ...badgeM, ...placeM });
   }
 
   // The button: its look, and its type and room.

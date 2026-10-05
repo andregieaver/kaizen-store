@@ -276,6 +276,14 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     return false;
   }
 
+  /** Whether a background colour paints (it is not transparent). */
+  function paintsFill(colour: string): boolean {
+    const m = /^rgba?\(\s*[\d.]+[\s,]+[\d.]+[\s,]+[\d.]+(?:\s*[,/]\s*([\d.]+)(%?))?\s*\)$/.exec(colour.trim());
+    if (!m) return colour !== "" && colour !== "transparent";
+    const alpha = m[1] === undefined ? 1 : Number(m[1]) / (m[2] ? 100 : 1);
+    return alpha > 0.05;
+  }
+
   /** Whether a block holds only text and inline elements, so it is one piece of text. */
   function isTextual(el: Element, vis = false): boolean {
     let text = false;
@@ -292,8 +300,8 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
       if (unseen(element, cs, vis)) continue;
       if (!INLINE.test(cs.display) || cs.position === "absolute" || cs.position === "fixed" || cs.cssFloat !== "none") return false;
       if (["IMG", "SVG", "VIDEO", "IFRAME", "CANVAS", "INPUT", "SELECT", "TEXTAREA", "BUTTON", "PICTURE"].indexOf(element.tagName.toUpperCase()) >= 0) return false;
-      // An inline box with its own look (a badge, a pill) is more than text.
-      if (cs.backgroundImage !== "none") return false;
+      // An inline box with its own look (a badge, a pill, a link drawn as a button) is more than text.
+      if (cs.backgroundImage !== "none" || paintsFill(cs.backgroundColor)) return false;
       if (!isTextual(element, vis)) return false;
       if ((element.textContent || "").trim() !== "") text = true;
     }
@@ -792,9 +800,12 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
     const tag = el.tagName.toLowerCase();
     const media = mediaOf(el, cs);
     // A box is read as far as it is seen (not a picture, which is drawn whole and cropped by its frame, nor a slide of a track).
+    const whole = box[3];
     if (!force && !media && !inScroller(el)) box[3] = Math.round((Math.max(rect.top, seenBottom(el, cs, rect)) - rect.top) * 10) / 10;
     const text = !media && isTextual(el, Boolean(force?.vis));
     const node: CaptureNode = { p: path, tag, box, s: styleOf(cs, text || tag === "li", true), children: [] };
+    // Cut off by a box that clips it (a "read more" text): the copy clips it at the same height.
+    if (box[3] < whole - 4) node.cut = true;
     const sel = describe(el);
     if (sel !== tag) node.sel = sel;
     const gen = path !== "" ? observe(el, cs, box[1]) : [];

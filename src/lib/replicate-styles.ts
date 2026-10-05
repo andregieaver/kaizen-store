@@ -79,6 +79,12 @@ const PROPS: Record<string, "length" | "color" | "number" | "keyword" | "text" |
   "list-style-position": "keyword",
   filter: "text",
   "z-index": "number",
+  order: "number",
+  position: "keyword",
+  top: "length",
+  right: "length",
+  bottom: "length",
+  left: "length",
 };
 
 export const COPY_PROPERTIES = Object.keys(PROPS);
@@ -102,6 +108,8 @@ export function cleanDecl(property: string, raw: string): string | null {
     case "number":
       return NUMBER.test(value) ? value : null;
     case "keyword":
+      // A part may be placed within its own box; never fixed to the screen.
+      if (property === "position") return /^(static|relative|absolute)$/.test(value) ? value : null;
       return KEYWORD.test(value) ? value : null;
     case "color":
       return COLOR.test(value) ? value : null;
