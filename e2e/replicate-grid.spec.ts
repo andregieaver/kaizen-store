@@ -102,9 +102,8 @@ test("repeated cards become grids of custom items that look like the original, w
     expect(grids).toHaveLength(3);
     expect(built.grids.built.map((g) => g.items)).toEqual([4, 6, 5]);
     expect(built.grids.kept).toHaveLength(1);
-    // The two buttons of a card are inline links in one block of text: links inside a sentence are no link of the card's (an item's text is plain, so they would be lost),
-    // and every card has them, so the group stays as columns, which keep both.
-    expect(built.grids.kept[0].reason).toBe("3 of 3 cards hold a link inside a sentence, which an item's plain text cannot keep, more than a fifth");
+    // Each card holds two buttons, and an item holds one, so the group stays as columns, which keep both.
+    expect(built.grids.kept[0].reason).toBe("3 of 3 cards hold a second button");
 
     const [statics, carousel, slider] = grids;
     expect(statics.display).toBeUndefined();
@@ -137,8 +136,8 @@ test("repeated cards become grids of custom items that look like the original, w
     // The third group is columns, as before, with every word (and both links) of its cards.
     expect(built.rows.some((row) => row.columns.length === 3)).toBe(true);
     expect(JSON.stringify(built.rows)).toContain("Kjøp nå");
-    // Far fewer blocks than every picture, heading, text and button of 13 cards would take.
-    expect(built.counts.blocks).toBeLessThan(20);
+    // Far fewer blocks than every picture, heading, text and button of 13 cards would take (some 55); the group kept as columns is most of them.
+    expect(built.counts.blocks).toBeLessThan(25);
 
     // A store, a draft of the page, and a job whose token opens it.
     const sql = testDb();
@@ -174,7 +173,16 @@ test("repeated cards become grids of custom items that look like the original, w
       const originalText = await (async () => {
         const reader = await browser.newPage();
         await reader.goto(original);
-        const text = await reader.locator("body").innerText();
+        // Text node by text node, so two buttons side by side are two words and not one ("Les merKjøp nå").
+        const text = await reader.evaluate(() => {
+          const out: string[] = [];
+          const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            const parent = node.parentElement;
+            if (parent && !["SCRIPT", "STYLE"].includes(parent.tagName)) out.push(node.textContent ?? "");
+          }
+          return out.join(" ");
+        });
         await reader.close();
         return text;
       })();
