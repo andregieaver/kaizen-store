@@ -172,7 +172,7 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
   const origin = storeSiteUrl(store.slug);
   const ids = lines.map((l) => l.variantId);
   const rows = await db().execute<Row>(sql`
-    select v.id as variant_id, v.product_id, v.options, v.delivery, v.measure_amount, v.measure_unit, v.measure_base, v.image_url as variant_image, p.handle, p.kind, p.subscription_only, p.audience,
+    select v.id as variant_id, v.product_id, v.options, v.delivery, v.image_url as variant_image, p.handle, p.kind, p.subscription_only, p.audience,
       commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url,
