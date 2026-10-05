@@ -150,6 +150,29 @@ describe("a product's picture in a panel taller than it", () => {
   });
 });
 
+describe("hero tiles that scroll sideways on phones", () => {
+  const img = "https://example.com/hero.jpg";
+  const painted = { backgroundImage: `url("${img}")`, backgroundSize: "cover" };
+  const desktopTile = (i: number): CaptureNode =>
+    node({ p: `0/${i}`, tag: "div", box: [80 + i * 645, 100, 635, 484], s: { display: "block", ...painted }, bg: [img] }, [text("h2", [300 + i * 645, 300, 200, 40], `Tile ${i}`, { color: "rgb(255, 255, 255)" }, { p: `0/${i}/0` })]);
+  // At phones' width: a wrapper 343 wide with 15 px of padding, the card inside it 328 wide with rounded corners, the second tile past the screen's edge.
+  const radius = { borderTopLeftRadius: "10px", borderTopRightRadius: "10px", borderBottomRightRadius: "10px", borderBottomLeftRadius: "10px" };
+  const phoneTile = (i: number): CaptureNode =>
+    node({ p: `0/${i}`, tag: "div", box: [i * 353, 100, 343, 250], s: { display: "block", paddingLeft: "15px" } }, [
+      node({ p: `0/${i}/0`, tag: "div", box: [i * 353 + 15, 100, 328, 250], s: { display: "block", ...painted, ...radius }, bg: [img] }, [text("h2", [i * 353 + 100, 200, 160, 30], `Tile ${i}`, { color: "rgb(255, 255, 255)" }, { p: `0/${i}/0/0` })]),
+    ]);
+  const section = (tile: (i: number) => CaptureNode, top: number) => node({ p: "0", tag: "section", box: [0, top, tile === desktopTile ? 1440 : 390, tile === desktopTile ? 484 : 250], s: { display: "flex" } }, [tile(0), tile(1)]);
+
+  it("keep their tiles' own width and scroll, with the painted box's place, picture and corners", () => {
+    const built = buildReplica(input(capture(page(section(desktopTile, 100))), capture(node({ p: "", tag: "body", box: [0, 0, 390, 700], s: { display: "block" } }, [section(phoneTile, 100)]), 390)), newId);
+    const css = cssOf(built);
+    const phone = css.slice(css.indexOf("@media"));
+    expect(phone).toMatch(/> :first-child\{overflow-x:auto;grid-template-columns:343px 343px\}/);
+    // The column takes the card's place by a margin of the wrapper's padding, with its corners and a height of its own.
+    expect(phone).toMatch(/\{[^}]*border-radius:10px 10px 10px 10px[^}]*margin-left:15px[^}]*min-height:250px/);
+  });
+});
+
 describe("the style whitelist for placing a part", () => {
   it("takes an order, offsets and a position inside its own box, never a position fixed to the screen", () => {
     expect(cleanDecl("order", "2")).toBe("2");

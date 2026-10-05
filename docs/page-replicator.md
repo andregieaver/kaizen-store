@@ -231,8 +231,33 @@ The second lampan.no report (found the same way; 56.8 % to 66.4 % on computers i
 Result of those (probe without the AI): 66.4 % to 79.5 % on computers, 25.7 % to 58.8 % on phones, heights 6,564 px against
 6,428 px (computers) and 4,185 px against 3,846 px (phones).
 
-Still open in that report: calibration passes that lower the phone match (63.6 % after the first pass, 58.8 % after the third),
-the SEO text row (+110 px), forms, nested boxes and pseudo-element content.
+The third lampan.no report (probe without the AI: 79.5 % to 95.6 % on computers, 58.8 % to 90.9 % on phones, found by looking at where the page's
+pixels differed, `heat.cjs`-style: original, copy and the mismatch side by side):
+
+- **one 11 px error moved everything below it**: a strip of links (`ul` as `inline-flex`) was read as a vertical list, and a word wrapped in a column of
+  exactly its own width. A text list whose items stand side by side stays a row (`display: flex`, nowrap, the gap between), typed by its first item
+  (the `ul` itself carries no type). Everything under it then stood where it had, which is most of the gain on computers;
+- a link drawn as a button inside a paragraph (a background colour, padding) is a box of its own (`paintsFill()` in `isTextual()`), so it becomes a button;
+  a link set as plain text keeps the side its words stand on (`justify-content`), and only a filled or outlined one is centred;
+- a text a "read more" box cuts is marked (`cut`) and clipped at the height seen (`max-height`, `overflow: hidden`);
+- a hero's rounded corners go with its picture when the picture is lifted onto an outer wrapper;
+- copied pictures have `background-color: transparent` (the builder's picture has the theme's surface colour behind it: a grey box round a white logo);
+- **a grid's tile is measured as a column of parts**: the picture's panel (`pictureFrameOf()`: the outermost box with only the picture and overlays in it)
+  is the picture's own box (aspect ratio, padding in percent of the width, the original's `object-fit`); each part gets its `order` and the space above it
+  (`flowAt()`), a badge is placed by the corner of the panel it stood in (at each width), and a brand above a title is a line of detail ordered above it.
+  The style whitelist takes `order`, `position` (never `fixed`), `top`/`right`/`bottom`/`left` and the flex sizes for this;
+- **a scroller's tiles are not clipped by a box round the scroller** (`clippedAway()`): the second hero tile was lost because the page's `overflow: hidden`
+  main column ends at the screen's edge;
+- on phones a split row with a box past the screen's edge is a track (px widths, `overflow-x: auto`), a column takes the place, picture and corners of the
+  painted box inside it (`paintInside()`: margins for the wrapper's padding, the box's height), and a phones-only carousel's tiles keep the phone's width
+  (`flex-basis`);
+- **calibration swung 137 px each way on a footer of four stacked columns**: a stacked column is measured from its own top, since what the one above moved
+  has carried it already (`calibrate()`); a phone's rule is changed from the value in force (computers' where phones say nothing);
+- a grid is judged against columns from the first pass on, not at the first copy: before its spacing is set right, grid and columns are both judged by
+  how far the page above them has drifted, and every grid on lampan.no was rebuilt as columns at pass 0, which used up the blocks and the style.
+
+Still open in that report: the SEO text row wraps its heading earlier, the footer's payment logos wrap on phones (+104 px), the header's search
+word and cart counts (a form and absolutely placed spans), forms, nested boxes and pseudo-element content.
 
 What copying oda.com's front page taught (D150):
 

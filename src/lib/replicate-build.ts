@@ -395,6 +395,19 @@ const pxs = (n: number) => `${round(n)}px`;
 const near = (a: number, b: number, tolerance = 2) => Math.abs(a - b) <= tolerance;
 
 /** A box's edges inside its border and padding, and the room those take. */
+/** The box inside a column's node that paints it, down a chain of single children (a wrapper with padding round a card): null when the node paints itself or nothing does. */
+function paintInside(n: CaptureNode): CaptureNode | null {
+  let current = n;
+  for (let guard = 0; guard < 6; guard++) {
+    if (paintsBox(current)) return current === n ? null : current;
+    const inner = current.children.filter((c) => c.s.position !== "absolute" || paintsBox(c));
+    const only = inner.length === 1 ? inner[0] : current.children.length === 1 ? current.children[0] : null;
+    if (!only) return null;
+    current = only;
+  }
+  return null;
+}
+
 function content(n: CaptureNode) {
   const pt = px(n.s.paddingTop) ?? 0;
   const pr = px(n.s.paddingRight) ?? 0;
@@ -1425,13 +1438,21 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
         colD["min-height"] = col.paint && !colLeaf ? pxs(colNode.box[3]) : "0px";
         if (mBands) {
           if (phoneCol && phoneRoom) {
-            Object.assign(colM, col.paint && !colLeaf ? paintDecl(phoneCol) : {});
+            // At phones' width the box that paints the column may be one inside it, inset by its wrapper's padding (lampan.no: a hero tile 328 wide in a cell 343 wide, with
+            // rounded corners): the column then takes that box's place by margins and its paint, so its picture and corners are the tile's.
+            const phonePaint = col.paint && !colLeaf ? paintInside(phoneCol) : null;
+            const paintNode = phonePaint ?? phoneCol;
+            Object.assign(colM, col.paint && !colLeaf ? paintDecl(paintNode) : {});
             colM["padding-top"] = pxs(phoneRoom.room.top);
-            colM["padding-right"] = pxs(phoneRoom.room.right);
+            colM["padding-right"] = pxs(phonePaint ? Math.max(0, rightOf(phonePaint.box) - phoneRoom.right) : phoneRoom.room.right);
             colM["padding-bottom"] = pxs(phoneRoom.room.bottom);
-            colM["padding-left"] = pxs(phoneRoom.room.left);
+            colM["padding-left"] = pxs(phonePaint ? Math.max(0, phoneRoom.left - phonePaint.box[0]) : phoneRoom.room.left);
+            if (phonePaint) {
+              colM["margin-left"] = pxs(Math.max(0, phonePaint.box[0] - phoneCol.box[0]));
+              colM["margin-right"] = pxs(Math.max(0, rightOf(phoneCol.box) - rightOf(phonePaint.box)));
+            }
             colM["margin-top"] = "0px";
-            colM["min-height"] = "0px";
+            colM["min-height"] = col.paint && !colLeaf ? pxs(paintNode.box[3]) : "0px";
             // Stacked on phones but narrower than the row there (a logo, a badge): keeps its own width and place.
             if (split && !sideBySide && phoneBand && phoneCol.box[2] < (phoneBand.contentRight - phoneBand.contentLeft) * 0.9) {
               colM.width = pxs(phoneCol.box[2]);
