@@ -65,11 +65,13 @@ The result holds every agent's report (`spec`, `found`, `server`, `surfaces`, `g
 1. **Re-verify from scratch.** The fixer's work, and the Gates run, are not taken on trust: on a fresh database run
    `pnpm lint`, `pnpm typecheck`, `pnpm test`, `node scripts/db-setup.mjs --seed` then `pnpm test:int`, `pnpm db:check`,
    `pnpm build` and the e2e (build and e2e detached, polled). Look at `git status` for files nobody owns.
-2. **Migrations.** Apply each new file in `supabase/migrations` to production (project `ybsozesfuxuitoacntfo`) once the
-   tests pass, without asking (standing approval in CLAUDE.md). The Supabase migration tool cancels statements with
-   `DELETE` or `DROP` inside functions: collect the agents' `ownerStatements` (and the spec section "For the lead"),
-   list them for the owner to run by hand, and do not report the wave shipped until they have run. Then check the
-   security and performance advisors and fix what the migration caused.
+2. **Migrations.** Do not apply them by hand: the push applies each new file in `supabase/migrations` to production
+   through CI (`docs/ci-migrations.md`: the push waits for every check, then `migrate`, then the deploy), over a direct
+   Postgres connection, so statements with `DELETE` or `DROP` inside functions run as written and the old
+   "owner statements" step is gone (the Supabase migration tool, which cancelled them, is no longer the way in).
+   Keep the agents' `ownerStatements` only for what is not a migration. After the deploy, check the security and
+   performance advisors and fix what the migration caused. Migrations stay additive (the old code runs against the
+   new schema until the deploy ends).
 3. **Record.** Add the decision row (D154 onward) and the migration versions to `docs/decisions.md`; add the CLAUDE.md
    bullet (drafts are in the `rerate` report); update the plan comparison (D132) and the AI manager's tools and skills
    when the wave added a feature that belongs there.
