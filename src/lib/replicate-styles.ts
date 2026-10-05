@@ -250,7 +250,7 @@ function saying(r: StyleRule, which: "desktop" | "mobile", pick: (decl: Decl) =>
  * page may hold (`CSS_MAX`), the declarations of least weight go first, then the phones' rules, then the last parts;
  * `trimmed` says what was given up.
  */
-export function renderStyles(model: StyleModel, shared: string): { css: string; trimmed: string | null } {
+export function renderStyles(model: StyleModel, shared: string): { css: string; trimmed: string | null; /** How much was given up: 0 nothing, 1 letter spacing and shadows, 2 the phones' type, 3 the phones' layout, 4 the last parts' sizes. */ level: 0 | 1 | 2 | 3 | 4 } {
   const selectorOf = (r: StyleRule) => `#${r.id}${r.suffix}`;
   const build = (rules: StyleRule[], withMobile: boolean, skip: string[], keep: readonly string[] | null = null) => {
     const pick = (decl: Decl) => Object.fromEntries(Object.entries(decl).filter(([property]) => !skip.includes(property)));
@@ -265,18 +265,18 @@ export function renderStyles(model: StyleModel, shared: string): { css: string; 
     { mobile: true, skip: LOW_WEIGHT, keep: PHONE_LAYOUT, note: "The page's CSS was too long to keep all of the phones' rules, so only their sizes, spaces and layout were kept." },
     { mobile: false, skip: LOW_WEIGHT, note: "The page's CSS was too long to keep the phones' layout, so the phone sizes were left out." },
   ];
-  for (const attempt of attempts) {
+  for (const [index, attempt] of attempts.entries()) {
     const css = build(model.rules, attempt.mobile, attempt.skip, attempt.keep ?? null);
-    if (css.length <= CSS_MAX) return { css, trimmed: attempt.note };
+    if (css.length <= CSS_MAX) return { css, trimmed: attempt.note, level: index as 0 | 1 | 2 | 3 };
   }
   // Still too long: the last parts go, whole rules at a time.
   let rules = model.rules;
   while (rules.length > 0) {
     rules = rules.slice(0, Math.floor(rules.length * 0.9));
     const css = build(rules, false, LOW_WEIGHT);
-    if (css.length <= CSS_MAX) return { css, trimmed: "The page was larger than a page's CSS may be, so the sizes of its last parts were left out." };
+    if (css.length <= CSS_MAX) return { css, trimmed: "The page was larger than a page's CSS may be, so the sizes of its last parts were left out.", level: 4 };
   }
-  return { css: shared.slice(0, CSS_MAX), trimmed: "The page was larger than a page's CSS may be, so its sizes were left out." };
+  return { css: shared.slice(0, CSS_MAX), trimmed: "The page was larger than a page's CSS may be, so its sizes were left out.", level: 4 };
 }
 
 /** Whether rendered CSS may be saved (the same check the page applies). */

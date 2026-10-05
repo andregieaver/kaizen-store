@@ -313,3 +313,28 @@ test("a tile that scrolls into view inside a sideways scroller is read, though a
     site.close();
   }
 });
+
+test("a picture held in the page's own markup is photographed, and the page is also photographed with its words not painted", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const svg = "data:image/svg+xml;base64," + Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 20"><rect width="60" height="20" fill="#e11"/></svg>').toString("base64");
+  const site = await serve(`<!doctype html><html><body style="margin:0;font-family:Arial;background:#fff"><img id="logo" src="${svg}" width="120" height="40" style="display:block;margin:20px"><h1 style="margin:0;padding:20px;color:#000;font-size:48px">Hidden words</h1></body></html>`);
+  try {
+    const opened = await openOriginal(browser, site.url, "desktop", everything, undefined, { watch: false });
+    const logo = [...walk(opened.capture.root)].find((n) => n.sel?.includes("#logo"));
+    expect(logo?.media?.kind).toBe("svg");
+    expect(opened.elements.has(logo!.p)).toBe(true);
+    expect(opened.textless).toBeTruthy();
+    // Black words on white: with them not painted the photograph holds no dark pixel at the heading's place, and the ordinary one does.
+    const sharp = (await import("sharp")).default;
+    const dark = async (png: Buffer) => {
+      const { data, info } = await sharp(png).extract({ left: 0, top: 70, width: 600, height: 70 }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+      let count = 0;
+      for (let i = 0; i < data.length; i += info.channels) if (data[i] < 80) count += 1;
+      return count;
+    };
+    expect(await dark(opened.screenshot)).toBeGreaterThan(200);
+    expect(await dark(opened.textless!)).toBe(0);
+  } finally {
+    site.close();
+  }
+});

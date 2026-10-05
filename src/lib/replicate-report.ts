@@ -360,6 +360,22 @@ export function findingsOf(f: ReportFacts, census: Census, rows: ReportRow[]): R
       where: [F.extract + " (mediaOf: controls have no form grouping)", F.build + " (skipped.controls, makeBlock)", F.forms, F.content + " (emailForm, newsletter blocks)"],
     });
   }
+  const kept = droppedOf("row-as-picture");
+  if (kept.length > 0) {
+    add({
+      id: "rows-as-pictures",
+      severity: "medium",
+      area: "replicator",
+      title: "Rows kept as a picture of the original",
+      evidence: [
+        `${plural(kept.length, "row")} matched the original badly after the page had been corrected by measuring, and ${kept.length === 1 ? "is" : "are"} a picture of the original's strip (its words not painted) with the words laid over it, or, where the page's CSS would not hold the words' places, only the picture with its words hidden: ${examples(kept)}.`,
+        "The pictures, links, sliders and layout in those rows are part of the picture; only the words can be edited, and a picture-only row has its words hidden, not editable in place.",
+      ],
+      change:
+        "Find what the converter could not build in each row (the findings above name the usual causes: a slider, a hero of several pictures with a headline between, a video behind a card, a collage, boxes inside boxes) and build that from the page's parts, so the row passes `weakRows()` without being kept as a picture. `buildFitted()` makes a row picture-only only when words over a picture would not fit the page's CSS.",
+      where: [F.build + " (the `backdrop` branch of the row loop)", "src/lib/replicate-backdrop.ts (weakRows, buildFitted)", "src/server/replicate.ts (startBackdrops)"],
+    });
+  }
   const nested = droppedOf("nested-boxes");
   if (nested.length > 0) {
     add({

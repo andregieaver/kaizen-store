@@ -37,6 +37,8 @@ export type ReplicaWork = {
   previews?: ReplicaPreviews;
   /** The full photographs of the original, kept to compare each pass with (JPEG in the media bucket). */
   originals?: { desktop: string | null; mobile: string | null };
+  /** The same photographs with the words not painted (JPEG in the media bucket), which rows kept as a picture are cut from (D164). */
+  textless?: { desktop: string | null; mobile: string | null };
   /** Storage paths of every file the job made, removed with it. */
   files?: string[];
   assets?: {
@@ -46,6 +48,8 @@ export type ReplicaWork = {
     videoQueue: string[];
     /** Pictures of elements the browser photographed (icons, canvases), by path in the capture. */
     shots: Record<string, KeptAsset | null>;
+    /** Rows kept as a picture of the original with its words laid over it, by the row's path in the capture: the strip's picture at each width (D164). */
+    backdrops?: Record<string, { text: { desktop: KeptAsset; phone: KeptAsset | null }; plain: { desktop: KeptAsset; phone: KeptAsset | null } }>;
     fonts: Record<string, string | null>;
     fontQueue: string[];
     failures: Record<string, string>;
@@ -71,6 +75,12 @@ export type ReplicaWork = {
   remeasure?: boolean;
   /** How many trials of columns the job has started (at most two: each costs a measurement). */
   trials?: number;
+  /** Rows that matched the original badly and were rebuilt as a picture of the original (its words not painted) with the words laid over it: where, and how they matched before (D164). Added to by each of the job's two rounds. */
+  /** The rows kept as a picture that are only a picture, their words hidden, because words over a picture would not fit the page's CSS (D164): by the row's key. */
+  backdropPlain?: string[];
+  /** How many of the job's two rounds of rows kept as pictures have been done (D164). */
+  backdropRounds?: number;
+  backdropped?: { path: string; y: number; height: number; desktop: number | null; phone: number | null; pass: number }[];
   /** How each row and part of the last copy compares with the original (for the report). */
   finalDiff?: FinalDiff;
   /** What the style came to, and what was cut from it to fit. */

@@ -31,6 +31,8 @@ export type Opened = {
   screenshot: Buffer;
   /** Pictures that are drawn, not files, by their path in the capture. */
   elements: Map<string, Buffer>;
+  /** The same photograph with the page's words not painted (everything else as it is): what a row that matches badly is laid over with its words (D164). */
+  textless?: Buffer | null;
 };
 
 /** Decides whether the browser may make a request to an address: the replicator's server refuses private ones (`replicate-browser.ts`). */
@@ -107,6 +109,23 @@ async function hideOverlays(page: Page): Promise<void> {
       }
     }, VIEWPORTS.desktop.w)
     .catch(() => {});
+}
+
+/** What hides a page's words and nothing else: glyphs, their shadows, outlines and underlines (not `color`, which icons drawn with `currentColor` follow). */
+const TEXTLESS = "*,*::before,*::after{-webkit-text-fill-color:transparent!important;text-shadow:none!important;-webkit-text-stroke:0!important;text-decoration-color:transparent!important;caret-color:transparent!important}::placeholder{opacity:0!important}";
+
+/** A photograph of the page with its words not painted; null when it could not be taken. */
+async function photographWithoutText(page: Page, height: number, width: number): Promise<Buffer | null> {
+  const style = await page.addStyleTag({ content: TEXTLESS }).catch(() => null);
+  if (!style) return null;
+  try {
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    return await photograph(page, height, width);
+  } catch {
+    return null;
+  } finally {
+    await style.evaluate((el) => (el as Element).remove()).catch(() => {});
+  }
 }
 
 async function photograph(page: Page, height: number, width: number): Promise<Buffer> {
@@ -203,6 +222,7 @@ export async function openOriginal(browser: Browser, url: string, viewport: View
     const read = await page.evaluate(extractPage, { maxNodes: CAPTURE_NODES_MAX, styles: CAPTURE_STYLES, width: size.w, height: size.h });
     const capture: PageCapture = { ...read, viewport: size, url: page.url() };
     const screenshot = await photograph(page, capture.docHeight, size.w);
+    const textless = await photographWithoutText(page, capture.docHeight, size.w);
     const elements = new Map<string, Buffer>();
     if (viewport === "desktop") {
       // What lies in a slide that is not in view cannot be scrolled to and photographed; it is left to be named as not photographed.
@@ -220,7 +240,7 @@ export async function openOriginal(browser: Browser, url: string, viewport: View
       }
     }
     if (viewport === "desktop" && options.watch !== false) await watchSliders(page, capture, openedAt, signal);
-    return { capture, screenshot, elements };
+    return { capture, screenshot, elements, textless };
   } finally {
     // A page whose main thread is busy for good may not close at once: it is given a few seconds, and the browser itself is closed by whoever opened it.
     await within(context.close().catch(() => {}), 8000);

@@ -424,6 +424,33 @@ thing the converter leaves out is a `drop()` in `buildReplica()`, so it has a pl
 - One job at a time per store; a job's files (photographs for the panel) and the job itself are removed after thirty days.
 - The captured page is dropped from the job when it ends.
 
+## Rows kept as a picture (D164)
+
+Pages the converter cannot build from boxes and words (a hero of two pictures with a headline between, a slider, a video behind a card, a collage, a giant single section) scored 30 % on
+detnorskekaffehus.net and 55 % on runandrelax.com. Three general causes were fixed first, then a fallback was added so a copy is reliably above 90 %.
+
+**Causes fixed**
+- *Phone nodes found by structure* (`alignTrees()`, `kindKey()` in `replicate-capture.ts`; `getM` in `replicate-build.ts`). A phone page with one element more or less (a cookie banner, a hidden menu) shifts every
+  DOM path after it, so no desktop part found its phone twin and every row was hidden on phones (runandrelax: 5.6 % on phones). When fewer than 90 % of the desktop nodes find an element of the same tag and classes at their
+  path (`PATHS_AGREE`), the pairs are found by tag and classes in order (longest common run, then equal-sized gaps by tag); otherwise paths stay the key, with the structure as the fallback for a node whose path finds another kind of element.
+- *A logo held in the page's markup* (`<img src="data:image/svg+xml…">`, written by some speed plugins) has no address to fetch: it is read as a drawn element (`media.kind: "svg"`) and photographed.
+- *A box with no size that does not clip* (a `nav` of absolutely placed lists) shows what it holds (`significant()`), so the menu was no longer lost.
+
+**The fallback.** When the page is photographed (both widths), it is photographed twice: as it is, and with its glyphs not painted (`photographWithoutText()`: `-webkit-text-fill-color: transparent`, no text
+shadow or outline or underline; `color` stays, so icons drawn with `currentColor` remain). A row whose match is still under a mark after the page has been corrected by measuring is rebuilt from the strip of those photographs
+(`startBackdrops()` in `src/server/replicate.ts`, `weakRows()` in `src/lib/replicate-backdrop.ts`), in two rounds: under **70 %** at the first improving pass, and under **82 %** at the last pass the measuring can correct after
+(`BACKDROP_BELOW`). A row's match is its place in the original against the same stretch of the copy at the row's own top (`stretchMatch(…, copyY)`), so a row that only drifted is left to the measuring.
+- *Words over the picture* (default): the row's background is the strip without words (`background-size: 100% 100%`), the column is `position: relative` with the strip's height, and each piece of text is a block placed absolutely
+  (`left` in percent of the page's width, `top` in pixels from the strip's top, `width` in pixels) so it wraps as it did. The most common type among the words is the column's and each block says only how it differs, because
+  a page's CSS may hold 50 KB.
+- *Only the picture* (`buildFitted()`): while the style would lose more than it did without any picture rows (`renderStyles().level`: the phones' type, layout or the last parts' sizes), the picture row with the most words
+  becomes the strip as photographed with its words in it, and its words stay as hidden text (opacity 0, one pixel) for screen readers and search.
+Rows are found by `backdropKey(path, top)`: a section sliced into several rows has one path.
+The pictures, links and layout inside a picture row are part of the picture; the summary notes say so and the report has a finding (`rows-as-pictures`) naming each row. A picture row's parts are still measured, so the
+measuring places its words. The probe (`e2e/replicate-probe.spec.ts`) does the same steps with the library's pieces and writes the result to `test-results/probe/`.
+
+Probe results (no AI, 4–6 passes): detnorskekaffehus.net 15.5 % / 49.8 % → 96.1 % / 94.2 % (computers / phones), runandrelax.com 41 % / 30 % → 93.2 % / 90.6 %, lampan.no 97.6 % / 92.5 %.
+
 ## What it does not do (yet)
 
 Forms, animations, and sliders whose slides are not one kind of card (a hero with a different layout on each slide; the report lists each one it finds, with where; slides of one kind of card are a carousel of custom items, see above); fonts that are not in Google Fonts (the original's stack is used); pages that need a sign-in;

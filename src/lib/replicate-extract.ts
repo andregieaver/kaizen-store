@@ -380,6 +380,9 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
           }
         }
       }
+      // A picture the page holds in its own markup (a `data:` address, as some speed plugins write a logo): there is no file to fetch, so it is
+      // photographed like any other drawn thing.
+      if (!url && /^data:image\//i.test((img.getAttribute("src") || "").trim()) && img.complete && img.naturalWidth > 2) return { kind: "svg" };
       if (!url) return undefined;
       return { kind: "img", url, width: img.naturalWidth || 0, height: img.naturalHeight || 0, alt: img.alt || "" };
     }

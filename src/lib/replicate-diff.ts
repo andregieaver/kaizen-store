@@ -17,8 +17,13 @@ export const TOLERANCE = 28;
 export const BAND = 30;
 
 function wrong(a: Raster, b: Raster, x: number, y: number): boolean {
+  return wrongAt(a, b, x, y, y);
+}
+
+/** Whether pixel (x, y) of `a` and pixel (x, `by`) of `b` differ by more than the tolerance. */
+function wrongAt(a: Raster, b: Raster, x: number, y: number, by: number): boolean {
   const i = (y * a.width + x) * 4;
-  const j = (y * b.width + x) * 4;
+  const j = (by * b.width + x) * 4;
   return (
     Math.abs(a.data[i] - b.data[j]) > TOLERANCE ||
     Math.abs(a.data[i + 1] - b.data[j + 1]) > TOLERANCE ||
@@ -111,17 +116,20 @@ export const isPerfect = (score: ReplicaScore | null): boolean => score === null
  * The match of one stretch of the page, 0–100: `y` and `height` are in pixels of the page, `scale` how many of them one
  * pixel of the rasters stands for. What the copy does not reach counts as wrong; a stretch beyond the original is not asked.
  */
-export function stretchMatch(original: Raster, copy: Raster, scale: number, y: number, height: number): number | null {
+export function stretchMatch(original: Raster, copy: Raster, scale: number, y: number, height: number, copyY: number = y): number | null {
   const top = Math.max(0, Math.floor(y / scale));
   const bottom = Math.min(original.height, Math.ceil((y + height) / scale));
   if (bottom <= top) return null;
   const width = Math.min(original.width, copy.width);
+  // The copy's stretch may stand lower or higher than the original's (rows above it differ in height): `copyY` is where it starts.
+  const shift = Math.round((copyY - y) / scale);
   let good = 0;
   let all = 0;
   for (let row = top; row < bottom; row++) {
+    const there = row + shift;
     for (let x = 0; x < width; x++) {
       all += 1;
-      if (row < copy.height && !wrong(original, copy, x, row)) good += 1;
+      if (there >= 0 && there < copy.height && !wrongAt(original, copy, x, row, there)) good += 1;
     }
   }
   return all === 0 ? null : Math.round((good / all) * 1000) / 10;

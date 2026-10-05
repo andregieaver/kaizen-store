@@ -8,7 +8,8 @@ import path from "node:path";
 import sharp from "sharp";
 
 import { newPageContent, pageInput } from "../src/lib/page-content";
-import { buildReplica } from "../src/lib/replicate-build";
+import { BACKDROP_BELOW, buildFitted, weakRows } from "../src/lib/replicate-backdrop";
+import { backdropKey, buildReplica, type BuildInput } from "../src/lib/replicate-build";
 import { calibrate } from "../src/lib/replicate-calibrate";
 import { compareRasters } from "../src/lib/replicate-diff";
 import { openCopy, openOriginal } from "../src/lib/replicate-open";
@@ -60,6 +61,11 @@ test("probe: copy a real page and report", async ({ baseURL }) => {
     await context.route(`${libraryOrigin}/storage/v1/object/public/replica-probe/**`, (route) => {
       const file = library.get(route.request().url().split("/").pop() ?? "");
       return file ? route.fulfill({ status: 200, contentType: "image/png", body: file, headers: { "Access-Control-Allow-Origin": "*" } }) : route.fulfill({ status: 404 });
+    });
+    // A row kept as a picture is drawn by the page's CSS, which takes only the site's own addresses or the library's; the probe's app does not know the library's origin.
+    await context.route("**/__probe/**", (route) => {
+      const file = library.get(route.request().url().split("/").pop() ?? "");
+      return file ? route.fulfill({ status: 200, contentType: "image/png", body: file }) : route.fulfill({ status: 404 });
     });
     return context;
   }) as typeof browser.newContext;
@@ -163,12 +169,23 @@ test("probe: copy a real page and report", async ({ baseURL }) => {
     }
   }
 
-  const built = buildReplica(
-    { desktop: desktop.capture, mobile: mobile?.capture ?? null, picture: (url) => pictures.get(url) ?? null, shot: (p) => shots.get(p) ?? null, video: () => null, font: (family) => installed.get(family) ?? null },
-    randomUUID,
-  );
+  type Pic = { url: string; width: number; height: number };
+  let plainRows = new Set<string>();
+  const backdrops = new Map<string, { text: { desktop: Pic; phone: Pic | null }; plain: { desktop: Pic; phone: Pic | null } }>();
+  const inputOf = (): BuildInput => ({
+    desktop: desktop.capture,
+    mobile: mobile?.capture ?? null,
+    picture: (url) => pictures.get(url) ?? null,
+    shot: (p) => shots.get(p) ?? null,
+    video: () => null,
+    font: (family) => installed.get(family) ?? null,
+    backdrop: (p) => backdrops.get(p) ?? null,
+    backdropPlain: plainRows,
+  });
+  let built = buildReplica(inputOf(), randomUUID);
   log(`built ${built.counts.rows} rows, ${built.counts.blocks} blocks; notes:`, built.notes.map((x) => x.text));
   let model = built.model;
+  let backdropRound = 0;
   const content = { ...newPageContent(), title: built.title || "Probe", slug: "probe", rows: built.rows, css: renderStyles(model, built.shared).css };
   const parsed = pageInput.safeParse(content);
   expect(parsed.success, parsed.success ? "" : JSON.stringify(parsed.error.issues.slice(0, 3))).toBe(true);
@@ -217,9 +234,55 @@ test("probe: copy a real page and report", async ({ baseURL }) => {
       lastRasters = { d: a, dc: b, m, mc };
       log(`pass ${pass}: ${desktopScore.match}% desktop${mobileScore ? `, ${mobileScore.match}% phone` : ""}; heights ${JSON.stringify(desktopScore.heights)}`);
       if (pass === passes) break;
+      // Rows that still match badly are kept as a picture of the original with its words over it (D164), as the job does.
+      const below = backdropRound === 0 && pass >= 1 ? (passes >= 3 ? BACKDROP_BELOW.first : BACKDROP_BELOW.last) : backdropRound === 1 && passes >= 3 && pass >= Math.max(2, passes - 1) ? BACKDROP_BELOW.last : null;
+      if (below !== null) {
+        backdropRound += 1;
+        const found = weakRows(built.parts, { original: a.raster, copy: b.raster, scale: a.scale }, m && mc ? { original: m.raster, copy: mc.raster, scale: m.scale } : null, copy.capture, phone ? phone.capture : null, below).filter(({ part }) => !backdrops.has(backdropKey(part.path, part.target![1])));
+        const cutFrom = async (bare: Buffer, width: number, box: [number, number, number, number]) => {
+          const meta = await sharp(bare).metadata();
+          const top = Math.max(0, Math.round(box[1]));
+          const png = await sharp(bare).extract({ left: 0, top, width: Math.min(meta.width ?? 1, Math.round(width)), height: Math.min(Math.round(box[3]), (meta.height ?? 1) - top) }).png().toBuffer({ resolveWithObject: true });
+          const name = `${createHash("sha1").update(png.data).digest("hex").slice(0, 16)}.png`;
+          library.set(name, png.data);
+          return { url: `/__probe/${name}`, width: png.info.width, height: png.info.height };
+        };
+        for (const { part, desktop: dm, phone: pm } of found) {
+          if (!desktop.textless || (mobile && !mobile.textless)) break;
+          const key = backdropKey(part.path, part.target![1]);
+          backdrops.set(key, {
+            text: { desktop: await cutFrom(desktop.textless, desktop.capture.docWidth, part.target!), phone: mobile && part.targetM ? await cutFrom(mobile.textless!, mobile.capture.docWidth, part.targetM) : null },
+            plain: { desktop: await cutFrom(desktop.screenshot, desktop.capture.docWidth, part.target!), phone: mobile && part.targetM ? await cutFrom(mobile.screenshot, mobile.capture.docWidth, part.targetM) : null },
+          });
+          log(`row at ${Math.round(part.target![1])}px kept as a picture (${dm}% / ${pm}%)`);
+        }
+        if (found.length > 0) {
+          const fitted = buildFitted(inputOf(), randomUUID);
+          built = fitted.built;
+          model = built.model;
+          const styledNow = fitted.styled;
+          plainRows = new Set(fitted.plain);
+          log(`rows only as a picture: ${fitted.plain.length}`);
+          const css = styledNow.css;
+          log(`style after backdrops: ${css.length} characters${styledNow.trimmed ? `, trimmed: ${styledNow.trimmed}` : ""}`);
+          await sql`update commerce.pages set draft = ${sql.json({ ...content, rows: built.rows, css } as never)} where id = ${pageId}`;
+          fs.writeFileSync(path.join(out, "parts.json"), JSON.stringify(built.parts, null, 1));
+          fs.writeFileSync(path.join(out, "rows.json"), JSON.stringify(built.rows, null, 1));
+          const [back] = await sql`select draft from commerce.pages where id = ${pageId}`;
+          const check = pageInput.safeParse(back.draft);
+          log("draft after backdrops:", check.success ? "valid" : JSON.stringify(check.error.issues.slice(0, 4)), typeof (back.draft as { rows?: unknown }).rows);
+          // The page is measured again at this same pass, as the job does, before it is corrected by measuring.
+          scores.pop();
+          passList.pop();
+          pass -= 1;
+          continue;
+        }
+      }
       calibrate(model, built.parts, copy.capture, false);
       if (phone) calibrate(model, built.parts, phone.capture, true);
-      const css = renderStyles(model, built.shared).css;
+      const styledPass = renderStyles(model, built.shared);
+      const css = styledPass.css;
+      if (styledPass.trimmed) log(`style trimmed after pass ${pass}: ${styledPass.trimmed} (${css.length})`);
       await sql`update commerce.pages set draft = jsonb_set(draft, '{css}', to_jsonb(${css}::text)) where id = ${pageId}`;
       model = { rules: model.rules };
     }

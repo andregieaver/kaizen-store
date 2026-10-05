@@ -319,6 +319,73 @@ export function indexByPath(root: CaptureNode): Map<string, CaptureNode> {
   return found;
 }
 
+/** What an element is, apart from where it is: its tag and its classes. */
+export const kindKey = (n: CaptureNode): string => `${n.tag}|${n.sel ?? ""}`;
+
+const ALIGN_CELLS = 160_000;
+
+/** Pairs of positions (in `a`, in `b`) of the longest run of equal keys, in order; greedy when the lists are too long to compare in full. */
+function matchKeys(a: string[], b: string[]): Array<[number, number]> {
+  const pairs: Array<[number, number]> = [];
+  if (a.length * b.length > ALIGN_CELLS) {
+    for (let i = 0, j = 0; i < a.length && j < b.length; ) {
+      if (a[i] === b[j]) {
+        pairs.push([i, j]);
+        i += 1;
+        j += 1;
+      } else if (a.length - i > b.length - j) i += 1;
+      else j += 1;
+    }
+    return pairs;
+  }
+  const width = b.length + 1;
+  const len = new Uint16Array((a.length + 1) * width);
+  for (let i = a.length - 1; i >= 0; i--)
+    for (let j = b.length - 1; j >= 0; j--) len[i * width + j] = a[i] === b[j] ? len[(i + 1) * width + j + 1] + 1 : Math.max(len[(i + 1) * width + j], len[i * width + j + 1]);
+  for (let i = 0, j = 0; i < a.length && j < b.length; ) {
+    if (a[i] === b[j]) {
+      pairs.push([i, j]);
+      i += 1;
+      j += 1;
+    } else if (len[(i + 1) * width + j] >= len[i * width + j + 1]) i += 1;
+    else j += 1;
+  }
+  return pairs;
+}
+
+/**
+ * The phone's node for each desktop node, found by what the elements are and the order they come in rather than by their paths: a site whose
+ * phone page has one more or one fewer element somewhere (a banner, a hidden menu, a script's wrapper) shifts every path after it, and
+ * path keys then find nothing. Children are paired by tag and classes in order; between two pairs, the same number of left-over children on
+ * each side are taken as the same elements in the same order when they share a tag.
+ */
+export function alignTrees(desktop: CaptureNode, mobile: CaptureNode): Map<string, CaptureNode> {
+  const found = new Map<string, CaptureNode>();
+  const pair = (d: CaptureNode, m: CaptureNode) => {
+    found.set(d.p, m);
+    if (d.children.length === 0 || m.children.length === 0) return;
+    const mine = d.children;
+    const theirs = m.children;
+    const pairs = matchKeys(mine.map(kindKey), theirs.map(kindKey));
+    const taken: Array<[number, number]> = [...pairs];
+    let at = 0;
+    let from = 0;
+    let fromM = 0;
+    const gap = (toD: number, toM: number) => {
+      if (toD - from === toM - fromM) for (let k = 0; k < toD - from; k++) if (mine[from + k].tag === theirs[fromM + k].tag) taken.push([from + k, fromM + k]);
+    };
+    for (; at < pairs.length; at++) {
+      gap(pairs[at][0], pairs[at][1]);
+      from = pairs[at][0] + 1;
+      fromM = pairs[at][1] + 1;
+    }
+    gap(mine.length, theirs.length);
+    for (const [i, j] of taken) pair(mine[i], theirs[j]);
+  };
+  pair(desktop, mobile);
+  return found;
+}
+
 export const bottomOf = (box: Box) => box[1] + box[3];
 export const rightOf = (box: Box) => box[0] + box[2];
 

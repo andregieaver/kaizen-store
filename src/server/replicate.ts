@@ -9,11 +9,12 @@ import { db } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
 import { newPageContent, pageInput, reservedPageSlugs } from "@/lib/page-content";
 import { ITERATIONS, type LogLevel, type ReplicaJob, type ReplicaNote, type ReplicaPass, type ReplicaSummary } from "@/lib/replicate";
-import { buildReplica, type BuildInput } from "@/lib/replicate-build";
+import { backdropKey, buildReplica, type BuildInput } from "@/lib/replicate-build";
 import { calibrate, calibrationWords } from "@/lib/replicate-calibrate";
 import { hexOf, runsText, walk, type PageCapture } from "@/lib/replicate-capture";
 import { compareRasters, isPerfect, stretchMatch, type Raster } from "@/lib/replicate-diff";
 import { columnsBeatGrid, stretchesOf, weakGrids, type GridStretch } from "@/lib/replicate-grid";
+import { BACKDROP_BELOW, buildFitted, weakRows } from "@/lib/replicate-backdrop";
 import { applyPatchPlan } from "@/lib/replicate-patches";
 import { digestOf, partLine, textNodes } from "@/lib/replicate-prompts";
 import { fontRelation } from "@/lib/replicate-fonts";
@@ -55,6 +56,7 @@ import {
   viewOf,
   type GridSnapshot,
   type GridTrial,
+  type KeptAsset,
   type ReplicaRow,
   type ReplicaWork,
 } from "./replicate-store";
@@ -266,6 +268,7 @@ async function stepOpen(tick: Tick): Promise<void> {
   // Photographs: the originals to compare with, and small ones for the owner's panel.
   const files: string[] = [];
   const originals: ReplicaWork["originals"] = { desktop: null, mobile: null };
+  const textless: NonNullable<ReplicaWork["textless"]> = { desktop: null, mobile: null };
   const previews = { original: { desktop: null as string | null, mobile: null as string | null }, copy: { desktop: null, mobile: null, iteration: null } };
   for (const [name, opened, width] of [["desktop", desktop, 720], ["mobile", mobile, 300]] as const) {
     if (!opened) continue;
@@ -279,6 +282,14 @@ async function stepOpen(tick: Tick): Promise<void> {
     if (small) {
       previews.original[name] = small.url;
       files.push(small.path);
+    }
+    if (opened.textless) {
+      const bare = await sharp(opened.textless).flatten({ background: "#ffffff" }).jpeg({ quality: 92 }).toBuffer();
+      const keptBare = await putFile(row.storeId, row.id, `original-${name}-textless.jpg`, bare, "image/jpeg");
+      if (keptBare) {
+        textless[name] = keptBare.url;
+        files.push(keptBare.path);
+      }
     }
   }
 
@@ -295,6 +306,7 @@ async function stepOpen(tick: Tick): Promise<void> {
   await saveCapture(row.id, { desktop: desktop.capture, mobile: mobile?.capture ?? null });
   await patchWork(row.id, {
     originals,
+    textless,
     previews,
     files,
     title: desktop.capture.title,
@@ -486,6 +498,7 @@ function buildInputOf(work: ReplicaWork, capture: { desktop: PageCapture; mobile
     video: (url) => assets.videos[url] ?? null,
     font: (family) => assets.fonts[family] ?? null,
     reverted: work.reverted ?? [],
+    backdrop: (key) => assets.backdrops?.[key] ?? null,
   };
 }
 
@@ -624,6 +637,14 @@ async function stepRefine(tick: Tick): Promise<void> {
   const weak = perfect || (k === 0 && max > 0) ? [] : weakNow(work, parts, scoreDesktop, scoreMobile);
   if (weak.length > 0 && (work.trials ?? 0) < TRIALS_MAX && (await startTrial(tick, work, weak, k, sides, passes, pass))) return;
 
+  // Rows that still match badly are kept as a picture of the original with its words over it (D164), in two rounds: the rows that clearly fail as soon as the page has been
+  // corrected once, and, on the last pass the measuring can still correct after, those that stayed under the higher mark.
+  const round = work.backdropRounds ?? 0;
+  const firstAt = max >= 2 ? 1 : 0;
+  const lastAt = Math.max(firstAt + 1, max - 1);
+  const due = round === 0 && k >= firstAt && k < Math.max(1, max) ? (max >= 3 ? BACKDROP_BELOW.first : BACKDROP_BELOW.last) : round === 1 && max >= 3 && k >= lastAt && k < max ? BACKDROP_BELOW.last : null;
+  if (!perfect && due !== null && (await startBackdrops(tick, work, parts, desktop.capture, mobile?.capture ?? null, sides, k, passes, pass, due))) return;
+
   if (k >= max || perfect) {
     // A grid that was weak and matched no better as columns says both figures; one that was weak and could not be tried (the job's trials were spent, or the page would not be rebuilt) says so.
     const grids = work.grids ? { ...work.grids, built: work.grids.built.map((g) => annotated(g, work, weak, k)) } : work.grids;
@@ -702,6 +723,87 @@ async function stepRefine(tick: Tick): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Rows that cannot be built from the page's parts (D164)
+// ---------------------------------------------------------------------------
+
+/**
+ * Some pages cannot be built from boxes and words: a hero of two pictures with a headline between, a slider, a video behind a card, a collage. A row that, after the page
+ * was corrected by measuring, still matches the original under `BACKDROP_BELOW` is kept as the strip of the original photographed with its words not painted (cut from the
+ * photograph taken when the page was opened), with the original's words laid over it, each where it stood and in its own type. It matches by construction, and it says so in the
+ * report: the pictures and links in it are part of the picture, only its words can be edited. The copy is measured again at this same pass (no pass is spent).
+ * Returns whether the page was rebuilt; once tried, whatever came of it, it is not tried again.
+ */
+async function startBackdrops(tick: Tick, work: ReplicaWork, parts: NonNullable<ReplicaWork["parts"]>, copyDesktop: PageCapture, copyMobile: PageCapture | null, sides: Sides, k: number, passes: ReplicaPass[], pass: ReplicaPass, below: number): Promise<boolean> {
+  const { row, say } = tick;
+  const round = (work.backdropRounds ?? 0) + 1;
+  const done = async (patch: Partial<ReplicaWork> = {}) => {
+    Object.assign(work, { backdropRounds: round, ...patch });
+    await patchWork(row.id, { backdropRounds: round, ...patch });
+    return false;
+  };
+  const textless = work.textless;
+  if (!textless?.desktop || !work.assets) return done();
+  const already = work.assets?.backdrops ?? {};
+  const found = weakRows(parts, sides.desktop, sides.phone, copyDesktop, copyMobile, below).filter(({ part }) => already[backdropKey(part.path, part.target![1])] === undefined);
+  if (found.length === 0) return done();
+  const capture = await readCapture(row.id);
+  const desktopBare = await fetchBytes(textless.desktop);
+  const phoneBare = textless.mobile ? await fetchBytes(textless.mobile) : null;
+  const originals = work.originals;
+  const desktopFull = originals?.desktop ? await fetchBytes(originals.desktop) : null;
+  const phoneFull = originals?.mobile ? await fetchBytes(originals.mobile) : null;
+  if (!capture || !desktopBare || !desktopFull) return done();
+  const owner: AssetOwner = { storeId: row.storeId, accountId: tick.owner.account.id };
+  const cut = async (photograph: Buffer, width: number, box: [number, number, number, number], name: string): Promise<KeptAsset | null> => {
+    const meta = await sharp(photograph).metadata();
+    const imageWidth = meta.width ?? 0;
+    const imageHeight = meta.height ?? 0;
+    const top = Math.max(0, Math.round(box[1]));
+    const height = Math.min(Math.round(box[3]), imageHeight - top);
+    if (!imageWidth || height < 1) return null;
+    const png = await sharp(photograph).extract({ left: 0, top, width: Math.min(imageWidth, Math.max(1, Math.round(width))), height }).png().toBuffer();
+    const saved = await saveShot(owner, png, name);
+    return saved.ok ? saved.picture : null;
+  };
+  const backdrops: NonNullable<NonNullable<ReplicaWork["assets"]>["backdrops"]> = { ...(work.assets.backdrops ?? {}) };
+  const used: NonNullable<ReplicaWork["backdropped"]> = [];
+  for (const { part, desktop, phone } of found) {
+    const dBox = part.target!;
+    const label = `row-${part.path.replace(/\//g, "-") || "page"}-${Math.round(dBox[1])}`;
+    const text = await cut(desktopBare, capture.desktop.docWidth, dBox, `${label}-d`);
+    const plain = await cut(desktopFull, capture.desktop.docWidth, dBox, `${label}-full-d`);
+    if (!text || !plain) continue;
+    let phoneText: KeptAsset | null = null;
+    let phonePlain: KeptAsset | null = null;
+    if (capture.mobile && part.targetM) {
+      if (!phoneBare || !phoneFull) continue;
+      phoneText = await cut(phoneBare, capture.mobile.docWidth, part.targetM, `${label}-m`);
+      phonePlain = await cut(phoneFull, capture.mobile.docWidth, part.targetM, `${label}-full-m`);
+      if (!phoneText || !phonePlain) continue;
+    }
+    backdrops[backdropKey(part.path, dBox[1])] = { text: { desktop: text, phone: phoneText }, plain: { desktop: plain, phone: phonePlain } };
+    used.push({ path: part.path, y: Math.round(dBox[1]), height: Math.round(dBox[3]), desktop, phone, pass: k });
+  }
+  if (used.length === 0) return done();
+  const assets = { ...work.assets, backdrops };
+  const rebuilt = await rebuildWith(tick, { ...work, assets }, work.reverted ?? []);
+  if (!rebuilt) {
+    await say("warn", "Some rows matched the original badly, but the page could not be rebuilt with them as pictures, so they stay as they were.");
+    return done();
+  }
+  const words = used.slice(0, 4).map((u) => `${Math.round(u.y)}px (${[u.desktop !== null ? `${u.desktop}% on computers` : null, u.phone !== null ? `${u.phone}% on phones` : null].filter(Boolean).join(", ")})`);
+  const plainCount = (rebuilt.patch.backdropPlain ?? []).length;
+  const change = `${used.length === 1 ? "A row" : `${used.length} rows`} matched the original under ${below}% (${words.join("; ")}${used.length > 4 ? "; …" : ""}) and ${used.length === 1 ? "is" : "are"} now kept as a picture of the original${plainCount > 0 ? ` (${plainCount} of the page's rows only as a picture, their words hidden, as words laid over a picture would not fit the page's CSS)` : " with its words laid over it"}. The page is measured again.`;
+  await say("warn", change);
+  passes[passes.length - 1] = { ...pass, changes: [change] };
+  const all = [...(work.backdropped ?? []), ...used];
+  Object.assign(work, { backdropped: all, backdropRounds: round, assets, ...rebuilt.patch });
+  await patchWork(row.id, { ...rebuilt.patch, assets, backdropped: all, backdropRounds: round, passes, remeasure: true });
+  await setPhase(row.id, "refine", k);
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // A grid that may be worse than columns (D155)
 // ---------------------------------------------------------------------------
 
@@ -757,15 +859,15 @@ async function rebuildWith(tick: Tick, work: ReplicaWork, reverted: NonNullable<
   const { row, owner } = tick;
   const capture = await readCapture(row.id);
   if (!capture) return null;
-  const built = buildReplica(buildInputOf({ ...work, reverted }, capture), randomUUID);
-  const styled = renderStyles(built.model, built.shared);
+  const fitted = buildFitted(buildInputOf({ ...work, reverted }, capture), randomUUID);
+  const { built, styled } = fitted;
   const [draft] = await db().execute<Row>(sql`select draft->>'title' as title, draft->>'slug' as slug from commerce.pages where id = ${row.pageId}::uuid and store_id = ${row.storeId}::uuid`);
   const parsed = pageInput.safeParse({ ...newPageContent(), title: String(draft?.title ?? "Copy"), slug: String(draft?.slug ?? "copy"), rows: built.rows, css: styled.css });
   if (!draft || built.rows.length === 0 || cssProblem(styled.css) || !parsed.success) return null;
   await writeDraft(row, owner.account.id, built.rows, styled.css);
   const notes: ReplicaNote[] = [...built.notes];
   if (styled.trimmed) notes.push({ level: "warn", text: styled.trimmed });
-  return { patch: { model: built.model, parts: built.parts, shared: built.shared, notes, counts: built.counts, dropped: built.dropped, grids: built.grids, reverted, cssLength: styled.css.length, cssTrimmed: styled.trimmed ?? null } };
+  return { patch: { model: built.model, parts: built.parts, shared: built.shared, notes, counts: built.counts, dropped: built.dropped, grids: built.grids, reverted, backdropPlain: fitted.plain, cssLength: styled.css.length, cssTrimmed: styled.trimmed ?? null } };
 }
 
 /**

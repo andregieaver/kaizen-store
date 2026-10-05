@@ -29,7 +29,7 @@ const text = (tag: string, box: Box, t: string, s: Record<string, string> = {}, 
 });
 
 /** What the original is: the hero page, or (for the grid tests) a heading over four of the same card. */
-const mode = vi.hoisted(() => ({ grid: false, right: false, wrongUntil: 1 }));
+const mode = vi.hoisted(() => ({ grid: false, right: false, wrongUntil: 1, backdrop: false }));
 
 /** A heading over four cards: a picture, a title, words and a button each, side by side at computers' width and one under another on phones. */
 function gridOriginal(width: number): PageCapture {
@@ -127,6 +127,8 @@ vi.mock("./replicate-browser", () => ({
     capture: original(viewport === "desktop" ? 1440 : 390),
     screenshot: await png(viewport === "desktop" ? 1440 : 390, 1000, null),
     elements: new Map<string, Buffer>(),
+    // The photograph with the words not painted, which a row that matches badly is cut from.
+    ...(mode.backdrop ? { textless: await png(viewport === "desktop" ? 1440 : 390, 1000, null) } : {}),
   }),
   openCopy: async (_browser: unknown, frameUrl: string, viewport: "desktop" | "mobile") => {
     const id = /replica\/([0-9a-f-]{36})/.exec(frameUrl)![1];
@@ -150,7 +152,7 @@ vi.mock("./replicate-assets", async (importOriginal) => ({
     url.endsWith("gone.jpg")
       ? { ok: false, problem: "The site answered 404." }
       : { ok: true, picture: { url: mode.grid ? `https://files.test/storage/v1/object/public/media/${url.split("/").pop()}` : "https://files.test/demo/cabin.svg", width: 800, height: 600 } },
-  saveShot: async () => ({ ok: false, problem: "none" }),
+  saveShot: async (_owner: unknown, _png: Buffer, name: string) => (mode.backdrop ? { ok: true, picture: { url: `https://files.test/storage/v1/object/public/media/${name}.webp`, width: 1440, height: 400 } } : { ok: false, problem: "none" }),
   saveVideo: async () => ({ ok: false, problem: "none" }),
   installFamily: async () => ({ ok: false, problem: "It is not in Google Fonts." }),
 }));
@@ -207,6 +209,7 @@ beforeEach(async () => {
   mode.grid = false;
   mode.right = false;
   mode.wrongUntil = 1;
+  mode.backdrop = false;
   opened.copies = 0;
   ai.calls.length = 0;
   ai.connection = { textModel: "test-model", provider: "openai" };
@@ -317,6 +320,24 @@ describe("copying a page, from the address to the summary", () => {
     expect(Number(audit.n)).toBeGreaterThanOrEqual(2);
     const [after] = await db().execute<Row>(sql`select capture from commerce.page_replications where id = ${job.id}::uuid`);
     expect(after.capture).toBeNull();
+  });
+
+  it("keeps a row that still matches badly as a picture of the original with its words over it, once the page has been corrected", async () => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://files.test");
+    mode.backdrop = true;
+    mode.wrongUntil = 99;
+    ai.connection = null;
+    const started = await engine.startReplication(owner, "https://source.test/", 3, true);
+    if (!started.ok) throw new Error(started.problem);
+    const job = (await runToEnd(started.job.id))!;
+    expect(job.status).toBe("done");
+    const log = job.log.map((l) => l.text).join("\n");
+    expect(log).toMatch(/now kept as a picture of the original/);
+    const [page] = await db().execute<Row>(sql`select draft from commerce.pages where id = ${job.pageId}::uuid and store_id = ${storeId}::uuid`);
+    const draft = page.draft as { css: string };
+    expect(draft.css).toMatch(/background-image:url\("https:\/\/files.test\/storage\/v1\/object\/public\/media\/row-/);
+    // The job's two rounds are spent at most: the picture rows do not multiply.
+    expect((log.match(/now kept as a picture of the original/g) ?? []).length).toBeLessThanOrEqual(2);
   });
 
   it("carries on without the AI, and says so", async () => {

@@ -32,7 +32,9 @@ import {
   cssColour,
   firstFamily,
   hexOf,
+  alignTrees,
   indexByPath,
+  kindKey,
   isExtraTile,
   paints,
   px,
@@ -58,6 +60,12 @@ import { cleanDecls, ruleOf, type Decl, type StyleModel } from "./replicate-styl
 
 export type Picture = { url: string; width: number; height: number };
 
+/** A row's strip of the original at each width: without its words (they are laid over it as blocks), and with them (the row is only the picture). */
+export type Backdrop = { text: { desktop: Picture; phone: Picture | null }; plain: { desktop: Picture; phone: Picture | null } };
+
+/** A row kept as a picture is found by where it is: its path (a section sliced into several rows has one path) and its top in the original. */
+export const backdropKey = (path: string, top: number): string => `${path}@${Math.round(top)}`;
+
 export type BuildInput = {
   desktop: PageCapture;
   mobile: PageCapture | null;
@@ -65,6 +73,16 @@ export type BuildInput = {
   picture: (url: string) => Picture | null;
   /** The library's copy of an element photographed in the page (an icon, a canvas), by its path; null if there is none. */
   shot: (path: string) => Picture | null;
+  /**
+   * A row kept as a picture (D164): the strip of the original it covers, with its words not painted, at each width, by `backdropKey()` of the row's path and top. The row is that
+   * picture with the original's words laid over it where they stood; null for a row built from the page's parts as usual.
+   */
+  backdrop?: (key: string) => Backdrop | null;
+  /**
+   * Rows kept as a picture that are only a picture (D164): the original with its words in it, and the words as hidden text for screen readers and search. A page's CSS is
+   * limited, and a row of a hundred words laid by their places may not fit in it; the rows that cost the most are this.
+   */
+  backdropPlain?: ReadonlySet<string>;
   /** An uploaded video's address in the library, by its original address; null if it could not be copied. */
   video: (url: string) => { url: string } | null;
   /** The Google Fonts family a font of the original is installed as, or null. */
@@ -89,7 +107,7 @@ export type PartInfo = {
 };
 
 /** Something in the original that the copy does not have, or has only in part, named so a developer can find it. */
-export type DroppedKind = "form-field" | "shape" | "picture-missing" | "graphic-unphotographed" | "video-missing" | "video-still-only" | "nested-boxes" | "background-layers" | "rows-cut" | "blocks-cut" | "columns-cut" | "grid-columns" | "grid-card" | "grid-items-cut" | "grid-reverted" | "grid-simplified" | "generated-text";
+export type DroppedKind = "form-field" | "shape" | "picture-missing" | "graphic-unphotographed" | "video-missing" | "video-still-only" | "nested-boxes" | "background-layers" | "rows-cut" | "blocks-cut" | "columns-cut" | "grid-columns" | "grid-card" | "grid-items-cut" | "grid-reverted" | "grid-simplified" | "generated-text" | "row-as-picture";
 export type Dropped = { kind: DroppedKind; sel: string; y: number; box: Box | null; text?: string };
 export const DROPPED_MAX = 80;
 
@@ -153,7 +171,11 @@ function hasContent(n: CaptureNode): boolean {
 
 /** Whether a box, or something in it, shows anything. */
 function significant(n: CaptureNode): boolean {
-  if (!hasSize(n)) return false;
+  if (!hasSize(n)) {
+    // A box with no size of its own that does not clip (a nav of absolutely placed lists, a wrapper of floated boxes) shows what it holds.
+    const clips = (v: string | undefined) => v === "hidden" || v === "clip" || v === "scroll" || v === "auto";
+    return !isLeaf(n) && !clips(n.s.overflowX) && !clips(n.s.overflowY) && n.children.some(significant);
+  }
   if (isLeaf(n)) return hasContent(n);
   return paintsBox(n) || n.children.some(significant);
 }
@@ -705,6 +727,9 @@ export function liftBackdrops(capture: PageCapture): { capture: PageCapture; lif
   return { capture: { ...capture, root }, lifted };
 }
 
+/** Below this share of desktop nodes finding an element of the same kind at their path on the phone, the phone's nodes are found by structure. */
+const PATHS_AGREE = 0.9;
+
 const BUTTON_TEXT_STYLES = ["color", "fontFamily", "fontSize", "fontWeight", "fontStyle", "lineHeight", "letterSpacing", "textAlign", "textTransform", "textDecorationLine", "whiteSpace"] as const;
 
 /**
@@ -771,7 +796,30 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     }
   };
   const getD: Get = (p) => dIndex.get(p);
-  const getM: Get | null = mIndex ? (p) => mIndex.get(phonePath(p)) : null;
+  // A phone page with an element more or less somewhere shifts the paths after it: then the phone's node is found by what the elements are
+  // (tag and classes, in order), not by path. Where paths agree with the elements, they stay the key (sliders' tiles included).
+  const aligned = mobile ? alignTrees(desktop.root, mobile.root) : null;
+  const pathAgrees = (() => {
+    if (!mIndex) return 1;
+    let same = 0;
+    let all = 0;
+    for (const [p, d] of dIndex) {
+      all += 1;
+      const m = mIndex.get(phonePath(p));
+      if (m && kindKey(m) === kindKey(d)) same += 1;
+    }
+    return all === 0 ? 1 : same / all;
+  })();
+  const byStructure = aligned !== null && pathAgrees < PATHS_AGREE;
+  const getM: Get | null = mIndex
+    ? (p) => {
+        const there = mIndex.get(phonePath(p));
+        const d = dIndex.get(p);
+        if (!aligned || !d) return there;
+        if (!byStructure && there && kindKey(there) === kindKey(d)) return there;
+        return aligned.get(p) ?? (byStructure ? undefined : there);
+      }
+    : null;
   const notes: ReplicaNote[] = [];
   const model: StyleModel = { rules: [] };
   const parts: PartInfo[] = [];
@@ -952,18 +1000,25 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     return { d, m };
   }
 
-  function typography(n: CaptureNode): { decl: (x: CaptureNode) => Decl; native?: string } {
+  /** The type of a text box as declarations; with `base` (the box above it that carries the type its text shares), only what differs from that. */
+  function typography(n: CaptureNode): { decl: (x: CaptureNode, base?: CaptureNode | null) => Decl; native?: string } {
     const font = fontOf(n);
-    return { decl: (x) => ({ ...typeDecl(x), ...(font.css ? { "font-family": font.css } : {}) }), native: font.native };
+    return {
+      decl: (x, base) => ({ ...typeDecl(x, base ?? undefined), ...(font.css && !(base && fontOf(base).css === font.css) ? { "font-family": font.css } : {}) }),
+      native: font.native,
+    };
   }
 
-  function makeBlock(group: CaptureNode[], frame: Frame, top: number, topM: number | null, rowId: string, inline = false): PageBlock | null {
+  /** Where a block is put by the caller (a row kept as a picture lays its words by their places), and the boxes whose type the block's own type is set against. */
+  type Pin = { d: Decl; m: Decl; base: CaptureNode | null; baseM: CaptureNode | null };
+
+  function makeBlock(group: CaptureNode[], frame: Frame, top: number, topM: number | null, rowId: string, inline = false, pin?: Pin): PageBlock | null {
     const leaf = group[0];
     const id = nextId();
     const phone = getM?.(leaf.p) ?? null;
     const base = { id: newId(), htmlId: id, className: "rp" };
     const media = leaf.media;
-    const at = placeAt(group, top, topM, frame, inline);
+    const at = pin ? { d: pin.d, m: pin.m } : placeAt(group, top, topM, frame, inline);
     const union = (get: Get): Box | null => {
       const found = group.map((g) => get(g.p)).filter((g): g is CaptureNode => Boolean(g));
       if (found.length === 0) return null;
@@ -1113,7 +1168,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
           if (h1Used) used = 2;
           h1Used = true;
         }
-        put(id, "", { ...at.d, ...type.decl(leaf), ...(oneLine(leaf) ? { "white-space": "nowrap" } : {}) }, { ...at.m, ...(phone ? { ...type.decl(phone), "white-space": oneLine(phone) ? "nowrap" : "normal" } : {}) });
+        put(id, "", { ...at.d, ...type.decl(leaf, pin?.base), ...(oneLine(leaf) ? { "white-space": "nowrap" } : {}) }, { ...at.m, ...(phone ? { ...type.decl(phone, pin?.baseM), "white-space": oneLine(phone) ? "nowrap" : "normal" } : {}) });
         register();
         counts.headings += 1;
         const block: HeadingBlock = { ...base, type: "heading", text: words.slice(0, 300), level: used, ...(type.native ? { font: type.native } : {}) };
@@ -1123,7 +1178,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       // Words: rich text, a paragraph or several, a list or a quotation.
       const single = group.length === 1 && !isTextList(leaf);
       const faceOfText = (n: CaptureNode) => (isTextList(n) && n.children[0] ? n.children[0] : n);
-      put(id, "", { ...at.d, ...type.decl(faceOfText(leaf)), ...(single && oneLine(leaf) ? { "white-space": "nowrap" } : {}), ...(leaf.cut ? { "max-height": pxs(leaf.box[3]), overflow: "hidden" } : {}) }, { ...at.m, ...(phone ? { ...type.decl(faceOfText(phone)), ...(single ? { "white-space": oneLine(phone) ? "nowrap" : "normal" } : {}) } : {}) });
+      put(id, "", { ...at.d, ...type.decl(faceOfText(leaf), pin?.base), ...(single && oneLine(leaf) ? { "white-space": "nowrap" } : {}), ...(leaf.cut ? { "max-height": pxs(leaf.box[3]), overflow: "hidden" } : {}) }, { ...at.m, ...(phone ? { ...type.decl(faceOfText(phone), pin?.baseM), ...(single ? { "white-space": oneLine(phone) ? "nowrap" : "normal" } : {}) } : {}) });
       if (isTextList(leaf)) {
         // Items side by side (a menu strip: `display: inline-flex`, floats) stay in a row, with the gap between them.
         const across = (n: CaptureNode) => n.children.length > 1 && n.children.every((c) => Math.abs(c.box[1] - n.children[0].box[1]) <= 4) && n.children[1].box[0] >= rightOf(n.children[0].box) - 2;
@@ -1302,6 +1357,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     return out;
   };
   const frameImage = new Map<string, { url: string; width: number; height: number }>();
+  let backdrops = 0;
 
   specs.forEach((spec, index) => {
     const band = dBands[index];
@@ -1315,6 +1371,91 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     const lastOfFrame = !frame || nth + 1 >= (frameRows.get(frame.p) ?? 1);
     const rowId = nextId();
     const native: { background?: Background } = {};
+
+    // A row kept as a picture of the original with its words laid over it (D164): the picture is the strip of the page, the words are blocks placed where they stood.
+    const rowPath = frame ? frame.p : (band.leaves[0]?.p ?? spec.cols[0]?.path ?? "");
+    const key = backdropKey(rowPath, band.outerTop);
+    const kept = input.backdrop?.(key) ?? null;
+    const plain = input.backdropPlain?.has(key) ?? false;
+    const back = kept ? (plain ? kept.plain : kept.text) : null;
+    if (back && allowedCssUrl(back.desktop.url) && (!mBands || !phoneBand || (back.phone !== null && allowedCssUrl(back.phone.url)))) {
+      const heightD = band.outerBottom - band.outerTop;
+      const heightM = phoneBand ? phoneBand.outerBottom - phoneBand.outerTop : 0;
+      const paintBack = (picture: Picture): Decl => ({ "background-image": `url("${picture.url}")`, "background-size": "100% 100%", "background-position": "0px 0px", "background-repeat": "no-repeat", "background-color": "transparent" });
+      const flat: Decl = { "padding-top": "0px", "padding-right": "0px", "padding-bottom": "0px", "padding-left": "0px", width: "auto", "max-width": "none", "margin-left": "0", "margin-right": "0" };
+      put(
+        rowId,
+        "",
+        { ...flat, "margin-top": pxs(Math.max(-ROW_GAP, band.outerTop - previousBottom - (rows.length > 0 ? ROW_GAP : 0))), ...paintBack(back.desktop) },
+        phoneBand && back.phone ? { ...flat, "margin-top": pxs(Math.max(-ROW_GAP, phoneBand.outerTop - previousBottomM - (rows.length > 0 ? ROW_GAP : 0))), ...paintBack(back.phone) } : mBands ? { display: "none" } : {},
+      );
+      previousBottom = band.outerBottom;
+      if (phoneBand) previousBottomM = phoneBand.outerBottom;
+      put(rowId, " > :last-child > :first-child", { "column-gap": "0px", "row-gap": "0px", "grid-template-columns": "minmax(0, 1fr)" }, mBands ? { "grid-template-columns": "minmax(0, 1fr)" } : {});
+      parts.push({ id: rowId, path: rowPath, kind: "row", row: rowId, label: "row (kept as a picture of the original, with its words over it)", target: [band.left, band.outerTop, band.right - band.left, heightD], targetM: phoneBand ? [phoneBand.left, phoneBand.outerTop, phoneBand.right - phoneBand.left, heightM] : null });
+      const colId = nextId();
+      put(colId, "", { gap: "0px", "padding-top": "0px", "padding-right": "0px", "padding-bottom": "0px", "padding-left": "0px", "margin-top": "0px", position: "relative", height: pxs(heightD), "min-height": "0px" }, mBands ? { "padding-top": "0px", "padding-right": "0px", "padding-bottom": "0px", "padding-left": "0px", "margin-top": "0px", height: pxs(heightM), "min-height": "0px" } : {});
+      parts.push({ id: colId, path: rowPath, kind: "column", row: rowId, label: "column 1 of 1", target: [band.left, band.outerTop, band.right - band.left, heightD], targetM: phoneBand ? [phoneBand.left, phoneBand.outerTop, phoneBand.right - phoneBand.left, heightM] : null });
+      const seen = new Set<string>();
+      const words = spec.cols
+        .flatMap((c) => c.leaves)
+        .filter((leaf) => dIndex.has(leaf.p) && !seen.has(leaf.p) && seen.add(leaf.p) && (isText(leaf) || isTextList(leaf)) && hasSize(leaf) && wordsOf(leaf).trim() !== "")
+        .sort((a, b) => a.box[1] - b.box[1] || a.box[0] - b.box[0]);
+      // The words share one type where they can: the most common type among them is the column's, and each block says only how it differs. Where each stands is all a block
+      // says of its own besides (the page's CSS may hold 50 KB, and a row of a hundred words laid by their places would not fit in it otherwise).
+      const typeKey = (n: CaptureNode) => [n.s.fontSize, n.s.lineHeight, n.s.fontWeight, n.s.fontStyle, n.s.letterSpacing, n.s.color, n.s.textAlign, n.s.textTransform, n.s.fontFamily].join("|");
+      const commonOf = (nodes: CaptureNode[]): CaptureNode | null => {
+        const tally = new Map<string, { n: CaptureNode; count: number }>();
+        for (const n of nodes) {
+          const typed = isTextList(n) && n.children[0] ? n.children[0] : n;
+          const key = typeKey(typed);
+          const found = tally.get(key);
+          if (found) found.count += 1;
+          else tally.set(key, { n: typed, count: 1 });
+        }
+        return [...tally.values()].sort((a, b) => b.count - a.count)[0]?.n ?? null;
+      };
+      if (plain) {
+        // Only the picture: its words stay as hidden text, which screen readers and search read, and which costs the page's CSS one rule.
+        const hiddenId = nextId();
+        put(hiddenId, "", { position: "absolute", left: "0px", top: "0px", width: "1px", height: "1px", overflow: "hidden", opacity: "0", "max-width": "none", "margin-top": "0px", "margin-left": "0", "margin-right": "0" }, {});
+        counts.texts += 1;
+        const hidden: RichTextBlock = { id: newId(), htmlId: hiddenId, className: "rp", type: "richText", doc: docOf(words) };
+        if (frame) drop("row-as-picture", frame, `${Math.round(heightD)}px tall, a picture only (${words.length} pieces of text kept hidden for screen readers and search)`);
+        else drop("row-as-picture", band.leaves[0] ?? null, `${Math.round(heightD)}px tall, a picture only (${words.length} pieces of text kept hidden for screen readers and search)`);
+        backdrops += 1;
+        rows.push({ id: newId(), type: "row", layout: "1", width: "full", contentWidth: "full", columns: [{ id: newId(), htmlId: colId, blocks: words.length > 0 ? [hidden] : [] }], htmlId: rowId, className: "rp", background: { type: "color", color: pageColour } });
+        return;
+      }
+      const baseD = commonOf(words);
+      const phoneWords = words.map((w) => getM?.(w.p)).filter((w): w is CaptureNode => Boolean(w));
+      const baseM = commonOf(phoneWords);
+      if (baseD) put(colId, "", { ...typography(baseD).decl(baseD), "font-style": "normal" }, baseM ? { ...typography(baseM).decl(baseM), "font-style": "normal" } : {});
+      put(colId, " > *", { position: "absolute", "max-width": "none", "margin-top": "0px", "margin-left": "0", "margin-right": "0" });
+      const pin = (n: CaptureNode, top: number, docWidth: number): Decl => ({ left: `${round((n.box[0] / docWidth) * 100)}%`, top: pxs(n.box[1] - top), width: pxs(n.box[2]) });
+      const blocks: PageBlock[] = [];
+      for (const leaf of words) {
+        const phone = getM?.(leaf.p) ?? null;
+        const block = makeBlock(
+          [leaf],
+          { left: band.left, width: band.right - band.left, leftM: phoneBand ? phoneBand.left : null, widthM: phoneBand ? phoneBand.right - phoneBand.left : null },
+          band.outerTop,
+          phoneBand ? phoneBand.outerTop : null,
+          rowId,
+          false,
+          { d: pin(leaf, band.outerTop, desktop.docWidth), m: mBands ? (phone && phoneBand && mobile ? pin(phone, phoneBand.outerTop, mobile.docWidth) : { display: "none" }) : {}, base: baseD, baseM },
+        );
+        if (!block) continue;
+        const part = block.htmlId ? parts.find((x) => x.id === block.htmlId) : undefined;
+        if (part) part.label = describeBlock(block);
+        blocks.push(block);
+      }
+      if (frame) drop("row-as-picture", frame, `${Math.round(heightD)}px tall, ${words.length} pieces of text over the picture`);
+      else drop("row-as-picture", band.leaves[0] ?? null, `${Math.round(heightD)}px tall, ${words.length} pieces of text over the picture`);
+      backdrops += 1;
+      rows.push({ id: newId(), type: "row", layout: "1", width: "full", contentWidth: "full", columns: [{ id: newId(), htmlId: colId, blocks }], htmlId: rowId, className: "rp", background: { type: "color", color: pageColour } });
+      return;
+    }
 
     // The row: the section's paint (on each of its rows, but a picture only on the first), its room and its place.
     const paintD = frame ? sliceFrame(paintDecl(frame, native), first, lastOfFrame) : {};
@@ -1599,6 +1740,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
   if (skipped.controls > 0) note("warn", `${skipped.controls} form field${skipped.controls === 1 ? " was" : "s were"} not copied: a form needs an email form block with its own recipient.`);
   if (skipped.missing.size > 0) note("warn", `${skipped.missing.size} picture${skipped.missing.size === 1 ? " could" : "s could"} not be downloaded and ${skipped.missing.size === 1 ? "is" : "are"} left out.`);
   if (skipped.nested > 0) note("warn", `${skipped.nested} section${skipped.nested === 1 ? " has" : "s have"} boxes inside boxes side by side, which the builder cannot nest; ${skipped.nested === 1 ? "its" : "their"} contents are stacked.`);
+  if (backdrops > 0) note("warn", `${backdrops} row${backdrops === 1 ? " is" : "s are"} kept as a picture of the original with its words laid over it, because built from the page's parts ${backdrops === 1 ? "it" : "they"} matched the original badly: the pictures, links and layout in ${backdrops === 1 ? "it are" : "them are"} part of the picture, and only the words can be edited.`);
   if (skipped.shapes > 0) note("warn", `${skipped.shapes} decorative box${skipped.shapes === 1 ? " is" : "es are"} left out (shapes, overlays and empty boxes the builder has no block for).`);
   if (desktop.left.fixed.length > 0) note("warn", `Left out because they float over the page: ${desktop.left.fixed.slice(0, 6).join(", ")}.`);
   if (desktop.left.capped) note("warn", "The page is very large; only its first part was looked at.");
