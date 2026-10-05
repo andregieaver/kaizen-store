@@ -49,15 +49,18 @@ export function calibrate(model: StyleModel, parts: PartInfo[], copy: PageCaptur
     const clean = cleanDecl(property, `${Math.round(value * 10) / 10}px`);
     if (clean !== null) ruleOf(model, id, suffix)[side][property] = clean;
   };
-  const current = (id: string, property: string): number => pixels(model.rules.find((r) => r.id === id && r.suffix === "")?.[side][property]);
+  // What a phone's rule says is only what differs from computers': the value in force is computers' where phones say nothing.
+  const current = (id: string, property: string): number => pixelsOf(model, id, property, side);
 
   // Group the parts as the build made them: a row, then its columns each followed by its blocks.
-  type Group = { row: PartInfo; blocks: PartInfo[][] };
+  type Group = { row: PartInfo; blocks: PartInfo[][]; columns: PartInfo[] };
   const groups: Group[] = [];
   for (const part of parts) {
-    if (part.kind === "row") groups.push({ row: part, blocks: [] });
-    else if (part.kind === "column") groups[groups.length - 1]?.blocks.push([]);
-    else groups[groups.length - 1]?.blocks[groups[groups.length - 1].blocks.length - 1]?.push(part);
+    if (part.kind === "row") groups.push({ row: part, blocks: [], columns: [] });
+    else if (part.kind === "column") {
+      groups[groups.length - 1]?.blocks.push([]);
+      groups[groups.length - 1]?.columns.push(part);
+    } else groups[groups.length - 1]?.blocks[groups[groups.length - 1].blocks.length - 1]?.push(part);
   }
 
   let previousBottomError = 0;
@@ -78,10 +81,20 @@ export function calibrate(model: StyleModel, parts: PartInfo[], copy: PageCaptur
     }
     result.worst = Math.max(result.worst, Math.abs(topError));
 
-    // The blocks of each column, one under another: each moves by the error it added to the one above.
+    // The blocks of each column, one under another: each moves by the error it added to the one above. Columns stacked one under another (at phones'
+    // width) are measured each from its own top: what an upper column's change moves is the lower column's business only through its position, which
+    // the upper one's change has already carried, so counting it again would overshoot (lampan.no: a footer's four stacked columns swung 137 px each way).
     let tallestLast = 0;
     let tallestBottom = -Infinity;
-    for (const column of group.blocks) {
+    let stackedLast = 0;
+    let previousColumn: { target: Box; top: number } | null = null;
+    group.blocks.forEach((column, columnIndex) => {
+      const columnPart = group.columns[columnIndex];
+      const columnTarget = columnPart ? targetOf(columnPart) : null;
+      const columnHave = columnPart ? boxes.get(columnPart.id) : undefined;
+      const stacked = Boolean(previousColumn && columnTarget && columnHave && columnTarget[1] >= bottomOf(previousColumn.target) - 2);
+      const baseTarget = stacked && columnTarget ? columnTarget[1] : target[1];
+      const baseCopy = stacked && columnHave ? columnHave[1] : at[1];
       let previous = 0;
       let lastBlock: { rel: number; bottom: number } | null = null;
       for (const block of column) {
@@ -92,7 +105,7 @@ export function calibrate(model: StyleModel, parts: PartInfo[], copy: PageCaptur
           result.missing += 1;
           continue;
         }
-        const rel = have[1] - at[1] - (goal[1] - target[1]);
+        const rel = have[1] - baseCopy - (goal[1] - baseTarget);
         const local = rel - previous;
         if (Math.abs(local) > ERROR) {
           set(block.id, "", "margin-top", Math.min(MARGIN.max, Math.max(MARGIN.min, current(block.id, "margin-top") - local)));
@@ -101,11 +114,14 @@ export function calibrate(model: StyleModel, parts: PartInfo[], copy: PageCaptur
         previous = rel;
         lastBlock = { rel, bottom: bottomOf(have) };
       }
-      if (lastBlock && lastBlock.bottom > tallestBottom) {
+      if (columnTarget) previousColumn = { target: columnTarget, top: columnHave ? columnHave[1] : 0 };
+      if (stacked) stackedLast += lastBlock?.rel ?? 0;
+      else if (lastBlock && lastBlock.bottom > tallestBottom) {
         tallestBottom = lastBlock.bottom;
         tallestLast = lastBlock.rel;
       }
-    }
+    });
+    tallestLast += stackedLast;
 
     // The row's own height: its error, less what the blocks' changes will take away.
     const heightError = at[3] - target[3] - tallestLast;
@@ -120,7 +136,9 @@ export function calibrate(model: StyleModel, parts: PartInfo[], copy: PageCaptur
 }
 
 function pixelsOf(model: StyleModel, id: string, property: string, side: "desktop" | "mobile"): number {
-  return pixels(model.rules.find((r) => r.id === id && r.suffix === "")?.[side][property]);
+  const rule = model.rules.find((r) => r.id === id && r.suffix === "");
+  const own = rule?.[side][property];
+  return pixels(own !== undefined || side === "desktop" ? own : rule?.desktop[property]);
 }
 
 /** A sentence about what a calibration changed, or null when nothing needed to move. */

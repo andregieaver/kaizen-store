@@ -245,7 +245,7 @@ describe("a grid never makes a copy worse than the columns would have", () => {
     const job = (await runToEnd(started.job.id))!;
     expect(job.status).toBe("done");
     const matches = job.passes.map((p) => p.desktop.match);
-    // Pass 0 was the grid (about 55 %), the columns it was swapped for matched about 20 %: the guard exists so a copy never gets worse.
+    // The grid was weak at pass 1 (about 55 %), the columns it was swapped for matched about 20 %: the guard exists so a copy never gets worse. (Not at pass 0: its spacing is not yet set right.)
     expect(matches.length).toBeGreaterThan(1);
     expect(matches[matches.length - 1], `the passes matched ${matches.join(", ")} %`).toBeGreaterThanOrEqual(matches[0]);
     // A trial of columns spends no improving pass: the passes are the job's own, 0 to 3, each measured once as its entry.
@@ -255,7 +255,7 @@ describe("a grid never makes a copy worse than the columns would have", () => {
     expect(grids, "the page ended as the worse of the two builds").toHaveLength(1);
     // The report says the grid was weak, columns were tried, and what each matched.
     const built = job.summary!.report!.grids!.built[0];
-    expect(built.tried, "a grid that stayed after a trial says both figures").toMatchObject({ pass: 0 });
+    expect(built.tried, "a grid that stayed after a trial says both figures").toMatchObject({ pass: 1 });
     expect(built.tried!.columns).toBeLessThanOrEqual(built.tried!.grid + 2);
     expect(job.summary!.problems.join(" ")).toMatch(/columns were tried and matched/);
     vi.unstubAllEnvs();
@@ -276,7 +276,7 @@ describe("a grid never makes a copy worse than the columns would have", () => {
     expect(draft.rows.flatMap((r) => r.columns.flatMap((c) => c.blocks)).filter((b) => b.type === "contentGrid")).toHaveLength(0);
     const kept = job.summary!.report!.grids!.kept.find((k) => k.reverted);
     expect(kept?.reverted?.columns, "the evidence has both figures").toBeGreaterThan(kept!.reverted!.match);
-    expect(job.summary!.problems.join(" ")).toMatch(/rebuilt as columns after pass 0.*the columns \d/);
+    expect(job.summary!.problems.join(" ")).toMatch(/rebuilt as columns after pass 1.*the columns \d/);
     // The copy ended as the better of the two (the grid matched about 55 % as a whole, the columns about 96 %): the columns' score is the pass's, measured once.
     expect(job.passes[job.passes.length - 1].desktop.match).toBeGreaterThan(90);
     expect(job.log.some((entry) => /Tried a grid as columns/.test(entry.text))).toBe(true);

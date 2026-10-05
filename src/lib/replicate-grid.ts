@@ -1499,7 +1499,9 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
   const align = alignOf(titleNode) ?? alignOf(textNode);
   if (align && align !== "left") tileRules["text-align"] = align;
   const phoneAlign = alignOf(phoneOf(titleNode)) ?? alignOf(phoneOf(textNode));
-  rule(li, tileRules, phoneAlign && phoneAlign !== align ? { "text-align": phoneAlign } : {});
+  // A carousel's tiles at the width the phone drew them: the track's columns and peek only approximate it (lampan.no: 144 px tiles, two and a half in view).
+  const phoneTileWidth = plan.carousel && cardsM.length > 0 ? median(cardsM.map((c) => c.box[2])) : 0;
+  rule(li, tileRules, { ...(phoneAlign && phoneAlign !== align ? { "text-align": phoneAlign } : {}), ...(phoneTileWidth > 0 && plan.carousel?.phonesOnly ? { "flex-basis": decl(phoneTileWidth), "flex-grow": "0", "flex-shrink": "0" } : {}) });
   if (useFlow) {
     const cardM = env.getM ? env.getM(sampleCard.p) : null;
     const flowM = cardM ? flowAt(cardM, (n) => (env.getM ? env.getM(n.p) : null)) : [];

@@ -294,3 +294,22 @@ test("a link drawn as a button inside a paragraph is a box of its own, and a tex
     site.close();
   }
 });
+
+test("a tile that scrolls into view inside a sideways scroller is read, though a box round the scroller clips at the scroller's edge", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const html = `<!doctype html><html><body style="margin:0;font-family:Arial">
+    <main style="overflow:hidden;width:390px"><div style="overflow-x:auto"><div style="display:flex;width:390px">
+      <div style="width:343px;flex:none;overflow:hidden"><h2 style="margin:0">First tile</h2></div>
+      <div style="width:343px;flex:none;overflow:hidden;margin-left:10px"><h2 style="margin:0 0 0 100px">Second tile</h2></div>
+    </div></div></main>
+  </body></html>`;
+  const site = await serve(html);
+  try {
+    const desktop = await openOriginal(browser, site.url, "desktop", everything, undefined, { watch: false });
+    const json = JSON.stringify(desktop.capture.root);
+    expect(json).toContain("First tile");
+    expect(json).toContain("Second tile");
+  } finally {
+    site.close();
+  }
+});

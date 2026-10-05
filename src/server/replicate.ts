@@ -619,7 +619,9 @@ async function stepRefine(tick: Tick): Promise<void> {
   const perfect = isPerfect(scoreDesktop) && isPerfect(scoreMobile);
   // A grid that is weak (under 60 % over its stretch, at computers' or at phones' width) is tried as columns: the page is rebuilt with those groups as columns and measured again at
   // this same pass, and the columns stay only if they match clearly better there; otherwise the grid is put back. Nothing is decided on the grid's score alone (D155).
-  const weak = perfect ? [] : weakNow(work, parts, scoreDesktop, scoreMobile);
+  // Not at the first copy: its spacing is not yet set right by measuring, so a grid and its columns are both judged by how far the page above them has drifted (lampan.no:
+  // every grid read as weak at pass 0 and was rebuilt as columns, which then used up the page's blocks and style). From the first pass on, the page is where the original was.
+  const weak = perfect || (k === 0 && max > 0) ? [] : weakNow(work, parts, scoreDesktop, scoreMobile);
   if (weak.length > 0 && (work.trials ?? 0) < TRIALS_MAX && (await startTrial(tick, work, weak, k, sides, passes, pass))) return;
 
   if (k >= max || perfect) {

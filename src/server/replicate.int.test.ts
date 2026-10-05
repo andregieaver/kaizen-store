@@ -29,7 +29,7 @@ const text = (tag: string, box: Box, t: string, s: Record<string, string> = {}, 
 });
 
 /** What the original is: the hero page, or (for the grid tests) a heading over four of the same card. */
-const mode = vi.hoisted(() => ({ grid: false, right: false }));
+const mode = vi.hoisted(() => ({ grid: false, right: false, wrongUntil: 1 }));
 
 /** A heading over four cards: a picture, a title, words and a button each, side by side at computers' width and one under another on phones. */
 function gridOriginal(width: number): PageCapture {
@@ -133,8 +133,8 @@ vi.mock("./replicate-browser", () => ({
     const [row] = await db().execute<Row>(sql`select work from commerce.page_replications where id = ${id}::uuid`);
     const parts = ((row.work as { parts: { id: string; target: Box | null; targetM: Box | null }[] }).parts ?? []).filter((p) => (viewport === "desktop" ? p.target : p.targetM));
     if (viewport === "desktop") opened.copies += 1;
-    // The first time, the copy's blocks sit 30 px too low and it is wrong in a band; later it is right.
-    const wrong = opened.copies === 1 && !mode.right;
+    // At the first openings (`wrongUntil`), the copy's blocks sit 30 px too low and it is wrong in a band; later it is right.
+    const wrong = opened.copies <= mode.wrongUntil && !mode.right;
     const children: CaptureNode[] = parts.map((p, i) => {
       const box = (viewport === "desktop" ? p.target : p.targetM)!;
       return { p: String(i), tag: "div", id: p.id, box: [box[0], box[1] + (wrong ? 30 : 0), box[2], box[3]], s: {}, children: [] };
@@ -206,6 +206,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   mode.grid = false;
   mode.right = false;
+  mode.wrongUntil = 1;
   opened.copies = 0;
   ai.calls.length = 0;
   ai.connection = { textModel: "test-model", provider: "openai" };
@@ -419,6 +420,8 @@ describe("repeated cards, as a grid of custom items (D155)", () => {
 
   it("tries a grid as columns when a pass finds it among the weakest stretches under 60 %, keeps the columns when they match clearly better, and keeps the evidence", async () => {
     mode.grid = true;
+    // The first copy and the first pass's are both wrong over the grid; a grid is judged from the first pass on, not at the first copy.
+    mode.wrongUntil = 2;
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://files.test");
     ai.connection = null;
     const started = await engine.startReplication(owner, "https://source.test/", 3, true);
@@ -429,19 +432,20 @@ describe("repeated cards, as a grid of custom items (D155)", () => {
     const log = job.log.map((l) => l.text).join("\n");
     expect(log).toMatch(/Tried a grid as columns/);
     expect(log).toMatch(/The columns matched better than the grid over its stretch/);
-    // The columns are as the original, so the job ended with its first copy: the trial spent no pass and left no second entry for the same pass.
-    expect(job.passes.map((p) => p.iteration)).toEqual([0]);
-    expect(job.passes[0].desktop.match).toBeGreaterThan(99);
+    // A grid is judged from the first pass on (not at the first copy, whose spacing is not yet set right). The columns are as the original, so the job ended there:
+    // the trial spent no pass and left no second entry for the same pass.
+    expect(job.passes.map((p) => p.iteration)).toEqual([0, 1]);
+    expect(job.passes[1].desktop.match).toBeGreaterThan(99);
     const draft = await draftOf(job.pageId!);
     expect(gridBlocks(draft)).toHaveLength(0);
     // Four columns of picture, heading, text and button: every word is still there.
     const blocks = (draft.rows as { columns: { blocks: { type: string }[] }[] }[]).flatMap((r) => r.columns.flatMap((c) => c.blocks)).map((b) => b.type);
     expect(blocks.filter((t) => t === "button")).toHaveLength(4);
     const report = job.summary!.report!;
-    expect(report.grids?.kept[0]).toMatchObject({ reverted: { pass: 0 } });
+    expect(report.grids?.kept[0]).toMatchObject({ reverted: { pass: 1 } });
     expect(report.grids?.kept[0].reverted?.columns).toBeGreaterThan(report.grids!.kept[0].reverted!.match);
-    expect(report.findings.find((f) => f.id === "grids-reverted")!.evidence[0]).toMatch(/the grid matched \d+(?:\.\d+)?% over its stretch and the columns \d+(?:\.\d+)?%, measured in pass 0/);
-    expect(job.summary!.problems.join("\n")).toMatch(/was rebuilt as columns after pass 0/);
+    expect(report.findings.find((f) => f.id === "grids-reverted")!.evidence[0]).toMatch(/the grid matched \d+(?:\.\d+)?% over its stretch and the columns \d+(?:\.\d+)?%, measured in pass 1/);
+    expect(job.summary!.problems.join("\n")).toMatch(/was rebuilt as columns after pass 1/);
     // The trial is kept for the job: the page is not built as a grid again by a later pass.
     const [row] = await db().execute<Row>(sql`select work from commerce.page_replications where id = ${job.id}::uuid`);
     expect((row.work as { reverted: { path: string }[] }).reverted).toHaveLength(1);

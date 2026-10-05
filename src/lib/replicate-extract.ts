@@ -214,6 +214,7 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
   function clippedAway(el: Element, cs: CSSStyleDeclaration, rect: DOMRect): boolean {
     if (cs.position === "fixed" || (rect.width <= 0 && rect.height <= 0)) return false;
     let absolute = cs.position === "absolute";
+    let scrolled = false;
     for (let ancestor = el.parentElement; ancestor && ancestor !== doc.body && ancestor !== doc.documentElement; ancestor = ancestor.parentElement) {
       const style = win.getComputedStyle(ancestor);
       if (absolute) {
@@ -222,9 +223,12 @@ export function extractPage(options: ExtractOptions): Omit<PageCapture, "viewpor
       }
       if (style.overflowX !== "visible" || style.overflowY !== "visible") {
         const r = ancestor.getBoundingClientRect();
-        // What a box scrolls sideways is not hidden by it, only what lies above or below it.
+        // What a box scrolls sideways is not hidden by it, only what lies above or below it; nor is it hidden by a box round the scroller (a page's
+        // `overflow: hidden` main column), which clips the scroller's own box and not what scrolls inside it (lampan.no: the second hero tile was lost).
         const sideways = scrollsSideways(ancestor, style) && (rect.right <= r.left + 1 || rect.left >= r.right - 1);
-        if (!sideways && (rect.right <= r.left + 1 || rect.left >= r.right - 1 || rect.bottom <= r.top + 1 || rect.top >= r.bottom - 1)) return true;
+        if (sideways) scrolled = true;
+        const outside = scrolled ? false : rect.right <= r.left + 1 || rect.left >= r.right - 1;
+        if (!sideways && (outside || rect.bottom <= r.top + 1 || rect.top >= r.bottom - 1)) return true;
       }
       if (style.position === "fixed") break;
     }

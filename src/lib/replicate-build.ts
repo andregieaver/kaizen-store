@@ -1385,15 +1385,17 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
     const phoneBoxes = phoneBand ? phoneBand.cols : null;
     const sideBySide =
       track || (split && phoneBoxes !== null && phoneBoxes.every(Boolean) && phoneBoxes.every((c) => Math.abs(c!.box[1] - phoneBoxes[0]!.box[1]) < Math.min(c!.box[3], phoneBoxes[0]!.box[3]) * 0.5));
+    // Side by side on phones with a box past the screen's edge: a row that scrolls sideways there (lampan.no's hero tiles: 358 px each, the second out of view).
+    const phoneTrack = split && phoneBoxes !== null && phoneBoxes.every(Boolean) && phoneBoxes.length > 1 && sideBySide && phoneBoxes.some((c) => rightOf(c!.box) > mobile!.docWidth + 2);
     const gridD: Decl = { "column-gap": pxs(gapOf(colBoxes)), "row-gap": "0px" };
     if (template) gridD["grid-template-columns"] = template;
     if (track) gridD["overflow-x"] = "auto";
     const gridM: Decl = {};
-    if (track) gridM["overflow-x"] = "auto";
+    if (track || phoneTrack) gridM["overflow-x"] = "auto";
     if (split && phoneBoxes && phoneBoxes.every(Boolean)) {
       if (sideBySide) {
         gridM["column-gap"] = pxs(gapOf(phoneBoxes));
-        gridM["grid-template-columns"] = phoneBoxes.map((c) => (track ? pxs(c!.box[2]) : `minmax(0, ${round(c!.box[2])}fr)`)).join(" ");
+        gridM["grid-template-columns"] = phoneBoxes.map((c) => (track || phoneTrack ? pxs(c!.box[2]) : `minmax(0, ${round(c!.box[2])}fr)`)).join(" ");
       } else {
         const sorted = [...phoneBoxes].sort((a, b) => a!.box[1] - b!.box[1]);
         gridM["row-gap"] = pxs(Math.max(0, sorted[1]!.box[1] - bottomOf(sorted[0]!.box)));
