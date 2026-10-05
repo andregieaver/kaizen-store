@@ -28,7 +28,7 @@ export default async function WordpressPage() {
         <p className="max-w-3xl text-sm text-muted">
           Show products from your stores on a WordPress site, as a grid or a carousel, with a shortcode. Install the plugin on the site, choose
           Connect, and approve here. The site can read the products, prices and pictures your stores show shoppers, for the stores you belong to,
-          and nothing else: no orders, customers or settings, and it cannot change anything.
+          and a shopper there can put them in a cart that opens in your store to be paid. The site reads no orders, customers or settings, and changes no product, price, order or setting.
         </p>
       </div>
 

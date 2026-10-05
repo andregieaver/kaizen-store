@@ -5,7 +5,7 @@
  */
 import { withoutVat } from "./b2b";
 import type { Messages } from "./i18n";
-import { formatMoney } from "./money";
+import { formatMoney, minorUnitDigits } from "./money";
 import type { PriceView } from "./pricing";
 import { unitPriceShown } from "./unit-price";
 import { unitLabelsOf, unitPriceWords } from "./unit-price-text";
@@ -24,6 +24,8 @@ export type WordpressPrice = {
   unit_text: string | null;
   /** The amount in minor units and the currency, for a theme that wants to format it itself. */
   amount_minor: number;
+  /** The same as a decimal number written as text ("199.00"), for structured data. */
+  amount_decimal: string;
   currency: string;
 };
 
@@ -48,6 +50,7 @@ export function wordpressPrice(price: PriceView, from: boolean, locale: string, 
     prior_text: price.referenceMinor !== null ? formatMoney(amount(price.referenceMinor), price.currency, locale) : null,
     unit_text,
     amount_minor: shownMinor,
+    amount_decimal: (shownMinor / 10 ** minorUnitDigits(price.currency)).toFixed(minorUnitDigits(price.currency)),
     currency: price.currency,
   };
 }

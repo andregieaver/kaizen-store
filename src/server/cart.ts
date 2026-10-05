@@ -33,7 +33,7 @@ const cookieName = ({ storeId, market }: Shop) => `cart_${storeId}_${market.code
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Row = Record<string, unknown>;
-type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+export type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
 
 export type CartLineStatus = "ok" | "insufficient" | "unavailable";
 
@@ -372,7 +372,7 @@ async function buysForBusiness(storeId: string): Promise<boolean> {
  * Units of a variant that can be sold in the market right now, or null if
  * the variant is not for sale there (inactive, or no price in the market).
  */
-async function sellableQuantity(
+export async function sellableQuantity(
   tx: Tx,
   { storeId, market }: Shop,
   variantId: string,
@@ -454,6 +454,12 @@ async function openCart(tx: Tx, shop: Shop): Promise<string> {
   const id = String(row.id);
   // Which visit made the cart, for the analytics' channel of its order (D152); never in the way of adding to it.
   await attachVisitToCart(tx, storeId, id);
+  await setCartCookie(shop, id);
+  return id;
+}
+
+/** Makes `id` the cart of this browser in the store and market (the one cookie a cart has, strictly necessary, D14). */
+export async function setCartCookie(shop: Shop, id: string): Promise<void> {
   (await cookies()).set(cookieName(shop), id, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -461,7 +467,6 @@ async function openCart(tx: Tx, shop: Shop): Promise<string> {
     path: "/",
     maxAge: CART_TTL_DAYS * 24 * 60 * 60,
   });
-  return id;
 }
 
 /**

@@ -138,9 +138,14 @@ class Kaizen_Store_Render {
 	 * @return string
 	 */
 	public static function item_html( $product, $config, $view ) {
-		$url    = isset( $product['url'] ) ? $product['url'] : '';
-		$title  = isset( $product['title'] ) ? $product['title'] : '';
-		$target = $config['new_tab'] ? ' target="_blank" rel="noopener"' : '';
+		$store_url = isset( $product['url'] ) ? $product['url'] : '';
+		$title     = isset( $product['title'] ) ? $product['title'] : '';
+		$target    = $config['new_tab'] ? ' target="_blank" rel="noopener"' : '';
+		$shop      = Kaizen_Store_Settings::shop_enabled() && 'site' === $config['link_to'] && isset( $view['store']['slug'], $view['market']['slug'], $product['handle'] );
+		// A product's page on this site when there is one; else, or when the view says so, the store's own.
+		$url    = $shop ? Kaizen_Store_Product::url( $view['store']['slug'], $view['market']['slug'], $product['handle'], $store_url ) : $store_url;
+		$labels = isset( $view['labels'] ) && is_array( $view['labels'] ) ? $view['labels'] : array();
+		$cart   = isset( $product['cart'] ) && is_array( $product['cart'] ) ? $product['cart'] : null;
 		$html   = '<li class="kaizen-item"><div class="kaizen-card">';
 		$html  .= '<a class="kaizen-link" href="' . esc_url( $url ) . '"' . $target . '>';
 		if ( ! empty( $product['image']['url'] ) ) {
@@ -156,12 +161,46 @@ class Kaizen_Store_Render {
 		if ( $config['show_excerpt'] && ! empty( $product['excerpt'] ) ) {
 			$html .= '<p class="kaizen-excerpt">' . esc_html( $product['excerpt'] ) . '</p>';
 		}
-		if ( $config['show_button'] ) {
-			$language = isset( $view['market']['language'] ) ? $view['market']['language'] : '';
-			$text     = '' !== $config['button_text'] ? $config['button_text'] : self::button_text( $language );
-			$html    .= '<p class="kaizen-action"><a class="kaizen-button" href="' . esc_url( $url ) . '"' . $target . ' aria-label="' . esc_attr( $text . ': ' . $title ) . '">' . esc_html( $text ) . '</a></p>';
+		$action = self::action_html( $product, $config, $view, $url, $target, $cart, $labels );
+		if ( '' !== $action ) {
+			$html .= '<p class="kaizen-action">' . $action . '</p>';
 		}
 		return $html . '</div></li>';
+	}
+
+	/**
+	 * What is under a card: Add to cart for a product that can go in the cart and has one variant, Choose options (the product's page) for one
+	 * with several, Sold out, or the plain button to the product's page.
+	 */
+	private static function action_html( $product, $config, $view, $url, $target, $cart, $labels ) {
+		$title    = isset( $product['title'] ) ? $product['title'] : '';
+		$language = isset( $view['market']['language'] ) ? $view['market']['language'] : '';
+		$page     = Kaizen_Store_Settings::shop_enabled() && 'site' === $config['link_to'];
+		if ( $config['show_cart'] && $page && $cart && ! empty( $cart['cartable'] ) && ! empty( $labels['addToCart'] ) ) {
+			if ( ! empty( $cart['sold_out'] ) ) {
+				return '<button type="button" class="kaizen-add" disabled>' . esc_html( $labels['soldOut'] ) . '</button>';
+			}
+			if ( ! empty( $cart['variant_id'] ) ) {
+				$data = array(
+					'store'   => $view['store']['slug'],
+					'market'  => $view['market']['slug'],
+					'variant' => $cart['variant_id'],
+					'title'   => $title,
+					'image'   => ! empty( $product['image']['url'] ) ? $product['image']['url'] : '',
+					'price'   => isset( $product['price']['text'] ) ? $product['price']['text'] : '',
+					'url'     => $url,
+				);
+				return '<button type="button" class="kaizen-add" data-kaizen-add="' . esc_attr( wp_json_encode( $data, JSON_UNESCAPED_UNICODE ) ) . '" aria-label="' . esc_attr( $labels['addToCart'] . ': ' . $title ) . '">' . esc_html( $labels['addToCart'] ) . '</button>';
+			}
+			if ( ! empty( $labels['chooseOptions'] ) ) {
+				return '<a class="kaizen-button" href="' . esc_url( $url ) . '"' . $target . ' aria-label="' . esc_attr( $labels['chooseOptions'] . ': ' . $title ) . '">' . esc_html( $labels['chooseOptions'] ) . '</a>';
+			}
+		}
+		if ( $config['show_button'] ) {
+			$text = '' !== $config['button_text'] ? $config['button_text'] : self::button_text( $language );
+			return '<a class="kaizen-button" href="' . esc_url( $url ) . '"' . $target . ' aria-label="' . esc_attr( $text . ': ' . $title ) . '">' . esc_html( $text ) . '</a>';
+		}
+		return '';
 	}
 
 	/**

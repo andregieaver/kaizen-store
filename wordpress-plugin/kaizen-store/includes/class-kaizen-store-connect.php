@@ -19,6 +19,7 @@ class Kaizen_Store_Connect {
 		add_action( 'admin_post_kaizen_store_disconnect', array( __CLASS__, 'disconnect' ) );
 		add_action( 'admin_post_kaizen_store_clear_cache', array( __CLASS__, 'clear_cache' ) );
 		add_action( 'admin_post_kaizen_store_save_address', array( __CLASS__, 'save_address' ) );
+		add_action( 'admin_post_kaizen_store_save_shop', array( __CLASS__, 'save_shop' ) );
 		add_action( 'admin_init', array( __CLASS__, 'finish' ) );
 	}
 
@@ -156,5 +157,28 @@ class Kaizen_Store_Connect {
 			update_option( 'kaizen_store_api_url', Kaizen_Store_Settings::clean_url( $url ), false );
 		}
 		self::back( 'address' );
+	}
+
+	/**
+	 * The shop settings: the cart and product pages on or off, the round cart button, and which page is the product page.
+	 */
+	public static function save_shop() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You are not allowed to do that.', 'kaizen-store' ), 403 );
+		}
+		check_admin_referer( 'kaizen_store_save_shop' );
+		update_option( 'kaizen_store_shop', isset( $_POST['kaizen_shop'] ) ? '1' : '0', false );
+		update_option( 'kaizen_store_floating_cart', isset( $_POST['kaizen_floating_cart'] ) ? '1' : '0', false );
+		if ( isset( $_POST['kaizen_create_page'] ) ) {
+			delete_option( Kaizen_Store_Product::OPTION_PAGE );
+			Kaizen_Store_Product::create_page();
+		} elseif ( isset( $_POST['kaizen_product_page'] ) ) {
+			$page = (int) $_POST['kaizen_product_page'];
+			if ( $page > 0 && 'page' === get_post_type( $page ) ) {
+				update_option( Kaizen_Store_Product::OPTION_PAGE, $page, false );
+				Kaizen_Store_Product::schedule_flush();
+			}
+		}
+		self::back( 'shop' );
 	}
 }

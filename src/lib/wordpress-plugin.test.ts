@@ -73,11 +73,14 @@ describe("the WordPress plugin (D169)", () => {
     }
     await walk(API_ROUTES, "");
     // `/stores/' . rawurlencode( $store ) . '/terms` is the route `/stores/[slug]/terms`.
-    expect([...haves].sort()).toEqual(expect.arrayContaining(["/token", "/connection", "/stores", "/stores/[slug]/terms", "/stores/[slug]/products", "/stores/[slug]/view"]));
+    expect([...haves].sort()).toEqual(expect.arrayContaining(["/token", "/connection", "/stores", "/stores/[slug]/terms", "/stores/[slug]/products", "/stores/[slug]/view", "/stores/[slug]/product", "/stores/[slug]/cart/quote", "/stores/[slug]/cart/handoff"]));
     for (const path of ["/token", "/connection", "/stores"]) expect(wanted).toContain(path);
     expect(api).toContain("'/stores/' . rawurlencode( $store ) . '/terms'");
     expect(api).toContain("'/stores/' . rawurlencode( $store ) . '/products'");
     expect(api).toContain("'/stores/' . rawurlencode( $store ) . '/view'");
+    expect(api).toContain("'/stores/' . rawurlencode( $store ) . '/product'");
+    expect(api).toContain("'/stores/' . rawurlencode( $store ) . '/cart/quote'");
+    expect(api).toContain("'/stores/' . rawurlencode( $store ) . '/cart/handoff'");
   });
 
   it("speaks the approval's words: the request Kaizen reads and the answer it gives back", async () => {
@@ -87,6 +90,24 @@ describe("the WordPress plugin (D169)", () => {
     for (const word of ["kaizen_state", "kaizen_code", "kaizen_error", `"site"`, `"return"`, `"state"`, `"challenge"`]) expect(lib, word).toContain(word);
     // The same challenge: base64url of the SHA-256 of the verifier.
     expect(connect).toContain("hash( 'sha256', $verifier, true )");
+  });
+
+  it("registers its scripts at init (block themes draw content before they queue scripts) and never trusts the browser's lines", async () => {
+    const shortcode = await read("includes/class-kaizen-store-shortcode.php");
+    expect(shortcode).toContain("add_action( 'init', array( __CLASS__, 'register_assets' ) )");
+    expect(shortcode).not.toMatch(/add_action\( 'wp_enqueue_scripts', array\( __CLASS__, 'register_assets' \) \)/);
+    const rest = await read("includes/class-kaizen-store-rest.php");
+    // The cart route validates variants, quantities and the store before Kaizen is asked, and counts calls per address.
+    for (const word of ["stores_in_use()", "Kaizen_Store_Views::UUID", "$quantity > 20", "count( $lines ) > 30", "allowed( 'quote'", "allowed( 'checkout'"]) expect(rest, word).toContain(word);
+  });
+
+  it("speaks the cart's words: what the script reads from Kaizen's answers exists in them", async () => {
+    const script = await read("assets/cart.js");
+    const lib = await readFile(path.join(import.meta.dirname, "wordpress-cart.ts"), "utf8");
+    for (const label of [...script.matchAll(/labels\(\)\.([a-zA-Z]+)/g)].map((m) => m[1]).filter((name) => name !== "loading").concat(["cart", "checkout", "subtotal", "addToCart", "emptyCart"])) {
+      expect(lib, `label ${label}`).toMatch(new RegExp(`\\b${label}\\b`));
+    }
+    for (const field of ["subtotal_text", "vat_label", "line_text", "available", "variant_id"]) expect(script, field).toContain(field);
   });
 
   it("never prints what it was not given unescaped, and never reads the superglobals unchecked", async () => {

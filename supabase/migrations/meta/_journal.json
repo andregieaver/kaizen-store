@@ -1877,6 +1877,13 @@
       "when": 1791229479395,
       "tag": "20261005194439_wordpress_connections_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1791231497423,
+      "tag": "20261005201817_cart_handoff",
+      "breakpoints": true
     }
   ]
 }

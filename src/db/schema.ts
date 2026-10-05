@@ -2090,6 +2090,13 @@ export const carts = commerce.table(
      * its channel and device. The visit is deleted after 25 months; the cart then keeps nothing.
      */
     visitId: uuid("visit_id").references((): AnyPgColumn => visits.id, { onDelete: "set null" }),
+    /**
+     * A cart made on another site (D170, the WordPress plugin) is opened here by a one-time link: the hash of its secret, when it
+     * runs out, and where it goes (the cart or the checkout). The link sets the browser's cart cookie once and is then cleared.
+     */
+    handoffHash: text("handoff_hash"),
+    handoffExpiresAt: timestamp("handoff_expires_at", { withTimezone: true }),
+    handoffTo: text("handoff_to"),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -2097,6 +2104,8 @@ export const carts = commerce.table(
   },
   (t) => [
     unique("carts_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("carts_handoff_idx").on(t.handoffHash),
+    check("carts_handoff_to", sql`${t.handoffTo} is null or ${t.handoffTo} in ('cart', 'checkout')`),
     check("carts_bonus_request", sql`${t.bonusRequestMinor} >= 0`),
     check("carts_vat_number", sql`${t.vatNumber} is null or ${t.vatNumber} ~ '^[A-Z]{2}[0-9A-Z+*.]{2,12}$'`),
     foreignKey({ name: "carts_vat_check_fk", columns: [t.storeId, t.vatCheckId], foreignColumns: [vatChecks.storeId, vatChecks.id] }),

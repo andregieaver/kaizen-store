@@ -230,7 +230,8 @@
 			columns: $( '#kaizen-columns' ).value,
 			button_text: $( '#kaizen-button-text' ).value
 		};
-		[ 'show_price', 'show_excerpt', 'show_button', 'new_tab' ].forEach( function ( key ) {
+		form.link_to = $( '#kaizen-link-to' ).value;
+		[ 'show_price', 'show_excerpt', 'show_button', 'show_cart', 'new_tab' ].forEach( function ( key ) {
 			form[ key ] = $( 'input[name="kaizen_view[' + key + ']"]' ).checked ? 1 : 0;
 		} );
 		return form;

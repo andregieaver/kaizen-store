@@ -99,6 +99,8 @@ class Kaizen_Store_Views {
 			'show_button'  => 1,
 			'button_text'  => '',
 			'new_tab'      => 0,
+			'show_cart'    => 1,
+			'link_to'      => 'site',
 		);
 	}
 
@@ -164,6 +166,9 @@ class Kaizen_Store_Views {
 		foreach ( array( 'show_price', 'show_excerpt', 'show_button', 'new_tab' ) as $flag ) {
 			$out[ $flag ] = ! empty( $raw[ $flag ] ) ? 1 : 0;
 		}
+		// Older views, saved before the cart existed, have it on and link to the site's product page.
+		$out['show_cart'] = array_key_exists( 'show_cart', $raw ) ? ( ! empty( $raw['show_cart'] ) ? 1 : 0 ) : 1;
+		$out['link_to']   = isset( $raw['link_to'] ) && 'store' === $raw['link_to'] ? 'store' : 'site';
 		$out['button_text'] = isset( $raw['button_text'] ) ? mb_substr( sanitize_text_field( (string) $raw['button_text'] ), 0, 40 ) : '';
 		return $out;
 	}
@@ -200,6 +205,36 @@ class Kaizen_Store_Views {
 	public static function save( $post_id, $settings ) {
 		update_post_meta( $post_id, self::META_KEY, wp_slash( wp_json_encode( self::sanitize( $settings ) ) ) );
 		Kaizen_Store_Render::clear_cache();
+	}
+
+	/**
+	 * The stores the saved views use: the only stores the product page and the cart ask Kaizen about, so a visitor cannot ask this site's
+	 * connection for a store none of its pages shows.
+	 *
+	 * @return string[]
+	 */
+	public static function stores_in_use() {
+		static $stores = null;
+		if ( null !== $stores ) {
+			return $stores;
+		}
+		$stores = array();
+		$ids    = get_posts(
+			array(
+				'post_type'   => self::POST_TYPE,
+				'post_status' => 'publish',
+				'numberposts' => -1,
+				'fields'      => 'ids',
+			)
+		);
+		foreach ( $ids as $id ) {
+			$config = self::get( $id );
+			if ( $config && '' !== $config['store'] ) {
+				$stores[ $config['store'] ] = true;
+			}
+		}
+		$stores = array_keys( $stores );
+		return $stores;
 	}
 
 	/**

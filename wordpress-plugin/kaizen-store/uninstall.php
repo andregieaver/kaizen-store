@@ -12,6 +12,11 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 
 delete_option( 'kaizen_store_connection' );
 delete_option( 'kaizen_store_api_url' );
+delete_option( 'kaizen_store_shop' );
+delete_option( 'kaizen_store_floating_cart' );
+delete_option( 'kaizen_store_product_page' );
+delete_option( 'kaizen_store_flush_rules' );
+delete_option( 'kaizen_store_version' );
 
 global $wpdb;
 // phpcs:ignore WordPress.DB.DirectDatabaseQuery

@@ -98,6 +98,18 @@ class Kaizen_Store_Api {
 		return self::request( 'GET', '/stores/' . rawurlencode( $store ) . '/products', array( 'q' => $search, 'limit' => 30 ) );
 	}
 
+	public static function product( $store, $market, $handle ) {
+		return self::request( 'GET', '/stores/' . rawurlencode( $store ) . '/product', array( 'handle' => $handle, 'market' => $market ) );
+	}
+
+	public static function quote( $store, $market, $lines ) {
+		return self::request( 'POST', '/stores/' . rawurlencode( $store ) . '/cart/quote', array(), array( 'market' => $market, 'lines' => $lines ) );
+	}
+
+	public static function handoff( $store, $market, $lines, $to = 'checkout' ) {
+		return self::request( 'POST', '/stores/' . rawurlencode( $store ) . '/cart/handoff', array(), array( 'market' => $market, 'lines' => $lines, 'to' => $to ) );
+	}
+
 	public static function view( $store, $query ) {
 		return self::request( 'GET', '/stores/' . rawurlencode( $store ) . '/view', $query );
 	}

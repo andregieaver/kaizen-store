@@ -10,12 +10,27 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {} }));
 vi.mock("next/server", () => ({ connection: async () => {} }));
 
+/** The browser's cookies, kept: what a route sets is what the next call reads. */
+const jar = new Map<string, string>();
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) => (jar.has(name) ? { name, value: jar.get(name) } : undefined),
+    getAll: () => [...jar].map(([name, value]) => ({ name, value })),
+    set: (name: string, value: string) => void jar.set(name, value),
+  }),
+}));
+
 const wp = await import("./wordpress");
 const stores = await import("./stores");
 const { GET: storesRoute } = await import("@/app/api/wordpress/v1/stores/route");
 const { GET: viewRoute } = await import("@/app/api/wordpress/v1/stores/[slug]/view/route");
 const { GET: termsRoute } = await import("@/app/api/wordpress/v1/stores/[slug]/terms/route");
 const { GET: pickRoute } = await import("@/app/api/wordpress/v1/stores/[slug]/products/route");
+const { GET: productRoute } = await import("@/app/api/wordpress/v1/stores/[slug]/product/route");
+const { POST: quoteRoute } = await import("@/app/api/wordpress/v1/stores/[slug]/cart/quote/route");
+const { POST: handoffRoute } = await import("@/app/api/wordpress/v1/stores/[slug]/cart/handoff/route");
+const { GET: resumeRoute } = await import("@/app/s/[store]/[market]/cart/resume/route");
+const cartModule = await import("./cart");
 const { POST: tokenRoute } = await import("@/app/api/wordpress/v1/token/route");
 const { GET: connectionRoute, DELETE: disconnectRoute } = await import("@/app/api/wordpress/v1/connection/route");
 
@@ -283,5 +298,197 @@ describe("stores and accounts that do not belong to it", () => {
     const { token } = await tokenFor();
     const body = (await (await storesRoute(ask("/api/wordpress/v1/stores", token))).json()) as { stores: { slug: string }[] };
     if (template) expect(body.stores.map((s) => s.slug)).not.toContain(template);
+  });
+});
+
+
+// ---------------------------------------------------------------------------------------------------------------------------------
+// The product page and the cart held on the site (D170)
+// ---------------------------------------------------------------------------------------------------------------------------------
+
+type Qty = { variant_id: string; quantity: number };
+type QuoteBody = { lines: { variant_id: string; status: string; quantity: number; available: number; title: string; unit: { amount_minor: number; text: string } | null; line_text: string | null }[]; subtotal_minor: number; subtotal_text: string; count: number; vat_label: string; labels: Record<string, string>; market: { slug: string } };
+type ProductBody = { product: { handle: string; title: string; url: string; cartable: boolean; reason: string | null; options: { name: string; values: string[] }[]; variants: { id: string; options: Record<string, string>; price: { amount_minor: number; text: string }; stock: { level: string; max: number } }[]; images: { url: string }[] }; labels: Record<string, string>; market: { slug: string } };
+
+const post = (path: string, token: string, body: unknown) =>
+  new Request(`https://kaizen.test${path}`, { method: "POST", headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) });
+const forStore = (s: string) => ({ params: Promise.resolve({ slug: s }) }) as never;
+
+/** Goods of the store with their variants, and the appointment product that cannot be put in such a cart. */
+async function catalogue() {
+  const goods = await db().execute<Row>(sql`
+    select distinct p.handle, v.id as variant_id, p.id as product_id, v.sku from commerce.products p join commerce.product_variants v on v.product_id = p.id and v.active
+    join commerce.current_prices cp on cp.variant_id = v.id
+    where p.store_id = (select id from commerce.stores where slug = ${slug}) and p.status = 'active' and p.kind = 'goods' and v.delivery = 'physical' and not p.subscription_only
+    order by p.handle, v.sku
+  `);
+  const [appointment] = await db().execute<Row>(sql`
+    select p.handle, v.id as variant_id from commerce.products p join commerce.product_variants v on v.product_id = p.id
+    where p.store_id = (select id from commerce.stores where slug = ${slug}) and p.kind <> 'goods' and p.status = 'active' limit 1
+  `);
+  return { goods: goods.map((g) => ({ handle: String(g.handle), variantId: String(g.variant_id), productId: String(g.product_id) })), appointment: appointment ? { handle: String(appointment.handle), variantId: String(appointment.variant_id) } : null };
+}
+
+describe("a product page for the site", () => {
+  it("has the product, its options and variants priced and with their stock, in the market's language", async () => {
+    const { token } = await tokenFor();
+    const { goods } = await catalogue();
+    const res = await productRoute(ask(`/api/wordpress/v1/stores/${slug}/product?handle=${goods[0].handle}`, token), forStore(slug));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as ProductBody;
+    expect(body.product).toMatchObject({ handle: goods[0].handle, cartable: true, reason: null });
+    expect(body.product.url).toContain(`/${body.market.slug}/p/${goods[0].handle}`);
+    expect(body.product.variants.length).toBeGreaterThan(0);
+    for (const variant of body.product.variants) {
+      expect(variant.price.text).toMatch(/\d/);
+      expect(["in_stock", "low", "out"]).toContain(variant.stock.level);
+      expect(variant.stock.max).toBeLessThanOrEqual(20);
+    }
+    for (const option of body.product.options) for (const variant of body.product.variants) expect(option.values).toContain(variant.options[option.name]);
+    expect(body.labels.addToCart).toBeTruthy();
+    expect(body.labels.onlyAvailable).toContain("{n}");
+    expect(body.labels.lowStock).toContain("{n}");
+  });
+
+  it("says a product that needs a time or a plan cannot be put in the cart, and never shows another store's product", async () => {
+    const { token } = await tokenFor();
+    const { appointment } = await catalogue();
+    if (appointment) {
+      const body = (await (await productRoute(ask(`/api/wordpress/v1/stores/${slug}/product?handle=${appointment.handle}`, token), forStore(slug))).json()) as ProductBody;
+      expect(body.product).toMatchObject({ cartable: false, reason: "booking" });
+    }
+    const [foreign] = await db().execute<Row>(sql`select p.handle from commerce.products p where p.store_id = (select id from commerce.stores where slug = ${otherSlug}) limit 1`);
+    // The same demo handle may exist in both stores: only this store's own is ever returned.
+    const res = await productRoute(ask(`/api/wordpress/v1/stores/${slug}/product?handle=no-such-${String(foreign.handle)}`, token), forStore(slug));
+    expect(res.status).toBe(404);
+    expect((await productRoute(ask(`/api/wordpress/v1/stores/${otherSlug}/product?handle=x`, token), forStore(otherSlug))).status).toBe(404);
+    expect((await productRoute(ask(`/api/wordpress/v1/stores/${slug}/product?handle=x&market=a/b`, token), forStore(slug))).status).toBe(400);
+  });
+
+  it("is told on each card of a view whether it can be put in the cart", async () => {
+    const { token } = await tokenFor();
+    const view = (await (await viewRoute(ask(`/api/wordpress/v1/stores/${slug}/view?limit=12`, token), forStore(slug))).json()) as { products: { handle: string; cart: { cartable: boolean; reason: string | null; variant_id: string | null; variant_count: number; sold_out: boolean } }[] };
+    expect(view.products.length).toBeGreaterThan(0);
+    for (const product of view.products) {
+      expect(typeof product.cart.cartable).toBe("boolean");
+      if (product.cart.variant_count === 1) expect(product.cart.variant_id).toMatch(/^[0-9a-f-]{36}$/);
+      else expect(product.cart.variant_id).toBeNull();
+    }
+    expect(view.products.some((p) => p.cart.cartable)).toBe(true);
+    expect(view.products.some((p) => !p.cart.cartable && p.cart.reason === "booking")).toBe(true);
+  });
+});
+
+describe("a cart held on the site", () => {
+  it("is priced live: each line, a subtotal that is the sum of the lines, and a quantity above the stock counted at the stock", async () => {
+    const { token } = await tokenFor();
+    const { goods, appointment } = await catalogue();
+    await db().execute(sql`update commerce.inventory_levels set on_hand = 50 where variant_id in (${goods[0].variantId}::uuid, ${goods[1].variantId}::uuid)`);
+    const lines: Qty[] = [{ variant_id: goods[0].variantId, quantity: 2 }, { variant_id: goods[1].variantId, quantity: 1 }];
+    const raw = await quoteRoute(post(`/api/wordpress/v1/stores/${slug}/cart/quote`, token, { lines }), forStore(slug));
+    const body = (await raw.json()) as QuoteBody;
+    expect(raw.status, JSON.stringify(body)).toBe(200);
+    expect(body.lines.map((l) => l.status)).toEqual(["ok", "ok"]);
+    const sum = body.lines.reduce((total, line) => total + (line.unit?.amount_minor ?? 0) * line.quantity, 0);
+    expect(body.subtotal_minor).toBe(sum);
+    expect(body.subtotal_minor).toBeGreaterThan(0);
+    expect(body.count).toBe(3);
+    expect(body.subtotal_text).toMatch(/\d/);
+    expect(body.vat_label).not.toBe("");
+    expect(body.labels.shippingAtCheckout).toBeTruthy();
+
+    // More than there is: counted at the stock.
+    await db().execute(sql`update commerce.inventory_levels set on_hand = 3 where variant_id = ${goods[0].variantId}::uuid`);
+    const short = (await (await quoteRoute(post(`/api/wordpress/v1/stores/${slug}/cart/quote`, token, { lines: [{ variant_id: goods[0].variantId, quantity: 9 }] }), forStore(slug))).json()) as QuoteBody;
+    expect(short.lines[0]).toMatchObject({ status: "insufficient", available: 3 });
+    expect(short.count).toBe(3);
+
+    // Not goods, not this store's, not there: left out of the subtotal.
+    const [foreign] = await db().execute<Row>(sql`select v.id from commerce.product_variants v where v.store_id = (select id from commerce.stores where slug = ${otherSlug}) limit 1`);
+    const odd = [{ variant_id: String(foreign.id), quantity: 1 }, { variant_id: "123e4567-e89b-12d3-a456-426614174000", quantity: 1 }, ...(appointment ? [{ variant_id: appointment.variantId, quantity: 1 }] : [])];
+    const out = (await (await quoteRoute(post(`/api/wordpress/v1/stores/${slug}/cart/quote`, token, { lines: odd }), forStore(slug))).json()) as QuoteBody;
+    expect(out.lines.every((l) => l.status === "unavailable")).toBe(true);
+    expect(out.subtotal_minor).toBe(0);
+  });
+
+  it("refuses a cart it cannot read", async () => {
+    const { token } = await tokenFor();
+    for (const body of [{}, { lines: [] }, { lines: [{ variant_id: "x", quantity: 1 }] }, { lines: [{ variant_id: "123e4567-e89b-12d3-a456-426614174000", quantity: 0 }] }, { lines: [{ variant_id: "123e4567-e89b-12d3-a456-426614174000", quantity: 21 }] }]) {
+      expect((await quoteRoute(post(`/api/wordpress/v1/stores/${slug}/cart/quote`, token, body), forStore(slug))).status, JSON.stringify(body)).toBe(400);
+    }
+  });
+
+  it("is handed over: the cart is made in the store, opened once by its link, and is then the browser's cart with the prices the quote gave", async () => {
+    const { token } = await tokenFor();
+    const { goods, appointment } = await catalogue();
+    await db().execute(sql`update commerce.inventory_levels set on_hand = 50 where variant_id in (${goods[0].variantId}::uuid, ${goods[1].variantId}::uuid)`);
+    const lines: Qty[] = [{ variant_id: goods[0].variantId, quantity: 2 }, { variant_id: goods[1].variantId, quantity: 1 }, ...(appointment ? [{ variant_id: appointment.variantId, quantity: 1 }] : [])];
+    const quote = (await (await quoteRoute(post(`/api/wordpress/v1/stores/${slug}/cart/quote`, token, { lines: lines.slice(0, 2) }), forStore(slug))).json()) as QuoteBody;
+
+    const response = await handoffRoute(post(`/api/wordpress/v1/stores/${slug}/cart/handoff`, token, { lines, to: "checkout" }), forStore(slug));
+    expect(response.status).toBe(200);
+    const made = (await response.json()) as { url: string; lines: { variant_id: string; quantity: number; outcome: string }[] };
+    expect(made.url).toMatch(new RegExp(`/${quote.market.slug}/cart/resume\\?t=kzwh_`));
+    expect(made.lines.filter((l) => l.outcome === "unavailable").length).toBe(appointment ? 1 : 0);
+    const secret = new URL(made.url).searchParams.get("t")!;
+    const stored = JSON.stringify(await db().execute<Row>(sql`select * from commerce.carts where handoff_hash is not null`));
+    expect(stored).not.toContain(secret);
+
+    // Opened: the browser's cart, then on to the checkout; the secret works once.
+    jar.clear();
+    const open = await resumeRoute(new Request(made.url), { params: Promise.resolve({ store: slug, market: quote.market.slug }) } as never);
+    expect(open.status).toBe(303);
+    expect(open.headers.get("location")).toBe(`/s/${slug}/${quote.market.slug}/checkout`);
+    expect(open.headers.get("cache-control")).toBe("no-store");
+    expect(jar.size).toBe(1);
+    const cart = await cartModule.getCart({ storeId: (await stores.getStore(slug))!.id, market: (await stores.getStore(slug))!.markets.find((m) => m.slug === quote.market.slug)! });
+    expect(cart.lines.map((l) => [l.variantId, l.quantity, l.status])).toEqual(
+      expect.arrayContaining([[goods[0].variantId, 2, "ok"], [goods[1].variantId, 1, "ok"]]),
+    );
+    expect(cart.lines.length).toBe(2);
+    // What the shopper sees in the store's cart is what the plugin quoted.
+    expect(cart.lines.reduce((total, line) => total + (line.unitPriceMinor ?? 0) * line.quantity, 0)).toBe(quote.subtotal_minor);
+    const [row] = await db().execute<Row>(sql`select handoff_hash, expires_at > now() + interval '20 days' as long from commerce.carts where id = ${[...jar.values()][0]}::uuid`);
+    expect(row.handoff_hash).toBeNull();
+    expect(row.long).toBe(true);
+
+    jar.clear();
+    const again = await resumeRoute(new Request(made.url), { params: Promise.resolve({ store: slug, market: quote.market.slug }) } as never);
+    expect(again.headers.get("location")).toBe(`/s/${slug}/${quote.market.slug}/cart`);
+    expect(jar.size).toBe(0);
+  });
+
+  it("cuts a quantity to the stock, makes no cart when nothing can be bought, and ends a link that runs out or is used in another market", async () => {
+    const { token } = await tokenFor();
+    const { goods, appointment } = await catalogue();
+    await db().execute(sql`update commerce.inventory_levels set on_hand = 2 where variant_id = ${goods[0].variantId}::uuid`);
+    const cut = (await (await handoffRoute(post(`/api/wordpress/v1/stores/${slug}/cart/handoff`, token, { lines: [{ variant_id: goods[0].variantId, quantity: 9 }], to: "cart" }), forStore(slug))).json()) as { url: string; lines: { quantity: number; outcome: string }[] };
+    expect(cut.lines[0]).toMatchObject({ quantity: 2, outcome: "capped" });
+    const before = Number((await db().execute<Row>(sql`select count(*) from commerce.carts`))[0].count);
+    const none = await handoffRoute(post(`/api/wordpress/v1/stores/${slug}/cart/handoff`, token, { lines: [{ variant_id: "123e4567-e89b-12d3-a456-426614174000", quantity: 1 }, ...(appointment ? [{ variant_id: appointment.variantId, quantity: 1 }] : [])] }), forStore(slug));
+    expect(none.status).toBe(422);
+    expect(Number((await db().execute<Row>(sql`select count(*) from commerce.carts`))[0].count)).toBe(before);
+
+    const secret = new URL(cut.url).searchParams.get("t")!;
+    const market = new URL(cut.url).pathname.split("/")[3];
+    jar.clear();
+    const wrong = await resumeRoute(new Request(cut.url), { params: Promise.resolve({ store: otherSlug, market }) } as never);
+    expect(wrong.headers.get("location")).toBe(`/s/${otherSlug}/${market}/cart`);
+    expect(jar.size).toBe(0);
+    await db().execute(sql`update commerce.carts set handoff_expires_at = now() - interval '1 second' where handoff_hash is not null`);
+    const late = await resumeRoute(new Request(cut.url), { params: Promise.resolve({ store: slug, market }) } as never);
+    expect(late.headers.get("location")).toBe(`/s/${slug}/${market}/cart`);
+    expect(jar.size).toBe(0);
+    expect(secret.startsWith("kzwh_")).toBe(true);
+    const junk = await resumeRoute(new Request(`https://kaizen.test/s/${slug}/${market}/cart/resume?t=nope`), { params: Promise.resolve({ store: slug, market }) } as never);
+    expect(junk.status).toBe(303);
+  });
+
+  it("limits the carts one connection makes in an hour", async () => {
+    const { token, connectionId } = await tokenFor();
+    const { goods } = await catalogue();
+    await db().execute(sql`insert into commerce.chat_usage (store_id, bucket, "window", count) values (null, ${`wp:cart:${connectionId}`}, date_trunc('hour', now()), 60)`);
+    const res = await handoffRoute(post(`/api/wordpress/v1/stores/${slug}/cart/handoff`, token, { lines: [{ variant_id: goods[0].variantId, quantity: 1 }] }), forStore(slug));
+    expect(res.status).toBe(429);
   });
 });

@@ -56,9 +56,13 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
           </li>
           <li>The stores you belong to when it asks, so a store you leave is no longer shown.</li>
         </ul>
+        <h2 className="mt-2 font-medium">What else it can do</h2>
+        <ul className="list-disc pl-5 text-muted">
+          <li>Make a shopping cart in a store for a shopper who presses Checkout on the site, which opens in the store to be paid there.</li>
+        </ul>
         <h2 className="mt-2 font-medium">What it cannot do</h2>
         <ul className="list-disc pl-5 text-muted">
-          <li>Read orders, customers, settings or anything private, or change anything in a store.</li>
+          <li>Read orders, customers, settings or anything private, or change a product, price, order or setting.</li>
         </ul>
         <p className="mt-2 text-muted">You can disconnect it at any time under Account, WordPress.</p>
       </section>

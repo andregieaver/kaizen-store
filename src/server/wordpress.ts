@@ -10,11 +10,13 @@ import { storeSiteUrl, marketPath } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
 import { categoryTree } from "@/lib/taxonomy";
 import { summarize } from "@/lib/seo";
+import { HANDOFFS_PER_HOUR, cartLabels, type CartLabels } from "@/lib/wordpress-cart";
 import {
   CALLS_PER_HOUR,
   CODE_MINUTES,
   CODE_PREFIX,
   EXCHANGES_PER_HOUR,
+  
   TOKEN_PREFIX,
   hashSecret,
   looksLikeCode,
@@ -28,6 +30,7 @@ import {
 import { wordpressPrice, type WordpressPrice } from "@/lib/wordpress-view";
 
 import { listGridProducts } from "./catalog";
+import { cardCarts, type CardCart } from "./wordpress-shop";
 import { gridScope } from "./content-grid";
 import { marketIn } from "./shop";
 import { getStore, type Store } from "./stores";
@@ -123,6 +126,11 @@ export async function authenticate(header: string | null): Promise<{ ok: true; c
     where id = ${id}::uuid and (last_used_at is null or last_used_at < now() - interval '10 minutes')
   `);
   return { ok: true, caller: { connectionId: id, accountId: String(row.account_id), email: String(row.email) } };
+}
+
+/** A connection's hand-overs of carts in the hour (`HANDOFFS_PER_HOUR`): false once it is over. */
+export async function takeHandoff(connectionId: string): Promise<boolean> {
+  return take(`wp:cart:${connectionId}`, HANDOFFS_PER_HOUR);
 }
 
 /** The sites an account has connected, newest first (the ones whose approval was never collected are not listed). */
@@ -221,9 +229,11 @@ export type WpProduct = {
   url: string;
   image: { url: string; alt: string } | null;
   price: WordpressPrice;
+  /** Whether it can be put in a cart held on this site, with its variant when it has only one. */
+  cart: CardCart;
 };
 
-export type WpView = { store: { slug: string; name: string }; market: WpMarket; open: boolean; products: WpProduct[]; shop_url: string };
+export type WpView = { store: { slug: string; name: string }; market: WpMarket; open: boolean; products: WpProduct[]; shop_url: string; labels?: CartLabels };
 
 const absolute = (url: string) => (url.startsWith("/") ? `${siteUrl()}${url}` : url);
 
@@ -241,9 +251,11 @@ export async function viewOf(store: Store, view: ViewQuery): Promise<WpView | nu
   if (!scope) return { ...base, open: true, products: [] };
   const products = await listGridProducts(store.id, market, { ...scope, sort: view.sort, limit: view.limit, ...(view.source === "products" && { ids: view.ids }) });
   const words = t(market.lang);
+  const carts = await cardCarts(store, market, products.map((p) => p.id));
   return {
     ...base,
     open: true,
+    labels: cartLabels(words, { viewInStore: "" }),
     products: products.map((p) => ({
       id: p.id,
       handle: p.handle,
@@ -252,6 +264,7 @@ export async function viewOf(store: Store, view: ViewQuery): Promise<WpView | nu
       url: storeSiteUrl(store.slug) + marketPath(store.slug, market.slug, `/p/${p.handle}`),
       image: p.image ? { url: absolute(p.image.url), alt: p.image.alt } : null,
       price: wordpressPrice(p.price, p.priceVaries, market.locale, words),
+      cart: carts.get(p.id) ?? { cartable: false, reason: "service", variant_id: null, variant_count: 0, sold_out: false },
     })),
   };
 }

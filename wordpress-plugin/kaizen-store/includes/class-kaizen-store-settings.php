@@ -97,6 +97,24 @@ class Kaizen_Store_Settings {
 	}
 
 	/**
+	 * Whether the product pages and the slide-out cart are on (they are, once connected, unless switched off).
+	 *
+	 * @return bool
+	 */
+	public static function shop_enabled() {
+		return '0' !== (string) get_option( 'kaizen_store_shop', '1' );
+	}
+
+	/**
+	 * Whether a round cart button is shown on every page (not only where a view is).
+	 *
+	 * @return bool
+	 */
+	public static function floating_cart() {
+		return '0' !== (string) get_option( 'kaizen_store_floating_cart', '1' );
+	}
+
+	/**
 	 * This site's origin as Kaizen will check it against the return address: the admin's own.
 	 *
 	 * @return string

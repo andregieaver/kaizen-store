@@ -110,6 +110,7 @@ class Kaizen_Store_Admin {
 			'https'          => array( 'error', __( 'Kaizen only connects sites that use https. Switch this site to https, then try again.', 'kaizen-store' ) ),
 			'cache'          => array( 'success', __( 'The saved product lists were cleared. Pages show current products from now on.', 'kaizen-store' ) ),
 			'address'        => array( 'success', __( 'Kaizen\'s address was saved.', 'kaizen-store' ) ),
+			'shop'           => array( 'success', __( 'The shop settings were saved.', 'kaizen-store' ) ),
 			'address_locked' => array( 'error', __( 'Disconnect before changing Kaizen\'s address.', 'kaizen-store' ) ),
 		);
 		if ( isset( $known[ $notice ] ) ) {
@@ -135,7 +136,7 @@ class Kaizen_Store_Admin {
 		?>
 		<div class="kaizen-panel">
 			<h2><?php esc_html_e( 'Connect this site to your stores', 'kaizen-store' ); ?></h2>
-			<p><?php esc_html_e( 'Show products from your Kaizen Store stores on this site, as a grid or a carousel, with a shortcode. You sign in on Kaizen and approve this site there: your password never comes here. This site can then read the products, prices and pictures your stores show shoppers, and nothing else.', 'kaizen-store' ); ?></p>
+			<p><?php esc_html_e( 'Show products from your Kaizen Store stores on this site, as a grid or a carousel, with a shortcode. You sign in on Kaizen and approve this site there: your password never comes here. This site can then read the products, prices and pictures your stores show shoppers, and make a cart in a store for a shopper who presses Checkout. It reads no orders or customers and changes nothing.', 'kaizen-store' ); ?></p>
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="kaizen_store_connect">
 				<?php wp_nonce_field( 'kaizen_store_connect' ); ?>
@@ -203,6 +204,32 @@ class Kaizen_Store_Admin {
 					?>
 				</a>
 			</p>
+		</div>
+		<div class="kaizen-panel">
+			<h2><?php esc_html_e( 'Shop: product pages and the cart', 'kaizen-store' ); ?></h2>
+			<p><?php esc_html_e( 'Products open on a page of this site and can be put in a slide-out cart. The shopper pays at the store: Checkout takes the cart there, already filled, where shipping, discounts, VAT and payment are handled.', 'kaizen-store' ); ?></p>
+			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+				<input type="hidden" name="action" value="kaizen_store_save_shop">
+				<?php wp_nonce_field( 'kaizen_store_save_shop' ); ?>
+				<p><label><input type="checkbox" name="kaizen_shop" value="1" <?php checked( Kaizen_Store_Settings::shop_enabled() ); ?>> <?php esc_html_e( 'Show products on this site and use the cart', 'kaizen-store' ); ?></label></p>
+				<p><label><input type="checkbox" name="kaizen_floating_cart" value="1" <?php checked( Kaizen_Store_Settings::floating_cart() ); ?>> <?php esc_html_e( 'Show a round cart button on every page once something is in the cart', 'kaizen-store' ); ?></label></p>
+				<p>
+					<label for="kaizen_product_page"><strong><?php esc_html_e( 'Product page', 'kaizen-store' ); ?></strong> <?php esc_html_e( '(a page that holds the shortcode [kaizen_product])', 'kaizen-store' ); ?></label><br>
+					<?php
+					wp_dropdown_pages(
+						array(
+							'name'              => 'kaizen_product_page',
+							'id'                => 'kaizen_product_page',
+							'selected'          => Kaizen_Store_Product::page_id(),
+							'show_option_none'  => __( 'None: products open on the store', 'kaizen-store' ),
+							'option_none_value' => 0,
+						)
+					);
+					?>
+					<label><input type="checkbox" name="kaizen_create_page" value="1"> <?php esc_html_e( 'Make a new product page', 'kaizen-store' ); ?></label>
+				</p>
+				<?php submit_button( __( 'Save shop settings', 'kaizen-store' ), 'secondary', 'submit', false ); ?>
+			</form>
 		</div>
 		<div class="kaizen-panel">
 			<h2><?php esc_html_e( 'Products on your pages', 'kaizen-store' ); ?></h2>
@@ -333,7 +360,15 @@ class Kaizen_Store_Admin {
 				<label class="kaizen-radio"><input type="checkbox" name="kaizen_view[show_price]" value="1" <?php checked( $c['show_price'], 1 ); ?>> <?php esc_html_e( 'Price', 'kaizen-store' ); ?></label>
 				<label class="kaizen-radio"><input type="checkbox" name="kaizen_view[show_excerpt]" value="1" <?php checked( $c['show_excerpt'], 1 ); ?>> <?php esc_html_e( 'Short description', 'kaizen-store' ); ?></label>
 				<label class="kaizen-radio"><input type="checkbox" name="kaizen_view[show_button]" value="1" <?php checked( $c['show_button'], 1 ); ?>> <?php esc_html_e( 'Button', 'kaizen-store' ); ?></label>
+				<label class="kaizen-radio"><input type="checkbox" name="kaizen_view[show_cart]" value="1" <?php checked( $c['show_cart'], 1 ); ?>> <?php esc_html_e( 'Add to cart button', 'kaizen-store' ); ?></label>
 				<label class="kaizen-radio"><input type="checkbox" name="kaizen_view[new_tab]" value="1" <?php checked( $c['new_tab'], 1 ); ?>> <?php esc_html_e( 'Open products in a new tab', 'kaizen-store' ); ?></label>
+				<p>
+					<label for="kaizen-link-to"><?php esc_html_e( 'Products open on', 'kaizen-store' ); ?></label>
+					<select id="kaizen-link-to" name="kaizen_view[link_to]">
+						<option value="site" <?php selected( $c['link_to'], 'site' ); ?>><?php esc_html_e( 'This site\'s product page', 'kaizen-store' ); ?></option>
+						<option value="store" <?php selected( $c['link_to'], 'store' ); ?>><?php esc_html_e( 'The store', 'kaizen-store' ); ?></option>
+					</select>
+				</p>
 				<p>
 					<label for="kaizen-button-text"><?php esc_html_e( 'Button words (leave empty for the market\'s language)', 'kaizen-store' ); ?></label><br>
 					<input type="text" id="kaizen-button-text" name="kaizen_view[button_text]" maxlength="40" class="regular-text" value="<?php echo esc_attr( $c['button_text'] ); ?>">
