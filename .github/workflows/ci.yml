@@ -25,7 +25,8 @@ jobs:
   check:
     if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The whole job (lint, types, unit, integration, build, e2e) takes about 25 minutes; 20 cut it off in the e2e step.
+    timeout-minutes: 45
     services:
       postgres:
         image: pgvector/pgvector:pg17

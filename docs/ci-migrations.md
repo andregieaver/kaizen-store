@@ -49,7 +49,7 @@ Vercel's own build of `main` is switched off in `vercel.json` (`git.deploymentEn
 pull-request previews are unaffected). Production gets new code from the `deploy` job in
 `ci.yml`, which calls a Vercel deploy hook after `check` and, when it ran, `migrate` have succeeded.
 So new code never runs against the old schema, and a failed check or migration deploys nothing.
-The cost is that production now waits for CI (about as long as `check`, 15 to 20 minutes) instead of
+The cost is that production now waits for CI (about as long as `check`, 25 to 30 minutes) instead of
 building at once. The job is off until the repository variable `DEPLOY_VIA_CI` is `true`; the secret
 `VERCEL_DEPLOY_HOOK_URL` is the hook (Vercel → project → Settings → Git → Deploy Hooks, branch `main`).
 *Actions → CI → Run workflow → redeploy* deploys the head of main by hand (to test the hook, or after a
