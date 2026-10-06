@@ -364,16 +364,15 @@ async function hasHostListings(runner: Runner, storeId: string, productIds: stri
   return Boolean(row?.hosted);
 }
 
-/** The gifts that can be given now: sold by the store, shipped, active, priced in the market and in stock. */
+/** The gifts that can be given now: sold by the store, shipped, active, priced in the market and in stock (physically: a gift is never backordered, D172). */
 async function giftItems(runner: Runner, storeId: string, market: Market, earned: CampaignResult["gifts"]): Promise<GiftItem[]> {
   if (earned.length === 0) return [];
   const rows = await runner.execute<Row>(sql`
     select v.id, v.product_id, v.options, coalesce(tl.title, tf.title, p.handle) as title, cp.amount_minor,
       commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
       coalesce(m.thumbnail_url, m.url) as image_url, coalesce(commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
-      (select coalesce(sum(s.available), 0)::int from commerce.available_stock s
-         join commerce.inventory_locations l on l.store_id = s.store_id and l.id = s.location_id and l.active
-         where s.store_id = v.store_id and s.variant_id = v.id) as available
+      (select coalesce(va.in_stock, 0)::int from commerce.variant_availability va
+         where va.store_id = v.store_id and va.variant_id = v.id) as available
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${market.locale}

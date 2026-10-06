@@ -50,6 +50,8 @@ export type OfferedVariant = {
   /** In stock, low stock, sold out or instant download. */
   note: string;
   available: boolean;
+  /** Said when the cart holds as many as one line may (set for a variant on backorder: its stock is no limit, D172). */
+  capped?: string;
   /** The full price, with its VAT label and 30-day reference. */
   price: ReactNode;
   /** The amount alone, for the dropdown. */
@@ -123,6 +125,7 @@ export function VariantPurchase({
             disabled={!variant.available}
             openCart={openCart}
             labels={labels}
+            capped={variant.capped}
           />
           {delivery?.variants.includes(variant.id) && (
             <AddToDelivery key={`delivery-${variant.id}`} store={store} market={market} variantId={variant.id} listHref={delivery.listHref} labels={delivery.labels} />

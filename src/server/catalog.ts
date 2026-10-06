@@ -14,6 +14,7 @@ import type { ShownGroup } from "@/lib/custom-fields";
 import { planPrice, type PlanInterval } from "@/lib/subscriptions";
 import type { ShownMeasure } from "@/lib/unit-price";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
+import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
 
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
 
@@ -333,27 +334,45 @@ export async function getProduct(storeId: string, market: Market, handle: string
 }
 
 /**
- * Units available to sell per variant, across active locations, net of live
- * reservations. Never cached: stock is read on every request.
+ * What a shopper can buy of each variant, read through `commerce.variant_availability`, the one reader of stock (wave 3, D172): the
+ * units in stock across active locations net of live checkout holds (never below zero), the variant's policy at zero and the days it
+ * states for a backorder. Never cached: stock, policy and days are read on every request, so the prerendered shell never goes stale.
+ * A download or a service has no stock and is `UNLIMITED`; a variant that is not the store's is absent from the map.
  */
-export async function getAvailability(
-  storeId: string,
-  variantIds: string[],
-): Promise<Map<string, number>> {
+export async function getVariantStock(storeId: string, variantIds: string[]): Promise<Map<string, VariantStock>> {
   await connection();
+  return variantStockOf(db(), storeId, variantIds);
+}
+
+/** The same read for a caller already in a request or a transaction (the cart, the chat agent, the WordPress routes). */
+export async function variantStockOf(
+  reader: Pick<ReturnType<typeof db>, "execute">,
+  storeId: string,
+  variantIds: readonly string[],
+): Promise<Map<string, VariantStock>> {
   if (variantIds.length === 0) return new Map();
-  const rows = await db().execute<Row>(sql`
-    select s.variant_id, sum(s.available)::int as available
-    from commerce.available_stock s
-    join commerce.inventory_locations l
-      on l.store_id = s.store_id and l.id = s.location_id and l.active
-    where s.store_id = ${storeId}::uuid and s.variant_id in (${sql.join(
+  const rows = await reader.execute<Row>(sql`
+    select va.variant_id, va.delivery, va.in_stock, va.raw_available, va.stock_policy, va.backorder_days, va.can_buy
+    from commerce.variant_availability va
+    where va.store_id = ${storeId}::uuid and va.variant_id in (${sql.join(
       variantIds.map((id) => sql`${id}::uuid`),
       sql`, `,
     )})
-    group by s.variant_id
   `);
-  return new Map(rows.map((r) => [str(r.variant_id), num(r.available)]));
+  return new Map(
+    rows.map((r) => [
+      str(r.variant_id),
+      r.delivery === "physical"
+        ? stockOf({
+            in_stock: num(r.in_stock),
+            raw_available: num(r.raw_available),
+            stock_policy: str(r.stock_policy),
+            backorder_days: r.backorder_days === null ? null : num(r.backorder_days),
+            can_buy: Boolean(r.can_buy),
+          })
+        : UNLIMITED,
+    ]),
+  );
 }
 
 export type GridProduct = ProductSummary & { description: string };

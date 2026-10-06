@@ -33,6 +33,8 @@ const pageOf = (store: Store, job: Pick<DataJob, "id" | "kind">): string => {
   if (job.kind === "order_export") return `${base}/orders/export?job=${job.id}`;
   if (job.kind === "redirect_import") return `${base}/redirects/import/${job.id}`;
   if (job.kind === "redirect_export") return `${base}/redirects/export?job=${job.id}`;
+  if (job.kind === "inventory_import") return `${base}/inventory/import/${job.id}`;
+  if (job.kind === "inventory_export") return `${base}/inventory/export?job=${job.id}`;
   return `${base}/customers/export?job=${job.id}`;
 };
 
@@ -43,6 +45,8 @@ const KIND_WORDS: Record<JobKind, string> = {
   customer_export: "Customer file",
   redirect_import: "Redirect import",
   redirect_export: "Redirect file",
+  inventory_import: "Stock import",
+  inventory_export: "Stock file",
 };
 
 const count = (job: DataJob, key: string): number | null => (typeof job.counts[key] === "number" ? (job.counts[key] as number) : null);
@@ -64,7 +68,8 @@ function describeJob(store: Store, job: DataJob) {
       }
     : null;
   // A redirect import has no drafts, prices or pictures: those figures are left out rather than shown as nothing.
-  const counts = all && job.kind === "redirect_import" ? Object.fromEntries(Object.entries(all).filter(([k, v]) => v !== null && !["saved_as_draft", "prices_changed", "pictures_fetched"].includes(k))) : all;
+  // A stock import has none of those either, and no created or draft products (wave 3, D172).
+  const counts = all && (job.kind === "redirect_import" || job.kind === "inventory_import") ? Object.fromEntries(Object.entries(all).filter(([k, v]) => v !== null && !["saved_as_draft", "prices_changed", "pictures_fetched", ...(job.kind === "inventory_import" ? ["created"] : [])].includes(k))) : all;
   return {
     id: job.id,
     kind: KIND_WORDS[job.kind],

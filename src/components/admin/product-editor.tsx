@@ -51,6 +51,7 @@ import {
   type ProductInput,
   type VariantInput,
 } from "@/lib/product-input";
+import { backorderMayPassAgreed, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, BACKORDER_LONG_HINT, THRESHOLD_MAX } from "@/lib/inventory";
 import type { ProductFacts, WriteRequest, WrittenText } from "@/lib/product-writing";
 import { summarize } from "@/lib/seo";
 import {
@@ -411,6 +412,7 @@ export function ProductEditor(props: Props) {
         <RangeSection storeSlug={storeSlug} product={product} update={update} context={context} />
       )}
       <VariantsSection
+        storeSlug={storeSlug}
         product={product}
         update={update}
         context={context}
@@ -812,6 +814,9 @@ const emptyVariant = (options: Record<string, string>, delivery: Delivery): Vari
   prices: {},
   cost: "",
   stock: 0,
+  stockPolicy: "deny",
+  backorderDays: null,
+  lowStockThreshold: null,
   active: true,
   weightGrams: null,
   hsCode: null,
@@ -847,12 +852,13 @@ function variantsFor(
 type PictureUpload = (file: File) => Promise<{ url: string; thumbnailUrl: string } | { problem: string }>;
 
 function VariantsSection({
+  storeSlug,
   product,
   update,
   context,
   countries,
   upload,
-}: SectionProps & { context: EditorContext; countries: CountryOption[]; upload: PictureUpload | null }) {
+}: SectionProps & { storeSlug: string; context: EditorContext; countries: CountryOption[]; upload: PictureUpload | null }) {
   const [optionsOn, setOptionsOn] = useState(product.options.length > 0);
   const [drafts, setDrafts] = useState(() => product.options.map((o) => o.values.join(", ")));
   const [mixed, setMixed] = useState(() => new Set(product.variants.map((v) => v.delivery)).size > 1);
@@ -867,9 +873,11 @@ function VariantsSection({
     update((p) => {
       const before = p.variants[index];
       // A variant that is no longer shipped goods has no content (D160).
+      // A variant that is no longer goods that are shipped keeps no backorder setting and no low-stock level (wave 3, D172).
+      const notShipped = change.delivery !== undefined && change.delivery !== "physical";
       const variants = withoutContentWhereNotGoods(
         p.kind,
-        p.variants.map((v, i) => (i === index ? { ...v, ...change } : v)),
+        p.variants.map((v, i) => (i === index ? { ...v, ...change, ...(notShipped ? { stockPolicy: "deny" as const, backorderDays: null, lowStockThreshold: null } : {}) } : v)),
       );
       // Files follow their variant when its SKU changes, and go back to
       // every digital variant when it stops being digital.
@@ -1090,6 +1098,7 @@ function VariantsSection({
                   showDelivery={mixed}
                   showPeriod={product.kind === "rental"}
                   showStock={!allDigital}
+                  stockHref={context.activeLocations > 1 ? `/admin/${storeSlug}/inventory?q=${encodeURIComponent(variant.sku)}` : null}
                   content={product.kind === "goods" ? contentContext : null}
                   pictures={product.media}
                   upload={upload}
@@ -1100,6 +1109,16 @@ function VariantsSection({
           </tbody>
         </table>
       </div>
+      {!allDigital && <BackorderAll product={product} update={update} />}
+      {context.activeLocations > 1 && !allDigital && (
+        <p className="mt-3 text-sm text-muted">
+          This store has several stock locations, so the stock here is the total over the active ones. Change it on the{" "}
+          <Link href={`/admin/${storeSlug}/inventory`} className="underline">
+            Inventory page
+          </Link>
+          , location by location.
+        </p>
+      )}
       <p className="mt-3 text-sm text-muted">
         {allDigital
           ? "Digital products have no stock: they never sell out. "
@@ -1122,6 +1141,7 @@ function VariantRow({
   showDelivery,
   showPeriod = false,
   showStock,
+  stockHref,
   content,
   pictures,
   upload,
@@ -1142,6 +1162,8 @@ function VariantRow({
   /** A rental's variants are each booked by the day, half day or hour (D69). */
   showPeriod?: boolean;
   showStock: boolean;
+  /** With several active stock locations the number is the total and read-only (wave 3, D172): the link goes to the Inventory page for this SKU. */
+  stockHref: string | null;
   onChange: (change: Partial<VariantInput>) => void;
 }) {
   const cell = "min-h-9 w-full rounded-md border border-border bg-background px-2 text-sm";
@@ -1203,6 +1225,15 @@ function VariantRow({
           <td className="py-2 pr-3">
             {digital ? (
               <span className="inline-flex min-h-9 items-center text-muted">Not needed</span>
+            ) : stockHref ? (
+              <span className="flex flex-col">
+                <span className="inline-flex min-h-9 items-center tabular-nums" aria-label={`Stock for ${name}, the total over the active locations`}>
+                  {variant.stock}
+                </span>
+                <Link href={stockHref} className="text-xs underline underline-offset-2">
+                  By location
+                </Link>
+              </span>
             ) : (
               <input
                 type="number"
@@ -1240,6 +1271,18 @@ function VariantRow({
       </tr>
       <tr className="border-b border-border">
         <td colSpan={columns} className="pb-3">
+          {!digital && (
+            <details className="mb-2">
+              <summary className="cursor-pointer text-xs text-muted">
+                Stock rules for {name}
+                {variant.stockPolicy === "continue" && variant.backorderDays ? `: keeps selling, ships within ${variant.backorderDays} ${variant.backorderDays === 1 ? "day" : "days"}` : ""}
+                {variant.lowStockThreshold !== null ? `${variant.stockPolicy === "continue" ? ", " : ": "}warns at ${variant.lowStockThreshold} or below` : ""}
+              </summary>
+              <div className="mt-2">
+                <StockRules name={name} variant={variant} cell={cell} onChange={onChange} />
+              </div>
+            </details>
+          )}
           <details>
             <summary className="cursor-pointer text-xs text-muted">
               {digital ? `Barcode and cost for ${name}` : `Barcode, cost, weight, content and customs for ${name}`}
@@ -1315,6 +1358,109 @@ function VariantRow({
         </td>
       </tr>
     </>
+  );
+}
+
+/**
+ * What happens when a variant is sold out and when to warn (wave 3, D172, `docs/wave-3-inventory.md` 2.2): keep selling it on backorder with a stated
+ * delivery time, and the stock level at or below which the owners get an email. The days are required with the setting and shoppers see them on the
+ * product page, in the cart and in the order; `policyProblem()` holds the same rules on the server and in the database.
+ */
+function StockRules({ name, variant, cell, onChange }: { name: string; variant: VariantInput; cell: string; onChange: (change: Partial<VariantInput>) => void }) {
+  const keeps = variant.stockPolicy === "continue";
+  return (
+    <fieldset className="flex flex-col gap-2 text-xs">
+      <legend className="font-medium">Stock rules for {name}</legend>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="flex items-start gap-2 font-medium">
+          <input
+            type="checkbox"
+            checked={keeps}
+            onChange={(e) => onChange(e.target.checked ? { stockPolicy: "continue", backorderDays: variant.backorderDays ?? 7 } : { stockPolicy: "deny", backorderDays: null })}
+            className="mt-0.5 size-4"
+          />
+          <span>
+            Keep selling when sold out
+            <span className="block font-normal text-muted">Shoppers can still buy it. The page says it is on backorder and when it is expected to ship.</span>
+          </span>
+        </label>
+        {keeps && (
+          <label className="flex flex-col gap-1 font-medium">
+            Expected to ship within (days)
+            <input
+              type="number"
+              min={BACKORDER_DAYS_MIN}
+              max={BACKORDER_DAYS_MAX}
+              inputMode="numeric"
+              required
+              value={variant.backorderDays ?? ""}
+              onChange={(e) => onChange({ backorderDays: e.target.value === "" ? null : Math.floor(Number(e.target.value)) })}
+              className={cell}
+            />
+            <span className="font-normal text-muted">
+              {BACKORDER_DAYS_MIN} to {BACKORDER_DAYS_MAX} days, always stated.{backorderMayPassAgreed(variant.backorderDays) ? ` ${BACKORDER_LONG_HINT}` : ""}
+            </span>
+          </label>
+        )}
+        <label className="flex flex-col gap-1 font-medium">
+          Warn me when stock is at or below
+          <input
+            type="number"
+            min={0}
+            max={THRESHOLD_MAX}
+            inputMode="numeric"
+            value={variant.lowStockThreshold ?? ""}
+            onChange={(e) => onChange({ lowStockThreshold: e.target.value === "" ? null : Math.max(0, Math.floor(Number(e.target.value))) })}
+            placeholder="No warning"
+            className={cell}
+          />
+          <span className="font-normal text-muted">The owners get one email when the stock goes down to this level, not one for every sale.</span>
+        </label>
+      </div>
+    </fieldset>
+  );
+}
+
+/**
+ * The same setting for every variant that is shipped at once (the product-wide switch of wave 3, D172): on gives every such variant the days typed
+ * (keeping a variant's own days when it has them), off stops selling at zero for all of them. The data is per variant; this only sets them together.
+ */
+function BackorderAll({ product, update }: SectionProps) {
+  const shipped = product.variants.filter((v) => v.delivery === "physical");
+  const [days, setDays] = useState(() => String(shipped.find((v) => v.backorderDays)?.backorderDays ?? 7));
+  if (shipped.length < 2) return null;
+  const all = shipped.every((v) => v.stockPolicy === "continue");
+  const set = (on: boolean, typed: number | null) =>
+    update((p) => ({
+      ...p,
+      variants: p.variants.map((v) =>
+        v.delivery !== "physical" ? v : on ? { ...v, stockPolicy: "continue" as const, backorderDays: typed ?? v.backorderDays ?? 7 } : { ...v, stockPolicy: "deny" as const, backorderDays: null },
+      ),
+    }));
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+      <label className="flex items-center gap-2">
+        <input type="checkbox" checked={all} onChange={(e) => set(e.target.checked, Number(days) >= BACKORDER_DAYS_MIN ? Math.floor(Number(days)) : null)} className="size-4" />
+        Keep selling every variant when sold out
+      </label>
+      <label className="flex items-center gap-2">
+        Expected to ship within
+        <input
+          type="number"
+          min={BACKORDER_DAYS_MIN}
+          max={BACKORDER_DAYS_MAX}
+          value={days}
+          onChange={(e) => {
+            setDays(e.target.value);
+            const n = Math.floor(Number(e.target.value));
+            if (all && n >= BACKORDER_DAYS_MIN && n <= BACKORDER_DAYS_MAX) set(true, n);
+          }}
+          aria-label="Days until a backordered variant is expected to ship"
+          className="min-h-9 w-20 rounded-md border border-border bg-background px-2 text-sm"
+        />
+        days
+      </label>
+    </div>
   );
 }
 

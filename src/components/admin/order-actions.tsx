@@ -92,12 +92,16 @@ export function RefundForm({
   refundable,
   refundableLabel,
   lines,
+  locations = [],
   hasEmail,
   canRefund,
 }: Ids & {
   refundable: string;
   refundableLabel: string;
-  lines: { id: string; title: string; left: number }[];
+  /** `putBack` says where the units go when nobody chooses (wave 3, D172): back where they were taken from. */
+  lines: { id: string; title: string; left: number; putBack?: string }[];
+  /** The store's active stock locations in rank order; a choice is offered only with more than one. */
+  locations?: { id: string; name: string }[];
   hasEmail: boolean;
   canRefund: boolean;
 }) {
@@ -135,18 +139,39 @@ export function RefundForm({
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium">Put back in stock</legend>
           {lines.map((line) => (
-            <label key={line.id} className="flex items-center justify-between gap-3 text-sm">
-              <span>{line.title}</span>
-              <input
-                type="number"
-                name={`restock:${line.id}`}
-                min={0}
-                max={line.left}
-                defaultValue={0}
-                aria-label={`Units of ${line.title} to put back in stock`}
-                className="min-h-10 w-20 shrink-0 rounded-md border border-border bg-background px-3 text-sm"
-              />
-            </label>
+            <div key={line.id} className="flex flex-col gap-1">
+              <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
+                <label htmlFor={`restock-${line.id}`}>{line.title}</label>
+                <span className="flex items-center gap-2">
+                  {locations.length > 1 && (
+                    <select
+                      name={`restockAt:${line.id}`}
+                      defaultValue=""
+                      aria-label={`Put ${line.title} back at`}
+                      className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
+                    >
+                      <option value="">Where it was taken from</option>
+                      {locations.map((l) => (
+                        <option key={l.id} value={l.id}>
+                          {l.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <input
+                    id={`restock-${line.id}`}
+                    type="number"
+                    name={`restock:${line.id}`}
+                    min={0}
+                    max={line.left}
+                    defaultValue={0}
+                    aria-label={`Units of ${line.title} to put back in stock`}
+                    className="min-h-10 w-20 shrink-0 rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </span>
+              </div>
+              {line.putBack && <p className="text-xs text-muted">{line.putBack}</p>}
+            </div>
           ))}
         </fieldset>
       )}

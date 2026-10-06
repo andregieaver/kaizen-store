@@ -6,6 +6,8 @@ import { db } from "@/db/client";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
+import { OWED_LINE } from "./analytics-sql";
+import { onHandActive } from "./stock-sql";
 import type { Store } from "./stores";
 
 type Row = Record<string, unknown>;
@@ -145,8 +147,8 @@ export async function productPerformance({ store }: Ctx, { days }: OwnerToolInpu
       group by v.product_id, o.currency
     ),
     stock as (
-      select v.product_id, sum(il.on_hand)::int as on_hand, bool_or(v.delivery = 'physical') as shipped
-      from commerce.product_variants v left join commerce.inventory_levels il on il.variant_id = v.id
+      select v.product_id, sum(${onHandActive(sql`v.id`)})::int as on_hand, bool_or(v.delivery = 'physical') as shipped
+      from commerce.product_variants v
       where v.store_id = ${store.id}::uuid and v.active
       group by v.product_id
     ),
@@ -310,7 +312,12 @@ export async function restockSuggestions({ store }: Ctx, { days, cover_days, lea
   const from = since(store, days);
   const rows = await db().execute<Row>(sql`
     select v.id, v.sku, v.options, coalesce(tl.title, p.handle) as title, p.id as product_id,
-      coalesce((select sum(il.on_hand) from commerce.inventory_levels il where il.variant_id = v.id), 0)::int as on_hand,
+      ${onHandActive(sql`v.id`)} as on_hand,
+      coalesce((
+        select sum(ol.backorder_quantity) from commerce.order_lines ol
+        join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
+        where ol.store_id = v.store_id and ol.variant_id = v.id and ${OWED_LINE}
+      ), 0)::int as owed,
       coalesce((
         select sum(l.quantity) from commerce.order_lines l
         join commerce.orders o on o.store_id = l.store_id and o.id = l.order_id
@@ -324,28 +331,33 @@ export async function restockSuggestions({ store }: Ctx, { days, cover_days, lea
   const round1 = (x: number) => Math.round(x * 10) / 10;
   const variants = rows.map((row) => {
     const sold = Number(row.sold);
+    // On hand over the active locations. Below zero (a variant sold on backorder) is units sold that the store has not received: it counts as nothing
+    // that lasts, and adds to what to order (need - onHand, with onHand negative), so the suggestion covers what is owed as well as the days ahead (D172).
     const onHand = Number(row.on_hand);
+    const owed = Number(row.owed);
     const perDay = sold / days;
     const need = Math.ceil(perDay * (cover_days + lead_days));
     return {
       product: String(row.title),
       sku: String(row.sku),
       options: row.options,
-      in_stock: onHand,
+      in_stock: Math.max(0, onHand),
+      ...(owed > 0 ? { owed_to_customers: owed } : {}),
       sold_in_period: sold,
       per_day: round1(perDay),
-      lasts_days: perDay > 0 ? round1(onHand / perDay) : null,
-      order_now: perDay > 0 && onHand / perDay <= lead_days,
+      lasts_days: perDay > 0 ? round1(Math.max(0, onHand) / perDay) : null,
+      order_now: perDay > 0 && Math.max(0, onHand) / perDay <= lead_days,
       suggested_order: Math.max(0, need - onHand),
       admin: `/admin/${store.slug}/products/${String(row.product_id)}`,
     };
   });
   const toOrder = variants.filter((v) => v.suggested_order > 0).sort((a, b) => (a.lasts_days ?? 0) - (b.lasts_days ?? 0));
   return {
-    rule: `The pace is the last ${days} days' paid sales. Suggested = sales per day × (${cover_days} days to cover + ${lead_days} days' delivery), less what is in stock, rounded up.`,
+    rule: `The pace is the last ${days} days' paid sales. Suggested = sales per day × (${cover_days} days to cover + ${lead_days} days' delivery), less what is in stock, rounded up. Stock is what is on hand at the active locations; a variant sold on backorder is below zero until the goods arrive, and the units owed to customers are added to what to order.`,
     to_reorder: toOrder.slice(0, 40),
     urgent: toOrder.filter((v) => v.order_now).length,
     out_of_stock_without_sales: variants.filter((v) => v.in_stock === 0 && v.sold_in_period === 0).length,
+    owed_units: rows.reduce((sum, row) => sum + Number(row.owed), 0),
     well_stocked: variants.length - toOrder.length,
     note: toOrder.length === 0 ? "Nothing needs reordering at this pace." : "A suggestion from past sales only; seasons and campaigns change the pace.",
   };

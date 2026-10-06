@@ -69,6 +69,8 @@ export default async function AdminOverview({ params }: Props) {
             {!(figures && hidden(figures, "sales")) && <Stat label="Orders" value={orders} sub={changeText(orders, priorOrders)} href={`${base}/orders`} />}
             {!(figures && hidden(figures, "sales")) && <Stat label="Waiting to be sent" value={figures?.toSend ?? 0} href={`${base}/orders?show=to-send`} />}
             {!(figures && hidden(figures, "stock")) && <Stat label="Products running low" value={figures?.lowStock ?? 0} sub={figures && figures.outOfStock > 0 ? `${figures.outOfStock} out of stock` : undefined} href={`${base}/products`} />}
+            {!(figures && hidden(figures, "stock")) && figures && figures.belowLevel > 0 && <Stat label="At or below your level" value={figures.belowLevel} sub="Warning level set per variant" href={`${base}/inventory?status=low`} />}
+            {!(figures && hidden(figures, "stock")) && figures && figures.owedUnits > 0 && <Stat label="Owed on backorder" value={figures.owedUnits} sub="Units on paid orders, not sent" href={`${base}/inventory?status=backorder`} />}
           </StatGrid>
         </Section>
       )}

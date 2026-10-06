@@ -133,7 +133,7 @@ export function storeTools() {
     },
     {
       name: "get_product",
-      description: "One product's details: description, variants with prices and whether each is in stock, how it is booked.",
+      description: "One product's details: description, variants with prices and whether each is in stock, on backorder (with the days the store says it ships within) or sold out, how it is booked. Say a backorder and its days exactly as given, and never promise a date.",
       parameters: { type: "object", properties: { handle: text("The product's handle, from search_products.") }, required: ["handle"] },
     },
     {

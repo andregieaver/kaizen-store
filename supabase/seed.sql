@@ -206,6 +206,39 @@ BEGIN
 
   UPDATE commerce.products SET status = 'active' WHERE id = v_product;
 
+  -- 4b. A thermos that keeps selling at zero stock (wave 3, D172): nothing in stock, "expected to ship within 7 days", so the
+  -- storefront's backorder wording and the cart have a fixture. Its stock is 0 and it may go below zero when it is sold.
+  INSERT INTO commerce.products (store_id, handle, manufacturer_id, responsible_person_id, tax_code)
+  VALUES (v_store, 'demo-termokopp', v_maker, v_rep, 'txcd_99999999')
+  RETURNING id INTO v_product;
+
+  INSERT INTO commerce.product_translations (store_id, product_id, locale, title, description, safety_information) VALUES
+    (v_store, v_product, 'nb-NO', 'Demo: Termokopp på bestilling',
+     'Termokopp i rustfritt stål på 400 ml. Bestilles hjem fra leverandøren når du kjøper den.',
+     'Ikke fyll koppen med kokende væske til randen. Hold utilgjengelig for små barn når den er varm.'),
+    (v_store, v_product, 'sv-SE', 'Demo: Termosmugg på beställning',
+     'Termosmugg i rostfritt stål på 400 ml. Beställs hem från leverantören när du köper den.',
+     'Fyll inte muggen med kokande vätska till kanten. Förvaras oåtkomligt för små barn när den är varm.'),
+    (v_store, v_product, 'da-DK', 'Demo: Termokrus på bestilling',
+     'Termokrus i rustfrit stål på 400 ml. Bestilles hjem fra leverandøren, når du køber det.',
+     'Fyld ikke kruset med kogende væske til randen. Opbevares utilgængeligt for små børn, når det er varmt.');
+
+  INSERT INTO commerce.product_media (store_id, product_id, url, position, alt) VALUES
+    (v_store, v_product, '/demo/mug-black.svg', 0,
+     '{"nb-NO": "Svart termokopp", "sv-SE": "Svart termosmugg", "da-DK": "Sort termokrus"}');
+
+  INSERT INTO commerce.product_schemes (store_id, product_id, scheme) VALUES (v_store, v_product, 'packaging');
+
+  INSERT INTO commerce.product_variants (store_id, product_id, sku, gtin, options, weight_grams, hs_code, origin_country, image_url, stock_policy, backorder_days)
+  VALUES (v_store, v_product, 'DEMO-THERMOS', '7090000000073', '{}', 420, '961700', 'CN', '/demo/mug-black.svg', 'continue', 7)
+  RETURNING id INTO v_variant;
+  PERFORM commerce.set_price(v_variant, 'NO', 34900, now() - interval '1 day');
+  PERFORM commerce.set_price(v_variant, 'SE', 34900, now() - interval '1 day');
+  PERFORM commerce.set_price(v_variant, 'DK', 24900, now() - interval '1 day');
+  INSERT INTO commerce.inventory_levels (store_id, variant_id, location_id, on_hand) VALUES (v_store, v_variant, v_location, 0);
+
+  UPDATE commerce.products SET status = 'active' WHERE id = v_product;
+
   -- 5. An appointment (D65), with a member of staff to book: every kind of
   -- product has a demo, from the same function production's template used.
   PERFORM commerce.add_demo_appointment(v_store);

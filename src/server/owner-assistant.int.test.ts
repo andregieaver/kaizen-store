@@ -104,6 +104,8 @@ describe("the owner assistant (D94)", () => {
       get_product: { product: productHandle },
       get_fields: { entity: "product", item: productHandle },
       get_order: { order: "1" },
+      // The history of one variant's stock (D172) is asked for by SKU, like a product's by its handle.
+      stock_history: { sku: "DEMO-MUG-BLACK" },
       get_customer: { customer: "nobody@example.com" },
       explain_results: { experiment: "nobody" },
       explain_return: { return: "NOBODY-R1" },

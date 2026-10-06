@@ -41,6 +41,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
+import { MOVEMENT_REASONS, MOVEMENT_SOURCES } from "../lib/inventory";
 import { LEGAL_ROLES } from "../lib/legal-roles";
 import { GRANTABLE_PERMISSIONS } from "../lib/permission-keys";
 import { COUNTS_FROM, PERIOD_UNITS, RETENTION_BASES, RETENTION_KINDS } from "../lib/retention";
@@ -1359,11 +1360,32 @@ export const productVariants = commerce.table(
     measureAmount: numeric("measure_amount", { precision: 12, scale: 4 }),
     measureUnit: text("measure_unit"),
     measureBase: text("measure_base"),
+    /**
+     * What happens at zero stock (wave 3, D172, `docs/wave-3-inventory.md` 3.1): `deny` stops selling (the default and the
+     * old behaviour), `continue` keeps selling on backorder. Goods only; `continue` needs `backorderDays`, because the
+     * delivery time is always stated. Read per request, never in a `'use cache'` function.
+     */
+    stockPolicy: text("stock_policy").notNull().default("deny"),
+    /** The days within which a backordered unit is expected to ship (1 to 90): required with `continue`, null otherwise. */
+    backorderDays: integer("backorder_days"),
+    /** The owner's warning level (0 to 1,000,000): on hand over the active locations at or below it is one email per crossing. Null: no warning. */
+    lowStockThreshold: integer("low_stock_threshold"),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
   },
   (t) => [
     unique("product_variants_store_id_key").on(t.storeId, t.id),
+    check("product_variants_stock_policy", sql`${t.stockPolicy} in ('deny', 'continue')`),
+    check("product_variants_stock_policy_goods", sql`${t.stockPolicy} = 'deny' or ${t.delivery} = 'physical'`),
+    check("product_variants_backorder_days", sql`${t.backorderDays} between 1 and 90`),
+    check(
+      "product_variants_backorder_days_policy",
+      sql`(${t.stockPolicy} = 'continue') = (${t.backorderDays} is not null)`,
+    ),
+    check(
+      "product_variants_low_stock_threshold",
+      sql`${t.lowStockThreshold} is null or (${t.lowStockThreshold} between 0 and 1000000 and ${t.delivery} = 'physical')`,
+    ),
     unique("product_variants_store_sku_key").on(t.storeId, t.sku),
     productRef("product_variants_product_fk", t),
     index("product_variants_product_idx").on(t.storeId, t.productId),
@@ -1762,9 +1784,24 @@ export const inventoryLocations = commerce.table(
     name: text("name").notNull(),
     country: char("country", { length: 2 }).notNull(),
     active: boolean("active").notNull().default(true),
+    /**
+     * The rank for routing (wave 3, D172): a location with a lower `priority` is taken from first, then `created_at`, then `id`.
+     * Existing locations get 0 and keep their order by `created_at`, which is what every reader used before.
+     */
+    priority: integer("priority").notNull().default(0),
+    /** Set when an owner deactivates the location and cleared on reactivation, for the report; never copied. */
+    deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
-  (t) => [unique("inventory_locations_store_id_key").on(t.storeId, t.id)],
+  (t) => [
+    unique("inventory_locations_store_id_key").on(t.storeId, t.id),
+    // Two active locations of one store cannot share a name (case-insensitively).
+    uniqueIndex("inventory_locations_active_name_key")
+      .on(t.storeId, sql`lower(${t.name})`)
+      .where(sql`${t.active}`),
+    check("inventory_locations_priority", sql`${t.priority} >= 0`),
+    check("inventory_locations_name", sql`length(${t.name}) between 1 and 60`),
+  ],
 );
 
 const locationRef = (
@@ -1792,7 +1829,8 @@ export const inventoryLevels = commerce.table(
     locationRef("inventory_levels_location_fk", t),
     index("inventory_levels_store_variant_idx").on(t.storeId, t.variantId),
     index("inventory_levels_location_idx").on(t.storeId, t.locationId),
-    check("inventory_levels_on_hand_non_negative", sql`${t.onHand} >= 0`),
+    // No non-negative check any more (wave 3, D172): a level goes below zero only by a sale of a variant that keeps selling on
+    // backorder, and the trigger `inventory_levels_negative_rule` holds that (a rise is always allowed).
   ],
 );
 
@@ -2459,9 +2497,20 @@ export const orderLines = commerce.table(
     measureAmount: numeric("measure_amount", { precision: 12, scale: 4 }),
     measureUnit: text("measure_unit"),
     measureBase: text("measure_base"),
+    /**
+     * Units of the line sold on backorder (wave 3, D172): what the shopper was told when the order was placed, settled when it is paid
+     * (`commerce.draw_order_stock()` rewrites it once; for a live hold it only goes down: an earlier checkout's claim is kept whatever
+     * the order of payment). Nothing else changes it.
+     */
+    backorderQuantity: integer("backorder_quantity").notNull().default(0),
+    /** The delivery time stated for the backorder, in days, frozen from the variant when the order was placed. */
+    backorderDays: integer("backorder_days"),
   },
   (t) => [
     unique("order_lines_store_id_key").on(t.storeId, t.id),
+    check("order_lines_backorder_quantity", sql`${t.backorderQuantity} between 0 and ${t.quantity}`),
+    check("order_lines_backorder_days", sql`${t.backorderDays} between 1 and 90`),
+    check("order_lines_backorder_stated", sql`${t.backorderQuantity} = 0 or ${t.backorderDays} is not null`),
     sellingPlanRef("order_lines_selling_plan_fk", t),
     index("order_lines_selling_plan_idx").on(t.storeId, t.sellingPlanId),
     orderRef("order_lines_order_fk", t),
@@ -2702,6 +2751,12 @@ export const inventoryReservations = commerce.table(
     variantId: uuid("variant_id").notNull(),
     locationId: uuid("location_id").notNull(),
     quantity: integer("quantity").notNull(),
+    /**
+     * The part of `quantity` held beyond the stock that was there when the checkout started (a variant that keeps selling on
+     * backorder, wave 3 D172): it holds no unit. The rest, `quantity - backorder_quantity`, is the physical claim of the
+     * order, which a later checkout paying first cannot take (`commerce.draw_order_stock()`); the shopper was told which was which.
+     */
+    backorderQuantity: integer("backorder_quantity").notNull().default(0),
     cartId: uuid("cart_id"),
     orderId: uuid("order_id"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
@@ -2721,6 +2776,7 @@ export const inventoryReservations = commerce.table(
     index("inventory_reservations_cart_idx").on(t.storeId, t.cartId),
     index("inventory_reservations_order_idx").on(t.storeId, t.orderId),
     check("inventory_reservations_quantity_positive", sql`${t.quantity} > 0`),
+    check("inventory_reservations_backorder_within", sql`${t.backorderQuantity} between 0 and ${t.quantity}`),
     check(
       "inventory_reservations_owner",
       sql`${t.cartId} is not null or ${t.orderId} is not null`,
@@ -3063,6 +3119,94 @@ export const returns = commerce.table(
         and (${t.closedAt} is null or ${t.receivedAt} is null or ${t.closedAt} >= ${t.receivedAt})
         and (${t.shippedAt} is null or ${t.receivedAt} is null or ${t.shippedAt} <= ${t.receivedAt})`,
     ),
+  ],
+);
+
+/**
+ * The history of stock (wave 3, D172, `docs/wave-3-inventory.md` 3.2): every change of `inventory_levels.on_hand` is a row here,
+ * written by the trigger `commerce.record_inventory_movement()` (so every writer is covered, the SQL functions too), which reads
+ * why, by whom and for which order from `commerce.stock_context()`. Append-only: no update, and a row can be removed only when
+ * it is older than 24 months (`commerce.guard_inventory_movements()`, `pruneInventoryMovements()`). For every variant and
+ * location the movements add up to the level (`commerce.inventory_ledger_check()`). A movement holds no personal data: an
+ * account id, an order id and a short note about stock.
+ */
+export const inventoryMovements = commerce.table(
+  "inventory_movements",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    storeId: storeId(),
+    variantId: uuid("variant_id").notNull(),
+    locationId: uuid("location_id").notNull(),
+    /** The change of the level; never 0. */
+    delta: integer("delta").notNull(),
+    /** The level's figure after the change. */
+    onHandAfter: integer("on_hand_after").notNull(),
+    /** `src/lib/inventory.ts` `MOVEMENT_REASONS`. */
+    reason: text("reason").notNull(),
+    /** `src/lib/inventory.ts` `MOVEMENT_SOURCES`. */
+    source: text("source").notNull(),
+    /** The staff account, an id only (the name is read from `accounts` when shown); null for the system. */
+    actorAccountId: uuid("actor_account_id"),
+    orderId: uuid("order_id"),
+    returnId: uuid("return_id"),
+    /** An import job or a bulk batch; no foreign key, those rows expire sooner than the history. */
+    jobId: uuid("job_id"),
+    /** Typed by staff on a manual change only; at most 200 characters. */
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    variantRef("inventory_movements_variant_fk", t),
+    locationRef("inventory_movements_location_fk", t),
+    orderRef("inventory_movements_order_fk", t),
+    foreignKey({
+      name: "inventory_movements_return_fk",
+      columns: [t.storeId, t.returnId],
+      foreignColumns: [returns.storeId, returns.id],
+    }),
+    index("inventory_movements_variant_idx").on(t.storeId, t.variantId, t.id.desc()),
+    index("inventory_movements_created_idx").on(t.storeId, t.createdAt.desc()),
+    index("inventory_movements_order_idx")
+      .on(t.storeId, t.orderId)
+      .where(sql`${t.orderId} is not null`),
+    index("inventory_movements_location_idx").on(t.storeId, t.locationId),
+    index("inventory_movements_return_idx")
+      .on(t.storeId, t.returnId)
+      .where(sql`${t.returnId} is not null`),
+    check("inventory_movements_delta", sql`${t.delta} <> 0`),
+    check("inventory_movements_reason", sql`${t.reason} in (${sqlList(MOVEMENT_REASONS)})`),
+    check("inventory_movements_source", sql`${t.source} in (${sqlList(MOVEMENT_SOURCES)})`),
+    check("inventory_movements_note", sql`${t.note} is null or length(${t.note}) <= 200`),
+  ],
+);
+
+/**
+ * The low-stock state of a variant with a level set (wave 3, D172, `docs/wave-3-inventory.md` 3.4): one row per variant, moved by
+ * `commerce.refresh_stock_alert()` (the same table as `nextAlertState()` in `src/lib/stock-alerts.ts`). `low` with
+ * `notified_at` null is a crossing the five-minute job has not told the owners about yet. Kept with the variant; a cleared level
+ * is state `off`, never a deleted row.
+ */
+export const stockAlerts = commerce.table(
+  "stock_alerts",
+  {
+    storeId: storeId(),
+    variantId: uuid("variant_id").notNull(),
+    /** `off` (no level), `ok` (above it) or `low` (at or below it). */
+    state: text("state").notNull(),
+    crossedAt: timestamp("crossed_at", { withTimezone: true }),
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    /** On hand over the active locations when it crossed. */
+    stockAtCrossing: integer("stock_at_crossing"),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.storeId, t.variantId] }),
+    variantRef("stock_alerts_variant_fk", t).onDelete("cascade"),
+    index("stock_alerts_low_idx")
+      .on(t.storeId, t.crossedAt)
+      .where(sql`${t.state} = 'low'`),
+    check("stock_alerts_state", sql`${t.state} in ('off', 'ok', 'low')`),
+    check("stock_alerts_crossing", sql`(${t.state} = 'low') = (${t.crossedAt} is not null)`),
   ],
 );
 
@@ -7739,7 +7883,7 @@ export const dataJobs = commerce.table(
     storeId: uuid("store_id")
       .notNull()
       .references(() => stores.id, { onDelete: "cascade" }),
-    /** `product_import`, `product_export`, `order_export`, `customer_export`, `redirect_import`, `redirect_export` (wave 2, D168). */
+    /** `product_import`, `product_export`, `order_export`, `customer_export`, `redirect_import`, `redirect_export` (wave 2, D168), `inventory_import`, `inventory_export` (wave 3, D172). */
     kind: text("kind").notNull(),
     /** `uploaded`, `checking`, `checked`, `queued`, `running`, `done`, `failed`, `cancelled`, `expired` (`src/lib/data-job.ts`). */
     status: text("status").notNull(),
@@ -7794,9 +7938,13 @@ export const dataJobs = commerce.table(
     uniqueIndex("data_jobs_one_active_redirect_import_idx")
       .on(t.storeId)
       .where(sql`${t.kind} = 'redirect_import' and ${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running')`),
+    // One stock import is open per store at a time (wave 3, D172), beside the product and redirect imports.
+    uniqueIndex("data_jobs_one_active_inventory_import_idx")
+      .on(t.storeId)
+      .where(sql`${t.kind} = 'inventory_import' and ${t.status} in ('uploaded', 'checking', 'checked', 'queued', 'running')`),
     check(
       "data_jobs_kind",
-      sql`${t.kind} in ('product_import', 'product_export', 'order_export', 'customer_export', 'redirect_import', 'redirect_export')`,
+      sql`${t.kind} in ('product_import', 'product_export', 'order_export', 'customer_export', 'redirect_import', 'redirect_export', 'inventory_import', 'inventory_export')`,
     ),
     check(
       "data_jobs_status",
@@ -7819,9 +7967,9 @@ export const dataJobs = commerce.table(
     // An export has no input file, an import has no output files, and the format of an export is Kaizen's own.
     check(
       "data_jobs_export_no_input",
-      sql`${t.kind} in ('product_import', 'redirect_import') or (${t.inputPath} is null and ${t.inputSha256} is null and ${t.format} is distinct from 'shopify')`,
+      sql`${t.kind} in ('product_import', 'redirect_import', 'inventory_import') or (${t.inputPath} is null and ${t.inputSha256} is null and ${t.format} is distinct from 'shopify')`,
     ),
-    check("data_jobs_import_no_files", sql`${t.kind} not in ('product_import', 'redirect_import') or ${t.files} = '[]'::jsonb`),
+    check("data_jobs_import_no_files", sql`${t.kind} not in ('product_import', 'redirect_import', 'inventory_import') or ${t.files} = '[]'::jsonb`),
     // An ended job says when.
     check(
       "data_jobs_finished",
@@ -7842,7 +7990,7 @@ export const dataJobItems = commerce.table(
     storeId: storeId(),
     jobId: uuid("job_id").notNull(),
     seq: integer("seq").notNull(),
-    /** `product` (one product of the file), `redirect` (one line of a redirect file, wave 2, D168) or `file` (a finding about the file as a whole). */
+    /** `product` (one product of the file), `redirect` (one line of a redirect file, wave 2, D168), `stock` (one row of a stock file, wave 3, D172) or `file` (a finding about the file as a whole). */
     kind: text("kind").notNull(),
     /** The handle, or null. */
     ref: text("ref"),
@@ -7865,7 +8013,7 @@ export const dataJobItems = commerce.table(
     }).onDelete("cascade"),
     index("data_job_items_job_idx").on(t.storeId, t.jobId, t.outcome),
     check("data_job_items_seq", sql`${t.seq} >= 0`),
-    check("data_job_items_kind", sql`${t.kind} in ('product', 'redirect', 'file')`),
+    check("data_job_items_kind", sql`${t.kind} in ('product', 'redirect', 'stock', 'file')`),
     check("data_job_items_outcome", sql`${t.outcome} in ('created', 'updated', 'unchanged', 'skipped', 'drafted', 'failed', 'checked')`),
     check("data_job_items_json", sql`jsonb_typeof(${t.messages}) = 'array' and jsonb_typeof(${t.changes}) = 'object'`),
   ],

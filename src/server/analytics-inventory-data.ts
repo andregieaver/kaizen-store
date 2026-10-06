@@ -7,6 +7,7 @@ import {
   analyseVariant,
   inventoryValue,
   sellThrough,
+  stockWatch,
   stockoutAlerts,
   turnover,
   type InventoryAnalysis,
@@ -18,7 +19,7 @@ import {
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 
-import { dayOf, num, PAID, type Row } from "./analytics-sql";
+import { dayOf, num, OWED_LINE, PAID, type Row } from "./analytics-sql";
 import { setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -41,7 +42,9 @@ import type { Store } from "./stores";
  *   valued at 0. Turnover is COGS of the last 365 days (the sold lines' kept costs, for the listed variants, net of restocks) over that
  *   value, so it rests on both costs' coverage (`cogs365Coverage` and `value.coverage`).
  * - The price is the variant's current price in the store's main market without VAT, in the main currency.
- * - There is no per-variant warning level in the store's data, so `lowStockThreshold` is always null and low means "lasts 14 days or fewer".
+ * - A negative on hand (a variant that sells on backorder, D172) is shown as it is and counts as 0 in the value, the days of stock, the dead
+ *   stock and the sell-through; the units paid orders still wait for are `owed` (`OWED_LINE`). `lowStockThreshold` is the variant's own warning
+ *   level; without one, low means "lasts 14 days or fewer".
  */
 
 /** Variants read; the page says so when it is reached (`readTruncated`). The best sellers come first, so what is cut is what never sells. */
@@ -89,6 +92,10 @@ export type InventoryTotals = {
   /** Units sold in the last 30 days, and `sold / (sold + on hand)`; null when there was neither. */
   sold30: number;
   sellThrough30: number | null;
+  /** The owner's own settings (D172): units paid orders still wait for, variants selling on backorder, variants at or below their warning level. */
+  owedUnits: number;
+  onBackorder: number;
+  belowLevel: number;
 };
 
 export type InventoryReport = {
@@ -152,7 +159,7 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
 
   const rows = await setBased<Row>(sql`
     with vs as (
-      select v.id, v.product_id, v.sku, v.options, v.cost_minor, v.created_at, p.handle, p.vat_category
+      select v.id, v.product_id, v.sku, v.options, v.cost_minor, v.created_at, v.stock_policy, v.low_stock_threshold, p.handle, p.vat_category
       from commerce.product_variants v
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
       where v.store_id = ${id}::uuid and v.active and v.delivery = 'physical' and p.kind = 'goods' and p.status <> 'archived'
@@ -163,6 +170,13 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
       join commerce.inventory_locations loc on loc.store_id = il.store_id and loc.id = il.location_id and loc.active
       where il.store_id = ${id}::uuid and il.variant_id in (select id from vs)
       group by il.variant_id
+    ),
+    ow as (
+      select ol.variant_id, sum(ol.backorder_quantity)::int as owed
+      from commerce.orders o
+      join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
+      where o.store_id = ${id}::uuid and ${OWED_LINE} and ol.variant_id in (select id from vs)
+      group by ol.variant_id
     ),
     po as materialized (
       select o.id, o.placed_at
@@ -242,7 +256,7 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
     )
     select vs.id::text as variant_id, vs.product_id::text as product_id, vs.sku, vs.options, vs.cost_minor, vs.handle,
       coalesce(t.title, vs.handle) as title,
-      coalesce(oh.on_hand, 0) as on_hand,
+      coalesce(oh.on_hand, 0) as on_hand, vs.stock_policy, vs.low_stock_threshold, coalesce(ow.owed, 0) as owed,
       coalesce(agg.sold7, 0) as sold7, coalesce(agg.sold30, 0) as sold30, coalesce(agg.sold90, 0) as sold90,
       coalesce(agg.units365, 0) as units365, coalesce(agg.cogs365, 0) as cogs365, coalesce(agg.known_units365, 0) as known_units365,
       agg.last_sold,
@@ -251,6 +265,7 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
       round(pr.amount_minor::numeric / (1 + coalesce(rt.rate, 0))) as price_ex_vat
     from vs
     left join oh on oh.variant_id = vs.id
+    left join ow on ow.variant_id = vs.id
     left join agg on agg.variant_id = vs.id
     left join titles t on t.product_id = vs.product_id
     left join commerce.prices pr on pr.store_id = ${id}::uuid and pr.variant_id = vs.id and pr.market_code = ${marketCode} and pr.valid_to is null
@@ -275,13 +290,15 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
       sku: r.sku === null ? null : String(r.sku),
       tracked: true,
       onHand: num(r, "on_hand"),
+      stockPolicy: r.stock_policy === "continue" ? "continue" : "deny",
+      owed: num(r, "owed"),
       sold7: num(r, "sold7"),
       sold30: num(r, "sold30"),
       soldPeriod: num(r, "sold30"),
       lastSoldDaysAgo: r.last_days === null ? null : num(r, "last_days"),
       ageDays: num(r, "age_days"),
       costMinor: r.cost_minor === null ? null : num(r, "cost_minor"),
-      lowStockThreshold: null,
+      lowStockThreshold: r.low_stock_threshold === null ? null : num(r, "low_stock_threshold"),
     };
     cogs365 += num(r, "cogs365");
     units365 += num(r, "units365");
@@ -304,6 +321,8 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
     sku: r.sku,
     tracked: r.tracked,
     onHand: r.onHand,
+    stockPolicy: r.stockPolicy,
+    owed: r.owed,
     sold7: r.sold7,
     sold30: r.sold30,
     soldPeriod: r.soldPeriod,
@@ -319,6 +338,7 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
   const onHandUnits = analysed.reduce((s, r) => s + Math.max(0, r.onHand), 0);
   const cogs365Minor = Math.round(cogs365);
   const alerts = stockoutAlerts(plain);
+  const watch = stockWatch(plain);
 
   const sorted = [...analysed].sort(byAttention);
   return {
@@ -344,6 +364,7 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
       turnover: turnover(cogs365Minor, value.valueMinor),
       sold30,
       sellThrough30: sellThrough(sold30, onHandUnits),
+      ...watch,
     },
     alerts: alerts.slice(0, ALERT_CAP),
     alertsTotal: alerts.length,

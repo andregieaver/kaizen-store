@@ -3,7 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 
 import type { Membership } from "./auth";
-import { downloadPart, jobFor, requestCustomerExport, requestOrderExport, requestProductExport, requestRedirectExport, tickJob, type ExportRequest } from "./data-jobs";
+import { downloadPart, jobFor, requestCustomerExport, requestInventoryExport, requestOrderExport, requestProductExport, requestRedirectExport, tickJob, type ExportRequest } from "./data-jobs";
 import { isJobId } from "./data-job-store";
 
 /**
@@ -13,9 +13,9 @@ import { isJobId } from "./data-job-store";
  * text from the address.
  */
 
-export type ExportPage = "products" | "orders" | "customers" | "redirects";
+export type ExportPage = "products" | "orders" | "customers" | "redirects" | "inventory";
 
-const request = { products: requestProductExport, orders: requestOrderExport, customers: requestCustomerExport, redirects: requestRedirectExport } as const;
+const request = { products: requestProductExport, orders: requestOrderExport, customers: requestCustomerExport, redirects: requestRedirectExport, inventory: requestInventoryExport } as const;
 
 const safeFilename = (name: string): string => name.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "export.csv";
 

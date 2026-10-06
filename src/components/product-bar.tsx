@@ -24,6 +24,8 @@ export type BarVariant = {
   label: string;
   amountMinor: number;
   available: boolean;
+  /** Said when the cart holds as many as one line may (a variant on backorder, D172). */
+  capped?: string;
   image?: { url: string; alt: string } | null;
 };
 
@@ -85,7 +87,7 @@ export function ProductBar({
     state.outcome === "added"
       ? labels.added
       : state.outcome === "capped"
-        ? labels.capped
+        ? (variant.capped ?? labels.capped)
         : state.outcome === "unavailable"
           ? labels.unavailable
           : state.outcome === "plan_conflict"

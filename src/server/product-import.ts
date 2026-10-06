@@ -242,14 +242,15 @@ async function loadFile(job: DataJob, deps: DataDeps, ctx: ProductCsvContext, op
   return loaded;
 }
 
-type Prepared = { store: Store; editor: EditorContext; ctx: ProductCsvContext; options: ImportOptions; publish: Awaited<ReturnType<typeof publishContextFor>> };
+type Prepared = { store: Store; editor: EditorContext; ctx: ProductCsvContext; options: ImportOptions; publish: Awaited<ReturnType<typeof publishContextFor>>; activeLocations: number };
 
 async function prepare(job: DataJob): Promise<Prepared> {
   const store = await storeOf(job.storeId);
   if (!store) throw new JobStopped("The store could not be found.");
   const editor = await getEditorContext(store);
   const ctx = await csvContextFor(store, editor);
-  return { store, editor, ctx, options: parseImportOptions(job.options), publish: await publishContextFor(editor) };
+  const [locations] = await db().execute<Row>(sql`select count(*)::int as n from commerce.inventory_locations where store_id = ${store.id}::uuid and active`);
+  return { store, editor, ctx, options: parseImportOptions(job.options), publish: await publishContextFor(editor), activeLocations: Number(locations?.n ?? 1) };
 }
 
 const envFor = (p: Prepared, own: ReadonlySet<string>, fetched?: ReadonlyMap<string, FetchedPicture | null>): PlanEnv => ({
@@ -259,6 +260,7 @@ const envFor = (p: Prepared, own: ReadonlySet<string>, fetched?: ReadonlyMap<str
   publish: p.publish,
   isOwnPicture: ownPictureTest(p.store.id, own),
   fetched,
+  activeLocations: p.activeLocations,
 });
 
 /** What the store holds about the products a chunk of the file names: each by handle, who owns the SKUs and variant ids, and the store's own picture addresses. */
@@ -512,7 +514,7 @@ async function applyProduct(job: DataJob, p: Prepared, account: Account, loaded:
         plan = withCreatedTerms(plan, made.ids);
         const stored = now.snapshot.products.get(draft.handle) ?? null;
         const existing = stored?.id ?? null;
-        const stockMode: StockMode = { loaded: new Map((stored?.variants ?? []).flatMap((v) => (v.id ? [[v.id, v.stock] as const] : []))) };
+        const stockMode: StockMode = { loaded: new Map((stored?.variants ?? []).flatMap((v) => (v.id ? [[v.id, v.stock] as const] : []))), source: "file", accountId: job.requestedBy, jobId: job.id };
         const saved = await saveProduct(p.store, p.editor, existing, plan.input as NonNullable<ProductPlan["input"]>, plan.fields, plan.variantFields, undefined, stockMode);
         if (!saved.ok) {
           outcome = "failed";

@@ -28,8 +28,14 @@ export type StoreFigures = {
   toSend: number;
   /** When the oldest order waiting to be sent was placed. */
   oldestToSend: string | null;
+  /** Variants with no warning level of their own that have 1 to `LOW_STOCK_AT` left: a variant that is gone is out, not low (D172; it used to be counted in both). */
   lowStock: number;
+  /** Variants that cannot be sold: stock stops at zero (`deny`) and none is left over the active locations. A variant that sells on backorder is not out. */
   outOfStock: number;
+  /** Variants at or below the warning level their owner set (`stock_alerts` in state `low`, D172): the Inventory page's *low* count. */
+  belowLevel: number;
+  /** Units on backorder that paid orders still wait for (D172): what the store has to receive. */
+  owedUnits: number;
   /**
    * What this member may not see of the store, from the area keys their role holds (wave 1, 1f): `sales` (sales, orders waiting to be
    * sent, the latest orders and returns), `stock`, `plan`. Left out of the figures, never shown as zero; absent for the owner.
@@ -169,8 +175,14 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
     // Nothing of the stock is shown to a member who may not open Products.
     if (hidden(s, "stock")) {
       // (no stock item)
-    } else if (s.outOfStock > 0) items.push({ text: `${s.name}: ${plural(s.outOfStock, "product is", "products are")} out of stock.`, href: `${base}/products`, action: "Open products" });
-    else if (s.lowStock > 0) items.push({ text: `${s.name}: ${plural(s.lowStock, "product is", "products are")} running low.`, href: `${base}/products`, action: "Open products" });
+    } else {
+      if (s.outOfStock > 0) items.push({ text: `${s.name}: ${plural(s.outOfStock, "product is", "products are")} out of stock.`, href: `${base}/products`, action: "Open products" });
+      if (s.lowStock > 0) items.push({ text: `${s.name}: ${plural(s.lowStock, "product is", "products are")} running low.`, href: `${base}/products`, action: "Open products" });
+      // The owner's own levels (D172): said apart, since the owner asked to be told, and they open the Inventory page filtered to them.
+      if (s.belowLevel > 0) items.push({ text: `${s.name}: ${plural(s.belowLevel, "variant is", "variants are")} at or below the warning level you set.`, href: `${base}/inventory?status=low`, action: "Open inventory" });
+      // Units sold that the store has not received yet: never a 0 that hides them, and not urgent by itself (the delivery time was stated at the sale).
+      if (s.owedUnits > 0) items.push({ text: `${s.name}: ${plural(s.owedUnits, "unit is", "units are")} owed on backorder, on orders that are paid and not sent.`, href: `${base}/inventory?status=backorder`, action: "Open inventory" });
+    }
     // Every member can open Work's pages, so staff are shown these too.
     items.push(...(s.work ?? []));
   }

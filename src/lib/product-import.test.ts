@@ -270,6 +270,52 @@ describe("the variant's columns", () => {
     }
   });
 
+  it("reads the stock policy, the delivery time and the warning level, and an export of them reads back unchanged", () => {
+    // The stored boot has a continue variant first (7 days, level 3): the same cells change nothing.
+    expect(v0(["stock_policy", "backorder_days", "low_stock_threshold"], ["continue", "7", "3"]).outcome).toBe("unchanged");
+    const changed = v0(["stock_policy", "backorder_days", "low_stock_threshold"], ["continue", "14", ""]);
+    expect(changed.input?.variants[0]).toMatchObject({ stockPolicy: "continue", backorderDays: 14, lowStockThreshold: null });
+    // deny drops the days whatever the cell says; an empty policy or days cell keeps what the variant has; an empty level switches the warning off.
+    expect(v0(["stock_policy", "backorder_days"], ["deny", "20"]).input?.variants[0]).toMatchObject({ stockPolicy: "deny", backorderDays: null });
+    expect(v0(["stock_policy", "backorder_days"], ["", ""]).outcome).toBe("unchanged");
+    expect(v0(["backorder_days"], ["30"]).input?.variants[0]).toMatchObject({ stockPolicy: "continue", backorderDays: 30 });
+    expect(v0(["low_stock_threshold"], [""]).input?.variants[0]).toMatchObject({ lowStockThreshold: null });
+    // A new variant starts at deny and needs days to continue.
+    const fresh = plan([["handle", "sku", "option1_name", "option1_value", "option2_name", "option2_value", "stock_policy", "backorder_days"], ["winter-boot", "BOOT-NEW", "Colour", "Red", "Size", "44", "continue", "5"]], { stored: [stored] }).products[0];
+    expect(fresh.input?.variants[3]).toMatchObject({ sku: "BOOT-NEW", stockPolicy: "continue", backorderDays: 5 });
+  });
+
+  it("gives each bad stock policy cell its finding", () => {
+    for (const [cols, vals, code] of [
+      [["stock_policy"], ["sometimes"], "stock_policy.invalid"],
+      [["backorder_days"], ["0"], "backorder_days.invalid"],
+      [["backorder_days"], ["91"], "backorder_days.invalid"],
+      [["backorder_days"], ["1.5"], "backorder_days.invalid"],
+      [["low_stock_threshold"], ["-1"], "low_stock_threshold.invalid"],
+      [["low_stock_threshold"], ["1000001"], "low_stock_threshold.invalid"],
+    ] as [string[], string[], string][]) {
+      const p = v0(cols, vals);
+      expect([cols.join(), codes(p)]).toEqual([cols.join(), [code]]);
+      expect(p.outcome).toBe("skipped");
+    }
+    // Continue on a variant that has no days, and none given, is refused; on a download it is refused.
+    const bare = boot(ctx, { variants: boot(ctx).variants.map((v) => ({ ...v, stockPolicy: "deny" as const, backorderDays: null })) });
+    expect(codes(plan([["handle", "sku", "stock_policy"], ["winter-boot", "BOOT-BLK-42", "continue"]], { stored: [bare] }).products[0])).toEqual(["backorder_days.required"]);
+    const digital = boot(ctx, { variants: boot(ctx).variants.map((v) => ({ ...v, delivery: "digital" as const, stock: 0, stockPolicy: "deny" as const, backorderDays: null, lowStockThreshold: null })), withdrawalExclusion: "digital_content" });
+    expect(codes(plan([["handle", "sku", "stock_policy", "backorder_days"], ["winter-boot", "BOOT-BLK-42", "continue", "5"]], { stored: [digital] }).products[0])).toContain("stock_policy.not_goods");
+    expect(codes(plan([["handle", "sku", "low_stock_threshold"], ["winter-boot", "BOOT-BLK-42", "5"]], { stored: [digital] }).products[0])).toContain("low_stock_threshold.invalid");
+  });
+
+  it("does not import a stock figure when the store has several active locations, and says so once", () => {
+    const rows = [["handle", "sku", "stock"], ["winter-boot", "BOOT-BLK-42", "99"], ["winter-boot", "BOOT-BLK-43", "98"]];
+    const p = plan(rows, { stored: [stored], env: { activeLocations: 3 } }).products[0];
+    expect(codes(p)).toEqual(["inventory.multi_location_stock_ignored"]);
+    expect(p.outcome).toBe("unchanged");
+    expect(p.changes.stock).toBe(false);
+    // With one location (or none known) the figure is written as before.
+    expect(plan(rows, { stored: [stored], env: { activeLocations: 1 } }).products[0].changes.stock).toBe(true);
+  });
+
   it("accepts a delivery equal to the stored one, so an export always reads back", () => {
     expect(v0(["delivery"], ["physical"]).outcome).toBe("unchanged");
   });

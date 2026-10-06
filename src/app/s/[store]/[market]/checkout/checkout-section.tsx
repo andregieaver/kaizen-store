@@ -7,6 +7,7 @@ import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
 import { CheckoutTerms as CheckoutTermsView } from "@/components/checkout-terms";
 import { DeliveryChoice } from "@/components/delivery-choice";
+import { BackorderLine } from "@/components/backorder-note";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
@@ -192,6 +193,8 @@ function itemsList(view: CheckoutView, market: Market) {
               locale={market.locale}
               m={m}
             />
+            {/* What is on backorder (D172): the order's own figure, provisional until it is paid. */}
+            <BackorderLine backorder={line.backorder} m={m} />
           </span>
           <span className="whitespace-nowrap">
             {line.gift ? (

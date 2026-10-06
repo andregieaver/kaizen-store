@@ -104,6 +104,9 @@ import { listDiscounts, saveDiscount } from "./discounts";
 import { getInvoiceSettings, invoiceReadiness, seriesStates } from "./invoice-settings";
 import { invoiceCheckupFindings, invoiceCounts, listCreditNotes, listInvoices, waitingCreditNotes, waitingInvoices } from "./invoices";
 import { orderNumberAudit } from "./order-numbers";
+import { inventoryCounts, ledgerProblems } from "./inventory";
+import { preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
+import { onHandActive } from "./stock-sql";
 import { taxCheckupFindings, taxProfileView } from "./tax-profile";
 import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder } from "./order-admin";
 import { listOrders } from "./orders";
@@ -352,7 +355,7 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
     `),
     db().execute<Row>(sql`
       select v.id, v.sku, v.options, v.delivery,
-        (select coalesce(sum(l.on_hand), 0)::int from commerce.inventory_levels l where l.variant_id = v.id) as stock,
+        ${onHandActive(sql`v.id`)} as stock, v.stock_policy, v.backorder_days, v.low_stock_threshold,
         coalesce((select jsonb_agg(jsonb_build_object('market', c.market_code, 'amount', c.amount_minor, 'currency', c.currency) order by c.market_code)
           from commerce.current_prices c where c.variant_id = v.id), '[]') as prices
       from commerce.product_variants v
@@ -378,6 +381,13 @@ async function getProductTool({ store }: OwnerToolContext, { product }: OwnerToo
         options: v.options,
         delivery: String(v.delivery),
         stock: v.delivery === "physical" ? Number(v.stock) : null,
+        ...(v.delivery === "physical"
+          ? {
+              when_sold_out: v.stock_policy === "continue" ? "keeps selling on backorder" : "stops selling",
+              ...(v.stock_policy === "continue" ? { delivery_days: v.backorder_days === null ? null : Number(v.backorder_days) } : {}),
+              warning_level: v.low_stock_threshold === null ? null : Number(v.low_stock_threshold),
+            }
+          : {}),
         prices: (v.prices as { market: string; amount: number; currency: string }[]).map((p) => ({
           country: p.market,
           price: money(store, Number(p.amount), p.currency),
@@ -439,19 +449,29 @@ async function unitPriceGapsTool({ store }: OwnerToolContext, { product, limit }
 
 async function lowStock({ store }: OwnerToolContext, { at_most }: OwnerToolInput<"low_stock">) {
   const locale = mainLocale(store);
+  // On hand over the ACTIVE locations (a deactivated one is not for sale); a variant that sells on backorder can be below zero (D172).
   const rows = await db().execute<Row>(sql`
-    select v.sku, v.options, coalesce(tl.title, p.handle) as title, coalesce(sum(l.on_hand), 0)::int as stock
-    from commerce.product_variants v
-    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
-    left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
-    left join commerce.inventory_levels l on l.variant_id = v.id
-    where v.store_id = ${store.id}::uuid and v.active and v.delivery = 'physical'
-    group by v.id, v.sku, v.options, tl.title, p.handle
-    having coalesce(sum(l.on_hand), 0) <= ${at_most}
-    order by stock, title
+    select * from (
+      select v.sku, v.options, coalesce(tl.title, p.handle) as title, ${onHandActive(sql`v.id`)} as stock, v.stock_policy, v.backorder_days
+      from commerce.product_variants v
+      join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
+      left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
+      where v.store_id = ${store.id}::uuid and v.active and v.delivery = 'physical'
+    ) x
+    where x.stock <= ${at_most}
+    order by x.stock, x.title
     limit 50
   `);
-  return { count: rows.length, variants: rows.map((r) => ({ product: String(r.title), sku: String(r.sku), options: r.options, stock: Number(r.stock) })) };
+  return {
+    count: rows.length,
+    variants: rows.map((r) => ({
+      product: String(r.title),
+      sku: String(r.sku),
+      options: r.options,
+      stock: Number(r.stock),
+      ...(r.stock_policy === "continue" ? { keeps_selling_when_sold_out: true, delivery_days: r.backorder_days === null ? null : Number(r.backorder_days) } : {}),
+    })),
+  };
 }
 
 /** Midnight of a day in the store's time zone, as an instant. */
@@ -628,7 +648,7 @@ async function setupProgressTool({ store }: OwnerToolContext) {
 
 async function storeCheckup(ctx: OwnerToolContext) {
   const { store } = ctx;
-  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings] = await Promise.all([
+  const [[counts], [low], progress, integrations, restock, numbering, taxFindings, documentFindings, ledger, levels] = await Promise.all([
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
@@ -646,7 +666,7 @@ async function storeCheckup(ctx: OwnerToolContext) {
       select count(*)::int as n from commerce.product_variants v
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
       where v.store_id = ${store.id}::uuid and p.status = 'active' and v.active and v.delivery = 'physical' and p.kind = 'goods'
-        and coalesce((select sum(l.on_hand) from commerce.inventory_levels l where l.variant_id = v.id), 0) <= 3
+        and ${onHandActive(sql`v.id`)} <= 3
     `),
     getSetupProgress(store),
     listIntegrations(store.id),
@@ -654,6 +674,8 @@ async function storeCheckup(ctx: OwnerToolContext) {
     orderNumberAudit(store.id),
     taxCheckupFindings(store.id),
     invoiceCheckupFindings(store.id),
+    ledgerProblems(store.id),
+    inventoryCounts(store.id),
   ]);
   const findings: { what: string; page: string }[] = [];
   const add = (when: boolean, what: string, page: string) => when && findings.push({ what, page: adminLink(store, page) });
@@ -661,10 +683,15 @@ async function storeCheckup(ctx: OwnerToolContext) {
   add(Number(counts.late_orders) > 0, `${counts.late_orders} paid order(s) have waited more than two days to be sent.`, "/orders?show=to-send");
   add(Number(counts.to_send) > 0 && Number(counts.late_orders) === 0, `${counts.to_send} paid order(s) are waiting to be sent.`, "/orders?show=to-send");
   add(Number(low.n) > 0, `${low.n} variant(s) have 3 or fewer left in stock.`, "/products");
+  // The owner's own levels and what is owed on backorder (D172): the Inventory page's own counts.
+  add(levels.low > 0, `${levels.low} variant(s) are at or below the warning level you set: stock_levels with status low lists them.`, "/inventory?status=low");
+  add(levels.owed > 0, `${levels.owed} unit(s) are owed to customers on backorder, on orders that are paid and not sent.`, "/inventory?status=backorder");
   add(restock.urgent > 0, `${restock.urgent} variant(s) will run out within a week at the current pace: restock_suggestions says how many to order.`, "/products");
   add(Number(counts.searches_missed) > 0, `${counts.searches_missed} different search(es) found nothing this week.`, "/search");
   add(Number(counts.approvals) > 0, `${counts.approvals} change(s) you asked me for are waiting for your approval.`, "/assistant");
   for (const problem of auditProblems(numbering)) add(true, `Order numbering is not in sequence: ${problem}`, "/orders");
+  // The history of stock (D172): the movements of a variant at a location add up to its level; a pair that does not is a level written in a way no trigger saw.
+  add(ledger.length > 0, `The stock history does not add up for ${ledger.length === 50 ? "50 or more" : ledger.length} variant(s) at a location. Tell Kaizen's support.`, "/inventory/history");
   // The tax profile (D157): registered without a number, a number never checked valid, IOSS or OSS half filled in.
   for (const finding of taxFindings) add(true, finding.message, "/settings/tax");
   // Invoices and credit notes (D159): numbering in sequence, invoices waiting, a refund with no credit note, PDFs that could not be made.
@@ -1461,35 +1488,6 @@ async function resendOrderEmailTool({ store }: OwnerToolContext, { order, which 
   return { done: `The shipping notice for ${order} went to the customer again.` };
 }
 
-async function setStockTool(ctx: OwnerToolContext, { sku, quantity }: OwnerToolInput<"set_stock">) {
-  const { store } = ctx;
-  const variants = await db().execute<Row>(sql`
-    select v.id, v.product_id, (select count(*)::int from commerce.inventory_levels l where l.variant_id = v.id) as places
-    from commerce.product_variants v
-    where v.store_id = ${store.id}::uuid and v.active and v.delivery = 'physical' and lower(v.sku) = lower(${sku})
-  `);
-  if (variants.length === 0) return fail(`No shipped variant with the SKU ${sku}. Use get_product for SKUs.`);
-  if (variants.length > 1) return fail(`More than one variant has the SKU ${sku}: set it on the product page.`);
-  const variant = variants[0];
-  if (Number(variant.places) > 1) return fail(`${sku} is kept in more than one place: set it on the product page.`);
-  await db().transaction(async (tx) => {
-    const [place] = await tx.execute<Row>(sql`
-      select coalesce(
-        (select location_id from commerce.inventory_levels where variant_id = ${String(variant.id)}::uuid limit 1),
-        (select id from commerce.inventory_locations where store_id = ${store.id}::uuid and active order by created_at limit 1)
-      ) as location_id
-    `);
-    if (!place?.location_id) return fail("The store has no stock location yet: save the product once on its page.");
-    await tx.execute(sql`
-      insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-      values (${store.id}::uuid, ${String(variant.id)}::uuid, ${String(place.location_id)}::uuid, ${quantity})
-      on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
-    `);
-  });
-  ctx.invalidate(catalogTag(store.id));
-  return { done: `${sku} now has ${quantity} in stock.`, admin: adminLink(store, `/products/${String(variant.product_id)}`) };
-}
-
 async function postToSlackTool({ store }: OwnerToolContext, { message }: OwnerToolInput<"post_to_slack">) {
   const outcome = await postToSlack(store.id, message);
   if (!outcome.ok) return fail(`Slack did not take it: ${outcome.error ?? "no answer"}.`);
@@ -1705,6 +1703,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightRedirectTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A figure or a backorder setting that could not be changed, or would change nothing, is refused now, never kept for a yes (D172).
+  if (name === "set_stock" || name === "set_backorder") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightStockTool(ctx, name, input.input as Record<string, unknown>);
+  }
   // A test that could not be started, stopped or decided is refused now, never kept for a yes (D148).
   if (name === "start_experiment" || name === "stop_experiment" || name === "apply_winner") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -1829,6 +1834,9 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   email_customer: emailCustomerTool,
   resend_order_email: resendOrderEmailTool,
   set_stock: setStockTool,
+  set_backorder: setBackorderTool,
+  stock_levels: stockLevelsTool,
+  stock_history: stockHistoryTool,
   ai_usage: aiUsageTool,
   post_to_slack: postToSlackTool,
   list_experiments: listExperimentsTool,

@@ -31,6 +31,7 @@ const context = {
   mainCurrency: "NOK",
   operators: [],
   locationName: null,
+  activeLocations: 1,
   terms: [food],
   bookingsOn: false,
   staff: [],

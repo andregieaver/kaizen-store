@@ -8,6 +8,8 @@ import { SIMPLE_FIELD_TYPES, TOOL_FIELD_ENTITIES } from "./field-tools";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
 import { approveSummary, declineSummary } from "./return-tools";
 import { FROM_MAX, OVERVIEW_ROWS_DEFAULT, OVERVIEW_ROWS_MAX, TO_MAX, redirectSummary } from "./redirect-tools";
+import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASONS, NOTE_MAX, STOCK_MAX } from "./inventory";
+import { backorderSummary, setStockSummary } from "./stock-tools";
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -130,8 +132,28 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "low_stock",
-    "Active variants with stock at or below a level (goods only; services and digital files have none).",
+    "Active variants with stock at or below a level (goods only; services and digital files have none). Stock is what is on hand at the store's active locations; a variant that sells on backorder can be below zero, which is what the store still has to receive. For each variant's own warning level, committed units and what is owed, use stock_levels.",
     z.object({ at_most: z.number().int().min(0).max(1000).default(3).describe("Stock at or below this.") }),
+  ),
+  tool(
+    "stock_levels",
+    "The store's stock as its Inventory page shows it (D172): for each shipped variant, on hand over the active locations, committed to checkouts in progress, available, owed to customers on backorder, whether it stops selling or keeps selling when sold out (with the delivery time shoppers are told), its own warning level, and each location's figures when the store has several. The counts above the list (variants, at or below their level, out, owed units, below zero) are the page's own. Every figure is counted by the store: repeat it, never add one. `status` narrows to those at or below their warning level (low), sold out (out), selling on backorder (backorder) or below zero (negative). Read-only: to change a figure use set_stock, to change what happens at zero use set_backorder.",
+    z.object({
+      search: z.string().trim().max(100).optional().describe("A SKU, a product handle or part of its title."),
+      status: z.enum(["all", "low", "out", "backorder", "negative"]).default("all"),
+      location: z.string().trim().max(60).optional().describe("Only this location's figures, by its name; leave it out for every active location summed."),
+      limit: limit(50, 20),
+    }),
+  ),
+  tool(
+    "stock_history",
+    "The history of one variant's stock (D172): every change of a figure, newest first, with when, the location, how much it changed by, the new figure, the reason (counted, received, damaged, sale, put back after an order ...) and who or what made it (a staff member, an order, a return, the AI manager). Kept 24 months. Read-only; each line is the store's own record, so repeat it as it is. Give the variant's SKU (from stock_levels or get_product).",
+    z.object({
+      sku: z.string().trim().min(1).max(100),
+      days: z.number().int().min(1).max(730).default(90).describe("The last this many days, today included."),
+      reason: z.enum(MOVEMENT_REASONS).optional().describe("Only changes made for this reason."),
+      limit: limit(50, 20),
+    }),
   ),
   tool(
     "list_bookings",
@@ -602,11 +624,27 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "set_stock",
-    "Sets how many of a variant are in stock, by its SKU (from get_product or restock_suggestions), such as after a delivery from a supplier. Needs the owner's approval.",
+    "Sets how many of a variant are in stock at one location, by its SKU (from get_product, stock_levels or restock_suggestions), such as after a delivery from a supplier or a count. The quantity is the new number counted there, not the number to add. Say the location by its name when the store keeps stock at more than one (stock_levels lists them); a store with one location needs none. `reason` is why the figure changes (received, correction, count, damaged, lost, promotion) and is kept in the stock history with the person who asked; leave a short `note` only about the stock, never about a person. If the figure changed meanwhile (a sale, another count) nothing is changed and the new figure is said. Needs the owner's approval.",
     z.object({
       sku: z.string().trim().min(1).max(100),
-      quantity: z.number().int().min(0).max(1_000_000).describe("The new number in stock, not the number to add."),
+      quantity: z.number().int().min(0).max(STOCK_MAX).describe("The new number in stock at that location, not the number to add."),
+      location: z.string().trim().min(1).max(60).optional().describe("The location's name; required when the store keeps stock at more than one active location."),
+      reason: z.enum(ADJUST_REASONS).default("correction").describe("Why: received (goods arrived), correction, count (a recount), damaged, lost (theft or loss), promotion (given away)."),
+      note: z.string().trim().max(NOTE_MAX).optional().describe("A short note about the stock; never about a person."),
     }),
+    "public",
+  ),
+  tool(
+    "set_backorder",
+    `Chooses what happens at one variant's zero stock, by its SKU: it stops selling (policy deny, the default) or keeps selling on backorder (policy continue) with the delivery time shoppers are told (days, ${BACKORDER_DAYS_MIN} to ${BACKORDER_DAYS_MAX}). The days are shown on the product page, in the cart, on the order and in the confirmation email, so never choose them yourself: ask the owner how many days it really takes and use that. Only goods that are shipped can keep selling at zero. Turning it off leaves orders already placed owing their units. Needs the owner's approval.`,
+    z
+      .object({
+        sku: z.string().trim().min(1).max(100),
+        policy: z.enum(["continue", "deny"]).describe("continue: keep selling when sold out. deny: stop selling at zero."),
+        days: z.number().int().min(BACKORDER_DAYS_MIN).max(BACKORDER_DAYS_MAX).optional().describe("Expected to ship within this many days; required with continue, left out with deny."),
+      })
+      .refine((v) => v.policy === "deny" || v.days !== undefined, { message: "Say within how many days a backordered item is expected to ship.", path: ["days"] })
+      .refine((v) => v.policy === "continue" || v.days === undefined, { message: "A delivery time belongs only to a variant that keeps selling at zero stock.", path: ["days"] }),
     "public",
   ),
   tool(
@@ -832,7 +870,9 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
     case "resend_order_email":
       return `Send the ${input.which === "shipped" ? "shipping notice" : "order confirmation"} for order ${text("order")} to its customer again.`;
     case "set_stock":
-      return `Set the stock of ${text("sku")} to ${text("quantity")}.`;
+      return setStockSummary({ sku: text("sku"), quantity: Number(input.quantity), location: input.location ? text("location") : null, reason: input.reason ? text("reason") : null, note: input.note ? text("note") : null });
+    case "set_backorder":
+      return backorderSummary({ sku: text("sku"), policy: input.policy === "continue" ? "continue" : "deny", days: input.days === undefined ? null : Number(input.days) });
     case "post_to_slack":
       return `Post to the store's Slack channel: "${text("message")}"`;
     case "set_referral_program": {

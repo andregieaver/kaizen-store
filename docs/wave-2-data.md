@@ -164,8 +164,13 @@ Import rules (each has a test, section 6):
    a file-level error. A price that equals the stored one is not written (no `set_price` call, no new price history row). **A "compare-at" price
    is never imported:** Kaizen derives an advertised reduction only from its own price history (Directive 98/6/EC Art. 6a, see section 4.5), so the
    column is ignored with an info finding that says why.
-7. **Stock.** `stock` is set on the store's first active location through `saveProduct()` (the editor's rule today). Digital variants keep none.
-   Wave 3 adds locations and an inventory CSV; this file has one stock column (section 7).
+7. **Stock.** `stock` is set on the store's one active location through `saveProduct()` (the editor's rule). Digital variants keep none. Since wave 3
+   (D172) a store can have several locations: with more than one **active** location the `stock` column is the total of them and is **not imported** (it cannot
+   say which location a count is for): the finding `inventory.multi_location_stock_ignored` (warning, once per product) says so and the rest of the row is imported.
+   Counts per location are the stock file (`docs/wave-3-inventory.md` 2.4). `stock_policy`, `backorder_days` and `low_stock_threshold` are read per variant: an
+   empty policy or days cell keeps what the variant has, `deny` drops the days, `continue` needs days from 1 to 90 (`backorder_days.required`), an empty warning
+   level switches the warning off, and a download, service or booking takes none of the three (`stock_policy.not_goods`, `low_stock_threshold.invalid`). A
+   settings change moves no stock and writes no movement.
 8. **Pictures.** A picture address in the file that is not already one of the store's own pictures is **fetched by the server** with `safeFetch()`
    (never a plain `fetch` of an address a person typed: `CLAUDE.md` replicator rule), at most 10 MB, `image/jpeg|png|webp|gif|avif` only, shrunk
    with `sharp` to a 1,600 px WebP and a 480 px thumbnail, stored in the store's media library (`uploadToLibrary()`, the name from the address) and
@@ -440,7 +445,8 @@ first, then creation), then its extra picture rows.
 `description:{locale}`, `safety_information:{locale}`, `seo_title:{locale}`, `seo_description:{locale}`; `categories` (names, a path as `Parent / Child`,
 joined with ` | `), `tags` (joined with ` | `); `option1_name`, `option1_value`, `option2_name`, `option2_value`, `option3_name`, `option3_value`; `variant_id`,
 `sku`, `gtin`, `active` (`true`/`false`), `delivery` (`physical`, `digital`, `service`), `weight_grams`, `hs_code`, `origin_country`, `cost` (main
-currency, without VAT, `decimalAmount()`), `stock`, `measure_amount`, `measure_unit`, `measure_base` (the unit price, D160), `price_basis`
+currency, without VAT, `decimalAmount()`), `stock`, `stock_policy` (`deny`, `continue`; goods only), `backorder_days` (1 to 90, only with `continue`), `low_stock_threshold` (the owner's warning
+level, goods only; wave 3, D172), `measure_amount`, `measure_unit`, `measure_base` (the unit price, D160), `price_basis`
 (`incl_vat` / `excl_vat`), then one `price:{COUNTRY}` per market of the store (`price:NO`, `price:SE`); `image_url`, `image_position`, `image_alt`,
 `variant_image_url`; and `field:{name}` per plain custom field (4.1.4). A product-level cell is on the product's first row only.
 
@@ -722,7 +728,7 @@ Expected rating **full**.
 | Order import, Shopify order and customer importers, WooCommerce product, order and customer importers, "migration wizard" | The Shopify *product* file is read here because the row asks; the rest are `platform.migration-from-other-platforms` | wave 2, a later run on the same `data_jobs` table |
 | Redirect import and export, automatic redirect on a handle change | `storefront.url-redirect-manager` is its own row; for that reason an import **never changes a handle** | wave 2, later run |
 | Scheduled report emails; accounting exports and a second connector next to Tripletex | `analytics.scheduled-report-emails`, `analytics.accounting-integrations` (bucket B) | wave 2, later runs |
-| Inventory CSV with several locations, backorders | Wave 3 adds locations, inventory history and backorders; this file has one stock column and `inventory.continue_selling_ignored` says so | wave 3 |
+| Inventory CSV with several locations, backorders | Done in wave 3 (D172): the stock file is its own job kind (`inventory_import`, `inventory_export`); this file carries `stock_policy`, `backorder_days` and `low_stock_threshold` and ignores `stock` with several active locations | done |
 | Tick boxes and saved views in the orders list, bulk order actions | `orders.order-list-search-filters-saved-views-bulk` | wave 3 |
 | Variants beyond 100, options beyond 3, pictures beyond 12 | `MAX_VARIANTS`, `MAX_OPTIONS`, `MAX_MEDIA` are the editor's limits; Shopify allows 250 pictures; the import refuses with `media.too_many` and `options.too_many` rather than cut | wave 6 (variant matrix) |
 | Import of subscriptions, download files, bookings, hosts; custom fields that are not plain | Each has its own editor and rules (files in storage, staff, seasons) | not planned; the editor stays the way |

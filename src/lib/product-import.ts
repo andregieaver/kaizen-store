@@ -17,6 +17,7 @@ import type { FileFinding, Grouped, NeutralFile, ProductCsvContext, ProductDraft
 import { addressableFields, ambiguousFieldNames, isPriceColumn } from "./product-csv";
 import { finding, type DryRunCounts, type Finding, type ItemOutcome, type Severity } from "./data-job";
 import { IMPORT_MAX_PRODUCTS, IMPORT_MAX_ROWS } from "./data-limits";
+import { BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, THRESHOLD_MAX } from "./inventory";
 import { parsePlainField, plainFieldText, type PlainParsed } from "./field-csv";
 import type { FieldChanges, FieldDef, FieldValue } from "./custom-fields";
 import { MAX_MEDIA, MAX_OPTIONS, MAX_VARIANTS, PRODUCT_KINDS, formatPriceInput, parsePrice, productInput, productProblems } from "./product-input";
@@ -95,6 +96,8 @@ export type PlanEnv = {
   isOwnPicture: (url: string) => boolean;
   /** Pictures an import already fetched, by the address in the file: `null` for one that could not be. */
   fetched?: ReadonlyMap<string, FetchedPicture | null>;
+  /** How many stock locations the store has active (wave 3, D172): with more than one, a stock figure of the file cannot say where, so it is not imported. */
+  activeLocations?: number;
 };
 
 /** A category or tag the file names that the store does not have yet. `named` is a path the file names in full, as against a parent made only so a child has somewhere to be: only a named one is given to the product. */
@@ -256,6 +259,7 @@ export function canonical(input: ProductInput, archived: boolean, ctx: ProductCs
       origin: v.originCountry,
       cost: v.cost ? parsePrice(v.cost, ctx.mainCurrency) : null,
       stock: v.stock,
+      policy: [v.stockPolicy, v.stockPolicy === "continue" ? v.backorderDays : null, v.lowStockThreshold],
       measure: v.measure ? [normaliseMeasureAmount(v.measure.amount), v.measure.unit, v.measure.base] : null,
       prices: Object.entries(v.prices)
         .map(([code, typed]) => [code, typed ? parsePrice(typed, market(code)?.currency ?? "NOK") : null] as const)
@@ -464,8 +468,39 @@ function overlayVariant(c: Ctx, base: VariantInput, dv: DraftVariant, names: { p
     const n = parseWhole(v.stock);
     if (n === null || n > 1_000_000) err(c, "stock.invalid");
     else if (out.delivery !== "digital" && n !== out.stock) {
-      out.stock = n;
-      c.stockChanged = true;
+      if ((c.env.activeLocations ?? 1) > 1) {
+        // Which location the figure is for is not in this file; the stock file says so.
+        if (!c.findings.some((f) => f.code === "inventory.multi_location_stock_ignored")) err(c, "inventory.multi_location_stock_ignored", {}, "warning");
+      } else {
+        out.stock = n;
+        c.stockChanged = true;
+      }
+    }
+  }
+  // Selling past zero and the warning level (wave 3, D172). An empty policy or delivery-time cell keeps what the variant has; an empty warning level
+  // switches the warning off, as an empty weight clears the weight. A download, service or booking has none of the three.
+  if (has(c, "stock_policy") && t(v.stock_policy) !== "") {
+    const word = lower(t(v.stock_policy));
+    if (word !== "deny" && word !== "continue") err(c, "stock_policy.invalid", { sku: sku || undefined });
+    else if (word === "continue" && out.delivery !== "physical") err(c, "stock_policy.not_goods", { sku: sku || undefined });
+    else out.stockPolicy = word;
+  }
+  if (has(c, "backorder_days") && t(v.backorder_days) !== "") {
+    const days = parseWhole(v.backorder_days);
+    if (days === null || days < BACKORDER_DAYS_MIN || days > BACKORDER_DAYS_MAX) err(c, "backorder_days.invalid", { sku: sku || undefined });
+    else out.backorderDays = days;
+  }
+  if (has(c, "stock_policy") || has(c, "backorder_days")) {
+    if (out.stockPolicy === "deny") out.backorderDays = null;
+    else if (out.backorderDays === null && !hasError(c)) err(c, "backorder_days.required", { sku: sku || undefined });
+  }
+  if (has(c, "low_stock_threshold")) {
+    const cell = t(v.low_stock_threshold);
+    if (cell === "") out.lowStockThreshold = null;
+    else {
+      const n = parseWhole(cell);
+      if (n === null || n > THRESHOLD_MAX || out.delivery !== "physical") err(c, "low_stock_threshold.invalid", { sku: sku || undefined });
+      else out.lowStockThreshold = n;
     }
   }
   if (has(c, "measure_amount") || has(c, "measure_unit")) {

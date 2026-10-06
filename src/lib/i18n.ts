@@ -323,6 +323,18 @@ const messages = {
     /** A product a campaign gives with the order (D114): its price is "Gratis", and this labels the cart's line for it. */
     freeGift: "Gratis",
     giftFrom: (campaign: string) => `Gave: ${campaign}`,
+    /**
+     * Backorder (wave 3, D172): said on the product page, in the cart and checkout and on the order and its confirmation, always with the days the store
+     * states (Directive 2011/83/EU Art. 6(1)(g) and 18), never a date and never "in stock". Hand-written; needs human legal review before real use.
+     */
+    // legal: needs review
+    backorder: {
+      page: (days: number) => `På restordre: forventes sendt innen ${days} ${days === 1 ? "dag" : "dager"}`,
+      line: (n: number, days: number) => `${n} på restordre: forventes sendt innen ${days} ${days === 1 ? "dag" : "dager"}`,
+      order: (n: number, quantity: number, days: number) => `${n} av ${quantity} på restordre: forventes sendt innen ${days} ${days === 1 ? "dag" : "dager"} etter din bestilling`,
+      /** A cart line already at the most one line may hold (the stock does not limit a variant that keeps selling). */
+      capped: (max: number) => `Du kan legge inntil ${max} av denne varen i handlekurven.`,
+    },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Ja", no: "Nei" },
     /** What a store's campaigns say on product pages and cards (D115). */
@@ -645,7 +657,7 @@ const messages = {
       priceTo: "Til",
       priceRange: (low: string, high: string): string => `Prisene her går fra ${low} til ${high}.`,
       availability: "Tilgjengelighet",
-      inStock: "Bare det som kan kjøpes nå",
+      inStock: "På lager nå",
       clear: "Nullstill",
       apply: "Vis produktene",
       count: (n: number): string => (n === 1 ? "1 produkt" : `${n} produkter`),
@@ -1429,6 +1441,17 @@ const messages = {
     freeShipping: "Fri frakt",
     freeGift: "Gratis",
     giftFrom: (campaign: string) => `Present: ${campaign}`,
+    /**
+     * Backorder (wave 3, D172): said on the product page, in the cart and checkout and on the order and its confirmation, always with the days the store
+     * states (Directive 2011/83/EU Art. 6(1)(g) and 18), never a date and never "in stock". Hand-written; needs human legal review before real use.
+     */
+    // legal: needs review
+    backorder: {
+      page: (days: number) => `På restorder: förväntas skickas inom ${days} ${days === 1 ? "dag" : "dagar"}`,
+      line: (n: number, days: number) => `${n} på restorder: förväntas skickas inom ${days} ${days === 1 ? "dag" : "dagar"}`,
+      order: (n: number, quantity: number, days: number) => `${n} av ${quantity} på restorder: förväntas skickas inom ${days} ${days === 1 ? "dag" : "dagar"} efter din beställning`,
+      capped: (max: number) => `Du kan lägga högst ${max} av den här varan i varukorgen.`,
+    },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Ja", no: "Nej" },
     campaigns: {
@@ -1751,7 +1774,7 @@ const messages = {
       priceTo: "Till",
       priceRange: (low: string, high: string): string => `Priserna här går från ${low} till ${high}.`,
       availability: "Tillgänglighet",
-      inStock: "Bara det som kan köpas nu",
+      inStock: "I lager nu",
       clear: "Rensa",
       apply: "Visa produkterna",
       count: (n: number): string => (n === 1 ? "1 produkt" : `${n} produkter`),
@@ -2535,6 +2558,17 @@ const messages = {
     freeShipping: "Gratis fragt",
     freeGift: "Gratis",
     giftFrom: (campaign: string) => `Gave: ${campaign}`,
+    /**
+     * Backorder (wave 3, D172): said on the product page, in the cart and checkout and on the order and its confirmation, always with the days the store
+     * states (Directive 2011/83/EU Art. 6(1)(g) and 18), never a date and never "in stock". Hand-written; needs human legal review before real use.
+     */
+    // legal: needs review
+    backorder: {
+      page: (days: number) => `På restordre: forventes afsendt inden for ${days} ${days === 1 ? "dag" : "dage"}`,
+      line: (n: number, days: number) => `${n} på restordre: forventes afsendt inden for ${days} ${days === 1 ? "dag" : "dage"}`,
+      order: (n: number, quantity: number, days: number) => `${n} af ${quantity} på restordre: forventes afsendt inden for ${days} ${days === 1 ? "dag" : "dage"} efter din bestilling`,
+      capped: (max: number) => `Du kan lægge op til ${max} af denne vare i kurven.`,
+    },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Ja", no: "Nej" },
     campaigns: {
@@ -2855,7 +2889,7 @@ const messages = {
       priceTo: "Til",
       priceRange: (low: string, high: string): string => `Priserne her går fra ${low} til ${high}.`,
       availability: "Tilgængelighed",
-      inStock: "Kun det, der kan købes nu",
+      inStock: "På lager nu",
       clear: "Nulstil",
       apply: "Vis produkterne",
       count: (n: number): string => (n === 1 ? "1 produkt" : `${n} produkter`),
@@ -3639,6 +3673,17 @@ const messages = {
     freeShipping: "Free shipping",
     freeGift: "Free",
     giftFrom: (campaign: string) => `Gift: ${campaign}`,
+    /**
+     * Backorder (wave 3, D172): said on the product page, in the cart and checkout and on the order and its confirmation, always with the days the store
+     * states (Directive 2011/83/EU Art. 6(1)(g) and 18), never a date and never "in stock". Hand-written; needs human legal review before real use.
+     */
+    // legal: needs review
+    backorder: {
+      page: (days: number) => `On backorder: expected to ship within ${days} ${days === 1 ? "day" : "days"}`,
+      line: (n: number, days: number) => `${n} on backorder: expected to ship within ${days} ${days === 1 ? "day" : "days"}`,
+      order: (n: number, quantity: number, days: number) => `${n} of ${quantity} on backorder: expected to ship within ${days} ${days === 1 ? "day" : "days"} of your order`,
+      capped: (max: number) => `You can put at most ${max} of this item in the cart.`,
+    },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Yes", no: "No" },
     campaigns: {
@@ -3959,7 +4004,7 @@ const messages = {
       priceTo: "To",
       priceRange: (low: string, high: string): string => `Prices here run from ${low} to ${high}.`,
       availability: "Availability",
-      inStock: "Only what can be bought now",
+      inStock: "In stock now",
       clear: "Clear",
       apply: "Show products",
       count: (n: number): string => (n === 1 ? "1 product" : `${n} products`),

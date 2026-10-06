@@ -1898,6 +1898,41 @@
       "when": 1791267135563,
       "tag": "20261006061215_store_closure_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 271,
+      "version": "7",
+      "when": 1791274200499,
+      "tag": "20261006081000_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1791274219460,
+      "tag": "20261006081019_inventory_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1791285399524,
+      "tag": "20261006111639_inventory_plan_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 274,
+      "version": "7",
+      "when": 1791288765986,
+      "tag": "20261006121245_inventory_reservation_backorder",
+      "breakpoints": true
+    },
+    {
+      "idx": 275,
+      "version": "7",
+      "when": 1791288797608,
+      "tag": "20261006121317_inventory_draw_claims",
+      "breakpoints": true
     }
   ]
 }

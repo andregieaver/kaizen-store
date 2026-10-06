@@ -10,6 +10,7 @@ import { isNative, shown, type Market } from "@/lib/markets";
 import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 import { parseRentalPeriod, rangeEndsAt, type RentalPeriod } from "@/lib/booking-ranges";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
+import { backorderNote, lineIsOk, stockOf, type VariantStock } from "@/lib/stock-availability";
 import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/subscriptions";
 import type { ShownMeasure } from "@/lib/unit-price";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
@@ -52,8 +53,18 @@ export type CartLine = {
    * content, for bookings and for a line that cannot be bought.
    */
   measure: ShownMeasure | null;
-  /** Units that can be sold; downloads never run out (D24). */
+  /**
+   * The most units the shopper can put in the cart: what is in stock for a variant that stops selling at zero, the line maximum for
+   * one that keeps selling on backorder (wave 3, D172); downloads never run out (D24).
+   */
   available: number;
+  /** Units in stock now (net of live checkout holds, never below zero); a download or a booking has no stock and reads as `available`. */
+  inStock: number;
+  /**
+   * The units of this line beyond what is in stock and the days stated for them, for a variant that keeps selling on backorder (D172);
+   * null for a line that is wholly in stock or whose variant stops selling at zero. The words are `m.backorder.line()`.
+   */
+  backorder: { units: number; days: number } | null;
   status: CartLineStatus;
   delivery: Delivery;
   /** Who the product is for (B2B), as kept; `companyRequired()` reads it with the store's audience. */
@@ -154,7 +165,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       coalesce(m.thumbnail_url, m.url) as image_url, coalesce(nullif(m.alt ->> ${market.locale}, ''), commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
       cp.amount_minor,
       (p.status = 'active' and v.active and ${bookable}) as sellable,
-      avail.available
+      va.in_stock, va.raw_available, va.stock_policy, va.backorder_days
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
     join commerce.stores st on st.id = cl.store_id
@@ -177,16 +188,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
     ) m on true
     left join commerce.current_prices cp
       on cp.variant_id = v.id and cp.market_code = c.market_code
-    left join lateral (
-      -- A stay's nights or a rental's days are checked when chosen and at checkout.
-      select case when p.kind in ('stay', 'rental') then cl.quantity
-        when v.delivery <> 'physical' then ${MAX_LINE_QUANTITY} else coalesce(sum(s.available), 0) end::int
-        as available
-      from commerce.available_stock s
-      join commerce.inventory_locations l
-        on l.store_id = s.store_id and l.id = s.location_id and l.active
-      where s.store_id = v.store_id and s.variant_id = v.id
-    ) avail on true
+    left join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     where cl.store_id = ${storeId}::uuid
       and cl.cart_id = ${cartId}::uuid
       and c.market_code = ${market.code}
@@ -221,7 +223,12 @@ export async function getCart(shop: Shop): Promise<Cart> {
       const count = Number(row.quantity);
       const range = row.starts_at && (row.kind === "stay" || row.kind === "rental") ? (row.kind as "stay" | "rental") : null;
       const quantity = range ? 1 : count;
-      const available = range ? 1 : Number(row.available);
+      // Goods that are shipped have stock (and may keep selling past it, D172); a download never runs out, a booking is one place.
+      const goods = String(row.delivery) === "physical" && !range;
+      const stock: VariantStock | null = goods
+        ? stockOf({ in_stock: Number(row.in_stock ?? 0), raw_available: Number(row.raw_available ?? 0), stock_policy: String(row.stock_policy ?? "deny"), backorder_days: row.backorder_days === null || row.backorder_days === undefined ? null : Number(row.backorder_days) })
+        : null;
+      const available = range ? 1 : stock ? (stock.stockPolicy === "continue" ? MAX_LINE_QUANTITY : stock.inStock) : MAX_LINE_QUANTITY;
       const plan = row.selling_plan_id
         ? {
             id: String(row.selling_plan_id),
@@ -254,7 +261,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       const status: CartLineStatus =
         !row.sellable || !row.plan_ok || (plan !== null && !isNative(market)) || unitPriceMinor === null || available <= 0
           ? "unavailable"
-          : available < quantity
+          : !(stock ? lineIsOk(quantity, stock) : available >= quantity)
             ? "insufficient"
             : "ok";
       return {
@@ -271,6 +278,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
         // Goods only: a booking's price is for its nights, days or hours, and the database refuses a measure on one.
         measure: range || row.starts_at || status === "unavailable" ? null : shownMeasureFromColumns(row.measure_amount, row.measure_unit, row.measure_base, market.code),
         available,
+        inStock: stock ? stock.inStock : available,
+        backorder: stock && status === "ok" ? backorderNote(quantity, stock) : null,
         status,
         delivery: parseDelivery(row.delivery),
         audience: parseProductAudience(row.audience),
@@ -368,9 +377,22 @@ async function buysForBusiness(storeId: string): Promise<boolean> {
   return parseBuyer((await cookies()).get(buyerCookie(storeId))?.value) === "business";
 }
 
+export type SellableQuantity = {
+  available: number;
+  kind: BookedKind | "goods";
+  /** Units really in stock (net of live checkout holds); for a download or a booking, the same as `available`. */
+  inStock: number;
+  stockPolicy: "deny" | "continue";
+  backorderDays: number | null;
+};
+
 /**
  * Units of a variant that can be sold in the market right now, or null if
  * the variant is not for sale there (inactive, or no price in the market).
+ * `available` is the most a cart line may hold: the stock for a variant that
+ * stops selling at zero, the line maximum for one that keeps selling on
+ * backorder (wave 3, D172); `inStock` and the policy say how much of it is
+ * real stock and what the shopper is told about the rest.
  */
 export async function sellableQuantity(
   tx: Tx,
@@ -380,18 +402,13 @@ export async function sellableQuantity(
   booking: LineBooking | null,
   /** A stay's nights or a rental's days (D67). */
   count: number,
-): Promise<{ available: number; kind: BookedKind | "goods" } | null> {
+): Promise<SellableQuantity | null> {
   // A subscription renews at a price kept in the country's own currency, so it is bought in it only (D109).
   if (sellingPlanId && !isNative(market)) return null;
   const [row] = await tx.execute<Row>(sql`
-    select v.product_id, p.kind, v.rental_period, case when v.delivery <> 'physical' then ${MAX_LINE_QUANTITY} else coalesce((
-      select sum(s.available)
-      from commerce.available_stock s
-      join commerce.inventory_locations l
-        on l.store_id = s.store_id and l.id = s.location_id and l.active
-      where s.store_id = v.store_id and s.variant_id = v.id
-    ), 0) end::int as available
+    select v.product_id, p.kind, v.rental_period, v.delivery, va.in_stock, va.stock_policy, va.backorder_days
     from commerce.product_variants v
+    join commerce.variant_availability va on va.store_id = v.store_id and va.variant_id = v.id
     join commerce.products p
       on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
     join commerce.prices pr
@@ -412,7 +429,16 @@ export async function sellableQuantity(
       }
   `);
   if (!row) return null;
-  if (!booking) return { available: Number(row.available), kind: "goods" };
+  const physical = String(row.delivery) === "physical";
+  const stock = physical
+    ? stockOf({ in_stock: Number(row.in_stock ?? 0), raw_available: Number(row.in_stock ?? 0), stock_policy: String(row.stock_policy ?? "deny"), backorder_days: row.backorder_days === null || row.backorder_days === undefined ? null : Number(row.backorder_days) })
+    : null;
+  const room = {
+    inStock: stock ? stock.inStock : MAX_LINE_QUANTITY,
+    stockPolicy: stock ? stock.stockPolicy : ("deny" as const),
+    backorderDays: stock ? stock.backorderDays : null,
+  };
+  if (!booking) return { available: stock ? (stock.stockPolicy === "continue" ? MAX_LINE_QUANTITY : stock.inStock) : MAX_LINE_QUANTITY, kind: "goods", ...room };
   const kind = bookedKind(row.kind);
   // A stay or a rental must be free for all its nights or days, and keep to the product's rules.
   if (kind !== "appointment") {
@@ -422,11 +448,11 @@ export async function sellableQuantity(
       unitId: booking.resourceId,
       period: parseRentalPeriod(row.rental_period),
     });
-    return { available: free.ok ? count : 0, kind };
+    return { available: free.ok ? count : 0, kind, ...room };
   }
   // An appointment's time must be one the product page would offer now.
   const free = await freeResourcesAt(tx, storeId, String(row.product_id), booking.startsAt, booking.resourceId);
-  return { available: free && free.resourceIds.length > 0 ? 1 : 0, kind };
+  return { available: free && free.resourceIds.length > 0 ? 1 : 0, kind, ...room };
 }
 
 /** Locks and returns the shopper's open cart, creating one if needed. */

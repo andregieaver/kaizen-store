@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { emailText } from "./email-text";
 import { t } from "./i18n";
 import { templateArguments, templateProblem } from "./icu-lite";
-import { catalogOf, CHOOSING, overlayMessages, runTemplate, sourceHash } from "./ui-catalog";
+import { catalogOf, CHOOSING, HAND_WRITTEN_ONLY, isHandWrittenOnly, overlayMessages, runTemplate, sourceHash } from "./ui-catalog";
 
 const ui = catalogOf("ui", t("en"));
 const email = catalogOf("email", emailText("en"));
@@ -104,6 +104,35 @@ describe("a template gives the English message", () => {
     for (const key of Object.keys(CHOOSING)) {
       if (key !== "email:tracking") expect(CASES[key], key).toBeDefined();
     }
+  });
+});
+
+describe("texts that are only ever hand-written (review: the backorder delivery-time sentences)", () => {
+  it("keeps the backorder sentences out of the catalogue, so no language gets a machine translation of a delivery time", () => {
+    expect(HAND_WRITTEN_ONLY).toContain("ui:backorder.");
+    expect(all.filter((e) => e.key.startsWith("ui:backorder.") || e.key.startsWith("email:backorder.")).map((e) => e.key)).toEqual([]);
+    expect(all.filter((e) => isHandWrittenOnly(e.key))).toEqual([]);
+    expect(Object.keys(CHOOSING).filter(isHandWrittenOnly)).toEqual([]);
+    // The messages exist (nb, sv, da and en by hand) and are what the walk skipped, not something that was never there.
+    expect(typeof t("en").backorder.page).toBe("function");
+  });
+
+  it("never lets an overlay replace them: a stored translation for one is ignored and the English sentence stays", () => {
+    const rogue = new Map([
+      ["ui:backorder.page", "{0, plural, one {Auf Lieferrückstand: # Tag} other {Auf Lieferrückstand: # Tage}}"],
+      ["ui:backorder.line", "{0} {1}"],
+      ["ui:backorder.capped", "x"],
+    ]);
+    const de = overlayMessages("ui", t("en"), rogue, "de-DE");
+    expect(de.backorder.page(7)).toBe(t("en").backorder.page(7));
+    expect(de.backorder.line(2, 7)).toBe(t("en").backorder.line(2, 7));
+    expect(de.backorder.capped(20)).toBe(t("en").backorder.capped(20));
+  });
+
+  it("reads the hand-written languages and the English fallback, whatever else is in the store's texts", () => {
+    expect(t("nb").backorder.page(7)).not.toBe(t("en").backorder.page(7));
+    expect(t("sv").backorder.page(7)).not.toBe(t("en").backorder.page(7));
+    expect(t("da").backorder.page(7)).not.toBe(t("en").backorder.page(7));
   });
 });
 

@@ -5,10 +5,11 @@ import { optionLabel, t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
 import { formatMoney } from "@/lib/money";
+import { canOffer } from "@/lib/stock-words";
 import { shownAmount } from "@/lib/pricing";
 import { getBuyer } from "@/server/b2b";
 import { marketPath } from "@/lib/paths";
-import { getAvailability, getProduct } from "@/server/catalog";
+import { getProduct, getVariantStock } from "@/server/catalog";
 import { getCustomer } from "@/server/customers";
 import type { Store } from "@/server/stores";
 import { getWishlistItems, listWishlists } from "@/server/wishlists";
@@ -37,7 +38,8 @@ async function Wishlist({ store, market, query }: { store: Store; market: Market
   const rows = current ? await getWishlistItems(store.id, current.id) : [];
   const products = await Promise.all(rows.map((row) => getProduct(store.id, market, row.handle)));
   const variantIds = products.flatMap((p) => p?.variants.map((v) => v.id) ?? []);
-  const stock = await getAvailability(store.id, variantIds);
+  // Units in stock, or a variant that keeps selling at zero with its days stated (D172); a download has no stock row to run out.
+  const stock = await getVariantStock(store.id, variantIds);
   const items: WishlistItemView[] = rows.flatMap((row, i) => {
     const product = products[i];
     if (!product) return [];
@@ -60,7 +62,7 @@ async function Wishlist({ store, market, query }: { store: Store; market: Market
           id: v.id,
           label: optionLabel(m, v.options) || product.title,
           price: formatMoney(shownAmount(v.price.amountMinor, v.price.vat, buyer), v.price.currency, market.locale),
-          available: v.delivery !== "physical" || (stock.get(v.id) ?? 0) > 0,
+          available: v.delivery !== "physical" || canOffer(stock.get(v.id)),
         })),
       },
     ];

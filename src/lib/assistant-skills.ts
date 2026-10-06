@@ -387,9 +387,24 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     steps: [
       "Ask, if not known, how long their supplier takes to deliver and how many days the stock should last; remember the answer (remember, kind procedure).",
       "Call restock_suggestions with those days; start with what is urgent (it runs out before new stock could arrive).",
-      "Give a short order list: product, SKU, how many to order. The numbers come from the tool; do not change them.",
+      "Give a short order list: product, SKU, how many to order. The numbers come from the tool; do not change them. A variant with units owed to customers (owed_to_customers) is sold on backorder: its suggestion already adds those units, and they are the first to ship when the goods arrive.",
+      "For the figures behind a variant (on hand at each location, committed to checkouts, owed, its own warning level) call stock_levels; stock_history shows what changed it, when and why.",
       "Out-of-stock products that do not sell might rather be archived: say so, never archive without being asked.",
-      "When the goods arrive, set_stock sets the new counts (kept for approval), one SKU at a time; or the product page.",
+      "When the goods arrive, set_stock sets the new counts (kept for approval), one SKU at a time: the quantity is the new total counted at that location, not the number received, and the location is named when the store keeps stock in more than one place. Give the reason received, or count after a recount, and never a note about a person. Many SKUs at once: the Inventory page (open_admin_page, inventory) reviews every change before it saves, and its file import (inventory.import) checks a counted file first.",
+    ],
+  },
+  {
+    id: "backorders",
+    area: "store",
+    title: "Sell when out of stock",
+    when: "The owner asks to keep selling a product that is sold out, to take orders for goods that are not in yet, or what happens when a variant goes below zero.",
+    steps: [
+      "Explain in two sentences what it is: a variant set to keep selling at zero stock takes orders and ships when the goods arrive, and shoppers are told a delivery time before they buy, on the product page, in the cart, on the order and in the confirmation email. Stock then goes below zero; the units owed are shown as owed on the Inventory page.",
+      "The delivery time is a promise the store makes: ask how many days it really takes, from 1 to 90, and use exactly that. Never choose it yourself and never suggest a shorter one to sell more. If they say more than 30 days, say that the customer then agrees to a longer time by ordering and that it must be said clearly; the wording shoppers see is the store's own and is reviewed by a person, so do not rewrite it.",
+      "Only goods that are shipped can keep selling at zero; downloads, services, bookings and subscription plans cannot. Call stock_levels (status backorder or out) to find the variant and its SKU, and say what its figures are now.",
+      "Make the change with set_backorder (policy continue with the days, or deny to stop). It needs their approval and checks the variant first. Say what shoppers will be told, in the tool's words.",
+      "Turning it off stops new orders at zero but leaves the orders already placed owing their units: say how many are owed (stock_levels, owed_to_customers) and that those orders still need the goods.",
+      "Many variants at once, or a warning level for each: the Inventory page does it for the selected rows (open_admin_page, inventory). A free gift or a weekly subscription box is never sold on backorder, whatever the setting.",
     ],
   },
   {

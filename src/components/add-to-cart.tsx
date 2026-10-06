@@ -32,6 +32,7 @@ export function AddToCart({
   disabled,
   labels,
   openCart = false,
+  capped,
 }: {
   store: string;
   market: string;
@@ -41,6 +42,8 @@ export function AddToCart({
   labels: AddToCartLabels;
   /** Open the slide-out cart on phones once added (D64). */
   openCart?: boolean;
+  /** What to say when the line is at the most a line may hold, where "all the stock we have" would be untrue (a variant on backorder, D172). */
+  capped?: string;
 }) {
   const [state, action, pending] = useActionState(addToCart, initial);
   useOpenCartAfterAdd(openCart, cartHref, state);
@@ -49,7 +52,7 @@ export function AddToCart({
     state.outcome === "added"
       ? labels.added
       : state.outcome === "capped"
-        ? labels.capped
+        ? (capped ?? labels.capped)
         : state.outcome === "unavailable"
           ? labels.unavailable
           : state.outcome === "plan_conflict"

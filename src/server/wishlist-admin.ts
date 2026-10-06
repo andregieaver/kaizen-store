@@ -188,9 +188,9 @@ export async function getStoreWishlist(
       (select min(cp.currency) from commerce.current_prices cp
         join commerce.product_variants pv on pv.id = cp.variant_id
         where pv.product_id = p.id and cp.market_code = ${market?.code ?? ""}) as currency,
-      (select case when bool_and(pv.delivery <> 'physical') then null else coalesce(sum(s.available), 0) end::int
+      (select case when bool_and(pv.delivery <> 'physical') then null else coalesce(sum(va.in_stock) filter (where pv.delivery = 'physical'), 0) end::int
         from commerce.product_variants pv
-        left join commerce.available_stock s on s.variant_id = pv.id and pv.delivery = 'physical'
+        left join commerce.variant_availability va on va.store_id = pv.store_id and va.variant_id = pv.id
         where pv.product_id = p.id and pv.active and (i.variant_id is null or pv.id = i.variant_id)) as available
     from commerce.wishlist_items i
     join commerce.products p on p.store_id = i.store_id and p.id = i.product_id

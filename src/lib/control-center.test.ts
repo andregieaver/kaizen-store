@@ -17,7 +17,39 @@ const store = (over: Partial<StoreFigures> = {}): StoreFigures => ({
   oldestToSend: null,
   lowStock: 0,
   outOfStock: 0,
+  belowLevel: 0,
+  owedUnits: 0,
   ...over,
+});
+
+describe("the control center and stock (D172)", () => {
+  const texts = (figures: Partial<StoreFigures>) => attentionFor([store(figures)]).map((i) => `${i.text} -> ${i.href}`);
+
+  it("says out of stock and running low apart: a variant that is gone is not also low", () => {
+    expect(texts({ outOfStock: 2, lowStock: 5 })).toEqual([
+      "Kaffe: 2 products are out of stock. -> /admin/kaffe/products",
+      "Kaffe: 5 products are running low. -> /admin/kaffe/products",
+    ]);
+    expect(texts({ lowStock: 1 })).toEqual(["Kaffe: 1 product is running low. -> /admin/kaffe/products"]);
+  });
+
+  it("tells the owner about variants at or below the level they set, and links to the Inventory page filtered to them", () => {
+    expect(texts({ belowLevel: 1 })).toEqual(["Kaffe: 1 variant is at or below the warning level you set. -> /admin/kaffe/inventory?status=low"]);
+    expect(texts({ belowLevel: 3, outOfStock: 1 })).toEqual([
+      "Kaffe: 1 product is out of stock. -> /admin/kaffe/products",
+      "Kaffe: 3 variants are at or below the warning level you set. -> /admin/kaffe/inventory?status=low",
+    ]);
+  });
+
+  it("tells the owner what is owed on backorder, and is not urgent", () => {
+    expect(texts({ owedUnits: 1 })).toEqual(["Kaffe: 1 unit is owed on backorder, on orders that are paid and not sent. -> /admin/kaffe/inventory?status=backorder"]);
+    expect(texts({ owedUnits: 6 })[0]).toContain("6 units are owed");
+    expect(attentionFor([store({ owedUnits: 6 })])[0].urgent).toBeFalsy();
+  });
+
+  it("shows none of it to a member who may not open Products", () => {
+    expect(texts({ outOfStock: 2, belowLevel: 3, owedUnits: 4, lowStock: 1, hides: ["stock"] })).toEqual([]);
+  });
 });
 
 describe("the control center (D107)", () => {

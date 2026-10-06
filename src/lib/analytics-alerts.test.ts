@@ -363,7 +363,7 @@ describe("stock running out", () => {
   const so = (name: string, kind: "out" | "soon", days: number, sold30 = 12): StockoutAlert => ({
     kind,
     days,
-    row: { variantId: name, productId: name, name, sku: null, tracked: true, onHand: kind === "out" ? 0 : 5, sold7: 3, sold30, soldPeriod: sold30, lastSoldDaysAgo: 1, ageDays: 200, costMinor: null, lowStockThreshold: null },
+    row: { variantId: name, productId: name, name, sku: null, tracked: true, onHand: kind === "out" ? 0 : 5, stockPolicy: "deny", owed: 0, sold7: 3, sold30, soldPeriod: sold30, lastSoldDaysAgo: 1, ageDays: 200, costMinor: null, lowStockThreshold: null },
   });
   const stock = (...rows: StockoutAlert[]) => only(alertsFor(snap({ stockouts: rows })), "stockout");
 
@@ -885,10 +885,33 @@ describe("ordering and the cap", () => {
   });
 });
 
+describe("stock running out on backorder (D172)", () => {
+  const backorder = (name: string, owed: number): StockoutAlert => ({
+    kind: "out",
+    days: 0,
+    row: { variantId: name, productId: name, name, sku: null, tracked: true, onHand: -owed, stockPolicy: "continue", owed, sold7: 3, sold30: 12, soldPeriod: 12, lastSoldDaysAgo: 1, ageDays: 200, costMinor: null, lowStockThreshold: null },
+  });
+  const plain = (name: string): StockoutAlert => ({ ...backorder(name, 0), row: { ...backorder(name, 0).row, onHand: 0, stockPolicy: "deny" } });
+  const stock = (...rows: StockoutAlert[]) => only(alertsFor(snap({ stockouts: rows })), "stockout");
+
+  it("names the variant as on backorder with what is owed, and is a warning, not urgent: the store chose to sell past its stock", () => {
+    const a = stock(backorder("Thermos", 4))!;
+    expect(a.severity).toBe("warning");
+    expect(a.text).toBe("On backorder: Thermos (on backorder).");
+    expect(a.evidence).toEqual([{ label: "Thermos", value: "On backorder, 4 owed", baseline: "12 sold in 30 days" }]);
+  });
+
+  it("stays urgent when something that stops at zero is gone as well", () => {
+    const a = stock(backorder("Thermos", 4), plain("Wool hat"))!;
+    expect(a.severity).toBe("urgent");
+    expect(a.text).toBe("Out of stock: Thermos (on backorder), Wool hat (out).");
+  });
+});
+
 describe("alertsFor, everything at once", () => {
   const rows: ProductRefundRow[] = [{ productId: "p", name: "Wool hat", sold14: 20, refunded14: 2, soldBaseline: 100, refundedBaseline: 5 }];
   const stockout: StockoutAlert[] = [
-    { kind: "out", days: 0, row: { variantId: "v", productId: "p", name: "Scarf", sku: null, tracked: true, onHand: 0, sold7: 3, sold30: 12, soldPeriod: 12, lastSoldDaysAgo: 1, ageDays: 100, costMinor: null, lowStockThreshold: null } },
+    { kind: "out", days: 0, row: { variantId: "v", productId: "p", name: "Scarf", sku: null, tracked: true, onHand: 0, stockPolicy: "deny", owed: 0, sold7: 3, sold30: 12, soldPeriod: 12, lastSoldDaysAgo: 1, ageDays: 100, costMinor: null, lowStockThreshold: null } },
   ];
   const big = snap({
     daily: daily((k) => (k === 1 ? { revenueMinor: 250_000, orders: 25 } : k >= 2 && k <= 8 ? { orders: 12 } : {})),

@@ -330,3 +330,33 @@ describe("the checkout's lines with a unit price (D160)", () => {
     expect(words(renderToString(await Checkout({ store, market })))).toContain("€200.00/kg");
   });
 });
+
+describe("the checkout's lines on backorder (wave 3, D172)", () => {
+  const backordered = (over: Record<string, unknown> = {}) => ({
+    id: "l1",
+    title: "Thermos",
+    quantity: 5,
+    unitPriceMinor: 5000,
+    taxRate: 0.25,
+    taxMinor: 1700,
+    gift: false,
+    image: null,
+    booking: null,
+    measure: null,
+    backorder: { units: 2, days: 7 },
+    ...over,
+  });
+  const items = async () => renderToString(await CheckoutItems({ store, market }));
+
+  it("say how many units are on backorder and the days the store states, before the shopper pays", async () => {
+    getOrder.mockResolvedValue(order({ lines: [backordered()] }));
+    expect(words(await items())).toContain("2 on backorder: expected to ship within 7 days");
+  });
+
+  it("say nothing for a line wholly in stock, and keep the line's amount as it is", async () => {
+    getOrder.mockResolvedValue(order({ lines: [backordered({ backorder: null })] }));
+    const text = words(await items());
+    expect(text).not.toMatch(/backorder/i);
+    expect(text).toContain("5 × Thermos");
+  });
+});

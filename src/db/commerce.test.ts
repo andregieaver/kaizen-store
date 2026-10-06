@@ -1684,8 +1684,9 @@ describe("paying for an order", () => {
   /** An order for 2 of a variant with 3 on hand, 2 of them held for the order. */
   async function orderWithHold(onHand = 3) {
     const { variantId } = await createProduct();
+    // Two active locations of a store cannot share a name (wave 3), so each order's gets its own.
     const { id: locationId } = await one<{ id: string }>(
-      "insert into commerce.inventory_locations (store_id, name, country) values ($1, 'Lager', 'NO') returning id",
+      "insert into commerce.inventory_locations (store_id, name, country) values ($1, 'Lager ' || gen_random_uuid()::text, 'NO') returning id",
       [store],
     );
     await db.query(
@@ -4601,11 +4602,14 @@ describe("duplicating a store (D129)", () => {
     }
     await db.query("select commerce.set_price($1, 'DE', 1000, $2)", [variantId, daysAgo(40)]);
     await db.query("select commerce.set_price($1, 'DE', 900, $2)", [variantId, daysAgo(1)]);
-    await db.query("insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, 5)", [
-      src,
-      variantId,
-      ids.location,
-    ]);
+    // A download keeps no stock (wave 3: the database refuses a level for a variant that is not goods).
+    if (!over.digital) {
+      await db.query("insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values ($1, $2, $3, 5)", [
+        src,
+        variantId,
+        ids.location,
+      ]);
+    }
     if (status !== "draft") await db.query("update commerce.products set status = $2 where id = $1", [productId, status]);
     ids[handle] = productId;
     ids[`${handle}-variant`] = variantId;
@@ -4801,7 +4805,7 @@ describe("duplicating a store (D129)", () => {
     const alpha = await cloneId(copy, ids.alpha);
     expect(await scalar("select id from commerce.products where store_id = $1 and handle = 'alpha'", [copy])).toBe(alpha);
     expect(await count("product_variants", copy)).toBe(3);
-    expect(await count("inventory_levels", copy)).toBe(3);
+    expect(await count("inventory_levels", copy)).toBe(2);
     // The current price only, as a new price: no reduction it never made.
     expect(await rows("select amount_minor from commerce.prices where store_id = $1 and variant_id = $2", [copy, await cloneId(copy, ids["alpha-variant"])])).toEqual([
       { amount_minor: 900 },
@@ -4937,7 +4941,9 @@ describe("duplicating a store (D129)", () => {
          and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'store_id' and not a.attisdropped)`,
     );
     // Made for every store on its own: numbering, the payment provider row, the owner as member.
-    const made = new Map([["document_series", 5], ["payment_providers", 1], ["store_members", 1]]);
+    // The level inserts write the copy's own opening movements (wave 3): one for each level that holds stock.
+    const openings = await scalar<number>("select count(*)::int from commerce.inventory_levels where store_id = $1 and on_hand <> 0", [copy]);
+    const made = new Map([["document_series", 5], ["payment_providers", 1], ["store_members", 1], ["inventory_movements", openings]]);
     for (const { relname } of tables) {
       const rule = COPY_RULES[relname];
       if (rule.group === "never") expect([relname, await count(relname, copy)]).toEqual([relname, made.get(relname) ?? 0]);

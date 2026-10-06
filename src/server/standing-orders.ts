@@ -322,11 +322,7 @@ async function listLines(storeId: string, listId: string, marketCode: string, lo
          where m.store_id = p.store_id and m.product_id = p.id order by m.position limit 1)) as image,
       cp.amount_minor, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       (${listable}) as sellable,
-      coalesce((select sum(greatest(il.on_hand, 0)) from commerce.inventory_levels il
-         join commerce.inventory_locations loc on loc.id = il.location_id and loc.active
-         where il.store_id = v.store_id and il.variant_id = v.id), 0)
-      - coalesce((select sum(r.quantity) from commerce.inventory_reservations r
-         where r.store_id = v.store_id and r.variant_id = v.id and r.released_at is null and r.expires_at > now()), 0) as free
+      coalesce((select va.in_stock from commerce.variant_availability va where va.store_id = v.store_id and va.variant_id = v.id), 0) as free
     from commerce.standing_order_lines l
     join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -731,12 +727,7 @@ export async function prepareDelivery(storeId: string, listId: string, round: De
     const lines = await db().execute<Row>(sql`
       select l.variant_id, l.quantity, coalesce(tl.title, tf.title, p.handle) as title,
         (${listable} and cp.amount_minor is not null) as sellable,
-        greatest(0,
-          coalesce((select sum(greatest(il.on_hand, 0)) from commerce.inventory_levels il
-             join commerce.inventory_locations loc on loc.id = il.location_id and loc.active
-             where il.store_id = v.store_id and il.variant_id = v.id), 0)
-          - coalesce((select sum(r.quantity) from commerce.inventory_reservations r
-             where r.store_id = v.store_id and r.variant_id = v.id and r.released_at is null and r.expires_at > now()), 0))::int as free
+        coalesce((select va.in_stock from commerce.variant_availability va where va.store_id = v.store_id and va.variant_id = v.id), 0)::int as free
       from commerce.standing_order_lines l
       join commerce.product_variants v on v.store_id = l.store_id and v.id = l.variant_id
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -775,7 +766,7 @@ export async function prepareDelivery(storeId: string, listId: string, round: De
         values (${storeId}::uuid, ${cartId}::uuid, ${line.variantId}::uuid, ${line.quantity})
       `);
     }
-    const placed = await placeOrder({ storeId, market: shopMarket }, cartId, {}, { customerId: String(list.customer_id) });
+    const placed = await placeOrder({ storeId, market: shopMarket }, cartId, {}, { customerId: String(list.customer_id), noBackorder: true });
     // Nobody pays this cart at a checkout: it is done with.
     await db().execute(sql`update commerce.carts set status = 'converted', updated_at = now() where store_id = ${storeId}::uuid and id = ${cartId}::uuid`);
     if (!placed.ok) {

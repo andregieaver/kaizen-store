@@ -7,7 +7,16 @@
  * (a person's name in a title, a formula), and findings are stored, shown and downloaded.
  */
 
-export const JOB_KINDS = ["product_import", "product_export", "order_export", "customer_export", "redirect_import", "redirect_export"] as const;
+export const JOB_KINDS = [
+  "product_import",
+  "product_export",
+  "order_export",
+  "customer_export",
+  "redirect_import",
+  "redirect_export",
+  "inventory_import",
+  "inventory_export",
+] as const;
 export type JobKind = (typeof JOB_KINDS)[number];
 
 export const JOB_STATUSES = ["uploaded", "checking", "checked", "queued", "running", "done", "failed", "cancelled", "expired"] as const;
@@ -16,9 +25,9 @@ export type JobStatus = (typeof JOB_STATUSES)[number];
 export const JOB_PHASES = ["check", "apply", "write", "assemble"] as const;
 export type JobPhase = (typeof JOB_PHASES)[number];
 
-/** The kinds that read a file the member uploaded: a dry run, then an apply (the redirect import is wave 2's second run, D168). */
-export const IMPORT_KINDS: readonly JobKind[] = ["product_import", "redirect_import"];
-export const EXPORT_KINDS: readonly JobKind[] = ["product_export", "order_export", "customer_export", "redirect_export"];
+/** The kinds that read a file the member uploaded: a dry run, then an apply (the redirect import is wave 2's second run, D168; the stock file is wave 3's, D172). */
+export const IMPORT_KINDS: readonly JobKind[] = ["product_import", "redirect_import", "inventory_import"];
+export const EXPORT_KINDS: readonly JobKind[] = ["product_export", "order_export", "customer_export", "redirect_export", "inventory_export"];
 export const isImport = (kind: JobKind): boolean => IMPORT_KINDS.includes(kind);
 export const isExport = (kind: JobKind): boolean => !isImport(kind);
 /** Exports that hold personal data of shoppers: owner-only, deleted on an erasure. */
@@ -104,8 +113,11 @@ export type FindingParams = {
   address?: string;
   /** More addresses (the hops of a chain, the lines of a loop), in the same normal form; a sentence names at most five. */
   addresses?: readonly string[];
-  /** The accepted names of a file's columns (for `file.not_redirects`). */
+  /** The accepted names of a file's columns (for `file.not_redirects`, `file.not_inventory`). */
   names?: readonly string[];
+  /** A stock file's figures (wave 3, D172): the figure the file was made from and the figure the store has now. Numbers only, never a cell. */
+  was?: number;
+  now?: number;
 };
 
 type FindingRule = { severity: Severity; sentence: (p: FindingParams) => string };
@@ -179,6 +191,17 @@ export const FINDINGS = {
   "price.negative": { severity: "error", sentence: (p) => `A price in ${col(p)} of ${prod(p)} would be below 0.` },
   "cost.unreadable": { severity: "error", sentence: (p) => `A cost of ${prod(p)} is not an amount in the store's main currency.` },
   "stock.invalid": { severity: "error", sentence: (p) => `A stock figure of ${prod(p)} is not a whole number from 0 to 1,000,000.` },
+  // Selling past zero and the warning level (wave 3, D172, docs/wave-3-inventory.md 2.4): the product file carries them per variant.
+  "stock_policy.invalid": { severity: "error", sentence: (p) => `A stock_policy of ${prod(p)} is not deny or continue.` },
+  "stock_policy.not_goods": { severity: "error", sentence: (p) => `A variant of ${prod(p)} is not goods that are shipped, so it cannot keep selling at zero stock.` },
+  "backorder_days.invalid": { severity: "error", sentence: (p) => `A backorder_days figure of ${prod(p)} is not a whole number from 1 to 90.` },
+  "backorder_days.required": { severity: "error", sentence: (p) => `A variant of ${prod(p)} keeps selling at zero stock but has no delivery time. Give backorder_days from 1 to 90.` },
+  "low_stock_threshold.invalid": { severity: "error", sentence: (p) => `A low_stock_threshold of ${prod(p)} is not a whole number from 0 to 1,000,000, or it is on a variant that is not goods.` },
+  "inventory.multi_location_stock_ignored": {
+    severity: "warning",
+    sentence: () =>
+      "The store has more than one active stock location, so the stock column of a product file is not imported: it cannot say which location a count is for. Use the Inventory page, or a stock file with a location column.",
+  },
   "gtin.invalid": { severity: "error", sentence: (p) => `A barcode of ${prod(p)} is not 8 to 14 digits.` },
   "hs_code.invalid": { severity: "error", sentence: (p) => `A customs (HS) code of ${prod(p)} is not 6 to 10 digits.` },
   "origin.invalid": { severity: "error", sentence: (p) => `A country of origin of ${prod(p)} is not a two-letter country code.` },
@@ -210,7 +233,8 @@ export const FINDINGS = {
   "giftcard.not_supported": { severity: "error", sentence: (p) => `${prod(p)} is a gift card, which Kaizen does not import.` },
   "inventory.continue_selling_ignored": {
     severity: "warning",
-    sentence: () => "Continue selling when out of stock is not imported: backorders are not available yet, so a product at 0 stops selling.",
+    sentence: () =>
+      "Continue selling when out of stock is not imported: a backorder needs a stated delivery time, so it is set per variant in the product editor or on the Inventory page. Until then a product at 0 stops selling.",
   },
   "tax.ignored": {
     severity: "warning",
@@ -272,6 +296,48 @@ export const FINDINGS = {
   "exists.skipped": { severity: "info", sentence: (p) => `A redirect from ${addr(p)} exists, and the import was told to keep it, so the line was skipped.` },
   "exists.replaced_automatic": { severity: "info", sentence: (p) => `Kaizen made a redirect from ${addr(p)} when an address changed. This line replaces it.` },
   "limit.reached": { severity: "error", sentence: (p) => `The store would have more than ${p.max ?? 100000} redirects of its own, which is the most it can have. Delete some or import fewer.` },
+
+  // Stock files (wave 3, D172, docs/wave-3-inventory.md 2.4): a row is a count of one variant at one location. A sentence names a SKU or a column, never a cell.
+  "file.not_inventory": {
+    severity: "error",
+    sentence: (p) => `This is not a stock file we know. The first row must name ${(p.names ?? ["sku", "on_hand"]).map((n) => `"${n}"`).join(" and ")} columns. Export the stock from the Inventory page to see the layout.`,
+  },
+  "stockfile.sku_missing": { severity: "error", sentence: () => "A row has no SKU, so it was skipped." },
+  "stockfile.sku_unknown": { severity: "error", sentence: (p) => `The SKU "${p.sku ?? ""}" is not a variant of this store, so the row was skipped. A stock file never creates a variant.` },
+  "stockfile.sku_not_goods": {
+    severity: "error",
+    sentence: (p) => `The SKU "${p.sku ?? ""}" is a download, a service or a booking, which has no stock, so the row was skipped.`,
+  },
+  "stockfile.location_unknown": { severity: "error", sentence: (p) => `The location of SKU "${p.sku ?? ""}" is not a location of this store, so the row was skipped. A stock file never creates a location.` },
+  "stockfile.location_required": {
+    severity: "error",
+    sentence: (p) => `The store has more than one active location, so the row for SKU "${p.sku ?? ""}" must name its location.`,
+  },
+  "stockfile.on_hand_invalid": { severity: "error", sentence: (p) => `The on_hand figure of SKU "${p.sku ?? ""}" is not a whole number from 0 to 1,000,000.` },
+  "stockfile.on_hand_was_invalid": { severity: "error", sentence: (p) => `The on_hand_was figure of SKU "${p.sku ?? ""}" is not a whole number.` },
+  "stockfile.reason_invalid": {
+    severity: "error",
+    sentence: (p) => `The reason of SKU "${p.sku ?? ""}" is not one of ${(p.names ?? ["received", "correction", "count", "damaged", "lost", "promotion"]).join(", ")}.`,
+  },
+  "stockfile.note_too_long": { severity: "error", sentence: (p) => `The note of SKU "${p.sku ?? ""}" is longer than ${p.max ?? 200} characters.` },
+  "stockfile.policy_invalid": { severity: "error", sentence: (p) => `The stock_policy of SKU "${p.sku ?? ""}" is not deny or continue.` },
+  "stockfile.days_required": {
+    severity: "error",
+    sentence: (p) => `SKU "${p.sku ?? ""}" is set to keep selling at zero stock, which needs backorder_days from 1 to 90: the delivery time is always stated.`,
+  },
+  "stockfile.days_invalid": { severity: "error", sentence: (p) => `The backorder_days of SKU "${p.sku ?? ""}" is not a whole number from 1 to 90.` },
+  "stockfile.days_ignored": {
+    severity: "warning",
+    sentence: (p) => `SKU "${p.sku ?? ""}" has backorder_days but is not set to continue, so the days were left out.`,
+  },
+  "stockfile.threshold_invalid": { severity: "error", sentence: (p) => `The low_stock_threshold of SKU "${p.sku ?? ""}" is not a whole number from 0 to 1,000,000.` },
+  "stockfile.duplicate": { severity: "error", sentence: (p) => `SKU "${p.sku ?? ""}" is in the file twice for the same location, so the later row was skipped.` },
+  "stockfile.conflict": {
+    severity: "warning",
+    sentence: (p) =>
+      `The stock of SKU "${p.sku ?? ""}" is ${p.now ?? 0} now, not ${p.was ?? 0} as in the file, so the row was skipped. Export again and count again.`,
+  },
+  "stockfile.failed": { severity: "error", sentence: (p) => `The stock of SKU "${p.sku ?? ""}" could not be saved${p.reason ? `: ${p.reason}` : ""}.` },
 } as const satisfies Record<string, FindingRule>;
 
 export type FindingCode = keyof typeof FINDINGS;

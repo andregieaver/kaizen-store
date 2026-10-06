@@ -16,7 +16,7 @@ export type JobView = {
   problem: string | null;
 };
 
-const UNIT: Record<JobKind, string> = { product_import: "products", product_export: "products", order_export: "rows", customer_export: "customers", redirect_import: "redirects", redirect_export: "redirects" };
+const UNIT: Record<JobKind, string> = { product_import: "products", product_export: "products", order_export: "rows", customer_export: "customers", redirect_import: "redirects", redirect_export: "redirects", inventory_import: "rows", inventory_export: "rows" };
 
 /** The progress of a job being made: a bar with its numbers, or the plain reason a job stopped. Presentational, so a test holds it. */
 export function JobProgressView({ job }: { job: JobView }) {

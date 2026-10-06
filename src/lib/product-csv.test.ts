@@ -37,6 +37,7 @@ describe("the columns", () => {
       "categories", "tags",
       "option1_name", "option1_value", "option2_name", "option2_value", "option3_name", "option3_value",
       "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock",
+      "stock_policy", "backorder_days", "low_stock_threshold",
       "measure_amount", "measure_unit", "measure_base", "price_basis",
       "price:NO", "price:SE",
       "image_url", "image_position", "image_alt", "variant_image_url",
@@ -109,6 +110,9 @@ describe("a product as rows", () => {
     expect(cell(0, "origin_country")).toBe("PT");
     expect(cell(0, "cost")).toEqual({ num: "600.00" });
     expect(cell(0, "stock")).toBe(12);
+    // Selling past zero and the warning level (wave 3, D172): the policy of every goods variant, its days only with `continue`.
+    expect([cell(0, "stock_policy"), cell(0, "backorder_days"), cell(0, "low_stock_threshold")]).toEqual(["continue", 7, 3]);
+    expect([cell(1, "stock_policy"), cell(1, "backorder_days"), cell(1, "low_stock_threshold")]).toEqual(["deny", null, null]);
     expect(cell(2, "measure_amount")).toEqual({ num: "0.75" });
     expect(cell(2, "measure_unit")).toBe("kg");
     expect(cell(2, "measure_base")).toBe("kg");

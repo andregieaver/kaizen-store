@@ -200,6 +200,8 @@ describe("the cutoff (D102)", () => {
       values (${storeId}::uuid, ${listId}::uuid, ${variant["DEMO-MUG-BLACK"]}::uuid, 5)
     `);
     await db().execute(sql`update commerce.standing_orders set consent_at = now() - interval '3 days' where id = ${listId}::uuid`);
+    // The black mug keeps selling past zero in the store (D172): a weekly box still never takes more than there is, so it is not backordered.
+    await db().execute(sql`update commerce.product_variants set stock_policy = 'continue', backorder_days = 7 where store_id = ${storeId}::uuid and id = ${variant["DEMO-MUG-BLACK"]}::uuid`);
     const made = await deliveries.prepareDueDeliveries();
     expect(made).toMatchObject({ ordered: 1 });
     expect(await deliveries.prepareDueDeliveries()).toEqual({ ordered: 0, other: 0 });
@@ -226,6 +228,15 @@ describe("the cutoff (D102)", () => {
       ["DEMO-MUG-BLACK", 3],
       ["DEMO-MUG-WHITE", 2],
     ]);
+    // Left out, not backordered: no line owes anything, and nothing was held beyond the stock.
+    const [owing] = await db().execute<Row>(sql`select coalesce(sum(backorder_quantity), 0)::int as owed from commerce.order_lines where order_id = ${String(delivery.id)}::uuid`);
+    expect(Number(owing.owed)).toBe(0);
+    const [held] = await db().execute<Row>(sql`
+      select coalesce(sum(r.quantity), 0)::int as held from commerce.inventory_reservations r
+      where r.order_id = ${String(delivery.id)}::uuid and r.variant_id = ${variant["DEMO-MUG-BLACK"]}::uuid and r.released_at is null
+    `);
+    expect(Number(held.held)).toBe(3);
+    await db().execute(sql`update commerce.product_variants set stock_policy = 'deny', backorder_days = null where store_id = ${storeId}::uuid and id = ${variant["DEMO-MUG-BLACK"]}::uuid`);
     const [email] = await db().execute<Row>(sql`
       select kind from commerce.email_messages where store_id = ${storeId}::uuid and kind = 'delivery.prepared'
     `);

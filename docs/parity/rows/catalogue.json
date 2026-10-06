@@ -296,16 +296,16 @@
       "checkedOn": "2026-10-02"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
-    "gap": "The cart caps the quantity to live stock (`available_stock` in `src/server/cart.ts`) and the database refuses negative stock (`inventory_levels_on_hand_non_negative`); there is no allow-oversell flag. Comments in `src/lib/analytics-inventory.ts` mention overselling and untracked variants, but `tracked` is always true in `analytics-inventory-data.ts`.",
-    "bucket": "A",
+    "gap": "Built and held by tests in the working tree (wave 3, D172 proposed; no migration applied to production): a variant keeps selling at zero (`product_variants.stock_policy = 'continue'`, physical goods only, `backorder_days` 1 to 90 required, database checks); only such a variant's level may go below zero (trigger `inventory_levels_rules`); the product page and the phone's bar say 'On backorder' with the days and keep the button, the cart accepts up to 20 a line, the cart, slide-out cart, checkout, order page, My account and the confirmation email say how many units are on backorder and within how many days, `order_lines.backorder_quantity`/`backorder_days` are kept, structured data says `BackOrder`, a gift or weekly box is never backordered, and `commerce.draw_order_stock()` keeps each live checkout's physical claim whatever the order of payment, so what a shopper read before paying is what the order says. Held by `e2e/backorder.spec.ts` (5 tests: Norwegian, Swedish and Danish page, cart, phone drawer, JSON-LD, a normal variant still sold out), run by me on a production build of the final tree and all passed, PGlite rules, `backorder.int.test.ts`, a krone and a euro scenario in `checkout-kinds.int.test.ts`, and the unchanged test `refuses more than is in stock`. Stays Partial, bucket D, for what no test can settle: the delivery-time sentences ('expected to ship within N days', hand-written in nb, sv, da and en, never machine-translated: `HAND_WRITTEN_ONLY`) are consumer legal text nobody has read, and a reviewer found they may not state what Directive 2011/83/EU Art. 6(1)(g) and Art. 18 ask (the time by which the trader undertakes to deliver; the 30 days run to delivery, not dispatch); the wording was left as written for a lawyer (docs/wave-3-inventory.md section 8, item 6), as was the 7 days of transport the editor's reminder assumes. A person must read them before this row is Full. Also not done: the WordPress plugin was not updated, so a site on it shows a backorder variant as sold out (the API serves it as `out` with `backorder_days`); product cards in listings state no backorder; the setting is per variant (the editor has one switch that sets all of a product's variants).",
+    "bucket": "D",
     "wave": 3,
     "criteria": [
-      "A variant (or product) can be set to keep selling at zero stock; the cart then accepts any quantity for it and the product page says it is on backorder (e2e).",
-      "An order for such a variant is placed and its lines are marked backordered; stock may go below zero only for flagged variants (database rule and integration test).",
+      "A variant can be set to keep selling at zero stock; the cart then accepts any quantity for it and the product page says it is on backorder (e2e).",
+      "An order for such a variant is placed and its lines are marked backordered (`order_lines.backorder_quantity` and `backorder_days`: what the shopper was told at placement, settled at payment, where for a live hold it can only go down); stock may go below zero only for flagged variants (database rule and integration test).",
       "Variants not flagged still refuse more than is in stock and write nothing (existing test `refuses more than is in stock`).",
       "Inventory analytics and the admin handle negative stock (days of stock, alerts) and `checkout-kinds.int.test.ts` has a scenario."
     ],
@@ -314,15 +314,48 @@
         "src/server/cart.ts",
         "src/server/checkout.ts",
         "src/db/schema.ts",
-        "src/lib/analytics-inventory.ts"
+        "src/lib/analytics-inventory.ts",
+        "src/server/analytics-inventory-data.ts",
+        "src/server/catalog.ts",
+        "src/server/shopper-emails.ts",
+        "src/lib/structured-data.ts",
+        "src/lib/stock-availability.ts",
+        "src/lib/stock-words.ts",
+        "src/lib/stock-routing.ts",
+        "src/lib/ui-catalog.ts",
+        "src/lib/i18n.ts",
+        "src/components/backorder-note.tsx",
+        "supabase/migrations/20261006081019_inventory_rules.sql",
+        "supabase/migrations/20261006121245_inventory_reservation_backorder.sql",
+        "supabase/migrations/20261006121317_inventory_draw_claims.sql"
       ],
       "tests": [
-        "src/server/checkout.int.test.ts"
+        "src/server/checkout.int.test.ts",
+        "e2e/backorder.spec.ts",
+        "src/server/backorder.int.test.ts",
+        "src/server/backorder-email.int.test.ts",
+        "src/server/review-money-inventory.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/analytics-inventory-backorder.int.test.ts",
+        "src/db/inventory.test.ts",
+        "src/lib/stock-availability.test.ts",
+        "src/lib/stock-words.test.ts",
+        "src/lib/ui-catalog.test.ts",
+        "src/lib/inventory-readers.test.ts"
       ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D172"
+    ],
+    "history": [
+      {
+        "on": "2026-10-06",
+        "from": "missing",
+        "to": "partial",
+        "why": "Wave 3 run 1 (docs/wave-3-inventory.md, D172 proposed, tree not committed). Read the migrations (stock_policy and backorder_days checks, the negative-stock trigger, draw_order_stock() as replaced by 20261006121317), cart.ts, checkout.ts, the product page, cart, order and email surfaces and the tests; ran the unit files, the integration files (backorder, backorder-email, review-money-inventory, checkout, checkout-kinds incl. the krone and euro backorder scenarios, analytics-inventory-backorder) and e2e/backorder.spec.ts (5 passed) on a fresh database and a production build of the final tree. All four criteria hold in the running product, but the delivery-time sentences are unreviewed consumer legal text that a reviewer found may not state the delivery time the cited law asks for, so the row is held at Partial (bucket D) until a person has read them."
+      }
+    ]
   },
   {
     "id": "catalogue.pre-orders",
@@ -731,14 +764,14 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "Per-variant stock in `inventory_levels`, row-locked reservations at checkout (`inventory_reservations`), restock on refund (D27) and on an inspected return (D153), and a read-only inventory analytics page (D152: days of stock, stock-out alerts, dead stock) exist, and the control center and the AI manager show low stock. There is no inventory page to adjust levels, no adjustment history with reasons (no movements table: verified), no bulk stock update and no low-stock email.",
+    "gap": "Built and tested in the working tree (wave 3, D172 proposed; no migration applied to production): every change of `inventory_levels.on_hand` is an append-only `inventory_movements` row written by a trigger (reason, source, account, order, return; `inventory_ledger_check()` proves the movements add up to the level and still does after the 24-month clean-up, which keeps each level's newest movement), an Inventory page with on hand, committed to checkouts in progress, available and owed per variant and location, adjust with a reason (Set to or Adjust by, reviewed, a stale row is a conflict), a history page, stock files as D165 jobs with a dry run (`inventory_import`, `inventory_export`), a per-variant low-stock level that sends the owners one digest email per crossing (`stock_alerts`, `sendLowStockNotices()`), negative stock in the analytics and the control center, and the AI manager's `stock_levels`, `stock_history`, `set_stock` with location and reason. Why it stays Partial: (1) no signed-in screen has been clicked: there is no signed-in admin fixture (D158), so the Inventory table, the review list, the history page, the stock-file pages and the product editor's stock rules are held by `renderToString` tests and by integration tests of the server functions the actions call (`adjustStock()`, `inventoryPage()`, `stockHistory()`), not by the screen a merchant uses (D165's bulk editor stayed Partial for the same reason); (2) the stock export has no `on_hand_was` column, so a file counted from an export has no conflict check unless the person adds that column; (3) a variant created with stock already at or under its level sends no first email until it recovers and crosses again; (4) the history page and the pending crossings are not load-tested at 100,000 movements; (5) `src/server/inventory-perf.int.test.ts` (the C4 guard) is not reliable: its 20-line `placeOrder()` timed out at 60 s in most of my runs against a database that already held an earlier perf store or ran other test files at the same time (probably stale planner statistics; the statement caught running for minutes was `orderLineRows()`'s cart-line read in `src/server/checkout.ts`, unchanged by this wave apart from two columns) and passed in 7 s alone on a fresh database, as in the Gates run; the cause is not found. Not matching Shopify: no unavailable or incoming states, no transfers or purchase orders (`catalogue.inventory-transfers-and-purchase-orders`), no untracked variants; 'committed' is the live checkout holds only, because a paid order has already drawn its units here.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
-      "An inventory page lists variants per location with on hand, committed (reserved) and available, and staff adjust a level with a reason (received, damaged, correction, recount).",
+      "An inventory page lists variants per location with on hand, committed to checkouts in progress, and available, and staff adjust a level with a reason (received, damaged, correction, recount).",
       "Every change to a level, from an adjustment, sale, cancellation, refund or return, is an append-only history row with who, when, reason and the order (integration test).",
-      "Stock can be updated in bulk from the page or a file with a dry run.",
-      "A variant crosses its low-stock threshold once: the owner gets one notification per crossing, not one per sale (integration test)."
+      "Stock can be updated in bulk from the page (reviewed before it is saved) and from a file with a dry run.",
+      "A variant crosses its low-stock level once: the owners get one email per run listing each crossing once, never one per sale (integration test)."
     ],
     "evidence": {
       "files": [
@@ -749,7 +782,25 @@
         "src/server/analytics-inventory-data.ts",
         "src/lib/analytics-inventory.ts",
         "src/server/control-center.ts",
-        "src/db/schema.ts"
+        "src/db/schema.ts",
+        "supabase/migrations/20261006081000_inventory.sql",
+        "supabase/migrations/20261006081019_inventory_rules.sql",
+        "supabase/migrations/20261006121317_inventory_draw_claims.sql",
+        "src/server/stock-context.ts",
+        "src/server/inventory.ts",
+        "src/server/inventory-jobs.ts",
+        "src/server/stock-alerts.ts",
+        "src/server/stock-tools.ts",
+        "src/lib/inventory.ts",
+        "src/lib/inventory-admin.ts",
+        "src/lib/inventory-csv.ts",
+        "src/lib/stock-alerts.ts",
+        "src/components/admin/inventory/inventory-table.tsx",
+        "src/components/admin/inventory/history-view.tsx",
+        "src/app/admin/(gated)/[store]/inventory/page.tsx",
+        "src/app/admin/(gated)/[store]/inventory/actions.ts",
+        "src/app/admin/(gated)/[store]/inventory/history/page.tsx",
+        "src/app/admin/(gated)/[store]/inventory/import/page.tsx"
       ],
       "tests": [
         "src/server/checkout.int.test.ts",
@@ -757,14 +808,30 @@
         "src/server/returns.int.test.ts",
         "src/server/analytics-inventory-data.int.test.ts",
         "src/lib/analytics-inventory.test.ts",
-        "src/db/commerce.test.ts"
+        "src/db/commerce.test.ts",
+        "src/db/inventory.test.ts",
+        "src/server/inventory.int.test.ts",
+        "src/server/inventory-history.int.test.ts",
+        "src/server/inventory-jobs.int.test.ts",
+        "src/server/inventory-admin.int.test.ts",
+        "src/server/inventory-prune-ledger.review.int.test.ts",
+        "src/server/stock-alerts.int.test.ts",
+        "src/server/stock-tools.int.test.ts",
+        "src/server/analytics-inventory-backorder.int.test.ts",
+        "src/server/inventory-perf.int.test.ts",
+        "src/components/admin/inventory/inventory-views.test.ts",
+        "src/lib/inventory-admin.test.ts",
+        "src/lib/inventory-csv.test.ts",
+        "src/lib/stock-alerts.test.ts",
+        "src/lib/stock-writers.scan.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D27",
       "D152",
-      "D153"
+      "D153",
+      "D172"
     ],
     "history": []
   },
@@ -785,7 +852,7 @@
       "rechecked": true,
       "was": null
     },
-    "gap": "No transfers and no purchase orders: no transfer or purchase order table or screen (verified); Kaizen has one stock location per store. One row for the one Shopify feature (it replaces orders.inventory-transfers).",
+    "gap": "No transfers and no purchase orders: no transfer or purchase order table or screen (verified); Kaizen has stock locations with a rank and a history of every stock change (wave 3, D172) but nothing moves stock between them. One row for the one Shopify feature (it replaces orders.inventory-transfers).",
     "bucket": "A",
     "wave": 3,
     "criteria": [

@@ -7,8 +7,10 @@ import {
   inventoryValue,
   LOW_STOCK_DAYS,
   MIN_SOLD_30D,
+  onBackorder,
   sellThrough,
   stockoutAlerts,
+  stockWatch,
   STOCKOUT_ALERT_DAYS,
   stockStatus,
   turnover,
@@ -23,6 +25,8 @@ const row = (over: Partial<InventoryRow> = {}): InventoryRow => ({
   sku: "MUG-1",
   tracked: true,
   onHand: 100,
+  stockPolicy: "deny",
+  owed: 0,
   sold7: 0,
   sold30: 0,
   soldPeriod: 0,
@@ -259,5 +263,49 @@ describe("stockoutAlerts", () => {
     const rows = [row({ variantId: "z", onHand: 0, sold30: 5 }), row({ variantId: "a", onHand: 0, sold30: 9 })];
     stockoutAlerts(rows);
     expect(rows.map((r) => r.variantId)).toEqual(["z", "a"]);
+  });
+});
+
+describe("backorders and the owner's own level (D172)", () => {
+  it("counts a negative on hand as nothing in every figure and never as a negative value", () => {
+    const owedRow = row({ onHand: -4, stockPolicy: "continue", owed: 4, sold7: 3, sold30: 9, soldPeriod: 9 });
+    const analysed = analyseVariant(owedRow);
+    expect(analysed.status).toBe("out");
+    expect(analysed.valueMinor).toBeNull();
+    expect(analysed.daysOfStock).toBe(0);
+    expect(analysed.sellThrough).toBe(1);
+    expect(inventoryValue([owedRow])).toEqual({ valueMinor: 0, units: 0, unitsWithoutCost: 0, coverage: null });
+  });
+
+  it("says a variant is on backorder only when it keeps selling with nothing on hand", () => {
+    expect(onBackorder(row({ onHand: 0, stockPolicy: "continue" }))).toBe(true);
+    expect(onBackorder(row({ onHand: -2, stockPolicy: "continue" }))).toBe(true);
+    expect(onBackorder(row({ onHand: 1, stockPolicy: "continue" }))).toBe(false);
+    expect(onBackorder(row({ onHand: 0, stockPolicy: "deny" }))).toBe(false);
+    expect(onBackorder(row({ onHand: 0, stockPolicy: "continue", tracked: false }))).toBe(false);
+    // Still out in every count, whatever it is called.
+    expect(stockStatus(row({ onHand: 0, stockPolicy: "continue" }))).toBe("out");
+  });
+
+  it("judges a variant with a level of its own by the level, and out and dead first", () => {
+    expect(stockStatus(row({ onHand: 8, lowStockThreshold: 10, sold30: 0 }))).toBe("low");
+    expect(stockStatus(row({ onHand: 11, lowStockThreshold: 10, sold30: 0 }))).toBe("ok");
+    expect(stockStatus(row({ onHand: 10, lowStockThreshold: 10, sold30: 0 }))).toBe("low");
+    expect(stockStatus(row({ onHand: 0, lowStockThreshold: 10 }))).toBe("out");
+    expect(stockStatus(row({ onHand: 8, lowStockThreshold: 10, lastSoldDaysAgo: 120 }))).toBe("dead");
+  });
+
+  it("adds up what the owner's settings add: units owed, variants on backorder, variants at or below their level", () => {
+    const watch = stockWatch([
+      row({ variantId: "a", onHand: -4, stockPolicy: "continue", owed: 4 }),
+      row({ variantId: "b", onHand: 0, stockPolicy: "continue", owed: 0 }),
+      row({ variantId: "c", onHand: 2, stockPolicy: "continue", owed: 1 }),
+      row({ variantId: "d", onHand: 5, lowStockThreshold: 5 }),
+      row({ variantId: "e", onHand: 0, lowStockThreshold: 0 }),
+      row({ variantId: "f", onHand: 6, lowStockThreshold: 5 }),
+      row({ variantId: "g", onHand: -9, owed: 9, tracked: false }),
+    ]);
+    expect(watch).toEqual({ owedUnits: 5, onBackorder: 2, belowLevel: 2 });
+    expect(stockWatch([])).toEqual({ owedUnits: 0, onBackorder: 0, belowLevel: 0 });
   });
 });

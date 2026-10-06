@@ -62,7 +62,7 @@ export function StoreCard({ store }: { store: StoreFigures }) {
         <Figure label="Orders, 7 days" value={String(orders)} href={`${base}/orders`} />
         <Figure label="To send" value={String(store.toSend)} href={`${base}/orders?show=to-send`} />
         </>)}
-        {!noStock && <Figure label="Running low" value={String(store.lowStock)} sub={store.outOfStock > 0 ? `${store.outOfStock} out of stock` : null} href={`${base}/products`} />}
+        {!noStock && <Figure label="Running low" value={String(store.lowStock + store.belowLevel)} sub={store.outOfStock > 0 ? `${store.outOfStock} out of stock` : store.owedUnits > 0 ? `${store.owedUnits} owed on backorder` : null} href={store.belowLevel > 0 ? `${base}/inventory?status=low` : `${base}/products`} />}
       </div>
       )}
       <nav aria-label={`${store.name} shortcuts`} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3 text-sm">

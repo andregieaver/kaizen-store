@@ -33,15 +33,18 @@ export function withTags(slugs: string[]): SQL {
   )`;
 }
 
-/** Can be bought now: goods in stock at an active place, or digital; bookings count as available. */
+/**
+ * In stock NOW: goods physically in stock at an active place, or digital; bookings count as available. A product that is only on
+ * backorder (a variant that keeps selling at zero) is NOT in stock now (wave 3, D172): it can be bought, which is not what the
+ * filter promises. Read through `commerce.variant_availability`, the one reader of stock.
+ */
 export function inStockNow(): SQL {
   return sql`(p.kind <> 'goods' or exists (
     select 1 from commerce.product_variants v
-    where v.product_id = p.id and v.active and (v.delivery = 'digital' or (
-      select coalesce(sum(s.available), 0) from commerce.available_stock s
-      join commerce.inventory_locations l on l.store_id = s.store_id and l.id = s.location_id and l.active
-      where s.store_id = p.store_id and s.variant_id = v.id
-    ) > 0)
+    where v.product_id = p.id and v.active and (v.delivery = 'digital' or exists (
+      select 1 from commerce.variant_availability va
+      where va.store_id = p.store_id and va.variant_id = v.id and va.in_stock > 0
+    ))
   ))`;
 }
 

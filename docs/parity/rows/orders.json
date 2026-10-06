@@ -1253,15 +1253,15 @@
       "was": null
     },
     "weight": 2,
-    "gap": "`inventory_locations` and `inventory_levels` are per location and the cart, checkout, campaigns and analytics sum and allocate across active locations, but one location is auto-created per store, the product editor writes one number to the store's first active location (`stockLocation()` in `src/server/products.ts`) and refunds restock there; no locations screen, no stock per location in the editor, no routing rule or routing of orders between locations. One row for the one Shopify feature (it replaces catalogue.multi-location-inventory).",
+    "gap": "Built and tested in the working tree (wave 3, D172 proposed; no migration applied to production): stock locations (add, rename, change country, rank by `priority`, owner-only deactivate and reactivate, never deleted, at least one active, at most 20); `allocate()` (`src/lib/stock-routing.ts`) names the rule once (keep an order together, else by rank, the backordered remainder at the first location that stocks the variant) and `placeOrder()` applies it with level rows locked in (variant, location) order, so two checkouts cannot deadlock (a race for the last unit is tested); `variant_availability` sells the sum of the active locations, each floored at zero; refund, cancel and return restock to the location the units came from or one staff choose (`restockPlan()`, `restockRoom()`), falling back to the first active location; `locationImpact()` reports units, variants and live holds before a deactivation, which is refused while checkouts hold stock there. Held by `stock-routing.test.ts`, `stock-routing.int.test.ts`, `inventory-locations.int.test.ts`, `stock-restock.test.ts`, `returns.int.test.ts`, the PGlite location guards and the view tests; every one passed in my runs. Why it stays Partial: (1) the locations page, the deactivate dialog and the refund dialog's 'Put back at' select have never been clicked (no signed-in admin fixture, D158): they are held by `renderToString` tests and by integration tests of the server functions; (2) criterion 4's guard is not reliable: `src/server/inventory-perf.int.test.ts` (the C4 guard) is not reliable: its 20-line `placeOrder()` timed out at 60 s in most of my runs against a database that already held an earlier perf store or ran other test files at the same time (probably stale planner statistics; the statement caught running for minutes was `orderLineRows()`'s cart-line read in `src/server/checkout.ts`, unchanged by this wave apart from two columns) and passed in 7 s alone on a fresh database, as in the Gates run; the cause is not found. (3) a hold's physical part is not re-checked against the shelf at payment, so staff who lower a level below live holds make those orders go negative with no backorder note (the Inventory page shows negative available; docs/wave-3-inventory.md 3.13); (4) with several active locations the product editor shows the total read-only and the bulk grid refuses a stock column, so stock per location is edited only on the Inventory page or by file; (5) one routing rule only: no closest-location or custom rules, no locations that do not fulfil online orders, no per-product or per-market locations, no transfers; a location's country is a label.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
       "An owner adds, renames and deactivates stock locations; each variant's stock is held per location and the storefront sells the sum of the active ones (integration test).",
       "An order's lines are assigned to locations by a stated rule (stock available, then priority) and holds are taken there under row locks (integration test).",
       "A refund restocks to the location the line was taken from, or the one staff choose.",
-      "Stock reads and holds stay within the existing performance guard.",
-      "Deactivating a location removes its stock from what is sellable and tells the owner how much was held there."
+      "Stock reads and holds stay within a stated performance bound held by `inventory-perf.int.test.ts`.",
+      "Deactivating a location removes its stock from what is sellable and tells the owner how much was held there (units on hand and variants; it is refused while checkouts in progress hold stock there)."
     ],
     "evidence": {
       "files": [
@@ -1270,16 +1270,38 @@
         "src/server/checkout.ts",
         "src/server/analytics-inventory-data.ts",
         "src/server/products.ts",
-        "src/server/cart.ts"
+        "src/server/cart.ts",
+        "supabase/migrations/20261006081019_inventory_rules.sql",
+        "supabase/migrations/20261006121317_inventory_draw_claims.sql",
+        "src/lib/stock-routing.ts",
+        "src/lib/stock-restock.ts",
+        "src/server/stock-restock.ts",
+        "src/server/inventory-locations.ts",
+        "src/server/inventory.ts",
+        "src/components/admin/inventory/locations-view.tsx",
+        "src/components/admin/order-actions.tsx",
+        "src/app/admin/(gated)/[store]/inventory/locations/page.tsx",
+        "src/app/admin/(gated)/[store]/inventory/locations/actions.ts"
       ],
       "tests": [
         "src/server/analytics-inventory-data.int.test.ts",
         "src/server/checkout.int.test.ts",
-        "src/server/order-admin.int.test.ts"
+        "src/server/order-admin.int.test.ts",
+        "src/server/returns.int.test.ts",
+        "src/db/inventory.test.ts",
+        "src/lib/stock-routing.test.ts",
+        "src/lib/stock-restock.test.ts",
+        "src/server/stock-routing.int.test.ts",
+        "src/server/inventory-locations.int.test.ts",
+        "src/server/review-money-inventory.int.test.ts",
+        "src/server/inventory-perf.int.test.ts",
+        "src/components/admin/inventory/inventory-views.test.ts"
       ],
       "untested": false
     },
-    "decisions": [],
+    "decisions": [
+      "D172"
+    ],
     "history": []
   },
   {

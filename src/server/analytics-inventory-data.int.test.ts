@@ -141,6 +141,8 @@ beforeAll(async () => {
     insert into commerce.inventory_locations (store_id, name, country, active) values (${id}::uuid, 'Gammelt lager', 'NO', false) returning id
   `);
   await db().execute(sql`update commerce.product_variants set active = false where id = ${variants["DEMO-NOTEBOOK-DOTTED"]}::uuid`);
+  // The demo thermos that keeps selling at zero (wave 3) is not one of the variants this report is about.
+  await db().execute(sql`update commerce.product_variants set active = false where id = ${variants["DEMO-THERMOS"]}::uuid`);
 
   for (const [sku, onHand] of [
     ["DEMO-MUG-WHITE", 3],
@@ -329,7 +331,8 @@ describe("inventoryReport", () => {
 
   it("never reaches another store, and a store with no stock has an empty page, not made-up figures", async () => {
     const mine = await inventoryReport(other, NOW);
-    expect(mine.variants).toBe(6);
+    // The template's six stocked goods and the demo thermos that keeps selling at zero (wave 3).
+    expect(mine.variants).toBe(7);
     const own = new Set(Object.values(await skus(other.id)));
     expect(mine.rows.every((r) => own.has(r.variantId))).toBe(true);
     expect(byName(mine).get("DEMO-LAMP")!.onHand).toBe(500);

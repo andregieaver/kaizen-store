@@ -5,12 +5,14 @@ import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 import { isAdoptedRefund } from "@/lib/refund-adopted";
+import { restockRoom } from "@/lib/stock-restock";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { cancelUnpaidOrder } from "./checkout";
 import { reverseHostCommission } from "./host-payments";
 import { getOrder, type Address, type OrderView } from "./orders";
 import { isDeliveryOrder } from "./standing-orders";
+import { applyRestock, orderStockHistory, planRestock } from "./stock-restock";
 import { platformStripe } from "./stripe";
 
 type Row = Record<string, unknown>;
@@ -25,6 +27,11 @@ type Row = Record<string, unknown>;
 export type OrderLineAdmin = OrderView["lines"][number] & {
   /** Units already put back in stock. */
   restocked: number;
+  /**
+   * Units that can still be put back: the line's quantity less what went back, and never more than the order's own sale movements
+   * took (a short draw, wave 3 D172: the hold expired and the stock was sold, so the order took less than it was for).
+   */
+  restockable: number;
 };
 
 export type Shipment = {
@@ -107,12 +114,18 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
     by: r.by ? String(r.by) : null,
   }));
   const restockedBySku = new Map(restocks.map((r) => [String(r.sku), Number(r.quantity)]));
+  const goods = order.lines.filter((l) => l.variantId && l.delivery === "physical");
+  const history = await orderStockHistory(db(), storeId, orderId, [...new Set(goods.map((l) => String(l.variantId)))]);
+  const room = restockRoom(
+    goods.map((l) => ({ id: l.id, variantId: String(l.variantId), quantity: l.quantity, restocked: restockedBySku.get(l.sku) ?? 0 })),
+    history,
+  );
   const refunded = refundRows.filter((r) => r.status !== "failed").reduce((sum, r) => sum + r.amountMinor, 0);
   const paidMinor = Number(paid?.paid ?? 0);
   const onlineMinor = Number(paid?.online ?? 0);
   return {
     ...order,
-    lines: order.lines.map((line) => ({ ...line, restocked: restockedBySku.get(line.sku) ?? 0 })),
+    lines: order.lines.map((line) => ({ ...line, restocked: restockedBySku.get(line.sku) ?? 0, restockable: room.get(line.id) ?? 0 })),
     shipments: shipments.map((s) => ({
       id: String(s.id),
       carrier: String(s.carrier),
@@ -246,8 +259,11 @@ export async function markSent(
 export type RefundInput = {
   amountMinor: number;
   reason: string;
-  /** Units to put back in stock, per order line. */
-  restock: { lineId: string; quantity: number }[];
+  /**
+   * Units to put back in stock, per order line. Without a `locationId` they go back to the location(s) they were taken from (wave 3,
+   * D172: `restockPlan()`); with one, to that active location of the store.
+   */
+  restock: { lineId: string; quantity: number; locationId?: string | null }[];
 };
 
 export type RefundOutcome =
@@ -268,6 +284,8 @@ export type RefundOptions = {
   inTransaction?: (tx: Tx, result: { refundId: string; status: string }) => Promise<void>;
   /** More data on the order's history event, such as the return's id. */
   eventData?: Record<string, unknown>;
+  /** The return this refund is for (D153): the units go back as `return_restock` movements that carry its id. */
+  returnId?: string;
   /**
    * The money is refunded outside Kaizen's Stripe (the order was paid some other way): nothing is sent from here, only the
    * stock goes back and the order's history says so. The amount must be 0.
@@ -330,17 +348,22 @@ export async function refundOrder(
   if (!Number.isInteger(input.amountMinor) || input.amountMinor < 0 || input.amountMinor > order.refundableMinor) {
     return { ok: false, problem: "The amount is more than is left to refund." };
   }
-  const restock: { sku: string; quantity: number; variantId: string }[] = [];
+  const restock: { sku: string; quantity: number; variantId: string; chosen: string | null }[] = [];
   for (const item of input.restock) {
     const line = order.lines.find((l) => l.id === item.lineId);
     if (!line || item.quantity <= 0) continue;
     if (!line.variantId || line.delivery !== "physical") continue;
-    if (item.quantity > line.quantity - line.restocked) {
-      return { ok: false, problem: `Only ${line.quantity - line.restocked} of ${line.title} can go back in stock.` };
+    if (item.quantity > line.restockable) {
+      return { ok: false, problem: `Only ${line.restockable} of ${line.title} can go back in stock.` };
     }
-    restock.push({ sku: line.sku, quantity: item.quantity, variantId: line.variantId });
+    restock.push({ sku: line.sku, quantity: item.quantity, variantId: line.variantId, chosen: item.locationId ?? null });
   }
   if (input.amountMinor === 0 && restock.length === 0) return { ok: false, problem: "Enter an amount to refund." };
+  // Where the units go back is settled before any money moves: a place that is not the store's, or more units than the order took, refuses the whole refund.
+  if (restock.length > 0) {
+    const planned = await planRestock(db(), storeId, orderId, restock);
+    if (!planned.ok) return { ok: false, problem: planned.problem };
+  }
 
   const [payment] = options.outside
     ? []
@@ -409,7 +432,20 @@ export async function refundOrder(
         adopted = true;
       }
     }
-    for (const item of restock) await putBack(tx, storeId, item.variantId, item.quantity);
+    // The units go back inside this transaction, each change a movement that says why (D172); planned again here, under the locks, from what the order took.
+    let restockedParts: { sku: string; quantity: number; locationId: string }[] = [];
+    if (restock.length > 0) {
+      const fresh = await planRestock(tx, storeId, orderId, restock);
+      if (!fresh.ok) throw new Error(fresh.problem);
+      await applyRestock(tx, storeId, fresh.items, {
+        reason: options.returnId ? "return_restock" : "order_restock",
+        source: options.returnId ? "return" : "order",
+        accountId,
+        orderId,
+        returnId: options.returnId ?? null,
+      });
+      restockedParts = fresh.items.flatMap((item) => item.parts.map((part) => ({ sku: item.sku, quantity: part.quantity, locationId: part.locationId })));
+    }
     // An adopted refund has its `order.refunded` event already (written by the webhook); only the stock going back is new.
     if (!adopted || restock.length > 0) {
       await tx.execute(sql`
@@ -418,7 +454,7 @@ export async function refundOrder(
                 ${JSON.stringify({
                   amount: adopted ? 0 : input.amountMinor,
                   reason: input.reason,
-                  restocked: restock.map(({ sku, quantity }) => ({ sku, quantity })),
+                  restocked: restockedParts,
                   // A refund Stripe reported as failed is kept as a row too; a caller that retries (a return) counts these.
                   ...(input.amountMinor > 0 && status === "failed" ? { status } : {}),
                   ...options.eventData,
@@ -434,29 +470,6 @@ export async function refundOrder(
 }
 
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
-
-/** Puts units back at the store's first active location. */
-async function putBack(tx: Tx, storeId: string, variantId: string, quantity: number) {
-  const [level] = await tx.execute<Row>(sql`
-    select l.location_id from commerce.inventory_levels l
-    join commerce.inventory_locations loc on loc.id = l.location_id and loc.active
-    where l.store_id = ${storeId}::uuid and l.variant_id = ${variantId}::uuid
-    order by loc.created_at limit 1
-  `);
-  if (level) {
-    await tx.execute(sql`
-      update commerce.inventory_levels set on_hand = on_hand + ${quantity}, updated_at = now()
-      where variant_id = ${variantId}::uuid and location_id = ${String(level.location_id)}::uuid
-    `);
-    return;
-  }
-  await tx.execute(sql`
-    insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-    select ${storeId}::uuid, ${variantId}::uuid, id, ${quantity}
-    from commerce.inventory_locations where store_id = ${storeId}::uuid and active
-    order by created_at limit 1
-  `);
-}
 
 /**
  * Cancels a paid order that has not been sent: refunds what is left, puts
@@ -481,8 +494,8 @@ export async function cancelOrder(
     return { ok: false, problem: order.status === "fulfilled" ? "The order is already sent: refund it instead." : "Only paid orders can be cancelled." };
   }
   const restock = order.lines
-    .filter((l) => l.variantId && l.delivery === "physical" && l.quantity > l.restocked)
-    .map((l) => ({ lineId: l.id, quantity: l.quantity - l.restocked }));
+    .filter((l) => l.variantId && l.delivery === "physical" && l.restockable > 0)
+    .map((l) => ({ lineId: l.id, quantity: l.restockable }));
   if (order.refundableMinor > 0 || restock.length > 0) {
     const refunded = await refundOrder(storeId, orderId, { amountMinor: order.refundableMinor, reason, restock }, accountId);
     if (!refunded.ok) return refunded;

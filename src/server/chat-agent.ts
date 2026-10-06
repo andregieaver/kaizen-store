@@ -31,7 +31,8 @@ import { priceUnitSentence } from "@/lib/unit-price-text";
 import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, type AiConnection, type ToolChatMessage } from "./ai";
 import { audit, type Account } from "./auth";
 import { campaignNotices } from "./campaign-notices";
-import { getAvailability, getProduct, type GridProduct } from "./catalog";
+import { getProduct, getVariantStock, type GridProduct } from "./catalog";
+import { UNLIMITED, availabilityOf, type VariantStock } from "@/lib/stock-availability";
 import { searchKnowledge } from "./knowledge";
 import { publishedPageNames } from "./pages";
 import { getPlatformChrome } from "./platform-navigation";
@@ -282,7 +283,7 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
     case "get_product": {
       const product = await getProduct(store.id, market, text("handle"));
       if (!product) return { result: json({ error: "No such product in this store." }) };
-      const [stock, notices] = await Promise.all([getAvailability(store.id, product.variants.map((v) => v.id)), campaignNotices(store.id, market)]);
+      const [stock, notices] = await Promise.all([getVariantStock(store.id, product.variants.map((v) => v.id)), campaignNotices(store.id, market)]);
       const offers = offersOn(site, notices, product.id, { gifts: true });
       const cheapest = product.variants.reduce((low, v) => (v.price.amountMinor < low.price.amountMinor ? v : low), product.variants[0]);
       return {
@@ -293,7 +294,8 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
           variants: product.variants.map((v) => ({
             options: v.options,
             price: priceText(v.price, market.locale, market.lang, false),
-            available: v.delivery === "physical" ? (stock.get(v.id) ?? 0) > 0 : true,
+            // Stock, policy and days are the store's own read (D172): the answer says "on backorder" only when this says so, and the days as given.
+            ...stockFacts(v.delivery === "physical" ? stock.get(v.id) : UNLIMITED),
           })),
           subscriptions: product.plans.length > 0,
           // What the owner has let the chat say of the product\'s custom fields (D118), in the shopper\'s words.
@@ -478,4 +480,16 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
     for (const call of step.toolCalls.slice(4)) messages.push({ role: "tool", tool_call_id: call.id, content: json({ error: "Too many tools at once." }) });
   }
   return { reply: m.chat.sorry, actions: [], products: [] };
+}
+
+/**
+ * What the chat may say of one variant's stock, from the store's own read: whether it can be bought, and for a variant that keeps
+ * selling at zero, that it is on backorder and the days the store states. The words never come from the model.
+ */
+function stockFacts(stock: VariantStock | undefined): { available: boolean; availability: "in stock" | "on backorder" | "sold out"; backorderShipsWithinDays?: number } {
+  if (!stock || stock === UNLIMITED) return { available: stock === UNLIMITED, availability: stock === UNLIMITED ? "in stock" : "sold out" };
+  const kind = availabilityOf(stock);
+  if (kind === "in_stock") return { available: true, availability: "in stock" };
+  if (kind === "backorder" && stock.backorderDays !== null) return { available: true, availability: "on backorder", backorderShipsWithinDays: stock.backorderDays };
+  return { available: false, availability: "sold out" };
 }

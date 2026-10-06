@@ -100,7 +100,7 @@ beforeAll(async () => {
       ],
       options: [{ name: "Size", values: ["S", "M"] }],
       variants: [
-        variant("RT-LAMP-S", { options: { Size: "S" }, gtin: "1234567890123", prices: { NO: "199", SE: "249,50" }, cost: "80", stock: 5, weightGrams: 500, hsCode: "940540", originCountry: "CN", measure: { amount: "1", unit: "piece", base: null } }),
+        variant("RT-LAMP-S", { options: { Size: "S" }, gtin: "1234567890123", prices: { NO: "199", SE: "249,50" }, cost: "80", stock: 5, stockPolicy: "continue", backorderDays: 10, lowStockThreshold: 4, weightGrams: 500, hsCode: "940540", originCountry: "CN", measure: { amount: "1", unit: "piece", base: null } }),
         variant("RT-LAMP-M", { options: { Size: "M" }, prices: { NO: "249" }, stock: 0 }),
       ],
       categories: [String(child.id)],
@@ -126,7 +126,7 @@ const snapshot = async (storeId: string) => ({
   products: (await db().execute<Row>(sql`select handle, status, updated_at::text as at from commerce.products where store_id = ${storeId}::uuid order by handle`)).map((r) => `${r.handle}|${r.status}|${r.at}`),
   prices: Number((await db().execute<Row>(sql`select count(*)::int as n from commerce.prices where store_id = ${storeId}::uuid`))[0].n),
   fieldValues: (await db().execute<Row>(sql`select entity, locale, values::text as v from commerce.field_values where store_id = ${storeId}::uuid order by entity, locale, values::text`)).map((r) => `${r.entity}|${r.locale}|${r.v}`),
-  variants: (await db().execute<Row>(sql`select sku, active, cost_minor from commerce.product_variants where store_id = ${storeId}::uuid order by sku`)).map((r) => `${r.sku}|${r.active}|${r.cost_minor}`),
+  variants: (await db().execute<Row>(sql`select sku, active, cost_minor, stock_policy, backorder_days, low_stock_threshold from commerce.product_variants where store_id = ${storeId}::uuid order by sku`)).map((r) => `${r.sku}|${r.active}|${r.cost_minor}|${r.stock_policy}|${r.backorder_days}|${r.low_stock_threshold}`),
   stock: (await db().execute<Row>(sql`select v.sku, l.on_hand from commerce.inventory_levels l join commerce.product_variants v on v.id = l.variant_id where l.store_id = ${storeId}::uuid order by v.sku`)).map((r) => `${r.sku}|${r.on_hand}`),
   media: (await db().execute<Row>(sql`select p.handle, m.url, m.position from commerce.product_media m join commerce.products p on p.id = m.product_id where m.store_id = ${storeId}::uuid order by p.handle, m.position`)).map((r) => `${r.handle}|${r.url}|${r.position}`),
 });
@@ -137,7 +137,10 @@ describe("export then import", () => {
     if (!exported.ok || exported.mode !== "file") throw new Error("file");
     // The file has the plain custom fields of products and variants, in both languages for the translatable one.
     const header = rowsOfCsv(exported.csv)[0];
-    expect(header).toEqual(expect.arrayContaining(["field:subtitle", "field:subtitle:sv-SE", "field:months", "variant_field:batch", "title:sv-SE", "price:NO", "price:SE", "price_basis"]));
+    expect(header).toEqual(expect.arrayContaining(["field:subtitle", "field:subtitle:sv-SE", "field:months", "variant_field:batch", "title:sv-SE", "price:NO", "price:SE", "price_basis", "stock_policy", "backorder_days", "low_stock_threshold"]));
+    // The stock policy of the lamp (continue, 10 days, level 4) is in the file, and reads back unchanged below.
+    const lamp = rowsOfCsv(exported.csv).find((r) => r[header.indexOf("sku")] === "RT-LAMP-S")!;
+    expect([lamp[header.indexOf("stock_policy")], lamp[header.indexOf("backorder_days")], lamp[header.indexOf("low_stock_threshold")]]).toEqual(["continue", "10", "4"]);
     // A rich text field is not a plain value: it is not in the file.
     expect(header.some((h) => h.includes("blurb"))).toBe(false);
     const before = await snapshot(fx.storeId);
@@ -205,6 +208,71 @@ describe("export then import", () => {
     expect(after.fieldValues).toEqual(before.fieldValues);
     // The rich text is untouched.
     expect(after.fieldValues.some((v) => v.includes("Handmade in Norway"))).toBe(true);
+  });
+});
+
+describe("the stock settings in a product file (wave 3, D172)", () => {
+  const edit = async (change: (rows: string[][], h: string[]) => void) => {
+    const exported = await jobs.requestProductExport(owner, {});
+    if (!exported.ok || exported.mode !== "file") throw new Error("file");
+    const rows = rowsOfCsv(exported.csv);
+    change(rows, rows[0]);
+    const { writeCsv } = await import("@/lib/csv");
+    return importThrough(owner, fakeStorage(), new TextEncoder().encode(writeCsv(rows)), {});
+  };
+  const variantRow = async (sku: string) => (await db().execute<Row>(sql`select stock_policy, backorder_days, low_stock_threshold from commerce.product_variants where store_id = ${fx.storeId}::uuid and sku = ${sku}`))[0];
+
+  it("changes the delivery time and the warning level of one variant, and nothing else", async () => {
+    const before = await snapshot(fx.storeId);
+    const run = await edit((rows, h) => {
+      const row = rows.find((r) => r[h.indexOf("sku")] === "RT-LAMP-S")!;
+      row[h.indexOf("backorder_days")] = "12";
+      row[h.indexOf("low_stock_threshold")] = "";
+    });
+    expect(run.applied?.counts).toMatchObject({ updated: 1, failed: 0, pricesChanged: 0 });
+    expect(await variantRow("RT-LAMP-S")).toEqual({ stock_policy: "continue", backorder_days: 12, low_stock_threshold: null });
+    // The stock and the history are as they were: a settings change moves no stock.
+    expect((await snapshot(fx.storeId)).stock).toEqual(before.stock);
+    // Put it back for the tests after this.
+    await edit((rows, h) => {
+      const row = rows.find((r) => r[h.indexOf("sku")] === "RT-LAMP-S")!;
+      row[h.indexOf("backorder_days")] = "10";
+      row[h.indexOf("low_stock_threshold")] = "4";
+    });
+    expect(await variantRow("RT-LAMP-S")).toEqual({ stock_policy: "continue", backorder_days: 10, low_stock_threshold: 4 });
+  });
+
+  it("stops selling at zero when the policy is deny, and refuses continue without a delivery time", async () => {
+    await edit((rows, h) => {
+      const row = rows.find((r) => r[h.indexOf("sku")] === "RT-MUG")!;
+      row[h.indexOf("stock_policy")] = "continue";
+      row[h.indexOf("backorder_days")] = "5";
+    });
+    expect(await variantRow("RT-MUG")).toMatchObject({ stock_policy: "continue", backorder_days: 5 });
+    await edit((rows, h) => {
+      rows.find((r) => r[h.indexOf("sku")] === "RT-MUG")![h.indexOf("stock_policy")] = "deny";
+    });
+    expect(await variantRow("RT-MUG")).toEqual({ stock_policy: "deny", backorder_days: null, low_stock_threshold: null });
+    const run = await edit((rows, h) => {
+      const row = rows.find((r) => r[h.indexOf("sku")] === "RT-MUG")!;
+      row[h.indexOf("stock_policy")] = "continue";
+      row[h.indexOf("backorder_days")] = "";
+    });
+    const items = await itemsOf(run.jobId);
+    expect(JSON.stringify(items.flatMap((i) => i.messages))).toContain("no delivery time");
+    expect(await variantRow("RT-MUG")).toMatchObject({ stock_policy: "deny" });
+  });
+
+  it("does not import the stock column when the store has several active locations, and says so", async () => {
+    await db().execute(sql`insert into commerce.inventory_locations (store_id, name, country, priority) values (${fx.storeId}::uuid, 'Second place', 'NO', 5)`);
+    const before = (await snapshot(fx.storeId)).stock;
+    const run = await edit((rows, h) => {
+      rows.find((r) => r[h.indexOf("sku")] === "RT-LAMP-M")![h.indexOf("stock")] = "77";
+    });
+    const items = await itemsOf(run.jobId);
+    expect(JSON.stringify(items.flatMap((i) => i.messages))).toContain("more than one active stock location");
+    expect((await snapshot(fx.storeId)).stock).toEqual(before);
+    await db().execute(sql`update commerce.inventory_locations set active = false where store_id = ${fx.storeId}::uuid and name = 'Second place'`);
   });
 });
 

@@ -23,6 +23,7 @@ import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
 import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
+import { allocate, totalsOf } from "@/lib/stock-routing";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 
 import { holdAppointment } from "./appointments";
@@ -158,7 +159,7 @@ function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
         coalesce(tl.title, tf.title, p.handle) as title,
         cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
-        v.measure_amount, v.measure_unit, v.measure_base,
+        v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
         (p.status = 'active' and v.active and ${bookable}) as sellable
       from ${source}
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
@@ -187,7 +188,14 @@ export async function placeOrder(
   shop: Pick<CheckoutShop, "storeId" | "market">,
   cartId: string,
   consent: CheckoutConsent = {},
-  { customerId = null }: { customerId?: string | null } = {},
+  {
+    customerId = null,
+    noBackorder = false,
+  }: {
+    customerId?: string | null;
+    /** Never sells past stock, whatever a variant's policy says: a weekly box is filled from free stock only (wave 3, D172). */
+    noBackorder?: boolean;
+  } = {},
 ): Promise<PlaceResult> {
   const { storeId, market } = shop;
   return inTransaction(async (tx): Promise<PlaceResult> => {
@@ -369,6 +377,7 @@ export async function placeOrder(
       p.total = p.unit * p.quantity - off;
     });
     // A free product is a line at its list price, all of it taken off, so it is shipped, held and shown like any other.
+    const gifted = new Set<Row>();
     for (const gift of outcome.gifts) {
       const [row] = await orderLineRows(
         tx,
@@ -378,55 +387,90 @@ export async function placeOrder(
       );
       if (!row || !row.sellable || !row.plan_ok || row.amount_minor === null) continue;
       lines.push(row);
+      gifted.add(row);
       const p = price(row);
       const whole = p.unit * p.quantity;
       priced.push({ ...p, gift: true, campaign: whole, campaignId: gift.campaignId, parts: [{ campaignId: gift.campaignId, name: gift.campaignName, minor: whole }], discount: whole, total: 0 });
     }
 
-    // Lock the stock rows, then count what is free: on hand minus live holds.
+    // Where the units come from (D172, `docs/wave-3-inventory.md` 2.5). The level rows of every variant being bought are locked
+    // first, in the one order every writer uses (variant, location), so two checkouts cannot deadlock; then the free units are
+    // counted (on hand minus live holds) and `allocate()` applies the stated rule. A variant that keeps selling on backorder takes
+    // the units beyond its stock too, at the location the rule names; one that stops at zero fails the order with `stock`.
     const toShip = lines.filter((l) => l.delivery === "physical");
-    const variantIds = sql.join(
-      [sql`null::uuid`, ...toShip.map((l) => sql`${String(l.variant_id)}::uuid`)],
-      sql`, `,
-    );
-    const levels = await tx.execute<Row>(sql`
-      select l.variant_id, l.location_id, l.on_hand
-      from commerce.inventory_levels l
-      join commerce.inventory_locations loc on loc.id = l.location_id and loc.active
-      where l.store_id = ${storeId}::uuid and l.variant_id in (${variantIds})
-      order by loc.created_at
-      for update of l
-    `);
-    const holds = await tx.execute<Row>(sql`
-      select variant_id, location_id, sum(quantity)::int as held
-      from commerce.inventory_reservations
-      where store_id = ${storeId}::uuid and variant_id in (${variantIds})
-        and released_at is null and expires_at > now()
-      group by variant_id, location_id
-    `);
-    const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
-
-    const allocations: { variantId: string; locationId: string; quantity: number }[] = [];
-    // The same variant can be bought once and subscribed to: count it together.
-    const wantedByVariant = new Map<string, number>();
-    for (const line of toShip) {
-      const id = String(line.variant_id);
-      wantedByVariant.set(id, (wantedByVariant.get(id) ?? 0) + Number(line.quantity));
-    }
-    for (const [variantId, quantity] of wantedByVariant) {
-      const line = { variant_id: variantId };
-      let wanted = quantity;
-      for (const level of levels.filter((l) => l.variant_id === line.variant_id)) {
-        const free = Number(level.on_hand) - (heldAt.get(`${level.variant_id}:${level.location_id}`) ?? 0);
-        const take = Math.min(Math.max(free, 0), wanted);
-        if (take > 0) {
-          allocations.push({ variantId: String(line.variant_id), locationId: String(level.location_id), quantity: take });
-          wanted -= take;
+    const shipVariantIds = [...new Set(toShip.map((l) => String(l.variant_id)))].sort();
+    const allocations: { variantId: string; locationId: string; quantity: number; backordered: number }[] = [];
+    // The units of each variant that are backordered at placement, given to its lines (paid ones first, a gift last), and kept on the
+    // reservation (`backorder_quantity`): the rest of the hold is the order's own physical claim, which a checkout started later and paid
+    // first cannot take (`commerce.draw_order_stock()`), so what the shopper was told stays true; the draw settles the figure at payment.
+    const backorderOfLine = new Map<number, number>();
+    if (shipVariantIds.length > 0) {
+      const variantIds = sql.join(shipVariantIds.map((id) => sql`${id}::uuid`), sql`, `);
+      const places = await tx.execute<Row>(sql`
+        select id, priority, created_at from commerce.inventory_locations
+        where store_id = ${storeId}::uuid and active
+        order by priority, created_at, id
+      `);
+      // A variant that keeps selling past zero and has no level at any active location gets one at the first, so there is a row to lock and draw.
+      const home = places[0] ? String(places[0].id) : null;
+      if (home) {
+        const keeps = noBackorder ? [] : [...new Set(toShip.filter((l) => l.stock_policy === "continue").map((l) => String(l.variant_id)))];
+        for (const variantId of keeps) {
+          await tx.execute(sql`
+            insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+            select ${storeId}::uuid, ${variantId}::uuid, ${home}::uuid, 0
+            where not exists (
+              select 1 from commerce.inventory_levels l
+              join commerce.inventory_locations loc on loc.store_id = l.store_id and loc.id = l.location_id and loc.active
+              where l.store_id = ${storeId}::uuid and l.variant_id = ${variantId}::uuid
+            )
+            on conflict (variant_id, location_id) do nothing
+          `);
         }
       }
-      if (wanted > 0) return { ok: false, problem: "stock" };
+      const levels = await tx.execute<Row>(sql`
+        select l.variant_id, l.location_id, l.on_hand
+        from commerce.inventory_levels l
+        where l.store_id = ${storeId}::uuid and l.variant_id in (${variantIds})
+        order by l.variant_id, l.location_id
+        for update of l
+      `);
+      const holds = await tx.execute<Row>(sql`
+        select variant_id, location_id, sum(quantity)::int as held
+        from commerce.inventory_reservations
+        where store_id = ${storeId}::uuid and variant_id in (${variantIds})
+          and released_at is null and expires_at > now()
+        group by variant_id, location_id
+      `);
+      const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
+      const outcome = allocate({
+        locations: places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true })),
+        cells: levels.map((l) => ({
+          variantId: String(l.variant_id),
+          locationId: String(l.location_id),
+          onHand: Number(l.on_hand),
+          reserved: heldAt.get(`${l.variant_id}:${l.location_id}`) ?? 0,
+        })),
+        // The same variant can be bought once and subscribed to: it is one want. A free gift is never backordered: it makes its variant's want a `deny` one.
+        lines: toShip.map((l) => ({
+          variantId: String(l.variant_id),
+          quantity: Number(l.quantity),
+          policy: l.stock_policy === "continue" && !gifted.has(l) && !noBackorder ? ("continue" as const) : ("deny" as const),
+        })),
+      });
+      if (!outcome.ok) return { ok: false, problem: "stock" };
+      for (const take of outcome.takes) allocations.push({ variantId: take.variantId, locationId: take.locationId, quantity: take.quantity, backordered: take.backordered });
+      const behind = new Map([...totalsOf(outcome.takes)].map(([id, t]) => [id, t.backordered]));
+      // Paid lines first (in the order of the lines), then gifts.
+      const order = priced.map((p, i) => ({ p, i })).filter(({ p }) => p.delivery === "physical" && !p.startsAt).sort((x, y) => Number(x.p.gift) - Number(y.p.gift) || x.i - y.i);
+      for (const { p, i } of order) {
+        const variantId = String(p.line.variant_id);
+        const left = behind.get(variantId) ?? 0;
+        const give = Math.min(left, p.quantity);
+        if (give > 0) backorderOfLine.set(i, give);
+        behind.set(variantId, left - give);
+      }
     }
-
 
     // One sign-up fee per purchase option, charged now with the first order (D29).
     const fees = [
@@ -648,7 +692,7 @@ export async function placeOrder(
           total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
           selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
           campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor,
-          unit_cost_minor, vat_relief_minor, measure_amount, measure_unit, measure_base
+          unit_cost_minor, vat_relief_minor, measure_amount, measure_unit, measure_base, backorder_quantity, backorder_days
         ) values (
           ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
           ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${taxOfLine.get(String(i))?.taxMinor ?? 0},
@@ -660,7 +704,8 @@ export async function placeOrder(
           ${p.range && p.startsAt ? p.count : null},
           ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}, ${p.bonus}, ${p.referral},
           ${p.line.cost_minor === null || p.line.cost_minor === undefined ? null : Number(p.line.cost_minor)}, ${p.relief},
-          ${snapshot?.amount ?? null}::numeric, ${snapshot?.unit ?? null}, ${snapshot?.base ?? null}
+          ${snapshot?.amount ?? null}::numeric, ${snapshot?.unit ?? null}, ${snapshot?.base ?? null},
+          ${backorderOfLine.get(i) ?? 0}, ${backorderOfLine.has(i) && p.line.backorder_days !== null && p.line.backorder_days !== undefined ? Number(p.line.backorder_days) : null}
         )
         returning id
       `);
@@ -737,8 +782,8 @@ export async function placeOrder(
     }
     for (const a of allocations) {
       await tx.execute(sql`
-        insert into commerce.inventory_reservations (store_id, variant_id, location_id, quantity, order_id, expires_at)
-        values (${storeId}::uuid, ${a.variantId}::uuid, ${a.locationId}::uuid, ${a.quantity}, ${orderId}::uuid,
+        insert into commerce.inventory_reservations (store_id, variant_id, location_id, quantity, backorder_quantity, order_id, expires_at)
+        values (${storeId}::uuid, ${a.variantId}::uuid, ${a.locationId}::uuid, ${a.quantity}, ${a.backordered}, ${orderId}::uuid,
                 now() + make_interval(mins => ${CHECKOUT_MINUTES + 5}))
       `);
     }

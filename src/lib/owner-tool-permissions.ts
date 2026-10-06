@@ -55,6 +55,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_data_jobs: "products:read",
   explain_import_problems: "products:read",
   restock_suggestions: "products:read",
+  // Stock (D172): read like the Inventory page (`products:read`), changed with the right to change products.
+  stock_levels: "products:read",
+  stock_history: "products:read",
   // The redirects and the 404 report are the Website section's (D168): read like its pages, added with the right to change the website.
   redirect_overview: "website:read",
   list_integrations: "settings:read",
@@ -99,6 +102,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   email_customer: "customers:write",
   resend_order_email: "orders:write",
   set_stock: "products:write",
+  set_backorder: "products:write",
   post_to_slack: "owner",
   draft_experiment: "marketing:write",
   start_experiment: "marketing:write",

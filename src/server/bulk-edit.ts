@@ -302,7 +302,7 @@ const sentence = (problem: string): string => problem.replace(/"[^"]*"/g, "…")
  * `saveProduct()` (all of it or nothing). A product that was archived stays archived unless the change says otherwise (the editor's save would
  * make it a draft).
  */
-async function writeProduct(store: Store, editor: EditorContext, product: LoadedProduct, changes: readonly Change[], adjust = false): Promise<Outcome> {
+async function writeProduct(store: Store, editor: EditorContext, product: LoadedProduct, changes: readonly Change[], adjust = false, by: { accountId: string; batchId: string } | null = null): Promise<Outcome> {
   const archiveChange = changes.find((c) => c.field === "archived");
   const rest = changes.filter((c) => c.field !== "archived");
   const statusChange = rest.find((c) => c.field === "status");
@@ -315,11 +315,13 @@ async function writeProduct(store: Store, editor: EditorContext, product: Loaded
     return ok ? { ok: true } : { ok: false, reason: "This product no longer exists." };
   }
   if (rest.length === 0) return { ok: true };
+  // With several stock locations a product's stock is a total (D172): the Inventory page sets one location's figure with a reason, this grid cannot.
+  if (editor.activeLocations > 1 && rest.some((c) => c.field === "stock")) return { ok: false, reason: "This store has several stock locations: change stock on the Inventory page." };
   const fresh = await getProductForEdit(store, editor, product.id);
   if (!fresh) return { ok: false, reason: "This product no longer exists." };
   const { archived, ...input } = fresh;
   // Stock as it is now: a variant whose stock the change leaves alone is not written (a sale paid since the read stays paid), an adjustment is relative.
-  const stockMode: StockMode = { loaded: new Map(input.variants.flatMap((v) => (v.id ? [[v.id, v.stock] as const] : []))), relative: adjust };
+  const stockMode: StockMode = { loaded: new Map(input.variants.flatMap((v) => (v.id ? [[v.id, v.stock] as const] : []))), relative: adjust, source: "bulk", accountId: by?.accountId ?? null, jobId: by?.batchId ?? null };
   const problem = layOver(input, rest, editor, adjust);
   if (problem) return { ok: false, reason: problem };
   const saved = await saveProduct(store, editor, product.id, input, undefined, undefined, undefined, stockMode);
@@ -462,7 +464,7 @@ async function runListBatch(member: Membership, editor: EditorContext, batch: Ba
       items.push({ productId: id, variantId: f.variantId ?? null, field: batch.action === "price" ? (`price:${parsed.markets?.[0]?.code ?? "XX"}` as BulkField) : batch.action === "stock" ? "stock" : fieldOfStatus(batch.action), before: null, after: null, outcome: "failed", reason: f.reason });
     }
     if (planned.plan.changes.length > 0) {
-      const written = await writeProduct(member.store, editor, product, planned.plan.changes, parsed.stock?.kind === "adjust");
+      const written = await writeProduct(member.store, editor, product, planned.plan.changes, parsed.stock?.kind === "adjust", { accountId: member.account.id, batchId: batch.id });
       if (written.ok) {
         wrote = true;
         for (const c of planned.plan.changes) items.push({ productId: c.productId, variantId: c.variantId, field: c.field, before: c.before, after: c.after, outcome: "changed", reason: null });
@@ -667,7 +669,7 @@ export async function applyGrid(member: Membership, edits: readonly GridEdit[], 
         for (const c of plan.conflicts.filter((x) => x.productId === id)) items.push({ productId: id, variantId: c.variantId, field: c.field, before: null, after: c.current ?? null, outcome: "failed", reason: "The value changed since the page was opened, so it was left as it is." });
         for (const c of plan.invalid.filter((x) => x.productId === id)) items.push({ productId: id, variantId: c.variantId, field: c.field, before: null, after: null, outcome: "failed", reason: c.reason });
         if (changes.length > 0) {
-          const written = await writeProduct(member.store, editor, product, changes);
+          const written = await writeProduct(member.store, editor, product, changes, false, { accountId: member.account.id, batchId });
           if (written.ok) wrote = true;
           else failures.push(...changes.map((c) => ({ productId: id, variantId: c.variantId, reason: written.reason })));
           for (const c of changes) items.push({ productId: id, variantId: c.variantId, field: c.field, before: c.before, after: c.after, outcome: written.ok ? "changed" : "failed", reason: written.ok ? null : written.reason });
@@ -798,7 +800,7 @@ export async function undoBatch(member: Membership, batchId: string): Promise<Un
       for (const c of plan.conflicts.filter((x) => x.productId === id)) items.push({ productId: id, variantId: c.variantId || null, field: c.field, before: null, after: c.current ?? null, outcome: "failed", reason: "The value changed after the edit, so it was left as it is." });
       for (const g of plan.gone.filter((x) => x.productId === id)) items.push({ productId: id, variantId: g.variantId, field: g.field, before: null, after: null, outcome: "failed", reason: "The product or variant no longer exists." });
       if (restores.length > 0 && product) {
-        const written = await writeProduct(member.store, editor, product, restores);
+        const written = await writeProduct(member.store, editor, product, restores, false, { accountId: member.account.id, batchId: undoId });
         if (written.ok) wrote = true;
         for (const c of restores) {
           items.push({ productId: id, variantId: c.variantId, field: c.field, before: c.before, after: c.after, outcome: written.ok ? "changed" : "failed", reason: written.ok ? null : written.reason });

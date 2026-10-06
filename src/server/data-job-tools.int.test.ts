@@ -97,7 +97,8 @@ describe("list_data_jobs", () => {
 
   it("shows a member without the owner role only product jobs, and refuses a kind that is the owner's in words, not an empty list", async () => {
     const out = await run(admin, "list_data_jobs");
-    expect(out.shown_kinds).toEqual(["product_import", "product_export"]);
+    // The stock files are the products' too (wave 3): the same keys as the product files.
+    expect(out.shown_kinds).toEqual(["product_import", "product_export", "inventory_import", "inventory_export"]);
     expect(out.jobs.map((j: Answer) => j.kind_code)).not.toContain("order_export");
     await expect(run(admin, "list_data_jobs", { kind: "order_export" })).rejects.toThrow(/order and customer files are the owner's/);
     await expect(run(admin, "list_data_jobs", { kind: "customer_export" })).rejects.toBeInstanceOf(OwnerToolError);

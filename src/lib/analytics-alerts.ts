@@ -1,7 +1,7 @@
 import { formatCount, formatPercent } from "./analytics-core";
 import { formatAmount } from "./analytics-format";
 import type { CreepingResult } from "./analytics-discounts";
-import type { StockoutAlert } from "./analytics-inventory";
+import { onBackorder, type StockoutAlert } from "./analytics-inventory";
 import { STOCKOUT_ALERT_DAYS } from "./analytics-inventory";
 import { ESTIMATE_MIN_COVERAGE } from "./analytics-kpi";
 import { addDays, daysBetween, isDay, isoWeekday } from "./analytics-period";
@@ -505,18 +505,21 @@ function stockoutAlert(s: AlertSnapshot): Alert | null {
   const named = rows.slice(0, r.named);
   const rest = rows.length - named.length;
   const outCount = rows.filter((a) => a.kind === "out").length;
-  const describe = (a: StockoutAlert) => `${a.row.name} (${a.kind === "out" ? "out" : daysText(a.days)})`;
-  const lead = outCount === 0 ? "Running out within a week" : outCount === rows.length ? "Out of stock" : "Out of stock or running out within a week";
+  // A variant that keeps selling with nothing on hand (D172) is out, but the store chose that: it is named as on backorder and is not urgent by itself.
+  const backordered = (a: StockoutAlert) => a.kind === "out" && onBackorder(a.row);
+  const soldOut = rows.filter((a) => a.kind === "out" && !backordered(a)).length;
+  const describe = (a: StockoutAlert) => `${a.row.name} (${backordered(a) ? "on backorder" : a.kind === "out" ? "out" : daysText(a.days)})`;
+  const lead = outCount === 0 ? "Running out within a week" : outCount === rows.length ? (soldOut === 0 ? "On backorder" : "Out of stock") : "Out of stock or running out within a week";
   const text = `${lead}: ${named.map(describe).join(", ")}${rest > 0 ? ` and ${formatCount(rest)} more` : ""}.`;
   return {
     id: "stockout",
-    severity: outCount > 0 ? "urgent" : "warning",
+    severity: soldOut > 0 ? "urgent" : "warning",
     text,
     href: "/analytics/inventory",
     action: "See stock",
     evidence: named.map((a) => ({
       label: a.row.name,
-      value: a.kind === "out" ? "Out of stock" : `${daysText(a.days)} of stock`,
+      value: backordered(a) ? `On backorder${a.row.owed > 0 ? `, ${formatCount(a.row.owed)} owed` : ""}` : a.kind === "out" ? "Out of stock" : `${daysText(a.days)} of stock`,
       baseline: `${formatCount(a.row.sold30)} sold in 30 days`,
     })),
     size: rows.length,

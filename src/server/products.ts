@@ -38,6 +38,7 @@ import { auditProductSave, productSnapshot } from "./product-audit";
 import { listLayoutChoices } from "./product-layouts";
 import { listVatCategories, ratesNow } from "./vat-categories";
 import type { Store } from "./stores";
+import { withStockContext } from "./stock-context";
 import { listTerms, scopedTermIds } from "./taxonomy";
 import { categoryMarks } from "./unit-price-gaps";
 
@@ -70,8 +71,13 @@ export type EditorContext = {
   /** The store's main currency (D152): what a variant's cost is entered in. */
   mainCurrency: string;
   operators: Operator[];
-  /** Where stock is counted; null until the first product is saved. */
+  /** Where stock is counted (the first location by rank); null until the first product is saved. */
   locationName: string | null;
+  /**
+   * How many stock locations are active (wave 3, D172). With one, a variant's stock number in the editor is that location's and is written
+   * to it; with several it is the total over them, read-only, and the editor sends the person to the Inventory page.
+   */
+  activeLocations: number;
   /** The store's product categories and tags (D50). */
   terms: Term[];
   /** Appointments are switched on (D65), with the staff who do them and the places they can be at. */
@@ -88,7 +94,7 @@ export type EditorContext = {
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
-  const [operators, [location], terms, rates, staff, places, hosts, layouts, vatCategories] = await Promise.all([
+  const [operators, [location], [counted], terms, rates, staff, places, hosts, layouts, vatCategories] = await Promise.all([
     db().execute<Row>(sql`
       select id, name, postal_address, electronic_address, country
       from commerce.economic_operators where store_id = ${store.id}::uuid
@@ -96,7 +102,10 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     `),
     db().execute<Row>(sql`
       select name from commerce.inventory_locations
-      where store_id = ${store.id}::uuid and active order by created_at limit 1
+      where store_id = ${store.id}::uuid and active order by priority, created_at, id limit 1
+    `),
+    db().execute<Row>(sql`
+      select count(*)::int as n from commerce.inventory_locations where store_id = ${store.id}::uuid and active
     `),
     listTerms({ storeId: store.id, contentType: "product" }),
     ratesNow(),
@@ -139,6 +148,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
       country: String(row.country),
     })),
     locationName: location ? String(location.name) : null,
+    activeLocations: Number(counted?.n ?? 0),
     bookingsOn: store.bookingsOn,
     staff: staff.map((row) => ({
       id: String(row.id),
@@ -184,6 +194,9 @@ export function emptyProduct(context: EditorContext): ProductInput {
         prices: {},
         cost: "",
         stock: 0,
+        stockPolicy: "deny",
+        backorderDays: null,
+        lowStockThreshold: null,
         active: true,
         weightGrams: null,
         hsCode: null,
@@ -247,7 +260,7 @@ export async function listAdminProducts(
         where v.product_id = p.id and v.active) as variants,
       (select count(*)::int from commerce.product_variants v
         where v.product_id = p.id and v.active and v.delivery = 'digital') as digital_variants,
-      (select coalesce(sum(l.on_hand), 0)::int
+      (select coalesce(sum(greatest(l.on_hand, 0)), 0)::int
          from commerce.inventory_levels l
          join commerce.product_variants v on v.id = l.variant_id
         where v.product_id = p.id and v.active) as stock,
@@ -328,11 +341,14 @@ export async function getProductForEdit(
     db().execute<Row>(sql`
       select v.id, v.sku, v.gtin, v.options, v.active, v.weight_grams, v.hs_code, v.origin_country, v.delivery, v.rental_period,
              v.image_url, v.image_thumbnail_url, v.cost_minor, v.measure_amount, v.measure_unit, v.measure_base,
-             coalesce((
-               select l.on_hand from commerce.inventory_levels l
+             v.stock_policy, v.backorder_days, v.low_stock_threshold,
+             -- The stock the editor shows: the total over the active locations (with one, that location), never below zero.
+             -- What is owed on a backorder belongs to the Inventory page; the editor leaves a negative level as it is.
+             greatest(coalesce((
+               select sum(l.on_hand) from commerce.inventory_levels l
                join commerce.inventory_locations loc on loc.id = l.location_id and loc.active
-               where l.variant_id = v.id order by loc.created_at limit 1
-             ), 0) as stock
+               where l.variant_id = v.id
+             ), 0), 0)::int as stock
       from commerce.product_variants v
       where v.store_id = ${store.id}::uuid and v.product_id = ${productId}::uuid
       order by v.active desc, v.created_at, v.sku
@@ -437,6 +453,9 @@ export async function getProductForEdit(
       ),
       cost: v.cost_minor === null ? "" : formatPriceInput(Number(v.cost_minor), context.mainCurrency),
       stock: Number(v.stock),
+      stockPolicy: v.stock_policy === "continue" ? ("continue" as const) : ("deny" as const),
+      backorderDays: v.backorder_days === null ? null : Number(v.backorder_days),
+      lowStockThreshold: v.low_stock_threshold === null ? null : Number(v.low_stock_threshold),
       active: Boolean(v.active),
       weightGrams: v.weight_grams === null ? null : Number(v.weight_grams),
       hsCode: v.hs_code ? String(v.hs_code) : null,
@@ -702,7 +721,7 @@ export async function saveProduct(
         `);
       }
       const locationId = await stockLocation(tx, store);
-      await saveVariants(tx, store.id, saved, context, input, locationId, stockMode);
+      await saveVariants(tx, store.id, saved, context, input, locationId, stockMode, actor?.id ?? null);
       await saveAppointment(tx, store.id, saved, input, context);
       await saveFiles(tx, store.id, saved, input);
       await savePlans(tx, store.id, saved, input, context.markets, context.audience);
@@ -887,11 +906,11 @@ async function saveMedia(
   }
 }
 
-/** The store's first active stock location, created on first use. */
+/** The store's default stock location: the first active one by rank (`priority`, `created_at`, `id`), created on first use. */
 async function stockLocation(tx: Tx, store: Store): Promise<string> {
   const [existing] = await tx.execute<Row>(sql`
     select id from commerce.inventory_locations
-    where store_id = ${store.id}::uuid and active order by created_at limit 1
+    where store_id = ${store.id}::uuid and active order by priority, created_at, id limit 1
   `);
   if (existing) return String(existing.id);
   const country = store.details.country ?? store.markets[0]?.code ?? "NO";
@@ -909,7 +928,75 @@ async function stockLocation(tx: Tx, store: Store): Promise<string> {
  * paid, an import that has no stock column never writes one), and a changed one is written as given, or, with `relative`, as the change from what
  * was read applied to what is there now (`on_hand + (stock - loaded)`, never below 0), so an adjustment of 5 is 5 more whatever was sold meanwhile.
  */
-export type StockMode = { loaded: ReadonlyMap<string, number>; relative?: boolean };
+export type StockMode = {
+  loaded: ReadonlyMap<string, number>;
+  relative?: boolean;
+  /** Where the change comes from, for the history (wave 3, D172): the bulk editor says `bulk`, the product file `file`; the editor says nothing (`editor`). */
+  source?: "bulk" | "file";
+  /** The member who made the change (the history's "by"), and the bulk batch or import job it belongs to. */
+  accountId?: string | null;
+  jobId?: string | null;
+};
+
+type StockWrite = { id: string; isNew: boolean; typed: number; base: number | undefined };
+
+/**
+ * Writes the stock a save carries (wave 3, D172, `docs/wave-3-inventory.md` 5.2). The editor's number is ONE location's: with exactly one
+ * active location it is that location's `on_hand`, with several it is the total, shown read-only, and an existing variant's levels are
+ * never written from it (a stale number in a saved form cannot overwrite a location; the Inventory page changes them). A NEW variant's
+ * first number is an `opening` movement at the default location. A negative level (what is owed on a backorder) is left as it is unless a
+ * different number is typed. Every write is a movement with its reason, source and the member (`withStockContext()`).
+ */
+async function writeStock(tx: Tx, storeId: string, writes: readonly StockWrite[], locationId: string, mode?: StockMode, actorId: string | null = null): Promise<void> {
+  if (writes.length === 0) return;
+  const [counted] = await tx.execute<Row>(sql`select count(*)::int as n from commerce.inventory_locations where store_id = ${storeId}::uuid and active`);
+  const single = Number(counted?.n ?? 0) <= 1;
+  const source = mode?.source ?? "editor";
+  const context = { source, accountId: mode?.accountId ?? actorId, jobId: mode?.jobId ?? null } as const;
+  const ordered = [...writes].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const w of ordered) {
+    if (w.isNew) {
+      await withStockContext(tx, { reason: "opening", ...context }, () =>
+        tx.execute(sql`
+          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+          values (${storeId}::uuid, ${w.id}::uuid, ${locationId}::uuid, ${w.typed})
+          on conflict (variant_id, location_id) do nothing
+        `),
+      );
+      continue;
+    }
+    // A variant that has no level anywhere gets one at the default location (as it always did); nothing else is made or overwritten for it.
+    const made = await withStockContext(tx, { reason: "opening", ...context }, () =>
+      tx.execute<Row>(sql`
+        insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+        select ${storeId}::uuid, ${w.id}::uuid, ${locationId}::uuid, ${w.typed}
+        where not exists (select 1 from commerce.inventory_levels l where l.store_id = ${storeId}::uuid and l.variant_id = ${w.id}::uuid)
+        on conflict (variant_id, location_id) do nothing
+        returning 1 as made
+      `),
+    );
+    if (made.length > 0 || !single) continue;
+    // One active location: the number is that location's.
+    const [current] = await tx.execute<Row>(sql`
+      select on_hand from commerce.inventory_levels
+      where store_id = ${storeId}::uuid and variant_id = ${w.id}::uuid and location_id = ${locationId}::uuid
+      for update
+    `);
+    const now = current ? Number(current.on_hand) : null;
+    // What a save does with the figure typed: nothing when it is the one shown (a negative level is shown as 0), the relative change for an
+    // adjustment (bulk), else the figure as given.
+    if (w.base !== undefined && w.base === w.typed) continue;
+    if (w.base === undefined && now !== null && w.typed === Math.max(now, 0)) continue;
+    const next = w.base !== undefined && mode?.relative ? Math.max(0, (now ?? 0) + (w.typed - w.base)) : w.typed;
+    await withStockContext(tx, { reason: "correction", ...context }, () =>
+      tx.execute(sql`
+        insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
+        values (${storeId}::uuid, ${w.id}::uuid, ${locationId}::uuid, ${next})
+        on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
+      `),
+    );
+  }
+}
 
 async function saveVariants(
   tx: Tx,
@@ -919,6 +1006,8 @@ async function saveVariants(
   input: ProductInput,
   locationId: string,
   stockMode?: StockMode,
+  /** The member who saves, for the history of stock (a bulk or import run names its own in `stockMode`). */
+  actorId: string | null = null,
 ) {
   const existing = await tx.execute<Row>(sql`
     select id from commerce.product_variants
@@ -926,6 +1015,7 @@ async function saveVariants(
   `);
   const existingIds = new Set(existing.map((row) => String(row.id)));
   const kept = new Set<string>();
+  const stockWrites: StockWrite[] = [];
 
   for (const variant of input.variants) {
     // Digital variants are not shipped: no weight or customs details.
@@ -939,6 +1029,8 @@ async function saveVariants(
     const measureAmount = content?.amount ?? null;
     const measureUnit = content?.unit ?? null;
     const measureBase = content?.base ?? null;
+    // Backorder and the low-stock level (wave 3, D172): goods that are shipped only; `productProblems()` refused the rest, the database checks it again.
+    const keeps = physical && variant.stockPolicy === "continue";
     const fields = sql`
       sku = ${variant.sku}, gtin = ${variant.gtin}, options = ${JSON.stringify(variant.options)}::jsonb,
       active = ${variant.active}, delivery = ${variant.delivery},
@@ -947,7 +1039,9 @@ async function saveVariants(
       hs_code = ${physical ? variant.hsCode : null}, origin_country = ${physical ? variant.originCountry : null},
       image_url = ${variant.image?.url ?? null}, image_thumbnail_url = ${variant.image?.thumbnailUrl ?? null},
       cost_minor = ${cost},
-      measure_amount = ${measureAmount}::numeric, measure_unit = ${measureUnit}, measure_base = ${measureBase}
+      measure_amount = ${measureAmount}::numeric, measure_unit = ${measureUnit}, measure_base = ${measureBase},
+      stock_policy = ${keeps ? "continue" : "deny"}, backorder_days = ${keeps ? variant.backorderDays : null},
+      low_stock_threshold = ${physical ? variant.lowStockThreshold : null}
     `;
     let id: string;
     if (variant.id && existingIds.has(variant.id)) {
@@ -957,14 +1051,16 @@ async function saveVariants(
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.product_variants (
           store_id, product_id, sku, gtin, options, active, delivery, rental_period, weight_grams, hs_code, origin_country,
-          image_url, image_thumbnail_url, cost_minor, measure_amount, measure_unit, measure_base
+          image_url, image_thumbnail_url, cost_minor, measure_amount, measure_unit, measure_base,
+          stock_policy, backorder_days, low_stock_threshold
         ) values (
           ${storeId}::uuid, ${productId}::uuid, ${variant.sku}, ${variant.gtin},
           ${JSON.stringify(variant.options)}::jsonb, ${variant.active}, ${variant.delivery},
           ${input.kind === "rental" ? variant.rentalPeriod : "day"},
           ${physical ? variant.weightGrams : null}, ${physical ? variant.hsCode : null},
           ${physical ? variant.originCountry : null}, ${variant.image?.url ?? null}, ${variant.image?.thumbnailUrl ?? null},
-          ${cost}, ${measureAmount}::numeric, ${measureUnit}, ${measureBase}
+          ${cost}, ${measureAmount}::numeric, ${measureUnit}, ${measureBase},
+          ${keeps ? "continue" : "deny"}, ${keeps ? variant.backorderDays : null}, ${physical ? variant.lowStockThreshold : null}
         )
         returning id
       `);
@@ -989,32 +1085,12 @@ async function saveVariants(
       }
     }
 
-    // Downloads never run out: digital variants keep no stock.
-    if (physical) {
-      const base = variant.id && existingIds.has(variant.id) ? stockMode?.loaded.get(variant.id) : undefined;
-      if (base !== undefined && base === variant.stock) {
-        // Unchanged since the caller read it: make sure a level exists, never overwrite one.
-        await tx.execute(sql`
-          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-          values (${storeId}::uuid, ${id}::uuid, ${locationId}::uuid, ${variant.stock})
-          on conflict (variant_id, location_id) do nothing
-        `);
-      } else if (base !== undefined && stockMode?.relative) {
-        await tx.execute(sql`
-          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-          values (${storeId}::uuid, ${id}::uuid, ${locationId}::uuid, ${variant.stock})
-          on conflict (variant_id, location_id) do update
-            set on_hand = greatest(0, commerce.inventory_levels.on_hand + ${variant.stock - base}::int), updated_at = now()
-        `);
-      } else {
-        await tx.execute(sql`
-          insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-          values (${storeId}::uuid, ${id}::uuid, ${locationId}::uuid, ${variant.stock})
-          on conflict (variant_id, location_id) do update set on_hand = excluded.on_hand, updated_at = now()
-        `);
-      }
-    }
+    // Downloads never run out: digital variants keep no stock. The writes are collected and made after the loop, in variant order,
+    // so the level rows are locked in the order every writer uses and a checkout in the middle cannot deadlock with this save.
+    if (physical) stockWrites.push({ id, isNew: !(variant.id && existingIds.has(variant.id)), typed: variant.stock, base: variant.id && existingIds.has(variant.id) ? stockMode?.loaded.get(variant.id) : undefined });
   }
+
+  await writeStock(tx, storeId, stockWrites, locationId, stockMode, actorId);
 
   // Variants taken out of the editor are switched off, not deleted: orders
   // and price history may refer to them.

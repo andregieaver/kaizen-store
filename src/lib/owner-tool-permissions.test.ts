@@ -9,7 +9,7 @@ const CHANGING = new Set([
   "add_order_note", "mark_order_sent", "cancel_booking", "archive_product", "refund_order", "approve_return", "decline_return", "create_discount",
   "set_discount_active", "create_campaign", "set_campaign_active", "set_recommendations", "add_recommendation_rule", "remove_recommendation_rule",
   "set_bonus_program", "adjust_customer_credits", "set_affiliate_program", "block_affiliate", "create_field_group", "set_fields", "email_customer",
-  "resend_order_email", "set_stock", "post_to_slack", "draft_experiment", "start_experiment", "stop_experiment", "apply_winner", "unpublish_page", "add_redirect",
+  "resend_order_email", "set_stock", "set_backorder", "post_to_slack", "draft_experiment", "start_experiment", "stop_experiment", "apply_winner", "unpublish_page", "add_redirect",
 ]);
 
 const owner: PermissionHolder = { role: "owner" };

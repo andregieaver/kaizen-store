@@ -183,6 +183,24 @@ describe("what the basket earns", () => {
     await db().execute(sql`update commerce.products set host_id = null where id = ${mug.product}::uuid`);
   });
 
+  it("never gives a product that keeps selling past zero (a gift is not backordered), whatever its policy", async () => {
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    const made = await save({ name: "Gift", kind: "gift", giftVariantId: notebook.variant, thresholds: { NO: "1" } });
+    if (!made.ok) throw new Error(made.problems.join(" "));
+    const line = { key: "0", productId: mug.product, unitMinor: 38000, quantity: 1, discountable: true, valueMinor: 38000 };
+    const evaluate = () => campaigns.evaluateCampaigns(db(), { storeId, market: no }, [line], { ships: true });
+    await db().execute(sql`update commerce.product_variants set stock_policy = 'continue', backorder_days = 7 where store_id = ${storeId}::uuid and id = ${notebook.variant}::uuid`);
+    try {
+      // With stock the gift is given; with none it is not, though the product keeps selling.
+      expect((await evaluate()).gifts).toHaveLength(1);
+      await db().execute(sql`update commerce.inventory_levels set on_hand = 0 where store_id = ${storeId}::uuid and variant_id = ${notebook.variant}::uuid`);
+      expect((await evaluate()).gifts).toEqual([]);
+    } finally {
+      await db().execute(sql`update commerce.product_variants set stock_policy = 'deny', backorder_days = null where store_id = ${storeId}::uuid and id = ${notebook.variant}::uuid`);
+      await db().execute(sql`update commerce.inventory_levels set on_hand = 10 where store_id = ${storeId}::uuid and variant_id = ${notebook.variant}::uuid`);
+    }
+  });
+
   it("reaches a product through its category's parent", async () => {
     await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
     const [parent] = await db().execute<Row>(sql`insert into commerce.terms (store_id, content_type, kind, name, slug) values (${storeId}::uuid, 'product', 'category', 'Ting', ${`ting-${run}`}) returning id`);

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { BackorderLine } from "@/components/backorder-note";
 import { BonusCredits } from "@/components/bonus-credits";
 import { CheckoutButton } from "@/components/checkout-button";
 import { DiscountCodeForm } from "@/components/discount-code-form";
@@ -282,6 +283,8 @@ function linesList({ store, market, m, view }: Draw, drawer: boolean) {
                 {m.noLongerAvailable}
               </p>
             )}
+            {/* Units beyond the stock of a variant that keeps selling (D172): how many, and the days the store states. Not a problem, so not an alert. */}
+            <BackorderLine backorder={line.backorder} m={m} />
 
             <div className="flex flex-wrap items-end gap-2">
               {/* An appointment is one place at one time (D65), a stay its nights (D67): nothing to count. */}

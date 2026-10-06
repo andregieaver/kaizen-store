@@ -123,7 +123,7 @@ in `src/lib/store-nav.ts`; the layout, the hub pages and the tests read from it.
 |---|---|
 | Home (house) | None: the store's week and its setup checklist (also the setup steps and the AI manager's page) |
 | Orders (box) | Orders · Subscriptions · Subscription boxes (if on) · Emails |
-| Products (tag) | Products · Product layouts · Custom fields |
+| Products (tag) | Products · Inventory · Product layouts · Custom fields |
 | Customers (people) | Customers · Customer groups · Companies · Wishlists |
 | Marketing (megaphone) | Campaigns · Coupons · Recommendations · Cart reminders · Bonus credits · Referral program |
 | Website (monitor) | Pages · Blog · Media · Menus · Headers · Footers · Design · Translate the store |

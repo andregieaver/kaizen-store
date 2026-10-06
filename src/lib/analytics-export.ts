@@ -105,7 +105,7 @@ const REGISTRY: AnalyticsTable[] = [
 
   // Inventory
   table("inventory.variants", "inventory", "inventory-view.tsx", "Stocked variants with stock, sales per day, days left and what is tied up", [
-    text("name", "product"), text("sku"), text("status"), int("onHand", "on_hand"), dec("v7", "per_day_7_days"), dec("v30", "per_day_30_days"), dec("days", "days_left"), amount("value", "tied_up_at_cost"), date("lastSold", "last_sold_on"),
+    text("name", "product"), text("sku"), text("status"), text("backorder", "selling_on_backorder"), int("onHand", "on_hand"), int("owed", "owed_on_backorder"), dec("v7", "per_day_7_days"), dec("v30", "per_day_30_days"), dec("days", "days_left"), amount("value", "tied_up_at_cost"), date("lastSold", "last_sold_on"),
   ], true),
 
   // Marketing

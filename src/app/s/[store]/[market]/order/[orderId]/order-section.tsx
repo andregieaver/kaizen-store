@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
+import { BackorderOrderLine } from "@/components/backorder-note";
 import { OrderDocuments as DocumentLinks } from "@/components/documents/order-documents";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { OwnBookings } from "@/components/own-bookings";
@@ -232,6 +233,8 @@ function linesList({ market, order, m, money }: OrderView) {
               locale={market.locale}
               m={m}
             />
+            {/* Units on backorder and the days stated when it was sold (D172): never a date, never "in stock". */}
+            <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} />
           </span>
           <span className="whitespace-nowrap">
             {line.gift ? (

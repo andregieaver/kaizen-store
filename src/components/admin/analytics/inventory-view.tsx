@@ -6,6 +6,7 @@ import { formatAmount, formatDecimal, formatUpTo } from "@/lib/analytics-format"
 import {
   DEAD_STOCK_DAYS,
   LOW_STOCK_DAYS,
+  onBackorder,
   MIN_SOLD_30D,
   STOCKOUT_ALERT_DAYS,
   type StockStatus,
@@ -231,7 +232,7 @@ export function daysText(days: number | null | undefined): string {
 
 /** One alert in a sentence: "Ethiopian Coffee 1kg: estimated stockout in 6 days". */
 export function alertText(alert: InventoryReport["alerts"][number]): string {
-  if (alert.kind === "out") return `${alert.row.name}: out of stock`;
+  if (alert.kind === "out") return onBackorder(alert.row) ? `${alert.row.name}: on backorder${alert.row.owed > 0 ? `, ${alert.row.owed} owed` : ""}` : `${alert.row.name}: out of stock`;
   return `${alert.row.name}: estimated stockout in ${alert.days < 1 ? "less than a day" : daysText(alert.days)}`;
 }
 
@@ -270,6 +271,10 @@ export const STATUS_LABEL: Record<StockStatus, string> = {
   ok: PILL.ok.label,
   untracked: PILL.untracked.label,
 };
+
+/** A variant that keeps selling with nothing on hand: still `out` in every count, worded as what it is (D172). */
+const BACKORDER_LABEL = "On backorder";
+const BACKORDER_HELP = "Nothing is on hand, and the variant keeps selling with a stated delivery time. Units paid orders still wait for are shown under On hand.";
 
 /** Words for the filter's choices and for an empty table under each. */
 const FILTER_COPY: Record<StatusFilter, { label: string; empty: string }> = {
@@ -407,7 +412,7 @@ export function InventoryView({
         >
           {alertText(a)}
         </Link>
-        <span className="block text-xs text-muted">{`Sold ${formatCount(a.row.sold30)} in the last 30 days, ${formatCount(a.row.sold7)} in the last 7. ${a.kind === "out" ? "Nothing on hand." : `${formatCount(a.row.onHand)} on hand.`}`}</span>
+        <span className="block text-xs text-muted">{`Sold ${formatCount(a.row.sold30)} in the last 30 days, ${formatCount(a.row.sold7)} in the last 7. ${a.kind === "out" ? (onBackorder(a.row) ? "Nothing on hand, and it keeps selling on backorder." : "Nothing on hand.") : `${formatCount(a.row.onHand)} on hand.`}`}</span>
       </span>
     </li>
   );
@@ -463,10 +468,29 @@ export function InventoryView({
   const lowCard: KpiCardProps = {
     label: "Running low",
     value: formatCount(totals.low),
-    help: `Variants that, at the current pace of sales, last ${LOW_STOCK_DAYS} days or less.`,
-    hint: `Lasts ${LOW_STOCK_DAYS} days or less at today's pace.`,
+    help: `Variants at or below the warning level you set for them, or that last ${LOW_STOCK_DAYS} days or less at the current pace of sales (a variant with a level of its own is judged by the level, and not by the pace).`,
+    hint:
+      totals.belowLevel > 0
+        ? `${countOf(totals.belowLevel, "variant")} at or below the level you set, and the rest last ${LOW_STOCK_DAYS} days or less at today's pace.`
+        : `At or below the level you set, or lasts ${LOW_STOCK_DAYS} days or less at today's pace.`,
     href: `${path}?status=low#variants`,
   };
+
+  // Backorders (D172): only when the store sells past its stock or still owes units. Never a 0 that hides a debt, and never shown at all
+  // for a store that does not use backorders.
+  const backorderCard: KpiCardProps | null =
+    totals.owedUnits > 0 || totals.onBackorder > 0
+      ? {
+          label: "Owed on backorder",
+          value: formatCount(totals.owedUnits),
+          help: "Units that paid orders wait for and the store has not received: the backordered units of orders that are paid and not yet sent. Below-zero stock is this debt.",
+          hint:
+            totals.onBackorder > 0
+              ? `${countOf(totals.onBackorder, "variant")} selling with nothing on hand.`
+              : "No variant is selling with nothing on hand now.",
+          href: `${base}/inventory?status=backorder`,
+        }
+      : null;
 
   // Dead stock: units with no known cost make its value partial, which the hint says (rows are the whole picture only when not cut).
   const deadUnknown = report.rowsTruncated
@@ -596,9 +620,9 @@ export function InventoryView({
       sortable: true,
       firstDir: "asc",
       cell: (r) => (
-        <span title={PILL[r.status].help}>
-          <StatusPill tone={PILL[r.status].tone}>
-            {PILL[r.status].label}
+        <span title={r.onBackorder ? BACKORDER_HELP : PILL[r.status].help}>
+          <StatusPill tone={r.onBackorder ? "warning" : PILL[r.status].tone}>
+            {r.onBackorder ? BACKORDER_LABEL : PILL[r.status].label}
           </StatusPill>
         </span>
       ),
@@ -608,7 +632,17 @@ export function InventoryView({
       label: "On hand",
       align: "right",
       sortable: true,
-      cell: (r) => formatCount(r.onHand),
+      cell: (r) =>
+        r.owed > 0 || r.onHand < 0 ? (
+          <span title="Below zero is what the store still has to receive. Units owed are on paid orders that are not sent yet.">
+            {formatCount(r.onHand)}
+            {r.owed > 0 ? (
+              <span className="block text-xs text-muted">{`${formatCount(r.owed)} owed`}</span>
+            ) : null}
+          </span>
+        ) : (
+          formatCount(r.onHand)
+        ),
     },
     {
       key: "v7",
@@ -754,6 +788,7 @@ export function InventoryView({
         <KpiCard {...deadCard} />
         <KpiCard {...outCard} />
         <KpiCard {...lowCard} />
+        {backorderCard ? <KpiCard {...backorderCard} /> : null}
         <KpiCard {...turnoverCard} />
         <KpiCard {...sellCard} />
       </section>
@@ -801,7 +836,15 @@ export function InventoryView({
             <dt className="inline font-medium">Tied up at cost: </dt>
             <dd className="inline">
               units on hand times what one unit costs. Stock counts what is on
-              hand; items held for an unpaid order are not taken off.
+              hand; items held for an unpaid order are not taken off. Below zero
+              counts as nothing on hand.
+            </dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="inline font-medium">Owed: </dt>
+            <dd className="inline">
+              units on backorder that paid orders still wait for. A sent order
+              owes nothing.
             </dd>
           </div>
         </dl>

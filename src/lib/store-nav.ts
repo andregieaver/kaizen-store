@@ -63,6 +63,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Products",
         items: [
           item("/products", "Products", "The catalogue: prices, stock, variants, pictures, categories and tags."),
+          item("/inventory", "Inventory", "Stock for each variant and location: on hand, held by checkouts and owed on backorder, with counts, adjustments with a reason, history and files."),
           item("/product-layouts", "Product layouts", "How a product's page is laid out, for all products, a category, a tag or one product."),
           item("/fields", "Custom fields", "Your own groups of fields for products, pages, customers and more."),
         ],

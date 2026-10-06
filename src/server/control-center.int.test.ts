@@ -125,3 +125,107 @@ describe("the control center (D107)", () => {
     expect((await privacyAttention(["00000000-0000-4000-8000-000000000000"])).size).toBe(0);
   });
 });
+
+describe("the control center and stock (wave 3, D172)", () => {
+  // A store of its own, so the stock above (set for the first test) does not change what is counted here.
+  let stockAccount: Account;
+  let stockStore: string;
+  const variantOf: Record<string, string> = {};
+
+  beforeAll(async () => {
+    const email = `center-stock-${run}@example.com`;
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${email}, 'Siri', 'Stock') returning id`);
+    const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`center-stock-${run}`}, 'Stock', null) as id`);
+    stockStore = String(created.id);
+    const [row] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${email}`);
+    stockAccount = { id: String(row.id), email: String(row.email), name: "Siri", platformAdmin: false };
+    for (const v of await db().execute<Row>(sql`select sku, id from commerce.product_variants where store_id = ${stockStore}::uuid`)) variantOf[String(v.sku)] = String(v.id);
+    // Plenty of everything, then the cases.
+    await db().execute(sql`update commerce.inventory_levels set on_hand = 50 where store_id = ${stockStore}::uuid`);
+    const set = (sku: string, onHand: number) => db().execute(sql`update commerce.inventory_levels set on_hand = ${onHand} where variant_id = ${variantOf[sku]}::uuid`);
+    await set("DEMO-MUG-WHITE", 0); // stops at zero: out
+    await set("DEMO-THERMOS", -2); // keeps selling: not out, owed
+    await set("DEMO-LAMP", 4); // own level 10: at or below it, and not in the fixed "3 or fewer"
+    await set("DEMO-TOTE", 2); // no level of its own: running low by the fixed rule
+    await db().execute(sql`update commerce.product_variants set low_stock_threshold = 10 where id = ${variantOf["DEMO-LAMP"]}::uuid`);
+    // A closed location holding stock of the variant that is out: not for sale, so it is still out.
+    const [closed] = await db().execute<Row>(sql`
+      insert into commerce.inventory_locations (store_id, name, country, active) values (${stockStore}::uuid, 'Gammelt lager', 'NO', false) returning id
+    `);
+    await db().execute(sql`
+      insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values (${stockStore}::uuid, ${variantOf["DEMO-MUG-WHITE"]}::uuid, ${String(closed.id)}::uuid, 100)
+    `);
+    // Units owed: paid and not sent, a sent order, and a copied one.
+    let n = 0;
+    const order = async (status: string, quantity: number, owed: number, copied = false) => {
+      n += 1;
+      const [o] = await db().execute<Row>(sql`
+        insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, tax_minor, total_minor,
+          billing_address, shipping_address, copied_from)
+        values (${stockStore}::uuid, ${`${copied ? "C-" : ""}${run}-s${n}`}, 'NO', 'NOK', 'nb-NO', 'x@example.com', ${status}, 1000, 0, 0, 1000, '{}'::jsonb, '{}'::jsonb, ${copied ? crypto.randomUUID() : null})
+        returning id
+      `);
+      const line = (runner: Pick<ReturnType<typeof db>, "execute">) =>
+        runner.execute(sql`
+          insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code, delivery,
+            backorder_quantity, backorder_days)
+          values (${stockStore}::uuid, ${String(o.id)}::uuid, ${variantOf["DEMO-THERMOS"]}::uuid, 'DEMO-THERMOS', 'Termokopp', ${quantity}, 1000, ${1000 * quantity}, 0, 0.25,
+            'txcd_99999999', 'physical', ${owed}, 7)
+        `);
+      if (copied) {
+        await db().transaction(async (tx) => {
+          await tx.execute(sql`select set_config('commerce.copying', 'on', true)`);
+          await line(tx);
+        });
+      } else await line(db());
+    };
+    await order("paid", 2, 2);
+    await order("fulfilled", 3, 3);
+    await order("paid", 4, 4, true);
+  });
+
+  it("counts what cannot be sold as out, and what the owner's own level or the fixed rule flags as running low", async () => {
+    const [view] = (await center.controlCenter(stockAccount)).stores;
+    // MUG-WHITE only: the thermos sells past zero, and the closed location's 100 do not count.
+    expect(view.outOfStock).toBe(1);
+    // The tote (2, no level) by the fixed rule; the lamp has a level of its own and is not counted twice, and the ones that are gone are out, not low.
+    expect(view.lowStock).toBe(1);
+    expect(view.belowLevel).toBe(1);
+  });
+
+  it("counts the units owed on paid orders not yet sent, never a sent or a copied one", async () => {
+    const [view] = (await center.controlCenter(stockAccount)).stores;
+    expect(view.owedUnits).toBe(2);
+  });
+
+  it("agrees with the Inventory page's own counts", async () => {
+    const [view] = (await center.controlCenter(stockAccount)).stores;
+    const { inventoryCounts } = await import("./inventory");
+    const page = await inventoryCounts(stockStore);
+    expect(view.owedUnits).toBe(page.owed);
+    expect(view.belowLevel).toBe(page.low);
+  });
+
+  it("says it to the owner, with links that open the Inventory page filtered to it", async () => {
+    const view = await center.controlCenter(stockAccount);
+    const items = attentionFor(view.stores);
+    const level = items.find((i) => i.text.includes("warning level you set"));
+    expect(level).toMatchObject({ href: `/admin/center-stock-${run}/inventory?status=low`, action: "Open inventory" });
+    expect(items.find((i) => i.text.includes("owed on backorder"))).toMatchObject({ href: `/admin/center-stock-${run}/inventory?status=backorder` });
+    expect(items.find((i) => i.text.includes("out of stock"))).toBeDefined();
+  });
+
+  it("reads a warning level that was crossed by a sale: the lamp rises above its level and is no longer counted", async () => {
+    await db().execute(sql`update commerce.inventory_levels set on_hand = 40 where variant_id = ${variantOf["DEMO-LAMP"]}::uuid`);
+    expect((await center.controlCenter(stockAccount)).stores[0].belowLevel).toBe(0);
+    await db().execute(sql`update commerce.inventory_levels set on_hand = 4 where variant_id = ${variantOf["DEMO-LAMP"]}::uuid`);
+    expect((await center.controlCenter(stockAccount)).stores[0].belowLevel).toBe(1);
+  });
+
+  it("leaves the stock out for a member who may not open Products, as a figure that is missing and never as zero", async () => {
+    const view = (await center.controlCenter(stockAccount)).stores[0];
+    expect(view.hides).toBeUndefined();
+    const hidden = attentionFor([{ ...view, hides: ["stock"] }]);
+    expect(hidden.some((i) => i.text.includes("owed") || i.text.includes("warning level") || i.text.includes("out of stock"))).toBe(false);
+  });
+});

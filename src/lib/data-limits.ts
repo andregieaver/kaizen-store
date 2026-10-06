@@ -67,6 +67,8 @@ export const REDIRECTS_MAX = 100_000;
 export const REDIRECT_IMPORT_MAX_ROWS = 100_000;
 /** Lines of a redirect import written in one transaction, under the store's lock. */
 export const REDIRECT_APPLY_CHUNK = 500;
+/** Rows of a stock file judged and written together (each row is its own transaction); small in tests to make a few rows several chunks (wave 3, D172). */
+export const INVENTORY_APPLY_CHUNK = 200;
 /** The most redirects deleted in one request, and rows of the manager's list on a page. */
 export const REDIRECT_BULK_DELETE_MAX = 200;
 export const REDIRECT_PAGE_SIZE = 50;

@@ -189,6 +189,33 @@ describe("the agent", () => {
     await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
   });
 
+  it("says a backorder, and the days the store states, only from the store's own stock read (D172)", async () => {
+    const market = store.markets.find((m) => m.code === "NO")!;
+    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
+    const variantsOf = async (handle: string) => {
+      const sent = fakeModel([{ content: null, tool_calls: [call("1", "get_product", { handle })] }, { content: "Se her." }]);
+      await chat.runChat({ kind: "store", store, market }, agent, { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Har dere den?" }], signals: { views: [], searches: [] } }, connection);
+      const result = (sent[1].messages as Row[]).find((message) => message.role === "tool");
+      return (JSON.parse(String(result!.content)) as { variants: Row[] }).variants;
+    };
+    const setStock = (sku: string, onHand: number) =>
+      db().execute(sql`update commerce.inventory_levels set on_hand = ${onHand} where variant_id = (select id from commerce.product_variants where store_id = ${storeId}::uuid and sku = ${sku})`);
+    // Nothing in stock, the variant keeps selling for 7 days: a backorder, with the days as stored.
+    await setStock("DEMO-THERMOS", 0);
+    expect(await variantsOf("demo-termokopp")).toEqual([expect.objectContaining({ available: true, availability: "on backorder", backorderShipsWithinDays: 7 })]);
+    // Stock arrives: in stock, and no days are said.
+    await setStock("DEMO-THERMOS", 4);
+    const inStock = (await variantsOf("demo-termokopp"))[0];
+    expect(inStock).toMatchObject({ available: true, availability: "in stock" });
+    expect(inStock).not.toHaveProperty("backorderShipsWithinDays");
+    // A variant that stops at zero is sold out, never on backorder.
+    await setStock("DEMO-LAMP", 0);
+    const lamp = (await variantsOf("demo-bordlampe"))[0];
+    expect(lamp).toMatchObject({ available: false, availability: "sold out" });
+    expect(lamp).not.toHaveProperty("backorderShipsWithinDays");
+    await setStock("DEMO-LAMP", 20);
+  });
+
   it("tells the model the store's return policy from its settings, and the legal default when it has set none (D153)", async () => {
     const market = store.markets.find((m) => m.code === "NO")!;
     const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };

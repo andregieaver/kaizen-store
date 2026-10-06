@@ -3,6 +3,7 @@ import { z } from "zod";
 import { DEFAULT_CANCEL_HOURS, DEFAULT_DEPOSIT_PERCENT, PAYMENT_MODES } from "./pay-later";
 import { PRODUCT_AUDIENCES } from "./b2b";
 import { RENTAL_PERIODS } from "./booking-ranges";
+import { policyProblem, stockPolicyFields } from "./inventory";
 import { minorUnitDigits } from "./money";
 import { isPictureAddress } from "./picture-address";
 import { BASES, UNITS, baseFits, measureProblem, parseMeasureAmount, type Base, type Unit } from "./unit-price";
@@ -271,6 +272,11 @@ export const productInput = z.object({
         /** What one unit costs the store (D152), typed like a price in the store's main currency, without VAT; empty when unknown. */
         cost: z.string().trim().max(20).default(""),
         stock: z.number().int().min(0, "Stock cannot be negative.").max(1_000_000),
+        /**
+         * What happens at zero stock (wave 3, D172): `deny` stops selling, `continue` keeps selling on backorder with a stated delivery time
+         * (`backorderDays`, 1 to 90, required with it). `lowStockThreshold` is the owner's warning level (goods only). `policyProblem()` holds the rules.
+         */
+        ...stockPolicyFields,
         active: z.boolean(),
         weightGrams: z.number().int().positive("Weight must be more than 0 g.").max(1_000_000).nullable(),
         hsCode: optionalText(10).refine((v) => v === null || /^[0-9]{6,10}$/.test(v), {
@@ -454,6 +460,15 @@ export function productProblems(input: ProductInput, context: PublishContext): s
   }
   if (input.soldByMeasure && input.kind !== "goods") {
     problems.push("Only goods can be sold by measure: take the tick away for appointments, stays and rentals.");
+  }
+
+  // Backorder and the low-stock level (wave 3, D172): the same rules the database holds (`product_variants` checks).
+  for (const variant of input.variants) {
+    const problem = policyProblem(
+      { stockPolicy: variant.stockPolicy, backorderDays: variant.backorderDays, lowStockThreshold: variant.lowStockThreshold },
+      variant.delivery,
+    );
+    if (problem) problems.push(`${variantLabel(variant.options)}: ${problem}`);
   }
 
   // A stay's or rental's fee per booking (D70), typed like a price.

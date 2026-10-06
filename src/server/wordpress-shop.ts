@@ -9,11 +9,12 @@ import { formatMoney } from "@/lib/money";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { priceView, type PriceView } from "@/lib/pricing";
 import { shown, type Market } from "@/lib/markets";
+import { backorderNote, type VariantStock } from "@/lib/stock-availability";
 import { cartableReason, cartLabels, stockOf, type CartLabels, type CartLineInput, type NotCartable } from "@/lib/wordpress-cart";
 import { wordpressPrice, type WordpressPrice } from "@/lib/wordpress-view";
 import { priceVat } from "@/lib/pricing";
 
-import { getAvailability, getProduct } from "./catalog";
+import { getProduct, getVariantStock } from "./catalog";
 import { createHandoffCart } from "./cart-handoff";
 import { marketIn } from "./shop";
 import type { Store } from "./stores";
@@ -42,12 +43,13 @@ export async function cardCarts(store: Store, market: Market, productIds: string
     where p.store_id = ${store.id}::uuid and p.status = 'active' and p.id = any(${`{${productIds.join(",")}}`}::uuid[])
     group by p.id, p.kind, p.subscription_only, p.audience
   `);
-  const stock = await getAvailability(store.id, rows.flatMap((r) => r.variant_ids as string[]));
+  const stock = await getVariantStock(store.id, rows.flatMap((r) => r.variant_ids as string[]));
   for (const row of rows) {
     const ids = row.variant_ids as string[];
     const deliveries = row.deliveries as string[];
     const reason = cartableReason({ kind: String(row.kind), subscriptionOnly: Boolean(row.subscription_only), audience: String(row.audience) }, store.audience, deliveries);
-    const soldOut = ids.every((id, i) => deliveries[i] === "physical" && (stock.get(id) ?? 0) <= 0);
+    // A variant on backorder counts as sold out here: a card cannot state the days (D172); the plugin's product page can.
+    const soldOut = ids.every((id, i) => deliveries[i] === "physical" && (stock.get(id)?.inStock ?? 0) <= 0);
     out.set(String(row.product_id), { cartable: reason === null, reason, variant_id: ids.length === 1 ? ids[0] : null, variant_count: ids.length, sold_out: soldOut });
   }
   return out;
@@ -60,6 +62,11 @@ export type WpVariant = {
   price: WordpressPrice;
   image: { url: string; thumbnail: string; alt: string } | null;
   stock: { level: "in_stock" | "low" | "out"; max: number; low: number | null };
+  /**
+   * The days stated for a variant that keeps selling at zero stock and has none now (wave 3, D172); null otherwise. Its `stock.level` is
+   * `out`, so a plugin that does not know backorders (before 1.2) shows it sold out, which is safe; one that does shows the days.
+   */
+  backorder_days: number | null;
 };
 
 export type WpProductPage = {
@@ -100,7 +107,7 @@ export async function productPageOf(store: Store, marketRef: string | null, hand
   const detail = await getProduct(store.id, market, handle);
   if (!detail) return null;
   const origin = storeSiteUrl(store.slug);
-  const stock = await getAvailability(store.id, detail.variants.map((v) => v.id));
+  const stock = await getVariantStock(store.id, detail.variants.map((v) => v.id));
   const words = t(market.lang);
   const names: string[] = [];
   for (const variant of detail.variants) for (const name of Object.keys(variant.options)) if (!names.includes(name)) names.push(name);
@@ -125,7 +132,8 @@ export async function productPageOf(store: Store, marketRef: string | null, hand
         options: variant.options,
         price: wordpressPrice(variant.price, false, market.locale, words),
         image: variant.image ? { url: absolute(variant.image.url, origin), thumbnail: absolute(variant.image.thumbnailUrl, origin), alt: variant.image.alt } : null,
-        stock: stockOf(variant.delivery === "physical" ? (stock.get(variant.id) ?? 0) : MAX_LINE_QUANTITY),
+        stock: stockOf(variant.delivery === "physical" ? (stock.get(variant.id)?.inStock ?? 0) : MAX_LINE_QUANTITY),
+        backorder_days: variant.delivery === "physical" ? backorderDaysOf(stock.get(variant.id)) : null,
       })),
       cartable: reason === null,
       reason,
@@ -146,6 +154,8 @@ export type WpQuoteLine = {
   /** `ok`; `insufficient` (more asked than there is: `available` says how many); `unavailable` (cannot be bought, so it is left out of the total). */
   status: "ok" | "insufficient" | "unavailable";
   available: number;
+  /** The units beyond what is in stock and the days stated for them (D172), for a variant that keeps selling at zero; null otherwise. */
+  backorder: { units: number; days: number } | null;
   unit: WordpressPrice | null;
   line_text: string | null;
 };
@@ -187,17 +197,19 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
     where v.store_id = ${store.id}::uuid and v.active and v.id = any(${`{${ids.join(",")}}`}::uuid[])
   `);
   const found = new Map(rows.map((row) => [String(row.variant_id), row]));
-  const stock = await getAvailability(store.id, [...found.keys()]);
+  const stock = await getVariantStock(store.id, [...found.keys()]);
   const words = t(market.lang);
   const vat = priceVat(store.audience, rows[0]?.vat_rate);
   let subtotal = 0;
   let count = 0;
   const out: WpQuoteLine[] = lines.map((line): WpQuoteLine => {
     const row = found.get(line.variantId);
-    const gone: WpQuoteLine = { variant_id: line.variantId, product_id: "", handle: "", title: "", options: {}, image: null, url: "", quantity: line.quantity, status: "unavailable", available: 0, unit: null, line_text: null };
+    const gone: WpQuoteLine = { variant_id: line.variantId, product_id: "", handle: "", title: "", options: {}, image: null, url: "", quantity: line.quantity, status: "unavailable", available: 0, backorder: null, unit: null, line_text: null };
     if (!row) return gone;
     const reason = cartableReason({ kind: String(row.kind), subscriptionOnly: Boolean(row.subscription_only), audience: String(row.audience) }, store.audience, [String(row.delivery)]);
-    const available = String(row.delivery) === "physical" ? (stock.get(line.variantId) ?? 0) : MAX_LINE_QUANTITY;
+    const held = String(row.delivery) === "physical" ? stock.get(line.variantId) : undefined;
+    // What a line may hold: the stock, or the line maximum for a variant that keeps selling at zero (D172).
+    const available = String(row.delivery) !== "physical" ? MAX_LINE_QUANTITY : held ? (held.stockPolicy === "continue" ? MAX_LINE_QUANTITY : held.inStock) : 0;
     const base = {
       ...gone,
       product_id: String(row.product_id),
@@ -218,6 +230,7 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
       quantity: line.quantity,
       status: line.quantity > available ? "insufficient" : "ok",
       available: Math.min(available, MAX_LINE_QUANTITY),
+      backorder: held ? backorderNote(quantity, held) : null,
       unit,
       line_text: formatMoney(unit.amount_minor * quantity, market.currency, market.locale),
     };
@@ -246,4 +259,9 @@ export async function handoffCart(store: Store, marketRef: string | null, lines:
     url: `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, "/cart/resume")}?t=${encodeURIComponent(made.token)}`,
     lines: made.lines.map((line) => ({ variant_id: line.variantId, quantity: line.quantity, outcome: line.outcome })),
   };
+}
+
+/** The days a variant states when it keeps selling at zero and has none in stock now; null otherwise (a variant with stock is simply in stock). */
+function backorderDaysOf(stock: VariantStock | undefined): number | null {
+  return stock && stock.stockPolicy === "continue" && stock.inStock <= 0 ? stock.backorderDays : null;
 }

@@ -86,6 +86,17 @@ export const CHOOSING: Record<string, { template: string; prepare?: (args: unkno
   },
 };
 
+/**
+ * Texts that are never machine-translated, whatever language the store offers: the keys that start with one of these are left out of
+ * the catalogue and an overlay never replaces them. They state a delivery time to a consumer before and after a purchase (wave 3, D172:
+ * `m.backorder.*`, Directive 2011/83/EU Art. 6(1)(g)), so they are written by hand in nb, sv, da and en and flagged for review in
+ * `src/lib/i18n.ts`; any other language shows the English sentence, never an unreviewed translation of it. A text of this kind is
+ * added here, not left to the generator (`ui-catalog.test.ts` holds the list).
+ */
+export const HAND_WRITTEN_ONLY: readonly string[] = ["ui:backorder.", "email:backorder."];
+
+export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));
+
 /** A short fingerprint of an English text, kept with its translation so a changed original is noticed. */
 export function sourceHash(source: string): string {
   let h = 0x811c9dc5;
@@ -117,6 +128,7 @@ export function catalogOf(namespace: Namespace, english: unknown): CatalogEntry[
   const entries: CatalogEntry[] = [];
   walk(english, [], (path, leaf) => {
     const key = `${namespace}:${path.join(".")}`;
+    if (isHandWrittenOnly(key)) return;
     // An empty text has nothing to translate.
     if (typeof leaf === "string") {
       if (leaf.trim() !== "") entries.push({ key, namespace, kind: "text", source: leaf, arity: 0 });
@@ -135,7 +147,7 @@ export function overlayMessages<T>(namespace: Namespace, english: T, texts: Read
   const build = (node: unknown, path: string[]): unknown => {
     if (typeof node === "string" || typeof node === "function") {
       const key = `${namespace}:${path.join(".")}`;
-      const text = get(key);
+      const text = isHandWrittenOnly(key) ? undefined : get(key);
       if (text === undefined) return node;
       if (typeof node === "string") return text;
       const chosen = CHOOSING[key];

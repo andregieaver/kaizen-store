@@ -31,6 +31,7 @@ import { OrderPrivacyBanner } from "@/components/admin/privacy/order-banner";
 import { StaffFieldsSection } from "@/components/admin/staff-fields-section";
 import { VatReliefRow, VatTreatmentPanel } from "@/components/admin/vat-treatment-panel";
 import { bookingWhen } from "@/lib/booking-text";
+import { putBackWords, takenFromWords } from "@/lib/inventory-admin";
 import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
@@ -39,7 +40,10 @@ import { isReturnEvent, eventSentence } from "@/lib/return-admin";
 import { marketPath, storeHref } from "@/lib/paths";
 import { formatDeliveryDate } from "@/lib/standing-orders";
 import { orderAttribution } from "@/server/affiliates";
+import { db } from "@/db/client";
+import { listLocations } from "@/server/inventory-locations";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { orderStockHistory } from "@/server/stock-restock";
 import { estimateWeightGrams } from "@/server/bring-shipping";
 import { carrierTracking, trackedCarrier } from "@/server/carrier-tracking";
 import { customerSummary } from "@/server/customer-admin";
@@ -64,6 +68,7 @@ const EVENT_LABELS: Record<string, string> = {
   "order.paid": "Paid",
   "order.cancelled": "Checkout not completed",
   "stock.short": "Not enough stock for everything paid for",
+  "stock.backordered": "Some items were sold on backorder",
   "payment.started": "Payment opened",
   "order.sent": "Sent",
   "order.refunded": "Refunded",
@@ -123,9 +128,19 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   // A weekly delivery (D102) waits for payment until it is sent: sending charges its card.
   const toCharge = weekly !== null && order.status === "pending_payment";
   const cancelledAfterPayment = order.status === "cancelled" && order.paidMinor > 0;
+  // Where each line's units were taken from, and where a restock goes by default (wave 3, D172): read from the order's own stock movements.
+  const physicalLines = order.lines.filter((l) => l.variantId && l.delivery === "physical");
+  const [stockByVariant, stockLocations] = physicalLines.length > 0 && !order.copied ? await Promise.all([orderStockHistory(db(), store.id, order.id, [...new Set(physicalLines.map((l) => l.variantId!))]), listLocations(store.id)]) : [new Map<string, { taken: { locationId: string; quantity: number }[]; returned: { locationId: string; quantity: number }[] }>(), []];
+  const locationNames: Record<string, string> = Object.fromEntries(stockLocations.map((l) => [l.id, l.name]));
+  const activeLocations = stockLocations.filter((l) => l.active);
   const restockable = order.lines
-    .filter((l) => l.variantId && l.delivery === "physical" && l.quantity > l.restocked)
-    .map((l) => ({ id: l.id, title: l.title, left: l.quantity - l.restocked }));
+    .filter((l) => l.variantId && l.delivery === "physical" && l.restockable > 0)
+    .map((l) => {
+      const history = stockByVariant.get(l.variantId!);
+      return { id: l.id, title: l.title, left: l.restockable, putBack: putBackWords(history?.taken ?? [], history?.returned ?? [], stockLocations) };
+    });
+  // Units sold on backorder on a paid order that is not sent: the order waits for stock (wave 3, D172).
+  const owedUnits = order.status === "paid" ? order.lines.reduce((sum, l) => sum + (l.backorder?.units ?? 0), 0) : 0;
   const digits = minorUnitDigits(order.currency);
   const typedAmount = (minor: number) => (minor / 10 ** digits).toFixed(digits).replace(".", ",");
   const ids = { storeSlug: store.slug, orderId: order.id };
@@ -133,7 +148,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
   // History: the order's events and its emails, newest first.
   const history: { at: string; node: ReactNode }[] = [
-    ...events.map((event) => ({ at: event.createdAt, node: <EventLine event={event} money={money} currency={order.currency} base={`/admin/${store.slug}`} /> })),
+    ...events.map((event) => ({ at: event.createdAt, node: <EventLine event={event} money={money} currency={order.currency} base={`/admin/${store.slug}`} locationNames={locationNames} /> })),
     ...emails.map((email) => ({
       at: email.createdAt,
       node: (
@@ -198,6 +213,16 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
       </div>
       <OrderPrivacyBanner privacy={privacy} />
       {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
+      {owedUnits > 0 && (
+        <p role="status" className="rounded-md border border-border bg-surface p-3 text-sm">
+          <span className="font-medium">Waiting for stock.</span> {owedUnits} {owedUnits === 1 ? "unit" : "units"} on this order {owedUnits === 1 ? "was" : "were"} sold on backorder and {owedUnits === 1 ? "has" : "have"} not been received yet. The customer was told when to expect
+          them; send the order when the stock is in. Receive stock on the{" "}
+          <Link href={`/admin/${store.slug}/inventory`} className="underline underline-offset-2">
+            Inventory page
+          </Link>
+          .
+        </p>
+      )}
       {events.some((e) => e.type === "stock.short") && (
         <p role="alert" className="rounded-md border border-red-700 bg-background p-3 text-sm dark:border-red-400">
           Some items were paid for after their stock ran out. Contact the customer before sending.
@@ -230,6 +255,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                             {line.booking.status !== "confirmed" && ` · ${line.booking.status === "held" ? "held until paid" : "not booked"}`}
                           </span>
                         )}
+                        {line.backorder && (
+                          <span className="block text-xs font-medium">
+                            Backordered: {line.backorder.units} of {line.quantity}, to ship within {line.backorder.days} {line.backorder.days === 1 ? "day" : "days"}
+                          </span>
+                        )}
+                        {takenFrom(line.variantId, stockByVariant, stockLocations) && <span className="block text-xs text-muted">Taken from {takenFrom(line.variantId, stockByVariant, stockLocations)}</span>}
                         {line.restocked > 0 && <span className="block text-xs text-muted">{line.restocked} put back in stock</span>}
                         {fromWishlists
                           .filter((add) => line.variantId && add.variantId === line.variantId)
@@ -447,6 +478,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 refundable={typedAmount(order.refundableMinor)}
                 refundableLabel={money(order.refundableMinor)}
                 lines={restockable}
+                locations={activeLocations.map((l) => ({ id: l.id, name: l.name }))}
                 hasEmail={Boolean(order.email)}
                 canRefund={order.canRefund && order.refundableMinor > 0}
               />
@@ -615,7 +647,13 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   );
 }
 
-function EventLine({ event, money, currency, base }: { event: OrderEvent; money: (minor: number) => string; currency: string; base: string }) {
+/** Where a line's units were taken from, in words (the order's `sale` movements); empty when nothing is recorded (an older order, a download). */
+function takenFrom(variantId: string | null, byVariant: Map<string, { taken: { locationId: string; quantity: number }[] }>, locations: { id: string; name: string; active: boolean }[]): string {
+  const history = variantId ? byVariant.get(variantId) : undefined;
+  return history ? takenFromWords(history.taken, locations) : "";
+}
+
+function EventLine({ event, money, currency, base, locationNames }: { event: OrderEvent; money: (minor: number) => string; currency: string; base: string; locationNames: Record<string, string> }) {
   const label = EVENT_LABELS[event.type] ?? event.type;
   const data = event.data as Record<string, unknown>;
   // A withdrawal or return's own steps (D153), in words, with a link to the return.
@@ -643,13 +681,22 @@ function EventLine({ event, money, currency, base }: { event: OrderEvent; money:
     );
   }
   if (event.type === "order.refunded" || event.type === "order.restocked") {
-    const restocked = (data.restocked as { sku: string; quantity: number }[] | undefined) ?? [];
+    const restocked = (data.restocked as { sku: string; quantity: number; locationId?: string }[] | undefined) ?? [];
     return (
       <>
         {label}
         {Number(data.amount) > 0 && ` ${money(Number(data.amount))}`}
         {data.reason ? ` · ${String(data.reason)}` : ""}
-        {restocked.length > 0 && ` · back in stock: ${restocked.map((r) => `${r.quantity} × ${r.sku}`).join(", ")}`}
+        {restocked.length > 0 && ` · back in stock: ${restocked.map((r) => `${r.quantity} × ${r.sku}${r.locationId && locationNames[r.locationId] ? ` at ${locationNames[r.locationId]}` : ""}`).join(", ")}`}
+      </>
+    );
+  }
+  if (event.type === "stock.backordered") {
+    const sold = (data.lines as { sku: string; quantity: number }[] | undefined) ?? [];
+    return (
+      <>
+        {label}
+        {sold.length > 0 && `: ${sold.map((r) => `${r.quantity} × ${r.sku}`).join(", ")}`}
       </>
     );
   }

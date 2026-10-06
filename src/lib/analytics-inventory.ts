@@ -29,8 +29,15 @@ export type InventoryRow = {
   sku: string | null;
   /** Whether the store counts this variant's stock; false is sold without a limit and has no figures. */
   tracked: boolean;
-  /** Units on hand, which can be negative where overselling was allowed. */
+  /**
+   * Units on hand over the active locations. Below zero only where the variant sells on backorder (D172): then it is what the store still
+   * has to receive. It counts as 0 in every figure below (value, days of stock, dead stock, sell-through) and is shown as it is.
+   */
   onHand: number;
+  /** `continue` sells at zero and below (a backorder with a stated delivery time); `deny` stops at zero. */
+  stockPolicy: "deny" | "continue";
+  /** Backordered units that paid orders still wait for (`order_lines.backorder_quantity` of orders not yet sent). */
+  owed: number;
   /** Units sold (paid orders, not refunded) in the last 7 and the last 30 days, counted back from today. */
   sold7: number;
   sold30: number;
@@ -45,6 +52,14 @@ export type InventoryRow = {
   /** The store's own warning level for this variant, if it set one. */
   lowStockThreshold: number | null;
 };
+
+/**
+ * Whether the variant keeps selling with nothing on hand (D172). Such a variant is `out` in every count, never a state of its own; this is
+ * what the pill, the alert and the AI manager say instead of "out of stock", with `owed` beside it.
+ */
+export function onBackorder(r: Pick<InventoryRow, "tracked" | "onHand" | "stockPolicy">): boolean {
+  return r.tracked && r.stockPolicy === "continue" && r.onHand <= 0;
+}
 
 export type StockStatus = "out" | "low" | "ok" | "dead" | "untracked";
 
@@ -136,7 +151,32 @@ export function stockStatus(r: InventoryRow): StockStatus {
   return "ok";
 }
 
+export type StockWatch = {
+  /** Backordered units paid orders still wait for, summed over the variants. */
+  owedUnits: number;
+  /** Variants that keep selling with nothing on hand (`onBackorder()`). */
+  onBackorder: number;
+  /** Variants with a warning level of their own that are at or below it (out ones included: a level of 0 is reached at 0). */
+  belowLevel: number;
+};
+
+/** What the owner's own settings add to the stock picture: units owed, variants on backorder, variants at or below their level. */
+export function stockWatch(rows: readonly InventoryRow[]): StockWatch {
+  let owedUnits = 0;
+  let backorder = 0;
+  let below = 0;
+  for (const r of rows) {
+    if (!r.tracked) continue;
+    owedUnits += Math.max(0, r.owed);
+    if (onBackorder(r)) backorder += 1;
+    if (r.lowStockThreshold !== null && r.onHand <= r.lowStockThreshold) below += 1;
+  }
+  return { owedUnits, onBackorder: backorder, belowLevel: below };
+}
+
 export type InventoryAnalysis = InventoryRow & {
+  /** `onBackorder()`: out with the variant still selling. */
+  onBackorder: boolean;
   velocity: Velocity;
   /** Null when nothing sold, or too little to say, or not tracked. */
   daysOfStock: number | null;
@@ -152,6 +192,7 @@ export function analyseVariant(r: InventoryRow): InventoryAnalysis {
   const enough = r.tracked && r.sold30 >= MIN_SOLD_30D;
   return {
     ...r,
+    onBackorder: onBackorder(r),
     velocity: v,
     daysOfStock: enough ? daysOfStock(r.onHand, v.v7, v.v30) : null,
     status: stockStatus(r),

@@ -30,12 +30,14 @@ import { FieldLoopView } from "@/components/field-loop-view";
 import { loopHeading, loopOf, loopShows, productLoopConfig } from "@/lib/field-loop";
 import { fieldHeading, fieldToShow, groupHeading, groupsToShow } from "@/lib/field-parts";
 import { optionLabel, t, type Messages } from "@/lib/i18n";
+import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { inView, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import type { PageContent, ProductBlock } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
-import { stockLevel } from "@/lib/pricing";
+import type { VariantStock } from "@/lib/stock-availability";
+import { canOffer, stockNote } from "@/lib/stock-words";
 import { productJsonLd } from "@/lib/structured-data";
 import { planPrice } from "@/lib/subscriptions";
 import { unitLabelsOf } from "@/lib/unit-price-text";
@@ -43,7 +45,7 @@ import { db } from "@/db/client";
 import { memberDiscountFor } from "@/server/customer-tiers";
 import { getCustomer } from "@/server/customers";
 import { appointmentSlots, getAppointmentOffer } from "@/server/appointments";
-import { getAvailability, type EconomicOperator, type ProductDetail } from "@/server/catalog";
+import { getVariantStock, type EconomicOperator, type ProductDetail } from "@/server/catalog";
 import { relatedProducts } from "@/server/listing";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
@@ -405,7 +407,7 @@ async function Related({ block, ctx }: { block: ProductBlock; ctx: ProductPageCo
 export async function ProductJsonLdSection({ store, market, product }: Omit<ProductPageContext, "m">) {
   if (product.kind !== "goods") return <ProductJsonLd store={store} market={market} product={product} availability={new Map()} bookable />;
   await connection();
-  const availability = await getAvailability(
+  const availability = await getVariantStock(
     store.id,
     product.variants.map((v) => v.id),
   );
@@ -664,16 +666,16 @@ async function VariantsWithStock({
       </p>
     );
   }
-  const availability = await getAvailability(
+  // Stock, policy and the days a backorder states are read for this request, never cached (D172).
+  const availability = await getVariantStock(
     store.id,
     product.variants.map((v) => v.id),
   );
-  const stockText = (available: number) => {
-    const level = stockLevel(available);
-    return level === "out" ? m.outOfStock : level === "low" ? m.lowStock(available) : m.inStock;
-  };
-  const available = (variant: ProductDetail["variants"][number]) =>
-    variant.delivery === "digital" || (availability.get(variant.id) ?? 0) > 0;
+  // Units in stock, or a variant that keeps selling at zero with its days stated (a backorder is bought, never "sold out").
+  const available = (variant: ProductDetail["variants"][number]) => variant.delivery === "digital" || canOffer(availability.get(variant.id));
+  // A variant that keeps selling is capped by the line maximum, not by what is in stock, so the message must not say it is.
+  const cappedNote = (variant: ProductDetail["variants"][number]) =>
+    availability.get(variant.id)?.stockPolicy === "continue" ? m.backorder.capped(MAX_LINE_QUANTITY) : undefined;
 
   const plans = product.plans.map((plan) => ({
     id: plan.id,
@@ -711,8 +713,9 @@ async function VariantsWithStock({
               id: variant.id,
               label: optionLabel(m, variant.options) || product.title,
               image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
-              note: digital ? m.instantDownload : stockText(availability.get(variant.id) ?? 0),
+              note: digital ? m.instantDownload : stockNote(availability.get(variant.id), m),
               available: available(variant),
+              capped: cappedNote(variant),
               price: (
                 <PlanPrice
                   amountMinor={variant.price.amountMinor}
@@ -782,6 +785,7 @@ async function VariantsWithStock({
           label: optionLabel(m, variant.options) || product.title,
           amountMinor: variant.price.amountMinor,
           available: available(variant),
+          capped: cappedNote(variant),
           image: variant.image ? { url: variant.image.thumbnailUrl, alt: "" } : null,
         }))}
         labels={{
@@ -815,7 +819,8 @@ export async function ProductJsonLd({
   store: Store;
   market: Market;
   product: ProductDetail;
-  availability: Map<string, number>;
+  /** What each variant can be bought as (`getVariantStock()`, D172): in stock, on backorder or sold out. */
+  availability: Map<string, VariantStock>;
   /** An appointment with times to book (D65): offered as in stock. */
   bookable?: boolean;
 }) {
@@ -847,7 +852,11 @@ export async function ProductJsonLd({
         store: storeFacts(store),
         market,
         marketHome: `${origin}${marketPath(store.slug, market.slug)}`,
-        inStock: (variantId) => bookable || (availability.get(variantId) ?? 0) > 0,
+        // A variant that keeps selling at zero is `BackOrder`, never `InStock` (D172); a download or a booking is always in stock.
+        availability: (variantId) => {
+          const stock = availability.get(variantId);
+          return bookable || (stock && stock.inStock > 0) ? "in_stock" : stock && canOffer(stock) ? "backorder" : "out_of_stock";
+        },
         shipping,
       })}
     />

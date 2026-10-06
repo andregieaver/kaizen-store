@@ -27,6 +27,13 @@ export const num = (row: Row | undefined, key: string): number => Number(row?.[k
  */
 export const PAID = sql`(o.copied_from is null and o.host_id is null and exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured'))`;
 
+/**
+ * Backordered units a paid order still waits for (D172): the line of `ol` on an order `o` that is paid and not yet sent (status `paid`), not copied from
+ * another store, with units on backorder. The one definition of "owed" (docs/analytics.md): the Inventory page of the admin, this page's analysis and the
+ * control center all sum `ol.backorder_quantity` where this holds, and a test holds them equal.
+ */
+export const OWED_LINE = sql`(o.status = 'paid' and o.copied_from is null and ol.backorder_quantity > 0)`;
+
 /** Revenue of an order without VAT: goods after discounts plus shipping income. */
 export const REVENUE_EX_VAT = sql`(o.total_minor - o.tax_minor)`;
 

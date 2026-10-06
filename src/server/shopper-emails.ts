@@ -170,6 +170,14 @@ function orderLines(
   };
 }
 
+/** The lines of an order that are on backorder, each with its sentence (`m.backorder.order()`): the units of the line, the days stated when it was sold. */
+function backorderText(order: OrderView, m: Messages): string {
+  return order.lines
+    .filter((line) => line.backorder)
+    .map((line) => `${line.title}: ${m.backorder.order(line.backorder!.units, line.quantity, line.backorder!.days)}`)
+    .join("\n");
+}
+
 type BookedLine = OrderView["lines"][number] & { booking: OrderBooking };
 
 /** An order's appointments (D65), confirmed ones unless said. */
@@ -260,6 +268,8 @@ export async function sendOrderConfirmation(
     { type: "heading", text: text.orderHeading },
     { type: "paragraph", text: renewal ? text.renewalIntro(order.number) : text.orderIntro(order.number) },
     orderLines(order, text, m, money, storeSiteUrl(store.slug)),
+    // What is on backorder (D172): each line's units and the days the store states, in words, never a date and never "in stock".
+    ...(order.lines.some((line) => line.backorder) ? [{ type: "paragraph" as const, text: backorderText(order, m) }] : []),
     // Reverse charge or IOSS (D157): the statement, with both VAT numbers or the IOSS number. The shopper's own email.
     ...[orderVatParagraph(order.locale.split("-")[0], order)].flatMap((vat) => (vat ? [{ type: "paragraph" as const, text: vat }] : [])),
     // The credits this order earned (D130), once it is paid: when they can be used.

@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."inventory_reservations" ADD COLUMN "backorder_quantity" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."inventory_reservations" ADD CONSTRAINT "inventory_reservations_backorder_within" CHECK ("commerce"."inventory_reservations"."backorder_quantity" between 0 and "commerce"."inventory_reservations"."quantity");

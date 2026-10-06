@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { BackorderOrderLine } from "@/components/backorder-note";
 import { OrderDocuments } from "@/components/documents/order-documents";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { LineUnitPrice } from "@/components/price";
@@ -127,6 +128,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
                   locale={market.locale}
                   m={m}
                 />
+                <BackorderOrderLine backorder={line.backorder} quantity={line.quantity} m={m} />
               </span>
               <span className="whitespace-nowrap">
                 {line.gift ? (

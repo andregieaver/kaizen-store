@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { putBackChoice } from "@/lib/inventory-admin";
 import { parsePrice } from "@/lib/product-input";
 import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import { saveStaffFields } from "@/server/field-entities";
@@ -99,8 +100,9 @@ export async function refundOrderAction(
   const typed = String(form.get("amount") ?? "").trim();
   const amountMinor = typed === "" ? 0 : parsePrice(typed, found.order.currency);
   if (amountMinor === null) return failed(`"${typed}" is not an amount in ${found.order.currency}.`);
+  // "Put back at" (wave 3, D172): empty is where the units were taken from; a chosen place must be an active location of this store, which `refundOrder()` checks.
   const restock = found.order.lines
-    .map((line) => ({ lineId: line.id, quantity: Math.floor(Number(form.get(`restock:${line.id}`) ?? 0)) || 0 }))
+    .map((line) => ({ lineId: line.id, quantity: Math.floor(Number(form.get(`restock:${line.id}`) ?? 0)) || 0, locationId: putBackChoice(form.get(`restockAt:${line.id}`)) }))
     .filter((item) => item.quantity > 0);
   const reason = String(form.get("reason") ?? "").trim().slice(0, 500) || "Refund";
   const outcome = await refundOrder(found.member.store.id, orderId, { amountMinor, reason, restock }, found.member.account.id);

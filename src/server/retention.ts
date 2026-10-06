@@ -19,6 +19,7 @@ import {
 import { audit } from "./auth";
 import { SCHEME_RETENTION_YEARS } from "@/lib/invoice-retention";
 import { anonymiseDocuments } from "./invoice-retention";
+import { pruneInventoryMovements } from "./stock-alerts";
 import { textList } from "./sql-arrays";
 
 type Row = Record<string, unknown>;
@@ -109,6 +110,7 @@ export const RETENTION_STEPS = [
   "consents",
   "privacy_request_contact",
   "privacy_requests",
+  "inventory_movements",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -335,6 +337,12 @@ const STEPS: Record<RetentionStep, StepFn> = {
         `),
       ),
     };
+  },
+
+  // 14. The history of stock after 24 months (wave 3, D172): the guard of the table allows exactly this deletion and no younger one. A movement holds no
+  // personal data, so this is a size limit, not an erasure.
+  async inventory_movements(ctx) {
+    return { count: await pruneInventoryMovements(ctx.now, ctx.batch, MAX_ROUNDS) };
   },
 };
 

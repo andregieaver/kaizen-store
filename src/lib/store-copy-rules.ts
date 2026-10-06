@@ -196,6 +196,8 @@ export const COPY_RULES: Record<string, CopyRule> = {
   idempotency_keys: never("Request de-duplication."),
   integration_deliveries: never("The queue and log of the original's webhooks."),
   inventory_reservations: never("Stock held for carts and checkouts; copied orders reserve nothing."),
+  inventory_movements: never("The history of the original's stock (D172); a copy starts with its own opening movements, written by the level inserts."),
+  stock_alerts: never("The low-stock state of the original's variants (D172); recomputed from the copied levels and thresholds."),
   invoices: never("Invoices are accounting documents of the original."),
   order_downloads: never("Download links carry tokens for the original's files."),
   page_redirects: never("Old addresses of the original's pages."),

@@ -350,6 +350,33 @@ describe("a product page for the site", () => {
     expect(body.labels.lowStock).toContain("{n}");
   });
 
+  it("serves a variant that keeps selling past zero as out with its days, and a quote and a handoff cart take it (D172)", async () => {
+    const { token } = await tokenFor();
+    const { goods } = await catalogue();
+    const g = goods[0];
+    await db().execute(sql`update commerce.product_variants set stock_policy = 'continue', backorder_days = 9 where id = ${g.variantId}::uuid`);
+    await db().execute(sql`update commerce.inventory_levels set on_hand = 2 where variant_id = ${g.variantId}::uuid`);
+    try {
+      const page = await productRoute(ask(`/api/wordpress/v1/stores/${slug}/product?handle=${g.handle}`, token), forStore(slug));
+      const variant = ((await page.json()) as { product: { variants: { id: string; stock: { level: string }; backorder_days: number | null }[] } }).product.variants.find((v) => v.id === g.variantId)!;
+      // In stock (2): no days are stated; sold down to nothing: out, with the days.
+      expect(variant.backorder_days).toBeNull();
+      await db().execute(sql`update commerce.inventory_levels set on_hand = 0 where variant_id = ${g.variantId}::uuid`);
+      const empty = ((await (await productRoute(ask(`/api/wordpress/v1/stores/${slug}/product?handle=${g.handle}`, token), forStore(slug))).json()) as { product: { variants: { id: string; stock: { level: string }; backorder_days: number | null }[] } }).product.variants.find((v) => v.id === g.variantId)!;
+      expect(empty).toMatchObject({ stock: { level: "out" }, backorder_days: 9 });
+      // The quote takes 5 of it: the cart's cap is the limit, not the shelf, and the line says how many are on backorder and for how many days.
+      const quote = (await (await quoteRoute(post(`/api/wordpress/v1/stores/${slug}/cart/quote`, token, { lines: [{ variant_id: g.variantId, quantity: 5 }] }), forStore(slug))).json()) as QuoteBody & { lines: { backorder: { units: number; days: number } | null }[] };
+      expect(quote.lines[0]).toMatchObject({ status: "ok", quantity: 5, backorder: { units: 5, days: 9 } });
+      expect(quote.subtotal_minor).toBe((quote.lines[0].unit?.amount_minor ?? 0) * 5);
+      const handoff = (await (await handoffRoute(post(`/api/wordpress/v1/stores/${slug}/cart/handoff`, token, { lines: [{ variant_id: g.variantId, quantity: 5 }], to: "cart" }), forStore(slug))).json()) as { lines: { quantity: number; outcome: string }[] };
+      expect(handoff.lines[0]).toMatchObject({ quantity: 5 });
+      expect(handoff.lines[0].outcome).not.toBe("capped");
+    } finally {
+      await db().execute(sql`update commerce.product_variants set stock_policy = 'deny', backorder_days = null where id = ${g.variantId}::uuid`);
+      await db().execute(sql`update commerce.inventory_levels set on_hand = 50 where variant_id = ${g.variantId}::uuid`);
+    }
+  });
+
   it("says a product that needs a time or a plan cannot be put in the cart, and never shows another store's product", async () => {
     const { token } = await tokenFor();
     const { appointment } = await catalogue();

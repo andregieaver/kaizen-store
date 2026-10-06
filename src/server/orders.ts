@@ -119,6 +119,12 @@ export type OrderView = {
      * its unit price is `unitPrice(unitPriceMinor, ...)` of the price shown for the line. Null for no content.
      */
     measure: ShownMeasure | null;
+    /**
+     * The units sold beyond what was in stock and the days stated for them (wave 3, D172, `order_lines.backorder_*`): provisional while the
+     * order waits for payment, settled once it is paid (only ever down for a live hold: an earlier checkout's claim is kept whatever the order of payment). Null for a line with none. The words are
+     * `m.backorder.order()`; it never says "in stock" and never promises a date.
+     */
+    backorder: { units: number; days: number } | null;
     /** The part of its total paid at the venue (D66). */
     venueMinor: number;
     /** An appointment's time (D65), who with, and where it stands, shown in the store's time zone. */
@@ -251,6 +257,10 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     gift: Boolean(line.gift),
     measure: snapshotMeasureFromColumns(line.measure_amount, line.measure_unit, line.measure_base),
     venueMinor: Number(line.venue_minor ?? 0),
+    backorder:
+      Number(line.backorder_quantity ?? 0) > 0 && line.backorder_days !== null && line.backorder_days !== undefined
+        ? { units: Number(line.backorder_quantity), days: Number(line.backorder_days) }
+        : null,
     booking: line.starts_at
       ? {
           id: String(line.booking_id),
@@ -287,7 +297,7 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
     `),
     db().execute<Row>(sql`
       select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate, ol.tax_minor, ol.gift, ol.vat_relief_minor,
-        ol.measure_amount, ol.measure_unit, ol.measure_base,
+        ol.measure_amount, ol.measure_unit, ol.measure_base, ol.backorder_quantity, ol.backorder_days,
         (select coalesce(m.thumbnail_url, m.url)
           from commerce.product_variants v
           join commerce.product_media m on m.product_id = v.product_id
@@ -478,14 +488,19 @@ export type OrderListRow = {
   totalMinor: number;
   currency: string;
   items: number;
+  /** Units sold on backorder on it that the store has not received yet (wave 3, D172, `order_lines.backorder_quantity`); 0 for an order that is sent or has none. */
+  owed: number;
   /** Its bonus credits (D130), in the order's currency. */
   bonus: OrderBonus | null;
 };
 
-/** The store's orders, newest first. Unpaid checkouts are left out unless asked for. */
+/**
+ * The store's orders, newest first. Unpaid checkouts are left out unless asked for. `waiting` is the orders that are paid and not sent and hold
+ * units sold on backorder (wave 3, D172): they wait for stock, and are a part of the orders to send.
+ */
 export async function listOrders(
   storeId: string,
-  { unpaid = false, toSend = false }: { unpaid?: boolean; toSend?: boolean } = {},
+  { unpaid = false, toSend = false, waiting = false }: { unpaid?: boolean; toSend?: boolean; waiting?: boolean } = {},
 ): Promise<OrderListRow[]> {
   // An order cancelled after payment (and refunded) is still an order.
   const wasPaid = sql`exists (select 1 from commerce.payments p where p.order_id = o.id and p.status = 'captured')`;
@@ -493,12 +508,15 @@ export async function listOrders(
     select o.id, o.number, o.status, o.email, o.shipping_address ->> 'name' as name,
            o.placed_at, o.total_minor, o.currency, o.copied_from is not null as copied,
            (o.restricted_at is not null or o.anonymised_at is not null) as erased, o.credit_minor, o.bonus_earned_minor, o.bonus_available_at,
-           (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items
+           (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items,
+           (case when o.status = 'paid' and o.copied_from is null then (select coalesce(sum(l.backorder_quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) else 0 end) as owed
     from commerce.orders o
     where o.store_id = ${storeId}::uuid
       and ${
         // History copied from another store (D129) is listed with the orders, whatever its status, and is never to send or unpaid.
-        toSend
+        waiting
+          ? sql`o.copied_from is null and o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.backorder_quantity > 0)`
+          : toSend
           ? sql`o.copied_from is null and o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')`
           : unpaid
             ? sql`o.copied_from is null and (o.status = 'pending_payment' or (o.status = 'cancelled' and not ${wasPaid}))`
@@ -519,6 +537,7 @@ export async function listOrders(
     totalMinor: Number(row.total_minor),
     currency: String(row.currency),
     items: Number(row.items),
+    owed: Number(row.owed ?? 0),
     bonus: orderBonus(row),
   }));
 }

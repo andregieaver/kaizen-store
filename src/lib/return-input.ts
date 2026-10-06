@@ -237,7 +237,8 @@ export const refundReturn = z.object({
   amountMinor: money("The amount is a whole number of minor units, 0 or more."),
   reason: optionalText(500),
   returnShippingMinor: money("Return shipping is an amount of 0 or more.").default(0),
-  restock: z.array(z.object({ lineId: uuid, quantity: z.number().int().min(0).max(10_000) })).default([]),
+  /** Units that go back in stock; `locationId` (wave 3, D172) puts them at one active stock location instead of where they were taken from. */
+  restock: z.array(z.object({ lineId: uuid, quantity: z.number().int().min(0).max(10_000), locationId: uuid.nullish() })).default([]),
 });
 export type RefundReturn = z.infer<typeof refundReturn>;
 

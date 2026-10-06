@@ -186,12 +186,21 @@ describe("the findings", () => {
 
 describe("the redirect kinds (wave 2, second run, D168)", () => {
   it("add an import and an export to the four of the first run, and the imports are the kinds that read a file", () => {
-    expect(JOB_KINDS).toEqual(["product_import", "product_export", "order_export", "customer_export", "redirect_import", "redirect_export"]);
-    expect(IMPORT_KINDS).toEqual(["product_import", "redirect_import"]);
-    expect(EXPORT_KINDS).toEqual(["product_export", "order_export", "customer_export", "redirect_export"]);
+    // The first four are the first run's, the redirect pair wave 2's second, the stock pair wave 3's (D172).
+    expect(JOB_KINDS).toEqual(["product_import", "product_export", "order_export", "customer_export", "redirect_import", "redirect_export", "inventory_import", "inventory_export"]);
+    expect(IMPORT_KINDS).toEqual(["product_import", "redirect_import", "inventory_import"]);
+    expect(EXPORT_KINDS).toEqual(["product_export", "order_export", "customer_export", "redirect_export", "inventory_export"]);
     for (const kind of JOB_KINDS) expect(isImport(kind) !== isExport(kind)).toBe(true);
     expect(isImport("redirect_import")).toBe(true);
     expect(isExport("redirect_export")).toBe(true);
+    expect(isImport("inventory_import")).toBe(true);
+    expect(isExport("inventory_export")).toBe(true);
+    // A stock file holds no shopper's data.
+    expect(hasPersonalData("inventory_export")).toBe(false);
+    expect(statusesOf("inventory_import")).toEqual(JOB_STATUSES);
+    expect(statusesOf("inventory_export")).not.toContain("checked");
+    expect(startStatus("inventory_import")).toBe("uploaded");
+    expect(startStatus("inventory_export")).toBe("queued");
   });
 
   it("give a redirect import the import steps, a redirect export the export's, and no personal data", () => {

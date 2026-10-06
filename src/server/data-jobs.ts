@@ -40,6 +40,7 @@ import { countProductExportRows, parseProductExportOptions, productExportReader,
 import { applyImport, checkImport, dryCountsOf, registerImport, runImportApply, runImportCheck, startImportUpload, type StepResult } from "./product-import";
 import { applyRedirectImport, checkRedirectImport, redirectDryCountsOf, redirectProblemsCsv, registerRedirectImport, runRedirectApply, runRedirectCheck, startRedirectUpload } from "./redirect-import";
 import { countRedirectExportRows, parseRedirectExportOptions, redirectExportReader, type RedirectExportOptions } from "./redirect-export";
+import { applyInventoryImport, checkInventoryImport, countInventoryExportRows, inventoryDryCountsOf, inventoryExportReader, inventoryProblemsCsv, parseInventoryExportOptions, registerInventoryImport, runInventoryApply, runInventoryCheck, startInventoryUpload, type InventoryExportOptions } from "./inventory-jobs";
 import { storeOf } from "./product-data";
 import type { Store } from "./stores";
 
@@ -62,13 +63,18 @@ export const JOB_KEY: Record<JobKind, PermissionKey> = {
   customer_export: "owner",
   redirect_import: "website:write",
   redirect_export: "website:read",
+  inventory_import: "products:write",
+  inventory_export: "products:read",
 };
 
 export const mayUseKind = (member: Pick<Membership, "role" | "kind" | "permissions">, kind: JobKind): boolean => memberCan(member, JOB_KEY[kind]);
 
-const AUDIT_MADE: Record<string, string> = { product_export: "products.export_made", order_export: "order.exported", customer_export: "customer.exported", redirect_export: "redirects.export_made" };
-const AUDIT_DOWNLOADED: Record<string, string> = { product_export: "products.export_downloaded", order_export: "order.export_downloaded", customer_export: "customer.export_downloaded", redirect_export: "redirects.export_downloaded" };
-const AREA: Record<string, "products" | "orders" | "customers" | "website"> = { product_export: "products", order_export: "orders", customer_export: "customers", redirect_export: "website" };
+const AUDIT_MADE: Record<string, string> = { product_export: "products.export_made", order_export: "order.exported", customer_export: "customer.exported", redirect_export: "redirects.export_made", inventory_export: "products.stock_export_made" };
+const AUDIT_DOWNLOADED: Record<string, string> = { product_export: "products.export_downloaded", order_export: "order.export_downloaded", customer_export: "customer.export_downloaded", redirect_export: "redirects.export_downloaded", inventory_export: "products.stock_export_downloaded" };
+const AREA: Record<string, "products" | "orders" | "customers" | "website"> = { product_export: "products", order_export: "orders", customer_export: "customers", redirect_export: "website", inventory_export: "products" };
+
+/** The kinds that are exports (the rest read an uploaded file). */
+type ExportKind = Exclude<JobKind, "product_import" | "redirect_import" | "inventory_import">;
 
 const NOT_LOGGED = "The activity log could not be written, so no file was made. Try again.";
 
@@ -100,7 +106,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 const tooBig = (rows: number) => `This export has ${rows.toLocaleString("en")} rows and an export takes at most ${EXPORT_MAX_ROWS.toLocaleString("en")}. Choose a narrower period or filter.`;
 
-async function startExportJob(member: Membership, kind: Exclude<JobKind, "product_import" | "redirect_import">, options: object, deps: DataDeps): Promise<{ ok: true; jobId: string } | { ok: false; problem: string; code: ExportProblemCode }> {
+async function startExportJob(member: Membership, kind: ExportKind, options: object, deps: DataDeps): Promise<{ ok: true; jobId: string } | { ok: false; problem: string; code: ExportProblemCode }> {
   try {
     const [row] = await db().execute<Row>(sql`
       select commerce.start_export_job(${member.store.id}::uuid, ${kind}, ${member.account.id}::uuid, ${JSON.stringify(options)}::jsonb, ${DATA_EXPORTS_ACTIVE_MAX}) as id
@@ -116,7 +122,7 @@ async function startExportJob(member: Membership, kind: Exclude<JobKind, "produc
 }
 
 /** Logs and hands back a small file; a file whose log entry cannot be written is not handed back. */
-async function serveDirect(member: Membership, kind: Exclude<JobKind, "product_import" | "redirect_import">, fileBase: string, built: { csv: string; rows: number }, details: Record<string, unknown>, unknownNumbers: string[]): Promise<ExportRequest> {
+async function serveDirect(member: Membership, kind: ExportKind, fileBase: string, built: { csv: string; rows: number }, details: Record<string, unknown>, unknownNumbers: string[]): Promise<ExportRequest> {
   try {
     await audit(member.account.id, member.store.id, AUDIT_MADE[kind], { rows: built.rows, direct: true, ...details }, { area: AREA[kind] });
   } catch (error) {
@@ -198,6 +204,22 @@ export async function requestRedirectExport(member: Membership, raw: unknown, de
   return job.ok ? { ok: true, mode: "job", jobId: job.jobId, unknownNumbers: [] } : job;
 }
 
+/** A member asks for the stock file (wave 3, D172): a variant at each active location, a download when it has at most 2,000 rows, else a job. `products:read`. */
+export async function requestInventoryExport(member: Membership, raw: unknown, deps: DataDeps = {}): Promise<ExportRequest> {
+  if (!mayUseKind(member, "inventory_export")) return refuse("forbidden");
+  const parsed = parseInventoryExportOptions(raw);
+  if (!parsed.ok) return refuse("options", parsed.problem);
+  const options: InventoryExportOptions = parsed.options;
+  const rows = await countInventoryExportRows(member.store.id);
+  if (rows > EXPORT_MAX_ROWS) return refuse("too_big", tooBig(rows));
+  if (rows <= DIRECT_EXPORT_MAX_ROWS) {
+    const built = await buildDirect(await inventoryExportReader(member.store, options));
+    if (built) return serveDirect(member, "inventory_export", "stock", built, { dialect: options.dialect }, []);
+  }
+  const job = await startExportJob(member, "inventory_export", options, deps);
+  return job.ok ? { ok: true, mode: "job", jobId: job.jobId, unknownNumbers: [] } : job;
+}
+
 // ---------------------------------------------------------------------------
 // Reading jobs
 // ---------------------------------------------------------------------------
@@ -236,6 +258,11 @@ async function readerFor(job: DataJob, store: Store): Promise<{ reader: ExportRe
     if (!p.ok) throw new JobStopped(p.problem);
     return { reader: await redirectExportReader(store, p.options) };
   }
+  if (job.kind === "inventory_export") {
+    const p = parseInventoryExportOptions(job.options);
+    if (!p.ok) throw new JobStopped(p.problem);
+    return { reader: await inventoryExportReader(store, p.options) };
+  }
   const p = parseCustomerExportOptions(job.options);
   if (!p.ok) throw new JobStopped(p.problem);
   return { reader: await customerExportReader(store, p.options) };
@@ -259,8 +286,8 @@ export async function runJob(id: string, deps: DataDeps = {}): Promise<RunOutcom
   const until = Date.now() + (deps.budgetMs ?? DATA_JOB_BUDGET_MS);
   try {
     if (isImport(job.kind)) {
-      const redirects = job.kind === "redirect_import";
-      const outcome = job.status === "checking" ? await (redirects ? runRedirectCheck : runImportCheck)(job, deps, until) : await (redirects ? runRedirectApply : runImportApply)(job, deps, until);
+      const [check, apply] = job.kind === "redirect_import" ? [runRedirectCheck, runRedirectApply] : job.kind === "inventory_import" ? [runInventoryCheck, runInventoryApply] : [runImportCheck, runImportApply];
+      const outcome = job.status === "checking" ? await check(job, deps, until) : await apply(job, deps, until);
       // A run that stops lets go of the job so the next run (the page's, the cron's) takes it up at once.
       if (outcome === "paused") await releaseJob(job);
       return outcome;
@@ -349,7 +376,8 @@ export async function cancelJob(member: Membership, jobId: string, deps: DataDep
   const now = jobFromRow(rows[0]);
   if (isImport(job.kind)) {
     const redirects = job.kind === "redirect_import";
-    await audit(member.account.id, member.store.id, redirects ? "redirects.import_cancelled" : "products.import_cancelled", { job: job.id, ...(redirects ? {} : { format: job.format }), file: job.inputName, ...(typeof now.counts === "object" ? { written: Number((now.counts as { created?: number }).created ?? 0) + Number((now.counts as { updated?: number }).updated ?? 0) } : {}) }, { area: redirects ? "website" : "products", target: { type: "data_job", id: job.id } }).catch((error) => console.error("[import] the cancel could not be logged", error));
+    const stock = job.kind === "inventory_import";
+    await audit(member.account.id, member.store.id, redirects ? "redirects.import_cancelled" : stock ? "products.inventory_import_cancelled" : "products.import_cancelled", { job: job.id, ...(redirects || stock ? {} : { format: job.format }), file: job.inputName, ...(typeof now.counts === "object" ? { written: Number((now.counts as { created?: number }).created ?? 0) + Number((now.counts as { updated?: number }).updated ?? 0) } : {}) }, { area: redirects ? "website" : "products", target: { type: "data_job", id: job.id } }).catch((error) => console.error("[import] the cancel could not be logged", error));
   } else {
     await removeExportFiles(now, deps);
   }
@@ -501,10 +529,10 @@ export async function pruneDataJobs(deps: DataDeps = {}): Promise<{ filesRemoved
     const due = await db().execute<Row>(sql`
       select * from commerce.data_jobs
       where purged_at is null and (
-        (kind not in ('product_import', 'redirect_import') and expires_at is not null and expires_at < now())
-        or (kind not in ('product_import', 'redirect_import') and status in ('failed', 'cancelled') and finished_at < now() - interval '7 days')
-        or (kind in ('product_import', 'redirect_import') and status in ('done', 'failed', 'cancelled') and finished_at < now() - interval '30 days')
-        or (kind in ('product_import', 'redirect_import') and status in ('uploaded', 'checked') and created_at < now() - interval '30 days')
+        (kind not in ('product_import', 'redirect_import', 'inventory_import') and expires_at is not null and expires_at < now())
+        or (kind not in ('product_import', 'redirect_import', 'inventory_import') and status in ('failed', 'cancelled') and finished_at < now() - interval '7 days')
+        or (kind in ('product_import', 'redirect_import', 'inventory_import') and status in ('done', 'failed', 'cancelled') and finished_at < now() - interval '30 days')
+        or (kind in ('product_import', 'redirect_import', 'inventory_import') and status in ('uploaded', 'checked') and created_at < now() - interval '30 days')
       )
       order by created_at limit 200
     `);
@@ -584,3 +612,12 @@ export const startRedirectCheck = (member: Membership, jobId: string, rawOptions
 
 /** Starts the apply of a redirect import whose dry run finished on the same file and options: logged first, lines written in chunks, each judged again at write time. */
 export const startRedirectApply = (member: Membership, jobId: string, deps: DataDeps = {}): Promise<StepResult> => applyRedirectImport(member, jobId, (id) => runJob(id, deps), deps);
+
+/** The stock file's steps (wave 3, D172): upload, register, the dry run, the apply, the problems as a file. */
+export { inventoryDryCountsOf, inventoryProblemsCsv, registerInventoryImport, startInventoryUpload };
+
+/** Starts (or restarts) the dry run of an uploaded or checked stock import: it writes no stock. */
+export const startInventoryCheck = (member: Membership, jobId: string, deps: DataDeps = {}): Promise<StepResult> => checkInventoryImport(member, jobId, (id) => runJob(id, deps), deps);
+
+/** Starts the apply of a stock import whose dry run finished on the same file: logged first, each row one movement, judged again when written. */
+export const startInventoryApply = (member: Membership, jobId: string, deps: DataDeps = {}): Promise<StepResult> => applyInventoryImport(member, jobId, (id) => runJob(id, deps), deps);

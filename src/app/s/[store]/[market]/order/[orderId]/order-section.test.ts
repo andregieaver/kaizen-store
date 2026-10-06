@@ -421,3 +421,48 @@ describe("the order's lines with a unit price (D160)", () => {
     expect(await lines(nb)).toMatch(/200,00\s*kr\/kg/);
   });
 });
+
+describe("the order's lines on backorder (wave 3, D172)", () => {
+  const sold = (over: Record<string, unknown> = {}) => ({
+    id: "l1",
+    variantId: "v1",
+    title: "Thermos",
+    quantity: 5,
+    unitPriceMinor: 5000,
+    taxRate: 0.25,
+    taxMinor: 1700,
+    gift: false,
+    delivery: "physical",
+    image: null,
+    booking: null,
+    measure: null,
+    backorder: null,
+    ...over,
+  });
+  const lines = async (shopFor = shop) =>
+    renderToString(await OrderLines(shopFor))
+      .replace(/<!-- -->/g, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&#x27;/g, "'")
+      .replace(/\s+/g, " ");
+
+  it("says how many of the units are on backorder and within how many days they are expected to ship, never a date", async () => {
+    getShopperOrder.mockResolvedValue(order({ lines: [sold({ backorder: { units: 2, days: 7 } })] }));
+    const text = await lines();
+    expect(text).toContain("2 of 5 on backorder: expected to ship within 7 days of your order");
+    expect(text).not.toMatch(/in stock|\d{4}-\d{2}-\d{2}/i);
+  });
+
+  it("says nothing for a line wholly sold from stock", async () => {
+    getShopperOrder.mockResolvedValue(order({ lines: [sold()] }));
+    expect(await lines()).not.toMatch(/backorder/i);
+  });
+
+  it("reads in the store's language, by hand (nb, sv, da)", async () => {
+    getShopperOrder.mockResolvedValue(order({ currency: "NOK", locale: "nb-NO", lines: [sold({ backorder: { units: 1, days: 1 } })] }));
+    const say = async (lang: "nb" | "sv" | "da") => lines({ ...shop, market: { ...market, lang, locale: "nb-NO", currency: "NOK" } as Market });
+    expect(await say("nb")).toContain("1 av 5 på restordre: forventes sendt innen 1 dag etter din bestilling");
+    expect(await say("sv")).toContain("1 av 5 på restorder: förväntas skickas inom 1 dag efter din beställning");
+    expect(await say("da")).toContain("1 af 5 på restordre: forventes afsendt inden for 1 dag efter din bestilling");
+  });
+});

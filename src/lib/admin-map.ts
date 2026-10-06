@@ -154,6 +154,30 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Change prices for many products by a percentage or an amount", "Edit prices, SKUs, stock and cost in a grid", "Archive or publish many products", "Add many products to a category or tag", "Set stock for many products", "Undo a bulk change"],
     keywords: ["bulk edit", "bulk editing", "mass edit", "change many products", "price change", "percentage", "sale", "undo", "spreadsheet", "grid", "rediger flere produkter"],
   }),
+  store("inventory", "/inventory", "Inventory", "Main", "Stock for each variant and stock location: on hand, held by checkouts in progress, available and owed on backorder, with counts of what is low, sold out or owed. Change a level with a reason (received, correction, count, damaged, theft or loss, promotion), review every change before it is saved, and set a variant to keep selling at zero stock or to warn at a low level. Needs the right to change products to adjust.", {
+    tasks: ["See what is low, sold out, owed or below zero", "Adjust stock with a reason", "Count stock and set it to the counted figure", "Keep selling a variant when it is sold out (backorder) with a delivery time", "Set a low-stock level", "Find a variant by SKU, title or location"],
+    keywords: ["inventory", "stock", "stock levels", "on hand", "committed", "available", "backorder", "sell when out of stock", "oversell", "low stock", "count", "recount", "adjust stock", "received", "damaged", "lager", "lagerbeholdning", "restordre"],
+  }),
+  store("inventory.history", "/inventory/history", "Stock history", "Main", "Every change of a stock level, newest first: when, which variant and location, the change and the new figure, the reason and who or what made it (a staff member, an order, a return, a file, the AI manager). Filter by SKU, location, reason and dates. Kept 24 months; a wrong change is corrected by a new one.", {
+    tasks: ["See why a stock figure changed", "Find the order or return behind a change", "Filter the history by SKU, location, reason or dates"],
+    keywords: ["stock history", "inventory history", "movements", "adjustment history", "audit", "who changed the stock", "lagerhistorikk"],
+  }),
+  store("inventory.locations", "/inventory/locations", "Stock locations", "Main", "The places stock is held: add, rename and rank locations (an order's units are taken from the top location first), and, for owners, deactivate a location after seeing how many units stop being for sale, or reactivate it. A store always keeps one active location; a location is never deleted.", {
+    tasks: ["Add or rename a stock location", "Change the order locations are used in", "Deactivate or reactivate a location (owner)", "See the units held at each location"],
+    keywords: ["locations", "warehouse", "stock locations", "routing", "order routing", "deactivate location", "multi location", "lager", "lokasjon"],
+  }),
+  store("inventory.import", "/inventory/import", "Import stock", "Main", "Sets stock from a counted CSV file: SKU, location and on hand, with an optional on-hand-was column so a row that is out of date becomes a conflict instead of undoing a sale. Upload the file, check it (a dry run that lists every row and changes nothing), then import. Never creates a variant or a location. Needs the right to change products.", {
+    tasks: ["Upload a counted stock file", "Check a file before it is imported", "Import after the check", "Continue an open import"],
+    keywords: ["import stock", "stock count", "csv", "inventory upload", "recount", "bulk stock", "importer lager"],
+  }),
+  store("inventory.import.job", "/inventory/import/[jobId]", "Stock import", "Main", "One stock import: the check's result row by row (the change for each SKU and location, conflicts and problems), the counts, the confirmation, progress while it works and the result. Download the problems as a CSV, cancel an import that is running.", {
+    tasks: ["Read what the check found", "Import after the check", "Cancel the import", "Download the problems as CSV"],
+    keywords: ["dry run", "conflict", "stock import result", "cancel import"],
+  }),
+  store("inventory.export", "/inventory/export", "Export stock", "Main", "Downloads stock as a CSV file: one row for each variant at each active location with on hand, committed, available, the policy at zero stock and the low-stock level. A small store gets the file at once, a large one a job with a Download button. Count from it and import it back.", {
+    tasks: ["Download the stock file", "Choose the Excel (Nordic) or the standard file format", "Download a finished export"],
+    keywords: ["export stock", "stock file", "inventory csv", "download inventory", "stock count sheet", "eksporter lager"],
+  }),
   store("product-layouts", "/product-layouts", "Product layouts", "Main", "Layouts for product pages, built in the page builder with product parts.", {
     keywords: ["product page design", "template"],
   }),

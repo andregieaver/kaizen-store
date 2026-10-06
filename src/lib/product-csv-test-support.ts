@@ -71,7 +71,7 @@ export function blank(ctx: ProductCsvContext): ProductInput {
     media: [],
     options: [],
     variants: [
-      { id: null, options: {}, sku: "", gtin: null, measure: null, prices: {}, cost: "", stock: 0, active: true, weightGrams: null, hsCode: null, originCountry: null, delivery: "physical", rentalPeriod: "day", image: null },
+      { id: null, options: {}, sku: "", gtin: null, measure: null, prices: {}, cost: "", stock: 0, stockPolicy: "deny", backorderDays: null, lowStockThreshold: null, active: true, weightGrams: null, hsCode: null, originCountry: null, delivery: "physical", rentalPeriod: "day", image: null },
     ],
     delivery: "physical",
     files: [],
@@ -129,7 +129,7 @@ export function boot(ctx: ProductCsvContext, over: Partial<StoredProduct> = {}):
       { name: "Size", values: ["42", "43"] },
     ],
     variants: [
-      { ...base.variants[0], id: VARIANT_IDS[0], options: { Colour: "Black", Size: "42" }, sku: "BOOT-BLK-42", gtin: "7041234567890", prices: { NO: "1249,00", SE: "1299,50" }, cost: "600,00", stock: 12, weightGrams: 1400, hsCode: "640391", originCountry: "PT", measure: null, image: { url: "https://store.example/p/1.webp", thumbnailUrl: "https://store.example/p/1t.webp" } },
+      { ...base.variants[0], id: VARIANT_IDS[0], options: { Colour: "Black", Size: "42" }, sku: "BOOT-BLK-42", gtin: "7041234567890", prices: { NO: "1249,00", SE: "1299,50" }, cost: "600,00", stock: 12, stockPolicy: "continue" as const, backorderDays: 7, lowStockThreshold: 3, weightGrams: 1400, hsCode: "640391", originCountry: "PT", measure: null, image: { url: "https://store.example/p/1.webp", thumbnailUrl: "https://store.example/p/1t.webp" } },
       { ...base.variants[0], id: VARIANT_IDS[1], options: { Colour: "Black", Size: "43" }, sku: "BOOT-BLK-43", prices: { NO: "1249,00", SE: "1299,50" }, stock: 0, weightGrams: 1450 },
       { ...base.variants[0], id: VARIANT_IDS[2], options: { Colour: "Brown", Size: "42" }, sku: "BOOT-BRN-42", prices: { NO: "1299,00" }, stock: 5, active: false, measure: { amount: "0.75", unit: "kg", base: "kg" } },
     ],

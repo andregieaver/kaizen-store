@@ -26,7 +26,7 @@ const rowOf = (job: DataJob): ExportJobRow => ({
  * done, its files and a Download button for each; then the store's recent exports of the kind. Read for the member's store only (`jobFor()` and
  * `listJobs()` answer nothing for a job of another store or a kind the member may not see). Server-rendered; only the tracker is a client component.
  */
-export async function ExportSection({ member, kind, jobId, base, now }: { member: Membership; kind: Exclude<JobKind, "product_import">; jobId: string | null; base: string; now: Date }) {
+export async function ExportSection({ member, kind, jobId, base, now }: { member: Membership; kind: Exclude<JobKind, "product_import" | "redirect_import" | "inventory_import">; jobId: string | null; base: string; now: Date }) {
   const timeZone = member.store.timeZone;
   const [named, recent] = await Promise.all([jobId ? jobFor(member, jobId) : Promise.resolve(null), listJobs(member, kind, 10)]);
   const named_ = named && named.kind === kind ? named : null;

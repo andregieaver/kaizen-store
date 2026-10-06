@@ -1,6 +1,7 @@
 import type { Market } from "./markets";
 import { minorUnitDigits } from "./money";
 import { absoluteUrl, schemaPrice, schemaProperty, type JsonLd, type StoreSeo } from "./seo";
+import { SCHEMA_AVAILABILITY, type Availability } from "./stock-availability";
 import { baseQuantity, measureQuantity, type ShownMeasure } from "./unit-price";
 
 /**
@@ -206,7 +207,7 @@ export function productJsonLd({
   store,
   market,
   marketHome,
-  inStock,
+  availability,
   shipping,
 }: {
   product: ProductFacts;
@@ -215,7 +216,8 @@ export function productJsonLd({
   store: StoreFacts;
   market: Market;
   marketHome: string;
-  inStock: (variantId: string) => boolean;
+  /** What each variant can be bought as (D172): `backorder` is a variant that keeps selling past zero, stated with its days on the page. */
+  availability: (variantId: string) => Availability;
   shipping: ShippingFacts;
 }): JsonLd {
   const seller = { "@id": storeNodeId(store.url) };
@@ -248,7 +250,7 @@ export function productJsonLd({
           },
         },
       }),
-      availability: `${SCHEMA}/${digital || inStock(variant.id) ? "InStock" : "OutOfStock"}`,
+      availability: SCHEMA_AVAILABILITY[digital ? "in_stock" : availability(variant.id)],
       itemCondition: `${SCHEMA}/NewCondition`,
       seller,
       ...(shipping &&

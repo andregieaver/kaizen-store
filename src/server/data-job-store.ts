@@ -226,7 +226,7 @@ export async function failJob(job: Pick<DataJob, "id" | "storeId">, problem: str
 
 export type ItemInput = {
   seq: number;
-  kind: "product" | "redirect" | "file";
+  kind: "product" | "redirect" | "stock" | "file";
   ref: string | null;
   rows: number[];
   outcome: ItemOutcome;
@@ -269,7 +269,7 @@ export async function listItems(storeId: string, jobId: string, opts: { severity
     total: Number(count?.n ?? 0),
     items: rows.map((r) => ({
       seq: Number(r.seq),
-      kind: String(r.kind) as "product" | "redirect" | "file",
+      kind: String(r.kind) as "product" | "redirect" | "stock" | "file",
       ref: r.ref ? String(r.ref) : null,
       rows: ((r.rows ?? []) as number[]).map(Number),
       outcome: String(r.outcome) as ItemOutcome,

@@ -48,6 +48,7 @@ const OWNER_ONLY_EXTRA: Record<string, string> = {
   "src/app/admin/(gated)/[store]/orders/export/[jobId]/tick/route.ts": "the step of an order export's job page: the owner's, like the file",
   "src/app/admin/(gated)/[store]/customers/export/file/route.ts": "the customer file holds shoppers' personal data: only the owner may export it (wave 2, D165, 2.4)",
   "src/app/admin/(gated)/[store]/customers/export/[jobId]/tick/route.ts": "the step of a customer export's job page: the owner's, like the file",
+  "src/app/admin/(gated)/[store]/inventory/locations/actions.ts": "deactivating a stock location takes its stock off sale and reactivating puts it back: only the owner does either (wave 3, D172, 2.3); adding, renaming and ranking are `products:write`, in the same file",
 };
 
 /** POST routes that only read (an export is a POST so that it is never cached or fetched by a link): they ask the area's `read`. */
@@ -58,6 +59,9 @@ const READ_ONLY_ROUTES = new Set([
   "src/app/admin/(gated)/[store]/redirects/export/file/route.ts",
   "src/app/admin/(gated)/[store]/redirects/export/[jobId]/tick/route.ts",
   "src/app/admin/(gated)/[store]/redirects/404s/export/route.ts",
+  // The stock file (wave 3, D172): a POST so it is never cached or fetched by a link, and it only reads.
+  "src/app/admin/(gated)/[store]/inventory/export/file/route.ts",
+  "src/app/admin/(gated)/[store]/inventory/export/[jobId]/tick/route.ts",
 ]);
 
 /**

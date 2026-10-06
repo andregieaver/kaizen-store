@@ -981,16 +981,17 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
   // Units that go back in stock: the ones asked for, else the lines inspected as going back; never more than was returned
   // or than is left to put back (a refund tried twice does not stock twice).
   const mine = new Map(lines.filter((l) => l.decision === "accept").map((l) => [l.lineId, l]));
-  const asked = data.restock.length > 0 ? data.restock : lines.filter((l) => l.decision === "accept" && l.restock).map((l) => ({ lineId: l.lineId, quantity: l.quantity }));
-  const restock: { lineId: string; quantity: number }[] = [];
+  const asked: { lineId: string; quantity: number; locationId?: string | null }[] =
+    data.restock.length > 0 ? data.restock : lines.filter((l) => l.decision === "accept" && l.restock).map((l) => ({ lineId: l.lineId, quantity: l.quantity }));
+  const restock: { lineId: string; quantity: number; locationId?: string | null }[] = [];
   for (const item of asked) {
     const line = mine.get(item.lineId);
     if (!line) return refusal("not_found", "A line to put back in stock is not on this return.");
     if (item.quantity > line.quantity) return refusal("restock", `Only ${line.quantity} of ${line.title} was returned.`);
     const orderLine = admin.lines.find((l) => l.id === item.lineId);
-    const room = orderLine ? orderLine.quantity - orderLine.restocked : 0;
+    const room = orderLine ? orderLine.restockable : 0;
     const quantity = Math.min(item.quantity, room);
-    if (quantity > 0) restock.push({ lineId: item.lineId, quantity });
+    if (quantity > 0) restock.push({ lineId: item.lineId, quantity, locationId: item.locationId ?? null });
   }
 
   const returnShipping = refund.returnShippingMinor;
@@ -1069,6 +1070,7 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
       if (!outside && (amount > 0 || restock.length > 0)) {
         const sent = await refundOrder(storeId, ret.orderId, { amountMinor: amount, reason, restock }, accountId, {
           idempotencyKey: key,
+          returnId: ret.id,
           eventData: { returnId: ret.id, returnNumber: ret.number },
           inTransaction: async (tx, outcome) => {
             if (outcome.status === "failed") return;
@@ -1082,6 +1084,7 @@ export async function refundReturn(storeId: string, input: unknown, accountId: s
       if (outside && restock.length > 0) {
         const sent = await refundOrder(storeId, ret.orderId, { amountMinor: 0, reason, restock }, accountId, {
           outside: true,
+          returnId: ret.id,
           eventData: { returnId: ret.id, returnNumber: ret.number, outside: true, outsideAmountMinor: amount },
           inTransaction: async (tx) => record(tx, ""),
         });

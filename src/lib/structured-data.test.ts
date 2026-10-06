@@ -54,7 +54,7 @@ const build = (facts: ProductFacts, freeOverMinor: number | null = null, returns
     store: returns ? { ...store, returns } : store,
     market,
     marketHome: "https://x.test/s/kopp/no",
-    inStock: (id) => id !== "b",
+    availability: (id) => (id === "b" ? "out_of_stock" : id === "c" ? "backorder" : "in_stock"),
     shipping: { amountMinor: 9900, freeOverMinor, currency: "NOK" },
   })["@graph"] as Record<string, unknown>[];
 
@@ -113,6 +113,16 @@ describe("productJsonLd", () => {
     const [single] = build(product([variant("a", { Linjer: "Prikket" }), variant("b", { Linjer: "Linjert" })]));
     expect(single["@type"]).toBe("Product");
     expect(single.offers).toHaveLength(2);
+  });
+
+  it("says BackOrder for a variant that keeps selling at zero, never InStock (D172)", () => {
+    const [group] = build(product([variant("a", { Farge: "Hvit" }), variant("c", { Farge: "Blå" })]));
+    expect(group.hasVariant).toMatchObject([
+      { offers: { availability: "https://schema.org/InStock" } },
+      { offers: { availability: "https://schema.org/BackOrder" } },
+    ]);
+    const [single] = build(product([variant("c", {})]));
+    expect(single.offers).toMatchObject({ availability: "https://schema.org/BackOrder" });
   });
 
   it("ships free above the threshold and says when the law excludes returns", () => {

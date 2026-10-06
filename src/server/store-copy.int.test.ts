@@ -255,6 +255,11 @@ beforeAll(async () => {
   await db().execute(
     sql`insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand) values (${S}::uuid, ${alpha.variant}::uuid, ${String(location.id)}::uuid, 5)`,
   );
+  // Stock settings (wave 3, D172): the rank of the location and the variant's selling policy and warning level are copied with the store.
+  await db().execute(sql`update commerce.inventory_locations set priority = 3 where id = ${String(location.id)}::uuid`);
+  await db().execute(
+    sql`update commerce.product_variants set stock_policy = 'continue', backorder_days = 6, low_stock_threshold = 2 where id = ${alpha.variant}::uuid`,
+  );
   ids.location = String(location.id);
 
   // Pages with pictures, a background, a video and a background that cannot be copied; a menu with a mega-menu picture; the logo.
@@ -837,6 +842,44 @@ describe("a whole copy, run to the end", () => {
     expect(await count("payments", S)).toBe(1);
   });
 
+  it("copies the stock settings (rank, policy, backorder days, warning level), and writes the copy's own opening movements, never the original's", async () => {
+    expect(await rows(sql`select name, priority from commerce.inventory_locations where store_id = ${N}::uuid`)).toEqual([{ name: "Lager", priority: 3 }]);
+    expect(
+      await rows(sql`select stock_policy, backorder_days, low_stock_threshold from commerce.product_variants where store_id = ${N}::uuid and sku = 'A1'`),
+    ).toEqual([{ stock_policy: "continue", backorder_days: 6, low_stock_threshold: 2 }]);
+    // The other variants keep the defaults.
+    expect(
+      await scalar<number>(sql`select count(*)::int from commerce.product_variants where store_id = ${N}::uuid and sku <> 'A1' and (stock_policy <> 'deny' or low_stock_threshold is not null)`),
+    ).toBe(0);
+    // The history is the copy's own: one opening movement for the level it was given, none of the original's sales or adjustments.
+    expect(
+      await rows(sql`select delta::int, on_hand_after::int, reason, source, order_id from commerce.inventory_movements where store_id = ${N}::uuid`),
+    ).toEqual([{ delta: 5, on_hand_after: 5, reason: "opening", source: "copy", order_id: null }]);
+    // The original's history is untouched by the copy.
+    expect(await count("inventory_movements", S)).toBeGreaterThanOrEqual(1);
+    // The warning state is worked out again from the copied figures (5 on hand, level 2: fine), never copied: nothing is pending to tell.
+    expect(await rows(sql`select state, crossed_at from commerce.stock_alerts where store_id = ${N}::uuid`)).toEqual([{ state: "ok", crossed_at: null }]);
+  });
+
+  it("lets a copied order reserve, back-order and write no movement", async () => {
+    const [line] = await rows(sql`
+      select ol.id, ol.order_id, ol.variant_id, ol.backorder_quantity::int as backorder from commerce.order_lines ol
+      join commerce.orders o on o.id = ol.order_id where o.store_id = ${N}::uuid and o.number = 'C-1001' limit 1
+    `);
+    // A copied order's lines never carry a backorder, and the database refuses a movement or a hold written for it.
+    expect(line?.backorder ?? 0).toBe(0);
+    expect(await count("inventory_reservations", N)).toBe(0);
+    const levelBefore = await scalar<number>(sql`select coalesce(sum(on_hand), 0)::int from commerce.inventory_levels where store_id = ${N}::uuid`);
+    expect(levelBefore).toBe(5);
+    await expect(
+      rows(sql`
+        insert into commerce.inventory_movements (store_id, variant_id, location_id, delta, on_hand_after, reason, source, order_id)
+        values (${N}::uuid, ${String(line.variant_id)}::uuid, (select id from commerce.inventory_locations where store_id = ${N}::uuid limit 1), -1, 4, 'sale', 'order', ${String(line.order_id)}::uuid)
+      `),
+    ).rejects.toThrow();
+    expect(await scalar<number>(sql`select coalesce(sum(on_hand), 0)::int from commerce.inventory_levels where store_id = ${N}::uuid`)).toBe(5);
+  });
+
   it("copies the referral program's rules and nothing of its links, who came through them or what they were given", async () => {
     expect(await rows(sql`
       select enabled, reward_bps, reward_orders, friend_percent, friend_max_minor, monthly_cap_minor, cookie_days
@@ -860,11 +903,16 @@ describe("a whole copy, run to the end", () => {
       where n.nspname = 'commerce' and c.relkind = 'r'
         and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'store_id' and not a.attisdropped)
     `);
+    // The level inserts write the copy's own opening movements (wave 3, D172): one for each level that holds stock.
+    const [openings] = await rows<{ n: number }>(sql`select count(*)::int as n from commerce.inventory_levels where store_id = ${N}::uuid and on_hand <> 0`);
     const made = new Map([
       ["document_series", 5],
       ["payment_providers", 1],
       ["store_members", 1],
       ["audit_log", 2],
+      ["inventory_movements", Number(openings.n)],
+      // The warning state of each variant that has a level is worked out again from the copied figures (D172).
+      ["stock_alerts", 1],
     ]);
     for (const { relname } of tables) {
       if (COPY_RULES[relname].group !== "never") continue;

@@ -3,7 +3,7 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { safeRatio, NO_FIGURE } from "@/lib/analytics-core";
-import { analyseVariant, inventoryValue, sellThrough, stockoutAlerts, turnover, type InventoryRow, type StockStatus } from "@/lib/analytics-inventory";
+import { analyseVariant, inventoryValue, sellThrough, stockoutAlerts, stockWatch, turnover, type InventoryRow, type StockStatus } from "@/lib/analytics-inventory";
 import type { InventoryReport, InventoryReportRow } from "@/server/analytics-inventory-data";
 
 import {
@@ -43,6 +43,8 @@ function variant({ i, title, ...over }: Spec): InventoryReportRow {
     sku: `SKU-${i}`,
     tracked: true,
     onHand: 20,
+    stockPolicy: "deny",
+    owed: 0,
     sold7: 2,
     sold30: 8,
     soldPeriod: 8,
@@ -72,6 +74,8 @@ function report(rows: InventoryReportRow[], over: Partial<InventoryReport> = {})
     sku: r.sku,
     tracked: r.tracked,
     onHand: r.onHand,
+    stockPolicy: r.stockPolicy,
+    owed: r.owed,
     sold7: r.sold7,
     sold30: r.sold30,
     soldPeriod: r.soldPeriod,
@@ -112,6 +116,7 @@ function report(rows: InventoryReportRow[], over: Partial<InventoryReport> = {})
       turnover: turnover(cogs, value.valueMinor),
       sold30,
       sellThrough30: sellThrough(sold30, onHandUnits),
+      ...stockWatch(plain),
     },
     alerts,
     alertsTotal: alerts.length,
@@ -369,6 +374,61 @@ describe("the alert list", () => {
     expect(alertText(a)).toMatch(/^Ethiopian Coffee 1kg: estimated stockout in \d+ days?$/);
     expect(alertText({ ...a, kind: "out", days: 0 })).toBe("Ethiopian Coffee 1kg: out of stock");
     expect(alertText({ ...a, kind: "soon", days: 0.4 })).toBe("Ethiopian Coffee 1kg: estimated stockout in less than a day");
+  });
+});
+
+// ---------- backorders and warning levels (D172) ----------
+
+describe("InventoryView with backorders and the owner's own levels", () => {
+  const r = report([
+    // Sells on backorder, nothing on hand, 4 units owed: out, but worded as what it is, and never a 0 that hides the debt.
+    variant({ i: 1, title: "Thermos", onHand: -4, stockPolicy: "continue", owed: 4, sold7: 3, sold30: 9 }),
+    // Stops at zero: plain out of stock.
+    variant({ i: 2, title: "Plain Mug", onHand: 0, sold7: 3, sold30: 9 }),
+    // At its own level of 10, though it would last long at today's pace.
+    variant({ i: 3, title: "Tea Tin", onHand: 8, lowStockThreshold: 10, sold7: 1, sold30: 2 }),
+    variant({ i: 4, title: "Fine Mug", onHand: 200 }),
+  ]);
+  const out = view(r);
+
+  it("shows a backorder as out of stock in the counts, words it as on backorder, and shows what is owed", () => {
+    expect(r.totals.out).toBe(2);
+    expect(r.totals.onBackorder).toBe(1);
+    expect(r.totals.owedUnits).toBe(4);
+    expect(out).toContain("On backorder");
+    expect(out).toContain("4 owed");
+    // The figure is shown as it is, a negative one, not as 0.
+    expect(words(out)).toContain("-4");
+  });
+
+  it("names the alert for a backorder as on backorder, with the owed units, and keeps plain out of stock apart", () => {
+    const alerts = stockoutAlerts([variant({ i: 1, title: "Thermos", onHand: -4, stockPolicy: "continue", owed: 4, sold7: 3, sold30: 9 })]);
+    expect(alertText(alerts[0])).toBe("Thermos: on backorder, 4 owed");
+    expect(alertText({ ...alerts[0], row: { ...alerts[0].row, stockPolicy: "deny" } })).toBe("Thermos: out of stock");
+    expect(out).toContain("Thermos: on backorder, 4 owed");
+    expect(out).toContain("Plain Mug: out of stock");
+  });
+
+  it("counts a negative figure as nothing on hand in the value: it is never a negative value", () => {
+    expect(r.totals.value.units).toBe(208);
+    expect(r.rows.find((x) => x.sku === "SKU-1")!.valueMinor).toBeNull();
+    expect(r.rows.find((x) => x.sku === "SKU-1")!.daysOfStock).toBe(0);
+  });
+
+  it("has a card for what is owed that opens the admin's Inventory page, and none for a store that never backorders", () => {
+    expect(out).toContain("Owed on backorder");
+    expect(out).toContain(`href="${BASE}/inventory?status=backorder"`);
+    expect(view(report([variant({ i: 1 }), variant({ i: 2, onHand: 0, sold7: 3, sold30: 9 })]))).not.toContain("Owed on backorder");
+  });
+
+  it("calls a variant at its own warning level running low, and says so in the card", () => {
+    expect(r.rows.find((x) => x.sku === "SKU-3")!.status).toBe("low");
+    expect(r.totals.belowLevel).toBe(1);
+    expect(out).toContain("at or below the level you set");
+  });
+
+  it("is clean", () => {
+    expectClean(out);
   });
 });
 

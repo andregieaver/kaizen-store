@@ -74,7 +74,7 @@ export const DELIVERY_WORDS = ["physical", "digital", "service"] as const;
 
 /** Cells that belong to a variant, as against the product (a row with any of them filled is a variant's row). */
 export const VARIANT_COLUMNS = [
-  "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock", "measure_amount", "measure_unit", "measure_base",
+  "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock", "stock_policy", "backorder_days", "low_stock_threshold", "measure_amount", "measure_unit", "measure_base",
   "option1_value", "option2_value", "option3_value", "variant_image_url",
 ] as const;
 
@@ -110,6 +110,7 @@ export function productColumns(ctx: ProductCsvContext): string[] {
     "categories", "tags",
     "option1_name", "option1_value", "option2_name", "option2_value", "option3_name", "option3_value",
     "variant_id", "sku", "gtin", "active", "delivery", "weight_grams", "hs_code", "origin_country", "cost", "stock",
+    "stock_policy", "backorder_days", "low_stock_threshold",
     "measure_amount", "measure_unit", "measure_base", "price_basis",
     ...ctx.markets.map((m) => `price:${m.code}`),
     "image_url", "image_position", "image_alt", "variant_image_url",
@@ -231,6 +232,9 @@ export function productRowsOf(record: StoredProduct, ctx: ProductCsvContext): Ce
       const cost = variant.cost ? parsePrice(variant.cost, ctx.mainCurrency) : null;
       cells.cost = cost === null ? null : amountCell(cost, ctx.mainCurrency);
       cells.stock = variant.stock;
+      cells.stock_policy = variant.delivery === "physical" ? variant.stockPolicy : null;
+      cells.backorder_days = variant.stockPolicy === "continue" ? variant.backorderDays : null;
+      cells.low_stock_threshold = variant.lowStockThreshold;
       cells.measure_amount = variant.measure ? { num: normaliseMeasureAmount(variant.measure.amount) ?? "0" } : null;
       cells.measure_unit = variant.measure?.unit ?? null;
       cells.measure_base = variant.measure?.base ?? null;

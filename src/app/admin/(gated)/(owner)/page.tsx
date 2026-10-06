@@ -42,7 +42,7 @@ export default async function ControlCenterPage() {
   const orders = sales.reduce((sum, f) => sum + f.orders, 0);
   const priorOrders = sales.reduce((sum, f) => sum + f.priorOrders, 0);
   const toSend = center.stores.reduce((sum, s) => sum + s.toSend, 0);
-  const low = center.stores.reduce((sum, s) => sum + s.lowStock, 0);
+  const low = center.stores.reduce((sum, s) => sum + s.lowStock + s.belowLevel, 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -60,7 +60,7 @@ export default async function ControlCenterPage() {
           {sales.length === 0 ? <Stat label="Sales" value="–" sub="No sales yet" /> : sales.slice(0, 2).map((f) => <Stat key={f.currency} label={`Sales (${f.currency})`} value={money(f.week, f.currency)} sub={changeText(f.week, f.prior)} />)}
           <Stat label="Orders" value={orders} sub={changeText(orders, priorOrders)} />
           <Stat label="Waiting to be sent" value={toSend} sub={toSend > 0 ? "Across your stores" : "All sent"} />
-          {sales.length < 2 && <Stat label="Products running low" value={low} sub={low > 0 ? "Stock of 3 or fewer" : "Stock is fine"} />}
+          {sales.length < 2 && <Stat label="Products running low" value={low} sub={low > 0 ? "3 or fewer, or at your own level" : "Stock is fine"} />}
           {center.ai.requests > 0 && sales.length < 2 && <Stat label="AI requests" value={center.ai.requests} sub={center.ai.failed > 0 ? `${center.ai.failed} failed` : undefined} href="/admin/account/usage" />}
         </StatGrid>
       </Section>

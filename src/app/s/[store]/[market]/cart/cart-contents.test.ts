@@ -13,7 +13,7 @@ vi.mock("./actions", () => ({
 }));
 const getBuyer = vi.fn();
 vi.mock("@/server/b2b", () => ({ getBuyer: (...a: unknown[]) => getBuyer(...a) }));
-const cartState = vi.hoisted(() => ({ company: null as unknown, measure: null as unknown, quantity: 1, status: "ok" }));
+const cartState = vi.hoisted(() => ({ company: null as unknown, measure: null as unknown, quantity: 1, status: "ok", backorder: null as unknown }));
 vi.mock("@/server/cart", () => ({
   getCart: async () => ({
     lines: [
@@ -31,6 +31,8 @@ vi.mock("@/server/cart", () => ({
         booking: null,
         status: cartState.status,
         available: 9,
+        inStock: 9,
+        backorder: cartState.backorder,
         unitPriceMinor: 10000,
         vatRate: 0.25,
       },
@@ -139,6 +141,7 @@ beforeEach(() => {
   cartState.measure = null;
   cartState.quantity = 1;
   cartState.status = "ok";
+  cartState.backorder = null;
   cartSummary.mockResolvedValue(summary());
   readCartBonus.mockResolvedValue(bonus());
 });
@@ -388,5 +391,39 @@ describe("the cart's lines with a unit price (D160)", () => {
     cartState.measure = { amount: "500", unit: "g", base: "kg" };
     const markup = renderToString(await CartContents({ store, market, m, drawer: true }));
     expect(words(markup)).toContain("€200.00/kg");
+  });
+});
+
+describe("the cart's lines on backorder (wave 3, D172)", () => {
+  const lines = async (drawer = false) => renderToString(await CartContents({ store, market, m, drawer }));
+
+  it("say how many units are on backorder and within how many days they are expected to ship, and are not an alert", async () => {
+    cartState.quantity = 5;
+    cartState.backorder = { units: 2, days: 7 };
+    const markup = await lines();
+    expect(words(markup)).toContain("2 on backorder: expected to ship within 7 days");
+    expect(markup).not.toMatch(/role="alert"[^>]*>[^<]*backorder/);
+  });
+
+  it("choose the singular for one day and say nothing for a line wholly in stock", async () => {
+    cartState.backorder = { units: 1, days: 1 };
+    expect(words(await lines())).toContain("1 on backorder: expected to ship within 1 day");
+    cartState.backorder = null;
+    expect(await lines()).not.toContain("data-backorder");
+  });
+
+  it("is drawn in the slide-out cart too, and promises no date and never says in stock", async () => {
+    cartState.backorder = { units: 3, days: 30 };
+    const text = words(await lines(true));
+    expect(text).toContain("3 on backorder: expected to ship within 30 days");
+    expect(text).not.toMatch(/in stock|på lager|\d{4}-\d{2}-\d{2}/i);
+  });
+
+  it("is said in Norwegian, Swedish and Danish by hand", async () => {
+    cartState.backorder = { units: 2, days: 7 };
+    const say = async (lang: "nb" | "sv" | "da") => words(renderToString(await CartContents({ store, market: { ...market, lang } as Market, m: t(lang) })));
+    expect(await say("nb")).toContain("2 på restordre: forventes sendt innen 7 dager");
+    expect(await say("sv")).toContain("2 på restorder: förväntas skickas inom 7 dagar");
+    expect(await say("da")).toContain("2 på restordre: forventes afsendt inden for 7 dage");
   });
 });

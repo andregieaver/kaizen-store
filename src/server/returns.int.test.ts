@@ -92,7 +92,7 @@ type Placed = { orderId: string; number: string; email: string; lines: { id: str
 /** A paid order, as a Checkout session leaves it, for a shopper with this email. */
 async function paidOrder(
   items: [sku: string, quantity: number][],
-  options: { store?: string; customerId?: string | null; code?: string; credits?: number; provider?: "stripe" | "venue"; email?: string; ship?: boolean } = {},
+  options: { store?: string; customerId?: string | null; code?: string; credits?: number; provider?: "stripe" | "venue"; email?: string; ship?: boolean; beforePay?: (orderId: string) => Promise<void> } = {},
 ): Promise<Placed> {
   const store = options.store ?? storeId;
   const email = options.email ?? `shopper${++seq}-${run}@example.com`;
@@ -109,6 +109,7 @@ async function paidOrder(
   const result = await placeOrder({ storeId: store, market: no }, String(cart.id), {}, { customerId: options.customerId ?? null });
   if (!result.ok) throw new Error(result.problem);
   const { orderId, totalMinor } = result.order;
+  await options.beforePay?.(orderId);
   const provider = options.provider ?? "stripe";
   await db().execute(sql`
     insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
@@ -715,6 +716,32 @@ describe("what a return refunds", () => {
     const [row] = await db().execute<Row>(sql`select refund_outside, refund_id, refund_minor from commerce.returns where id = ${returnId}::uuid`);
     expect(row).toMatchObject({ refund_outside: true, refund_id: null, refund_minor: String(preview.refund.amountMinor) });
     expect((await events(order.orderId)).find((e) => e.type === "return.refunded")!.data).toMatchObject({ outside: true });
+  });
+
+  it("puts back only what a short draw took, so a return of the whole line is not refused (review)", async () => {
+    // The checkout's hold ran out and the stock was sold meanwhile: paying drew the one unit that was left and wrote `stock.short` for the other.
+    const order = await paidOrder([["DEMO-MUG-WHITE", 2]], {
+      beforePay: async (orderId) => {
+        await db().execute(sql`update commerce.inventory_reservations set expires_at = now() - interval '1 minute' where order_id = ${orderId}::uuid`);
+        await db().execute(sql`
+          update commerce.inventory_levels set on_hand = 1
+          where store_id = ${storeId}::uuid and variant_id = (select id from commerce.product_variants where store_id = ${storeId}::uuid and sku = 'DEMO-MUG-WHITE')
+        `);
+      },
+    });
+    expect(await events(order.orderId, "stock.short")).toHaveLength(1);
+    expect(await onHand("DEMO-MUG-WHITE")).toBe(0);
+    const admin = await getOrderAdmin(storeId, order.orderId);
+    expect(admin!.lines[0]).toMatchObject({ quantity: 2, restocked: 0, restockable: 1 });
+    const { returnId } = await withdraw(order);
+    await received(returnId);
+    expect(await r.inspectReturn(storeId, { returnId, lines: [{ lineId: order.lines[0].id, condition: "as_new", restock: true, deductionMinor: 0 }] }, null)).toMatchObject({ ok: true });
+    const preview = (await r.previewRefund(storeId, returnId))!;
+    // The money is for both units; the stock that goes back is the one that left.
+    const done = await r.refundReturn(storeId, { returnId, amountMinor: preview.refund.amountMinor }, null);
+    expect(done).toMatchObject({ ok: true });
+    expect(await onHand("DEMO-MUG-WHITE")).toBe(1);
+    expect((await getOrderAdmin(storeId, order.orderId))!.lines[0]).toMatchObject({ restocked: 1, restockable: 0 });
   });
 
   it("closes a return with nothing to refund as no refund, after asking once for a withdrawal", async () => {
