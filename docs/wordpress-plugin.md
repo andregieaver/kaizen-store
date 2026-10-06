@@ -129,3 +129,7 @@ dependencies), its installable zip in `public/downloads/kaizen-store-wordpress.z
 - The approval page is not covered by an end-to-end test (the repository has no signed-in admin fixture, D158); its rules (`readApproval()`) and the
   swap are tested, and the page was checked by reading.
 - Not published to wordpress.org: the zip is installed by upload.
+
+## Verified on a real site
+
+The plugin (connect and approval, saved views, product page, slide-out cart and the hand-over to the store's checkout) was installed and tried on a real WordPress site over HTTPS by the owner on 6 October 2026 and works as described here.
