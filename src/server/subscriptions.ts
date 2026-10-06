@@ -24,6 +24,7 @@ import {
   type SubscriptionStatus,
 } from "@/lib/subscriptions";
 
+import { insertOrder } from "./order-insert";
 import { WEBHOOK_EVENTS, platformStripe } from "./stripe";
 
 type Row = Record<string, unknown>;
@@ -348,28 +349,27 @@ export async function renewSubscription(storeId: string, invoice: Stripe.Invoice
     const taxOf = new Map(lineRates.map((r) => [String(r.id), { rate: Number(r.rate), tax: vatIncluded(Number(r.total_minor), Number(r.rate)) }]));
     const renewalTax = [...taxOf.values()].reduce((sum, line) => sum + line.tax, 0) + vatIncluded(Number(sub.shipping_minor), shipRate);
 
-    const [numbered] = await tx.execute<Row>(sql`
-      select s.prefix || commerce.next_document_number(${storeId}::uuid, 'order')::text as number
-      from commerce.document_series s
-      where s.store_id = ${storeId}::uuid and s.series = 'order'
-    `);
-    const [order] = await tx.execute<Row>(sql`
-      insert into commerce.orders (
-        store_id, number, market_code, currency, locale, email, status,
-        subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
-        billing_address, shipping_address, digital_consent_at, subscription_id, customer_id,
-        return_cost_payer, standard_shipping_minor, shipping_tax_rate
-      ) values (
-        ${storeId}::uuid, ${String(numbered.number)}, ${sub.market_code}, ${sub.currency}, ${sub.locale},
-        ${sub.email}, 'pending_payment',
-        ${sub.subtotal_minor}, ${sub.shipping_minor}, 0, ${renewalTax}, ${sub.total_minor},
-        ${JSON.stringify(sub.billing_address ?? {})}::jsonb, ${JSON.stringify(sub.shipping_address ?? {})}::jsonb,
-        ${sub.digital_consent_at ?? null}::timestamptz, ${sub.id}::uuid, ${sub.customer_id ?? null}::uuid,
-        ${sub.return_cost_payer ?? null}, ${sub.standard_shipping_minor ?? null}::bigint, ${shipRate}
-      )
-      returning id
-    `);
-    const orderId = String(order.id);
+    // Numbered and written by `insertOrder()` in this transaction, like every order (D141).
+    const { orderId } = await insertOrder(tx, {
+      storeId,
+      marketCode: String(sub.market_code),
+      currency: String(sub.currency),
+      locale: String(sub.locale),
+      email: String(sub.email),
+      subtotalMinor: Number(sub.subtotal_minor),
+      shippingMinor: Number(sub.shipping_minor),
+      discountMinor: 0,
+      taxMinor: renewalTax,
+      totalMinor: Number(sub.total_minor),
+      billingAddress: (sub.billing_address ?? {}) as Record<string, unknown>,
+      shippingAddress: (sub.shipping_address ?? {}) as Record<string, unknown>,
+      digitalConsentAt: sub.digital_consent_at instanceof Date ? sub.digital_consent_at.toISOString() : sub.digital_consent_at ? String(sub.digital_consent_at) : null,
+      subscriptionId: String(sub.id),
+      customerId: sub.customer_id ? String(sub.customer_id) : null,
+      returnCostPayer: sub.return_cost_payer ? String(sub.return_cost_payer) : null,
+      standardShippingMinor: sub.standard_shipping_minor === null || sub.standard_shipping_minor === undefined ? null : Number(sub.standard_shipping_minor),
+      shippingTaxRate: shipRate,
+    });
     for (const [lineId, line] of taxOf) {
       // The variant's content as it is when this delivery is placed (D160), like its cost: the renewal's line keeps the
       // price the subscription was sold at and the measure the variant has now, with the base in effect in the market.

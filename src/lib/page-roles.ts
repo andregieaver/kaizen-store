@@ -196,7 +196,7 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
     case "cart":
       return page(m.cart, [
         row(heading(m.cart)),
-        columns("right-sidebar", [part("cart_lines")], [part("cart_summary"), part("cart_code"), part("cart_credits"), part("cart_checkout")]),
+        columns("right-sidebar", [part("cart_lines"), part("cart_gift")], [part("cart_summary"), part("cart_code"), part("cart_credits"), part("cart_checkout")]),
       ]);
     case "checkout":
       return page(m.checkoutTitle, [

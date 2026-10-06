@@ -1,3 +1,4 @@
+import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,6 +15,8 @@ vi.mock("./actions", () => ({
 const getBuyer = vi.fn();
 vi.mock("@/server/b2b", () => ({ getBuyer: (...a: unknown[]) => getBuyer(...a) }));
 const cartState = vi.hoisted(() => ({ company: null as unknown, measure: null as unknown, quantity: 1, status: "ok", backorder: null as unknown }));
+// The store's gift messages (wave 3, D173): whether the switch is on, and what the cart holds of a gift.
+const giftState = vi.hoisted(() => ({ enabled: false, gift: { isGift: false, to: null, from: null, message: null } as unknown }));
 vi.mock("@/server/cart", () => ({
   getCart: async () => ({
     lines: [
@@ -40,6 +43,12 @@ vi.mock("@/server/cart", () => ({
     currency: "EUR",
     company: cartState.company,
   }),
+  getCartGift: async () => ({ enabled: giftState.enabled, gift: giftState.gift }),
+}));
+// The box itself is a client component with its own test; here only where the cart draws it, and what it is given.
+vi.mock("./cart-gift", () => ({
+  GiftBox: (props: { store: string; market: string; lang: string; initial: { isGift: boolean } }) =>
+    createElement("div", { "data-gift-box-mock": "", "data-ticked": String(props.initial.isGift), "data-lang": props.lang }),
 }));
 const cartSummary = vi.fn();
 vi.mock("@/server/cart-summary", () => ({ cartSummary: (...a: unknown[]) => cartSummary(...a) }));
@@ -57,7 +66,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { CartCheckout, CartContents, CartCredits, CartSummary } from "./cart-contents";
+import { CartCheckout, CartContents, CartCredits, CartGift, CartSummary } from "./cart-contents";
 
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
 const store = { id: "s1", slug: "demo", audience: "both" } as Store;
@@ -142,6 +151,8 @@ beforeEach(() => {
   cartState.quantity = 1;
   cartState.status = "ok";
   cartState.backorder = null;
+  giftState.enabled = false;
+  giftState.gift = { isGift: false, to: null, from: null, message: null };
   cartSummary.mockResolvedValue(summary());
   readCartBonus.mockResolvedValue(bonus());
 });
@@ -425,5 +436,46 @@ describe("the cart's lines on backorder (wave 3, D172)", () => {
     expect(await say("nb")).toContain("2 på restordre: forventes sendt innen 7 dager");
     expect(await say("sv")).toContain("2 på restorder: förväntas skickas inom 7 dagar");
     expect(await say("da")).toContain("2 på restordre: forventes afsendt inden for 7 dage");
+  });
+});
+
+describe("the cart's gift box (wave 3, run 2, D173)", () => {
+  const box = (markup: string) => markup.includes("data-gift-box-mock");
+
+  it("is drawn by the whole cart page, under the lines, only in a store with gift messages switched on", async () => {
+    expect(box(renderToString(await CartContents({ store, market, m })))).toBe(false);
+    giftState.enabled = true;
+    const markup = renderToString(await CartContents({ store, market, m }));
+    expect(box(markup)).toBe(true);
+    // Under the lines, before the summary.
+    expect(markup.indexOf("data-gift-box-mock")).toBeLessThan(markup.indexOf("<aside"));
+    expect(markup.indexOf("data-gift-box-mock")).toBeGreaterThan(markup.indexOf("<ul"));
+  });
+
+  it("is given what the cart holds, in the shopper's language", async () => {
+    giftState.enabled = true;
+    giftState.gift = { isGift: true, to: "Kari", from: null, message: "Hei" };
+    const markup = renderToString(await CartContents({ store, market: { ...market, lang: "nb" } as Market, m: t("nb") }));
+    expect(markup).toContain('data-ticked="true"');
+    expect(markup).toContain('data-lang="nb"');
+  });
+
+  it("is its own piece, which draws nothing in a store without gift messages", async () => {
+    expect(renderToString((await CartGift({ store, market, m })) ?? null)).toBe("");
+    giftState.enabled = true;
+    expect(box(renderToString(await CartGift({ store, market, m })))).toBe(true);
+  });
+
+  it("is drawn by the checkout piece when the page has no gift piece of its own, so an older cart page still has it", async () => {
+    giftState.enabled = true;
+    expect(box(renderToString(await CartCheckout({ store, market, m })))).toBe(false);
+    expect(box(renderToString(await CartCheckout({ store, market, m, drawGift: true })))).toBe(true);
+    giftState.enabled = false;
+    expect(box(renderToString(await CartCheckout({ store, market, m, drawGift: true })))).toBe(false);
+  });
+
+  it("is in the slide-out cart too", async () => {
+    giftState.enabled = true;
+    expect(box(renderToString(await CartContents({ store, market, m, drawer: true })))).toBe(true);
   });
 });

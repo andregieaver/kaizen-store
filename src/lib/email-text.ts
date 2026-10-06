@@ -88,6 +88,26 @@ const text = {
         `Retur ${number} skulle vært refundert innen ${date}. Fristen i loven er 14 dager etter at butikken fikk beskjed om angringen.`,
       overdueOpen: "Åpne returen",
     },
+    /**
+     * The pay link a store sends for a draft order (wave 3, run 2, D173) and the gift message on the confirmation. Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    draft: {
+      subject: (store: string, number: string) => `${store}: bestillingen din ${number} er klar til betaling`,
+      heading: "Bestillingen din er klar til betaling",
+      intro: (store: string) => `${store} har laget en bestilling til deg. Se over den og betal på nettsiden når du er klar.`,
+      button: "Se og betal bestillingen",
+      validUntil: (date: string) => `Lenken gjelder til ${date}.`,
+      noteHeading: "Melding fra butikken",
+      notYou: "Venter du ikke denne e-posten, kan du se bort fra den.",
+    },
+    // legal: needs review
+    giftMessage: {
+      heading: "Gavehilsen",
+      to: (name: string) => `Til ${name}`,
+      from: (name: string) => `Fra ${name}`,
+      note: "Meldingen skrives ut på pakkseddelen. Butikken sender den ikke til mottakeren.",
+    },
     orderSubject: (store: string, number: string) => `Ordrebekreftelse ${number} fra ${store}`,
     orderHeading: "Takk for bestillingen!",
     orderIntro: (number: string) => `Vi har mottatt betalingen for ordre ${number}.`,
@@ -316,6 +336,26 @@ const text = {
       overdueIntro: (number: string, date: string) =>
         `Retur ${number} skulle ha återbetalats senast ${date}. Lagens frist är 14 dagar efter att butiken fick veta att kunden ångrade sig.`,
       overdueOpen: "Öppna returen",
+    },
+    /**
+     * The pay link a store sends for a draft order (wave 3, run 2, D173) and the gift message on the confirmation. Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    draft: {
+      subject: (store: string, number: string) => `${store}: din beställning ${number} är redo att betalas`,
+      heading: "Din beställning är redo att betalas",
+      intro: (store: string) => `${store} har gjort en beställning åt dig. Titta igenom den och betala på webbplatsen när du är redo.`,
+      button: "Se och betala beställningen",
+      validUntil: (date: string) => `Länken gäller till ${date}.`,
+      noteHeading: "Meddelande från butiken",
+      notYou: "Väntar du inte det här mejlet kan du bortse från det.",
+    },
+    // legal: needs review
+    giftMessage: {
+      heading: "Presentmeddelande",
+      to: (name: string) => `Till ${name}`,
+      from: (name: string) => `Från ${name}`,
+      note: "Meddelandet skrivs ut på följesedeln. Butiken skickar det inte till mottagaren.",
     },
     orderSubject: (store: string, number: string) => `Orderbekräftelse ${number} från ${store}`,
     orderHeading: "Tack för din beställning!",
@@ -546,6 +586,26 @@ const text = {
         `Returnering ${number} skulle have været tilbagebetalt senest ${date}. Lovens frist er 14 dage efter, at butikken fik besked om fortrydelsen.`,
       overdueOpen: "Åbn returneringen",
     },
+    /**
+     * The pay link a store sends for a draft order (wave 3, run 2, D173) and the gift message on the confirmation. Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    draft: {
+      subject: (store: string, number: string) => `${store}: din ordre ${number} er klar til betaling`,
+      heading: "Din ordre er klar til betaling",
+      intro: (store: string) => `${store} har lavet en ordre til dig. Se den igennem og betal på hjemmesiden, når du er klar.`,
+      button: "Se og betal ordren",
+      validUntil: (date: string) => `Linket gælder til ${date}.`,
+      noteHeading: "Besked fra butikken",
+      notYou: "Hvis du ikke venter denne e-mail, kan du se bort fra den.",
+    },
+    // legal: needs review
+    giftMessage: {
+      heading: "Gavehilsen",
+      to: (name: string) => `Til ${name}`,
+      from: (name: string) => `Fra ${name}`,
+      note: "Beskeden udskrives på pakkesedlen. Butikken sender den ikke til modtageren.",
+    },
     orderSubject: (store: string, number: string) => `Ordrebekræftelse ${number} fra ${store}`,
     orderHeading: "Tak for din bestilling!",
     orderIntro: (number: string) => `Vi har modtaget betalingen for ordre ${number}.`,
@@ -774,6 +834,26 @@ const text = {
       overdueIntro: (number: string, date: string) =>
         `Return ${number} should have been refunded by ${date}. The legal deadline is 14 days after the store was told of the withdrawal.`,
       overdueOpen: "Open the return",
+    },
+    /**
+     * The pay link a store sends for a draft order (wave 3, run 2, D173) and the gift message on the confirmation. Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    draft: {
+      subject: (store: string, number: string) => `${store}: your order ${number} is ready to pay`,
+      heading: "Your order is ready to pay",
+      intro: (store: string) => `${store} has made an order for you. Check it and pay on the website when you are ready.`,
+      button: "View and pay for the order",
+      validUntil: (date: string) => `This link is valid until ${date}.`,
+      noteHeading: "Message from the store",
+      notYou: "If you did not expect this email, you can ignore it.",
+    },
+    // legal: needs review
+    giftMessage: {
+      heading: "Gift message",
+      to: (name: string) => `To ${name}`,
+      from: (name: string) => `From ${name}`,
+      note: "The message is printed on the packing slip. The store does not send it to the recipient.",
     },
     orderSubject: (store: string, number: string) => `Order confirmation ${number} from ${store}`,
     orderHeading: "Thank you for your order!",

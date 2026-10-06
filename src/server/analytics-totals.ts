@@ -104,6 +104,8 @@ export type SeriesPoint = {
   from: string;
   to: string;
   orders: number;
+  /** Of them, the orders from a shopper's checkout (conversion counts these only, D173); absent = all of them. */
+  checkoutOrders?: number;
   revenueMinor: number;
   refundsMinor: number;
   netRevenueMinor: number;
@@ -303,7 +305,7 @@ async function loadBundles(
   // lines are summed per bucket and currency in two small aggregates (a line-level one, an order-level one), never per order.
   const main = setBased<Row>(sql`
     with po0 as materialized (
-      select o.id, o.store_id, o.customer_id, o.email, o.restricted_at, o.anonymised_at, o.currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor,
+      select o.id, o.store_id, o.customer_id, o.email, o.restricted_at, o.anonymised_at, o.source, o.currency, o.total_minor, o.tax_minor, o.shipping_minor, o.discount_minor, o.vat_relief_minor,
         coalesce(o.shipping_tax_rate, commerce.vat_rate(o.market_code, 'standard', o.placed_at)) as ship_rate,
         (o.currency = any(${known})) as ok, (${bucketOf(grain, period, placed)})::text as bk
       from commerce.orders o
@@ -319,7 +321,7 @@ async function loadBundles(
         case when ol.variant_id is not null and ol.delivery <> 'service' then ol.quantity else 0 end as units,
         ol.unit_cost_minor * ol.quantity as cogs,
         ol.total_minor - ol.tax_minor as line_rev,
-        case when ol.variant_id is not null and ol.unit_cost_minor is null then ol.total_minor - ol.tax_minor else 0 end as unknown_rev,
+        case when (ol.variant_id is not null or ol.custom) and ol.unit_cost_minor is null then ol.total_minor - ol.tax_minor else 0 end as unknown_rev,
         (ol.delivery = 'physical') as physical
       from po0
       join commerce.order_lines ol on ol.order_id = po0.id
@@ -331,7 +333,7 @@ async function loadBundles(
       select id, sum(raw_disc) as line_disc, sum(line_relief) as line_relief from pl group by id
     ),
     by_order as (
-      select bk, currency::text as currency, count(*) as orders, sum(tax_minor) as vat, sum(total_minor - tax_minor) as revenue,
+      select bk, currency::text as currency, count(*) as orders, count(*) filter (where source = 'checkout') as checkout_orders, sum(tax_minor) as vat, sum(total_minor - tax_minor) as revenue,
         sum(shipping_minor) as shipping_in, sum(ship_disc) as ship_disc, sum(ship_relief) as ship_relief, sum(round(ship_disc::numeric / (1 + ship_rate))) as ship_disc_ex,
         sum(case when has_lines then 0 else total_minor - tax_minor end) as lineless_rev
       from (
@@ -354,7 +356,7 @@ async function loadBundles(
       group by bk, currency
     ),
     orders_agg as (
-      select o.bk, o.currency, o.orders,
+      select o.bk, o.currency, o.orders, o.checkout_orders,
         coalesce(l.gross, 0) as gross,
         coalesce(l.disc, 0) + o.ship_disc_ex as disc,
         o.shipping_in - o.ship_disc - o.ship_relief - (o.vat - coalesce(l.line_tax, 0)) + o.ship_disc_ex as shipping,
@@ -476,6 +478,7 @@ function fold(store: Store, settings: Pick<StoredAnalyticsSettings, "paymentFeeB
   return {
     ...EMPTY_TOTALS,
     orders: sum(bundle.orders, "orders"),
+    checkoutOrders: sum(bundle.orders, "checkout_orders"),
     grossSalesMinor: orders.gross,
     discountsMinor: orders.disc,
     shippingMinor: orders.shipping,
@@ -568,6 +571,7 @@ function pointOf(settings: StoredAnalyticsSettings, { span, totals }: BucketTota
     from: span.from,
     to: span.to,
     orders: totals.orders,
+    checkoutOrders: totals.checkoutOrders ?? totals.orders,
     revenueMinor: totals.revenueMinor,
     refundsMinor: totals.refundsMinor,
     netRevenueMinor: derived.netRevenue,

@@ -1,9 +1,13 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import { db } from "@/db/client";
+import { ORDER_OPS_EVENTS } from "@/lib/order-ops-events";
+import type { Tag } from "@/lib/order-tags";
 import { isAdoptedRefund } from "@/lib/refund-adopted";
 import { restockRoom } from "@/lib/stock-restock";
 import type { PaymentModeName } from "@/lib/stripe-account";
@@ -11,6 +15,8 @@ import type { PaymentModeName } from "@/lib/stripe-account";
 import { cancelUnpaidOrder } from "./checkout";
 import { reverseHostCommission } from "./host-payments";
 import { getOrder, type Address, type OrderView } from "./orders";
+import { accountMayRecordOutside } from "./order-settings";
+import { getOrderTags } from "./order-tags";
 import { isDeliveryOrder } from "./standing-orders";
 import { applyRestock, orderStockHistory, planRestock } from "./stock-restock";
 import { platformStripe } from "./stripe";
@@ -25,6 +31,8 @@ type Row = Record<string, unknown>;
  */
 
 export type OrderLineAdmin = OrderView["lines"][number] & {
+  /** The market's list price as shown when a draft's line was added (D173), for staff only: a buyer is never shown a "was" price. Null for every other line. */
+  listPriceMinor: number | null;
   /** Units already put back in stock. */
   restocked: number;
   /**
@@ -69,14 +77,27 @@ export type OrderAdmin = Omit<OrderView, "lines"> & {
   paidMinor: number;
   refundedMinor: number;
   refundableMinor: number;
-  /** Paid through Stripe Connect, so Kaizen can refund it. */
+  /**
+   * Kaizen can refund it: paid through Stripe Connect (the money goes back through Stripe), or taken outside Kaizen (D173, a payment recorded on a draft order): then
+   * the refund is only RECORDED here, staff pay the customer back themselves (`refundOrder()`, no Stripe call).
+   */
   canRefund: boolean;
+  /** The money was taken outside Kaizen (D173): how, and when it was recorded. A refund of it is recorded, never sent. */
+  paidOutside: { method: "cash" | "bank_transfer" | "other"; recordedAt: string } | null;
+  /** Staff tags on the order (D173); staff text, never shown to a shopper. */
+  tags: Tag[];
+  /** Archived (D173): a visibility state only. */
+  archivedAt: string | null;
+  /** `draft` for a staff-made order (D173), with the draft it came from and who sent or paid it. */
+  source: "checkout" | "draft";
+  draft: { id: string; number: string | null } | null;
+  madeBy: { id: string; email: string } | null;
 };
 
 export async function getOrderAdmin(storeId: string, orderId: string): Promise<OrderAdmin | null> {
   const order = await getOrder(storeId, orderId);
   if (!order) return null;
-  const [restocks, shipments, refunds, [paid]] = await Promise.all([
+  const [restocks, shipments, refunds, [paid], tags, [origin], listPrices] = await Promise.all([
     db().execute<Row>(sql`
       select item ->> 'sku' as sku, sum((item ->> 'quantity')::int)::int as quantity
       from commerce.order_events e, jsonb_array_elements(e.data -> 'restocked') item
@@ -98,10 +119,25 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
     `),
     db().execute<Row>(sql`
       select coalesce(sum(amount_minor) filter (where status = 'captured'), 0)::bigint as paid,
-             -- Paid at the venue (D66) is paid back there too: only Stripe's can be refunded here.
-             coalesce(sum(amount_minor) filter (where status = 'captured' and provider = 'stripe'), 0)::bigint as online,
-             bool_or(status = 'captured' and provider_account is not null) as connect
+             -- Paid at the venue (D66) is paid back there too: only Stripe's, and a payment recorded outside Kaizen (D173, refunded by being recorded), can be refunded here.
+             coalesce(sum(amount_minor) filter (where status = 'captured' and provider in ('stripe', 'manual')), 0)::bigint as online,
+             bool_or(status = 'captured' and provider_account is not null) as connect,
+             bool_or(status = 'captured' and provider = 'manual') as manual,
+             (array_agg(method order by created_at) filter (where provider = 'manual' and status = 'captured'))[1] as manual_method,
+             min(created_at) filter (where provider = 'manual' and status = 'captured') as manual_at
       from commerce.payments where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid
+    `),
+    getOrderTags(storeId, orderId),
+    db().execute<Row>(sql`
+      select o.archived_at, o.source, o.draft_id, d.number as draft_number, o.made_by, a.email as made_by_email
+      from commerce.orders o
+      left join commerce.draft_orders d on d.store_id = o.store_id and d.id = o.draft_id
+      left join commerce.accounts a on a.id = o.made_by
+      where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
+    `),
+    db().execute<Row>(sql`
+      select id, list_price_minor from commerce.order_lines
+      where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and list_price_minor is not null
     `),
   ]);
   const refundRows: RefundRow[] = refunds.map((r) => ({
@@ -123,9 +159,15 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
   const refunded = refundRows.filter((r) => r.status !== "failed").reduce((sum, r) => sum + r.amountMinor, 0);
   const paidMinor = Number(paid?.paid ?? 0);
   const onlineMinor = Number(paid?.online ?? 0);
+  const listPriceOf = new Map(listPrices.map((l) => [String(l.id), Number(l.list_price_minor)]));
   return {
     ...order,
-    lines: order.lines.map((line) => ({ ...line, restocked: restockedBySku.get(line.sku) ?? 0, restockable: room.get(line.id) ?? 0 })),
+    lines: order.lines.map((line) => ({
+      ...line,
+      listPriceMinor: listPriceOf.get(line.id) ?? null,
+      restocked: restockedBySku.get(line.sku) ?? 0,
+      restockable: room.get(line.id) ?? 0,
+    })),
     shipments: shipments.map((s) => ({
       id: String(s.id),
       carrier: String(s.carrier),
@@ -139,7 +181,15 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
     paidMinor,
     refundedMinor: refunded,
     refundableMinor: Math.max(0, onlineMinor - refunded),
-    canRefund: Boolean(paid?.connect),
+    canRefund: Boolean(paid?.connect) || Boolean(paid?.manual),
+    paidOutside: paid?.manual
+      ? { method: String(paid.manual_method) as "cash" | "bank_transfer" | "other", recordedAt: new Date(String(paid.manual_at)).toISOString() }
+      : null,
+    tags,
+    archivedAt: origin?.archived_at ? new Date(String(origin.archived_at)).toISOString() : null,
+    source: origin?.source === "draft" ? "draft" : "checkout",
+    draft: origin?.draft_id ? { id: String(origin.draft_id), number: origin.draft_number ? String(origin.draft_number) : null } : null,
+    madeBy: origin?.made_by ? { id: String(origin.made_by), email: String(origin.made_by_email ?? "") } : null,
   };
 }
 
@@ -374,12 +424,30 @@ export async function refundOrder(
         where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured' and p.provider = 'stripe'
         order by p.created_at limit 1
       `);
+  // Money taken outside Kaizen (D173, a draft order paid by bank transfer or in cash) is refunded outside too: the refund is RECORDED here, as `succeeded`, with no call to
+  // Stripe, and the credit note follows from the refund by the database's own trigger (D159). Staff pay the customer back themselves.
+  const [manual] =
+    options.outside || payment
+      ? []
+      : await db().execute<Row>(sql`
+          select p.id from commerce.payments p
+          where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured' and p.provider = 'manual'
+          order by p.created_at limit 1
+        `);
+  const recorded = Boolean(manual);
+  // Who may record a refund of money taken outside Kaizen is who may record the payment: the owner, or staff when the owner allows it (D173). A refund through Stripe is any staff member's.
+  if (recorded && !(await accountMayRecordOutside(storeId, accountId))) {
+    return { ok: false, problem: "Only the owner can record a refund of a payment taken outside Kaizen, unless the owner has allowed staff to." };
+  }
+  const refundPayment = payment ?? manual;
   const stripe = payment ? platformStripe(payment.mode as PaymentModeName) : null;
-  if (!options.outside && (!payment || !stripe)) return { ok: false, problem: "Stripe cannot be reached for this store right now." };
+  if (!options.outside && !recorded && (!payment || !stripe)) return { ok: false, problem: "Stripe cannot be reached for this store right now." };
 
   let providerReference: string | null = null;
   let status = "succeeded";
-  if (input.amountMinor > 0) {
+  if (input.amountMinor > 0 && recorded) {
+    providerReference = `manual_refund_${randomUUID()}`;
+  } else if (input.amountMinor > 0) {
     try {
       const stripeAccount = String(payment.provider_account);
       const paymentIntent = await paymentIntentFor(stripe!, String(payment.provider_reference), stripeAccount);
@@ -404,15 +472,29 @@ export async function refundOrder(
     }
   }
 
-  const refundId = await db().transaction(async (tx) => {
+  let refundId: string;
+  try {
+  refundId = await db().transaction(async (tx) => {
     let id = "";
+    // Money taken outside Kaizen has no Stripe to stop a refund above what was paid, so the cap is held HERE, under the order's row lock: two refunds at the same moment (two staff, a double click) are
+    // serialised, and the second sees the first (the amount read before the transaction, in `getOrderAdmin()`, is only for the form). The database refuses the same sum too (`commerce.refunds_manual_cap()`).
+    if (recorded && input.amountMinor > 0) {
+      await tx.execute(sql`select id from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update`);
+      const [left] = await tx.execute<Row>(sql`
+        select (select coalesce(sum(p.amount_minor), 0) from commerce.payments p
+                where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and p.status = 'captured' and p.provider in ('stripe', 'manual'))
+             - (select coalesce(sum(r.amount_minor), 0) from commerce.refunds r join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
+                where p.store_id = ${storeId}::uuid and p.order_id = ${orderId}::uuid and r.status <> 'failed') as left_minor
+      `);
+      if (input.amountMinor > Number(left?.left_minor ?? 0)) throw new RefundOverCap();
+    }
     // The webhook may have recorded this very refund already (a refund Stripe accepted whose row an earlier try failed to write: its event
     // writes the row after a grace period). The same key then gave back the same refund, and its row is claimed here, never made twice.
     let adopted = false;
     if (input.amountMinor > 0) {
       const [row] = await tx.execute<Row>(sql`
         insert into commerce.refunds (store_id, payment_id, amount_minor, reason, provider_reference, status, restocked, created_by)
-        values (${storeId}::uuid, ${String(payment!.id)}::uuid, ${input.amountMinor}, ${input.reason},
+        values (${storeId}::uuid, ${String(refundPayment!.id)}::uuid, ${input.amountMinor}, ${input.reason},
                 ${providerReference}, ${status}::commerce.refund_status,
                 ${JSON.stringify(restock.map(({ sku, quantity }) => ({ sku, quantity })))}::jsonb, ${accountId}::uuid)
         on conflict (store_id, provider_reference) do nothing
@@ -424,7 +506,7 @@ export async function refundOrder(
         const [existing] = await tx.execute<Row>(sql`
           update commerce.refunds set reason = ${input.reason}, created_by = ${accountId}::uuid,
             restocked = ${JSON.stringify(restock.map(({ sku, quantity }) => ({ sku, quantity })))}::jsonb
-          where store_id = ${storeId}::uuid and provider_reference = ${providerReference} and payment_id = ${String(payment!.id)}::uuid
+          where store_id = ${storeId}::uuid and provider_reference = ${providerReference} and payment_id = ${String(refundPayment!.id)}::uuid
           returning id
         `);
         if (!existing) throw new Error("The refund's Stripe id belongs to another payment.");
@@ -461,15 +543,29 @@ export async function refundOrder(
                 })}::jsonb, 'staff')
       `);
     }
+    // A refund recorded outside Kaizen (D173) also says so in the order's history, in words that name no one: `data.note` is the reason (the one free-text key the erasure removes).
+    if (recorded && input.amountMinor > 0) {
+      await tx.execute(sql`
+        insert into commerce.order_events (store_id, order_id, type, data, actor)
+        values (${storeId}::uuid, ${orderId}::uuid, ${ORDER_OPS_EVENTS.refundedOutside}, ${JSON.stringify({ amount: input.amountMinor, note: input.reason })}::jsonb, 'staff')
+      `);
+    }
     await options.inTransaction?.(tx, { refundId: id, status });
     return id;
   });
+  } catch (error) {
+    if (error instanceof RefundOverCap) return { ok: false, problem: "The amount is more than is left to refund." };
+    throw error;
+  }
   // A host's order (D71): the store gives back the refunded share of its commission.
-  if (input.amountMinor > 0 && status !== "failed") await reverseHostCommission(storeId, String(payment!.id));
+  if (input.amountMinor > 0 && status !== "failed" && payment) await reverseHostCommission(storeId, String(payment.id));
   return { ok: true, refundId, amountMinor: input.amountMinor, status };
 }
 
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+/** A refund of money taken outside Kaizen that would take the refunds above what was paid (found under the order's lock). */
+class RefundOverCap extends Error {}
 
 /**
  * Cancels a paid order that has not been sent: refunds what is left, puts

@@ -10,6 +10,7 @@ import { isNative, shown, type Market } from "@/lib/markets";
 import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 import { parseRentalPeriod, rangeEndsAt, type RentalPeriod } from "@/lib/booking-ranges";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
+import { cleanGift, giftOfRow, NO_GIFT, type GiftFields, type GiftProblem } from "@/lib/gift";
 import { backorderNote, lineIsOk, stockOf, type VariantStock } from "@/lib/stock-availability";
 import { planPrice, sameRhythm, type PlanInterval, type PlanTerms } from "@/lib/subscriptions";
 import type { ShownMeasure } from "@/lib/unit-price";
@@ -115,7 +116,11 @@ export type CartCompanyView = CartCompany & {
   vatCheck: { status: "valid" | "invalid" | "unavailable"; checkedAt: string } | null;
 };
 
-export type Cart = { lines: CartLine[]; currency: string; company: CartCompanyView | null };
+/**
+ * The cart's lines, currency and company, and the buyer's gift (wave 3, D173): `gift` is what the cart holds when the store has gift messages on, and `NO_GIFT` when the switch is
+ * off (the store ignores whatever a cart may hold then), so a page draws the box only for a cart that can have one (`getCartGift()` says whether the store offers it).
+ */
+export type Cart = { lines: CartLine[]; currency: string; company: CartCompanyView | null; gift: GiftFields };
 
 /** The ids of this browser's carts in a store, in every market: what orders placed from this device are found by (D139). */
 export async function deviceCartIds(storeId: string): Promise<string[]> {
@@ -147,7 +152,7 @@ export const bookable = sql`
 export async function getCart(shop: Shop): Promise<Cart> {
   const { storeId, market } = shop;
   const cartId = await readCartId(shop);
-  if (!cartId) return { lines: [], currency: market.currency, company: null };
+  if (!cartId) return { lines: [], currency: market.currency, company: null, gift: NO_GIFT };
 
   const rows = await db().execute<Row>(sql`
     select
@@ -157,6 +162,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
       cl.starts_at, cl.resource_id, br.name as staff, st.time_zone, aps.payment, aps.deposit_percent,
       p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id,
       c.company_name, c.organisation_number, c.vat_number, vk.status as vat_status, vk.requested_at as vat_checked_at,
+      c.is_gift, c.gift_to, c.gift_from, c.gift_message,
+      coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
       -- A purchase option still offered, or buying once where that is allowed.
@@ -204,6 +211,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
   const first = rows[0];
   return {
     currency: market.currency,
+    gift: first?.gift_on ? giftOfRow(first) : NO_GIFT,
     company:
       first?.company_name && first.organisation_number
         ? {
@@ -330,6 +338,46 @@ export async function setCartCompany(shop: Shop, company: CartCompany | null): P
       updated_at = now()
     where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open'
   `);
+}
+
+/** Whether the store offers gift messages, and what the cart holds: what the cart page's gift box is drawn from (the store's switch is `order_settings.gift_messages`). */
+export async function getCartGift(shop: Shop): Promise<{ enabled: boolean; gift: GiftFields }> {
+  const [setting] = await db().execute<Row>(sql`select gift_messages from commerce.order_settings where store_id = ${shop.storeId}::uuid`);
+  const enabled = Boolean(setting?.gift_messages);
+  if (!enabled) return { enabled, gift: NO_GIFT };
+  const cartId = await readCartId(shop);
+  if (!cartId) return { enabled, gift: NO_GIFT };
+  const [row] = await db().execute<Row>(sql`
+    select is_gift, gift_to, gift_from, gift_message from commerce.carts
+    where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and market_code = ${shop.market.code} and status = 'open' and expires_at > now()
+  `);
+  return { enabled, gift: row ? giftOfRow(row) : NO_GIFT };
+}
+
+export type SetCartGiftResult =
+  | { ok: true; gift: GiftFields }
+  | { ok: false; problem: "no_cart" }
+  /** A text over its limit: refused, never cut; each problem says how many characters (or lines) too many. */
+  | { ok: false; problem: "too_long"; problems: GiftProblem[] };
+
+/**
+ * The buyer's gift on the cart (wave 3, D173, `docs/wave-3-orders.md` 2.1): ticked or not, with To, From and a message, cleaned by `cleanGift()` (NFC, no control, bidirectional or zero-width
+ * characters, never cut: over the limit is refused with the excess). Unticking clears the three texts. A store with gift messages off ignores everything sent to it (nothing is stored, the answer
+ * is no gift). Sets no cookie and keeps nothing outside the cart; the cart's own cookie already exists.
+ */
+export async function setCartGift(shop: Shop, input: { isGift?: unknown; to?: unknown; from?: unknown; message?: unknown }): Promise<SetCartGiftResult> {
+  const [setting] = await db().execute<Row>(sql`select gift_messages from commerce.order_settings where store_id = ${shop.storeId}::uuid`);
+  if (!setting?.gift_messages) return { ok: true, gift: NO_GIFT };
+  const cartId = await readCartId(shop);
+  if (!cartId) return { ok: false, problem: "no_cart" };
+  const cleaned = cleanGift(input, true);
+  if (!cleaned.ok) return { ok: false, problem: "too_long", problems: cleaned.problems };
+  const gift = cleaned.gift;
+  await db().execute(sql`
+    update commerce.carts set is_gift = ${gift.isGift}, gift_to = ${gift.to}, gift_from = ${gift.from}, gift_message = ${gift.message}, updated_at = now()
+    where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and market_code = ${shop.market.code} and status = 'open'
+  `);
+  return { ok: true, gift };
 }
 
 export type CartVatResult = CartVatOutcome | { ok: false; problem: "no_company" };

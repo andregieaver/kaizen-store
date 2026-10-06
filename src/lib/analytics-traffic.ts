@@ -254,8 +254,15 @@ export function classifyChannel(input: ClassifyInput): Classified {
 
 /** The channel names (and `unknown`, for orders with no visit) as the admin shows them. */
 export const UNKNOWN_CHANNEL = "unknown";
+/**
+ * Orders staff made from a draft order (D173, `orders.source = 'draft'`): not a visit, so no channel earns them and they have no sessions, no
+ * conversion and no spend. They are a row of their own in the channel table so its revenue adds up to the period's, and the blended conversion leaves them out.
+ */
+export const STAFF_CHANNEL = "staff";
+/** Rows that are not a place visitors come from: their sessions are not known and they are never a channel to compare or spend on. */
+export const isNotAChannel = (key: string): boolean => key === UNKNOWN_CHANNEL || key === STAFF_CHANNEL;
 export const channelLabel = (key: string): string =>
-  key === UNKNOWN_CHANNEL ? "Unknown" : key === "blended" ? "Blended" : (CHANNELS.find((c) => c.key === key)?.label ?? key);
+  key === UNKNOWN_CHANNEL ? "Unknown" : key === STAFF_CHANNEL ? "Staff-made" : key === "blended" ? "Blended" : (CHANNELS.find((c) => c.key === key)?.label ?? key);
 
 // ---------------------------------------------------------------------------
 // Landing pages
@@ -556,8 +563,12 @@ export function channelTable(rows: readonly ChannelInput[]): ChannelTable {
     spendMinor: paid.reduce((sum, r) => sum + r.spendMinor, 0),
     contributionBeforeMarketingMinor: paid.length === 0 || paid.some((r) => r.contributionBeforeMarketingMinor === null) ? null : paid.reduce((sum, r) => sum + num(r.contributionBeforeMarketingMinor), 0),
   };
+  // A staff-made order was not a visit: the blended conversion counts the others only.
+  const staffOrders = list.find((r) => r.channel === STAFF_CHANNEL)?.orders ?? 0;
+  const blendedBase = derive(total, "Blended", total.revenueMinor);
   const blended: ChannelRow = {
-    ...derive(total, "Blended", total.revenueMinor),
+    ...blendedBase,
+    conversion: total.sessions !== null && total.sessions > 0 ? Math.max(0, total.orders - staffOrders) / total.sessions : null,
     roas: spendChannels.spendMinor > 0 ? spendChannels.revenueMinor / spendChannels.spendMinor : null,
     profitRoas:
       spendChannels.spendMinor > 0 && spendChannels.contributionBeforeMarketingMinor !== null ? spendChannels.contributionBeforeMarketingMinor / spendChannels.spendMinor : null,

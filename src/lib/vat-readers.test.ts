@@ -55,17 +55,17 @@ describe("who reads a buyer's VAT number and VIES's answer", () => {
   it("is the VAT modules and the cart, for the number on the cart and the check an order rests on", () => {
     // `personal-data.ts` (the register of personal data, D162) names the column to say what erasure does to it; it reads nothing. The erasure and the retention
     // schedule only clear a cart's link to a check (the order's own check is anonymised by `commerce.anonymise_order()`).
-    expect(readers(/\bvat_check_id\b/)).toEqual(["src/lib/personal-data.ts", "src/server/cart.ts", "src/server/checkout.ts", "src/server/privacy-erasure.ts", "src/server/retention.ts", "src/server/tax-treatment.ts", "src/server/vat-checks.ts"]);
+    expect(readers(/\bvat_check_id\b/)).toEqual(["src/lib/personal-data.ts", "src/server/cart.ts", "src/server/checkout.ts", "src/server/order-insert.ts", "src/server/privacy-erasure.ts", "src/server/retention.ts", "src/server/tax-treatment.ts", "src/server/vat-checks.ts"]);
   });
 
   it("is the order's own modules, for the treatment an order keeps (the shopper's copy has no registered name or address)", () => {
     const orders = readers(/\bvat_treatment\b/).filter((file) => !/work|vat-treatment\.ts$/.test(file));
-    // `checkout.ts` writes it, `orders.ts` reads it for the order page and for staff, `tax-treatment.ts` builds it,
+    // `order-insert.ts` writes it (the one insert of an order, which checkout, the renewal and draft orders call), `orders.ts` reads it for the order page and for staff, `tax-treatment.ts` builds it,
     // `owner-tools.ts` mentions the column's name in a comment on what the assistant is told (kind and relief only).
     // `personal-data.ts` (the register of personal data, D162) names the keys erasure removes from it; it reads nothing. The data export reads the treatment's
     // reason code only (never the number or VIES's answer). The owner's order file (D165) reads the kind, the relief and the buyer's own number, for the
     // owner's accounting, and writes them to a file that is only ever downloaded by the owner.
-    expect(orders).toEqual(["src/lib/personal-data.ts", "src/server/checkout.ts", "src/server/order-export.ts", "src/server/orders.ts", "src/server/owner-tools.ts", "src/server/privacy-export.ts", "src/server/tax-treatment.ts"]);
+    expect(orders).toEqual(["src/lib/personal-data.ts", "src/server/order-export.ts", "src/server/order-insert.ts", "src/server/orders.ts", "src/server/owner-tools.ts", "src/server/privacy-export.ts", "src/server/tax-treatment.ts"]);
   });
 
   it("is not in a shopper's view of an order: `OrderView.vat` has no registered name or address", () => {

@@ -963,3 +963,25 @@ describe("alertsFor, everything at once", () => {
     expect(Object.keys(ALERT_RULES).sort()).toEqual(["abandonment", "bestDay", "cac", "conversion", "costs", "discounts", "refunds", "returningHigh", "stockout", "target", "weekdayRevenue"]);
   });
 });
+
+describe("conversion drop and staff-made orders (D173)", () => {
+  const conv = (s: AlertSnapshot) => only(alertsFor(s), "conversion-drop");
+  /** The last 7 days with 16 paid orders a day of which `staff` were made by staff: 16 - staff came from a checkout. */
+  const week = (staff: number) => daily((k) => (k >= 1 && k <= 7 ? { orders: 16, checkoutOrders: 16 - staff } : {}));
+
+  it("does not count a staff-made order as a sale from a visit: 16 orders of which 4 staff-made is a 1.5 % rate, not 2.0 %", () => {
+    const a = conv(snap({ daily: week(4) }))!;
+    expect(a).toBeDefined();
+    expect(a.evidence[0].value).toBe("1.5 %");
+  });
+
+  it("is quiet when the orders that dropped are only ones staff made nothing of: all checkout orders count as before", () => {
+    // The same 16 orders, none staff-made: exactly the old figure (2.0 % against 2.5 % is 20 % lower).
+    expect(conv(snap({ daily: week(0) }))!.evidence[0].value).toBe("2.0 %");
+  });
+
+  it("leaves the other order alerts reading every paid order", () => {
+    const day = daily((k) => (k === 1 ? { orders: 20, checkoutOrders: 0 } : {}));
+    expect(alertsFor(snap({ daily: day })).some((a) => a.id === "conversion-drop")).toBe(false);
+  });
+});

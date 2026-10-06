@@ -45,6 +45,7 @@ export const CHOOSING: Record<string, { template: string; prepare?: (args: unkno
     prepare: ([n]) => ((n as number) % 365 === 0 ? ["y", (n as number) / 365] : ["d", n]),
   },
   "ui:downloadsLeft": { template: plural("# download left", "# downloads left") },
+  "ui:gift.counter": { template: plural("# character left", "# characters left") },
   "ui:bonus.dayCount": { template: plural("# day", "# days") },
   "ui:bonus.monthCount": { template: plural("# month", "# months") },
   "ui:planEvery": {
@@ -93,7 +94,17 @@ export const CHOOSING: Record<string, { template: string; prepare?: (args: unkno
  * `src/lib/i18n.ts`; any other language shows the English sentence, never an unreviewed translation of it. A text of this kind is
  * added here, not left to the generator (`ui-catalog.test.ts` holds the list).
  */
-export const HAND_WRITTEN_ONLY: readonly string[] = ["ui:backorder.", "email:backorder."];
+export const HAND_WRITTEN_ONLY: readonly string[] = [
+  "ui:backorder.",
+  "email:backorder.",
+  // Wave 3, run 2 (D173): what is done with a buyer's gift text and the third party it names, the page of a pay link and its email. The plain labels of the gift box
+  // (`ui:gift.title`, `to`, `from`, `message`, `counter`) are interface text and may be translated.
+  "ui:gift.note.",
+  "ui:gift.slip.",
+  "ui:draftPay.",
+  "email:draft.",
+  "email:giftMessage.",
+];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));
 

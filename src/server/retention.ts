@@ -19,6 +19,8 @@ import {
 import { audit } from "./auth";
 import { SCHEME_RETENTION_YEARS } from "@/lib/invoice-retention";
 import { anonymiseDocuments } from "./invoice-retention";
+import { pruneDraftOrders } from "./draft-orders";
+import { pruneAnonymisedOrderTags } from "./order-tags";
 import { pruneInventoryMovements } from "./stock-alerts";
 import { textList } from "./sql-arrays";
 
@@ -111,6 +113,8 @@ export const RETENTION_STEPS = [
   "privacy_request_contact",
   "privacy_requests",
   "inventory_movements",
+  "draft_orders",
+  "order_tags",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -343,6 +347,16 @@ const STEPS: Record<RetentionStep, StepFn> = {
   // personal data, so this is a size limit, not an erasure.
   async inventory_movements(ctx) {
     return { count: await pruneInventoryMovements(ctx.now, ctx.batch, MAX_ROUNDS) };
+  },
+
+  // Draft orders (wave 3, D173, docs/wave-3-orders.md 3.6): an open draft not edited for 90 days, a finished one 30 days after it ended. Their contact data is deleted; the orders they made keep all their own.
+  async draft_orders(ctx) {
+    return { count: await pruneDraftOrders(ctx.now) };
+  },
+
+  // The tags of orders that are anonymised (D162): staff text about a person's order goes with the person (the SQL anonymising function holds no delete, so this is application code).
+  async order_tags() {
+    return { count: await pruneAnonymisedOrderTags() };
   },
 };
 

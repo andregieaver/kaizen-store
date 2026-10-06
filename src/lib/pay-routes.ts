@@ -73,5 +73,17 @@ export function isDocumentPath(pathname: string): boolean {
   return market !== undefined && MARKET.test(market) && segments[own + 1] === "account" && segments[own + 2] === "documents" && segments.length > own + 3;
 }
 
-/** Where the market layout draws none of its extras (`MarketExtras`) and a script from an earlier page must not still be in the document: the pay routes and the hosted documents. */
-export const isNoExtrasPath = (pathname: string): boolean => isPayPath(pathname) || isDocumentPath(pathname);
+/**
+ * A draft order's pay link, `/s/{store}/{market}/account/pay/{token}` (wave 3, run 2, D173, `docs/wave-3-orders.md` 2.1), on either shape of address. Like a hosted document its address
+ * holds a bearer token, here one that opens a buyer's own order and the way to pay it, so the layout draws no tracking, owner code, chat or referral capture on it either, and it is entered by a
+ * full page load. It is not a pay route in the policy's sense: no card is typed on it (the button hands the buyer to Stripe's own page), so it needs no policy of its own.
+ */
+export function isPayLinkPath(pathname: string): boolean {
+  const segments = pathname.split(/[?#]/)[0].split("/").filter(Boolean);
+  const own = segments[0] === "s" ? 2 : 0;
+  const market = segments[own];
+  return market !== undefined && MARKET.test(market) && segments[own + 1] === "account" && segments[own + 2] === "pay" && segments.length > own + 3;
+}
+
+/** Where the market layout draws none of its extras (`MarketExtras`) and a script from an earlier page must not still be in the document: the pay routes, the hosted documents and a draft's pay link. */
+export const isNoExtrasPath = (pathname: string): boolean => isPayPath(pathname) || isDocumentPath(pathname) || isPayLinkPath(pathname);

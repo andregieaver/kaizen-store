@@ -10,9 +10,8 @@ import { db } from "@/db/client";
 import { formatClock, formatRangeDates, parseRentalPeriod, rangeEndsAt } from "@/lib/booking-ranges";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { companyRequired, parseProductAudience, parseStoreAudience } from "@/lib/b2b";
-import { CHECKOUT_MINUTES, lineWithdrawal, stripeLocale, vatIncluded } from "@/lib/checkout";
+import { CHECKOUT_MINUTES, lineWithdrawal, vatIncluded } from "@/lib/checkout";
 import { isNative, shown, type Market } from "@/lib/markets";
-import { formatMoney } from "@/lib/money";
 import { marketPath, storeOrigin } from "@/lib/paths";
 import { shownOptions, t } from "@/lib/i18n";
 import { parsePaymentMode, venuePart } from "@/lib/pay-later";
@@ -22,30 +21,26 @@ import type { OrderVatTreatment, VatKind } from "@/lib/vat-treatment";
 import { applyDiscount } from "@/lib/discounts";
 import { basketShipping, planPrice, sameRhythm, type PlanInterval } from "@/lib/subscriptions";
 
-import { saleFee, type PaymentModeName } from "@/lib/stripe-account";
-import { allocate, totalsOf } from "@/lib/stock-routing";
+import type { PaymentModeName } from "@/lib/stripe-account";
 import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
+import { giftOfRow, NO_GIFT, type GiftFields } from "@/lib/gift";
 
 import { holdAppointment } from "./appointments";
+import { allocateStock, insertOrder, insertOrderLine, reserveStock, type StockHold } from "./order-insert";
 import { holdRange, linePrice, rangePricing } from "./ranges";
 import { recordExperimentCart } from "./experiments";
-import { storeFeeBps } from "./billing";
 import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails";
 import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable } from "./cart";
-import { ensurePaymentDomain, ensureStorePaymentMethods, ensureTestAccount, getCheckoutUi } from "./connect";
+import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
 import { chosenDelivery } from "./delivery-options";
 import { friendState, rememberAffiliate, welcomeFor } from "./affiliates";
 import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { findUsableDiscount } from "./discounts";
-import { commissionOf, hostCheckoutAccount } from "./host-payments";
-import { getCheckoutAccount } from "./settings";
-import { kaizenInvoicingOn } from "./invoice-settings";
-import { ensureSubscriptionEvents } from "./subscriptions";
-import { platformStripe } from "./stripe";
+import { openPaymentSession, paymentConnection } from "./payment-session";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -201,7 +196,8 @@ export async function placeOrder(
   return inTransaction(async (tx): Promise<PlaceResult> => {
     const [cart] = await tx.execute<Row>(sql`
       select c.id, c.discount_code, c.company_name, c.organisation_number, s.audience as store_audience, s.time_zone,
-        c.bonus_request_minor, c.affiliate_code
+        c.bonus_request_minor, c.affiliate_code, c.is_gift, c.gift_to, c.gift_from, c.gift_message,
+        coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on
       from commerce.carts c
       join commerce.stores s on s.id = c.store_id
       where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid and c.market_code = ${market.code}
@@ -398,69 +394,27 @@ export async function placeOrder(
     // counted (on hand minus live holds) and `allocate()` applies the stated rule. A variant that keeps selling on backorder takes
     // the units beyond its stock too, at the location the rule names; one that stops at zero fails the order with `stock`.
     const toShip = lines.filter((l) => l.delivery === "physical");
-    const shipVariantIds = [...new Set(toShip.map((l) => String(l.variant_id)))].sort();
-    const allocations: { variantId: string; locationId: string; quantity: number; backordered: number }[] = [];
     // The units of each variant that are backordered at placement, given to its lines (paid ones first, a gift last), and kept on the
     // reservation (`backorder_quantity`): the rest of the hold is the order's own physical claim, which a checkout started later and paid
     // first cannot take (`commerce.draw_order_stock()`), so what the shopper was told stays true; the draw settles the figure at payment.
     const backorderOfLine = new Map<number, number>();
-    if (shipVariantIds.length > 0) {
-      const variantIds = sql.join(shipVariantIds.map((id) => sql`${id}::uuid`), sql`, `);
-      const places = await tx.execute<Row>(sql`
-        select id, priority, created_at from commerce.inventory_locations
-        where store_id = ${storeId}::uuid and active
-        order by priority, created_at, id
-      `);
-      // A variant that keeps selling past zero and has no level at any active location gets one at the first, so there is a row to lock and draw.
-      const home = places[0] ? String(places[0].id) : null;
-      if (home) {
-        const keeps = noBackorder ? [] : [...new Set(toShip.filter((l) => l.stock_policy === "continue").map((l) => String(l.variant_id)))];
-        for (const variantId of keeps) {
-          await tx.execute(sql`
-            insert into commerce.inventory_levels (store_id, variant_id, location_id, on_hand)
-            select ${storeId}::uuid, ${variantId}::uuid, ${home}::uuid, 0
-            where not exists (
-              select 1 from commerce.inventory_levels l
-              join commerce.inventory_locations loc on loc.store_id = l.store_id and loc.id = l.location_id and loc.active
-              where l.store_id = ${storeId}::uuid and l.variant_id = ${variantId}::uuid
-            )
-            on conflict (variant_id, location_id) do nothing
-          `);
-        }
-      }
-      const levels = await tx.execute<Row>(sql`
-        select l.variant_id, l.location_id, l.on_hand
-        from commerce.inventory_levels l
-        where l.store_id = ${storeId}::uuid and l.variant_id in (${variantIds})
-        order by l.variant_id, l.location_id
-        for update of l
-      `);
-      const holds = await tx.execute<Row>(sql`
-        select variant_id, location_id, sum(quantity)::int as held
-        from commerce.inventory_reservations
-        where store_id = ${storeId}::uuid and variant_id in (${variantIds})
-          and released_at is null and expires_at > now()
-        group by variant_id, location_id
-      `);
-      const heldAt = new Map(holds.map((h) => [`${h.variant_id}:${h.location_id}`, Number(h.held)]));
-      const outcome = allocate({
-        locations: places.map((l) => ({ id: String(l.id), priority: Number(l.priority), createdAt: new Date(String(l.created_at)).toISOString(), active: true })),
-        cells: levels.map((l) => ({
-          variantId: String(l.variant_id),
-          locationId: String(l.location_id),
-          onHand: Number(l.on_hand),
-          reserved: heldAt.get(`${l.variant_id}:${l.location_id}`) ?? 0,
-        })),
+    let allocations: StockHold[] = [];
+    if (toShip.length > 0) {
+      const keeps = noBackorder ? [] : [...new Set(toShip.filter((l) => l.stock_policy === "continue").map((l) => String(l.variant_id)))];
+      const plan = await allocateStock(
+        tx,
+        storeId,
         // The same variant can be bought once and subscribed to: it is one want. A free gift is never backordered: it makes its variant's want a `deny` one.
-        lines: toShip.map((l) => ({
+        toShip.map((l) => ({
           variantId: String(l.variant_id),
           quantity: Number(l.quantity),
           policy: l.stock_policy === "continue" && !gifted.has(l) && !noBackorder ? ("continue" as const) : ("deny" as const),
         })),
-      });
-      if (!outcome.ok) return { ok: false, problem: "stock" };
-      for (const take of outcome.takes) allocations.push({ variantId: take.variantId, locationId: take.locationId, quantity: take.quantity, backordered: take.backordered });
-      const behind = new Map([...totalsOf(outcome.takes)].map(([id, t]) => [id, t.backordered]));
+        keeps,
+      );
+      if (!plan.ok) return { ok: false, problem: "stock" };
+      allocations = plan.holds;
+      const behind = new Map(plan.behind);
       // Paid lines first (in the order of the lines), then gifts.
       const order = priced.map((p, i) => ({ p, i })).filter(({ p }) => p.delivery === "physical" && !p.startsAt).sort((x, y) => Number(x.p.gift) - Number(y.p.gift) || x.i - y.i);
       for (const { p, i } of order) {
@@ -652,63 +606,81 @@ export async function placeOrder(
     const tax = taxOutcome.taxMinor;
     const total = subtotal + shipping - discountAll;
 
-    const [numbered] = await tx.execute<Row>(sql`
-      select s.prefix || commerce.next_document_number(${storeId}::uuid, 'order')::text as number
-      from commerce.document_series s
-      where s.store_id = ${storeId}::uuid and s.series = 'order'
-    `);
-    const [order] = await tx.execute<Row>(sql`
-      insert into commerce.orders (
-        store_id, number, market_code, currency, locale, cart_id, email, status,
-        subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
-        billing_address, shipping_address, digital_consent_at, customer_id, discount_code_id, discount_code,
-        company_name, organisation_number, balance_minor, host_id,
-        member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label, credit_minor,
-        referral_discount_minor, delivery, standard_shipping_minor, return_cost_payer,
-        vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, vat_check_id
-      ) values (
-        ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
-        ${cartId}::uuid, '', 'pending_payment',
-        ${subtotal}, ${shipping}, ${discountAll}, ${tax}, ${total}, '{}'::jsonb, '{}'::jsonb,
-        ${digital ? sql`now()` : sql`null`}, ${customerId}::uuid, ${discount?.id ?? null}::uuid, ${discount?.code ?? null},
-        ${company?.name ?? null}, ${company?.number ?? null}, ${balance}, ${hostId}::uuid,
-        ${memberTotal}, ${memberTotal > 0 ? member!.label : null}, ${memberTotal > 0 ? member!.percent : null},
-        ${campaignTotal}, ${campaignTotal > 0 ? campaignText : null}, ${creditTotal}, ${referralTotal},
-        ${chosen ? JSON.stringify(chosen.delivery) : null}::jsonb, ${standardShipping}, ${returnCostPayer},
-        ${taxOutcome.decision.kind}, ${taxOutcome.reliefMinor}, ${taxOutcome.shippingRate},
-        ${taxOutcome.treatment ? JSON.stringify(taxOutcome.treatment) : null}::jsonb, ${taxFacts.buyerCheck?.id ?? null}::uuid
-      )
-      returning id
-    `);
-    const orderId = String(order.id);
+    // The order is numbered and written in `insertOrder()`, the one place that does (D141, `src/server/order-insert.ts`). The buyer's
+    // gift (D173) is copied from the cart when the store has gift messages on; a store with the switch off ignores whatever the cart holds.
+    const gift: GiftFields = cart.gift_on ? giftOfRow(cart) : NO_GIFT;
+    const { orderId, number: orderNumber } = await insertOrder(tx, {
+      storeId,
+      marketCode: market.code,
+      currency: market.currency,
+      locale: market.locale,
+      cartId,
+      subtotalMinor: subtotal,
+      shippingMinor: shipping,
+      discountMinor: discountAll,
+      taxMinor: tax,
+      totalMinor: total,
+      digitalConsentAt: digital ? "now" : null,
+      customerId,
+      discountCodeId: discount?.id ?? null,
+      discountCode: discount?.code ?? null,
+      companyName: company?.name ?? null,
+      organisationNumber: company?.number ?? null,
+      balanceMinor: balance,
+      hostId,
+      memberDiscountMinor: memberTotal,
+      memberLabel: memberTotal > 0 ? member!.label : null,
+      memberPercent: memberTotal > 0 ? member!.percent : null,
+      campaignDiscountMinor: campaignTotal,
+      campaignLabel: campaignTotal > 0 ? campaignText : null,
+      creditMinor: creditTotal,
+      referralDiscountMinor: referralTotal,
+      delivery: chosen ? chosen.delivery : null,
+      standardShippingMinor: standardShipping,
+      returnCostPayer,
+      vatKind: taxOutcome.decision.kind,
+      vatReliefMinor: taxOutcome.reliefMinor,
+      shippingTaxRate: taxOutcome.shippingRate,
+      vatTreatment: taxOutcome.treatment,
+      vatCheckId: taxFacts.buyerCheck?.id ?? null,
+      gift,
+    });
 
     for (const [i, p] of priced.entries()) {
       // What the variant holds when it is sold (D160), with the base in effect in this market: frozen on the line, so the
       // order page and its emails say what the order said. A booking has none; it changes no money.
       const snapshot = p.startsAt ? null : shownMeasureFromColumns(p.line.measure_amount, p.line.measure_unit, p.line.measure_base, market.code);
-      const [orderLine] = await tx.execute<Row>(sql`
-        insert into commerce.order_lines (
-          store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor,
-          total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
-          selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
-          campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor,
-          unit_cost_minor, vat_relief_minor, measure_amount, measure_unit, measure_base, backorder_quantity, backorder_days
-        ) values (
-          ${storeId}::uuid, ${orderId}::uuid, ${String(p.line.variant_id)}::uuid, ${String(p.line.sku)},
-          ${p.title}, ${p.quantity}, ${p.unit}, ${p.discount}, ${p.member}, ${p.total}, ${taxOfLine.get(String(i))?.taxMinor ?? 0},
-          ${p.rate}, ${String(p.line.tax_code)},
-          ${lineWithdrawal(p.delivery, String(p.line.withdrawal_exclusion))}, ${p.delivery},
-          ${p.recurring ? String(p.line.selling_plan_id) : null}::uuid,
-          ${p.recurring ? String(p.line.interval) : null}::commerce.plan_interval,
-          ${p.recurring ? Number(p.line.interval_count) : null}, ${venue[i]},
-          ${p.range && p.startsAt ? p.count : null},
-          ${p.campaign}, ${p.campaignId}::uuid, ${JSON.stringify(p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })))}::jsonb, ${p.gift}, ${p.bonus}, ${p.referral},
-          ${p.line.cost_minor === null || p.line.cost_minor === undefined ? null : Number(p.line.cost_minor)}, ${p.relief},
-          ${snapshot?.amount ?? null}::numeric, ${snapshot?.unit ?? null}, ${snapshot?.base ?? null},
-          ${backorderOfLine.get(i) ?? 0}, ${backorderOfLine.has(i) && p.line.backorder_days !== null && p.line.backorder_days !== undefined ? Number(p.line.backorder_days) : null}
-        )
-        returning id
-      `);
+      const orderLineId = await insertOrderLine(tx, storeId, orderId, {
+        variantId: String(p.line.variant_id),
+        sku: String(p.line.sku),
+        title: p.title,
+        quantity: p.quantity,
+        unitPriceMinor: p.unit,
+        discountMinor: p.discount,
+        memberDiscountMinor: p.member,
+        totalMinor: p.total,
+        taxMinor: taxOfLine.get(String(i))?.taxMinor ?? 0,
+        taxRate: p.rate,
+        taxCode: String(p.line.tax_code),
+        withdrawalExclusion: lineWithdrawal(p.delivery, String(p.line.withdrawal_exclusion)),
+        delivery: p.delivery,
+        sellingPlanId: p.recurring ? String(p.line.selling_plan_id) : null,
+        planInterval: p.recurring ? String(p.line.interval) : null,
+        planIntervalCount: p.recurring ? Number(p.line.interval_count) : null,
+        venueMinor: venue[i],
+        bookedCount: p.range && p.startsAt ? p.count : null,
+        campaignDiscountMinor: p.campaign,
+        campaignId: p.campaignId,
+        campaignParts: p.parts.map((part) => ({ id: part.campaignId, name: part.name, minor: part.minor })),
+        gift: p.gift,
+        bonusDiscountMinor: p.bonus,
+        referralDiscountMinor: p.referral,
+        unitCostMinor: p.line.cost_minor === null || p.line.cost_minor === undefined ? null : Number(p.line.cost_minor),
+        vatReliefMinor: p.relief,
+        measure: snapshot ? { amount: snapshot.amount, unit: snapshot.unit, base: snapshot.base } : null,
+        backorderQuantity: backorderOfLine.get(i) ?? 0,
+        backorderDays: backorderOfLine.has(i) && p.line.backorder_days !== null && p.line.backorder_days !== undefined ? Number(p.line.backorder_days) : null,
+      });
       // The appointment's time (or the stay's or rental's nights or days, D67) is held as long as
       // its stock would be; taken meanwhile, nothing is placed.
       if (p.startsAt) {
@@ -718,7 +690,7 @@ export async function placeOrder(
           startsAt: p.startsAt,
           resourceId: p.line.resource_id ? String(p.line.resource_id) : null,
           orderId,
-          orderLineId: String(orderLine.id),
+          orderLineId,
           holdMinutes: CHECKOUT_MINUTES + 5,
         };
         const held = p.range
@@ -754,7 +726,7 @@ export async function placeOrder(
           store_id, number, market_code, currency, locale, interval, interval_count, min_cycles,
           subtotal_minor, shipping_minor, total_minor, tax_minor, first_order_id, manage_token, customer_id
         ) values (
-          ${storeId}::uuid, ${String(numbered.number)}, ${market.code}, ${market.currency}, ${market.locale},
+          ${storeId}::uuid, ${orderNumber}, ${market.code}, ${market.currency}, ${market.locale},
           ${rhythm.interval}, ${rhythm.intervalCount}, ${minCycles}, ${renewalSubtotal}, ${basket.renewal},
           ${renewalSubtotal + basket.renewal}, ${renewalTax}, ${orderId}::uuid,
           replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', ''), ${customerId}::uuid
@@ -780,13 +752,7 @@ export async function placeOrder(
       `);
       subscription = { id: subscriptionId, ...rhythm, shippingMinor: basket.renewal };
     }
-    for (const a of allocations) {
-      await tx.execute(sql`
-        insert into commerce.inventory_reservations (store_id, variant_id, location_id, quantity, backorder_quantity, order_id, expires_at)
-        values (${storeId}::uuid, ${a.variantId}::uuid, ${a.locationId}::uuid, ${a.quantity}, ${a.backordered}, ${orderId}::uuid,
-                now() + make_interval(mins => ${CHECKOUT_MINUTES + 5}))
-      `);
-    }
+    await reserveStock(tx, storeId, orderId, allocations, { minutes: CHECKOUT_MINUTES + 5 });
     // The credits are held against the order while it waits for payment: paying keeps them used, cancelling gives them back.
     if (creditTotal > 0) {
       await tx.execute(sql`
@@ -819,7 +785,7 @@ export async function placeOrder(
       ok: true,
       order: {
         orderId,
-        number: String(numbered.number),
+        number: orderNumber,
         currency: market.currency,
         lines: [
           ...priced.map((p, i) => ({
@@ -929,37 +895,6 @@ async function confirmAtVenue(storeId: string, order: PlacedOrder, contact: Chec
   return token;
 }
 
-/** How often a subscription's lines renew, as Stripe takes it. */
-function recurring(plan: { interval: PlanInterval; intervalCount: number }) {
-  return { interval: plan.interval, interval_count: plan.intervalCount };
-}
-
-/**
- * Shipping as lines of a subscription checkout, which takes no shipping
- * options: what renews with each delivery, and what the first delivery
- * costs on top (items bought once when the subscription itself ships nothing).
- */
-export function subscriptionShipping(
-  order: Pick<PlacedOrder, "subscription" | "shippingMinor">,
-  currency: string,
-  label: string,
-): Stripe.Checkout.SessionCreateParams.LineItem[] {
-  if (!order.subscription) return [];
-  const renewing = order.subscription.shippingMinor;
-  // In a free trial, the renewing line is not charged now (D29).
-  const once = order.shippingMinor - (order.subscription.trialDays > 0 ? 0 : renewing);
-  const line = (amount: number, renews: boolean) => ({
-    quantity: 1,
-    price_data: {
-      currency,
-      unit_amount: amount,
-      product_data: { name: label },
-      ...(renews && order.subscription && { recurring: recurring(order.subscription) }),
-    },
-  });
-  return [...(renewing > 0 ? [line(renewing, true)] : []), ...(once > 0 ? [line(once, false)] : [])];
-}
-
 /** Cancels an unpaid order and releases its stock. */
 export async function cancelUnpaidOrder(orderId: string, reason: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
@@ -981,43 +916,10 @@ export async function completeOrderPayment(orderId: string, reference: string): 
   return Boolean(row?.completed);
 }
 
+// The shipping lines of a subscription's session now live with the session itself (`payment-session.ts`); checkout's tests still reach them here.
+export { subscriptionShipping } from "./payment-session";
+
 export type CheckoutStart = { ok: true; url: string } | { ok: false; problem: CheckoutProblem; orderId?: string };
-
-/** Tags Kaizen's storefront sessions in the Stripe Dashboard (Stripe asks for 8 random letters). */
-const INTEGRATION_IDENTIFIER = "kaizen-storefront-qhwmzrtd";
-
-/** "Of which VAT" on the order invoice, in the shopper's language. */
-const VAT_LABELS: Record<string, string> = { nb: "Herav mva", sv: "Varav moms", da: "Heraf moms" };
-/**
- * What a reverse-charge order's Stripe invoice says (D157): the words, the seller's and the buyer's VAT numbers and whom it
- * is bought for, in four fields. The words are a legal statement (Directive 2006/112/EC Art. 226 point 11a asks for
- * "Reverse charge" on the invoice): hand-written, never machine-translated, and need a lawyer's review (docs/wave-1a-tax.md
- * section 8); languages other than these four show English. The invoice of Kaizen's own is unit 1b's.
- */
-// legal: needs review
-const REVERSE_LABELS: Record<string, { words: string; seller: string; buyer: string; company: string }> = {
-  nb: { words: "Omvendt avgiftsplikt", seller: "Selgers mva-nr.", buyer: "Kjøpers mva-nr.", company: "Kjøper" },
-  sv: { words: "Omvänd skattskyldighet", seller: "Säljarens momsnr", buyer: "Köparens momsnr", company: "Köpare" },
-  da: { words: "Omvendt betalingspligt", seller: "Sælgers momsnr.", buyer: "Købers momsnr.", company: "Køber" },
-  en: { words: "Reverse charge", seller: "Seller VAT no.", buyer: "Buyer VAT no.", company: "Buyer" },
-};
-
-function reverseChargeFields(lang: string, order: Pick<PlacedOrder, "treatment" | "company">) {
-  const label = REVERSE_LABELS[lang] ?? REVERSE_LABELS.en;
-  return [
-    { name: label.words, value: "VAT 0" },
-    { name: label.seller, value: order.treatment?.sellerVatNumber ?? "-" },
-    { name: label.buyer, value: order.treatment?.buyerVatNumber ?? "-" },
-    ...(order.company ? [{ name: label.company, value: order.company.name.slice(0, 140) }] : []),
-  ];
-}
-
-const COMPANY_LABELS: Record<string, { name: string; number: string }> = {
-  nb: { name: "Kjøper", number: "Org.nr." },
-  sv: { name: "Köpare", number: "Org.nr" },
-  da: { name: "Køber", number: "CVR-nr." },
-  en: { name: "Buyer", number: "Organisation number" },
-};
 
 /**
  * From cart to payment: closes any earlier unpaid checkout for the same
@@ -1047,19 +949,9 @@ export async function startCheckout(
 ): Promise<CheckoutStart> {
   // A referral cookie the visitor allowed (D131) is kept with the cart before the order is placed.
   await rememberAffiliate({ storeId: shop.storeId, market: shop.market }, cartId);
-  const found = await getCheckoutAccount(shop.storeId);
-  const stripe = found && platformStripe(found.mode);
-  if (!found || !stripe) return { ok: false, problem: "payments_off" };
-  let accountId = found.accountId;
-  if (!accountId) {
-    // Test mode, and the store's test account was not ready when last
-    // seen: ask Stripe again, as it checks Kaizen's test values within a
-    // minute or two (the account is made when the owner opens the admin).
-    const test = await ensureTestAccount(shop.storeId);
-    if (!test.ok || !test.ready) return { ok: false, problem: "payments_off" };
-    accountId = test.accountId;
-  }
-  const connection = { ...found, accountId };
+  const connected = await paymentConnection(shop.storeId);
+  if (!connected) return { ok: false, problem: "payments_off" };
+  const { connection, stripe } = connected;
   const ui = await getCheckoutUi();
   // Payment methods added since the account was made, for the next shopper (D23).
   try {
@@ -1107,230 +999,11 @@ export async function startCheckout(
     const token = await confirmAtVenue(shop.storeId, order, contact);
     return { ok: true, url: `${base}/order/${order.orderId}?session_id=${token}` };
   }
-  // Renewals (D25) and refunds that complete later or are made in Stripe (D159) arrive as webhook events that older platform
-  // webhooks were not sent; checked once per server instance and mode.
-  await ensureSubscriptionEvents(connection.mode);
-  // A host's listings are paid on the host's own account (D71), in the store's mode.
-  let seller = connection.accountId;
-  let commissionBps = 0;
-  if (order.hostId) {
-    const hostAccount = await hostCheckoutAccount(shop.storeId, order.hostId, connection.mode);
-    if (!hostAccount) {
-      await cancelUnpaidOrder(order.orderId, "the host cannot take payments");
-      return { ok: false, problem: "host_payments_off" };
-    }
-    seller = hostAccount;
-    const [host] = await db().execute<Row>(sql`
-      select commission_bps from commerce.hosts where store_id = ${shop.storeId}::uuid and id = ${order.hostId}::uuid
-    `);
-    commissionBps = Number(host?.commission_bps ?? 0);
-  }
-
-  const [store] = await db().execute<Row>(sql`
-    select legal_name, organisation_number from commerce.stores where id = ${shop.storeId}::uuid
-  `);
-  const feeBps = await storeFeeBps(shop.storeId);
-  // Kaizen's fee is on what is paid through Stripe; the rest is paid at the venue (D66).
-  const kaizenFee = saleFee(order.dueNowMinor, feeBps);
-  // On a host's charge, the store's commission rides in the application fee, to be sent on to the store (D71).
-  const commission = commissionOf(order.dueNowMinor, commissionBps);
-  const fee = commission > 0 ? Math.min(order.dueNowMinor, (kaizenFee ?? 0) + commission) : kaizenFee;
-  if (commission > 0) {
-    await db().execute(sql`
-      update commerce.orders set commission_minor = ${(fee ?? 0) - (kaizenFee ?? 0)}
-      where store_id = ${shop.storeId}::uuid and id = ${order.orderId}::uuid
-    `);
-  }
-  const partial = order.balanceMinor > 0;
-  // Kaizen's own invoice and credit notes (D159) are made by the database when the order is paid: Stripe's invoice option is then not used.
-  const kaizenInvoices = await kaizenInvoicingOn(shop.storeId);
-  // Reverse charge (D157): Stripe is sent the order's own net amounts, each line at its amount due, no coupon (the discounts
-  // and the VAT not charged are inside them) and the shipping at its net amount, so what Stripe charges is `dueNowMinor`.
-  const reverse = order.vatKind === "reverse_charge";
-  const depositLabel = t(shop.market.lang).booking.deposit;
-  // Back to the store's own host once it has one (P7), whichever host the request came from.
-  const base = `${storeOrigin(shop.storeSlug) ?? origin}${marketPath(shop.storeSlug, shop.market.slug)}`;
-  const currency = order.currency.toLowerCase();
-  const metadata = { order_id: order.orderId, order_number: order.number, store_id: shop.storeId };
-  const sellerLine = [store?.legal_name, store?.organisation_number && `Org.nr. ${store.organisation_number}`]
-    .filter(Boolean)
-    .join(" · ");
-  const returnUrl = `${base}/order/${order.orderId}?session_id={CHECKOUT_SESSION_ID}`;
-  // Wallets, Link and Klarna show in Stripe's form only on registered domains.
-  if (ui === "custom" && origin.startsWith("https://")) {
-    await ensurePaymentDomain(shop.storeId, connection.mode, seller, new URL(origin).hostname);
-  }
-
-  let session: Stripe.Checkout.Session;
-  try {
-    // A discount code (D31) reaches Stripe as a coupon for this checkout alone.
-    // With a part paid at the venue, each line is sent as what is due now, discount included.
-    const coupon =
-      !partial && !reverse && order.discount && order.discount.couponMinor > 0
-        ? await stripe.coupons.create(
-            {
-              amount_off: order.discount.couponMinor,
-              currency,
-              duration: "once",
-              max_redemptions: 1,
-              name: order.discount.code.slice(0, 40),
-              metadata,
-            },
-            { stripeAccount: seller, idempotencyKey: `coupon-${order.orderId}` },
-          )
-        : null;
-    session = await stripe.checkout.sessions.create(
-      {
-        client_reference_id: order.orderId,
-        metadata,
-        ...(coupon && { discounts: [{ coupon: coupon.id }] }),
-        integration_identifier: INTEGRATION_IDENTIFIER,
-        line_items: partial || reverse
-          ? order.lines
-              .filter((line) => line.dueNowMinor > 0)
-              .map((line) => ({
-                quantity: 1,
-                price_data: {
-                  currency,
-                  unit_amount: line.dueNowMinor,
-                  product_data: {
-                    name: `${line.quantity > 1 ? `${line.quantity} × ` : ""}${line.title}${line.deposit ? ` (${depositLabel})` : ""}`,
-                  },
-                },
-              }))
-          : [
-              ...order.lines.map((line) => ({
-                quantity: line.quantity,
-                price_data: {
-                  currency,
-                  unit_amount: line.unitPriceMinor,
-                  product_data: { name: line.title },
-                  ...(line.recurring && order.subscription && { recurring: recurring(order.subscription) }),
-                },
-              })),
-              ...subscriptionShipping(order, currency, shippingLabel),
-            ],
-        ...(order.subscription
-          ? // A subscription (D25): Stripe Billing on the store's account charges
-            // each renewal. Shipping can only be a line here: the part that
-            // renews, and any extra for items bought once.
-            {
-              mode: "subscription" as const,
-              subscription_data: {
-                metadata: { ...metadata, subscription_id: order.subscription.id },
-                description: `Subscription ${order.number}`,
-                ...(order.subscription.trialDays > 0 && { trial_period_days: order.subscription.trialDays }),
-                ...(feeBps > 0 && { application_fee_percent: Math.round(feeBps) / 100 }),
-              },
-            }
-          : {
-              mode: "payment" as const,
-              payment_intent_data: {
-                metadata,
-                description: `Order ${order.number}`,
-                ...(fee !== null && { application_fee_amount: fee }),
-                // A deposit keeps the card for a no-show fee staff may charge later (D66).
-                ...(order.lines.some((line) => line.deposit) && { setup_future_usage: "off_session" as const }),
-              },
-              ...(order.lines.some((line) => line.deposit) && { customer_creation: "always" as const }),
-            }),
-        // A business's invoice needs its full address (Art. 226 point 5, D159): Stripe asks for a billing address, not only a postal code.
-        ...(order.company && { billing_address_collection: "required" as const }),
-        ...(order.ships && {
-          shipping_address_collection: {
-            allowed_countries: [
-              shop.market.code as Stripe.Checkout.SessionCreateParams.ShippingAddressCollection.AllowedCountry,
-            ],
-          },
-        }),
-        // Downloads only: no address to ask for and nothing to ship (D24).
-        ...(order.ships &&
-          !order.subscription && {
-            shipping_options: [
-              {
-                shipping_rate_data: {
-                  type: "fixed_amount",
-                  display_name: order.deliveryLabel ?? shippingLabel,
-                  fixed_amount: { amount: order.shippingMinor - order.shippingDiscountMinor - order.shippingReliefMinor, currency },
-                },
-              },
-            ],
-          }),
-        // No payment_method_types: Stripe shows the methods the store has
-        // turned on in its Stripe Dashboard that suit the shopper.
-        // Subscriptions always get Stripe invoices; this is for single payments.
-        // An invoice for part of an order would mislead: the store invoices the whole at the venue.
-        // A host is the seller of their own bookings, so the store's invoices are not theirs (D71).
-        ...(connection.orderInvoices &&
-          !kaizenInvoices &&
-          !order.subscription &&
-          !partial &&
-          !order.hostId && {
-          invoice_creation: {
-            enabled: true,
-            invoice_data: {
-              description: `Order ${order.number}`,
-              metadata,
-              ...(sellerLine && { footer: sellerLine }),
-              // Stripe takes at most four custom fields.
-              custom_fields: reverse
-                ? reverseChargeFields(shop.market.lang, order)
-                : [
-                    {
-                      name: VAT_LABELS[shop.market.lang] ?? "Incl. VAT",
-                      value: formatMoney(order.taxMinor, order.currency, shop.market.locale),
-                    },
-                    // Bought for a business (B2B): whom for, as the invoice must say.
-                    ...(order.company
-                      ? [
-                          { name: (COMPANY_LABELS[shop.market.lang] ?? COMPANY_LABELS.en).name, value: order.company.name.slice(0, 140) },
-                          { name: (COMPANY_LABELS[shop.market.lang] ?? COMPANY_LABELS.en).number, value: order.company.number },
-                        ]
-                      : []),
-                    // Consignments marked with the store's IOSS number (D157): VAT was collected at checkout.
-                    ...(order.vatKind === "ioss" && order.treatment?.iossNumber
-                      ? [{ name: "IOSS", value: order.treatment.iossNumber }]
-                      : []),
-                  ],
-            },
-          },
-        }),
-        ...(ui === "custom"
-          ? // Stripe's form on Kaizen's page; its language is set in the browser.
-            { ui_mode: "elements" as const, return_url: returnUrl }
-          : {
-              locale: stripeLocale(shop.market.lang) as Stripe.Checkout.SessionCreateParams.Locale,
-              success_url: returnUrl,
-              cancel_url: `${base}/cart`,
-            }),
-        expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_MINUTES * 60 + 60,
-      },
-      { stripeAccount: seller, idempotencyKey: `checkout-${order.orderId}` },
-    );
-  } catch {
-    await cancelUnpaidOrder(order.orderId, "stripe session could not be created");
-    return { ok: false, problem: "payment_error" };
-  }
-
-  // Which payment methods Stripe offers this shopper, for support questions.
-  await db().execute(sql`
-    insert into commerce.order_events (store_id, order_id, type, data, actor)
-    values (${shop.storeId}::uuid, ${order.orderId}::uuid, 'payment.started',
-            ${JSON.stringify({ ui, methods: session.payment_method_types ?? [] })}::jsonb, 'system')
-  `);
-  await db().execute(sql`
-    insert into commerce.payments (
-      store_id, order_id, provider, provider_reference, provider_account, client_secret, amount_minor, currency, status,
-      kaizen_fee_minor
-    ) values (
-      ${shop.storeId}::uuid, ${order.orderId}::uuid, 'stripe', ${session.id}, ${seller},
-      ${ui === "custom" ? session.client_secret : null}, ${order.dueNowMinor}, ${order.currency}, 'pending',
-      ${order.subscription ? 0 : (kaizenFee ?? 0)}
-    )
-  `);
-  if (ui === "custom") return session.client_secret ? { ok: true, url: `${base}/checkout` } : { ok: false, problem: "payment_error" };
-  if (!session.url) return { ok: false, problem: "payment_error" };
-  return { ok: true, url: session.url };
+  const opened = await openPaymentSession(shop, order, origin, shippingLabel, { connection, ui, stripe });
+  if (opened.ok) return { ok: true, url: opened.url };
+  // The session could not be made: nothing was paid and nothing will be, so the order waiting for it is cancelled and its stock goes back.
+  await cancelUnpaidOrder(order.orderId, opened.problem === "host_payments_off" ? "the host cannot take payments" : "stripe session could not be created");
+  return { ok: false, problem: opened.problem };
 }
 
 export type OpenCheckout = {
@@ -1382,7 +1055,13 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
          is distinct from o.credit_minor
       -- So does checking or changing the VAT number (D157): the order's VAT follows the check it was placed with.
       or (select c.vat_check_id from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
-         is distinct from o.vat_check_id as changed,
+         is distinct from o.vat_check_id
+      -- So does a gift message (D173): the order holds the gift as the cart had it when it was placed, and a store with the switch off holds none.
+      or (select case when coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false)
+                      then row(c.is_gift, c.gift_to, c.gift_from, c.gift_message)
+                      else row(false, null::text, null::text, null::text) end
+            from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
+         is distinct from row(o.is_gift, o.gift_to, o.gift_from, o.gift_message) as changed,
       exists (select 1 from commerce.order_lines ol
                where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'physical') as ships,
       exists (select 1 from commerce.order_lines ol

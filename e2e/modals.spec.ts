@@ -198,6 +198,8 @@ test("a modal opens from an address with its hash, and from an element with its 
   await expect(opened(page, "Fra adressen")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(opened(page)).toHaveCount(0);
+  // Closing takes the address away a moment later; setting the same hash before that changes nothing.
+  await expect(page).not.toHaveURL(/#modal-/);
   await page.evaluate(() => {
     window.location.hash = "#modal-hash";
   });

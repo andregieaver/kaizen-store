@@ -14,6 +14,8 @@ import {
   SendForm,
 } from "@/components/admin/order-actions";
 import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/order-affiliate";
+import { GiftCard } from "@/components/admin/orders/gift-card";
+import { ArchiveButton, TagsCard } from "@/components/admin/orders/order-ops";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { BringBooking } from "@/components/admin/bring-booking";
 import { ChosenDeliveryBooking } from "@/components/admin/chosen-delivery-booking";
@@ -35,6 +37,10 @@ import { putBackWords, takenFromWords } from "@/lib/inventory-admin";
 import { percentText } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
+import { ARCHIVE_REASON_TEXT, archiveBlock } from "@/lib/order-archive";
+import { MANUAL_METHOD_LABELS } from "@/lib/draft-input";
+import { ORDER_OPS_EVENT_LABELS } from "@/lib/order-ops-events";
+import { opsEventText } from "@/lib/order-ops-events-text";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { isReturnEvent, eventSentence } from "@/lib/return-admin";
 import { marketPath, storeHref } from "@/lib/paths";
@@ -55,9 +61,13 @@ import { orderPrivacy } from "@/server/privacy-pages";
 import { getCarrier } from "@/server/shipping-carriers";
 import { deliveryOfOrder } from "@/server/standing-orders";
 import { getOrderDownloads, getOrderEvents, getOrderTreatment, type Address, type OrderEvent } from "@/server/orders";
+import { archiveFactsFor } from "@/server/order-archive";
+import { mayRecordOutsidePayment } from "@/server/order-settings";
+import { tagSuggestions } from "@/server/order-tags";
 import { listCartAdds } from "@/server/wishlist-admin";
 
 import { saveOrderFieldsAction } from "../actions";
+import { archiveOrderAction, changeTagsAction, unarchiveOrderAction } from "../ops-actions";
 import { markDeliveredAction, registerWithdrawalAction } from "../../returns/actions";
 import { todayIn } from "@/lib/work-dates";
 
@@ -80,6 +90,7 @@ const EVENT_LABELS: Record<string, string> = {
   "subscription.cancel": "Subscription set to end with the period",
   "subscription.resume": "Subscription kept after all",
   "subscription.cancel_now": "Subscription cancelled",
+  ...ORDER_OPS_EVENT_LABELS,
 };
 
 const card = "rounded-lg border border-border bg-background p-5";
@@ -95,7 +106,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   const member = await requirePermission(slug, "orders:read");
   const { store } = member;
   if (!z.uuid().safeParse(orderId).success) notFound();
-  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents, privacy] = await Promise.all([
+  const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents, privacy, archiveFacts, tagChoices] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderEvents(store.id, orderId),
     getOrderDownloads(store.id, orderId),
@@ -113,8 +124,17 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     getOrderDocuments(store.id, orderId),
     // Whether its personal data was restricted or made anonymous (D162).
     orderPrivacy(store.id, orderId),
+    // What stops it being archived, in words (D173).
+    archiveFactsFor(db(), store.id, [orderId]),
+    // The store's tags in use, as suggestions.
+    tagSuggestions(store.id),
   ]);
   if (!order) notFound();
+  const canWrite = memberCan(member, "orders:write");
+  const archiveFacts1 = archiveFacts.get(orderId);
+  const archiveBlocked = order.archivedAt || !archiveFacts1 ? null : archiveBlock(archiveFacts1);
+  // Money taken outside Kaizen is refunded by being recorded: the owner, or staff when the owner allows it.
+  const outsideAllowed = order.paidOutside ? await mayRecordOutsidePayment(member) : true;
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
   const [bring, porterbuddy, helthjem, estimatedGrams] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), getCarrier(store.id, "helthjem"), estimateWeightGrams(store.id, order.id)]);
   const locale = store.markets[0]?.locale ?? order.locale;
@@ -177,6 +197,23 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             {cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : STATUS_LABELS[order.status]} · placed{" "}
             {when(order.placedAt)} ·{" "}
             {order.marketCode}
+            {order.archivedAt && " · archived"}
+            {order.copied && " · copied history"}
+            {order.source === "draft" && (
+              <>
+                {" · "}
+                staff-made
+                {order.draft?.number && (
+                  <>
+                    {" from draft "}
+                    <Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">
+                      {order.draft.number}
+                    </Link>
+                  </>
+                )}
+                {order.madeBy?.email && ` by ${order.madeBy.email}`}
+              </>
+            )}
             {order.subscriptionId && (
               <>
                 {" · "}
@@ -187,8 +224,16 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             )}
           </p>
         </div>
-        {(paid || memberCan(member, "owner")) && (
-          <div className="flex flex-wrap items-center gap-2">
+        {(paid || canWrite || memberCan(member, "owner")) && (
+          <div className="flex flex-wrap items-start gap-2">
+            {canWrite && (
+              <ArchiveButton
+                archived={Boolean(order.archivedAt)}
+                blocked={archiveBlocked ? ARCHIVE_REASON_TEXT[archiveBlocked] : null}
+                archive={archiveOrderAction.bind(null, store.slug, order.id)}
+                unarchive={unarchiveOrderAction.bind(null, store.slug, order.id)}
+              />
+            )}
             {/* The order file of this one order (D165): the owner's, because it can hold the buyer's personal data. */}
             {memberCan(member, "owner") && (
               <Link
@@ -198,13 +243,13 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 Export this order
               </Link>
             )}
-            {paid && order.ships && (
+            {paid && order.ships && !order.copied && (
               <Link
                 href={`/admin/${store.slug}/orders/${order.id}/packing-slip`}
                 target="_blank"
                 className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm"
               >
-                Packing slip
+                {order.gift ? "Print gift slip" : "Packing slip"}
               </Link>
             )}
             {paid && order.email && <ResendButton {...ids} />}
@@ -249,6 +294,10 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       <td className="py-2">
                         {line.title}
                         {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">Digital download</span>}
+                        {line.custom && <span className="block text-xs text-muted">Custom item</span>}
+                        {!line.custom && line.listPriceMinor !== null && line.listPriceMinor !== line.unitPriceMinor && (
+                          <span className="block text-xs text-muted">Custom price {money(line.unitPriceMinor)} (list price {money(line.listPriceMinor)})</span>
+                        )}
                         {line.booking && (
                           <span className="block text-xs">
                             {bookingWhen(line.booking, "en-GB", t("en"))}
@@ -318,6 +367,14 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   <dd>−{money(order.discountMinor)}</dd>
                 </div>
               )}
+              {order.staffDiscountMinor > 0 && (
+                <div className="flex justify-between">
+                  <dt>
+                    {order.staffDiscountLabel ?? "Discount"} <span className="text-xs text-muted">(staff discount)</span>
+                  </dt>
+                  <dd>−{money(order.staffDiscountMinor)}</dd>
+                </div>
+              )}
               <ReferralDiscountRow minor={order.copied ? 0 : order.referralDiscountMinor} currency={order.currency} locale={locale} />
               <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} />
               <VatReliefRow kind={order.vatKind} reliefMinor={order.vatReliefMinor} money={money} />
@@ -337,6 +394,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 </>
               )}
             </dl>
+            {order.paidOutside && (
+              <p className="mt-3 rounded-md border border-border bg-surface p-3 text-sm">
+                Paid outside Kaizen by {MANUAL_METHOD_LABELS[order.paidOutside.method].toLowerCase()}, recorded {when(order.paidOutside.recordedAt)}. Kaizen did not take the money and took no sale fee on it. The invoice says it was
+                paid outside the online checkout.
+              </p>
+            )}
           </section>
 
           {!order.copied && (
@@ -468,9 +531,10 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               <h2 id="refund" className="mb-1 font-medium">Refund</h2>
               <p className="mb-3 text-sm text-muted">
                 Paid {money(order.paidMinor)}
-                {order.refundedMinor > 0 && `, refunded ${money(order.refundedMinor)}`}. Refunds go back to the
-                customer&apos;s card or payment method through Stripe; Kaizen&apos;s fee on the refunded amount is
-                returned to you.
+                {order.refundedMinor > 0 && `, refunded ${money(order.refundedMinor)}`}.{" "}
+                {order.paidOutside
+                  ? "The money was taken outside Kaizen, so Kaizen sends nothing: you pay the customer back yourself and record it here."
+                  : "Refunds go back to the customer's card or payment method through Stripe; Kaizen's fee on the refunded amount is returned to you."}
               </p>
               <BonusRefundNote bonus={bonus} currency={bonusCurrency} locale={locale} refund={{ refundedMinor: order.refundedMinor, totalMinor: order.totalMinor }} />
               <RefundForm
@@ -481,6 +545,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 locations={activeLocations.map((l) => ({ id: l.id, name: l.name }))}
                 hasEmail={Boolean(order.email)}
                 canRefund={order.canRefund && order.refundableMinor > 0}
+                outside={order.paidOutside ? { allowed: outsideAllowed } : null}
               />
               {order.refunds.length > 0 && (
                 <ul className="mt-4 flex flex-col gap-1 border-t border-border pt-3 text-sm">
@@ -504,7 +569,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   This cancels this order only. The subscription goes on unless you also cancel it on its page.
                 </p>
               )}
-              <CancelForm {...ids} amountLabel={money(order.refundableMinor)} hasEmail={Boolean(order.email)} unpaid={toCharge} />
+              <CancelForm {...ids} amountLabel={money(order.refundableMinor)} hasEmail={Boolean(order.email)} unpaid={toCharge} outside={Boolean(order.paidOutside)} />
             </section>
           )}
 
@@ -556,6 +621,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
         </div>
 
         <div className="flex flex-col gap-6">
+          <TagsCard tags={order.tags} suggestions={tagChoices.map((t) => t.label)} canWrite={canWrite} change={changeTagsAction.bind(null, store.slug, order.id)} />
+          {order.gift && <GiftCard gift={order.gift} slipHref={paid && order.ships && !order.copied ? `/admin/${store.slug}/orders/${order.id}/packing-slip` : null} />}
           <section aria-labelledby="customer" className={`${card} text-sm`}>
             <h2 id="customer" className="mb-2 font-medium">
               {customer ? (
@@ -672,6 +739,9 @@ function EventLine({ event, money, currency, base, locationNames }: { event: Ord
       </>
     );
   }
+  // Draft orders and the wave 3 operations (D173), in words.
+  const ops = opsEventText(event.type, data, money);
+  if (ops !== null) return <>{ops}</>;
   if (event.type === "note.added") {
     return (
       <>

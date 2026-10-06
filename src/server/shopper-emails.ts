@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { formatBookingTime } from "@/lib/booking-slots";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { discountNote } from "@/lib/customer-tiers";
+import { hasGiftText } from "@/lib/gift";
 import { pickupPointLine } from "@/lib/delivery-options";
 import { formatWindow } from "@/lib/porterbuddy";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
@@ -117,7 +118,7 @@ function footer(store: EmailStore, text: EmailText): string[] {
 async function orderUrl(storeId: string, store: EmailStore, market: Market, orderId: string): Promise<string | null> {
   const [payment] = await db().execute<Row>(sql`
     select provider_reference from commerce.payments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'venue')
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'venue', 'manual')
     order by created_at limit 1
   `);
   if (!payment) return null;
@@ -279,6 +280,8 @@ export async function sendOrderConfirmation(
     ...[companyText(order, m)].flatMap((company) => (company ? [{ type: "paragraph" as const, text: company }] : [])),
     ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
     ...(digital ? [{ type: "paragraph" as const, text: text.downloadsReady }] : []),
+    // The buyer's own gift message (D173), to the buyer only: the store sends nothing to a recipient. Plain text, escaped by the renderer.
+    ...(order.gift && hasGiftText(order.gift) ? [{ type: "paragraph" as const, text: giftParagraph(order.gift, text.giftMessage) }] : []),
     // Appointments (D65): where and when again, and the calendar file.
     ...(booked.length > 0
       ? [
@@ -355,6 +358,13 @@ async function documentsFor(
 async function noteDeliveries(storeId: string, documents: DocumentBlocks | null, outcome: SendOutcome, email: { idempotencyKey?: string; orderId: string; kind: string }) {
   if (!documents || outcome === "duplicate" || outcome === "failed") return;
   await recordDocumentDeliveries(storeId, documents.docs, email);
+}
+
+/** The gift message as the confirmation repeats it: the heading, To, From, the message and the note that the store does not send it on. Text, never HTML. */
+function giftParagraph(gift: NonNullable<OrderView["gift"]>, words: EmailText["giftMessage"]): string {
+  return [words.heading, gift.to ? words.to(gift.to) : null, gift.from ? words.from(gift.from) : null, gift.message ? `\n${gift.message}` : null, `\n${words.note}`]
+    .filter((part): part is string => Boolean(part))
+    .join("\n");
 }
 
 /** A short email about an order: sent, refunded or cancelled (D27). */

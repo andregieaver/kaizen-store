@@ -195,6 +195,8 @@ export type DailyPoint = {
   day: string;
   /** Paid orders. */
   orders: number;
+  /** Of them, the orders from a shopper's checkout (a staff-made order, D173, was not a visit); absent = all of them. Only conversion reads it. */
+  checkoutOrders?: number;
   /** Net revenue without VAT, minor units. */
   revenueMinor: number;
   /** Visits; null when not counted that day (never 0 for "not known"). */
@@ -315,6 +317,7 @@ function dayMap(daily: readonly DailyPoint[]): DayMap {
     } else {
       // A repeated day (rows per currency) is added up; a visit count that is known in either row is kept.
       existing.orders += d.orders;
+      if (existing.checkoutOrders !== undefined || d.checkoutOrders !== undefined) existing.checkoutOrders = (existing.checkoutOrders ?? existing.orders - d.orders) + (d.checkoutOrders ?? d.orders);
       existing.revenueMinor += d.revenueMinor;
       existing.sessions = finite(d.sessions) ? (existing.sessions ?? 0) + d.sessions : existing.sessions;
     }
@@ -334,7 +337,7 @@ function conversionOver(days: DayMap, from: string, to: string): ConversionWindo
     const d = days.get(addDays(from, i));
     if (!d || d.sessions === null) continue;
     sessions += d.sessions;
-    orders += d.orders;
+    orders += d.checkoutOrders ?? d.orders;
     known += 1;
   }
   return sessions > 0 ? { sessions, orders, days: known, rate: orders / sessions } : null;

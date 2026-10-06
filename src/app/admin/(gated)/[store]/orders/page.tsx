@@ -2,121 +2,98 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { formatMoney } from "@/lib/money";
+import { OrderListView } from "@/components/admin/orders/order-list-view";
+import { tableRowsOf } from "@/lib/order-list-admin";
+import { listOrdersPage, resolveOrderList } from "@/server/order-list";
+import { listOrderViews } from "@/server/order-views";
+import { tagSuggestions } from "@/server/order-tags";
 import { memberCan, requirePermission } from "@/server/permissions";
-import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
-import { listOrders } from "@/server/orders";
+
+import { bulkOrdersAction, deleteOrderViewAction, reorderOrderViewsAction, saveOrderViewAction, updateOrderViewAction } from "./list-actions";
 
 export const metadata: Metadata = { title: "Orders" };
 
 type Props = PageProps<"/admin/[store]/orders">;
 
-
+/**
+ * The Orders page (wave 3, D173, `docs/wave-3-orders.md` 2.2): search over number, email, name, product title or SKU, tag and tracking number; filters, sort and columns in the
+ * address (a bookmark and the back button work); saved views; and bulk actions on ticked orders. `orders:read` to look, `orders:write` to change. The address is read by one parser
+ * (`parseOrderListParams()`), which drops what it does not know, so a bad address is a plain list and never an error page.
+ */
 export default async function OrdersPage({ params, searchParams }: Props) {
-  const { store } = await requirePermission((await params).store, "orders:read");
+  const member = await requirePermission((await params).store, "orders:read");
+  const { store } = member;
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Orders</h1>
-      <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-background" />}>
-        <OrderList storeSlug={store.slug} searchParams={searchParams} />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Orders</h1>
+        <nav aria-label="Order tools" className="flex flex-wrap gap-2 text-sm">
+          {memberCan(member, "orders:write") && (
+            <Link href={`/admin/${store.slug}/orders/drafts/new`} className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 font-medium text-background">
+              Make a draft order
+            </Link>
+          )}
+          <Link href={`/admin/${store.slug}/orders/drafts`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4">
+            Draft orders
+          </Link>
+          <Link href={`/admin/${store.slug}/emails`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4">
+            Emails to customers
+          </Link>
+          {/* The order file (D165) holds personal data, so only the owner is offered it. */}
+          {memberCan(member, "owner") && (
+            <Link href={`/admin/${store.slug}/orders/export`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4">
+              Export
+            </Link>
+          )}
+        </nav>
+      </div>
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-background" />}>
+        <OrderListBody storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
     </div>
   );
 }
 
-async function OrderList({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
+async function OrderListBody({ storeSlug, searchParams }: { storeSlug: string; searchParams: Props["searchParams"] }) {
   const member = await requirePermission(storeSlug, "orders:read");
   const { store } = member;
-  const show = (await searchParams).show;
-  const unpaid = show === "unpaid";
-  const toSend = show === "to-send";
-  // Paid orders that hold units sold on backorder wait for stock (wave 3, D172).
-  const waiting = show === "waiting";
-  const orders = await listOrders(store.id, { unpaid, toSend, waiting });
+  const resolved = await resolveOrderList(store.id, await searchParams);
+  const [page, views, suggestions] = await Promise.all([
+    listOrdersPage(store.id, resolved.params, resolved.context),
+    listOrderViews(store.id),
+    tagSuggestions(store.id),
+  ]);
   const locale = store.markets[0]?.locale ?? "en";
-  const base = `/admin/${store.slug}/orders`;
-
+  const canWrite = memberCan(member, "orders:write");
+  const markets = [...new Map(store.markets.map((m) => [m.code, { code: m.code, name: m.name }])).values()];
   return (
-    <>
-      <nav aria-label="Order filters" className="flex gap-2 text-sm">
-        <Link href={base} aria-current={unpaid || toSend || waiting ? undefined : "page"} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
-          Orders
-        </Link>
-        <Link href={`${base}?show=to-send`} aria-current={toSend ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
-          To send
-        </Link>
-        <Link href={`${base}?show=waiting`} aria-current={waiting ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
-          Waiting for stock
-        </Link>
-        <Link href={`${base}?show=unpaid`} aria-current={unpaid ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold">
-          Unfinished checkouts
-        </Link>
-        <Link href={`/admin/${store.slug}/emails`} className="ml-auto rounded px-2 py-1 underline">
-          Emails to customers
-        </Link>
-        {/* The order file (D165) holds personal data, so only the owner is offered it. */}
-        {memberCan(member, "owner") && (
-          <Link href={`/admin/${store.slug}/orders/export`} className="rounded px-2 py-1 underline">
-            Export
-          </Link>
-        )}
-      </nav>
-      {orders.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background p-8 text-center text-sm">
-          {unpaid
-            ? "No unfinished checkouts."
-            : waiting
-              ? "No order is waiting for stock: nothing paid and not sent was sold on backorder."
-              : toSend
-              ? "Nothing to send: every paid order with something to ship has been sent."
-              : "No orders yet. They appear here as soon as they are paid."}
-        </p>
-      ) : (
-        <table className="w-full rounded-lg border border-border bg-background text-left text-sm">
-          <thead>
-            <tr className="border-b border-border">
-              <th scope="col" className="px-4 py-2 font-medium">Order</th>
-              <th scope="col" className="px-4 py-2 font-medium">Customer</th>
-              <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Placed</th>
-              <th scope="col" className="px-4 py-2 font-medium">Status</th>
-              <th scope="col" className="px-4 py-2 text-right font-medium">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map((order) => (
-              <tr key={order.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-2">
-                  <Link href={`${base}/${order.id}`} className="font-medium underline-offset-2 hover:underline">
-                    #{order.number}
-                  </Link>
-                  <span className="block text-xs text-muted">
-                    {order.items} {order.items === 1 ? "item" : "items"}
-                  </span>
-                </td>
-                <td className="px-4 py-2">
-                  {order.email ? (
-                    <Link href={`/admin/${store.slug}/customers/${order.id}`} className="underline-offset-2 hover:underline">
-                      {order.name || order.email}
-                    </Link>
-                  ) : (
-                    "–"
-                  )}
-                </td>
-                <td className="hidden px-4 py-2 sm:table-cell">
-                  <time dateTime={order.placedAt}>
-                    {new Date(order.placedAt).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" })}
-                  </time>
-                </td>
-                <td className="px-4 py-2">
-                  {order.status === "cancelled" && !unpaid ? "Cancelled and refunded" : STATUS_LABELS[order.status]}
-                  {order.owed > 0 && <span className="block text-xs font-medium">Waiting for stock: {order.owed} {order.owed === 1 ? "unit" : "units"} owed</span>}
-                </td>
-                <td className="px-4 py-2 text-right">{formatMoney(order.totalMinor, order.currency, locale)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </>
+    <OrderListView
+      slug={store.slug}
+      params={resolved.params}
+      rows={tableRowsOf(page.rows, { locale, timeZone: store.timeZone })}
+      count={page.count}
+      capped={page.capped}
+      hasPrevious={page.hasPrevious}
+      previousCursor={page.previousCursor}
+      nextCursor={page.nextCursor}
+      views={views.map((v) => ({ id: v.id, title: v.title }))}
+      openView={resolved.view}
+      ignoredInView={resolved.ignored.length > 0}
+      truncatedSearch={resolved.truncatedSearch}
+      markets={markets}
+      tagSuggestions={suggestions.map((s) => s.label)}
+      canWrite={canWrite}
+      bulk={bulkOrdersAction.bind(null, store.slug)}
+      viewActions={
+        canWrite
+          ? {
+              save: saveOrderViewAction.bind(null, store.slug),
+              update: updateOrderViewAction.bind(null, store.slug),
+              remove: deleteOrderViewAction.bind(null, store.slug),
+              reorder: reorderOrderViewsAction.bind(null, store.slug),
+            }
+          : null
+      }
+    />
   );
 }

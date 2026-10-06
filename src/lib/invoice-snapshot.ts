@@ -157,7 +157,7 @@ export type SnapshotShipping = {
   wouldHaveRate: number | null;
 };
 
-export type SnapshotDiscount = { kind: "campaign" | "member" | "welcome" | "code" | "credit"; label: string | null; grossMinor: number };
+export type SnapshotDiscount = { kind: "campaign" | "member" | "welcome" | "code" | "staff" | "credit"; label: string | null; grossMinor: number };
 
 export type SnapshotBucket = { rate: number; basis: BucketBasis; netMinor: number; vatMinor: number; grossMinor: number };
 
@@ -178,7 +178,16 @@ export type SnapshotTreatment = {
   statements: TreatmentStatement[];
 };
 
-export type SnapshotPayment = { kind: "paid_online" | "pay_at_venue"; amountMinor: number; provider: string };
+/**
+ * How the sale was paid: `paid_online` (Stripe), `paid_outside` (money the seller took outside Kaizen and recorded, wave 3, D173: `provider` is `manual` and `method` says
+ * how) or `pay_at_venue` (the balance left for the venue). `method` is set only on `paid_outside`.
+ */
+export type SnapshotPayment = {
+  kind: "paid_online" | "paid_outside" | "pay_at_venue";
+  amountMinor: number;
+  provider: string;
+  method?: "cash" | "bank_transfer" | "other" | null;
+};
 
 export type SnapshotNote = "buyer_incomplete" | "unit_price_rounded" | "trial_deferred";
 
@@ -241,6 +250,9 @@ export type InvoiceOrderFacts = {
   campaignLabel: string | null;
   creditMinor: number;
   referralDiscountMinor: number;
+  /** The part of the discount staff gave on a draft order (D173), and the name they gave it. */
+  staffDiscountMinor: number;
+  staffLabel: string | null;
   discountCode: string | null;
   vatKind: VatKindName;
   vatReliefMinor: number;
@@ -254,8 +266,10 @@ export type InvoiceOrderFacts = {
   shippingAddress: AddressJson;
   /** The delivery service's name (`orders.delivery.label`). */
   deliveryLabel: string | null;
-  /** The provider of the payment taken online (`stripe`). */
+  /** The provider of the payment taken online (`stripe`), or `manual` for a payment recorded outside Kaizen. */
   onlineProvider: string;
+  /** How a `manual` payment was received (`cash`, `bank_transfer`, `other`); null for every other provider. */
+  onlineMethod?: string | null;
 };
 
 export type InvoiceLineFacts = {
@@ -542,14 +556,15 @@ export function buildInvoiceSnapshot(facts: InvoiceFacts, ctx: InvoiceContext): 
   ]);
   const totals = totalsOf(buckets);
 
-  // The discounts, as the shopper saw them (VAT-inclusive, informational; they add nothing). The code's is what is left of the order's.
+  // The discounts, as the shopper saw them (VAT-inclusive, informational; they add nothing). The code's is what is left of the order's, after the staff discount, which is named as staff wrote it.
   const codeMinor =
-    order.discountMinor - order.memberDiscountMinor - order.campaignDiscountMinor - order.creditMinor - order.referralDiscountMinor - order.vatReliefMinor;
+    order.discountMinor - order.memberDiscountMinor - order.campaignDiscountMinor - order.creditMinor - order.referralDiscountMinor - order.vatReliefMinor - order.staffDiscountMinor;
   const discounts: SnapshotDiscount[] = [
     ...(order.campaignDiscountMinor > 0 ? [{ kind: "campaign" as const, label: text(order.campaignLabel), grossMinor: order.campaignDiscountMinor }] : []),
     ...(order.memberDiscountMinor > 0 ? [{ kind: "member" as const, label: text(order.memberLabel), grossMinor: order.memberDiscountMinor }] : []),
     ...(order.referralDiscountMinor > 0 ? [{ kind: "welcome" as const, label: null, grossMinor: order.referralDiscountMinor }] : []),
     ...(codeMinor > 0 ? [{ kind: "code" as const, label: text(order.discountCode), grossMinor: codeMinor }] : []),
+    ...(order.staffDiscountMinor > 0 ? [{ kind: "staff" as const, label: text(order.staffLabel), grossMinor: order.staffDiscountMinor }] : []),
     ...(order.creditMinor > 0 ? [{ kind: "credit" as const, label: null, grossMinor: order.creditMinor }] : []),
   ];
 
@@ -591,7 +606,13 @@ export function buildInvoiceSnapshot(facts: InvoiceFacts, ctx: InvoiceContext): 
 
   const online = order.totalMinor - order.balanceMinor;
   const payments: SnapshotPayment[] = [
-    ...(online > 0 ? [{ kind: "paid_online" as const, amountMinor: online, provider: order.onlineProvider }] : []),
+    ...(online > 0
+      ? [
+          order.onlineProvider === "manual"
+            ? { kind: "paid_outside" as const, amountMinor: online, provider: "manual", method: (order.onlineMethod ?? null) as SnapshotPayment["method"] }
+            : { kind: "paid_online" as const, amountMinor: online, provider: order.onlineProvider },
+        ]
+      : []),
     ...(order.balanceMinor > 0 ? [{ kind: "pay_at_venue" as const, amountMinor: order.balanceMinor, provider: "venue" }] : []),
   ];
 

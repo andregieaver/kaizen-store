@@ -77,7 +77,7 @@ export function codeKindText(kind: string | null): string {
 export function discountCards(report: DiscountsReport, money: (minor: number) => string): KpiCardProps[] {
   const s = report.summary;
   const noOrders = { text: "No paid orders in this period yet." };
-  const dependencyHelp = "Discount dependency: the share of paid orders that had any discount (a campaign, a customer group, a bonus credit, a welcome discount or a code).";
+  const dependencyHelp = "Discount dependency: the share of paid orders that had any discount (a campaign, a customer group, a bonus credit, a welcome discount, a code or a discount staff gave on a draft order).";
   const dependency: KpiCardProps =
     s.dependency === null
       ? { label: "Orders with a discount", value: null, state: "missing", missing: noOrders, help: dependencyHelp }

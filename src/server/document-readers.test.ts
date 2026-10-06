@@ -139,9 +139,9 @@ describe("what the unit's server modules never do", () => {
 describe("Stripe's own invoice for an order", () => {
   it("is read only where checkout decides to ask for it and where the Payments page and its action set it", () => {
     expect(readers(/orderInvoices|order_invoices/).filter((file) => !/invoice-settings/.test(file))).toEqual(
-      ["src/app/admin/(gated)/[store]/settings/payments/page.tsx", "src/app/admin/(gated)/actions.ts", "src/lib/audit.ts", "src/server/checkout.ts", "src/server/settings.ts"].sort(),
+      ["src/app/admin/(gated)/[store]/settings/payments/page.tsx", "src/app/admin/(gated)/actions.ts", "src/lib/audit.ts", "src/server/payment-session.ts", "src/server/settings.ts"].sort(),
     );
-    const checkout = sources.find(({ file }) => file === "src/server/checkout.ts")!.text;
+    const checkout = sources.find(({ file }) => file === "src/server/payment-session.ts")!.text;
     expect(checkout).toMatch(/connection\.orderInvoices\s*&&\s*!kaizenInvoices/);
   });
 });

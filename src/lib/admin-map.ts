@@ -87,9 +87,18 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["assistant", "ai", "chat", "memory"],
   }),
-  store("orders", "/orders", "Orders", "Main", "Every order, newest first, with filters for orders to send and unpaid checkouts.", {
-    tasks: ["Find an order", "See what is waiting to be sent (?show=to-send)", "See unpaid checkouts (?show=unpaid)"],
-    keywords: ["sales", "purchases", "to send", "shipping"],
+  store("orders", "/orders", "Orders", "Main", "Every order, newest first, with a search (order number, email, name, product title or SKU, tag, tracking number), filters (payment, fulfilment, status, tag, market, source, gifts, a date range, archived) kept in the address, saved views, a column choice, and bulk actions on ticked orders: add or remove tags, archive, mark as sent, print packing slips.", {
+    tasks: [
+      "Find an order (?q=)",
+      "See what is waiting to be sent (?show=to-send)",
+      "See unpaid checkouts (?show=unpaid)",
+      "See archived orders (?show=archived)",
+      "Filter by payment, fulfilment, tag or a date range",
+      "Save the filters as a view",
+      "Tag, archive or mark as sent several orders at once",
+      "Print packing slips for several orders",
+    ],
+    keywords: ["sales", "purchases", "to send", "shipping", "search orders", "filter orders", "saved view", "tag", "archive", "bulk", "mass edit", "select orders", "gift orders", "staff-made", "ordrer", "søk"],
   }),
   store("order", "/orders/[orderId]", "Order", "Main", "Everything about one order: lines, payment, sending with tracking, refunds, cancelling, contact, notes, history and emails.", {
     tasks: ["Mark it sent with tracking", "Refund all or part and restock", "Cancel it", "Correct the address", "Add a note", "Resend the confirmation"],
@@ -100,8 +109,23 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Export the orders of a period", "Export some orders by their numbers", "Include the buyer's email and address", "Download a finished export"],
     keywords: ["export orders", "csv", "orders spreadsheet", "accountant", "bookkeeping", "download orders", "excel", "eksporter ordre"],
   }),
-  store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "Main", "A printable packing slip for one order, without prices.", {
-    keywords: ["print", "slip", "pack"],
+  store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "Main", "A printable packing slip for one order, without prices; for a gift order it also prints the buyer's gift message.", {
+    keywords: ["print", "slip", "pack", "gift receipt", "gift slip"],
+  }),
+  store("orders.packing-slips", "/orders/packing-slips", "Packing slips", "Main", "Packing slips for several orders in one document, each order on its own page and in its own language, without prices. Orders with nothing to ship and copied history are left out, with the reason.", {
+    keywords: ["print packing slips", "bulk print", "print many", "pick", "gift slip"],
+    tasks: ["Print the slips of the orders you ticked"],
+  }),
+  store("orders.drafts", "/orders/drafts", "Draft orders", "Main", "Draft orders: orders you make for a customer, newest first, with what each is worth and where it stands (open, sent, paid, expired). A draft holds no stock until it is sent as a pay link.", {
+    tasks: ["Make a draft order", "See drafts waiting for payment (?status=sent)", "Open a draft"],
+    keywords: ["draft", "quote", "manual order", "phone order", "payment link", "pay link", "invoice a customer", "create order", "utkast"],
+  }),
+  store("orders.draft.new", "/orders/drafts/new", "New draft order", "Main", "Starts a draft order in a market (the country, language and currency it is priced in).", {
+    keywords: ["new draft", "create order", "manual order"],
+  }),
+  store("orders.draft", "/orders/drafts/[draftId]", "Draft order", "Main", "One draft order: the customer, lines (products and custom items, with a custom price), a discount the buyer sees, shipping, notes and tags, and the summary with VAT worked out by the checkout's own rules. Send it to the customer as a pay link or make a link to share, reopen a sent draft, or record that it was paid outside Kaizen (bank transfer, cash).", {
+    tasks: ["Add products and custom items", "Give a discount or a custom price", "Send the pay link", "Make a link to share", "Reopen a sent draft", "Record a payment taken outside Kaizen"],
+    keywords: ["pay link", "payment link", "send invoice", "mark as paid", "paid outside", "bank transfer", "cash", "custom item", "custom price", "staff discount"],
   }),
   store("order.terms", "/orders/[orderId]/terms/[role]", "Terms as shown", "Main", "One of the texts an order was placed under (the terms or the privacy statement), as the shopper was shown it: the kept copy, its version and when it was accepted.", {
     keywords: ["terms accepted", "terms snapshot", "privacy statement", "what the customer agreed to"],
@@ -390,6 +414,10 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["return window", "withdrawal", "return policy", "return address", "who pays return shipping", "refund when", "instructions", "angrerett"],
     tasks: ["Set the return window", "Choose who pays for return shipping", "Write the return instructions", "Translate the return instructions"],
+  }),
+  store("orders.settings", "/settings/orders", "Orders settings", "Sales", "How the store handles orders: whether shoppers may mark an order as a gift with a message, automatic archiving of finished orders after a number of days (off by default), how many days a draft order's pay link is valid, and whether staff other than the owner may record a payment taken outside Kaizen.", {
+    keywords: ["gift message", "gift", "auto archive", "archive orders", "pay link valid", "draft order link", "payment outside", "cash", "bank transfer", "staff may mark paid"],
+    tasks: ["Turn gift messages on or off", "Archive finished orders automatically", "Set how long a draft's pay link is valid", "Let staff record payments taken outside Kaizen"],
   }),
   store("tax", "/settings/tax", "Tax settings", "Sales", "How the store charges VAT: its VAT registration and number (checked in VIES, or the Norwegian register), where goods are sent from, its OSS and IOSS registrations, and what is on or missing for reverse charge and IOSS.", {
     needs: "owner",

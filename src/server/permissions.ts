@@ -33,6 +33,13 @@ export const memberCan = (member: Pick<Membership, "role" | "kind" | "permission
   return can(holderOf(member), key);
 };
 
+/**
+ * Whether a member may find customers from a draft order (wave 3, D173 review): the draft needs `orders:write`, but the customer's name, email, phone, address and company are the customers' own area, so the picker
+ * (and the action behind it) also needs `customers:read`. A role that writes orders but cannot read customers types the email on the draft instead.
+ */
+export const mayFindDraftCustomers = (member: Pick<Membership, "role" | "kind" | "permissions"> & { store?: { status?: string } }): boolean =>
+  memberCan(member, "orders:write") && memberCan(member, "customers:read");
+
 /** For a page or a route handler: the membership when the member holds the key, else a redirect to sign in or the second step, or a 404. */
 export async function requirePermission(storeSlug: string, key: PermissionKey): Promise<Membership> {
   const member = await requireMember(storeSlug);

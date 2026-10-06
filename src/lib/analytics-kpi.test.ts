@@ -438,3 +438,28 @@ describe("writing a card", () => {
     expect(coverageText(null)).toBe("no sales yet");
   });
 });
+
+describe("staff-made orders and the conversion rate (D173)", () => {
+  it("counts only the orders from a shopper's checkout against the sessions: a staff-made order was not a visit", () => {
+    const withStaff = totals({ orders: 100, checkoutOrders: 80, sessions: 4_000 });
+    const d = derive(withStaff, { fixedCostsMonthlyMinor: 0 }, 30);
+    // Every other figure still counts all 100 paid orders.
+    expect(d.orders).toBe(100);
+    expect(d.conversionRate).toBe(80 / 4_000);
+    expect(d.aov).toBe(Math.round(withStaff.revenueMinor / 100));
+  });
+
+  it("reads totals that know nothing of staff-made orders as all of them checkout orders (older callers, hand-made totals)", () => {
+    expect(derive(totals({ orders: 100, sessions: 4_000 }), { fixedCostsMonthlyMinor: 0 }, 30).conversionRate).toBe(0.025);
+  });
+
+  it("takes the conversion from the visit totals when visit counting began inside the period, as it always did", () => {
+    const whole = totals({ orders: 100, checkoutOrders: 90, sessions: 4_000 });
+    const covered = totals({ orders: 50, checkoutOrders: 40, sessions: 2_000 });
+    expect(derive(whole, { fixedCostsMonthlyMinor: 0 }, 30, covered).conversionRate).toBe(40 / 2_000);
+  });
+
+  it("is a rate of 0, not a missing one, when every order was staff-made and visits were counted", () => {
+    expect(derive(totals({ orders: 3, checkoutOrders: 0, sessions: 500 }), { fixedCostsMonthlyMinor: 0 }, 30).conversionRate).toBe(0);
+  });
+});

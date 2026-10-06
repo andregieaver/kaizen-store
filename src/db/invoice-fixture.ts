@@ -99,6 +99,8 @@ export type LineSpec = {
   campaign?: number;
   bonus?: number;
   referral?: number;
+  /** A staff discount on the line (D173, a draft order's), VAT included: part of the line's discount, named by the spec's `staffLabel` on the order. */
+  staff?: number;
   delivery?: "physical" | "digital" | "service";
   gift?: boolean;
   /** The product's VAT category (`exempt` makes its own bucket). */
@@ -139,11 +141,17 @@ export type OrderSpec = {
   deliveryLabel?: string;
   memberLabel?: string;
   campaignLabel?: string;
+  /** What staff called their discount (D173); "Staff discount" when the lines carry one and none is given. */
+  staffLabel?: string;
   discountCode?: string;
   host?: boolean;
   copied?: boolean;
   pay?: boolean | "pending-only";
-  provider?: "stripe" | "venue";
+  provider?: "stripe" | "venue" | "manual";
+  /** How a `manual` payment (money taken outside Kaizen, D173) was received; `cash` when left out. */
+  method?: "cash" | "bank_transfer" | "other";
+  /** The day a `manual` payment's money was received (`YYYY-MM-DD`), when it is not the day it was recorded. */
+  receivedOn?: string;
   /** The Stripe account the payment is on (`acct_…`); a row in `stripe_accounts` makes its mode known. */
   account?: string | null;
   /** When the payment happened (the `order.paid` event); default now. */
@@ -195,7 +203,7 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
     const rate = l.rate ?? 0.25;
     const unit = l.plan === "trial" ? 0 : l.unit;
     const gross = unit * quantity;
-    const given = l.gift ? gross : Math.min((l.discount ?? 0) + (l.member ?? 0) + (l.campaign ?? 0) + (l.bonus ?? 0) + (l.referral ?? 0), gross);
+    const given = l.gift ? gross : Math.min((l.discount ?? 0) + (l.member ?? 0) + (l.campaign ?? 0) + (l.bonus ?? 0) + (l.referral ?? 0) + (l.staff ?? 0), gross);
     const relief = rc && !l.gift ? vatIncludedExact(gross - given, rate) : 0;
     const total = gross - given - relief;
     return { spec: l, quantity, rate, discount: given + relief, relief, total, tax: rc ? 0 : vatIncludedExact(total, rate), unit };
@@ -208,7 +216,7 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
   const discount = rows.reduce((s, r) => s + r.discount, 0) + shippingDiscount + shippingRelief;
   const total = subtotal + shipping - discount;
   const tax = rows.reduce((s, r) => s + r.tax, 0) + shippingTax;
-  const sum = (key: "member" | "campaign" | "bonus" | "referral") => spec.lines.reduce((s, l) => s + (l[key] ?? 0), 0);
+  const sum = (key: "member" | "campaign" | "bonus" | "referral" | "staff") => spec.lines.reduce((s, l) => s + (l[key] ?? 0), 0);
   const relief = rows.reduce((s, r) => s + r.relief, 0) + shippingRelief;
 
   const n = next();
@@ -253,8 +261,9 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
     db,
     `insert into commerce.orders (store_id, number, market_code, currency, locale, email, status, subtotal_minor, shipping_minor, discount_minor, tax_minor, total_minor,
        billing_address, shipping_address, company_name, organisation_number, balance_minor, member_discount_minor, member_label, campaign_discount_minor, campaign_label,
-       credit_minor, referral_discount_minor, discount_code, vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, delivery, host_id, copied_from)
-     values ($1, $2, $3, $4, $5, $6, $31::commerce.order_status, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27::jsonb, $28::jsonb, $29, $30)
+       credit_minor, referral_discount_minor, discount_code, vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, delivery, host_id, copied_from,
+       staff_discount_minor, staff_discount_label)
+     values ($1, $2, $3, $4, $5, $6, $31::commerce.order_status, $7, $8, $9, $10, $11, $12::jsonb, $13::jsonb, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27::jsonb, $28::jsonb, $29, $30, $32, $33)
      returning id`,
     [
       store, number, market, currency, spec.locale ?? (market === "NO" ? "nb-NO" : market === "SE" ? "sv-SE" : market === "DK" ? "da-DK" : market === "DE" ? "de-DE" : "en-IE"),
@@ -265,6 +274,7 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
       sum("member"), sum("member") > 0 ? (spec.memberLabel ?? "Gold") : null, sum("campaign"), sum("campaign") > 0 ? (spec.campaignLabel ?? "Autumn sale") : null,
       sum("bonus"), sum("referral"), spec.discountCode ?? null, spec.vatKind ?? "standard", relief, shippingRate, treatment ? JSON.stringify(treatment) : null,
       spec.deliveryLabel ? JSON.stringify({ label: spec.deliveryLabel }) : null, hostId, copiedFrom, spec.copied ? "paid" : "pending_payment",
+      sum("staff"), sum("staff") > 0 ? (spec.staffLabel ?? "Staff discount") : null,
     ],
   );
   const lineIds: string[] = [];
@@ -274,12 +284,12 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
     const line = await one<{ id: string }>(
       db,
       `insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, member_discount_minor, total_minor, tax_minor, tax_rate,
-         tax_code, delivery, selling_plan_id, campaign_discount_minor, gift, bonus_discount_minor, referral_discount_minor, vat_relief_minor, booked_count)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'txcd_99999999', $13, $14, $15, $16, $17, $18, $19, $20) returning id`,
+         tax_code, delivery, selling_plan_id, campaign_discount_minor, gift, bonus_discount_minor, referral_discount_minor, vat_relief_minor, booked_count, staff_discount_minor)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'txcd_99999999', $13, $14, $15, $16, $17, $18, $19, $20, $21) returning id`,
       [
         store, order.id, v.variantId, r.spec.sku, r.spec.title ?? `Item ${r.spec.sku}`, r.quantity, r.unit, r.discount, r.spec.member ?? 0, r.total, r.tax, r.rate,
         r.spec.delivery ?? "physical", r.spec.plan ? v.planId ?? (await variantFor(db, store, category, true)).planId : null, r.spec.campaign ?? 0, Boolean(r.spec.gift), r.spec.bonus ?? 0,
-        r.spec.referral ?? 0, r.relief, r.spec.booking ? (r.spec.booking.count ?? 1) : null,
+        r.spec.referral ?? 0, r.relief, r.spec.booking ? (r.spec.booking.count ?? 1) : null, r.spec.staff ?? 0,
       ],
     );
     lineIds.push(line.id);
@@ -301,10 +311,12 @@ export async function placeOrder(db: Db, store: string, spec: OrderSpec): Promis
   if (spec.copied) await db.query("select set_config('commerce.copying', '', false)");
   if (spec.pay !== false && !spec.copied) {
     const account = spec.account === undefined ? null : spec.account;
+    const manual = spec.provider === "manual";
+    const recorder = manual ? (await one<{ id: string }>(db, "insert into commerce.accounts (email) values ($1) returning id", [`recorder${n}@example.com`])).id : null;
     await db.query(
-      `insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
-       values ($1, $2, $3, $4, $5, $6, $7, 'pending')`,
-      [store, order.id, spec.provider ?? "stripe", `pi_fx_${n}`, account, Math.max(1, total - (spec.balance ?? 0)), currency],
+      `insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status, method, recorded_by, received_on)
+       values ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9, $10)`,
+      [store, order.id, spec.provider ?? "stripe", manual ? `manual_fx_${n}` : `pi_fx_${n}`, account, Math.max(1, total - (spec.balance ?? 0)), currency, manual ? (spec.method ?? "cash") : null, recorder, manual ? (spec.receivedOn ?? null) : null],
     );
     if (spec.pay !== "pending-only") {
       await db.query("select commerce.complete_order_payment($1::uuid, $2)", [order.id, `cs_fx_${n}`]);

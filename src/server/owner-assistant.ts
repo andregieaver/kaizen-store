@@ -14,6 +14,7 @@ import type { Account, Membership, Role } from "./auth";
 import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link";
 import { runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
+import { draftApprovalDetails } from "./order-ops-tools";
 import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import type { Store } from "./stores";
 import { mayUseTool } from "@/lib/owner-tool-permissions";
@@ -603,6 +604,15 @@ export async function keepForApproval(
   // An A/B test's call is described from the test itself: its name, what it tests and what it should improve.
   if (store && (tool === "start_experiment" || tool === "stop_experiment" || tool === "apply_winner")) {
     summary = (await experimentApprovalSummary(store, tool, args)) ?? summary;
+  }
+  // A draft order's send is described from the draft itself: its customer, goods and total as the store prices it now (D173).
+  // The draft's version is kept with the call, always the one the summary describes (a value the model passed is replaced): the send is of that version or none.
+  if (store && tool === "send_draft_order") {
+    const details = await draftApprovalDetails(store, args);
+    summary = details?.summary ?? summary;
+    const { approved_version: _ignored, ...rest } = args;
+    void _ignored;
+    args = details ? { ...rest, approved_version: details.version } : rest;
   }
   const [row] = await db().execute<Row>(sql`
     insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category)

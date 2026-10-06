@@ -175,7 +175,7 @@ export async function snapshotForOrder(storeId: string, orderId: string, role: L
   if (sessionId !== null) {
     const [key] = await db().execute<Row>(sql`
       select 1 from commerce.payments pay
-      where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid and pay.provider in ('stripe', 'venue') and pay.provider_reference = ${sessionId}
+      where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid and pay.provider in ('stripe', 'venue', 'manual') and pay.provider_reference = ${sessionId}
     `);
     if (!key) return null;
   }

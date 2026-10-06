@@ -17,6 +17,7 @@ import {
   type AbandonedRow,
   type BonusSource,
   type CartRow,
+  type DraftExportRow,
   type CompanySource,
   type ConsentRow,
   type CustomFieldRow,
@@ -98,6 +99,7 @@ async function countRows(s: PrivacySubject): Promise<number> {
       (select count(*) from commerce.email_messages where store_id = ${store}::uuid and lower(to_address) = any(${addresses})) +
       (select count(*) from commerce.form_submissions where store_id = ${store}::uuid and lower(email) = any(${addresses})) +
       (select count(*) from commerce.carts where store_id = ${store}::uuid and id = any(${carts})) +
+      (select count(*) from commerce.draft_orders where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
       (select count(*) from commerce.abandoned_checkouts where store_id = ${store}::uuid and (lower(email) = any(${addresses}) or cart_id = any(${carts}))) +
       ${s.orderIds.length}::bigint + ${s.subscriptionIds.length}::bigint as n
   `);
@@ -150,13 +152,13 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
   if (s.orderIds.length === 0) return [];
   const ids = uuidList(s.orderIds);
   const store = s.storeId;
-  const [orders, lines, payments, refunds, shipments, downloads, terms, events, bookings] = await Promise.all([
+  const [orders, lines, payments, refunds, shipments, downloads, terms, events, bookings, tags] = await Promise.all([
     db().execute<Row>(sql`
       select o.id, o.number, o.placed_at, o.status, trim(o.currency) as currency, o.subtotal_minor, o.shipping_minor, o.discount_minor,
         o.member_discount_minor, o.campaign_discount_minor, o.credit_minor, o.referral_discount_minor, o.vat_relief_minor, o.tax_minor, o.total_minor,
         o.vat_kind, o.vat_treatment ->> 'reason' as vat_reason, o.delivery ->> 'label' as delivery_label, o.billing_address, o.shipping_address, o.email,
         o.company_name, o.organisation_number, o.discount_code, o.copied_from is not null as copied, o.host_id is not null as host,
-        o.restricted_at, o.anonymised_at
+        o.restricted_at, o.anonymised_at, o.is_gift, o.gift_to, o.gift_from, o.gift_message
       from commerce.orders o where o.store_id = ${store}::uuid and o.id = any(${ids}) order by o.placed_at, o.id
     `),
     db().execute<Row>(sql`
@@ -191,6 +193,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       select order_line_id, starts_at, ends_at from commerce.bookings
       where store_id = ${store}::uuid and order_id = any(${ids}) and order_line_id is not null
     `),
+    db().execute<Row>(sql`select order_id, label from commerce.order_tags where store_id = ${store}::uuid and order_id = any(${ids}) order by order_id, created_at, key`),
   ]);
   const group = <T extends Row>(rows: T[], key: string) => {
     const map = new Map<string, T[]>();
@@ -209,6 +212,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
     shipments: group(shipments, "order_id"),
     downloads: group(downloads, "order_id"),
     events: group(events, "order_id"),
+    tags: group(tags, "order_id"),
   };
   const termsOf = new Map(terms.map((x) => [strs(x.order_id), x]));
   const bookingOf = new Map(bookings.map((b) => [strs(b.order_line_id), b]));
@@ -245,6 +249,8 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       restrictedAt: iso(o.restricted_at),
       keptUntil: null,
       anonymisedAt: iso(o.anonymised_at),
+      gift: o.is_gift ? { to: str(o.gift_to), from: str(o.gift_from), message: str(o.gift_message) } : null,
+      tags: (byOrder.tags.get(id) ?? []).map((t) => strs(t.label)),
       lines: (byOrder.lines.get(id) ?? []).map((l) => {
         const b = bookingOf.get(strs(l.id));
         return {
@@ -621,8 +627,8 @@ async function loadEmails(s: PrivacySubject): Promise<EmailRow[]> {
   }));
 }
 
-async function loadCarts(s: PrivacySubject): Promise<{ carts: CartRow[]; abandoned: AbandonedRow[] }> {
-  const [carts, abandoned] = await Promise.all([
+async function loadCarts(s: PrivacySubject): Promise<{ carts: CartRow[]; abandoned: AbandonedRow[]; drafts: DraftExportRow[] }> {
+  const [carts, abandoned, drafts] = await Promise.all([
     s.cartIds.length === 0
       ? Promise.resolve([] as Row[])
       : db().execute<Row>(sql`
@@ -633,7 +639,21 @@ async function loadCarts(s: PrivacySubject): Promise<{ carts: CartRow[]; abandon
       select captured_at, reminders_sent, clicked_at, recovered_at, opted_out_at from commerce.abandoned_checkouts
       where store_id = ${s.storeId}::uuid and (lower(email) = any(${textList(s.addresses)}) or cart_id = any(${uuidList(s.cartIds)})) order by captured_at, id
     `),
+    // Draft orders staff made for the customer account (D173): matched by the account only, never by an address staff typed (D162).
+    s.customerId
+      ? db().execute<Row>(sql`
+          select id, number, status, trim(currency) as currency, created_at, email, phone, shipping_address, billing_address, company_name, organisation_number, note_to_buyer, internal_note
+          from commerce.draft_orders where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid order by created_at, id
+        `)
+      : Promise.resolve([] as Row[]),
   ]);
+  const draftLines =
+    drafts.length === 0
+      ? []
+      : await db().execute<Row>(sql`
+          select draft_id, sku, title, quantity, unit_price_minor from commerce.draft_order_lines
+          where store_id = ${s.storeId}::uuid and draft_id = any(${uuidList(drafts.map((d) => strs(d.id)))}) order by draft_id, position, id
+        `);
   const lines =
     carts.length === 0
       ? []
@@ -652,6 +672,23 @@ async function loadCarts(s: PrivacySubject): Promise<{ carts: CartRow[]; abandon
       lines: lines.filter((l) => strs(l.cart_id) === strs(c.id)).map((l) => ({ sku: str(l.sku), title: strs(l.title), quantity: num(l.quantity) })),
     })),
     abandoned: abandoned.map((a) => ({ capturedAt: iso(a.captured_at), remindersSent: num(a.reminders_sent), clickedAt: iso(a.clicked_at), recoveredAt: iso(a.recovered_at), optedOutAt: iso(a.opted_out_at) })),
+    drafts: drafts.map((d) => ({
+      number: strs(d.number),
+      status: strs(d.status),
+      currency: strs(d.currency),
+      createdAt: iso(d.created_at),
+      email: str(d.email),
+      phone: str(d.phone),
+      shippingAddress: d.shipping_address,
+      billingAddress: d.billing_address,
+      companyName: str(d.company_name),
+      organisationNumber: str(d.organisation_number),
+      noteToBuyer: str(d.note_to_buyer),
+      internalNote: str(d.internal_note),
+      lines: draftLines
+        .filter((l) => strs(l.draft_id) === strs(d.id))
+        .map((l) => ({ sku: str(l.sku), title: strs(l.title), quantity: num(l.quantity), unitPriceMinor: num(l.unit_price_minor) })),
+    })),
   };
 }
 
@@ -758,6 +795,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     emails,
     carts: carts.carts,
     abandoned: carts.abandoned,
+    drafts: carts.drafts,
     forms,
     company,
     customFields,

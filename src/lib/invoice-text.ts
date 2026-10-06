@@ -65,9 +65,12 @@ export type DocumentText = {
   basis: Record<BucketBasis, string>;
   payment: string;
   paidOnline: string;
+  /** A payment the seller took outside the online checkout (wave 3, D173): said as it is, with how it was received, never as "paid online". */
+  paidOutside: string;
+  paymentMethods: Record<"cash" | "bank_transfer" | "other", string>;
   payAtVenue: string;
   discountsGiven: string;
-  discountKinds: Record<"campaign" | "member" | "welcome" | "code" | "credit", string>;
+  discountKinds: Record<"campaign" | "member" | "welcome" | "code" | "staff" | "credit", string>;
   /** The statements the law asks for; the first two are the order emails' own words. */
   reverseCharge: string;
   ioss: (number: string) => string;
@@ -160,9 +163,11 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     basis: { standard: "Med mva.", exempt: "Fritatt for mva.", reverse_charge: "Omvendt avgiftsplikt", ioss: "IOSS" },
     payment: "Betaling",
     paidOnline: "Betalt på nett",
+    paidOutside: "Betalt utenfor nettbutikken",
+    paymentMethods: { cash: "kontant", bank_transfer: "bankoverføring", other: "på annen måte" },
     payAtVenue: "Betales på stedet",
     discountsGiven: "Rabatter gitt (inkl. mva.)",
-    discountKinds: { campaign: "Kampanje", member: "Kundegruppe", welcome: "Velkomstrabatt", code: "Rabattkode", credit: "Bonuspoeng" },
+    discountKinds: { campaign: "Kampanje", member: "Kundegruppe", welcome: "Velkomstrabatt", code: "Rabattkode", staff: "Rabatt gitt av butikken", credit: "Bonuspoeng" },
     notRegistered: "Selgeren er ikke registrert i Merverdiavgiftsregisteret, og det er derfor ikke oppgitt mva.",
     exempt: "Fritatt for mva.",
     unitRounded: "Enhetsprisene er avrundet for visning. Beløpet på hver linje er nøyaktig.",
@@ -231,9 +236,11 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     basis: { standard: "Med moms", exempt: "Momsfri", reverse_charge: "Omvänd skattskyldighet", ioss: "IOSS" },
     payment: "Betalning",
     paidOnline: "Betalt online",
+    paidOutside: "Betalt utanför webbutiken",
+    paymentMethods: { cash: "kontant", bank_transfer: "banköverföring", other: "på annat sätt" },
     payAtVenue: "Betalas på plats",
     discountsGiven: "Rabatter som getts (inkl. moms)",
-    discountKinds: { campaign: "Kampanj", member: "Kundgrupp", welcome: "Välkomstrabatt", code: "Rabattkod", credit: "Bonuspoäng" },
+    discountKinds: { campaign: "Kampanj", member: "Kundgrupp", welcome: "Välkomstrabatt", code: "Rabattkod", staff: "Rabatt från butiken", credit: "Bonuspoäng" },
     notRegistered: "Säljaren är inte registrerad för moms, och därför anges ingen moms.",
     exempt: "Undantaget från moms.",
     unitRounded: "À-priserna är avrundade för visning. Beloppet på varje rad är exakt.",
@@ -302,9 +309,11 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     basis: { standard: "Med moms", exempt: "Momsfri", reverse_charge: "Omvendt betalingspligt", ioss: "IOSS" },
     payment: "Betaling",
     paidOnline: "Betalt online",
+    paidOutside: "Betalt uden for webshoppen",
+    paymentMethods: { cash: "kontant", bank_transfer: "bankoverførsel", other: "på anden måde" },
     payAtVenue: "Betales på stedet",
     discountsGiven: "Givne rabatter (inkl. moms)",
-    discountKinds: { campaign: "Kampagne", member: "Kundegruppe", welcome: "Velkomstrabat", code: "Rabatkode", credit: "Bonuspoint" },
+    discountKinds: { campaign: "Kampagne", member: "Kundegruppe", welcome: "Velkomstrabat", code: "Rabatkode", staff: "Rabat fra butikken", credit: "Bonuspoint" },
     notRegistered: "Sælgeren er ikke momsregistreret, og der er derfor ikke angivet moms.",
     exempt: "Momsfri.",
     unitRounded: "Stykpriserne er afrundet til visning. Beløbet på hver linje er nøjagtigt.",
@@ -373,9 +382,11 @@ const TEXT: Record<DocumentLanguage, Omit<DocumentText, "reverseCharge" | "ioss"
     basis: { standard: "With VAT", exempt: "Exempt from VAT", reverse_charge: "Reverse charge", ioss: "IOSS" },
     payment: "Payment",
     paidOnline: "Paid online",
+    paidOutside: "Paid outside the online checkout",
+    paymentMethods: { cash: "cash", bank_transfer: "bank transfer", other: "another way" },
     payAtVenue: "To pay at the venue",
     discountsGiven: "Discounts given (incl. VAT)",
-    discountKinds: { campaign: "Campaign", member: "Customer group", welcome: "Welcome discount", code: "Discount code", credit: "Bonus credits" },
+    discountKinds: { campaign: "Campaign", member: "Customer group", welcome: "Welcome discount", code: "Discount code", staff: "Discount given by the store", credit: "Bonus credits" },
     notRegistered: "The seller is not registered for VAT, so no VAT is stated.",
     exempt: "Exempt from VAT.",
     unitRounded: "Unit prices are rounded for display. The amount on each line is exact.",

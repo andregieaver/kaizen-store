@@ -9,7 +9,7 @@ import { allocateRefund, paretoSummary, productTable, type ParetoSummary, type P
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { dayKey, dayStart, inMain, inPeriod, num, PAID, type Row } from "./analytics-sql";
+import { dayKey, dayStart, FROM_CHECKOUT, inMain, inPeriod, num, PAID, type Row } from "./analytics-sql";
 import { setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -21,7 +21,9 @@ import type { Store } from "./stores";
  *
  * - Lines of paid orders (`PAID`: not copied, not a host's, a captured payment), by the order's `placed_at` in the store's days.
  *   A line's revenue is `total_minor - tax_minor`: after discounts, without VAT. Lines with no variant (sign-up fees and the like)
- *   are one row, "Other lines", whose cost is a known 0 (the document: such lines count as known).
+ *   are one row, "Other lines", whose cost is a known 0 (the document: such lines count as known). A custom item (D173, a line staff typed into a
+ *   draft order) is a row of its own, "Custom items", in no ranking, with no views, and with its cost not known (counted against the cost coverage).
+ *   A staff-made order's lines are in every figure but the conversion: its orders are not counted against the product's views.
  * - Units are goods only (a variant, not delivered as a service), as the Overview's units are, so they add up to its figure.
  * - Revenue of the product rows plus the shipping charged on the same orders (without VAT, after a free-shipping code's discount, which
  *   is an order's discount beyond its lines') is the period's revenue (`reconciliation`): the line
@@ -43,6 +45,17 @@ export const REFUND_ROW_CAP = 100_000;
 /** The row for lines that have no product. */
 export const OTHER_ID = "other";
 export const OTHER_NAME = "Other lines";
+/**
+ * The row for custom items (D173): lines staff typed into a draft order (`order_lines.custom`). They are in the revenue and VAT but have no product, so
+ * they are one row of their own, never in a ranking, with no views and no conversion, and with a cost that is not known (never a cost of 0).
+ */
+export const CUSTOM_ID = "custom";
+export const CUSTOM_NAME = "Custom items";
+/** A row that stands for lines with no product: "Other lines" or "Custom items". */
+export const isNoProduct = (pid: string): boolean => pid === OTHER_ID || pid === CUSTOM_ID;
+const noProductName = (pid: string): string => (pid === CUSTOM_ID ? CUSTOM_NAME : OTHER_NAME);
+/** SQL for a line's product id (`ol` the line, `v` its variant, left joined): the product, else the row of its kind of line. */
+const PRODUCT_ID = sql`coalesce(v.product_id::text, case when ol.custom then ${CUSTOM_ID} else ${OTHER_ID} end)`;
 
 export type ProductReportRow = ProductStat & {
   /** The product's handle (its address name); null for the "Other lines" row. */
@@ -126,12 +139,12 @@ async function loadLines(store: Store, period: Pick<AnalyticsPeriod, "from" | "t
   // product, whatever its lines) are counted from the distinct (order, product) pairs, so no wide row is ever sorted.
   const rows = await setBased<Row>(sql`
     with pl as materialized (
-      select o.id as oid, o.currency::text as currency, coalesce(v.product_id::text, ${OTHER_ID}) as pid,
+      select o.id as oid, o.currency::text as currency, ${PRODUCT_ID} as pid,
         (ol.total_minor - ol.tax_minor) as rev,
         case when ol.variant_id is not null and ol.delivery <> 'service' then ol.quantity else 0 end as units,
-        case when ol.variant_id is null then 0 else ol.unit_cost_minor * ol.quantity end as cogs,
-        case when ol.variant_id is null or ol.unit_cost_minor is not null then ol.total_minor - ol.tax_minor else 0 end as known_rev,
-        (o.placed_at >= ${dayStart(store, since)}) as since_ok
+        case when ol.custom then null when ol.variant_id is null then 0 else ol.unit_cost_minor * ol.quantity end as cogs,
+        case when (ol.variant_id is null and not ol.custom) or ol.unit_cost_minor is not null then ol.total_minor - ol.tax_minor else 0 end as known_rev,
+        (o.placed_at >= ${dayStart(store, since)} and ${FROM_CHECKOUT}) as since_ok
       from commerce.orders o
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
       left join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
@@ -226,7 +239,7 @@ async function loadRefunds(store: Store, period: AnalyticsPeriod, known: string)
     setBased<Row>(sql`
       select r.id::text as refund_id, rp.currency::text as currency,
         round(r.amount_minor::numeric * (o.total_minor - o.tax_minor) / nullif(o.total_minor, 0)) as amount,
-        coalesce(v.product_id::text, ${OTHER_ID}) as pid, (ol.total_minor - ol.tax_minor) as line_amount
+        ${PRODUCT_ID} as pid, (ol.total_minor - ol.tax_minor) as line_amount
       from commerce.refunds r
       join commerce.payments rp on rp.store_id = r.store_id and rp.id = r.payment_id
       join commerce.orders o on o.store_id = rp.store_id and o.id = rp.order_id
@@ -340,13 +353,13 @@ export async function productsReport(
   ]);
 
   // Names for every product in the table: those that sold, and those that were only refunded in the period.
-  const ids = [...new Set([...lines.rows.keys(), ...refunds.amounts.keys()])].filter((pid) => pid !== OTHER_ID);
+  const ids = [...new Set([...lines.rows.keys(), ...refunds.amounts.keys()])].filter((pid) => !isNoProduct(pid));
   const names = await loadNames(store, ids);
 
   const days = Math.max(1, period.days);
   const tableRows: ProductRow[] = [...lines.rows].map(([pid, l]) => ({
     productId: pid,
-    name: pid === OTHER_ID ? OTHER_NAME : (names.get(pid)?.name ?? pid),
+    name: isNoProduct(pid) ? noProductName(pid) : (names.get(pid)?.name ?? pid),
     revenueMinor: l.revenue,
     units: l.units,
     orders: l.orders,
@@ -357,12 +370,12 @@ export async function productsReport(
   // Refunds of a product that sold nothing in the period (the sale was earlier) still belong to it.
   for (const [pid, amount] of refunds.amounts) {
     if (lines.rows.has(pid) || amount === 0) continue;
-    tableRows.push({ productId: pid, name: pid === OTHER_ID ? OTHER_NAME : (names.get(pid)?.name ?? pid), revenueMinor: 0, units: 0, orders: 0, cogsMinor: pid === OTHER_ID ? 0 : null, knownCostRevenueMinor: 0, refundsMinor: amount });
+    tableRows.push({ productId: pid, name: isNoProduct(pid) ? noProductName(pid) : (names.get(pid)?.name ?? pid), revenueMinor: 0, units: 0, orders: 0, cogsMinor: pid === OTHER_ID ? 0 : null, knownCostRevenueMinor: 0, refundsMinor: amount });
   }
   const table = productTable(tableRows, { revenueMinor: figures.revenue });
   const viewsKnown = views.firstDay !== null;
   const rows: ProductReportRow[] = table.rows.map((r) => {
-    const other = r.productId === OTHER_ID;
+    const other = isNoProduct(r.productId);
     const l = lines.rows.get(r.productId);
     const seen = viewsKnown && !other ? (views.views.get(r.productId) ?? 0) : null;
     const prior = before ? (before.rows.get(r.productId) ?? null) : null;
@@ -390,7 +403,7 @@ export async function productsReport(
     rows,
     totals: table.totals,
     shareOfRevenue: table.shareOfRevenue,
-    pareto: paretoSummary(table.rows.filter((r) => r.productId !== OTHER_ID)),
+    pareto: paretoSummary(table.rows.filter((r) => !isNoProduct(r.productId))),
     costCoverage: safeRatio(knownRevenue, table.totals.revenueMinor > 0 ? table.totals.revenueMinor : null),
     reconciliation: {
       revenueMinor: figures.revenue,

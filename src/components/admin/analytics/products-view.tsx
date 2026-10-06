@@ -502,7 +502,7 @@ export function ProductsView({
             <span>
               <span className="block truncate">{r.name}</span>
               <span className="block text-xs text-muted">
-                Sign-up fees and other lines that are not products
+                {r.productId === "custom" ? "Items staff typed into a draft order: in revenue, in no ranking, cost not known" : "Sign-up fees and other lines that are not products"}
               </span>
             </span>
           );

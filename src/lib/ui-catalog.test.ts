@@ -48,6 +48,7 @@ describe("a template gives the English message", () => {
     "ui:companyAccount.alreadyMember": count,
     "ui:days": [[365], [730], [30], [7]],
     "ui:downloadsLeft": count,
+    "ui:gift.counter": count,
     "ui:bonus.dayCount": count,
     "ui:bonus.monthCount": count,
     "ui:planEvery": [["week", 1], ["week", 2], ["month", 1], ["month", 3], ["year", 1], ["year", 2]],
@@ -161,5 +162,73 @@ describe("the overlay", () => {
   it("fingerprints a source so a changed original is noticed", () => {
     expect(sourceHash("Add to cart")).toBe(sourceHash("Add to cart"));
     expect(sourceHash("Add to cart")).not.toBe(sourceHash("Add to basket"));
+  });
+});
+
+describe("the words of wave 3's orders (D173): gift messages, the pay link's page and email", () => {
+  const LANGS = ["nb", "sv", "da", "en"] as const;
+  /** Every leaf of a messages object as `path -> value`, the functions called with a name, a number or a word as they take. */
+  const leaves = (node: unknown, path: string[] = []): [string, string | ((...a: never[]) => string)][] =>
+    typeof node === "string" || typeof node === "function"
+      ? [[path.join("."), node as never]]
+      : node && typeof node === "object"
+        ? Object.entries(node).flatMap(([k, v]) => leaves(v, [...path, k]))
+        : [];
+
+  it("has the same words in nb, sv, da and en, all filled in", () => {
+    for (const section of ["gift", "draftPay"] as const) {
+      const english = leaves(t("en")[section]).map(([k]) => k);
+      for (const lang of LANGS) expect(leaves(t(lang)[section]).map(([k]) => k), `${lang} ${section}`).toEqual(english);
+    }
+    for (const section of ["draft", "giftMessage"] as const) {
+      const english = leaves(emailText("en")[section]).map(([k]) => k);
+      for (const lang of LANGS) expect(leaves(emailText(lang)[section]).map(([k]) => k), `${lang} ${section}`).toEqual(english);
+    }
+  });
+
+  it("writes every word by hand: the Nordic languages are not English, and no word is empty", () => {
+    for (const lang of LANGS) {
+      for (const [path, value] of [...leaves(t(lang).gift), ...leaves(t(lang).draftPay)]) {
+        const text = typeof value === "function" ? String((value as (...a: unknown[]) => unknown)("Kari", 3)) : value;
+        expect(text.trim().length, `${lang} ${path}`).toBeGreaterThan(1);
+        if (lang !== "en" && /\p{L}{4,}/u.test(text) && !/^(Kontakt|Adress|Adresse|Organisationsnummer|Kari)/.test(text)) expect(text, `${lang} ${path}`).not.toBe(String(leaves(t("en").draftPay).concat(leaves(t("en").gift)).find(([k]) => k === path)?.[1] ?? ""));
+      }
+    }
+    expect(t("nb").gift.title).toBe("Dette er en gave");
+    expect(t("sv").draftPay.heading("1042")).toBe("Beställning 1042");
+    expect(t("da").draftPay.paid).toBe("Denne ordre er betalt. Tak!");
+    expect(emailText("nb").draft.subject("Butikken", "1042")).toBe("Butikken: bestillingen din 1042 er klar til betaling");
+    expect(emailText("en").draft.subject("Shop", "1042")).toBe("Shop: your order 1042 is ready to pay");
+  });
+
+  it("puts the gift box's plain labels in the catalogue and keeps everything about the buyer's text, the pay page and the pay email out of it", () => {
+    for (const key of ["ui:gift.title", "ui:gift.to", "ui:gift.from", "ui:gift.message", "ui:gift.counter"]) expect(all.some((e) => e.key === key), key).toBe(true);
+    expect(all.filter((e) => /^(ui:gift\.(note|slip)\.|ui:draftPay\.|email:draft\.|email:giftMessage\.)/.test(e.key)).map((e) => e.key)).toEqual([]);
+    for (const prefix of ["ui:gift.note.", "ui:gift.slip.", "ui:draftPay.", "email:draft.", "email:giftMessage."]) expect(HAND_WRITTEN_ONLY).toContain(prefix);
+    expect(isHandWrittenOnly("ui:gift.counter")).toBe(false);
+    expect(isHandWrittenOnly("ui:draftPay.withdrawal")).toBe(true);
+  });
+
+  it("never lets an overlay replace the hand-written ones, and may translate the gift box's labels", () => {
+    const rogue = new Map([
+      ["ui:draftPay.withdrawal", "x"],
+      ["ui:draftPay.heading", "{0}"],
+      ["ui:gift.note.printed", "x"],
+      ["ui:gift.title", "Das ist ein Geschenk"],
+      ["ui:gift.counter", "{0, plural, one {# Zeichen übrig} other {# Zeichen übrig}}"],
+    ]);
+    const de = overlayMessages("ui", t("en"), rogue, "de-DE");
+    expect(de.draftPay.withdrawal).toBe(t("en").draftPay.withdrawal);
+    expect(de.draftPay.heading("7")).toBe(t("en").draftPay.heading("7"));
+    expect(de.gift.note.printed).toBe(t("en").gift.note.printed);
+    expect(de.gift.title).toBe("Das ist ein Geschenk");
+    expect(de.gift.counter(5)).toBe("5 Zeichen übrig");
+  });
+
+  it("counts the characters left with a singular: the message that chooses by a number", () => {
+    expect(t("en").gift.counter(1)).toBe("1 character left");
+    expect(t("en").gift.counter(250)).toBe("250 characters left");
+    expect(runTemplate("ui:gift.counter", ui.find((e) => e.key === "ui:gift.counter")!.source, [1], "en")).toBe("1 character left");
+    expect(runTemplate("ui:gift.counter", ui.find((e) => e.key === "ui:gift.counter")!.source, [250], "en")).toBe("250 characters left");
   });
 });

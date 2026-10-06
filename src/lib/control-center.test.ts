@@ -212,3 +212,29 @@ describe("the control center (D107)", () => {
     expect(changeText(0, 0)).toBeNull();
   });
 });
+
+describe("the control center and draft orders (D173)", () => {
+  const texts = (figures: Partial<StoreFigures>, now?: number) => attentionFor([store(figures)], now).map((i) => `${i.text} -> ${i.href}`);
+  const now = Date.parse("2026-10-06T12:00:00Z");
+
+  it("tells the owner how many drafts wait for payment and how long the oldest has waited, and links to the sent drafts", () => {
+    expect(texts({ drafts: { waiting: 3, oldestSentAt: "2026-10-03T12:00:00Z", expiringSoon: 0 } }, now)).toEqual([
+      "Kaffe: 3 draft orders are waiting for payment, the oldest sent 3 days ago. -> /admin/kaffe/orders/drafts?status=sent",
+    ]);
+    expect(texts({ drafts: { waiting: 1, oldestSentAt: "2026-10-06T08:00:00Z", expiringSoon: 0 } }, now)).toEqual(["Kaffe: 1 draft order is waiting for payment. -> /admin/kaffe/orders/drafts?status=sent"]);
+  });
+
+  it("says apart which pay links end within two days, because the order is then cancelled", () => {
+    const items = texts({ drafts: { waiting: 2, oldestSentAt: "2026-10-05T12:00:00Z", expiringSoon: 1 } }, now);
+    expect(items).toHaveLength(2);
+    expect(items[1]).toBe("Kaffe: the pay link of 1 draft order ends within 2 days, and the order is then cancelled. -> /admin/kaffe/orders/drafts?status=sent");
+    expect(texts({ drafts: { waiting: 2, oldestSentAt: null, expiringSoon: 2 } }, now)[1]).toContain("the pay links of 2 draft orders end within 2 days");
+  });
+
+  it("is not urgent, shows nothing when none wait, and nothing to a member who may not read orders", () => {
+    expect(attentionFor([store({ drafts: { waiting: 4, oldestSentAt: "2026-09-01T00:00:00Z", expiringSoon: 4 } })], now).every((i) => !i.urgent)).toBe(true);
+    expect(texts({ drafts: { waiting: 0, oldestSentAt: null, expiringSoon: 0 } }, now)).toEqual([]);
+    expect(texts({}, now)).toEqual([]);
+    expect(texts({ drafts: { waiting: 4, oldestSentAt: "2026-10-01T00:00:00Z", expiringSoon: 2 }, hides: ["sales"] }, now)).toEqual([]);
+  });
+});

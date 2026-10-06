@@ -41,7 +41,8 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Orders",
         items: [
-          item("/orders", "Orders", "Every order: open it, fulfil it, refund it, print its packing slip."),
+          item("/orders", "Orders", "Every order: search and filter them, save views, tag, archive, send and print in bulk, open one to fulfil or refund it."),
+          item("/orders/drafts", "Draft orders", "Orders you make for a customer: products, custom items and prices, a discount and shipping, sent as a pay link or recorded as paid outside Kaizen."),
           item("/returns", "Returns", "Customers' withdrawals and return requests: approve, receive, inspect and refund them in time."),
           item("/invoices", "Invoices", "Invoices and credit notes for orders, the orders waiting for one, and a CSV for the accountant."),
           item("/subscriptions", "Subscriptions", "Customers' recurring subscriptions and their payments."),
@@ -205,6 +206,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use."),
           item("/settings/shipping", "Shipping", "The flat rate for each market, free shipping above an amount, and carriers."),
+          item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizen."),
           item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get."),
           item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms."),
           item("/settings/tax", "Tax", "VAT registration and number, OSS and IOSS, and how the store charges VAT."),

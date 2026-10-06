@@ -41,7 +41,7 @@ const order = (over: Partial<InvoiceOrderFacts> = {}): InvoiceOrderFacts => ({
   campaignDiscountMinor: 0,
   campaignLabel: null,
   creditMinor: 0,
-  referralDiscountMinor: 0,
+  referralDiscountMinor: 0, staffDiscountMinor: 0, staffLabel: null,
   discountCode: null,
   vatKind: "standard",
   vatReliefMinor: 0,
@@ -378,6 +378,14 @@ describe("buildInvoiceSnapshot: the invoice equals its order to the minor unit",
     expect(snap.treatment.statements).toEqual(["not_registered", "exempt"]);
     expect(snap.seller).toMatchObject({ vatRegistered: false, vatNumber: null });
     expect(snap.buckets[0]).toMatchObject({ rate: 0, basis: "exempt" });
+  });
+
+  it("names a staff discount as one, with the label staff gave it, and leaves nothing for the code (D173)", () => {
+    const f = facts([paidLine("a", 20000, 1, 0.25, 2000)], { discountMinor: 2000, staffDiscountMinor: 2000, staffLabel: "Spring offer" });
+    expect(buildInvoiceSnapshot(f, ctx).discounts).toEqual([{ kind: "staff", label: "Spring offer", grossMinor: 2000 }]);
+    // Without a label it is still a staff discount, never an unnamed code.
+    const unnamed = facts([paidLine("a", 20000, 1, 0.25, 2000)], { discountMinor: 2000, staffDiscountMinor: 2000 });
+    expect(buildInvoiceSnapshot(unnamed, ctx).discounts).toEqual([{ kind: "staff", label: null, grossMinor: 2000 }]);
   });
 
   it("discounts as the shopper saw them, and the code's is what is left", () => {

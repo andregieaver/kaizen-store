@@ -15,7 +15,7 @@ import { forecastMonth, HISTORY_DAYS as FORECAST_HISTORY_DAYS, type MonthForecas
 import { derive } from "@/lib/analytics-kpi";
 import { addDays, addMonths, addYears, customPeriod, lastYearOf, previousPeriodOf, startOfMonth, todayIn, type AnalyticsParams, type AnalyticsPeriod } from "@/lib/analytics-period";
 import { targetProgress, type DailyActual, type TargetProgress } from "@/lib/analytics-targets";
-import { UNKNOWN_CHANNEL } from "@/lib/analytics-traffic";
+import { isNotAChannel, UNKNOWN_CHANNEL } from "@/lib/analytics-traffic";
 import { mainCurrency } from "@/lib/markets";
 
 import { geoReport } from "./analytics-geo-data";
@@ -74,6 +74,8 @@ export function shareOfToday(now: Date, timeZone: string): number {
 export type HistoryDay = {
   day: string;
   orders: number;
+  /** Of them, the orders from a shopper's checkout (conversion counts these only: a staff-made order was not a visit). */
+  checkoutOrders: number;
   /** Revenue before refunds, and net of them, without VAT. */
   revenueMinor: number;
   netRevenueMinor: number;
@@ -110,6 +112,7 @@ export async function dailyHistory(store: Store, now: Date, settings?: StoredAna
   const all: HistoryDay[] = points.map((p) => ({
     day: p.key,
     orders: p.orders,
+    checkoutOrders: p.checkoutOrders ?? p.orders,
     revenueMinor: p.revenueMinor,
     netRevenueMinor: p.netRevenueMinor,
     sessions: counted && p.key >= (sessions.firstDay as string) ? (sessions.byDay[p.key] ?? 0) : null,
@@ -282,6 +285,7 @@ async function channelCacRows(store: Store, now: Date, today: string): Promise<C
   const before = new Map(b.table.rows.map((row) => [row.channel, row]));
   const channels = new Set([...now7.keys(), ...before.keys()]);
   channels.delete(UNKNOWN_CHANNEL);
+  for (const key of [...channels]) if (isNotAChannel(key)) channels.delete(key);
   return [...channels]
     .map((channel): ChannelCacRow => {
       const a = now7.get(channel);
@@ -351,7 +355,7 @@ export async function alertSnapshotFor(store: Store, now: Date, options: History
     safe("costs", () => costCoverage(store, today, settings)),
     safe("returning customers", () => returningMonths(store, today)),
   ]);
-  const daily: DailyPoint[] = h.days.map((d) => ({ day: d.day, orders: d.orders, revenueMinor: d.netRevenueMinor, sessions: d.sessions }));
+  const daily: DailyPoint[] = h.days.map((d) => ({ day: d.day, orders: d.orders, checkoutOrders: d.checkoutOrders, revenueMinor: d.netRevenueMinor, sessions: d.sessions }));
   return {
     currency: h.currency,
     locale: store.markets[0]?.locale ?? "en",
@@ -510,7 +514,7 @@ export async function diagnosisFor(store: Store, params: AnalyticsParams, now: D
     }
     if (marketing?.table && marketingBefore?.table && visitsInBoth) {
       const channel = (r: NonNullable<typeof marketing>): Seg[] =>
-        (r.table?.rows ?? []).filter((row) => row.channel !== UNKNOWN_CHANNEL).map((row) => ({ key: row.channel, label: row.label, orders: row.orders, revenueMinor: row.revenueMinor, sessions: row.sessions }));
+        (r.table?.rows ?? []).filter((row) => !isNotAChannel(row.channel)).map((row) => ({ key: row.channel, label: row.label, orders: row.orders, revenueMinor: row.revenueMinor, sessions: row.sessions }));
       tables.push(mergeSegments("channel", channel(marketing), channel(marketingBefore), 0));
     }
     if (!visitsInBoth) {
@@ -527,6 +531,14 @@ export async function diagnosisFor(store: Store, params: AnalyticsParams, now: D
       tables.push({ dimension: "product", rows: moved });
     }
     if (period.to > addDays(today, 0) && period.from <= today) notes.push("This period includes today so far, so it is not a whole period against a whole one.");
+    // Staff-made orders (D173) are paid orders for revenue, but were not visits: the conversion in this explanation is every paid order over sessions, which is not the Overview's rate.
+    const staffNow = current.totals.orders - (current.totals.checkoutOrders ?? current.totals.orders);
+    const staffBefore = previous.totals.orders - (previous.totals.checkoutOrders ?? previous.totals.orders);
+    if (staffNow + staffBefore > 0) {
+      notes.push(
+        `Orders here include ${staffNow} staff-made ${staffNow === 1 ? "order" : "orders"} in this period and ${staffBefore} in the one compared with. They were not visits, so conversion in this explanation counts every paid order over sessions: it is not the Overview's conversion rate, which leaves them out.`,
+      );
+    }
 
     const explanation = explainChange({
       current: { revenueMinor: current.totals.revenueMinor, orders: current.totals.orders, sessions },

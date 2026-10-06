@@ -335,6 +335,55 @@ const messages = {
       /** A cart line already at the most one line may hold (the stock does not limit a variant that keeps selling). */
       capped: (max: number) => `Du kan legge inntil ${max} av denne varen i handlekurven.`,
     },
+    /**
+     * Gift messages (wave 3, run 2, D173): the box on the cart page and the buyer's own words back to them, and the block on the packing slip. The labels are plain interface
+     * text; `note` and `slip` say what is done with the buyer's text and are hand-written only (`HAND_WRITTEN_ONLY`). Hand-written; needs human legal review before real use.
+     */
+    gift: {
+      title: "Dette er en gave",
+      to: "Til",
+      from: "Fra",
+      message: "Melding",
+      counter: (left: number) => `${left} tegn igjen`,
+      // legal: needs review
+      note: {
+        printed: "Meldingen skrives ut på pakkseddelen til bestillingen. Butikken sender den ikke til mottakeren.",
+        yourMessage: "Din gavehilsen",
+        tooLong: (over: number) => `Meldingen er ${over} tegn for lang.`,
+        tooManyLines: (max: number) => `Meldingen kan ha høyst ${max} linjer.`,
+        nameTooLong: (max: number) => `Et navn kan ha høyst ${max} tegn.`,
+        saveFailed: "Gavemeldingen ble ikke lagret. Prøv igjen.",
+      },
+      slip: {
+        heading: (name: string) => `En gave til ${name}`,
+        anonymous: "En gave",
+        from: (name: string) => `Fra ${name}`,
+      },
+    },
+    /**
+     * The page a buyer opens from a pay link a store sent (wave 3, run 2, D173): what the order is, who sells it, the right of withdrawal, and what became of the link.
+     * The terms sentence and the button are the checkout's own (`terms`, `payNow`). Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    draftPay: {
+      heading: (number: string) => `Bestilling ${number}`,
+      intro: "Butikken har laget denne bestillingen til deg. Se over den og betal når du er klar.",
+      sellerHeading: "Selger",
+      organisationNumber: "Organisasjonsnummer",
+      address: "Adresse",
+      contact: "Kontakt",
+      noteHeading: "Melding fra butikken",
+      validUntil: (date: string) => `Lenken gjelder til ${date}.`,
+      withdrawal: "Du kan angre kjøpet innen 14 dager etter at du har mottatt varen, med de unntakene loven gir.",
+      withdrawalLink: "Les butikkens informasjon om angrerett",
+      stripeNote: "Du sendes til Stripes sikre betalingsside.",
+      termsRequired: "Godta vilkårene for å betale.",
+      paid: "Denne bestillingen er betalt. Takk!",
+      expired: "Denne lenken virker ikke lenger. Be butikken om en ny.",
+      contactStore: (email: string) => `Kontakt butikken: ${email}`,
+      paymentsOff: "Butikken kan ikke ta imot betaling akkurat nå. Prøv igjen senere, eller kontakt butikken.",
+      startFailed: "Betalingen kunne ikke startes. Prøv igjen, eller kontakt butikken.",
+    },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Ja", no: "Nei" },
     /** What a store's campaigns say on product pages and cards (D115). */
@@ -1451,6 +1500,55 @@ const messages = {
       line: (n: number, days: number) => `${n} på restorder: förväntas skickas inom ${days} ${days === 1 ? "dag" : "dagar"}`,
       order: (n: number, quantity: number, days: number) => `${n} av ${quantity} på restorder: förväntas skickas inom ${days} ${days === 1 ? "dag" : "dagar"} efter din beställning`,
       capped: (max: number) => `Du kan lägga högst ${max} av den här varan i varukorgen.`,
+    },
+    /**
+     * Gift messages (wave 3, run 2, D173): the box on the cart page and the buyer's own words back to them, and the block on the packing slip. The labels are plain interface
+     * text; `note` and `slip` say what is done with the buyer's text and are hand-written only (`HAND_WRITTEN_ONLY`). Hand-written; needs human legal review before real use.
+     */
+    gift: {
+      title: "Det här är en present",
+      to: "Till",
+      from: "Från",
+      message: "Meddelande",
+      counter: (left: number) => `${left} tecken kvar`,
+      // legal: needs review
+      note: {
+        printed: "Meddelandet skrivs ut på följesedeln för beställningen. Butiken skickar det inte till mottagaren.",
+        yourMessage: "Ditt presentmeddelande",
+        tooLong: (over: number) => `Meddelandet är ${over} tecken för långt.`,
+        tooManyLines: (max: number) => `Meddelandet kan ha högst ${max} rader.`,
+        nameTooLong: (max: number) => `Ett namn kan ha högst ${max} tecken.`,
+        saveFailed: "Presentmeddelandet sparades inte. Försök igen.",
+      },
+      slip: {
+        heading: (name: string) => `En present till ${name}`,
+        anonymous: "En present",
+        from: (name: string) => `Från ${name}`,
+      },
+    },
+    /**
+     * The page a buyer opens from a pay link a store sent (wave 3, run 2, D173): what the order is, who sells it, the right of withdrawal, and what became of the link.
+     * The terms sentence and the button are the checkout's own (`terms`, `payNow`). Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    draftPay: {
+      heading: (number: string) => `Beställning ${number}`,
+      intro: "Butiken har gjort den här beställningen åt dig. Titta igenom den och betala när du är redo.",
+      sellerHeading: "Säljare",
+      organisationNumber: "Organisationsnummer",
+      address: "Adress",
+      contact: "Kontakt",
+      noteHeading: "Meddelande från butiken",
+      validUntil: (date: string) => `Länken gäller till ${date}.`,
+      withdrawal: "Du kan ångra köpet inom 14 dagar efter att du har tagit emot varan, med de undantag som lagen ger.",
+      withdrawalLink: "Läs butikens information om ångerrätt",
+      stripeNote: "Du skickas till Stripes säkra betalningssida.",
+      termsRequired: "Godkänn villkoren för att betala.",
+      paid: "Den här beställningen är betald. Tack!",
+      expired: "Den här länken fungerar inte längre. Be butiken om en ny.",
+      contactStore: (email: string) => `Kontakta butiken: ${email}`,
+      paymentsOff: "Butiken kan inte ta emot betalningar just nu. Försök igen senare eller kontakta butiken.",
+      startFailed: "Betalningen kunde inte startas. Försök igen eller kontakta butiken.",
     },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Ja", no: "Nej" },
@@ -2569,6 +2667,55 @@ const messages = {
       order: (n: number, quantity: number, days: number) => `${n} af ${quantity} på restordre: forventes afsendt inden for ${days} ${days === 1 ? "dag" : "dage"} efter din bestilling`,
       capped: (max: number) => `Du kan lægge op til ${max} af denne vare i kurven.`,
     },
+    /**
+     * Gift messages (wave 3, run 2, D173): the box on the cart page and the buyer's own words back to them, and the block on the packing slip. The labels are plain interface
+     * text; `note` and `slip` say what is done with the buyer's text and are hand-written only (`HAND_WRITTEN_ONLY`). Hand-written; needs human legal review before real use.
+     */
+    gift: {
+      title: "Det her er en gave",
+      to: "Til",
+      from: "Fra",
+      message: "Besked",
+      counter: (left: number) => `${left} tegn tilbage`,
+      // legal: needs review
+      note: {
+        printed: "Beskeden udskrives på pakkesedlen til ordren. Butikken sender den ikke til modtageren.",
+        yourMessage: "Din gavehilsen",
+        tooLong: (over: number) => `Beskeden er ${over} tegn for lang.`,
+        tooManyLines: (max: number) => `Beskeden kan højst have ${max} linjer.`,
+        nameTooLong: (max: number) => `Et navn kan højst have ${max} tegn.`,
+        saveFailed: "Gavebeskeden blev ikke gemt. Prøv igen.",
+      },
+      slip: {
+        heading: (name: string) => `En gave til ${name}`,
+        anonymous: "En gave",
+        from: (name: string) => `Fra ${name}`,
+      },
+    },
+    /**
+     * The page a buyer opens from a pay link a store sent (wave 3, run 2, D173): what the order is, who sells it, the right of withdrawal, and what became of the link.
+     * The terms sentence and the button are the checkout's own (`terms`, `payNow`). Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    draftPay: {
+      heading: (number: string) => `Ordre ${number}`,
+      intro: "Butikken har lavet denne ordre til dig. Se den igennem og betal, når du er klar.",
+      sellerHeading: "Sælger",
+      organisationNumber: "Organisationsnummer",
+      address: "Adresse",
+      contact: "Kontakt",
+      noteHeading: "Besked fra butikken",
+      validUntil: (date: string) => `Linket gælder til ${date}.`,
+      withdrawal: "Du kan fortryde købet inden for 14 dage efter, at du har modtaget varen, med de undtagelser, som loven giver.",
+      withdrawalLink: "Læs butikkens oplysninger om fortrydelsesret",
+      stripeNote: "Du sendes til Stripes sikre betalingsside.",
+      termsRequired: "Accepter vilkårene for at betale.",
+      paid: "Denne ordre er betalt. Tak!",
+      expired: "Dette link virker ikke længere. Bed butikken om et nyt.",
+      contactStore: (email: string) => `Kontakt butikken: ${email}`,
+      paymentsOff: "Butikken kan ikke modtage betalinger lige nu. Prøv igen senere, eller kontakt butikken.",
+      startFailed: "Betalingen kunne ikke startes. Prøv igen, eller kontakt butikken.",
+    },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Ja", no: "Nej" },
     campaigns: {
@@ -3683,6 +3830,55 @@ const messages = {
       line: (n: number, days: number) => `${n} on backorder: expected to ship within ${days} ${days === 1 ? "day" : "days"}`,
       order: (n: number, quantity: number, days: number) => `${n} of ${quantity} on backorder: expected to ship within ${days} ${days === 1 ? "day" : "days"} of your order`,
       capped: (max: number) => `You can put at most ${max} of this item in the cart.`,
+    },
+    /**
+     * Gift messages (wave 3, run 2, D173): the box on the cart page and the buyer's own words back to them, and the block on the packing slip. The labels are plain interface
+     * text; `note` and `slip` say what is done with the buyer's text and are hand-written only (`HAND_WRITTEN_ONLY`). Hand-written; needs human legal review before real use.
+     */
+    gift: {
+      title: "This is a gift",
+      to: "To",
+      from: "From",
+      message: "Message",
+      counter: (left: number) => `${left} ${left === 1 ? "character" : "characters"} left`,
+      // legal: needs review
+      note: {
+        printed: "The message is printed on the order's packing slip. The store does not send it to the recipient.",
+        yourMessage: "Your gift message",
+        tooLong: (over: number) => `The message is ${over} ${over === 1 ? "character" : "characters"} too long.`,
+        tooManyLines: (max: number) => `The message can have at most ${max} lines.`,
+        nameTooLong: (max: number) => `A name can have at most ${max} characters.`,
+        saveFailed: "The gift message was not saved. Try again.",
+      },
+      slip: {
+        heading: (name: string) => `A gift for ${name}`,
+        anonymous: "A gift",
+        from: (name: string) => `From ${name}`,
+      },
+    },
+    /**
+     * The page a buyer opens from a pay link a store sent (wave 3, run 2, D173): what the order is, who sells it, the right of withdrawal, and what became of the link.
+     * The terms sentence and the button are the checkout's own (`terms`, `payNow`). Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    draftPay: {
+      heading: (number: string) => `Order ${number}`,
+      intro: "The store has made this order for you. Check it and pay when you are ready.",
+      sellerHeading: "Seller",
+      organisationNumber: "Organisation number",
+      address: "Address",
+      contact: "Contact",
+      noteHeading: "Message from the store",
+      validUntil: (date: string) => `This link is valid until ${date}.`,
+      withdrawal: "You can withdraw from the purchase within 14 days of receiving the goods, with the exceptions the law allows.",
+      withdrawalLink: "Read the store's information about the right of withdrawal",
+      stripeNote: "You are sent to Stripe's secure payment page.",
+      termsRequired: "Accept the terms to pay.",
+      paid: "This order is paid. Thank you!",
+      expired: "This link no longer works. Ask the store for a new one.",
+      contactStore: (email: string) => `Contact the store: ${email}`,
+      paymentsOff: "The store cannot take payments right now. Try again later, or contact the store.",
+      startFailed: "The payment could not be started. Try again, or contact the store.",
     },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Yes", no: "No" },

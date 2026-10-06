@@ -32,7 +32,7 @@ const order = (over: Partial<InvoiceOrderFacts> = {}): InvoiceOrderFacts => ({
   campaignDiscountMinor: 0,
   campaignLabel: null,
   creditMinor: 0,
-  referralDiscountMinor: 0,
+  referralDiscountMinor: 0, staffDiscountMinor: 0, staffLabel: null,
   discountCode: null,
   vatKind: "standard",
   vatReliefMinor: 0,
@@ -263,6 +263,21 @@ describe("a booking left wholly for the venue", () => {
   });
 });
 
+describe("a staff discount (D173)", () => {
+  it("is printed under the kind and the name staff gave it, in every language, and never as a discount code", () => {
+    for (const [locale, lang] of [["nb-NO", "nb"], ["sv-SE", "sv"], ["da-DK", "da"], ["en-IE", "en"]] as const) {
+      const snap = buildInvoiceSnapshot(
+        facts([line("a", "Vare", 10000, 2, 2000)], { discountMinor: 2000, staffDiscountMinor: 2000, staffLabel: "Spring offer", locale }),
+        ctx,
+      );
+      const text = words(render(snap));
+      expect(text).toContain(documentText(lang).discountKinds.staff);
+      expect(text).toContain("Spring offer");
+      expect(text).not.toContain(documentText(lang).discountKinds.code);
+    }
+  });
+});
+
 describe("a seller that is not registered for VAT", () => {
   const unregistered = () =>
     buildInvoiceSnapshot(
@@ -379,5 +394,37 @@ describe("the languages", () => {
     const text = words(render(snap));
     expect(text).toContain("kari@example.com");
     expect(text).toContain("Faktura F-17");
+  });
+});
+
+describe("an invoice for a payment the seller took outside Kaizen (D173)", () => {
+  const manual = (locale: string, method: "cash" | "bank_transfer" | "other") =>
+    buildInvoiceSnapshot(facts([line("a", "Ullgenser", 90000, 1, 0.25)], { locale, onlineProvider: "manual", onlineMethod: method }), ctx);
+
+  it("says how it was paid in each language and never that it was paid online", () => {
+    const cases: [string, "cash" | "bank_transfer" | "other", string][] = [
+      ["nb-NO", "bank_transfer", "Betalt utenfor nettbutikken (bankoverføring)"],
+      ["sv-SE", "cash", "Betalt utanför webbutiken (kontant)"],
+      ["da-DK", "other", "Betalt uden for webshoppen (på anden måde)"],
+      ["en-IE", "bank_transfer", "Paid outside the online checkout (bank transfer)"],
+    ];
+    for (const [locale, method, expected] of cases) {
+      const text = words(render(manual(locale, method)));
+      expect(text, locale).toContain(expected);
+      for (const lang of DOCUMENT_LANGUAGES) expect(text, `${locale} must not say ${lang}'s paid online`).not.toContain(documentText(lang).paidOnline);
+    }
+  });
+
+  it("is a paid document: it keeps its payment day and VAT as charged, whatever the method", () => {
+    const snap = manual("nb-NO", "cash");
+    expect(snap.payments).toEqual([{ kind: "paid_outside", amountMinor: snap.totals.grossMinor, provider: "manual", method: "cash" }]);
+    expect(words(render(snap))).toContain("Leveringsdato");
+    expect(snap.totals.vatMinor).toBeGreaterThan(0);
+  });
+
+  it("still says paid online for a Stripe payment", () => {
+    const snap = buildInvoiceSnapshot(facts([line("a", "Ullgenser", 90000, 1, 0.25)]), ctx);
+    expect(snap.payments[0].kind).toBe("paid_online");
+    expect(words(render(snap))).toContain("Betalt på nett");
   });
 });

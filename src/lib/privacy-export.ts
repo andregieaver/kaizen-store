@@ -91,6 +91,9 @@ export type OrderRow = {
   restrictedAt: Ts;
   keptUntil: string | null;
   anonymisedAt: Ts;
+  /** The buyer's gift (D173): the buyer's own words, and the name of another person (the recipient). Staff tags on the order (staff text, which can name a person). */
+  gift?: { to: string | null; from: string | null; message: string | null } | null;
+  tags?: string[];
   lines: OrderLineRow[];
   payments: { provider: string; amountMinor: number; currency: string; status: string; createdAt: Ts; providerReference: string | null }[];
   refunds: { amountMinor: number; currency: string; status: string; createdAt: Ts; reason: string | null }[];
@@ -212,6 +215,22 @@ export type CartRow = {
   updatedAt: Ts;
   lines: { sku: string | null; title: string; quantity: number }[];
 };
+/** A draft order staff made for the person (D173), by the customer account only: the contact data staff typed, and what was on it. */
+export type DraftExportRow = {
+  number: string;
+  status: string;
+  currency: string;
+  createdAt: Ts;
+  email: string | null;
+  phone: string | null;
+  shippingAddress: unknown;
+  billingAddress: unknown;
+  companyName: string | null;
+  organisationNumber: string | null;
+  noteToBuyer: string | null;
+  internalNote: string | null;
+  lines: { sku: string | null; title: string; quantity: number; unitPriceMinor: number }[];
+};
 export type AbandonedRow = { capturedAt: Ts; remindersSent: number; clickedAt: Ts; recoveredAt: Ts; optedOutAt: Ts };
 export type FormRow = { kind: string; createdAt: Ts; status: string };
 export type CompanySource = {
@@ -246,6 +265,8 @@ export type ExportInput = {
   emails: EmailRow[];
   carts: CartRow[];
   abandoned: AbandonedRow[];
+  /** Draft orders of the customer account (D173); absent is none. */
+  drafts?: DraftExportRow[];
   forms: FormRow[];
   company: CompanySource;
   customFields: CustomFieldRow[];
@@ -274,7 +295,7 @@ export type ExportSections = {
   referrals: Json;
   consents: Json[];
   emails: Json[];
-  carts: { carts: Json[]; abandonedCheckouts: Json[] };
+  carts: { carts: Json[]; abandonedCheckouts: Json[]; draftOrders: Json[] };
   forms: Json[];
   company: { company: Json | null; invites: Json[] };
   customFields: Json[];
@@ -425,6 +446,9 @@ const shapeOrder = (o: OrderRow): Json => {
     restrictedSince: iso(o.restrictedAt),
     keptUntil: day(o.keptUntil),
     anonymisedAt: iso(o.anonymisedAt),
+    // The buyer's gift (D173): their own words and the recipient's name, kept with the order and exported with it; staff's tags on it.
+    gift: o.gift ? { to: text(o.gift.to), from: text(o.gift.from), message: text(o.gift.message) } : null,
+    tags: o.tags ?? [],
     lines: o.lines.map((l) => ({
       id: l.id,
       sku: text(l.sku),
@@ -573,7 +597,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     referrals: (input.referrals.affiliate ? 1 : 0) + (input.referrals.rewards ? input.referrals.rewards.count : 0),
     consents: input.consents.length,
     emails: input.emails.length,
-    carts: input.carts.length + input.abandoned.length,
+    carts: input.carts.length + input.abandoned.length + (input.drafts ?? []).length,
     forms: input.forms.length,
     company: (input.company.company ? 1 : 0) + input.company.invites.length,
     customFields: input.customFields.length,
@@ -613,6 +637,20 @@ export function shapeExport(input: ExportInput): ExportFile {
     carts: {
       carts: input.carts.map((c) => ({ id: c.id, status: c.status, currency: c.currency, createdAt: iso(c.createdAt), updatedAt: iso(c.updatedAt), lines: c.lines.map((l) => ({ sku: text(l.sku), title: l.title, quantity: int(l.quantity) })) })),
       abandonedCheckouts: input.abandoned.map((a) => ({ capturedAt: iso(a.capturedAt), remindersSent: int(a.remindersSent), clickedAt: iso(a.clickedAt), recoveredAt: iso(a.recoveredAt), optedOutAt: iso(a.optedOutAt) })),
+      draftOrders: (input.drafts ?? []).map((d) => ({
+        number: d.number,
+        status: d.status,
+        currency: d.currency,
+        createdAt: iso(d.createdAt),
+        email: text(d.email),
+        phone: text(d.phone),
+        billingAddress: addressOf(d.billingAddress),
+        shippingAddress: addressOf(d.shippingAddress),
+        company: d.companyName || d.organisationNumber ? { name: text(d.companyName), organisationNumber: text(d.organisationNumber) } : null,
+        noteToBuyer: text(d.noteToBuyer),
+        internalNote: text(d.internalNote),
+        lines: d.lines.map((l) => ({ sku: text(l.sku), title: l.title, quantity: int(l.quantity), unitPrice: money(l.unitPriceMinor, d.currency) })),
+      })),
     },
     forms: input.forms.map((f) => ({ kind: f.kind, createdAt: iso(f.createdAt), status: f.status })),
     company: {
@@ -751,7 +789,7 @@ export function validateExport(file: unknown): string[] {
     company: ((sections.company as Row | undefined)?.company ? 1 : 0) + listOf((sections.company as Row | undefined)?.invites),
     consents: listOf(sections.consents),
     emails: listOf(sections.emails),
-    carts: listOf((sections.carts as Row | undefined)?.carts) + listOf((sections.carts as Row | undefined)?.abandonedCheckouts),
+    carts: listOf((sections.carts as Row | undefined)?.carts) + listOf((sections.carts as Row | undefined)?.abandonedCheckouts) + listOf((sections.carts as Row | undefined)?.draftOrders),
     forms: listOf(sections.forms),
     customFields: listOf(sections.customFields),
   };

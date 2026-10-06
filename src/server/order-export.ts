@@ -146,6 +146,8 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
             or (tp.provider = 'venue' and tp.test_mode))
       ) as test_payment,
       (o.restricted_at is not null or o.anonymised_at is not null) as erased,
+      o.archived_at is not null as archived, o.source as order_source, o.is_gift, o.gift_to, o.gift_from, o.gift_message,
+      coalesce((select array_agg(t.label order by t.key) from commerce.order_tags t where t.store_id = o.store_id and t.order_id = o.id), '{}'::text[]) as tag_labels,
       pay.status as payment_status, pay.provider_reference as payment_reference,
       coalesce(
         (select min(e.created_at) from commerce.order_events e where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid'),
@@ -235,6 +237,13 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
       balanceMinor: num(r.balance_minor),
       commissionMinor: num(r.commission_minor),
       deliveryService: str(r.delivery_label),
+      tags: Array.isArray(r.tag_labels) ? (r.tag_labels as unknown[]).map(String) : [],
+      archived: r.archived === true,
+      source: r.order_source === "draft" ? "draft" : "checkout",
+      isGift: r.is_gift === true,
+      giftTo: str(r.gift_to),
+      giftFrom: str(r.gift_from),
+      giftMessage: str(r.gift_message),
       paymentReference: exportablePaymentReference(str(r.payment_reference)),
       lines: byOrder.get(String(r.id)) ?? [],
     };

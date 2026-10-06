@@ -33,7 +33,7 @@ import type { Store } from "./stores";
  * A discount without VAT is the line's discount over (1 + the line's VAT rate), rounded per line, as the totals module does,
  * so a period's discounts on goods here are `periodTotals().discountsMinor` less the shipping discount (a free-shipping code takes
  * nothing off a line: Finance counts it under Discounts, here the order is discounted but no goods discount is given). The kind of a discount is read from
- * the lines' own split columns (group, campaign, bonus credit, referral); what is left of a line's discount is the code's.
+ * the lines' own split columns (group, campaign, bonus credit, referral, and a draft order's staff discount, D173); what is left of a line's discount is the code's.
  * Every figure is a paid order's (`PAID`: copied and hosts' orders never count).
  */
 
@@ -44,17 +44,18 @@ export const COUPON_CAP = 1_000;
 /** How many codes are listed. */
 export const COUPONS_LISTED = 50;
 
-export type DiscountKind = "campaign" | "group" | "referral" | "credit" | "code";
+export type DiscountKind = "campaign" | "group" | "referral" | "credit" | "staff" | "code";
 
 export const DISCOUNT_KIND_LABELS: Record<DiscountKind, string> = {
   campaign: "Campaigns",
   group: "Customer groups",
   referral: "Welcome discounts (referral)",
   credit: "Bonus credits",
+  staff: "Staff discounts",
   code: "Discount codes",
 };
 
-const KIND_ORDER: readonly DiscountKind[] = ["campaign", "group", "referral", "credit", "code"];
+const KIND_ORDER: readonly DiscountKind[] = ["campaign", "group", "referral", "credit", "staff", "code"];
 
 /** A month of the 12-month trend: a month still in progress (the period does not reach its last day) is `partial`. */
 export type TrendMonth = DiscountMonth & { partial: boolean };
@@ -171,7 +172,7 @@ async function readOrderRows(store: Store, period: Pick<AnalyticsPeriod, "from" 
 
 /** A discount's kinds over the period's paid orders, by currency: what each took off without VAT, and how many orders had it. */
 async function readKinds(store: Store, period: AnalyticsPeriod): Promise<Row[]> {
-  const code = "ol.discount_minor - ol.vat_relief_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor";
+  const code = "ol.discount_minor - ol.vat_relief_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor - ol.staff_discount_minor";
   return setBased<Row>(sql`
     select trim(o.currency) as currency,
       sum(${lineExVat("(ol.discount_minor - ol.vat_relief_minor)")}) as total,
@@ -179,11 +180,13 @@ async function readKinds(store: Store, period: AnalyticsPeriod): Promise<Row[]> 
       sum(${lineExVat("ol.campaign_discount_minor")}) as campaign,
       sum(${lineExVat("ol.referral_discount_minor")}) as referral,
       sum(${lineExVat("ol.bonus_discount_minor")}) as credit,
+      sum(${lineExVat("ol.staff_discount_minor")}) as staff,
       sum(${lineExVat(`(${code})`)}) as code,
       count(distinct ol.order_id) filter (where ol.member_discount_minor > 0)::int as member_orders,
       count(distinct ol.order_id) filter (where ol.campaign_discount_minor > 0)::int as campaign_orders,
       count(distinct ol.order_id) filter (where ol.referral_discount_minor > 0)::int as referral_orders,
       count(distinct ol.order_id) filter (where ol.bonus_discount_minor > 0)::int as credit_orders,
+      count(distinct ol.order_id) filter (where ol.staff_discount_minor > 0)::int as staff_orders,
       count(distinct ol.order_id) filter (where ${sql.raw(code)} > 0)::int as code_orders
     from commerce.orders o
     join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
@@ -212,7 +215,7 @@ async function readCoupons(store: Store, period: AnalyticsPeriod): Promise<Row[]
     by_line as (
       select po.code, po.currency,
         sum(round(ol.unit_price_minor::numeric * ol.quantity / (1 + ol.tax_rate))) as gross,
-        sum(${lineExVat("greatest(ol.discount_minor - ol.vat_relief_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor, 0)")}) as code_off
+        sum(${lineExVat("greatest(ol.discount_minor - ol.vat_relief_minor - ol.member_discount_minor - ol.campaign_discount_minor - ol.bonus_discount_minor - ol.referral_discount_minor - ol.staff_discount_minor, 0)")}) as code_off
       from po
       join commerce.order_lines ol on ol.order_id = po.id
       where po.code is not null and ol.store_id = ${store.id}::uuid
@@ -297,7 +300,7 @@ export async function discountsReport(store: Store, period: AnalyticsPeriod): Pr
   // The kinds: every currency group converted by itself, so the kinds add up to the total in a store with one currency.
   const kinds = new Map<DiscountKind, { orders: number; minor: number }>(KIND_ORDER.map((k) => [k, { orders: 0, minor: 0 }]));
   let totalMinor = 0;
-  const keyOf: Record<DiscountKind, string> = { campaign: "campaign", group: "member", referral: "referral", credit: "credit", code: "code" };
+  const keyOf: Record<DiscountKind, string> = { campaign: "campaign", group: "member", referral: "referral", credit: "credit", staff: "staff", code: "code" };
   for (const r of kindRows) {
     const currency = String(r.currency);
     if (!rated(store, currency)) continue;
@@ -309,7 +312,8 @@ export async function discountsReport(store: Store, period: AnalyticsPeriod): Pr
     }
   }
   const kindsTotal = [...kinds.values()].reduce((a, k) => a + k.minor, 0);
-  const kindRowsOut: DiscountKindRow[] = KIND_ORDER.map((kind) => {
+  // Staff discounts (D173) are a row only where a store has given some: the other kinds are always listed.
+  const kindRowsOut: DiscountKindRow[] = KIND_ORDER.filter((kind) => kind !== "staff" || (kinds.get(kind)?.orders ?? 0) > 0).map((kind) => {
     const k = kinds.get(kind)!;
     return { kind, label: DISCOUNT_KIND_LABELS[kind], orders: k.orders, discountMinor: k.minor, share: safeRatio(k.minor, kindsTotal > 0 ? kindsTotal : null) };
   }).sort((a, b) => b.discountMinor - a.discountMinor || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));

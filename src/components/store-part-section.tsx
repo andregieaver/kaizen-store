@@ -7,6 +7,7 @@ import {
   CartContents,
   CartContinue,
   CartCredits,
+  CartGift,
   CartLines,
   CartSummary,
 } from "@/app/s/[store]/[market]/cart/cart-contents";
@@ -83,9 +84,13 @@ async function Part({
   const order = route.param ? { store, market, orderId: route.param, query } : null;
   // A page with its own piece for the terms at checkout (wave 1, 1e) has them there; the payment form then does not draw them too.
   const holdsTerms = route.holds?.includes("checkout_terms") ?? false;
+  // The same for the cart's gift box (wave 3, D173): a cart page made of pieces with no gift piece gets the box above its checkout button.
+  const holdsGift = route.holds?.includes("cart_gift") ?? false;
   switch (part) {
     case "cart_lines":
       return <CartLines store={store} market={market} m={m} />;
+    case "cart_gift":
+      return <CartGift store={store} market={market} m={m} />;
     case "cart_summary":
       return <CartSummary store={store} market={market} m={m} />;
     case "cart_code":
@@ -93,7 +98,7 @@ async function Part({
     case "cart_credits":
       return <CartCredits store={store} market={market} m={m} />;
     case "cart_checkout":
-      return <CartCheckout store={store} market={market} m={m} />;
+      return <CartCheckout store={store} market={market} m={m} drawGift={!holdsGift} />;
     case "cart_continue":
       return <CartContinue store={store} market={market} m={m} />;
     case "checkout_items":

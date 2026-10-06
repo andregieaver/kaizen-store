@@ -329,3 +329,79 @@ describe("helpers", () => {
     expect(parseOrderNumbers("", 3)).toEqual({ numbers: [], over: 0 });
   });
 });
+
+describe("what wave 3 added to an order: tags, archived, source and gift (D173)", () => {
+  const colsOf = (layout: "lines" | "orders", profile: "accounting" | "full") => orderColumns(layout, profile);
+  const one = (over: Partial<ExportOrder>, profile: "accounting" | "full" = "accounting", layout: "lines" | "orders" = "orders") =>
+    orderRows([order(over)], { layout, profile, main })[0];
+
+  it("has tags, archived, source and gift_order in both profiles, and the gift's words in the Full profile only", () => {
+    for (const layout of ["lines", "orders"] as const) {
+      for (const c of ["tags", "archived", "source", "gift_order"]) {
+        expect(colsOf(layout, "accounting"), `${layout} accounting ${c}`).toContain(c);
+        expect(colsOf(layout, "full"), `${layout} full ${c}`).toContain(c);
+      }
+      for (const c of ["gift_to", "gift_from", "gift_message"]) {
+        expect(colsOf(layout, "accounting"), `${layout} accounting ${c}`).not.toContain(c);
+        expect(colsOf(layout, "full"), `${layout} full ${c}`).toContain(c);
+        expect(PERSONAL_ORDER_COLUMNS).toContain(c);
+      }
+    }
+    // The column `gift` stays the free-gift line's: the order's gift is another column.
+    expect(colsOf("lines", "accounting")).toContain("gift");
+    expect(colsOf("orders", "accounting")).not.toContain("gift");
+    // The line columns and the payment reference still end the lines layout.
+    expect(colsOf("lines", "full").at(-1)).toBe("payment_reference");
+  });
+
+  it("writes the tags as written, the archive and the gift as true or false, and the source as checkout, draft or copied", () => {
+    const cols = colsOf("orders", "accounting");
+    const plain = one({});
+    expect([cell(cols, plain, "tags"), cell(cols, plain, "archived"), cell(cols, plain, "source"), cell(cols, plain, "gift_order")]).toEqual([null, "false", "checkout", "false"]);
+    const marked = one({ tags: ["VIP", "gift wrap"], archived: true, source: "draft", isGift: true });
+    expect([cell(cols, marked, "tags"), cell(cols, marked, "archived"), cell(cols, marked, "source"), cell(cols, marked, "gift_order")]).toEqual(["VIP, gift wrap", "true", "draft", "true"]);
+    // Copied history is `copied` whatever it was before it was copied.
+    expect(cell(cols, one({ copied: true, source: "draft" }), "source")).toBe("copied");
+  });
+
+  it("puts the order's columns on every row of the lines layout (a label is no amount), so a filter on a line's row finds the order", () => {
+    const rows = orderRows([order({ tags: ["VIP"], archived: true })], { layout: "lines", profile: "accounting", main });
+    const cols = colsOf("lines", "accounting");
+    expect(rows).toHaveLength(2);
+    for (const row of rows) expect([cell(cols, row, "tags"), cell(cols, row, "archived")]).toEqual(["VIP", "true"]);
+  });
+
+  it("keeps the gift's words out of the accounting file and puts them in the full one, with a formula escaped by the writer", () => {
+    const gifted = { isGift: true, giftTo: "Mormor", giftFrom: "Kari", giftMessage: "=cmd|' /C calc'!A0" };
+    expect(colsOf("orders", "accounting")).not.toContain("gift_message");
+    const full = colsOf("orders", "full");
+    const row = one(gifted, "full");
+    expect([cell(full, row, "gift_to"), cell(full, row, "gift_from"), cell(full, row, "gift_message")]).toEqual(["Mormor", "Kari", "=cmd|' /C calc'!A0"]);
+    // The file never opens a formula: the writer prefixes it (OWASP), whatever the cell says.
+    const text = writeCsv(orderFileRows([order(gifted)], { layout: "orders", profile: "full", main }));
+    const parsed = parseCsv(text).rows;
+    const header = parsed[0];
+    const written = parsed[1][header.indexOf("gift_message")];
+    expect(written.startsWith("=")).toBe(false);
+    expect(written).toContain("cmd|");
+    // The same for a tag a person typed.
+    const tagged = parseCsv(writeCsv(orderFileRows([order({ tags: ["=1+1"] })], { layout: "orders", profile: "accounting", main }))).rows;
+    expect(tagged[1][tagged[0].indexOf("tags")].startsWith("=")).toBe(false);
+  });
+
+  it("carries nothing a person typed of an erased person's order: no tags, no gift words, in either profile; the flags stay", () => {
+    for (const profile of ["accounting", "full"] as const) {
+      const cols = colsOf("orders", profile);
+      const row = one({ erased: true, tags: ["calls on Fridays"], isGift: true, giftTo: "Mormor", giftFrom: "Kari", giftMessage: "Gratulerer" }, profile);
+      expect([profile, cell(cols, row, "tags")]).toEqual([profile, REMOVED]);
+      expect([cell(cols, row, "gift_order"), cell(cols, row, "archived"), cell(cols, row, "source")]).toEqual(["true", "false", "checkout"]);
+      for (const c of ["gift_to", "gift_from", "gift_message"].filter((x) => cols.includes(x))) expect([profile, c, cell(cols, row, c)]).toEqual([profile, c, REMOVED]);
+    }
+  });
+
+  it("leaves an order with no wave-3 fields (an older caller) as no tags, not archived, a checkout order and no gift", () => {
+    const cols = colsOf("orders", "full");
+    const row = orderRows([order({ tags: undefined, archived: undefined, source: undefined, isGift: undefined })], { layout: "orders", profile: "full", main })[0];
+    expect([cell(cols, row, "tags"), cell(cols, row, "archived"), cell(cols, row, "source"), cell(cols, row, "gift_order"), cell(cols, row, "gift_message")]).toEqual([null, "false", "checkout", "false", null]);
+  });
+});

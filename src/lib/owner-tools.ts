@@ -10,6 +10,7 @@ import { approveSummary, declineSummary } from "./return-tools";
 import { FROM_MAX, OVERVIEW_ROWS_DEFAULT, OVERVIEW_ROWS_MAX, TO_MAX, redirectSummary } from "./redirect-tools";
 import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASONS, NOTE_MAX, STOCK_MAX } from "./inventory";
 import { backorderSummary, setStockSummary } from "./stock-tools";
+import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
 
 /**
  * The owner assistant's tools (D94), modelled on Kaizen Life's MCP catalogue:
@@ -68,17 +69,18 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "list_orders",
-    "The store's orders, newest first: number, status, customer, total and items. `which` narrows them: all orders taken, those paid and waiting to be sent, or unpaid checkouts. `search` matches the number, email or name.",
-    z.object({
-      which: z.enum(["all", "to_send", "unpaid"]).default("all"),
-      search: z.string().trim().max(100).optional(),
-      limit: limit(50, 10),
-    }),
+    "The store's orders, newest first by default, as the Orders page lists them (D173): number, status, customer, total, items, tags and whether it is archived, a gift or staff-made. `search` takes up to five words that must all match the order number, the email or name, a product title or SKU, a tag or a tracking number. The filters are the page's own: `show` (to-send, waiting, unpaid, archived), `pay`, `ship`, `status`, `tag`, `from`/`to` or `range`, `market`, `source`, `gift`, `archived` (archived orders are left out unless asked for or searched for) and `sort`. `count` is how many orders match (capped; `more_than_counted` says so) and `next` opens the next page. Read-only: every figure is the page's own. To tag or archive, use tag_orders and archive_orders. A person whose data was erased is never named or found by name.",
+    listOrdersInput,
   ),
   tool(
     "get_order",
-    "One order in full: its lines, totals, payment, what is left to refund, shipments, bookings and history.",
+    "One order in full: its lines, totals, payment, what is left to refund, shipments, bookings and history, its tags, whether it is archived or staff-made (made from a draft order) and whether it was paid outside Kaizen and how. A gift order is said to be a gift; its message is the customer's own words to a third party and is not given here.",
     z.object({ order: orderRef }),
+  ),
+  tool(
+    "list_draft_orders",
+    "The store's draft orders (D173): orders staff write for a customer and send as a pay link. Each has its number, status (open, sent and waiting for payment, paid, expired, cancelled), the customer's email, the total as the store prices it, its order number once sent and when the link ends. `status` narrows them. Read-only. A draft is made with create_draft_order and sent with send_draft_order (the owner's yes first); taking money outside Kaizen and deleting a draft are done on the draft's page.",
+    listDraftOrdersInput,
   ),
   tool(
     "list_returns",
@@ -380,6 +382,27 @@ export const OWNER_TOOLS = [
     "send",
   ),
   tool(
+    "tag_orders",
+    "Puts tags on orders, takes tags off, or both (D173): staff's own labels, such as vip or gift-wrap, that the Orders page filters by. Tags are internal (never shown to a customer), at most 40 characters, with no comma, 250 on an order, case-insensitive. Works on up to 25 orders by number or id, copied history included, and says which orders it did not apply to and why. Nothing is sent to anyone.",
+    tagOrdersInput,
+  ),
+  tool(
+    "archive_orders",
+    "Archives orders, or brings archived ones back (D173): an archived order leaves the default list and the queues but keeps its number, documents and every figure; nothing is deleted. Only an order that needs no more work can be archived (not one waiting to be sent, never paid, or with an open return); the answer says which were not and why. Up to 25 orders by number or id.",
+    archiveOrdersInput,
+  ),
+  tool(
+    "create_draft_order",
+    "Writes a draft order for a customer (D173): the variants by SKU with quantities, the customer's email, the market (country, language and currency) and optionally a percent off with the name the customer sees. It makes a DRAFT only: nothing is sent, no number is used and no stock is held. The answer is the draft as the store prices it (prices, VAT, shipping and total in the market's currency, worked out by the store, never by you) and any problem that would stop it being sent. Custom prices, custom items, addresses and notes are added on the draft's page. To send it use send_draft_order.",
+    createDraftOrderInput,
+  ),
+  tool(
+    "send_draft_order",
+    "Sends a draft order to its customer (D173): the order is made now with the next order number, its goods are held until the pay link ends (1 to 30 days), and the customer is emailed a link to pay on the store's own page. The store checks it can be sent (an email, goods that are for sale and in stock, payments on, an open store) and refuses with the reason. Needs the owner's approval. You cannot record a payment, take money outside Kaizen or delete a draft.",
+    sendDraftOrderInput,
+    "send",
+  ),
+  tool(
     "cancel_booking",
     "Cancels a confirmed booking, freeing its time, and tells the customer by email if asked. Paying back is done from the order. Needs the owner's approval.",
     z.object({ booking: z.uuid("A booking is given by its id, from list_bookings."), notify: z.boolean().default(true) }),
@@ -393,7 +416,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "refund_order",
-    "Refunds all or part of a paid order through Stripe, optionally putting its items back in stock, and emails the customer. Needs the owner's approval.",
+    "Refunds all or part of a paid order through Stripe, optionally putting its items back in stock, and emails the customer. Needs the owner's approval. An order paid outside Kaizen (cash or bank transfer, on a draft order) is refused: nothing can be sent from here, so its refund is recorded on its own page by someone who has paid the customer back.",
     z.object({
       order: orderRef,
       amount: z.string().trim().max(30).optional().describe("How much to refund, as the owner writes it (such as 199 or 199,50); the whole refundable amount if left out."),
@@ -769,6 +792,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
   switch (name) {
     case "mark_order_sent":
       return `Mark order ${text("order")} as sent with ${text("carrier")}${text("tracking_number") ? `, tracking number ${text("tracking_number")}` : ""}${input.notify === false ? "" : ", and email the customer"}.`;
+    case "send_draft_order":
+      return sendDraftSummary(text("draft"), input.valid_days ? Number(input.valid_days) : null);
     case "cancel_booking":
       return `Cancel booking ${text("booking")}${input.notify === false ? "" : " and email the customer"}.`;
     case "archive_product":

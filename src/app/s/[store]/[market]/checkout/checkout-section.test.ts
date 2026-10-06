@@ -360,3 +360,22 @@ describe("the checkout's lines on backorder (wave 3, D172)", () => {
     expect(text).toContain("5 × Thermos");
   });
 });
+
+describe("the checkout's gift line (wave 3, run 2, D173)", () => {
+  it("shows the buyer's gift message as the order holds it, read-only, under the items", async () => {
+    getOrder.mockResolvedValue(order({ gift: { isGift: true, to: "Kari", from: null, message: "Hei <b>du</b>" } }));
+    const markup = renderToString(await CheckoutItems({ store, market }));
+    expect(words(markup)).toContain("Your gift message");
+    expect(words(markup)).toContain("To: Kari");
+    expect(markup).not.toContain("<textarea");
+    expect(markup).not.toContain("<input");
+    // Text, not markup.
+    expect(markup).toContain("Hei &lt;b&gt;du&lt;/b&gt;");
+    expect(markup).not.toContain("<b>du</b>");
+  });
+
+  it("shows nothing for an order that is not a gift", async () => {
+    getOrder.mockResolvedValue(order({ gift: null }));
+    expect(renderToString(await CheckoutItems({ store, market }))).not.toContain("data-gift-note");
+  });
+});

@@ -11,7 +11,9 @@ import {
   channelTable,
   funnel,
   landingKind,
+  STAFF_CHANNEL,
   UNKNOWN_CHANNEL,
+  isNotAChannel,
   type ChannelInput,
   type ChannelTable,
   type Funnel,
@@ -22,7 +24,7 @@ import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
 import { getAnalyticsSettings } from "./analytics-settings";
-import { CUSTOMER_JOIN, CUSTOMER_KEY, dayKey, dayStart, HAS_CUSTOMER, inMain, inPeriod, num, PAID, toMainOne, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayKey, dayStart, FROM_CHECKOUT, HAS_CUSTOMER, inMain, inPeriod, num, PAID, STAFF_MADE, toMainOne, type Row } from "./analytics-sql";
 import { setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -36,6 +38,9 @@ import type { Store } from "./stores";
  *   Orders on earlier days are reported apart (`uncoveredOrders`), never mixed into a rate.
  * - An order is tied to a visit through its cart (`orders.cart_id` → `carts.visit_id`); one without is "unknown": it was bought
  *   with counting off, from a browser that was not counted, on another day than the visit, or from a cart made some other way.
+ * - A staff-made order (D173, `orders.source = 'draft'`) was not a visit: the funnel never sees it (a draft has no cart), the device, market and
+ *   landing-page tables and the conversion take orders `FROM_CHECKOUT` only, and the report names the staff-made ones apart (`staffOrders`). In the
+ *   channel table (Marketing) it is the row `STAFF_CHANNEL`, so the table's revenue still adds up.
  * - Amounts are the store's main currency without VAT, converted from per-currency groups in code (`inMain()`); a currency
  *   with no rate is left out and counted (`unconverted`), as in the totals.
  * - Nothing here reads a cookie, an address or a user agent: `visits` holds none.
@@ -146,7 +151,7 @@ async function ordersBy(store: Store, range: Range, key: SQL, options: { extra?:
   return setBased<Row>(sql`
     select (${key})::text as k, o.currency::text as currency, count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
     from commerce.orders o ${ORDER_VISIT}
-    where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${inPeriod(store, sql`o.placed_at`, range)}
       and o.currency = any(${convertibleCurrencies(store)}) ${options.extra ?? sql``}
     group by 1, 2
   `);
@@ -163,7 +168,7 @@ async function ordersByKeys<K extends string>(store: Store, range: Range, keys: 
       select o.currency::text as currency, (o.total_minor - o.tax_minor) as revenue,
         ${sql.join(names.map((name, i) => sql`(${keys[name]})::text as k${sql.raw(String(i))}`), sql`, `)}
       from commerce.orders o ${ORDER_VISIT}
-      where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)} and o.currency = any(${convertibleCurrencies(store)})
+      where o.store_id = ${store.id}::uuid and ${PAID} and ${FROM_CHECKOUT} and ${inPeriod(store, sql`o.placed_at`, range)} and o.currency = any(${convertibleCurrencies(store)})
     )
     ${sql.join(
       names.map((name, i) => sql`select ${name} as kind, k${sql.raw(String(i))} as k, currency, count(*) as orders, sum(revenue) as revenue from po group by k${sql.raw(String(i))}, currency`),
@@ -176,6 +181,18 @@ async function ordersByKeys<K extends string>(store: Store, range: Range, keys: 
 }
 
 type Money = { orders: number; revenueMinor: number };
+
+/** The staff-made paid orders of a range (D173): they are no visit's orders, so the visit tables leave them out and the report names them. */
+async function staffMadeIn(store: Store, range: Range): Promise<Money> {
+  const rows = await setBased<Row>(sql`
+    select o.currency::text as currency, count(*) as orders, sum(o.total_minor - o.tax_minor) as revenue
+    from commerce.orders o
+    where o.store_id = ${store.id}::uuid and ${PAID} and ${STAFF_MADE} and ${inPeriod(store, sql`o.placed_at`, range)}
+      and o.currency = any(${convertibleCurrencies(store)})
+    group by 1
+  `);
+  return { orders: rows.reduce((s, r) => s + num(r, "orders"), 0), revenueMinor: inMain(store, rows.map((r) => ({ ...r, currency: String(r.currency) })), ["revenue"]).values.revenue };
+}
 
 /** Rows from `ordersBy()` folded into the main currency, per key. */
 function foldByKey(store: Store, rows: Row[]): Map<string, Money & { unconverted: number }> {
@@ -285,6 +302,11 @@ export type TrafficReport = {
   landingTruncated: boolean;
   /** Paid orders on covered days that are not tied to a visit. */
   unknownOrders: Money;
+  /**
+   * Paid orders on covered days that staff made from a draft order (D173): not a visit's, so in none of the tables above and in no rate, but real
+   * sales that the period's revenue holds.
+   */
+  staffOrders: Money;
   /** Paid orders of the period on days with no counted visit (before counting, or later than today): not in any rate. */
   uncoveredOrders: Money;
   unconverted: number;
@@ -315,7 +337,7 @@ async function funnelCounts(store: Store, range: Range): Promise<FunnelCounts> {
       select c.visit_id, bool_or(o.id is not null) as ordered, bool_or(o.id is not null and ${PAID}) as paid, bool_or(vv.checkout_at is not null) as has_checkout
       from commerce.carts c
       join commerce.visits vv on vv.store_id = c.store_id and vv.id = c.visit_id
-      left join commerce.orders o on o.store_id = c.store_id and o.cart_id = c.id and o.copied_from is null and o.host_id is null
+      left join commerce.orders o on o.store_id = c.store_id and o.cart_id = c.id and o.copied_from is null and o.host_id is null and ${FROM_CHECKOUT}
       where c.store_id = ${store.id}::uuid and c.visit_id is not null and vv.day >= ${range.from}::date and vv.day < ${range.to}::date
       group by c.visit_id
     )
@@ -360,11 +382,12 @@ export async function trafficReport(store: Store, period: AnalyticsPeriod, now: 
       landingPages: [],
       landingTruncated: false,
       unknownOrders: { orders: 0, revenueMinor: 0 },
+      staffOrders: { orders: 0, revenueMinor: 0 },
       notes: commonNotes(coverage, excluded, uncovered),
     };
   }
 
-  const [counts, deviceSessions, marketSessions, topPaths, { device: deviceOrders, market: marketOrders }] = await Promise.all([
+  const [counts, deviceSessions, marketSessions, topPaths, { device: deviceOrders, market: marketOrders }, staff] = await Promise.all([
     funnelCounts(store, range),
     db().execute<Row>(sql`select v.device as k, count(*) as n from commerce.visits v where ${visitsIn(store, range)} group by 1`),
     db().execute<Row>(sql`select coalesce(v.market_code, '') as k, count(*) as n from commerce.visits v where ${visitsIn(store, range)} group by 1`),
@@ -373,6 +396,7 @@ export async function trafficReport(store: Store, period: AnalyticsPeriod, now: 
       group by 1 order by n desc, k limit ${LANDING_LIMIT + 1}
     `),
     ordersByKeys(store, range, { device: sql`coalesce(v.device, 'unknown')`, market: sql`o.market_code` }),
+    staffMadeIn(store, range),
   ]);
 
   const sessions = counts.sessions ?? 0;
@@ -415,7 +439,13 @@ export async function trafficReport(store: Store, period: AnalyticsPeriod, now: 
     landingPages,
     landingTruncated,
     unknownOrders: { orders: unknown.orders, revenueMinor: unknown.revenueMinor },
-    notes: [...commonNotes(coverage, excluded, uncovered), ...(landingTruncated ? [`Only the ${LANDING_LIMIT} landing pages with most visits are shown.`] : []), ...funnel(counts).notes],
+    staffOrders: staff,
+    notes: [
+      ...commonNotes(coverage, excluded, uncovered),
+      ...(staff.orders > 0 ? [`${money(staff.orders)} staff-made paid ${staff.orders === 1 ? "order" : "orders"} (draft orders) are left out of these tables and of conversion: they were not visits. They are in the period's revenue and in the Marketing page's channel table as Staff-made.`] : []),
+      ...(landingTruncated ? [`Only the ${LANDING_LIMIT} landing pages with most visits are shown.`] : []),
+      ...funnel(counts).notes,
+    ],
   };
 }
 
@@ -458,7 +488,8 @@ const blank = (): Acc => ({ sessions: 0, orders: 0, revenue: 0, newCustomers: 0,
  */
 async function channelOrders(store: Store, range: Range, feesOn: boolean): Promise<{ orders: Row[]; platform: Row[]; fees: Row[] }> {
   const known = convertibleCurrencies(store);
-  const channel = sql`coalesce(v.channel, ${UNKNOWN_CHANNEL})`;
+  // A staff-made order (D173) came from no visit: its own row, whatever cart or visit it might be tied to.
+  const channel = sql`(case when ${STAFF_MADE} then ${STAFF_CHANNEL} else coalesce(v.channel, ${UNKNOWN_CHANNEL}) end)`;
   const rows = await setBased<Row>(sql`
     with po0 as materialized (
       select o.id, o.store_id, o.currency::text as currency, (o.currency = any(${known})) as ok, o.total_minor, o.tax_minor, (${channel})::text as k
@@ -474,7 +505,7 @@ async function channelOrders(store: Store, range: Range, feesOn: boolean): Promi
     pl as materialized (
       select po0.id, po0.k, po0.currency, ol.unit_cost_minor * ol.quantity as cost,
         ol.total_minor - ol.tax_minor as line_rev,
-        case when ol.variant_id is not null and ol.unit_cost_minor is null then ol.total_minor - ol.tax_minor else 0 end as unknown_rev,
+        case when (ol.variant_id is not null or ol.custom) and ol.unit_cost_minor is null then ol.total_minor - ol.tax_minor else 0 end as unknown_rev,
         (ol.delivery = 'physical') as physical
       from po0
       join commerce.order_lines ol on ol.order_id = po0.id
@@ -525,7 +556,7 @@ async function channelOrders(store: Store, range: Range, feesOn: boolean): Promi
 async function newCustomersByChannel(store: Store, range: Range): Promise<Map<string, number>> {
   const rows = await setBased<Row>(sql`
     with ko as materialized (
-      select ${CUSTOMER_KEY} as k, o.placed_at, o.id, o.cart_id, (o.currency = any(${convertibleCurrencies(store)})) as ok
+      select ${CUSTOMER_KEY} as k, o.placed_at, o.id, o.cart_id, (o.source = 'draft') as staff_made, (o.currency = any(${convertibleCurrencies(store)})) as ok
       from commerce.orders o ${CUSTOMER_JOIN}
       where o.store_id = ${store.id}::uuid and ${PAID} and ${HAS_CUSTOMER} and o.placed_at < ${dayStart(store, range.to)}
     ),
@@ -536,11 +567,11 @@ async function newCustomersByChannel(store: Store, range: Range): Promise<Map<st
       having min(placed_at) >= ${dayStart(store, range.from)} and bool_or(placed_at >= ${dayStart(store, range.from)} and ok)
     ),
     fr as (
-      select distinct on (q.k) q.k, ko.cart_id
+      select distinct on (q.k) q.k, ko.cart_id, ko.staff_made
       from q join ko on ko.k = q.k and ko.placed_at = q.first_at
       order by q.k, ko.placed_at, ko.id
     )
-    select coalesce(v.channel, ${UNKNOWN_CHANNEL}) as ch, count(*) as n
+    select (case when fr.staff_made then ${STAFF_CHANNEL} else coalesce(v.channel, ${UNKNOWN_CHANNEL}) end) as ch, count(*) as n
     from fr
     left join commerce.carts c on c.store_id = ${store.id}::uuid and c.id = fr.cart_id
     left join commerce.visits v on v.store_id = ${store.id}::uuid and v.id = c.visit_id
@@ -620,7 +651,7 @@ export async function marketingReport(store: Store, period: AnalyticsPeriod, now
   const anyUnknown = [...acc.values()].some(unknownCosts);
   const inputs: ChannelInput[] = [...acc.entries()].map(([key, a]) => ({
     channel: key,
-    sessions: key === UNKNOWN_CHANNEL ? null : a.sessions,
+    sessions: isNotAChannel(key) ? null : a.sessions,
     orders: a.orders,
     revenueMinor: a.revenue,
     newCustomers: a.newCustomers,

@@ -7,6 +7,7 @@ import { CheckoutCodeForm } from "@/components/checkout-code-form";
 import { CheckoutForm } from "@/components/checkout-form";
 import { CheckoutTerms as CheckoutTermsView } from "@/components/checkout-terms";
 import { DeliveryChoice } from "@/components/delivery-choice";
+import { GiftNote } from "@/components/gift-note";
 import { BackorderLine } from "@/components/backorder-note";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { LineUnitPrice } from "@/components/price";
@@ -177,6 +178,7 @@ function itemsList(view: CheckoutView, market: Market) {
   // Each line at its own VAT rate, shipping at the standard one (D65).
   const net = (minor: number, rate: number) => money(business ? withoutVat(minor, rate) : minor);
   return (
+    <>
     <ul className="divide-y divide-border">
       {order.lines.map((line) => (
         <li key={line.id} className="flex items-center gap-3 py-2 text-sm">
@@ -211,6 +213,9 @@ function itemsList(view: CheckoutView, market: Market) {
         </li>
       ))}
     </ul>
+    {/* The buyer's own gift message as the order holds it, read-only (D173); changing it starts the checkout again, from the cart. */}
+    <GiftNote gift={order.gift} m={m} size="small" />
+    </>
   );
 }
 

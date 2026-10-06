@@ -137,7 +137,7 @@ function invoiceOf(): OrderInvoiceSnapshot {
     order: {
       id: "o", number: "1001", marketCode: "NO", currency: "NOK", locale: "nb-NO", email: "k@example.com", placedOn: "2026-10-04", paidOn: "2026-10-04", shippingMinor: shipping,
       discountMinor: 0, taxMinor: lines.reduce((s, l) => s + l.taxMinor, 0) + vatIncludedExact(shipping, 0.25), totalMinor: 25000 + shipping, memberDiscountMinor: 0, memberLabel: null,
-      campaignDiscountMinor: 0, campaignLabel: null, creditMinor: 0, referralDiscountMinor: 0, discountCode: null, vatKind: "standard", vatReliefMinor: 0, shippingTaxRate: 0.25,
+      campaignDiscountMinor: 0, campaignLabel: null, creditMinor: 0, referralDiscountMinor: 0, staffDiscountMinor: 0, staffLabel: null, discountCode: null, vatKind: "standard", vatReliefMinor: 0, shippingTaxRate: 0.25,
       marketStandardRate: 0.25, companyName: null, organisationNumber: null, balanceMinor: 0, billingAddress: { name: "Kari", line1: "Storgata 5", city: "Oslo", country: "NO" },
       shippingAddress: {}, deliveryLabel: "Posten", onlineProvider: "stripe",
     },

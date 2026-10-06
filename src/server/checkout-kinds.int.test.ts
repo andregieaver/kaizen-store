@@ -57,7 +57,7 @@ const fake = vi.hoisted(() => {
           const id = `cs_kinds_${++next}`;
           sessions.set(id, { status: "open", payment_status: "unpaid", mode: params.mode });
           created.push({ params, options });
-          return { id, url: null, client_secret: `${id}_secret_test`, payment_method_types: ["card"] };
+          return { id, url: `https://checkout.stripe.test/${id}`, client_secret: `${id}_secret_test`, payment_method_types: ["card"] };
         },
         retrieve: async (id: string) => ({ id, ...sessions.get(id) }),
         expire: async (id: string) => ({ id }),
@@ -105,7 +105,7 @@ vi.mock("./stripe", () => ({
   platformModes: () => ["test"],
 }));
 
-const { changeLine, getCart } = await import("./cart");
+const { changeLine, getCart, getCartGift, setCartGift } = await import("./cart");
 const { cartSummary } = await import("./cart-summary");
 const { getOpenCheckout, startCheckout } = await import("./checkout");
 const { getOrder, getShopperOrder } = await import("./orders");
@@ -425,6 +425,8 @@ type Scenario = {
   delivery?: "pickup" | "home";
   /** A product that keeps selling past zero (wave 3, D172): its units beyond the stock are backordered, and the order says so without changing a price. */
   backorder?: { sku: string; stock: number; quantity: number; days: number };
+  /** A gift message on the cart (wave 3, D173): the store has gift messages on, the buyer ticked it and wrote the words; they reach the order and change no money. */
+  gift?: { to: string; from: string; message: string };
 };
 
 /** Puts a variant at a level and lets it keep selling past zero for `days`, as the owner's Inventory page does. */
@@ -617,6 +619,12 @@ const backorderScenarios: Scenario[] = [
   },
 ];
 
+/** A gift message (wave 3, D173): the words are the buyer's, reach the order, the confirmation and the slip, and change no amount, in kroner and in euro. */
+const giftScenarios: Scenario[] = [
+  { name: "goods as a gift with a message", fill: () => add("DEMO-MUG-WHITE", 2), gift: { to: "Lena", from: "Anna", message: "Grattis med dagen!\nMed kjærlig hilsen" }, bookings: 0 },
+  { name: "goods as a gift, shown in euro", fill: () => add("DEMO-MUG-WHITE", 1), gift: { to: "Lena", from: "Anna", message: "Happy birthday" }, euro: true, bookings: 0 },
+];
+
 /** Posten / Bring's services chosen at checkout (D135): the price the shopper saw is the price of the order and of Stripe's charge. */
 const deliveryScenarios: Scenario[] = [
   { name: "goods delivered to a pickup point", fill: () => add("DEMO-MUG-WHITE", 2), delivery: "pickup", bookings: 0 },
@@ -664,7 +672,7 @@ describe("checkout for every kind of product", () => {
     companyId = String(company.id);
   });
 
-  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...deliveryScenarios, ...backorderScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
+  it.each([...scenarios, ...euroScenarios, ...campaignScenarios, ...deliveryScenarios, ...backorderScenarios, ...giftScenarios])("$name: from the cart to the payment form to a paid order", async (scenario) => {
     jar.clear();
     view = scenario.euro ? noInEuro : no;
     // Campaigns run only in the scenarios that make them (D114).
@@ -682,6 +690,15 @@ describe("checkout for every kind of product", () => {
     const buyerId = scenario.buyer ? await signInBuyer(scenario.buyer) : null;
     await scenario.fill();
     if (scenario.code) expect(await setCartCode(shop(), scenario.code)).toBe(true);
+    // The store's gift messages are on only while a gift scenario runs (D173).
+    await db().execute(sql`
+      insert into commerce.order_settings (store_id, gift_messages) values (${storeId}::uuid, ${Boolean(scenario.gift)})
+      on conflict (store_id) do update set gift_messages = excluded.gift_messages
+    `);
+    if (scenario.gift) {
+      expect(await getCartGift(shop())).toMatchObject({ enabled: true });
+      expect(await setCartGift(shop(), { isGift: true, ...scenario.gift })).toMatchObject({ ok: true });
+    }
     // The shopper asked for Bring's services for a postal code and chose one (D135).
     let chosenLabel: string | null = null;
     if (scenario.delivery) {
@@ -738,6 +755,18 @@ describe("checkout for every kind of product", () => {
       off: summary.discountMinor + summary.gifts.reduce((sum, gift) => sum + gift.unitPriceMinor * gift.quantity, 0),
     });
     await expectUnitPrices(cart, order!, scenario);
+    // The gift is the buyer's words, kept on the order as typed, and moves no amount: the totals above already equal the cart's, which had no gift line.
+    if (scenario.gift) {
+      expect(order?.gift).toEqual({ isGift: true, to: scenario.gift.to, from: scenario.gift.from, message: scenario.gift.message });
+      expect((await getCart(shop())).gift).toMatchObject({ isGift: true, message: scenario.gift.message });
+      // A gift changed after checkout began is a changed cart: the form asks to start again instead of paying for a stale order.
+      await setCartGift(shop(), { isGift: true, to: "Someone else", from: scenario.gift.from, message: scenario.gift.message });
+      expect(await getOpenCheckout(storeId, cartId())).toMatchObject({ changed: true });
+      await setCartGift(shop(), { isGift: true, ...scenario.gift });
+      expect(await getOpenCheckout(storeId, cartId())).toMatchObject({ changed: false });
+    } else {
+      expect(order?.gift).toBeNull();
+    }
     // A backordered line costs what the same line in stock would: whole quantity, the shown price, no surcharge (D172).
     if (scenario.backorder) {
       const wanted = scenario.backorder;
@@ -802,6 +831,18 @@ describe("checkout for every kind of product", () => {
     expect(await getOpenCheckout(storeId, cartId())).toBeNull();
     // Its invoice and the credit notes of its refunds (D159) are the order and the refunds, to the minor unit, in the currency shown.
     await expectDocuments(open!.orderId, scenario);
+    // The gift reaches the buyer's confirmation (and only the buyer's) and the packing slip, as text, and nothing is sent to the recipient (D173).
+    if (scenario.gift) {
+      await db().execute(sql`update commerce.orders set email = ${`gift-${run}@example.com`} where id = ${open!.orderId}::uuid`);
+      await (await import("./shopper-emails")).sendOrderConfirmation(storeId, open!.orderId);
+      const giftMails = await db().execute<Row>(sql`select to_address, text from commerce.email_messages where store_id = ${storeId}::uuid and order_id = ${open!.orderId}::uuid`);
+      expect(giftMails.map((m) => String(m.to_address))).toEqual([`gift-${run}@example.com`]);
+      expect(String(giftMails[0].text)).toContain(scenario.gift.message);
+      const slips = await (await import("./packing-slips")).packingSlipData(storeId, [open!.orderId]);
+      expect(slips.ok && slips.slips[0].gift).toEqual({ isGift: true, ...scenario.gift });
+      // The slip prints no money: the order's total is not in what it is made from.
+      expect(JSON.stringify(slips)).not.toContain(String(summary.total));
+    }
     // The emails about it link back to the currency it was bought in (D109).
     if (scenario.euro) {
       await db().execute(sql`update commerce.orders set email = ${`shopper-${run}@example.com`} where id = ${open!.orderId}::uuid`);
@@ -2359,5 +2400,189 @@ describe("tax reports, D161: a store selling in kroner and, shown in euro, in eu
     // The own-currency figures are all there.
     expect(report.byCurrency.map((c) => [c.currency, c.invoices]).sort()).toEqual([["EUR", 3], ["NOK", 3]]);
     await db().execute(sql`update commerce.stores set country = 'NO' where id = ${own.storeId}::uuid`);
+  });
+});
+
+/**
+ * Draft orders made by staff (wave 3, run 2, D173): a draft is priced by the one function that prices an order, sent as a numbered order, and paid through the pay link (Stripe's hosted page,
+ * each line at what is due) or recorded as paid outside Kaizen. Every scenario holds the totals to the cart's where a cart could have made the same order, Stripe's charge to the order, and the
+ * invoice and its credit notes to the order and the refunds, to the minor unit, in kroner and in euro.
+ */
+describe("draft orders from staff (D173)", () => {
+  const owner = () => ({ ...member, kind: "member", permissions: null }) as unknown as Parameters<typeof import("./draft-orders").recordDraftPaidOutside>[0];
+  const actor = () => ({ accountId: member.account.id, kind: "staff" as const });
+
+  beforeAll(async () => {
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role) values (${storeId}::uuid, ${member.account.id}::uuid, 'owner') on conflict do nothing`);
+    await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 500 where store_id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.order_settings set gift_messages = false where store_id = ${storeId}::uuid`);
+  });
+
+  type DraftScenario = {
+    name: string;
+    euro?: boolean;
+    lines: { sku: string; quantity: number; price?: string }[];
+    custom?: { title: string; price: string };
+    discount?: { kind: "percent" | "amount"; value: string; label: string };
+    shipping?: { kind: "rate" } | { kind: "free" } | { kind: "custom"; price: string };
+    /** The same goods in a cart give the same totals (a draft with no staff price, discount, custom item or shipping choice). */
+    sameAsCart?: boolean;
+  };
+
+  const draftScenarios: DraftScenario[] = [
+    { name: "goods at the list prices, with the flat shipping", lines: [{ sku: "DEMO-MUG-WHITE", quantity: 2 }, { sku: "DEMO-NOTEBOOK-LINED", quantity: 3 }], sameAsCart: true },
+    { name: "goods at the list prices, shown in euro", euro: true, lines: [{ sku: "DEMO-MUG-WHITE", quantity: 3 }], sameAsCart: true },
+    {
+      name: "goods with a staff price, a percent discount, a custom item and free shipping",
+      lines: [{ sku: "DEMO-MUG-WHITE", quantity: 2, price: "39,00" }, { sku: "DEMO-NOTEBOOK-LINED", quantity: 1 }],
+      custom: { title: "Engraving", price: "150,00" },
+      discount: { kind: "percent", value: "12,5", label: "Friends and family" },
+      shipping: { kind: "free" },
+    },
+    {
+      name: "goods with an amount discount and a typed shipping price, shown in euro",
+      euro: true,
+      lines: [{ sku: "DEMO-MUG-WHITE", quantity: 4 }],
+      custom: { title: "Gift wrapping", price: "100,00" },
+      discount: { kind: "amount", value: "25", label: "Goodwill" },
+      shipping: { kind: "custom", price: "20,00" },
+    },
+  ];
+
+  async function buildDraft(scenario: DraftScenario) {
+    const { createDraft, saveDraft } = await import("./draft-orders");
+    const made = await createDraft(storeId, actor(), { marketSlug: view.slug });
+    if (!made.ok) throw new Error(made.problem);
+    const lines = [
+      ...scenario.lines.map((l) => ({ kind: "goods" as const, variantId: variant[l.sku], quantity: l.quantity, ...(l.price ? { price: l.price } : {}) })),
+      ...(scenario.custom ? [{ kind: "custom" as const, title: scenario.custom.title, quantity: 1, price: scenario.custom.price, vatCategory: "standard" }] : []),
+    ];
+    const saved = await saveDraft(storeId, actor(), made.draft.id, {
+      version: made.draft.version,
+      marketSlug: view.slug,
+      email: `draft-${run}@example.com`,
+      shippingAddress: { name: "Kari Nordmann", line1: "Storgata 1", postalCode: "0155", city: "Oslo", country: "NO" },
+      billingAddress: {},
+      // A custom item is sold to a business only (`custom_consumer`: the withdrawal of a service for a private buyer is not decided).
+      ...(scenario.custom ? { companyName: "Acme AS", organisationNumber: "923609016" } : {}),
+      tags: ["staff-made"],
+      discount: scenario.discount ?? null,
+      shipping: scenario.shipping ?? { kind: "rate" },
+      lines,
+    });
+    if (!saved.ok) throw new Error(`${saved.problem} ${JSON.stringify(saved.fields)}`);
+    return saved.draft;
+  }
+
+  it.each(draftScenarios)("$name: priced like an order, sent, paid through the pay link, and invoiced", async (scenario) => {
+    jar.clear();
+    view = scenario.euro ? noInEuro : no;
+    const { previewDraft, sendDraft } = await import("./draft-orders");
+    const { startDraftPayment } = await import("./draft-pay");
+    const draft = await buildDraft(scenario);
+    const preview = (await previewDraft(storeId, draft.id))!;
+    expect(preview.blocking).toEqual([]);
+    const summary = preview.summary!;
+    expect(summary.currency).toBe(scenario.euro ? "EUR" : "NOK");
+    // The same goods in a cart cost the same: the draft is priced by the checkout's own pieces.
+    if (scenario.sameAsCart) {
+      for (const l of scenario.lines) await add(l.sku, l.quantity);
+      const cartTotals = await cartSummary(shop(), await getCart(shop()));
+      expect({ subtotal: summary.subtotalMinor, shipping: summary.shippingMinor, vat: summary.taxMinor, total: summary.totalMinor }).toEqual({
+        subtotal: cartTotals.subtotal,
+        shipping: cartTotals.shipping,
+        vat: cartTotals.vat,
+        total: cartTotals.total,
+      });
+    }
+    // The VAT of the lines and the shipping adds up to the order's, and the discount's lines add up to the discount.
+    expect(summary.lines.reduce((n, l) => n + l.staffDiscountMinor, 0)).toBe(summary.staffDiscountMinor);
+    expect(summary.totalMinor).toBe(summary.subtotalMinor + summary.shippingMinor - summary.staffDiscountMinor);
+
+    const sent = await sendDraft(storeId, actor(), draft.id, { version: draft.version, createLink: true });
+    if (!sent.ok) throw new Error(`${sent.problem} ${JSON.stringify(sent.problems)}`);
+    const order = (await getOrder(storeId, sent.orderId))!;
+    expect(order).toMatchObject({ status: "pending_payment", currency: scenario.euro ? "EUR" : "NOK", totalMinor: summary.totalMinor, taxMinor: summary.taxMinor, shippingMinor: summary.shippingMinor });
+    expect(order.staffDiscountMinor).toBe(summary.staffDiscountMinor);
+    expect(order.staffDiscountLabel).toBe(scenario.discount?.label ?? null);
+    if (scenario.custom) expect(order.lines.filter((l) => l.custom)).toHaveLength(1);
+
+    const token = sent.link!.split("/").pop()!;
+    // The store as the pay page reads it (this file builds its stores by hand: `getStore()` is cached for a request).
+    const store = { id: storeId, slug, termsAtCheckout: "off", timeZone: tz, markets: [no], localization: localizationOf([], [{ currency: "NOK", rate: 11.5, roundTo: 1 }, { currency: "EUR", rate: 1, roundTo: 1 }], [no]) } as unknown as Store;
+    const payShop = { store, market: view };
+    expect(await startDraftPayment(payShop, token, { termsTicked: true, origin })).toMatchObject({ ok: true });
+    const { params } = fake.created.at(-1)!;
+    // What Stripe is asked to charge is the order's total: each line at what is due, quantity 1, no coupon.
+    expect(chargedNow(params)).toBe(order.totalMinor);
+    expect(params.discounts).toBeUndefined();
+    if (scenario.euro) expect(JSON.stringify(params)).toContain('"currency":"eur"');
+    const [pending] = await db().execute<Row>(sql`select provider_reference, amount_minor from commerce.payments where order_id = ${sent.orderId}::uuid and provider = 'stripe' and status = 'pending'`);
+    expect(Number(pending.amount_minor)).toBe(order.totalMinor);
+    const sessionId = String(pending.provider_reference);
+    fake.sessions.set(sessionId, { status: "complete", payment_status: "paid", mode: params.mode, payment_intent: `pi_${sessionId}` });
+    const paid = await getShopperOrder(storeId, sent.orderId, sessionId);
+    expect(paid?.status).toBe("paid");
+    // The invoice states the order, and its credit notes the refunds, to the minor unit.
+    await expectDocuments(sent.orderId, { euro: scenario.euro });
+  });
+
+  it("paid outside Kaizen, shown in euro: the invoice says the money was paid outside, the VAT is the order's, and a recorded refund gets its credit note", async () => {
+    jar.clear();
+    view = noInEuro;
+    const { recordDraftPaidOutside } = await import("./draft-orders");
+    const draft = await buildDraft({ name: "outside", euro: true, lines: [{ sku: "DEMO-MUG-WHITE", quantity: 2 }, { sku: "DEMO-NOTEBOOK-LINED", quantity: 1 }], discount: { kind: "percent", value: "10", label: "Loyal customer" } });
+    const done = await recordDraftPaidOutside(owner(), draft.id, { version: draft.version, method: "bank_transfer", reference: "KID 4711" });
+    if (!done.ok) throw new Error(`${done.problem} ${JSON.stringify(done.problems)}`);
+    const order = (await getOrder(storeId, done.orderId))!;
+    expect(order).toMatchObject({ status: "paid", currency: "EUR" });
+    const invoice = (await documentFixture.invoiceOf(storeId, done.orderId))!;
+    expect(invoice, "an invoice at once: the money is real").not.toBeNull();
+    expect(invoice.currency).toBe("EUR");
+    expect({ total: invoice.totalMinor, vat: invoice.taxMinor }).toEqual({ total: order.totalMinor, vat: order.taxMinor });
+    const payments = invoice.snapshot.payments as { kind: string; amountMinor: number; method?: string }[];
+    expect(payments.map((p) => p.kind)).toEqual(["paid_outside"]);
+    expect(payments[0]).toMatchObject({ amountMinor: order.totalMinor, method: "bank_transfer" });
+    expect(JSON.stringify(invoice.snapshot)).not.toContain("KID 4711");
+    const expected = await documentFixture.orderVatByRate(done.orderId);
+    const buckets = new Map<string, number>(invoice.snapshot.buckets.map((b: { rate: number; vatMinor: number }) => [b.rate.toFixed(4), b.vatMinor]));
+    for (const [rate, vat] of expected) if (vat !== 0) expect(buckets.get(rate), `VAT at ${rate}`).toBe(vat);
+    const home = invoice.snapshot.buckets.reduce((sum: number, b: { vatMinor: number }) => sum + Math.floor(b.vatMinor * 11.5 + 0.5), 0);
+    expect(invoice).toMatchObject({ vatHomeCurrency: "NOK", fxRate: 11.5, vatHomeMinor: home });
+    // Kaizen took no fee on money it never touched, and Stripe was not asked for anything.
+    const [fee] = await db().execute<Row>(sql`select kaizen_fee_minor, provider from commerce.payments where order_id = ${done.orderId}::uuid`);
+    expect({ fee: Number(fee.kaizen_fee_minor), provider: fee.provider }).toEqual({ fee: 0, provider: "manual" });
+    // Recorded as refunded in two parts: no Stripe call, a credit note for each, together the refunds.
+    const before = fake.created.length;
+    const admin = (await (await import("./order-admin")).getOrderAdmin(storeId, done.orderId))!;
+    expect(admin.canRefund).toBe(true);
+    const part = Math.floor(admin.refundableMinor / 3);
+    const refunded = [part, admin.refundableMinor - part];
+    for (const amountMinor of refunded) {
+      expect(await refundOrder(storeId, done.orderId, { amountMinor, reason: "Returned", restock: [] }, member.account.id)).toMatchObject({ ok: true, status: "succeeded" });
+    }
+    expect(fake.created.length).toBe(before);
+    const notes = await documentFixture.notesOf(storeId, done.orderId);
+    expect(notes.map((n) => n.totalMinor)).toEqual(refunded);
+    expect(notes.reduce((n, note) => n + note.taxMinor, 0)).toBe(invoice.taxMinor);
+    expect(notes.every((n) => n.currency === "EUR" && n.netMinor + n.taxMinor === n.totalMinor)).toBe(true);
+    for (const n of notes) expect(n).toMatchObject({ vatHomeCurrency: "NOK", fxRate: 11.5 });
+  });
+
+  it("keeps the number sequence whole through drafts that were sent, expired, reopened and paid", async () => {
+    jar.clear();
+    view = no;
+    const { sendDraft, expireDrafts, reopenDraft } = await import("./draft-orders");
+    const draft = await buildDraft({ name: "numbers", lines: [{ sku: "DEMO-MUG-WHITE", quantity: 1 }] });
+    const sent = await sendDraft(storeId, actor(), draft.id, { version: draft.version, createLink: true });
+    if (!sent.ok) throw new Error(sent.problem);
+    await expireDrafts(new Date(Date.now() + 40 * 86_400_000));
+    expect((await getOrder(storeId, sent.orderId))!).toMatchObject({ status: "cancelled", number: sent.number });
+    expect((await reopenDraft(storeId, actor(), draft.id)).ok).toBe(true);
+    const again = await sendDraft(storeId, actor(), draft.id, { version: (await (await import("./draft-orders")).getDraft(storeId, draft.id))!.version, createLink: true });
+    expect(again.ok).toBe(true);
+    const audit = await orderNumberAudit(storeId);
+    expect(audit).toMatchObject({ missing: 0, firstMissing: null, offFormat: 0, ok: true });
+    expect(audit.lastNumber).toBe(1000 + audit.orders);
   });
 });

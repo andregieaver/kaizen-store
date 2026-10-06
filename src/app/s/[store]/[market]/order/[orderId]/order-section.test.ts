@@ -30,6 +30,13 @@ import type { Store } from "@/server/stores";
 
 import { OrderDetails, OrderDocuments, OrderLines, OrderTerms, OrderTotals } from "./order-section";
 
+const text = (markup: string) =>
+  markup
+    .replace(/<!-- -->/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&#x27;/g, "'")
+    .replace(/\s+/g, " ");
+
 const ID = "6f1f3a1e-2b7c-4e0e-9a55-0c4c7a1d9b10";
 const market = { slug: "ie", code: "IE", currency: "EUR", locale: "en-IE", lang: "en" } as Market;
 const store = { id: "s1", slug: "demo" } as Store;
@@ -52,6 +59,9 @@ const order = (over: Record<string, unknown> = {}) => ({
   campaignDiscountMinor: 0,
   campaignLabel: null,
   referralDiscountMinor: 0,
+  staffDiscountMinor: 0,
+  staffDiscountLabel: null,
+  gift: null,
   totalMinor: 9000,
   taxMinor: 1680,
   vatKind: "standard",
@@ -464,5 +474,73 @@ describe("the order's lines on backorder (wave 3, D172)", () => {
     expect(await say("nb")).toContain("1 av 5 på restordre: forventes sendt innen 1 dag etter din bestilling");
     expect(await say("sv")).toContain("1 av 5 på restorder: förväntas skickas inom 1 dag efter din beställning");
     expect(await say("da")).toContain("1 af 5 på restordre: forventes afsendt inden for 1 dag efter din bestilling");
+  });
+});
+
+describe("the order with a draft order's staff discount (wave 3, run 2, D173)", () => {
+  it("shows it as its own row under the name staff gave it, apart from a code's discount", async () => {
+    getShopperOrder.mockResolvedValue(order({ staffDiscountMinor: 1200, staffDiscountLabel: "Friends and family", discountMinor: 0 }));
+    const words = await totals();
+    expect(words).toContain("Friends and family −€12.00");
+    expect(words).not.toMatch(/Discount −/);
+  });
+
+  it("names it a discount when staff gave it no name, and shows nothing for an order without one", async () => {
+    getShopperOrder.mockResolvedValue(order({ staffDiscountMinor: 500, staffDiscountLabel: null }));
+    expect(await totals()).toContain("Discount −€5.00");
+    getShopperOrder.mockResolvedValue(order());
+    expect(await totals()).not.toMatch(/Discount −|Friends/);
+  });
+
+  it("draws the staff's label as text, never as markup", async () => {
+    getShopperOrder.mockResolvedValue(order({ staffDiscountMinor: 500, staffDiscountLabel: "<b>Loyal</b>" }));
+    const markup = renderToString(await OrderTotals(shop));
+    expect(markup).not.toContain("<b>Loyal</b>");
+    expect(markup).toContain("&lt;b&gt;Loyal&lt;/b&gt;");
+  });
+});
+
+describe("the order's gift message (wave 3, run 2, D173)", () => {
+  const gift = { isGift: true, to: "Kari", from: "Ola", message: "Gratulerer\nmed dagen" };
+
+  it("shows the buyer their own message under the lines, on the whole order page and in the lines piece", async () => {
+    getShopperOrder.mockResolvedValue(order({ gift }));
+    for (const markup of [renderToString(await OrderDetails(shop)), renderToString(await OrderLines(shop))]) {
+      const words = text(markup);
+      expect(words).toContain("Your gift message");
+      expect(words).toContain("To: Kari");
+      expect(words).toContain("From: Ola");
+      expect(words).toContain("Gratulerer");
+      // The lines the buyer typed are kept as lines, by style: the text itself stays text.
+      expect(markup).toContain("whitespace-pre-line");
+    }
+  });
+
+  it("is in the buyer's language", async () => {
+    getShopperOrder.mockResolvedValue(order({ gift }));
+    const nb = { ...shop, market: { ...market, lang: "nb", locale: "nb-NO" } as Market };
+    expect(text(renderToString(await OrderLines(nb)))).toContain("Din gavehilsen");
+  });
+
+  it("shows nothing for an order that is not a gift", async () => {
+    expect(text(renderToString(await OrderLines(shop)))).not.toContain("gift message");
+    getShopperOrder.mockResolvedValue(order({ gift: null }));
+    expect(renderToString(await OrderLines(shop))).not.toContain("data-gift-note");
+  });
+
+  it("says only that it is a gift when the buyer wrote nothing", async () => {
+    getShopperOrder.mockResolvedValue(order({ gift: { isGift: true, to: null, from: null, message: null } }));
+    const words = text(renderToString(await OrderLines(shop)));
+    expect(words).toContain("This is a gift");
+    expect(words).not.toContain("Your gift message");
+  });
+
+  it("draws markup the buyer typed as the characters they typed", async () => {
+    getShopperOrder.mockResolvedValue(order({ gift: { isGift: true, to: "<i>Kari</i>", from: null, message: "<script>alert(1)</script> &amp; <b>x</b>" } }));
+    const markup = renderToString(await OrderDetails(shop));
+    expect(markup).not.toContain("<script>");
+    expect(markup).not.toContain("<b>x</b>");
+    expect(markup).not.toContain("<i>Kari</i>");
+    expect(markup).toContain("&lt;script&gt;alert(1)&lt;/script&gt; &amp;amp; &lt;b&gt;x&lt;/b&gt;");
   });
 });

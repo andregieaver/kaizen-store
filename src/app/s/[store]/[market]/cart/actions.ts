@@ -8,10 +8,11 @@ import { COMPANY_NAME_MAX, organisationNumber } from "@/lib/b2b";
 import { MAX_RANGE_LENGTH } from "@/lib/booking-ranges";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import type { CreditsState } from "@/lib/bonus-shopper";
+import type { GiftFields, GiftProblem } from "@/lib/gift";
 import { t } from "@/lib/i18n";
 import { siteUrl } from "@/lib/site";
 import { rememberAffiliate } from "@/server/affiliates";
-import { changeLine, readCartId, setCartCompany, setCartVatNumber } from "@/server/cart";
+import { changeLine, readCartId, setCartCompany, setCartGift, setCartVatNumber } from "@/server/cart";
 import { viesClientKey } from "@/server/vat-checks";
 import { getCustomer } from "@/server/customers";
 import { setCartCode } from "@/server/discounts";
@@ -260,4 +261,31 @@ export async function setCartCreditsAction(
   const outcome = await applyCreditsForm(storeSlug, marketSlug, form);
   if (outcome.changed) refresh();
   return outcome.state;
+}
+
+export type GiftActionResult = { ok: true; gift: GiftFields } | { ok: false; problems: GiftProblem[] };
+
+/** The longest text taken from the browser before it is cleaned: far over any limit, so a refusal is still a refusal, but a very large request is not read whole. */
+const GIFT_INPUT_MAX = 2000;
+
+/**
+ * Keeps the buyer's gift on the cart (wave 3, run 2, D173, `docs/wave-3-orders.md` 2.1): ticked or not, with To, From and a message. The server cleans and checks them
+ * (`setCartGift()`: a text over its limit is refused with how much is over, never cut; unticking clears the three; a store with gift messages off ignores it all) and
+ * stores nothing in the browser. What the browser sends is never trusted to be a string.
+ */
+export async function setGiftAction(
+  storeSlug: string,
+  marketSlug: string,
+  input: { isGift: boolean; to: string; from: string; message: string },
+): Promise<GiftActionResult> {
+  const shop = await resolveShop(storeSlug, marketSlug);
+  if (!shop || typeof input !== "object" || input === null) return { ok: false, problems: [] };
+  const text = (value: unknown) => (typeof value === "string" ? value.slice(0, GIFT_INPUT_MAX) : "");
+  const result = await setCartGift(
+    { storeId: shop.store.id, market: shop.market },
+    { isGift: input.isGift === true, to: text(input.to), from: text(input.from), message: text(input.message) },
+  );
+  if (!result.ok) return { ok: false, problems: result.problem === "too_long" ? result.problems : [] };
+  refresh();
+  return { ok: true, gift: result.gift };
 }

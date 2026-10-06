@@ -28,6 +28,17 @@ export const num = (row: Row | undefined, key: string): number => Number(row?.[k
 export const PAID = sql`(o.copied_from is null and o.host_id is null and exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured'))`;
 
 /**
+ * An order made from a shopper's own cart (`orders.source = 'checkout'`), as opposed to a staff-made one (D173, a draft order sent as a pay link or
+ * taken as paid outside Kaizen). The one definition of "was a visit's sale" (docs/analytics.md, "Staff-made order"): everything that divides orders by
+ * sessions or places an order in a visit's device, market, landing page or funnel asks for it. A staff-made order is still a paid order for revenue,
+ * VAT, orders, refunds and customers, so `PAID` is never narrowed by it.
+ */
+export const FROM_CHECKOUT = sql`(o.source = 'checkout')`;
+
+/** The reverse: an order staff made (`orders.source = 'draft'`). */
+export const STAFF_MADE = sql`(o.source = 'draft')`;
+
+/**
  * Backordered units a paid order still waits for (D172): the line of `ol` on an order `o` that is paid and not yet sent (status `paid`), not copied from
  * another store, with units on backorder. The one definition of "owed" (docs/analytics.md): the Inventory page of the admin, this page's analysis and the
  * control center all sum `ol.backorder_quantity` where this holds, and a test holds them equal.

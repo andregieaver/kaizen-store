@@ -115,6 +115,7 @@ export const TABLE_LABELS: Record<string, string> = {
   wishlists: "Wishlists",
   wishlist_cart_adds: "Wishlist cart additions",
   carts: "Carts",
+  draft_orders: "Draft orders",
   delivery_quotes: "Delivery quotes",
   abandoned_checkouts: "Abandoned checkouts",
   bonus_entries: "Bonus credits",
@@ -134,8 +135,11 @@ const ACTION_OF: Record<Exclude<ErasureAction, "none">, PlanAction> = { delete: 
 
 const entryOf = (table: string): PersonalEntry | undefined => PERSONAL_DATA.find((e) => e.table === table);
 
-/** What hangs on an order and follows it (kept, restricted or anonymised with it): the preview shows it under the orders, not row by row. */
-export const FOLDED_INTO_ORDERS: readonly string[] = ["order_lines", "payments", "refunds", "shipments", "bookings", "order_terms", "order_events", "order_downloads", "order_terms"];
+/**
+ * What hangs on an order and follows it (kept, restricted or anonymised with it): the preview shows it under the orders, not row by row.
+ * (A draft order's lines go with their draft, shown as one row, and an order's tags are staff text on the order.)
+ */
+export const FOLDED_INTO_ORDERS: readonly string[] = ["order_lines", "payments", "refunds", "shipments", "bookings", "order_terms", "order_events", "order_downloads", "order_terms", "order_tags", "draft_order_lines"];
 
 /** Tables the preview shows a row for: the subject's own data, with an action. The rest (not personal, or kept untouched) are not listed. */
 export const PLAN_TABLES: readonly string[] = PERSONAL_DATA.filter((e) => e.subject === "shopper" && e.erasure !== "none" && e.export !== null && !FOLDED_INTO_ORDERS.includes(e.table))

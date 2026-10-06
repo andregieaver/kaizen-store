@@ -16,27 +16,53 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Three tabs (Orders, To send, Unfinished checkouts) and the newest 200 orders (`listOrders()`, `limit 200`); no text, date, status or payment search, no paging, no saved views, no bulk actions. D153 added the returns queue next to it but nothing to the list itself.",
+    "gap": "Built and held by tests in the working tree (wave 3 run 2, D173 proposed; no migration applied to production). The Orders page reads its whole state from the address (`parseOrderListParams()`, the one parser) and builds every condition in `orderListWhere()`: search over number, email, name, line title, SKU, tag and tracking number (words escaped and bound, AND over at most five words, an erased person not found by email or name, no other store's order); filters for status, payment, fulfilment, tag, market, source, gift, archive and a store-day date range; keyset paging 50 at a time (250 orders walked with each of the four sorts, none lost or repeated; the total sort compares converted totals in a store with several currencies, a review fix); named views per store, 30 at most, opening one gives the orders its parameters typed give; and bulk tag, untag, archive, unarchive and mark as sent on up to 250 ticked orders or on 'all matching' (the query is re-read on the server), each order in its own transaction with every refusal named, one audit entry a batch, plus bulk packing slips without prices. The four criteria hold at the server and action layer (order-list, order-views, order-bulk and order-actions integration tests, run 2026-10-06 on a fresh database: 14 integration files, 286 tests, and the 6 of the action file, all passed). Held at Partial because the feature is the screen and no test clicks it: there is no signed-in admin browser fixture, so the filter bar, the selection state, the 'all matching' confirmation, the view bar and the cursor links are held by `renderToString` view tests only, and `page.tsx`'s own glue is type-checked, not run; the spec's forced-failure test of per-order atomicity (a failure on the third order leaves the first two applied) was not written, the property is read in `runBulk()` and held by the refusal tests; the 5,000-order timing test uses a generous bound on a test database and the spec calls it flaky on a busy one, so there is no measure on a real store's data. Not built, deliberately (spec section 7): bulk cancel, refund and capture, labels, Flow, a Local Delivery view, saved views per person, exporting the filtered list. Full after the signed-in by-hand pass of spec 9.7 item 1 is done and accepted.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
       "Searching an order number, customer name, email or product title finds the matching orders of this store and no other store's (integration test).",
       "The list filters by status, payment, fulfilment and a date range, all in the address, and pages through more than 200 orders without losing any (integration test with 250 orders).",
       "A staff member saves a filter and column choice as a named view and reopens it (integration test; views are per store).",
-      "Selecting several orders offers bulk actions: add and remove tags, archive, print packing slips and mark sent; each is applied to every selected order or reports which one it refused (integration test)."
+      "Selecting several orders offers bulk actions: add and remove tags, archive and mark sent, each applied to every selected order or reporting which one it refused; packing slips are printed for every selected order that has something to ship, the others listed with the reason (integration test)."
     ],
     "evidence": {
       "files": [
         "src/app/admin/(gated)/[store]/orders/page.tsx",
-        "src/server/orders.ts"
+        "src/app/admin/(gated)/[store]/orders/list-actions.ts",
+        "src/app/admin/(gated)/[store]/orders/packing-slips/page.tsx",
+        "src/server/order-list.ts",
+        "src/server/order-list-sql.ts",
+        "src/server/order-views.ts",
+        "src/server/order-bulk.ts",
+        "src/server/packing-slips.ts",
+        "src/lib/order-list.ts",
+        "src/lib/order-search.ts",
+        "src/lib/order-bulk.ts",
+        "src/components/admin/orders/order-list-view.tsx",
+        "src/components/admin/orders/filter-bar.tsx",
+        "src/components/admin/orders/view-bar.tsx",
+        "src/components/admin/orders/order-table.tsx",
+        "supabase/migrations/20261006151857_orders_ops_search.sql"
       ],
       "tests": [
-        "src/server/store-copy.int.test.ts"
+        "src/server/order-list.int.test.ts",
+        "src/server/order-list-perf.int.test.ts",
+        "src/server/order-views.int.test.ts",
+        "src/server/order-bulk.int.test.ts",
+        "src/server/order-actions.int.test.ts",
+        "src/server/order-money.review.int.test.ts",
+        "src/lib/order-list.test.ts",
+        "src/lib/order-search.test.ts",
+        "src/lib/order-bulk.test.ts",
+        "src/components/admin/orders/orders-views.test.ts",
+        "src/components/admin/orders/packing-slip-views.test.ts",
+        "src/db/orders-ops.test.ts"
       ],
       "untested": false
     },
     "decisions": [
-      "D27"
+      "D27",
+      "D173"
     ],
     "history": []
   },
@@ -100,14 +126,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "No tags or archive state on orders (no column, no UI); the only status split is the three list tabs.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "Staff add and remove tags on an order and on a selection of orders; tags are per store, case-insensitive, at most 40 characters, at most 250 per order (unit and integration tests).",
       "The order list filters by tag and the tag shows on the order page and in its history (integration test).",
@@ -115,12 +141,41 @@
       "A copied order (D129) can be tagged and archived but nothing else about it changes."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/order-tags.ts",
+        "src/lib/order-archive.ts",
+        "src/lib/order-limits.ts",
+        "src/server/order-tags.ts",
+        "src/server/order-archive.ts",
+        "src/server/order-bulk.ts",
+        "src/app/admin/(gated)/[store]/orders/ops-actions.ts",
+        "src/components/admin/orders/order-ops.tsx",
+        "supabase/migrations/20261006151839_orders_ops.sql",
+        "supabase/migrations/20261006151848_orders_ops_rules.sql"
+      ],
+      "tests": [
+        "src/lib/order-tags.test.ts",
+        "src/lib/order-archive.test.ts",
+        "src/server/order-tags.int.test.ts",
+        "src/server/order-archive.int.test.ts",
+        "src/server/order-bulk.int.test.ts",
+        "src/server/order-actions.int.test.ts",
+        "src/db/orders-ops.test.ts",
+        "src/components/admin/orders/order-page-views.test.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D173"
+    ],
+    "history": [
+      {
+        "on": "2026-10-06",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 3 run 2 (docs/wave-3-orders.md, D173 proposed; working tree not committed, migrations not applied to production). Read order-tags.ts, order-archive.ts, the two migrations' rules (tag limit trigger, `orders_archived_not_pending`, the two patched copied-order guards), ops-actions.ts and the order page's Tags card and Archive button, and ran on a fresh database: order-tags.test.ts, order-archive.test.ts, orders-ops.test.ts (PGlite, every migration), order-page-views.test.ts, order-tags.int.test.ts, order-archive.int.test.ts, order-bulk.int.test.ts and order-actions.int.test.ts (added in this step: the actions behind the tag card and the archive button, permission asked, text typed, refusal words, another store's order, copied history), all passed. Criterion 1: 40 code points, 250 an order (trigger, two concurrent writers), case-insensitive key, per store, singly and in bulk. Criterion 2: the tag filter, the tag on the order page and the `order.tags_changed` event with the words in `data.note`. Criterion 3: archive and unarchive singly, in bulk and automatically (off by default), out of the default list and in the Archived view, `order_number_audit()` and every number identical before and after, a return unarchives. Criterion 4: a copied order takes tags and archive and every other write still raises. Caveat: no test clicks the signed-in admin; the tag card, the archive button and the bulk bar are held by view tests and by the action tests, and a by-hand pass (spec 9.7 item 1) is still advised."
+      }
+    ]
   },
   {
     "id": "orders.edit-an-order-after-placement",
@@ -270,28 +325,74 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "partial",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "Orders come only from carts (`placeOrder()`) and subscription renewals; staff cannot create an order, set a custom price, send a pay link or mark a manual order paid. One row for the one Shopify feature (it replaces checkout.draft-orders-and-payment-links).",
-    "bucket": "A",
+    "gap": "Built and held by tests in the working tree (wave 3 run 2, D173 proposed; no migration applied to production): staff make a draft (`D-n`, its own counter) with goods, custom service items, a custom price, a staff discount, shipping (rate, free or set) and a market, priced only by `priceDraft()` (equal to `cartSummary()` for the same goods in kroner and in a euro view, `checkout-kinds` draft scenarios); Send makes the order from the one shared insert `order-insert.ts` (next number of D141's sequence, stock held to the draft's expiry), emails a pay link (hashed token, `/account/pay/{token}`, Stripe's hosted page) and `applySession()` completes it; staff can instead record money taken outside Kaizen (a `manual` payment with a method, a received day, owner-only unless the owner allows staff, cash ceilings as data), which the invoice states as paid outside and whose refund is recorded with no Stripe call, capped under the order lock and by a trigger, and gets a credit note; an expired draft cancels its order, releases the stock and leaves the numbers whole; a staff-made order counts in sales, VAT and customers and not in conversion, the funnel or channels. The 16 findings of the review are fixed, each with a test (`draft-security.review.int.test.ts`, 7 tests). Run on a fresh database 2026-10-06: the integration files named in the evidence, the PGlite and unit files and `e2e/draft-pay.spec.ts` on a fresh production build (8 passed) all passed. Held at Partial for these reasons. (1) Consumer legal text nobody has read (spec section 8 items 1 to 3, 5, 6, 10 to 12): the pay page's states and right-of-withdrawal sentence, the 'Pay now' button against CRD Art. 8(2), the pay-link email and the store's quoted note, the invoice and credit-note wording for a payment taken outside Kaizen, the cash warnings, the staff-discount line, the retention of a draft's contact data, and the received-day rule that decides the VAT and OSS period; and the cash ceilings in `cash-limits.ts` are `verified: false` (Norway's 40,000 NOK is enforced, Denmark's warns, no other country is held, which is not a statement that there is no rule). A person must read them. (2) The Stripe link flow has run only against the repo's fake Stripe (a hosted session, the webhook path through `applySession()`, the refund); no real test-mode session, webhook or refund has run, and the e2e cannot follow the button to Stripe (spec 9.7 item 2). (3) No test clicks the signed-in admin: the draft editor, send dialog and paid-outside dialog are held by `renderToString` view tests, and the draft actions (`saveDraftAction`, `sendDraftAction`, `recordPaidOutsideAction` and the rest) are not exercised directly. (4) The criterion that a draft-created order is in the customer's history rests on `linkOrderToCustomer()` and `listCustomerOrders()` reading `customer_id`, and no test asserts that a paid draft order appears there (the analytics test counts the customer, the privacy test exports drafts). (5) Product limits that are decisions, not bugs: a custom service item is sold to businesses only (`custom_consumer`) because the withdrawal function answers any service as a booking; a delivery address must be in the market's country (a blocking problem; the field is not locked); `payments.received_on` dates the invoice and the VAT and OSS reports but the `order.paid` event and analytics still date the sale by the day it was recorded, so Finance and the VAT report can place a late-recorded payment in different periods. Not built, deliberately (spec section 7): subscriptions, appointments, stays, downloads and hosts' listings on a draft, codes, campaigns, credits and VAT-number checks, carrier quotes, deposits and payment terms, card details by phone, a reminder before the link expires.",
+    "bucket": "D",
     "wave": 3,
     "criteria": [
       "Staff create a draft with products, quantities, a customer, address, shipping and a discount; totals and VAT come from the checkout's own functions (integration test in two currencies).",
-      "Sending the draft emails a pay link; paying it makes a normal order with a number from the store's gap-free sequence (D141) and holds stock only when the draft is sent (integration test).",
-      "A draft can be marked paid for money taken outside Kaizen (cash, bank transfer) with the method recorded, and such an order refunds as an outside payment.",
-      "An unpaid draft that expires leaves no number gap and releases its stock.",
+      "Sending the draft emails a pay link; the order is made when it is sent, paying it completes it, the number is from the store's gap-free sequence (D141), and stock is held only from the send (integration test).",
+      "A draft can be marked paid for money taken outside Kaizen (cash, bank transfer) with the method recorded; a refund of such an order is recorded with no Stripe call, a credit note follows from the existing trigger, and the amount is capped at what is left.",
+      "An unpaid draft that expires cancels its order, leaves the number sequence without a gap (`order_number_audit` clean) and releases its stock.",
       "Draft-created orders count in sales and in the customer's history and are marked as staff-made."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/draft-order.ts",
+        "src/lib/draft-input.ts",
+        "src/lib/draft-status.ts",
+        "src/lib/cash-limits.ts",
+        "src/lib/order-limits.ts",
+        "src/server/draft-orders.ts",
+        "src/server/draft-pay.ts",
+        "src/server/draft-sessions.ts",
+        "src/server/draft-emails.ts",
+        "src/server/order-insert.ts",
+        "src/server/payment-session.ts",
+        "src/server/order-admin.ts",
+        "src/app/admin/(gated)/[store]/orders/drafts/page.tsx",
+        "src/app/admin/(gated)/[store]/orders/drafts/actions.ts",
+        "src/app/s/[store]/[market]/account/pay/[token]/page.tsx",
+        "src/app/s/[store]/[market]/account/pay/[token]/pay-view.tsx",
+        "src/components/admin/drafts/draft-editor.tsx",
+        "src/components/admin/drafts/draft-send.tsx",
+        "supabase/migrations/20261006151839_orders_ops.sql",
+        "supabase/migrations/20261006151848_orders_ops_rules.sql",
+        "supabase/migrations/20261006185225_orders_ops_fix_rules.sql"
+      ],
+      "tests": [
+        "src/lib/draft-order.test.ts",
+        "src/lib/draft-input.test.ts",
+        "src/lib/draft-status.test.ts",
+        "src/lib/cash-limits.test.ts",
+        "src/lib/payment-readers.scan.test.ts",
+        "src/server/draft-orders.int.test.ts",
+        "src/server/draft-security.review.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/analytics-staff-orders.int.test.ts",
+        "src/db/orders-ops.test.ts",
+        "src/db/invoice-parity.test.ts",
+        "src/components/admin/drafts/drafts-views.test.ts",
+        "src/app/s/[store]/[market]/account/pay/[token]/pay-view.test.ts",
+        "e2e/draft-pay.spec.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D173"
+    ],
+    "history": [
+      {
+        "on": "2026-10-06",
+        "from": "missing",
+        "to": "partial",
+        "why": "Wave 3 run 2 (docs/wave-3-orders.md, D173 proposed; working tree not committed). Read draft-orders.ts, draft-pay.ts, draft-sessions.ts, order-insert.ts, payment-session.ts, order-admin.ts's manual refund branch, the pay page and the migrations, and ran on a fresh database: the draft, order-list, payment-reader and cash-limit unit files, orders-ops.test.ts and invoice-parity.test.ts (PGlite), draft-orders.int.test.ts, draft-security.review.int.test.ts, checkout-kinds.int.test.ts (draft scenarios in krone and euro), analytics-staff-orders.int.test.ts, the view tests, and e2e/draft-pay.spec.ts on a fresh production build; all passed. Every criterion is built and held by tests, but the row rests on consumer legal text no person has read (spec section 8), on cash ceilings marked unverified, on a Stripe flow run only against the fake Stripe, and on admin screens no test clicks; the customer-history half of criterion 5 has no test of its own. Bucket D as for D172's unreviewed delivery wording: the review is people's work. Re-bucket to A when a person has read the texts."
+      }
+    ]
   },
   {
     "id": "orders.fulfilment-workflow-partial-fulfilment",
@@ -1615,25 +1716,61 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 1,
-    "gap": "None: no gift message at checkout and no price-free gift slip.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
-      "At checkout the shopper marks an order as a gift with a message of at most a stated length; it is kept on the order and shown to staff (integration test).",
-      "The packing slip of a gift order shows the message and no prices, and an email to the buyer never prints the message in a shipping notice to the recipient.",
+      "At checkout the shopper marks an order as a gift with a message of at most 300 characters (60 for each name); it is kept on the order and shown to staff (integration test).",
+      "The packing slip of a gift order shows the message and no prices. No email is ever sent to the gift's recipient, and the shipping notice to the buyer never carries the message.",
       "The message passes through the same output cleaning as other shopper text and is never rendered as HTML."
     ],
     "evidence": {
-      "files": [],
-      "tests": [],
+      "files": [
+        "src/lib/gift.ts",
+        "src/lib/order-limits.ts",
+        "src/server/cart.ts",
+        "src/server/checkout.ts",
+        "src/server/packing-slips.ts",
+        "src/server/shopper-emails.ts",
+        "src/server/order-settings.ts",
+        "src/app/s/[store]/[market]/cart/cart-gift.tsx",
+        "src/app/s/[store]/[market]/cart/actions.ts",
+        "src/components/admin/orders/gift-card.tsx",
+        "src/components/admin/orders/packing-slip-view.tsx",
+        "supabase/migrations/20261006151839_orders_ops.sql",
+        "supabase/migrations/20261006151848_orders_ops_rules.sql"
+      ],
+      "tests": [
+        "src/lib/gift.test.ts",
+        "src/lib/gift-no-html.scan.test.ts",
+        "src/server/gift.int.test.ts",
+        "src/server/gift-shipping.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/order-export-ops.int.test.ts",
+        "src/db/orders-ops.test.ts",
+        "src/components/admin/orders/packing-slip-views.test.ts",
+        "src/components/admin/orders/order-page-views.test.ts",
+        "src/components/gift-note.test.ts",
+        "src/app/s/[store]/[market]/cart/cart-gift.test.ts",
+        "e2e/gift.spec.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D173"
+    ],
+    "history": [
+      {
+        "on": "2026-10-06",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 3 run 2 (docs/wave-3-orders.md, D173 proposed; working tree not committed, migration not applied to production). Read gift.ts (`cleanShopperText()`, `cleanGift()`: no zod, refused not cut), cart.ts `setCartGift()`, the copy in `placeOrder()`, the frozen-gift trigger, the cart box, the order page's Gift card, `packingSlipData()` and the slip view, and `sendOrderConfirmation()`/`sendShipped()`; ran on a fresh database: gift.test.ts, gift-no-html.scan.test.ts, orders-ops.test.ts (PGlite: fields, limits, frozen, anonymised), gift.int.test.ts, checkout-kinds.int.test.ts (gift scenarios in krone and euro), packing-slip-views.test.ts, order-page-views.test.ts, order-export-ops.int.test.ts, and e2e/gift.spec.ts (4 passed) on a fresh production build of the final tree. The spec promised a test that `sendShipped()` never carries the message and that no email goes to anyone but the buyer; it did not exist, so `src/server/gift-shipping.int.test.ts` was added in this step (the confirmation repeats the message for the buyer, the shipping notice carries neither the message nor the recipient's name, every email of the order is to the order's own address) and passes. G2 and G1 are read as the spec's criteria changes say: no email to a recipient exists, and the lengths are 300 and 60. Caveat: the gift words are interface text hand-written in nb, sv, da and en and the buyer's text about a third party raises the GDPR questions of spec section 8 item 8; no test clicks the staff's order page or the slip route."
+      }
+    ]
   }
 ]

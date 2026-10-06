@@ -44,7 +44,7 @@ const isCredit = (doc: Doc): doc is CreditNoteSnapshot => doc.documentType === "
 const hidesVat = (doc: Doc): boolean => !doc.seller.vatRegistered || doc.treatment.statements.includes("not_registered");
 
 /** An invoice with something paid online (a payment day exists); a booking left wholly for the venue has been paid for nothing yet. */
-const paidOnline = (doc: OrderInvoiceSnapshot): boolean => doc.payments.some((p) => p.kind === "paid_online");
+const paidOnline = (doc: OrderInvoiceSnapshot): boolean => doc.payments.some((p) => p.kind === "paid_online" || p.kind === "paid_outside");
 const bp = (rate: number) => Math.round(rate * 10_000);
 
 /** The rate of the VAT line in major units (so a currency with another number of decimals still reads right), without trailing zeros. */
@@ -76,7 +76,10 @@ function Head({ doc, t, locale }: { doc: Doc; t: DocumentText; locale: string })
     [t.issueDate, dayText(doc.issuedOn, locale)],
     ...(paid ? ([[t.supplyDate, dayText(doc.supplyDate, locale)]] as [string, string][]) : []),
     [t.orderNumber, doc.order.number],
-    ...(paid ? ([[t.paidOn, dayText(doc.order.paidOn, locale)]] as [string, string][]) : []),
+    // "Paid online" only when Stripe took the money; a payment the seller recorded outside Kaizen is dated in its own words (D173).
+    ...(paid
+      ? ([[!credit && doc.payments.some((p) => p.kind === "paid_online") ? t.paidOn : t.paidOutside, dayText(doc.order.paidOn, locale)]] as [string, string][])
+      : []),
   ];
   return (
     <header className="wd-head">
@@ -374,7 +377,13 @@ function Payments({ doc, t, locale }: { doc: OrderInvoiceSnapshot; t: DocumentTe
       <dl>
         {doc.payments.map((p, i) => (
           <div key={i} style={{ display: "contents" }}>
-            <dt>{p.kind === "paid_online" ? t.paidOnline : t.payAtVenue}</dt>
+            <dt>
+              {p.kind === "paid_online"
+                ? t.paidOnline
+                : p.kind === "paid_outside"
+                  ? `${t.paidOutside}${p.method ? ` (${t.paymentMethods[p.method]})` : ""}`
+                  : t.payAtVenue}
+            </dt>
             <dd className="wd-num">{moneyText(p.amountMinor, doc.currency, locale)}</dd>
           </div>
         ))}

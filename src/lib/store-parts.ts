@@ -76,6 +76,11 @@ export const STORE_PIECES = {
     name: "Cart items",
     hint: "The lines in the cart with their pictures, quantities, remove buttons and free gifts. An empty cart says so here, with a link back to the store.",
   },
+  cart_gift: {
+    route: "cart",
+    name: "Gift message",
+    hint: "The tick box and fields for a gift message. Nothing in a store with gift messages switched off.",
+  },
   cart_summary: {
     route: "cart",
     name: "Cart summary",

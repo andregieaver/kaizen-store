@@ -11,7 +11,9 @@ import {
   knownHost,
   landingKind,
   ltvToCac,
+  isNotAChannel,
   normalizeHost,
+  STAFF_CHANNEL,
   UNKNOWN_CHANNEL,
   type ChannelInput,
   type ClassifyInput,
@@ -658,5 +660,45 @@ describe("ltvToCac", () => {
     expect(ltvToCac(30_000, -1)).toBeNull();
     expect(ltvToCac(Number.NaN, 5)).toBeNull();
     expect(ltvToCac(5, Number.POSITIVE_INFINITY)).toBeNull();
+  });
+});
+
+describe("the Staff-made row of the channel table (D173)", () => {
+  const input = (channel: string, over: Partial<ChannelInput> = {}): ChannelInput => ({
+    channel,
+    sessions: 100,
+    orders: 5,
+    revenueMinor: 50_000,
+    newCustomers: 2,
+    spendMinor: 0,
+    contributionBeforeMarketingMinor: 20_000,
+    ...over,
+  });
+
+  it("is no place visitors come from: labelled, with no sessions to know, and never a channel to compare or spend on", () => {
+    expect(channelLabel(STAFF_CHANNEL)).toBe("Staff-made");
+    expect(isNotAChannel(STAFF_CHANNEL)).toBe(true);
+    expect(isNotAChannel(UNKNOWN_CHANNEL)).toBe(true);
+    expect(isNotAChannel("direct")).toBe(false);
+    expect(CHANNELS.some((c) => (c.key as string) === STAFF_CHANNEL)).toBe(false);
+  });
+
+  it("keeps the table's revenue whole and leaves the staff row out of every rate: no conversion of its own, and the blended one counts the others' orders only", () => {
+    const t = channelTable([input("direct", { sessions: 100, orders: 5 }), input("email", { sessions: 100, orders: 5 }), input(STAFF_CHANNEL, { sessions: null, orders: 3, revenueMinor: 30_000 })]);
+    const staff = t.rows.find((r) => r.channel === STAFF_CHANNEL)!;
+    expect(staff.label).toBe("Staff-made");
+    expect(staff.conversion).toBeNull();
+    expect(staff.aov).toBe(10_000);
+    // All revenue is in the table, so the shares add up.
+    expect(t.blended.revenueMinor).toBe(130_000);
+    expect(t.rows.reduce((s, r) => s + (r.revenueShare ?? 0), 0)).toBeCloseTo(1, 10);
+    // 10 checkout orders over 200 sessions, not 13.
+    expect(t.blended.orders).toBe(13);
+    expect(t.blended.conversion).toBe(10 / 200);
+  });
+
+  it("is the same table as before when no order was staff-made", () => {
+    const rows = [input("direct"), input("email", { orders: 7, sessions: 140 })];
+    expect(channelTable(rows).blended.conversion).toBe(12 / 240);
   });
 });

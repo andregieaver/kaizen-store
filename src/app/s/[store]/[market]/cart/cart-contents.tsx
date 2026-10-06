@@ -21,7 +21,7 @@ import { formatMoney } from "@/lib/money";
 import { countryOfVatPrefix } from "@/lib/vat-number";
 import { countryName, vatNumberMessage, vatProblemTexts, vatText } from "@/lib/vat-text";
 import { getBuyer } from "@/server/b2b";
-import { getCart } from "@/server/cart";
+import { getCart, getCartGift } from "@/server/cart";
 import { perRequest } from "@/server/request-memo";
 import { cartSummary } from "@/server/cart-summary";
 import { getCustomer } from "@/server/customers";
@@ -29,6 +29,7 @@ import type { Store } from "@/server/stores";
 
 import { setCartCreditsAction, updateCartLine } from "./actions";
 import { readCartBonus } from "./bonus";
+import { GiftBox } from "./cart-gift";
 
 type CartView = Awaited<ReturnType<typeof loadCartView>>;
 type Filled = Extract<CartView, { empty: false }>;
@@ -43,7 +44,12 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
   const home = marketPath(store.slug, market.slug);
   if (cart.lines.length === 0) return { empty: true as const, home };
 
-  const [summary, bonus] = await Promise.all([cartSummary({ storeId: store.id, market }, cart), readCartBonus(store, market)]);
+  const [summary, bonus, gift] = await Promise.all([
+    cartSummary({ storeId: store.id, market }, cart),
+    readCartBonus(store, market),
+    // The gift box (wave 3, D173): whether the store offers gift messages, and what the cart holds of one.
+    getCartGift({ storeId: store.id, market }),
+  ]);
   const { plan, checkout, renewal } = summary;
   // The VAT wording (D157): hand-written, so apart from the interface texts the AI translates.
   const vatWords = vatText(market.lang);
@@ -81,6 +87,7 @@ async function loadCartView(store: Store, market: Market, m: Messages) {
     cart,
     summary,
     bonus,
+    gift,
     every,
     business,
     money,
@@ -129,7 +136,10 @@ export async function CartContents({
   return (
     // minmax(0, …): nothing inside may make a column wider than the screen.
     <div className={`grid grid-cols-[minmax(0,1fr)] ${drawer ? "gap-4" : "gap-8 md:grid-cols-[minmax(0,1fr)_18rem]"}`}>
-      {linesList(draw, drawer)}
+      <div className="flex min-w-0 flex-col gap-4">
+        {linesList(draw, drawer)}
+        {giftBox(draw)}
+      </div>
       <aside
         aria-label={m.subtotal}
         className={`flex h-fit min-w-0 flex-col gap-3 ${drawer ? "" : "rounded-lg border border-border p-4"}`}
@@ -147,6 +157,12 @@ export async function CartContents({
 export async function CartLines({ store, market, m }: { store: Store; market: Market; m: Messages }) {
   const view = await cartView(store, market, m);
   return view.empty ? EMPTY_CART(view.home, m) : linesList({ store, market, m, view }, false);
+}
+
+/** The cart's gift box (wave 3, D173): a tick and To, From and a message; nothing for an empty cart or a store with gift messages switched off. */
+export async function CartGift({ store, market, m }: { store: Store; market: Market; m: Messages }) {
+  const view = await cartView(store, market, m);
+  return view.empty ? null : giftBox({ store, market, m, view });
 }
 
 /** The cart's subtotal, shipping, discounts and total (D117); nothing for an empty cart. */
@@ -170,10 +186,14 @@ export async function CartCredits({ store, market, m }: { store: Store; market: 
 }
 
 /** The cart's checkout button and what it asks first (D117); nothing for an empty cart. */
-export async function CartCheckout({ store, market, m }: { store: Store; market: Market; m: Messages }) {
+export async function CartCheckout({ store, market, m, drawGift = false }: { store: Store; market: Market; m: Messages; drawGift?: boolean }) {
   const view = await cartView(store, market, m);
   return view.empty ? null : (
-    <div className="flex min-w-0 flex-col gap-3">{checkoutAction({ store, market, m, view })}</div>
+    <div className="flex min-w-0 flex-col gap-3">
+      {/* A cart page built before gift messages came has no gift piece: the box is drawn here, above the button, so switching the store's gift messages on still shows it (`drawGift`, as the terms are). */}
+      {drawGift && giftBox({ store, market, m, view })}
+      {checkoutAction({ store, market, m, view })}
+    </div>
   );
 }
 
@@ -184,6 +204,12 @@ export function CartContinue({ store, market, m }: { store: Store; market: Marke
       {m.continueShopping}
     </Link>
   );
+}
+
+/** The gift box (D173): null for a store with gift messages switched off. */
+function giftBox({ store, market, view }: Draw) {
+  if (!view.gift.enabled) return null;
+  return <GiftBox store={store.slug} market={market.slug} lang={market.lang} initial={view.gift.gift} />;
 }
 
 function linesList({ store, market, m, view }: Draw, drawer: boolean) {

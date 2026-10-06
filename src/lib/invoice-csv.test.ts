@@ -14,7 +14,7 @@ function invoice(name: string, lines: InvoiceLineFacts[], over: { currency?: str
     order: {
       id: "o", number: "1001", marketCode: "NO", currency: over.currency ?? "NOK", locale: "nb-NO", email: "k@example.com", placedOn: "2026-10-04", paidOn: "2026-10-04", shippingMinor: 0, discountMinor: 0,
       taxMinor: lines.reduce((s, l) => s + l.taxMinor, 0), totalMinor: lines.reduce((s, l) => s + l.totalMinor, 0), memberDiscountMinor: 0, memberLabel: null, campaignDiscountMinor: 0, campaignLabel: null,
-      creditMinor: 0, referralDiscountMinor: 0, discountCode: null, vatKind: "standard", vatReliefMinor: 0, shippingTaxRate: 0.25, marketStandardRate: 0.25, companyName: over.company ?? null,
+      creditMinor: 0, referralDiscountMinor: 0, staffDiscountMinor: 0, staffLabel: null, discountCode: null, vatKind: "standard", vatReliefMinor: 0, shippingTaxRate: 0.25, marketStandardRate: 0.25, companyName: over.company ?? null,
       organisationNumber: null, balanceMinor: 0, billingAddress: { name, line1: "Storgata 5", city: "Oslo", country: "NO" }, shippingAddress: {}, deliveryLabel: null, onlineProvider: "stripe",
     },
     lines,

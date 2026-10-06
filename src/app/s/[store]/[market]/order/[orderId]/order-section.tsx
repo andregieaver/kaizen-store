@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
 import { BackorderOrderLine } from "@/components/backorder-note";
+import { GiftNote } from "@/components/gift-note";
 import { OrderDocuments as DocumentLinks } from "@/components/documents/order-documents";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { OwnBookings } from "@/components/own-bookings";
@@ -12,6 +13,7 @@ import { PasswordReset } from "@/components/account-sign-in";
 import { LineThumbnail } from "@/components/line-thumbnail";
 import { LineUnitPrice } from "@/components/price";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
+import { StaffDiscountRow } from "@/components/staff-discount-row";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
@@ -86,6 +88,7 @@ export async function OrderDetails(shop: Shop) {
       {bookingsBlock(view)}
       <section aria-label={m.cart} className={FRAME}>
         {linesList(view)}
+        {giftBlock(view)}
         <div className="mt-3 border-t border-border pt-3">
           {totalsList(view)}
           {earnedNote(view)}
@@ -119,7 +122,13 @@ export async function OrderBookings(shop: Shop) {
 
 /** The lines the shopper bought (D117). */
 export async function OrderLines(shop: Shop) {
-  return linesList(await orderView(shop));
+  const view = await orderView(shop);
+  return (
+    <>
+      {linesList(view)}
+      {giftBlock(view)}
+    </>
+  );
 }
 
 /** The order's shipping, discounts, total and VAT (D117). */
@@ -252,6 +261,11 @@ function linesList({ market, order, m, money }: OrderView) {
   );
 }
 
+/** The buyer's own gift message under the lines (wave 3, D173); nothing for an order that is not a gift. */
+function giftBlock({ order, m }: OrderView) {
+  return <GiftNote gift={order.gift} m={m} />;
+}
+
 function totalsList({ order, m, money, store, market }: OrderView) {
   const vatWords = vatText(market.lang);
   return (
@@ -278,6 +292,8 @@ function totalsList({ order, m, money, store, market }: OrderView) {
           <dd>−{money(order.discountMinor)}</dd>
         </div>
       )}
+      {/* The discount staff gave on a draft order (D173), under the name they gave it. */}
+      <StaffDiscountRow order={order} fallback={m.discount} money={money} />
       {order.referralDiscountMinor > 0 && (
         // The friend's welcome discount (D131).
         <div className="flex justify-between">

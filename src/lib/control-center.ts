@@ -11,6 +11,8 @@ import { formatMoney } from "./money";
 export const LOW_STOCK_AT = 3;
 /** An order waiting to be sent this many days is late. */
 export const LATE_TO_SEND_DAYS = 3;
+/** A draft order whose pay link ends within this many days is said to be expiring (D173, wave 3). */
+export const DRAFT_EXPIRING_DAYS = 2;
 
 export type SalesFigure = { currency: string; week: number; prior: number; orders: number; priorOrders: number };
 
@@ -68,9 +70,17 @@ export type StoreFigures = {
    * Privacy requests page (`customers:read`): counts, never a name or an email.
    */
   privacy?: PrivacyFigures;
+  /** Draft orders waiting for payment (D173), only when some do and only for a member who may read orders (`sales` is not in `hides`). */
+  drafts?: DraftFigures;
 };
 
 export type InvoiceFigures = { waiting: number; overdue: number };
+
+/**
+ * Draft orders that were sent and are still unpaid (D173, wave 3), only when there are some and only for a member who may read orders: how
+ * many, when the oldest was sent, and how many of their pay links end within `DRAFT_EXPIRING_DAYS`. Counts only, never a customer.
+ */
+export type DraftFigures = { waiting: number; oldestSentAt: string | null; expiringSoon: number };
 
 /** Open privacy requests (D162) past their one-month deadline, or due within `DUE_SOON_DAYS`; counts only, never a person. */
 export type PrivacyFigures = { overdue: number; dueSoon: number };
@@ -135,6 +145,23 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
         href: `${base}/returns?status=requested`,
         action: "Answer",
       });
+    }
+    // Draft orders sent to a customer and not yet paid (D173): the stock they hold is released when the link ends, so the ones about to end are said apart.
+    const drafts = s.drafts;
+    if (drafts && drafts.waiting > 0 && !hidden(s, "sales")) {
+      const age = drafts.oldestSentAt ? daysSince(drafts.oldestSentAt, now) : 0;
+      items.push({
+        text: `${s.name}: ${plural(drafts.waiting, "draft order is", "draft orders are")} waiting for payment${age >= 1 ? `, the oldest sent ${plural(age, "day", "days")} ago` : ""}.`,
+        href: `${base}/orders/drafts?status=sent`,
+        action: "Open drafts",
+      });
+      if (drafts.expiringSoon > 0) {
+        items.push({
+          text: `${s.name}: the pay ${drafts.expiringSoon === 1 ? "link" : "links"} of ${plural(drafts.expiringSoon, "draft order ends", "draft orders end")} within ${plural(DRAFT_EXPIRING_DAYS, "day", "days")}, and the order is then cancelled.`,
+          href: `${base}/orders/drafts?status=sent`,
+          action: "Open drafts",
+        });
+      }
     }
     // A privacy request has a legal clock of one month (GDPR Art. 12(3)): overdue is urgent, due this week is a heads-up.
     const privacy = s.privacy;

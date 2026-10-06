@@ -39,7 +39,7 @@ describe("the pieces of the working pages", () => {
 
   it("are named for their page, in the order the standard page draws them", () => {
     for (const piece of STORE_PIECE_KEYS) expect(piece.startsWith(`${routeOfPart(piece)}_`), piece).toBe(true);
-    expect(piecesOf("cart")).toEqual(["cart_lines", "cart_summary", "cart_code", "cart_credits", "cart_checkout", "cart_continue"]);
+    expect(piecesOf("cart")).toEqual(["cart_lines", "cart_gift", "cart_summary", "cart_code", "cart_credits", "cart_checkout", "cart_continue"]);
     expect(piecesOf("wishlist")).toEqual([]);
   });
 

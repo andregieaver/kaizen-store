@@ -185,7 +185,8 @@ describe("who can use up the VIES budget", () => {
     expect(viesClientKey(storeId, new Headers())).toBeNull();
     const a = viesClientKey(storeId, new Headers({ "x-forwarded-for": "198.51.100.7, 10.0.0.1" }));
     expect(a).toBe(viesClientKey(storeId, new Headers({ "x-forwarded-for": "198.51.100.7" })));
-    expect(a).not.toContain("198");
+    // The whole address: three digits turn up by chance in a hash of this length about once in two hundred runs.
+    expect(a).not.toContain("198.51.100.7");
     expect(viesClientKey(storeId, new Headers({ "x-forwarded-for": "198.51.100.7" }), new Date(Date.now() + 2 * 86_400_000))).not.toBe(a);
     expect(viesClientKey("00000000-0000-4000-8000-000000000001", new Headers({ "x-forwarded-for": "198.51.100.7" }))).not.toBe(a);
   });

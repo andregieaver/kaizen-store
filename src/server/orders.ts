@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 
 import type { OrderBonus } from "@/lib/bonus-shopper";
+import { giftOfRow, type GiftFields } from "@/lib/gift";
 import { readOrderDelivery, type OrderDelivery } from "@/lib/delivery-options";
 import { shown, type Market } from "@/lib/markets";
 import { parseOrderTreatment, shopperTreatment, type OrderVatTreatment, type VatKind, type VatReason } from "@/lib/vat-treatment";
@@ -52,6 +53,14 @@ export type OrderView = {
    */
   discountMinor: number;
   discountCode: string | null;
+  /**
+   * The discount staff gave on a draft order (wave 3, D173), with the name the buyer sees: part of the database's discount, left out of `discountMinor` and shown as its own
+   * row. 0 and null for every other order.
+   */
+  staffDiscountMinor: number;
+  staffDiscountLabel: string | null;
+  /** The buyer's gift (D173): null when the order is not a gift. Their own words, shown to them, to staff and on the packing slip, never to anyone else. */
+  gift: GiftFields | null;
   /** The part of the discount that is the buyer's group or company discount (D108), its name and the percent given. */
   memberDiscountMinor: number;
   memberLabel: string | null;
@@ -114,6 +123,8 @@ export type OrderView = {
     vatReliefMinor: number;
     /** A free product a campaign gave (D114): its price is all taken off. */
     gift: boolean;
+    /** A custom item staff typed on a draft order (D173): no product, a service. */
+    custom: boolean;
     /**
      * What was in it when it was sold, with the comparison base then in effect (D160, `order_lines.measure_*`, frozen):
      * its unit price is `unitPrice(unitPriceMinor, ...)` of the price shown for the line. Null for no content.
@@ -221,8 +232,15 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   shippingMinor: Number(row.shipping_minor),
   delivery: readOrderDelivery(row.delivery),
   discountMinor:
-    Number(row.discount_minor ?? 0) - Number(row.credit_minor ?? 0) - Number(row.referral_discount_minor ?? 0) - Number(row.vat_relief_minor ?? 0),
+    Number(row.discount_minor ?? 0) -
+    Number(row.credit_minor ?? 0) -
+    Number(row.referral_discount_minor ?? 0) -
+    Number(row.vat_relief_minor ?? 0) -
+    Number(row.staff_discount_minor ?? 0),
   discountCode: row.discount_code ? String(row.discount_code) : null,
+  staffDiscountMinor: Number(row.staff_discount_minor ?? 0),
+  staffDiscountLabel: row.staff_discount_label ? String(row.staff_discount_label) : null,
+  gift: row.is_gift === true ? giftOfRow(row) : null,
   memberDiscountMinor: Number(row.member_discount_minor ?? 0),
   memberLabel: row.member_label ? String(row.member_label) : null,
   memberPercent: row.member_percent === null || row.member_percent === undefined ? null : Number(row.member_percent),
@@ -255,6 +273,7 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
     taxMinor: Number(line.tax_minor ?? 0),
     vatReliefMinor: Number(line.vat_relief_minor ?? 0),
     gift: Boolean(line.gift),
+    custom: Boolean(line.custom),
     measure: snapshotMeasureFromColumns(line.measure_amount, line.measure_unit, line.measure_base),
     venueMinor: Number(line.venue_minor ?? 0),
     backorder:
@@ -296,7 +315,7 @@ export async function getOrder(storeId: string, orderId: string): Promise<OrderV
       from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
     `),
     db().execute<Row>(sql`
-      select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate, ol.tax_minor, ol.gift, ol.vat_relief_minor,
+      select ol.id, ol.variant_id, ol.title, ol.sku, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery, ol.tax_rate, ol.tax_minor, ol.gift, ol.custom, ol.vat_relief_minor,
         ol.measure_amount, ol.measure_unit, ol.measure_base, ol.backorder_quantity, ol.backorder_days,
         (select coalesce(m.thumbnail_url, m.url)
           from commerce.product_variants v
@@ -394,7 +413,7 @@ export async function getShopperOrder(
     from commerce.payments pay
     left join commerce.connected_accounts a on a.store_id = pay.store_id and a.account_id = pay.provider_account
     where pay.store_id = ${storeId}::uuid and pay.order_id = ${orderId}::uuid
-      and pay.provider in ('stripe', 'venue') and pay.provider_reference = ${sessionId}
+      and pay.provider in ('stripe', 'venue', 'manual') and pay.provider_reference = ${sessionId}
   `);
   if (!payment) return null;
 

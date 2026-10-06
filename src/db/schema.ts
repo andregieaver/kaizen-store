@@ -43,6 +43,26 @@ import { CHANNEL_KEYS } from "../lib/analytics-channels";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
 import { MOVEMENT_REASONS, MOVEMENT_SOURCES } from "../lib/inventory";
 import { LEGAL_ROLES } from "../lib/legal-roles";
+import { DRAFT_STATUSES } from "../lib/draft-status";
+import {
+  DRAFT_DISCOUNT_LABEL_MAX,
+  DRAFT_INTERNAL_NOTE_MAX,
+  DRAFT_LINE_TITLE_COLUMN_MAX,
+  DRAFT_LINES_MAX,
+  DRAFT_NOTE_TO_BUYER_MAX,
+  DRAFT_QUANTITY_MAX,
+  DRAFT_VALID_DAYS_MAX,
+  DRAFT_VALID_DAYS_MIN,
+  GIFT_MESSAGE_LINES,
+  GIFT_MESSAGE_MAX,
+  GIFT_NAME_MAX,
+  AUTO_ARCHIVE_MAX_DAYS,
+  AUTO_ARCHIVE_MIN_DAYS,
+  DISCOUNT_BPS_MAX,
+  DISCOUNT_BPS_MIN,
+  TAG_MAX_LENGTH,
+  VIEW_TITLE_MAX,
+} from "../lib/order-limits";
 import { GRANTABLE_PERMISSIONS } from "../lib/permission-keys";
 import { COUNTS_FROM, PERIOD_UNITS, RETENTION_BASES, RETENTION_KINDS } from "../lib/retention";
 import { RETURN_REASONS } from "../lib/withdrawal";
@@ -67,6 +87,17 @@ const auditAreaList = sql.raw(AUDIT_AREA_KEYS.map((k) => `'${k}'`).join(", "));
 /** The kinds of data a retention rule can be for (wave 1, 1g: `src/lib/retention.ts`), as a SQL list for a check. */
 const retentionKindList = sql.raw(RETENTION_KINDS.map((k) => `'${k}'`).join(", "));
 const sqlList = (values: readonly string[]) => sql.raw(values.map((k) => `'${k}'`).join(", "));
+/** A number from `src/lib/order-limits.ts` written into a check, so the database and the code say the same. */
+const lit = (n: number) => sql.raw(String(n));
+/**
+ * A gift message (D173): the fields are only set on a gift, and kept inside their limits (`src/lib/gift.ts`; lengths in code points, lines
+ * counted on the newline). Cart and order share it.
+ */
+const giftFieldsCheck = (t: { isGift: AnyPgColumn; giftTo: AnyPgColumn; giftFrom: AnyPgColumn; giftMessage: AnyPgColumn }) =>
+  sql`(${t.isGift} or (${t.giftTo} is null and ${t.giftFrom} is null and ${t.giftMessage} is null))
+    and char_length(${t.giftTo}) <= ${lit(GIFT_NAME_MAX)} and char_length(${t.giftFrom}) <= ${lit(GIFT_NAME_MAX)}
+    and char_length(${t.giftMessage}) <= ${lit(GIFT_MESSAGE_MAX)}
+    and (${t.giftMessage} is null or cardinality(string_to_array(${t.giftMessage}, chr(10))) <= ${lit(GIFT_MESSAGE_LINES)})`;
 /** The linked legal roles (wave 1, 1e: `src/lib/legal-roles.ts`), as a SQL list for a check. */
 const legalRoleList = sql.raw(LEGAL_ROLES.map((r) => `'${r}'`).join(", "));
 
@@ -2142,6 +2173,15 @@ export const carts = commerce.table(
     handoffHash: text("handoff_hash"),
     handoffExpiresAt: timestamp("handoff_expires_at", { withTimezone: true }),
     handoffTo: text("handoff_to"),
+    /**
+     * A gift message (wave 3, run 2, D173): the shopper marks the order as a gift and may write a name, a sender and a message
+     * (`src/lib/gift.ts` cleans them and refuses a text over the limit; only when the store's `order_settings.gift_messages` is on).
+     * Copied to the order when it is placed, cleared with the cart. Never sent to anyone but the buyer.
+     */
+    isGift: boolean("is_gift").notNull().default(false),
+    giftTo: text("gift_to"),
+    giftFrom: text("gift_from"),
+    giftMessage: text("gift_message"),
     status: cartStatus("status").notNull().default("open"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
@@ -2151,6 +2191,7 @@ export const carts = commerce.table(
     unique("carts_store_id_key").on(t.storeId, t.id),
     uniqueIndex("carts_handoff_idx").on(t.handoffHash),
     check("carts_handoff_to", sql`${t.handoffTo} is null or ${t.handoffTo} in ('cart', 'checkout')`),
+    check("carts_gift_fields", giftFieldsCheck(t)),
     check("carts_bonus_request", sql`${t.bonusRequestMinor} >= 0`),
     check("carts_vat_number", sql`${t.vatNumber} is null or ${t.vatNumber} ~ '^[A-Z]{2}[0-9A-Z+*.]{2,12}$'`),
     foreignKey({ name: "carts_vat_check_fk", columns: [t.storeId, t.vatCheckId], foreignColumns: [vatChecks.storeId, vatChecks.id] }),
@@ -2331,9 +2372,51 @@ export const orders = commerce.table(
     restrictedAt: timestamp("restricted_at", { withTimezone: true }),
     /** When the personal fields were replaced by a marker (`[removed]`); the sale itself (number, amounts, VAT, lines) stays. */
     anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
+    /**
+     * Archived (wave 3, run 2, D173): set = the order has left the default list and every queue. A visibility state only: no amount, number,
+     * stock, document or figure changes. Written only by `src/server/order-archive.ts`; the one column of a copied order (D129) that may change
+     * besides its customer link. An order waiting for payment is never archived.
+     */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    /** `checkout` (a shopper's cart, a renewal, copied history) or `draft` (a staff-made order from a draft order, sent or paid outside Kaizen). */
+    source: text("source").notNull().default("checkout"),
+    /**
+     * The draft order this order was made from. No foreign key (like `copied_from`): a draft is deleted by the clean-up while its order lives on,
+     * and several orders can name one draft over time (reopen and send again).
+     */
+    draftId: uuid("draft_id"),
+    /** The staff member who sent or paid the draft; null for every other order. */
+    madeBy: uuid("made_by").references(() => accounts.id),
+    /**
+     * The order-level discount staff gave on a draft (D173): a part of `discount_minor` (so the total adds up), spread over the lines as
+     * `order_lines.staff_discount_minor`, and the label the buyer sees. `OrderView.discountMinor` leaves it out and shows it as its own row.
+     */
+    staffDiscountMinor: money("staff_discount_minor").default(0),
+    staffDiscountLabel: text("staff_discount_label"),
+    /** A gift (D173): copied from the cart when the order is placed, frozen after (the database refuses a change), erased with the order. */
+    isGift: boolean("is_gift").notNull().default(false),
+    giftTo: text("gift_to"),
+    giftFrom: text("gift_from"),
+    giftMessage: text("gift_message"),
     createdAt: createdAt(),
   },
   (t) => [
+    check("orders_archived_not_pending", sql`${t.archivedAt} is null or ${t.status} <> 'pending_payment'`),
+    check("orders_source", sql`${t.source} in ('checkout', 'draft')`),
+    check(
+      "orders_source_draft",
+      sql`(${t.source} = 'draft') = (${t.draftId} is not null) and (${t.source} = 'draft') = (${t.madeBy} is not null)`,
+    ),
+    check("orders_staff_discount", sql`${t.staffDiscountMinor} between 0 and ${t.discountMinor}`),
+    check(
+      "orders_staff_discount_label",
+      sql`${t.staffDiscountLabel} is null or (${t.staffDiscountMinor} > 0 and char_length(${t.staffDiscountLabel}) between 1 and ${lit(DRAFT_DISCOUNT_LABEL_MAX)})`,
+    ),
+    check("orders_gift_fields", giftFieldsCheck(t)),
+    index("orders_made_by_idx").on(t.madeBy),
+    index("orders_draft_idx")
+      .on(t.storeId, t.draftId)
+      .where(sql`${t.draftId} is not null`),
     uniqueIndex("orders_copied_from_key").on(t.storeId, t.copiedFrom).where(sql`${t.copiedFrom} is not null`),
     check("orders_copied_number", sql`${t.copiedFrom} is null or ${t.number} like 'C-%'`),
     check("orders_credit", sql`${t.creditMinor} between 0 and ${t.discountMinor}`),
@@ -2376,7 +2459,7 @@ export const orders = commerce.table(
     index("orders_retention_idx").on(t.storeId, t.placedAt).where(sql`${t.anonymisedAt} is null`),
     check(
       "orders_anonymised",
-      sql`${t.anonymisedAt} is null or (${t.email} = '[removed]' and ${t.billingAddress} = '{}'::jsonb and ${t.shippingAddress} = '{}'::jsonb and ${t.companyName} is null and ${t.organisationNumber} is null)`,
+      sql`${t.anonymisedAt} is null or (${t.email} = '[removed]' and ${t.billingAddress} = '{}'::jsonb and ${t.shippingAddress} = '{}'::jsonb and ${t.companyName} is null and ${t.organisationNumber} is null and not ${t.isGift} and ${t.giftTo} is null and ${t.giftFrom} is null and ${t.giftMessage} is null)`,
     ),
     index("orders_email_idx").on(t.storeId, sql`lower(${t.email})`),
     /** The withdrawal function finds an order by its number typed without spaces or case (`matchOrder()`). */
@@ -2505,9 +2588,26 @@ export const orderLines = commerce.table(
     backorderQuantity: integer("backorder_quantity").notNull().default(0),
     /** The delivery time stated for the backorder, in days, frozen from the variant when the order was placed. */
     backorderDays: integer("backorder_days"),
+    /**
+     * A draft order's line (D173): the market's list price as shown when the line was added, kept for information only (the price charged is
+     * `unit_price_minor`, a custom price is not a discount and no total reads this); null for every other line.
+     */
+    listPriceMinor: bigint("list_price_minor", { mode: "number" }),
+    /** A custom item staff typed in a draft (no variant, `sku` `CUSTOM`, a service). A sign-up fee line is not one. */
+    custom: boolean("custom").notNull().default(false),
+    /** The part of the discount that is the staff discount of a draft order (D173): the line's share, so VAT and refunds agree. */
+    staffDiscountMinor: money("staff_discount_minor").default(0),
   },
   (t) => [
     unique("order_lines_store_id_key").on(t.storeId, t.id),
+    check("order_lines_list_price", sql`${t.listPriceMinor} is null or ${t.listPriceMinor} >= 0`),
+    check("order_lines_custom", sql`not ${t.custom} or (${t.variantId} is null and ${t.sku} = 'CUSTOM' and ${t.delivery} = 'service')`),
+    check("order_lines_staff_discount", sql`${t.staffDiscountMinor} between 0 and ${t.discountMinor}`),
+    /** Written for lines that carry a staff discount only: it makes every older row pass, and the parts of a draft's line add up. */
+    check(
+      "order_lines_discount_parts",
+      sql`${t.staffDiscountMinor} = 0 or ${t.memberDiscountMinor} + ${t.campaignDiscountMinor} + ${t.bonusDiscountMinor} + ${t.referralDiscountMinor} + ${t.vatReliefMinor} + ${t.staffDiscountMinor} <= ${t.discountMinor}`,
+    ),
     check("order_lines_backorder_quantity", sql`${t.backorderQuantity} between 0 and ${t.quantity}`),
     check("order_lines_backorder_days", sql`${t.backorderDays} between 1 and 90`),
     check("order_lines_backorder_stated", sql`${t.backorderQuantity} = 0 or ${t.backorderDays} is not null`),
@@ -2838,11 +2938,28 @@ export const payments = commerce.table(
      * Always false for any other provider (a Stripe payment's mode is its account's).
      */
     testMode: boolean("test_mode").notNull().default(false),
+    /**
+     * A payment taken outside Kaizen's Stripe (D173, `provider = 'manual'`): how (`cash`, `bank_transfer`, `other`) and which staff member
+     * recorded it. Set if and only if the provider is `manual`; such a payment has no Stripe account, no fee, and is always real money.
+     */
+    method: text("method"),
+    recordedBy: uuid("recorded_by").references(() => accounts.id),
+    /**
+     * The day the money reached the store, in the store's own days (a bank transfer recorded on the 2nd was received on the 30th): only on a payment taken outside Kaizen, and only when staff gave it (D173 review).
+     * The invoice's supply date, and so the VAT and OSS period (D161), is this day; without one it is the day the payment was recorded.
+     */
+    receivedOn: date("received_on", { mode: "string" }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("payments_store_id_key").on(t.storeId, t.id),
+    check("payments_received_manual", sql`${t.receivedOn} is null or ${t.provider} = 'manual'`),
+    index("payments_recorded_by_idx").on(t.recordedBy),
+    check("payments_manual_method", sql`(${t.provider} = 'manual') = (${t.method} is not null) and (${t.method} is null or ${t.method} in ('cash', 'bank_transfer', 'other'))`),
+    check("payments_manual_recorded", sql`${t.provider} <> 'manual' or ${t.recordedBy} is not null`),
+    /** A payment taken outside Kaizen is real money whatever mode Stripe is in (`payments_venue_mode` only marks venue payments). */
+    check("payments_manual_real", sql`${t.provider} <> 'manual' or not ${t.testMode}`),
     unique("payments_provider_reference_key").on(t.storeId, t.provider, t.providerReference),
     orderRef("payments_order_fk", t),
     index("payments_order_idx").on(t.storeId, t.orderId),
@@ -8261,3 +8378,264 @@ export const notFoundIgnored = commerce.table(
     check("not_found_ignored_path", sql`length(${t.path}) <= 200 and ${t.path} ~ '^/'`),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Orders: tags, saved views, settings, draft orders (wave 3, run 2, D173, docs/wave-3-orders.md 3.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * A staff tag on an order (D173): one row per tag. `key` is the tag trimmed and case-folded (two tags with the same key are one tag on an
+ * order), `label` the first spelling written on that order. At most 250 per order (the trigger `order_tags_limit()` holds it under a lock),
+ * 40 characters, no comma or control character. Copied orders (D129) may have tags: the copied-order guards are not installed here. Written only
+ * by `src/server/order-tags.ts`; the daily clean-up deletes the tags of an anonymised order.
+ */
+export const orderTags = commerce.table(
+  "order_tags",
+  {
+    storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orderId, t.key] }),
+    orderRef("order_tags_order_fk", t).onDelete("restrict"),
+    index("order_tags_key_idx").on(t.storeId, t.key, t.orderId),
+    index("order_tags_order_idx").on(t.storeId, t.orderId),
+    index("order_tags_created_by_idx").on(t.createdBy),
+    check("order_tags_key", sql`char_length(${t.key}) between 1 and ${lit(TAG_MAX_LENGTH)} and ${t.key} = btrim(${t.key})`),
+    check("order_tags_label", sql`char_length(${t.label}) between 1 and ${lit(TAG_MAX_LENGTH)} and ${t.label} = btrim(${t.label})`),
+    /** No comma, no control character, none of the bidirectional controls (`src/lib/order-tags.ts`). */
+    check("order_tags_label_chars", sql`${t.label} !~ '[,\\x01-\\x1f\\x7f\\u202a-\\u202e\\u2066-\\u2069]'`),
+  ],
+);
+
+/**
+ * A saved view of the order list (D173): a name, the parameters of the address (`parseOrderListParams()` validates them on the way in and out)
+ * and the columns. The store's, shared by everyone who can read orders; at most 30 a store (a trigger). The column is `title`, not `name`, so the
+ * privacy detector does not read it as a person's name; a saved search text is in `params.q`.
+ */
+export const orderViews = commerce.table(
+  "order_views",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    params: jsonb("params").notNull().default({}),
+    columns: text("columns").array(),
+    position: integer("position").notNull().default(0),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("order_views_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("order_views_title_key").on(t.storeId, sql`lower(${t.title})`),
+    index("order_views_position_idx").on(t.storeId, t.position),
+    index("order_views_created_by_idx").on(t.createdBy),
+    check("order_views_title", sql`char_length(${t.title}) between 1 and ${lit(VIEW_TITLE_MAX)} and ${t.title} = btrim(${t.title})`),
+    check("order_views_params", sql`jsonb_typeof(${t.params}) = 'object' and octet_length(${t.params}::text) < 4096`),
+    check("order_views_columns", sql`${t.columns} is null or cardinality(${t.columns}) <= 12`),
+    check("order_views_position", sql`${t.position} >= 0`),
+  ],
+);
+
+/**
+ * The store's order settings (D173), one row a store made lazily with the defaults when first read: gift messages (off), automatic archiving
+ * (off), how long a draft's pay link is valid, whether staff other than the owner may record a payment taken outside Kaizen, and the draft
+ * counter (`commerce.next_draft_number()` is its only writer). A copy starts with the defaults (`never` in `COPY_RULES`).
+ */
+export const orderSettings = commerce.table(
+  "order_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    giftMessages: boolean("gift_messages").notNull().default(false),
+    /** Null: no automatic archiving. */
+    autoArchiveDays: integer("auto_archive_days"),
+    draftValidDays: integer("draft_valid_days").notNull().default(7),
+    staffMarkPaid: boolean("staff_mark_paid").notNull().default(false),
+    /** The next draft's number (`D-{n}`); a counter that promises no gaps, never an order number (D141). */
+    nextDraftNumber: bigint("next_draft_number", { mode: "number" }).notNull().default(1),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    check(
+      "order_settings_auto_archive",
+      sql`${t.autoArchiveDays} is null or ${t.autoArchiveDays} between ${lit(AUTO_ARCHIVE_MIN_DAYS)} and ${lit(AUTO_ARCHIVE_MAX_DAYS)}`,
+    ),
+    check("order_settings_draft_valid", sql`${t.draftValidDays} between ${lit(DRAFT_VALID_DAYS_MIN)} and ${lit(DRAFT_VALID_DAYS_MAX)}`),
+    check("order_settings_next_draft", sql`${t.nextDraftNumber} >= 1`),
+  ],
+);
+
+/**
+ * A draft order (D173): a staff-made, editable quote that becomes a real order when sent (`docs/wave-3-orders.md` 4.5). While `open` it holds
+ * no stock and no number; *Send* makes the order (`orders.source = 'draft'`, `orders.draft_id` this id, numbered from D141's sequence) and the
+ * draft `sent`; paying marks it `paid` (`orders_draft_follow()`), an unpaid expiry `expired`, and *Reopen* returns it to `open`. The lifecycle,
+ * the freezing of everything but notes once it is not open, and the rule that a sent draft names its order are `draft_orders_rules()`.
+ * Holds a buyer's contact data typed by staff: deleted after 90 days untouched (open) or 30 days after it ended, and with the person by an erasure.
+ * Only the pay token's SHA-256 is kept. Written only by `src/server/draft-orders.ts`, `draft-pay.ts` and the triggers.
+ */
+export const draftOrders = commerce.table(
+  "draft_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    /** `D-{n}`, unique per store. */
+    number: text("number").notNull(),
+    status: text("status").notNull().default("open"),
+    /** Raised by every save: a second save of an old version is refused (two staff at once). */
+    version: integer("version").notNull().default(1),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    /** The market's address as shown (`no`, `no-en-eur`, D109), and the currency and locale that view shows: the draft is priced in them. */
+    marketSlug: text("market_slug").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    locale: text("locale").notNull(),
+    customerId: uuid("customer_id"),
+    email: text("email"),
+    phone: text("phone"),
+    shippingAddress: jsonb("shipping_address").notNull().default({}),
+    billingAddress: jsonb("billing_address").notNull().default({}),
+    companyName: text("company_name"),
+    organisationNumber: text("organisation_number"),
+    /** Shown to the buyer on the pay page and in the email; cleaned like any shopper-bound text. */
+    noteToBuyer: text("note_to_buyer"),
+    /** Never shown to the buyer. */
+    internalNote: text("internal_note"),
+    /** The tags (labels) carried to the order when the draft is sent. */
+    tags: jsonb("tags").notNull().default([]),
+    /** `percent` (basis points, 1 to 10,000) or `amount` (minor units, in the draft's currency); with a label the buyer sees. */
+    discountKind: text("discount_kind"),
+    discountValue: bigint("discount_value", { mode: "number" }),
+    discountLabel: text("discount_label"),
+    /** `rate` (the market's flat rate), `free` or `custom` (`shipping_minor`, VAT included). */
+    shippingKind: text("shipping_kind").notNull().default("rate"),
+    shippingMinor: bigint("shipping_minor", { mode: "number" }),
+    /** The validity chosen on the send dialog; null until sent (the store's `draft_valid_days` is the default). */
+    validDays: integer("valid_days"),
+    /** The order the send made (a reopen clears it; the order keeps `draft_id`). */
+    orderId: uuid("order_id"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    /** SHA-256 (hex) of the 32-byte pay token; the token is shown once and never stored. A new token replaces the old. */
+    payTokenHash: text("pay_token_hash"),
+    /** How many times the link was sent today (`pay_sent_on`, the store's day): the abuse brake of `DRAFT_SENDS_PER_DAY`. */
+    paySendsToday: integer("pay_sends_today").notNull().default(0),
+    paySentOn: date("pay_sent_on", { mode: "string" }),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    /** The inactivity clock of an open draft: the last edit by a person. */
+    editedAt: timestamp("edited_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("draft_orders_store_id_key").on(t.storeId, t.id),
+    unique("draft_orders_store_number_key").on(t.storeId, t.number),
+    marketCountryRef("draft_orders_market_fk", t),
+    customerRef("draft_orders_customer_fk", t),
+    orderRef("draft_orders_order_fk", t),
+    index("draft_orders_store_idx").on(t.storeId, t.status, t.updatedAt.desc()),
+    index("draft_orders_expiry_idx")
+      .on(t.expiresAt)
+      .where(sql`${t.status} = 'sent'`),
+    uniqueIndex("draft_orders_token_idx")
+      .on(t.payTokenHash)
+      .where(sql`${t.payTokenHash} is not null`),
+    index("draft_orders_market_idx").on(t.storeId, t.marketCode),
+    index("draft_orders_customer_idx").on(t.storeId, t.customerId),
+    index("draft_orders_order_idx").on(t.storeId, t.orderId),
+    index("draft_orders_created_by_idx").on(t.createdBy),
+    check("draft_orders_status", sql`${t.status} in (${sqlList(DRAFT_STATUSES)})`),
+    check("draft_orders_number", sql`${t.number} ~ '^D-[0-9]+$'`),
+    check("draft_orders_version", sql`${t.version} >= 1`),
+    check("draft_orders_email", sql`${t.email} is null or char_length(${t.email}) <= 254`),
+    check("draft_orders_notes", sql`char_length(${t.noteToBuyer}) <= ${lit(DRAFT_NOTE_TO_BUYER_MAX)} and char_length(${t.internalNote}) <= ${lit(DRAFT_INTERNAL_NOTE_MAX)}`),
+    check("draft_orders_tags", sql`jsonb_typeof(${t.tags}) = 'array' and jsonb_array_length(${t.tags}) <= 250`),
+    check("draft_orders_addresses", sql`jsonb_typeof(${t.shippingAddress}) = 'object' and jsonb_typeof(${t.billingAddress}) = 'object'`),
+    check(
+      "draft_orders_discount",
+      sql`(${t.discountKind} is null) = (${t.discountValue} is null) and (${t.discountKind} is null) = (${t.discountLabel} is null)
+        and (${t.discountKind} is null or ${t.discountKind} in ('percent', 'amount'))
+        and (${t.discountKind} is distinct from 'percent' or ${t.discountValue} between ${lit(DISCOUNT_BPS_MIN)} and ${lit(DISCOUNT_BPS_MAX)})
+        and (${t.discountKind} is distinct from 'amount' or ${t.discountValue} > 0)
+        and (${t.discountLabel} is null or char_length(${t.discountLabel}) between 1 and ${lit(DRAFT_DISCOUNT_LABEL_MAX)})`,
+    ),
+    check(
+      "draft_orders_shipping",
+      sql`${t.shippingKind} in ('rate', 'free', 'custom') and (${t.shippingKind} = 'custom') = (${t.shippingMinor} is not null) and (${t.shippingMinor} is null or ${t.shippingMinor} >= 0)`,
+    ),
+    check("draft_orders_valid_days", sql`${t.validDays} is null or ${t.validDays} between ${lit(DRAFT_VALID_DAYS_MIN)} and ${lit(DRAFT_VALID_DAYS_MAX)}`),
+    check("draft_orders_pay_sends", sql`${t.paySendsToday} >= 0`),
+    /**
+     * Where the order, the times and the paid moment may be set by status: an open draft has none (a reopen clears them); a sent one names its
+     * order and the times; a paid one also when; an expired or cancelled one is a sent one that ended unpaid. The pay token may stay on a
+     * finished draft (the page then says what became of it) but never on an open one.
+     */
+    check(
+      "draft_orders_lifecycle",
+      sql`(${t.status} = 'open' and ${t.orderId} is null and ${t.sentAt} is null and ${t.expiresAt} is null and ${t.paidAt} is null and ${t.payTokenHash} is null)
+        or (${t.status} in ('sent', 'expired', 'cancelled') and ${t.orderId} is not null and ${t.sentAt} is not null and ${t.expiresAt} is not null and ${t.expiresAt} > ${t.sentAt} and ${t.paidAt} is null)
+        or (${t.status} = 'paid' and ${t.orderId} is not null and ${t.sentAt} is not null and ${t.expiresAt} is not null and ${t.paidAt} is not null)`,
+    ),
+  ],
+);
+
+/**
+ * A line of a draft order (D173): a variant of goods at a price (the list price as shown, or a custom price staff typed, VAT included, in the
+ * draft's currency), or a custom item (a service with no stock, a VAT category). At most 100 a draft (a trigger). Locked with the draft once it
+ * is not open. Draft prices are the draft's own: no campaign, code or credit applies (`priceDraft()`).
+ */
+export const draftOrderLines = commerce.table(
+  "draft_order_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    draftId: uuid("draft_id").notNull(),
+    position: integer("position").notNull().default(0),
+    variantId: uuid("variant_id"),
+    title: text("title").notNull(),
+    sku: text("sku").notNull(),
+    quantity: integer("quantity").notNull(),
+    unitPriceMinor: bigint("unit_price_minor", { mode: "number" }).notNull(),
+    /** A catalogue line's list price as shown when it was added (information only); null for a custom item. */
+    listPriceMinor: bigint("list_price_minor", { mode: "number" }),
+    /** A custom item's VAT category (`vat_categories`); null for a catalogue line. */
+    vatCategory: text("vat_category").references(() => vatCategories.code),
+    /** `physical` for a variant of goods, `service` for a custom item. */
+    delivery: text("delivery").notNull().default("physical"),
+  },
+  (t) => [
+    foreignKey({
+      name: "draft_order_lines_draft_fk",
+      columns: [t.storeId, t.draftId],
+      foreignColumns: [draftOrders.storeId, draftOrders.id],
+    }).onDelete("cascade"),
+    variantRef("draft_order_lines_variant_fk", t),
+    index("draft_order_lines_draft_idx").on(t.storeId, t.draftId, t.position),
+    index("draft_order_lines_variant_idx").on(t.storeId, t.variantId),
+    index("draft_order_lines_vat_category_idx").on(t.vatCategory),
+    check("draft_order_lines_position", sql`${t.position} >= 0`),
+    check("draft_order_lines_title", sql`char_length(${t.title}) between 1 and ${lit(DRAFT_LINE_TITLE_COLUMN_MAX)}`),
+    check("draft_order_lines_quantity", sql`${t.quantity} between 1 and ${lit(DRAFT_QUANTITY_MAX)}`),
+    check("draft_order_lines_prices", sql`${t.unitPriceMinor} >= 0 and (${t.listPriceMinor} is null or ${t.listPriceMinor} >= 0)`),
+    check("draft_order_lines_delivery", sql`${t.delivery} in ('physical', 'service')`),
+    /** A custom item has no variant, a category, is a service and has no list price; a catalogue line has a variant, a list price and no category. */
+    check(
+      "draft_order_lines_kind",
+      sql`(${t.variantId} is null and ${t.vatCategory} is not null and ${t.delivery} = 'service' and ${t.listPriceMinor} is null)
+        or (${t.variantId} is not null and ${t.vatCategory} is null and ${t.delivery} = 'physical' and ${t.listPriceMinor} is not null)`,
+    ),
+  ],
+);
+
+/** The most lines a draft holds (`src/lib/order-limits.ts`); the trigger `draft_order_lines_limit()` says the same number. */
+export const DRAFT_LINES_LIMIT = DRAFT_LINES_MAX;

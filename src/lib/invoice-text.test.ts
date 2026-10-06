@@ -19,6 +19,24 @@ describe("the wording of invoices and credit notes", () => {
     expect(documentEmailText("fr")).toEqual(documentEmailText("en"));
   });
 
+  it("says a payment taken outside the online checkout in its own words, with the three ways it can be received, in every language (D173)", () => {
+    expect(["nb", "sv", "da", "en"].map((l) => documentText(l).paidOutside)).toEqual([
+      "Betalt utenfor nettbutikken",
+      "Betalt utanför webbutiken",
+      "Betalt uden for webshoppen",
+      "Paid outside the online checkout",
+    ]);
+    for (const lang of DOCUMENT_LANGUAGES) {
+      const t = documentText(lang);
+      expect(Object.keys(t.paymentMethods).sort(), lang).toEqual(["bank_transfer", "cash", "other"]);
+      // It is never the words of "paid online", and every method has its own.
+      expect(t.paidOutside, lang).not.toBe(t.paidOnline);
+      expect(new Set(Object.values(t.paymentMethods)).size, lang).toBe(3);
+    }
+    expect(documentText("nb").paymentMethods.bank_transfer).toBe("bankoverføring");
+    expect(documentText("de").paymentMethods.cash).toBe("cash");
+  });
+
   it("names the documents as each country does", () => {
     expect(["nb", "sv", "da", "en"].map((l) => documentText(l).invoice)).toEqual(["Faktura", "Faktura", "Faktura", "Invoice"]);
     expect(["nb", "sv", "da", "en"].map((l) => documentText(l).creditNote)).toEqual(["Kreditnota", "Kreditfaktura", "Kreditnota", "Credit note"]);

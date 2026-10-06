@@ -19,6 +19,8 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   sales_summary: "analytics:read",
   list_orders: "orders:read",
   get_order: "orders:read",
+  // Draft orders (D173) are the Orders section's: read like the Orders page, written with the right to change orders.
+  list_draft_orders: "orders:read",
   list_returns: "orders:read",
   explain_return: "orders:read",
   // The privacy log shows no person (counts and dates), and its page needs `customers:read`: so does the tool (D162).
@@ -80,6 +82,10 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   suggest_experiments: "marketing:read",
   // Changing (the page's `write`, or the owner's)
   add_order_note: "orders:write",
+  tag_orders: "orders:write",
+  archive_orders: "orders:write",
+  create_draft_order: "orders:write",
+  send_draft_order: "orders:write",
   mark_order_sent: "orders:write",
   cancel_booking: "bookings:write",
   archive_product: "products:write",

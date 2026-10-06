@@ -82,7 +82,7 @@ describe("the store admin's sections (D147)", () => {
 
   it("puts returns with the orders and their rules with the selling settings (D153)", () => {
     const orders = STORE_SECTIONS.find((s) => s.key === "orders")!;
-    expect(orders.groups[0].items.map((i) => i.label).slice(0, 2)).toEqual(["Orders", "Returns"]);
+    expect(orders.groups[0].items.map((i) => i.label).slice(0, 3)).toEqual(["Orders", "Draft orders", "Returns"]);
     const settings = STORE_SECTIONS.find((s) => s.key === "settings")!;
     const selling = settings.groups.find((g) => g.heading === "Selling")!;
     expect(selling.items.map((i) => i.path)).toContain("/settings/returns");
@@ -91,6 +91,18 @@ describe("the store admin's sections (D147)", () => {
     expect(sectionOf("/returns/abc")?.key).toBe("orders");
     expect(sectionOf("/settings/returns")?.key).toBe("settings");
     expect(storeAreas("/admin/s", ALL).find((a) => a.prefixes.includes("/admin/s/returns"))?.groups[0].items.map((i) => i.href)).toContain("/admin/s/returns");
+  });
+
+  it("puts draft orders beside the orders and their settings with the selling settings (wave 3, D173)", () => {
+    const orders = STORE_SECTIONS.find((s) => s.key === "orders")!;
+    expect(orders.groups[0].items.map((i) => i.path).slice(0, 2)).toEqual(["/orders", "/orders/drafts"]);
+    const selling = STORE_SECTIONS.find((s) => s.key === "settings")!.groups.find((g) => g.heading === "Selling")!;
+    expect(selling.items.map((i) => i.path)).toContain("/settings/orders");
+    expect(sectionOf("/orders/drafts")?.key).toBe("orders");
+    expect(sectionOf("/orders/drafts/abc")?.key).toBe("orders");
+    expect(sectionOf("/orders/packing-slips")?.key).toBe("orders");
+    // The settings page is the Settings', not the Orders' address space.
+    expect(sectionOf("/settings/orders")?.key).toBe("settings");
   });
 
   it("finds a page's section by the longest address it is inside", () => {

@@ -113,9 +113,19 @@ export async function applySession(
     await sendReferrerRewardEmail(storeId, orderId).catch(() => null);
     if (opened === "created") await sendWelcomeForOrder(storeId, orderId);
   } else if (failed || expired) {
-    if (!delivery) await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");
+    // A staff-made order (D173) lives until its draft expires: a session that lapses (Stripe's sessions last at most a day, the link a week or more) or a bank payment that failed
+    // leaves the order and its held stock as they are, and the pay link makes a new session on the next press. `expireDrafts()` cancels it at the draft's expiry.
+    if (!delivery && !(await isDraftOrder(storeId, orderId))) await cancelUnpaidOrder(orderId, failed ? "payment failed" : "checkout expired");
     await setPaymentStatus(storeId, session.id, failed ? "failed" : "cancelled");
   }
+}
+
+/** An order made from a draft order (D173): its `draft_id` is set. */
+async function isDraftOrder(storeId: string, orderId: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    select 1 from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid and draft_id is not null
+  `);
+  return Boolean(row);
 }
 
 async function setPaymentStatus(storeId: string, sessionId: string, status: string) {

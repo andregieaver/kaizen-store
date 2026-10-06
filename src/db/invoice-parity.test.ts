@@ -39,7 +39,8 @@ async function factsOf(orderId: string): Promise<InvoiceFacts> {
     `select o.*, o.total_minor::text as total_t, to_char(commerce.store_day(o.store_id, o.placed_at), 'YYYY-MM-DD') as placed_on,
             to_char(commerce.store_day(o.store_id, (select min(e.created_at) from commerce.order_events e where e.order_id = o.id and e.type = 'order.paid')), 'YYYY-MM-DD') as paid_on,
             commerce.vat_rate(o.market_code, 'standard', o.placed_at)::text as market_rate,
-            (select p.provider from commerce.payments p where p.order_id = o.id and p.provider <> 'venue' and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_provider
+            (select p.provider from commerce.payments p where p.order_id = o.id and p.provider <> 'venue' and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_provider,
+            (select p.method from commerce.payments p where p.order_id = o.id and p.provider = 'manual' and p.status not in ('failed', 'cancelled') order by p.created_at, p.id limit 1) as online_method
        from commerce.orders o where o.id = $1`,
     [orderId],
   );
@@ -69,10 +70,10 @@ async function factsOf(orderId: string): Promise<InvoiceFacts> {
       id: o.id, number: o.number, marketCode: o.market_code, currency: o.currency, locale: o.locale, email: o.email, placedOn: o.placed_on, paidOn: o.paid_on,
       shippingMinor: num(o.shipping_minor)!, discountMinor: num(o.discount_minor)!, taxMinor: num(o.tax_minor)!, totalMinor: num(o.total_minor)!,
       memberDiscountMinor: num(o.member_discount_minor)!, memberLabel: o.member_label, campaignDiscountMinor: num(o.campaign_discount_minor)!, campaignLabel: o.campaign_label,
-      creditMinor: num(o.credit_minor)!, referralDiscountMinor: num(o.referral_discount_minor)!, discountCode: o.discount_code, vatKind: o.vat_kind,
+      creditMinor: num(o.credit_minor)!, referralDiscountMinor: num(o.referral_discount_minor)!, staffDiscountMinor: num(o.staff_discount_minor)!, staffLabel: o.staff_discount_label, discountCode: o.discount_code, vatKind: o.vat_kind,
       vatReliefMinor: num(o.vat_relief_minor)!, shippingTaxRate: num(o.shipping_tax_rate), marketStandardRate: num(o.market_rate), companyName: o.company_name,
       organisationNumber: o.organisation_number, balanceMinor: num(o.balance_minor)!, billingAddress: o.billing_address, shippingAddress: o.shipping_address,
-      deliveryLabel: (o.delivery as { label?: string } | null)?.label ?? null, onlineProvider: o.online_provider ?? "stripe",
+      deliveryLabel: (o.delivery as { label?: string } | null)?.label ?? null, onlineProvider: o.online_provider ?? "stripe", onlineMethod: o.online_method ?? null,
     },
     lines: lines.map((l) => ({
       id: l.id, sku: l.sku, title: l.title, quantity: l.quantity, unitPriceMinor: num(l.unit_price_minor)!, totalMinor: num(l.total_minor)!, taxMinor: num(l.tax_minor)!,
@@ -144,6 +145,27 @@ describe("the invoice's snapshot: SQL and the oracle agree", () => {
     });
   });
 
+  it("a staff discount (D173) is its own kind with the name staff gave it, never an unnamed discount code; the code keeps only its own share", async () => {
+    await expectParity(no, {
+      lines: [{ sku: "S1", unit: 20000, quantity: 2, staff: 4000 }, { sku: "S2", unit: 1990 }],
+      shipping: 4900,
+      staffLabel: "Spring offer",
+    }, (snap) => {
+      expect(snap.discounts).toEqual([{ kind: "staff", label: "Spring offer", grossMinor: 4000 }]);
+    });
+    // Beside a code, each is only its own: the staff discount is never counted twice.
+    await expectParity(no, {
+      lines: [{ sku: "S3", unit: 20000, discount: 700, staff: 1000 }],
+      discountCode: "SAVE",
+      staffLabel: "Friend of the shop",
+    }, (snap) => {
+      expect(snap.discounts).toEqual([
+        { kind: "code", label: "SAVE", grossMinor: 700 },
+        { kind: "staff", label: "Friend of the shop", grossMinor: 1000 },
+      ]);
+    });
+  });
+
   it("reverse charge: rate 0 on the document, the rate it would have had on the line, both numbers", async () => {
     await expectParity(no, {
       lines: [{ sku: "R1", unit: 25000, quantity: 2, discount: 2500 }, { sku: "R2", unit: 4000, rate: 0.15 }],
@@ -193,6 +215,19 @@ describe("the invoice's snapshot: SQL and the oracle agree", () => {
       expect(snap.lines[0].kind).toBe("booking");
       expect(snap.lines[0].serviceDate).toBe("2026-10-12");
       expect(snap.payments.map((p) => p.kind)).toEqual(["paid_online", "pay_at_venue"]);
+    });
+  });
+
+  it("a payment recorded outside Kaizen is stated as paid outside, with its method, never as paid online (D173)", async () => {
+    for (const method of ["bank_transfer", "cash", "other"] as const) {
+      await expectParity(no, { lines: [{ sku: `MAN-${method}`, unit: 15000, quantity: 2, rate: 0.25 }], shipping: 5900, provider: "manual", method }, (snap) => {
+        expect(snap.payments).toEqual([{ kind: "paid_outside", amountMinor: snap.totals.grossMinor, provider: "manual", method }]);
+      });
+    }
+    // The same goods paid through Stripe keep their kind.
+    await expectParity(no, { lines: [{ sku: "MAN-STRIPE", unit: 15000 }], provider: "stripe" }, (snap) => {
+      expect(snap.payments.map((p) => p.kind)).toEqual(["paid_online"]);
+      expect(snap.payments[0]).not.toHaveProperty("method");
     });
   });
 

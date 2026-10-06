@@ -19,6 +19,7 @@ import {
   orderRight,
 } from "@/lib/withdrawal";
 
+import { unarchiveForReturn } from "./order-archive";
 import { guarded, refusal, type Refused } from "./return-errors";
 import { judge, loadFacts, recipientsOf, writeEvent, type OrderFacts } from "./return-facts";
 import { buildAcknowledgement, sendWithdrawalAcknowledgement } from "./return-emails";
@@ -146,7 +147,7 @@ export async function matchOrder(storeId: string, who: ShopperWho): Promise<{ id
       (${customerId}::uuid is not null and o.customer_id = ${customerId}::uuid) as by_customer,
       (${key}::text is not null and exists (
         select 1 from commerce.payments p
-        where p.store_id = o.store_id and p.order_id = o.id and p.provider in ('stripe', 'venue') and p.provider_reference = ${key}
+        where p.store_id = o.store_id and p.order_id = o.id and p.provider in ('stripe', 'venue', 'manual') and p.provider_reference = ${key}
       )) as by_key
     from commerce.orders o
     left join commerce.customers c on c.store_id = o.store_id and c.id = o.customer_id
@@ -157,7 +158,7 @@ export async function matchOrder(storeId: string, who: ShopperWho): Promise<{ id
         or (${customerId}::uuid is not null and o.customer_id = ${customerId}::uuid)
         or (${key}::text is not null and exists (
           select 1 from commerce.payments p
-          where p.store_id = o.store_id and p.order_id = o.id and p.provider in ('stripe', 'venue') and p.provider_reference = ${key}
+          where p.store_id = o.store_id and p.order_id = o.id and p.provider in ('stripe', 'venue', 'manual') and p.provider_reference = ${key}
         ))
       )
     limit 1
@@ -185,7 +186,7 @@ export async function shopperCanAccessOrder(storeId: string, orderId: string, ac
         `)
       : await db().execute<Row>(sql`
           select 1 from commerce.payments
-          where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'venue')
+          where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and provider in ('stripe', 'venue', 'manual')
             and provider_reference = ${access.sessionId}
         `);
   return Boolean(row);
@@ -624,6 +625,8 @@ async function writeConfirmation(
             ${facts.settings.returnAddress ? JSON.stringify(facts.settings.returnAddress) : null}::jsonb, ${by.note ?? null})
     returning id, number
   `);
+  // A return on an archived order starts work again (D173): the order is back in the list.
+  await unarchiveForReturn(tx, storeId, facts.orderId);
   for (const line of keep) {
     await tx.execute(sql`
       insert into commerce.return_lines (store_id, return_id, order_line_id, quantity, decision, decline_reason)
@@ -873,6 +876,8 @@ export async function startReturnRequest(storeId: string, input: unknown, option
                 ${facts.settings.returnAddress ? JSON.stringify(facts.settings.returnAddress) : null}::jsonb)
         returning id, number, public_token
       `);
+      // A return on an archived order starts work again (D173): the order is back in the list.
+      await unarchiveForReturn(tx, storeId, orderId);
       for (const line of data.lines) {
         await tx.execute(sql`
           insert into commerce.return_lines (store_id, return_id, order_line_id, quantity, reason)

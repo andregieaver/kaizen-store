@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { LOW_STOCK_AT, type SalesFigure, type StoreFigures } from "@/lib/control-center";
+import { DRAFT_EXPIRING_DAYS, LOW_STOCK_AT, type SalesFigure, type StoreFigures } from "@/lib/control-center";
 import { totalOf } from "@/lib/ai-usage";
 import { can, type PermissionKey } from "@/lib/permissions";
 
@@ -85,7 +85,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const customerIds = idsWith(storeRows, "customers:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -157,6 +157,14 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     taxReturnsAttention(ownerIds),
     // Privacy requests past their one-month clock or due this week (D162, wave 1g): counts only.
     privacyAttention(customerIds),
+    // Draft orders sent and not yet paid (D173): counts for the stores where the member may read orders, never a customer.
+    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+      select d.store_id, count(*)::int as waiting, min(d.sent_at) as oldest,
+        count(*) filter (where d.expires_at is not null and d.expires_at <= now() + make_interval(days => ${DRAFT_EXPIRING_DAYS}))::int as expiring
+      from commerce.draft_orders d
+      where d.store_id in (${idList(orderIds)}) and d.status = 'sent'
+      group by d.store_id
+    `),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -168,6 +176,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const sendBy = new Map(sendRows.map((r) => [String(r.store_id), r]));
   const stockBy = new Map(stockRows.map((r) => [String(r.store_id), r]));
   const owedBy = new Map(owedRows.map((r) => [String(r.store_id), Number(r.owed)]));
+  const draftsBy = new Map(draftRows.map((r) => [String(r.store_id), r]));
 
   const stores: StoreFigures[] = storeRows.map((r) => {
     const id = String(r.id);
@@ -204,6 +213,9 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ...(invoiceItems.has(id) ? { invoices: invoiceItems.get(id) } : {}),
       ...(taxReturnItems.has(id) ? { taxReturns: taxReturnItems.get(id)!.map((r) => ({ text: r.text, path: r.path })) } : {}),
       ...(privacyItems.has(id) ? { privacy: privacyItems.get(id) } : {}),
+      ...(draftsBy.has(id)
+        ? { drafts: { waiting: Number(draftsBy.get(id)!.waiting), oldestSentAt: draftsBy.get(id)!.oldest ? new Date(String(draftsBy.get(id)!.oldest)).toISOString() : null, expiringSoon: Number(draftsBy.get(id)!.expiring) } }
+        : {}),
     };
   });
 

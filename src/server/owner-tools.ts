@@ -109,7 +109,7 @@ import { preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, s
 import { onHandActive } from "./stock-sql";
 import { taxCheckupFindings, taxProfileView } from "./tax-profile";
 import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder } from "./order-admin";
-import { listOrders } from "./orders";
+import { archiveOrdersTool, createDraftOrderTool, listDraftOrdersTool, listOrdersTool, preflightSendDraft, sendDraftOrderTool, tagOrdersTool } from "./order-ops-tools";
 import { listPages, pagesTag, unpublishPage } from "./pages";
 import { listAdminProducts, setArchived } from "./products";
 import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
@@ -254,30 +254,6 @@ async function salesSummary({ store }: OwnerToolContext, { days }: OwnerToolInpu
   };
 }
 
-async function listOrdersTool({ store }: OwnerToolContext, input: OwnerToolInput<"list_orders">) {
-  const rows = await listOrders(store.id, { unpaid: input.which === "unpaid", toSend: input.which === "to_send" });
-  const search = input.search?.toLowerCase();
-  // An order whose person was erased (D162) is kept for the accounts only: the model sees no name or address of it, and a search by
-  // someone's email or name never finds it.
-  const found = search
-    ? rows.filter((o) => (o.erased ? [o.number] : [o.number, o.email, o.name ?? ""]).some((v) => v.toLowerCase().includes(search.replace(/^#/, ""))))
-    : rows;
-  return {
-    count: found.length,
-    orders: found.slice(0, input.limit).map((o) => ({
-      number: o.number,
-      status: o.status,
-      customer: o.erased ? "(personal data removed or restricted)" : (o.name ?? o.email),
-      ...(o.erased ? {} : { email: o.email }),
-      placed: o.placedAt,
-      total: money(store, o.totalMinor, o.currency),
-      items: o.items,
-      // History copied from another store (D129): read-only, and in no sales figure.
-      ...(o.copied ? { copied_history: true } : {}),
-    })),
-  };
-}
-
 async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInput<"get_order">) {
   const view = await getOrderAdmin(store.id, await findOrderId(store, order, { read: true }));
   if (!view) return fail(`No order ${order} in this store.`);
@@ -293,6 +269,12 @@ async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInp
       ? { removed: "The customer's personal data was erased: it is kept restricted for the accounts only, or already made anonymous. Use the order's page for the accounts." }
       : { email: view.email, name: view.shippingAddress?.name ?? view.billingAddress?.name ?? null },
     country: view.marketCode,
+    // Wave 3, D173: staff's tags (internal), archived, made by staff from a draft, paid outside Kaizen, and that it is a gift (the message is the customer's own words to a third party: not given).
+    ...(erased || view.tags.length === 0 ? {} : { tags: view.tags.map((t) => t.label) }),
+    ...(view.archivedAt ? { archived: true } : {}),
+    ...(view.source === "draft" ? { staff_made: true, ...(view.draft?.number ? { draft: view.draft.number } : {}) } : {}),
+    ...(view.paidOutside ? { paid_outside_kaizen: view.paidOutside.method.replace("_", " ") } : {}),
+    ...(view.gift?.isGift ? { gift: true } : {}),
     lines: view.lines.map((l) => ({
       title: l.title,
       sku: l.sku,
@@ -954,6 +936,8 @@ async function refundOrderTool(ctx: OwnerToolContext, { order, amount, reason, r
   const orderId = await findOrderId(store, order);
   const admin = await getOrderAdmin(store.id, orderId);
   if (!admin) return fail(`No order ${order} in this store.`);
+  // Money taken outside Kaizen (D173, a draft order paid in cash or by bank transfer): nothing can be sent from here, and a refund there is only RECORDED once someone has paid the customer back, on the order's page.
+  if (admin.paidOutside) return fail(`Order ${admin.number} was paid outside Kaizen (${admin.paidOutside.method.replace("_", " ")}), so there is nothing to send back through Stripe. Whoever pays the customer back records the refund on the order's page.`);
   if (!admin.canRefund || admin.refundableMinor <= 0) return fail(`Order ${admin.number} has nothing left to refund through Stripe.`);
   const amountMinor = amount ? parsePrice(amount, admin.currency) : admin.refundableMinor;
   if (amountMinor === null || amountMinor <= 0) return fail(`"${amount}" is not an amount.`);
@@ -1710,6 +1694,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightStockTool(ctx, name, input.input as Record<string, unknown>);
   }
+  // A draft that could not be sent (not open, a problem that blocks it, payments off, a closed store) is refused now, never kept for a yes (D173).
+  if (name === "send_draft_order") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightSendDraft(ctx, input.input as Parameters<typeof preflightSendDraft>[1]);
+  }
   // A test that could not be started, stopped or decided is refused now, never kept for a yes (D148).
   if (name === "start_experiment" || name === "stop_experiment" || name === "apply_winner") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -1763,6 +1754,11 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   sales_summary: salesSummary,
   list_orders: listOrdersTool,
   get_order: getOrderTool,
+  list_draft_orders: listDraftOrdersTool,
+  tag_orders: tagOrdersTool,
+  archive_orders: archiveOrdersTool,
+  create_draft_order: createDraftOrderTool,
+  send_draft_order: sendDraftOrderTool,
   list_returns: listReturnsTool,
   explain_return: explainReturnTool,
   list_privacy_requests: listPrivacyRequestsTool,

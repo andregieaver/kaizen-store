@@ -89,6 +89,17 @@ export type ExportOrder = {
   balanceMinor: number;
   commissionMinor: number;
   deliveryService: string | null;
+  /** The staff's tags on the order (D173), as written; empty when none. Absent in older callers: read as none. */
+  tags?: readonly string[];
+  /** Archived (D173): a visibility state only. */
+  archived?: boolean;
+  /** `draft`: staff made it from a draft order (D173); `checkout` otherwise. Copied history is `copied` in the file whatever it was. */
+  source?: "checkout" | "draft";
+  /** The order is a gift (D173). The words are personal data of a third party: the Full profile only. */
+  isGift?: boolean;
+  giftTo?: string | null;
+  giftFrom?: string | null;
+  giftMessage?: string | null;
   /** The payment provider's reference of the captured payment (a Stripe `pi_...`: a reference, not a credential). */
   paymentReference: string | null;
   lines: ExportLine[];
@@ -104,17 +115,22 @@ const AMOUNTS = [
   "refunded", "refund_count", "last_refund_at", "balance_due_at_venue", "commission", "delivery_service",
   "main_currency", "main_rate", "main_converted", "subtotal_main", "tax_total_main", "total_main", "refunded_main",
 ] as const;
+/** What staff and shoppers added to an order in wave 3 (D173): in both profiles, after the amounts (so the line columns and the payment reference still end the lines layout). `gift_order` is the ORDER's gift (the line column `gift` is a free gift line). */
+const OPS = ["tags", "archived", "source", "gift_order"] as const;
+/** The words of a gift: a third party's name and a message, so the Full profile only (and blanked for an erased person's order). */
+const GIFT_FULL = ["gift_to", "gift_from", "gift_message"] as const;
 const LINE = ["line_number", "sku", "title", "quantity", "unit_price", "line_discount", "line_total", "line_tax_rate", "line_net", "line_tax", "unit_cost_main", "gift", "line_delivery"] as const;
 
 /** The header row of a layout and profile, in the contract's order (4.2). */
 export function orderColumns(layout: OrderLayout, profile: OrderProfile): string[] {
   const buyer = profile === "full" ? [...BUYER_ACCOUNTING, ...BUYER_FULL] : [...BUYER_ACCOUNTING];
-  if (layout === "orders") return [...IDENTITY, ...buyer, "line_count", ...AMOUNTS];
-  return [...IDENTITY, ...buyer, ...AMOUNTS, ...LINE, "payment_reference"];
+  const ops = profile === "full" ? [...OPS, ...GIFT_FULL] : [...OPS];
+  if (layout === "orders") return [...IDENTITY, ...buyer, "line_count", ...AMOUNTS, ...ops];
+  return [...IDENTITY, ...buyer, ...AMOUNTS, ...ops, ...LINE, "payment_reference"];
 }
 
 /** The columns that hold a person's data: in the Full profile only, and blanked for an erased person's order. */
-export const PERSONAL_ORDER_COLUMNS: readonly string[] = ["company_name", "buyer_vat_number", ...BUYER_FULL.filter((c) => c !== "discount_code")];
+export const PERSONAL_ORDER_COLUMNS: readonly string[] = ["company_name", "buyer_vat_number", ...BUYER_FULL.filter((c) => c !== "discount_code"), ...GIFT_FULL];
 
 /** Every column name an order file can have, for the tests of secrets. */
 export const ALL_ORDER_COLUMNS: readonly string[] = [...new Set([...orderColumns("lines", "full"), ...orderColumns("orders", "full")])];
@@ -210,8 +226,16 @@ function orderCells(order: ExportOrder, profile: OrderProfile, main: MainConvers
     total_main: rate === null ? null : m(order.totalMinor),
     refunded_main: rate === null ? null : m(order.refundedMinor),
     line_count: order.lines.length,
+    // Staff's tags are free text a person typed, so an erased person's order carries none of them (the tags are deleted when the order is anonymised, D162).
+    tags: personal(order, (order.tags ?? []).join(", ")),
+    archived: bool(order.archived === true),
+    source: order.copied ? "copied" : order.source === "draft" ? "draft" : "checkout",
+    gift_order: bool(order.isGift === true),
   };
   if (profile === "full") {
+    cells.gift_to = personal(order, order.giftTo);
+    cells.gift_from = personal(order, order.giftFrom);
+    cells.gift_message = personal(order, order.giftMessage);
     cells.email = personal(order, order.email);
     cells.billing_name = personal(order, order.billing.name);
     cells.billing_line1 = personal(order, order.billing.line1);

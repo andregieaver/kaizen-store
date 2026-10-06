@@ -92,6 +92,33 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     ],
   },
   {
+    id: "tidy-orders",
+    area: "store",
+    title: "Find, tag and archive orders",
+    when: "The owner wants to find orders (by customer, product, tag or date), label them, or clear finished ones out of the way.",
+    steps: [
+      "Find them with list_orders: `search` takes up to five words (number, email or name, product or SKU, a tag, a tracking number), and the filters are the Orders page's own (pay, ship, status, tag, range, market, source, archived). Repeat the count it gives; never count yourself.",
+      "Tags are staff's own internal labels (never shown to a customer): tag_orders adds or removes them on up to 25 orders at a time and says which orders it could not change.",
+      "Archiving only hides: archive_orders takes finished orders out of the default list and the queues, and keeps every number, document and figure. It refuses an order that still has to be sent, was never paid, or has an open return, and says why. Nothing is deleted.",
+      "More than 25 orders, or a standing rule: the Orders page's bulk bar handles up to 250 (orders), and Settings, Orders can archive finished orders by itself after a number of days (open_admin_page).",
+      "Saved views (a search and filters kept under a name) are made on the Orders page: say so rather than describing one.",
+    ],
+  },
+  {
+    id: "draft-order",
+    area: "store",
+    title: "Write a draft order and send a pay link",
+    when: "The owner wants to sell to a customer by hand: a phone order, a quote, an invoice by link, or money taken in cash or by bank transfer.",
+    steps: [
+      "Find the SKUs (list_products, get_product) and ask for the customer's email and the country or market. Never guess a SKU, a price or an email.",
+      "create_draft_order makes a DRAFT only: nothing is sent, no number is used and no stock is held. Read its summary back exactly as the store priced it (prices, VAT, shipping, total) and say any problem it lists.",
+      "Custom prices, custom items, addresses, a note to the customer, tags and a shipping choice are added on the draft's page (open_admin_page with orders.draft): offer it.",
+      "list_draft_orders shows what waits. send_draft_order emails the customer a pay link and holds the goods until it ends (1 to 30 days): it needs the owner's yes, and the store refuses with the reason if the draft cannot be sent yet.",
+      "Taking payment in cash or by bank transfer, reopening and deleting a draft are done on the draft's page by the owner (or staff the owner allows): you cannot record a payment, ever.",
+      "A paid draft is a normal order from then on: sales, VAT, the invoice and refunds work as for any order (a refund of money taken outside Kaizen is recorded on the order's page).",
+    ],
+  },
+  {
     id: "handle-refund",
     area: "store",
     title: "Refund or cancel an order",

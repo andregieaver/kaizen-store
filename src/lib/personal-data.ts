@@ -83,7 +83,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("storage:avatars", "shopper", via("customer", "avatar_path"), ["avatar_path"], "profile", "delete", "The picture is removed from storage after the account is deleted.", {}),
 
   // Orders and what hangs on them ------------------------------------------------------------------------------------------------------
-  entry("orders", "shopper", via("customer", "customer_id", "email"), ["email", "billing_address", "shipping_address", "company_name", "organisation_number", "vat_treatment.buyerVatNumber", "vat_treatment.vies", "delivery.postalCode"], "orders", "restrict", "A sale is kept for the bookkeeping duty (restricted from the person, then anonymised); an unpaid or copied order is anonymised at once.", { also: ["addresses", "consents"], until: "bookkeeping" }),
+  entry("orders", "shopper", via("customer", "customer_id", "email"), ["email", "billing_address", "shipping_address", "company_name", "organisation_number", "gift_to", "gift_from", "gift_message", "vat_treatment.buyerVatNumber", "vat_treatment.vies", "delivery.postalCode"], "orders", "restrict", "A sale is kept for the bookkeeping duty (restricted from the person, then anonymised); an unpaid or copied order is anonymised at once.", { also: ["addresses", "consents"], until: "bookkeeping" }),
   entry("order_lines", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", KEEP_ORDER),
   entry("payments", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A payment's amount and status; no personal field (the card is held by Stripe, not by the store). " + KEEP_ORDER),
   entry("refunds", "shopper", via("order", "payment_id"), ["reason"], "orders", "keep", "Amount and status are kept; the reason is text staff typed (it can hold a name), so it is exported and replaced by a marker when the order is anonymised. " + KEEP_ORDER),
@@ -93,6 +93,9 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("legal_snapshots", "none", none, [], null, "none", "The store's own page text as it stood when accepted, never a person's data."),
   entry("order_events", "shopper", via("order", "order_id"), ["data.reason", "data.note"], "orders", "keep", "Events hold types, ids and dates, except the free text staff typed (data.reason of a cancellation or refund, data.note of a note): that is exported and removed when the order is anonymised, which the append-only rule allows for those two keys only.", {}),
   entry("order_downloads", "shopper", via("order", "order_id"), ["token"], "orders", "keep", "No personal field; erasure ends the link (its expiry) because it opens a purchase without a sign-in."),
+  entry("order_tags", "shopper", via("order", "order_id"), ["label"], "orders", "keep", "A tag is text staff typed on an order (it can hold a name): exported inside the order's section and kept with the order, then deleted by the daily clean-up once the order is anonymised (the SQL anonymising function deletes nothing). " + KEEP_ORDER),
+  entry("draft_orders", "shopper", via("customer", "customer_id"), ["customer_id", "email", "phone", "shipping_address", "billing_address", "company_name", "organisation_number", "note_to_buyer", "internal_note"], "carts", "delete", "A draft is a basket staff made for a buyer, not yet an order: it holds the contact data staff typed. The drafts of a customer account are deleted with it (never matched by an address staff typed, only by the account); any other draft goes 90 days after its last edit (open) or 30 days after it ended, by the daily clean-up. The order a draft made is an order.", { also: ["addresses"] }),
+  entry("draft_order_lines", "shopper", via("cart", "draft_id"), ["draft_id"], "carts", "delete", "The lines of a draft order; no personal field of their own, deleted with the draft."),
   entry("inventory_reservations", "shopper", via("cart", "cart_id", "order_id"), ["cart_id", "order_id"], null, "keep", "Stock held for a cart or order; no personal field."),
   entry("host_commissions", "host", via("order", "order_id", "host_id"), ["order_id"], null, "none", OWN),
   entry("document_deliveries", "shopper", via("order", "email_message_id"), ["email_message_id"], null, "keep", "A link between a document and the email that carried it; no personal field."),
@@ -127,7 +130,7 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("wishlists", "shopper", via("customer", "customer_id"), ["customer_id", "name", "browser_token_hash"], "wishlists", "delete", "The lists are deleted."),
   entry("wishlist_items", "shopper", via("customer", "wishlist_id"), ["wishlist_id"], "wishlists", "delete", "The items go with the list."),
   entry("wishlist_cart_adds", "shopper", via("customer", "customer_id", "wishlist_id"), ["customer_id", "wishlist_name"], "wishlists", "anonymise", "What was added to a cart from a list; the person and the list's name are removed."),
-  entry("carts", "shopper", via("customer", "customer_id"), ["customer_id", "company_name", "organisation_number", "vat_number", "vat_check_id", "affiliate_code"], "carts", "anonymise", "The cart row stays (an order may point at it); the person and the company details are cleared.", { until: "carts" }),
+  entry("carts", "shopper", via("customer", "customer_id"), ["customer_id", "company_name", "organisation_number", "vat_number", "vat_check_id", "affiliate_code", "gift_to", "gift_from", "gift_message"], "carts", "anonymise", "The cart row stays (an order may point at it); the person and the company details are cleared.", { until: "carts" }),
   entry("cart_lines", "shopper", via("cart", "cart_id"), ["cart_id"], "carts", "keep", "Product lines of a cart; no personal field."),
   entry("delivery_quotes", "shopper", via("cart", "cart_id"), ["postal_code", "pickup_points"], "carts", "anonymise", "The postal code a delivery was priced for is removed.", { until: "delivery_quotes" }),
   entry("abandoned_checkouts", "shopper", via("cart", "cart_id", "email"), ["email", "lines"], "carts", "anonymise", "The email and the lines are cleared; the opt-out record stays.", { also: ["consents"] }),
@@ -237,6 +240,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   knowledge_documents: "The store's own knowledge documents.",
   marketing_spend: "The owner's note about an advertising cost.",
   menus: "A menu's name.",
+  order_views: "A saved view of the order list (D173): a title, the list's filters and its columns, staff configuration. A saved search text sits in `params.q`: the screen says not to save a search for a person's name, and the audit entry never holds it.",
+  order_settings: "The store's order settings (D173): switches, a number of days and the draft counter.",
   plan_features: "A plan comparison row.",
   plan_reminder_steps: "Kaizen's own reminder email text.",
   plans: "A plan's name.",
@@ -264,6 +269,7 @@ export type EmailClass = "shopper" | "staff" | "security" | "evidence";
 export const EMAIL_KINDS: Record<string, EmailClass> = {
   // To the shopper
   "order.confirmation": "shopper",
+  "draft.pay_link": "shopper",
   "subscription.renewed": "shopper",
   "invoice.issued": "shopper",
   "credit_note.issued": "shopper",

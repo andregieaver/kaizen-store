@@ -209,3 +209,43 @@ describe("entering a pay route", () => {
     expect(readFileSync(join(MARKET, "layout.tsx"), "utf8")).toMatch(/<PayDocumentWatcher \/>/);
   });
 });
+
+/**
+ * The cart's gift box and a draft order's pay link (wave 3, run 2, D173, `docs/wave-3-orders.md` 5.3): the cart is a pay route, so its client bundle stays free of zod
+ * (its JIT probe is reported as a CSP violation, D158) and of every server module; the pay link carries a bearer token in its address, so it draws none of the forbidden extras either.
+ * A "use server" file is the boundary: the browser gets a reference to its action, not its imports, so the walk stops at `actions.ts`.
+ */
+describe("the gift box and the pay link", () => {
+  const atActions = (file: string) => /\/actions\.ts$/.test(file);
+  const importedBy = (entry: string) => {
+    const seen = reach(entry, atActions);
+    return [...seen.keys()].flatMap((file) => [...readFileSync(file, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((m) => ({ file: rel(file), specifier: m[1] })));
+  };
+
+  it.each(["cart/cart-gift.tsx", "account/pay/[token]/pay-form.tsx"])("%s reaches no zod, no server-only module and no server code", (entry) => {
+    const imports = importedBy(join(MARKET, entry));
+    const offenders = imports.filter(({ specifier }) => specifier === "zod" || specifier === "server-only" || specifier.startsWith("@/server/") || specifier.startsWith("@/db/"));
+    expect(offenders).toEqual([]);
+  });
+
+  it("the gift box keeps its checks in the pure gift module, the one the server runs", () => {
+    const imports = importedBy(join(MARKET, "cart/cart-gift.tsx")).map((i) => i.specifier);
+    expect(imports).toContain("@/lib/gift");
+  });
+
+  it("the gift module imports nothing of zod or the server", () => {
+    const text = readFileSync(join(SRC, "lib/gift.ts"), "utf8");
+    expect(text).not.toMatch(/from\s+["'](zod|server-only)["']/);
+  });
+
+  it.each(["account/pay/[token]/page.tsx", "account/pay/[token]/pay-view.tsx", "account/pay/[token]/pay-form.tsx"])("%s reaches none of the forbidden extras", (page) => {
+    expect(forbiddenFrom(join(MARKET, page), stop)).toEqual([]);
+  });
+
+  it("the pay link's page is guarded like a pay route, is not indexed and is not passed on as a referrer", () => {
+    const page = readFileSync(join(MARKET, "account/pay/[token]/page.tsx"), "utf8");
+    expect(page).toMatch(/<PayRouteGuard store=\{store\.slug\} \/>/);
+    expect(page).toMatch(/robots: \{ index: false, follow: false \}/);
+    expect(page).toMatch(/referrer: "no-referrer"/);
+  });
+});

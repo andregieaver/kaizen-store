@@ -5,10 +5,12 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { BackorderOrderLine } from "@/components/backorder-note";
+import { GiftNote } from "@/components/gift-note";
 import { OrderDocuments } from "@/components/documents/order-documents";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { LineUnitPrice } from "@/components/price";
 import { OwnBookings } from "@/components/own-bookings";
+import { StaffDiscountRow } from "@/components/staff-discount-row";
 import { OrderReturns } from "@/components/withdraw/order-returns";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
@@ -142,6 +144,8 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
             </li>
           ))}
         </ul>
+        {/* The buyer's own gift message (D173). */}
+        <GiftNote gift={order.gift} m={m} />
         <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
           {order.ships && (
             <div className="flex justify-between">
@@ -164,6 +168,8 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
               <dd>−{money(order.discountMinor)}</dd>
             </div>
           )}
+          {/* The discount staff gave on a draft order (D173), under the name they gave it. */}
+          <StaffDiscountRow order={order} fallback={m.discount} money={money} />
           {order.referralDiscountMinor > 0 && (
             <div className="flex justify-between">
               <dt>{m.affiliate.discountRow}</dt>

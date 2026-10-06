@@ -95,7 +95,13 @@ export function RefundForm({
   locations = [],
   hasEmail,
   canRefund,
+  outside = null,
 }: Ids & {
+  /**
+   * The money was taken outside Kaizen (wave 3, D173): the refund is only RECORDED here, with no call to Stripe, and staff pay the customer back themselves. `allowed` is false when only the
+   * owner may record it and this person is not the owner.
+   */
+  outside?: { allowed: boolean } | null;
   refundable: string;
   refundableLabel: string;
   /** `putBack` says where the units go when nobody chooses (wave 3, D172): back where they were taken from. */
@@ -109,10 +115,17 @@ export function RefundForm({
   const [amount, setAmount] = useState("");
   return (
     <form action={action} className="flex flex-col gap-3">
-      {canRefund ? (
+      {outside && (
+        <p role="note" className="rounded-md border border-border bg-surface p-3 text-sm">
+          {outside.allowed
+            ? "This was paid outside Kaizen: pay the customer back yourself, then record it here. Kaizen cannot see whether you paid the customer back, and sends no money. The refund gets a credit note, as any refund does."
+            : "This was paid outside Kaizen. Only the owner can record a refund of it, unless the owner has allowed staff to (Settings, Orders)."}
+        </p>
+      )}
+      {canRefund && !(outside && !outside.allowed) ? (
         <div className="flex flex-wrap items-end gap-3">
           <label className={label}>
-            Amount to refund
+            {outside ? "Amount you paid back" : "Amount to refund"}
             <input
               name="amount"
               inputMode="decimal"
@@ -126,7 +139,7 @@ export function RefundForm({
             Everything left ({refundableLabel})
           </button>
         </div>
-      ) : (
+      ) : outside ? null : (
         <p className="text-sm text-muted">This payment was not taken through Kaizen&apos;s Stripe, so refund it in Stripe.</p>
       )}
       <label className={label}>
@@ -175,10 +188,10 @@ export function RefundForm({
           ))}
         </fieldset>
       )}
-      {hasEmail && canRefund && <Notify>Email the customer about the refund</Notify>}
+      {hasEmail && canRefund && !(outside && !outside.allowed) && <Notify>Email the customer about the refund</Notify>}
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending} className={primary}>
-          {pending ? "Refunding …" : "Refund"}
+        <button type="submit" disabled={pending || Boolean(outside && !outside.allowed)} className={primary}>
+          {pending ? (outside ? "Recording …" : "Refunding …") : outside ? "Record the refund" : "Refund"}
         </button>
         <Result state={state} />
       </div>
@@ -193,19 +206,37 @@ export function CancelForm({
   amountLabel,
   hasEmail,
   unpaid = false,
-}: Ids & { amountLabel: string; hasEmail: boolean; /** Not charged yet (a weekly delivery, D102): nothing to refund. */ unpaid?: boolean }) {
+  outside = false,
+}: Ids & {
+  amountLabel: string;
+  hasEmail: boolean;
+  /** Not charged yet (a weekly delivery, D102): nothing to refund. */
+  unpaid?: boolean;
+  /** Taken outside Kaizen (D173): the refund is recorded, staff pay the customer back themselves. */
+  outside?: boolean;
+}) {
   const [state, action, pending] = useActionState(cancelOrderAction.bind(null, storeSlug, orderId), initial);
   return (
     <form
       action={action}
       onSubmit={(event) => {
-        const question = unpaid ? "Cancel this delivery? Nothing is charged, and its items are no longer held." : `Cancel the order and refund ${amountLabel}? Items go back in stock.`;
+        const question = unpaid
+          ? "Cancel this delivery? Nothing is charged, and its items are no longer held."
+          : outside
+            ? `Cancel the order and record a refund of ${amountLabel}? You pay the customer back yourself. Items go back in stock.`
+            : `Cancel the order and refund ${amountLabel}? Items go back in stock.`;
         if (!window.confirm(question)) event.preventDefault();
       }}
       className="flex flex-col gap-3"
     >
       <p className="text-sm text-muted">
-        {unpaid ? "Nothing has been charged. Its items are no longer held for it." : <>Refunds {amountLabel}, puts every item back in stock and stops download links.</>}
+        {unpaid ? (
+          "Nothing has been charged. Its items are no longer held for it."
+        ) : outside ? (
+          <>Records a refund of {amountLabel} (you pay the customer back yourself, Kaizen sends no money), puts every item back in stock and stops download links.</>
+        ) : (
+          <>Refunds {amountLabel}, puts every item back in stock and stops download links.</>
+        )}
       </p>
       <label className={label}>
         <span>

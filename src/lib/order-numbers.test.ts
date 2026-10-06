@@ -27,10 +27,17 @@ function sources(dir: string): string[] {
 }
 
 describe("where orders are numbered", () => {
-  it("only checkout and subscriptions insert orders, each taking the number from the store's series in the same transaction", () => {
+  it("orders are inserted and numbered only in order-insert.ts, which checkout, the subscription renewal and draft orders call", () => {
     const inserting = sources("src").filter((file) => /insert\s+into\s+commerce\.orders\b/i.test(readFileSync(file, "utf8")));
-    expect(inserting.sort()).toEqual(["src/server/checkout.ts", "src/server/subscriptions.ts"]);
-    for (const file of inserting) expect(readFileSync(file, "utf8")).toMatch(/commerce\.next_document_number\([^)]*'order'\)/);
+    expect(inserting.sort()).toEqual(["src/server/order-insert.ts"]);
+    expect(readFileSync("src/server/order-insert.ts", "utf8")).toMatch(/commerce\.next_document_number\([^)]*'order'\)/);
+    // Nothing else takes an order's number.
+    const numbering = sources("src").filter((file) => /next_document_number\([^)]*'order'\)/.test(readFileSync(file, "utf8")));
+    expect(numbering.sort()).toEqual(["src/server/order-insert.ts"]);
+    // The three callers go through it.
+    for (const caller of ["src/server/checkout.ts", "src/server/subscriptions.ts", "src/server/draft-orders.ts"]) {
+      expect(readFileSync(caller, "utf8"), caller).toMatch(/\binsertOrder\(/);
+    }
   });
 
   it("no code deletes or renumbers orders", () => {
@@ -39,5 +46,24 @@ describe("where orders are numbered", () => {
       expect(text, file).not.toMatch(/delete\s+from\s+commerce\.orders\b/i);
       expect(text, file).not.toMatch(/update\s+commerce\.orders\s+set\s+number\b/i);
     }
+  });
+});
+
+describe("where the order operations write (wave 3, D173)", () => {
+  const writers = (pattern: RegExp) => sources("src").filter((file) => pattern.test(readFileSync(file, "utf8"))).sort();
+
+  it("an order is archived and unarchived only in order-archive.ts", () => {
+    expect(writers(/update\s+commerce\.orders\s+set\s+archived_at\b/i)).toEqual(["src/server/order-archive.ts"]);
+  });
+
+  it("order tags are written only in order-tags.ts (and the anonymising prune beside them), and a draft only in the draft modules", () => {
+    expect(writers(/insert\s+into\s+commerce\.order_tags\b/i)).toEqual(["src/server/order-tags.ts"]);
+    // The draft modules: the editor, the send, the jobs; the pay link and the email only read; the erasure deletes the draft's copy of a person's data.
+    const draftWriters = writers(/(insert\s+into|update|delete\s+from)\s+commerce\.draft_orders\b/i);
+    expect(draftWriters).toEqual(["src/server/draft-orders.ts", "src/server/privacy-erasure.ts"]);
+  });
+
+  it("a payment taken outside Kaizen is inserted only by the draft's paid-outside function", () => {
+    expect(writers(/insert\s+into\s+commerce\.payments[^;]*?'manual'/i)).toEqual(["src/server/draft-orders.ts"]);
   });
 });

@@ -1,7 +1,7 @@
 import { pathToRegexp } from "next/dist/compiled/path-to-regexp";
 import { describe, expect, it } from "vitest";
 
-import { FORBIDDEN_ON_PAY_ROUTES, PAY_SEGMENTS, PAY_SOURCES, importsForbidden, isDocumentPath, isNoExtrasPath, isPayPath } from "./pay-routes";
+import { FORBIDDEN_ON_PAY_ROUTES, PAY_SEGMENTS, PAY_SOURCES, importsForbidden, isDocumentPath, isNoExtrasPath, isPayLinkPath, isPayPath } from "./pay-routes";
 
 const PAY = [
   "/s/demo/no/cart",
@@ -134,5 +134,37 @@ describe("the hosted invoices and credit notes (D159)", () => {
   it("the pay routes still draw none of them", () => {
     expect(isNoExtrasPath("/s/demo/no/cart")).toBe(true);
     expect(isNoExtrasPath("/s/demo/no/account")).toBe(false);
+  });
+});
+
+describe("a draft order's pay link (wave 3, run 2, D173)", () => {
+  const TOKEN = "A".repeat(43);
+  const LINKS = [
+    `/s/demo/no/account/pay/${TOKEN}`,
+    `/s/demo/no-en-eur/account/pay/${TOKEN}?x=1`,
+    `/no/account/pay/${TOKEN}`,
+    `/no~tok_1/account/pay/${TOKEN}`,
+  ];
+  const NOT_LINKS = [
+    "/s/demo/no/account/pay",
+    "/s/demo/no/account/pay/",
+    "/s/demo/no/account",
+    "/s/demo/no/account/payments/x",
+    "/s/demo/no/products/account/pay/x",
+    "/account/pay/x",
+    "/s/demo/no/pay/x",
+    "/admin/demo/orders/drafts",
+  ];
+
+  it.each(LINKS)("%s draws none of the layout's extras and is not a pay route", (path) => {
+    expect(isPayLinkPath(path)).toBe(true);
+    expect(isNoExtrasPath(path)).toBe(true);
+    // No card is typed here, so no policy of its own: the button hands the buyer to Stripe's page.
+    expect(isPayPath(path)).toBe(false);
+    expect(isDocumentPath(path)).toBe(false);
+  });
+
+  it.each(NOT_LINKS)("%s is not one", (path) => {
+    expect(isPayLinkPath(path)).toBe(false);
   });
 });

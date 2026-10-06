@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."payments" ADD COLUMN "received_on" date;--> statement-breakpoint
+ALTER TABLE "commerce"."payments" ADD CONSTRAINT "payments_received_manual" CHECK ("commerce"."payments"."received_on" is null or "commerce"."payments"."provider" = 'manual');

@@ -40,6 +40,11 @@ export const DEFAULT_ANALYTICS_SETTINGS: AnalyticsSettings = {
 export type Totals = {
   /** Paid orders. */
   orders: number;
+  /**
+   * Of them, the orders from a shopper's own checkout (`orders.source = 'checkout'`): conversion rate counts these only, as a staff-made order (D173) was
+   * not a visit. Absent means every order is one (totals made by hand, older fixtures).
+   */
+  checkoutOrders?: number;
   /** Goods before discounts. */
   grossSalesMinor: number;
   /** Every discount (campaign, group, referral, bonus credit, code; a free-shipping code's discount on shipping too), without VAT, positive. */
@@ -54,7 +59,7 @@ export type Totals = {
   refundsMinor: number;
   /** Σ unit cost × quantity of lines whose cost was known. */
   cogsMinor: number;
-  /** The part of the lines' revenue (after discounts, without VAT) whose cost was known (no-variant lines count as known). Shipping income is not a line. */
+  /** The part of the lines' revenue (after discounts, without VAT) whose cost was known (no-variant lines count as known; a custom item staff typed into a draft, D173, does not: its cost is not known). Shipping income is not a line. */
   knownCostRevenueMinor: number;
   /** Σ (total − tax) over the order lines: what `knownCostRevenueMinor` is a share of (revenue less shipping income, give or take rounding). */
   lineRevenueMinor: number;
@@ -270,7 +275,7 @@ export function derive(totals: Totals, settings: Pick<AnalyticsSettings, "fixedC
     contributionProfit: contribution,
     fixedCosts,
     operatingProfit: contribution === null ? null : contribution - fixedCosts,
-    conversionRate: sessions && sessions > 0 ? safeRatio(visitTotals.orders, sessions) : null,
+    conversionRate: sessions && sessions > 0 ? safeRatio(visitTotals.checkoutOrders ?? visitTotals.orders, sessions) : null,
     revenuePerVisitor: sessions && sessions > 0 ? whole(safeRatio(visitNet, sessions)) : null,
     contributionPerVisitor: sessions && sessions > 0 ? whole(safeRatio(contributionOf(visitTotals, visitCoverage), sessions)) : null,
     refundRate: safeRatio(totals.refundsMinor, totals.revenueMinor > 0 ? totals.revenueMinor : null),

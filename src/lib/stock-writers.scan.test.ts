@@ -15,7 +15,7 @@ const WRITES = /\b(insert\s+into|update|delete\s+from)\s+commerce\.inventory_lev
 const CONTEXT = /withStockContext|stock_context|setStockContext/;
 
 const ALLOWED: Record<string, string> = {
-  "src/server/checkout.ts": "adds a level of 0 for a variant that keeps selling past zero and has none, so there is a row to lock; a change of 0 is no movement (the trigger returns before writing one), and the sale itself is written by commerce.draw_order_stock() with the order",
+  "src/server/order-insert.ts": "adds a level of 0 for a variant that keeps selling past zero and has none, so there is a row to lock; a change of 0 is no movement (the trigger returns before writing one), and the sale itself is written by commerce.draw_order_stock() with the order",
   "src/server/invoice-test-fixture.ts": "test fixture",
   "src/server/analytics-insights-fixture.ts": "test fixture",
   "src/server/inventory-test-support.ts": "test fixture",

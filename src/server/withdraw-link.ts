@@ -28,7 +28,7 @@ export async function withdrawUrl(
   const base = `${storeSiteUrl(store.slug)}${marketPath(store.slug, market.slug, "/withdraw")}`;
   const [payment] = await db().execute<Row>(sql`
     select provider_reference from commerce.payments
-    where store_id = ${storeId}::uuid and order_id = ${order.id}::uuid and provider in ('stripe', 'venue')
+    where store_id = ${storeId}::uuid and order_id = ${order.id}::uuid and provider in ('stripe', 'venue', 'manual')
     order by created_at limit 1
   `);
   const query = new URLSearchParams({ order: order.number });

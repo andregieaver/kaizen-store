@@ -106,7 +106,8 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
         (select count(*) from commerce.wishlist_cart_adds where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as wishlist_cart_adds,
         (select count(*) from commerce.carts where store_id = ${sid}::uuid and id = any(${cartIds})
            and (customer_id is not null or company_name is not null or organisation_number is not null or vat_number is not null
-                or vat_check_id is not null or affiliate_code is not null))::int as carts,
+                or vat_check_id is not null or affiliate_code is not null or is_gift))::int as carts,
+        (select count(*) from commerce.draft_orders where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as draft_orders,
         (select count(*) from commerce.delivery_quotes where store_id = ${sid}::uuid and cart_id = any(${cartIds}) and postal_code <> '')::int as delivery_quotes,
         (select count(*) from commerce.abandoned_checkouts where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or cart_id = any(${cartIds}))
            and (email is not null or lines <> '[]'::jsonb))::int as abandoned_checkouts,
@@ -168,6 +169,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       wishlist_items: n(c.wishlist_items),
       wishlist_cart_adds: n(c.wishlist_cart_adds),
       carts: n(c.carts),
+      draft_orders: n(c.draft_orders),
       delivery_quotes: n(c.delivery_quotes),
       abandoned_checkouts: n(c.abandoned_checkouts),
       bonus_entries: n(c.bonus_entries),
@@ -620,6 +622,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     await tx.execute(sql`delete from commerce.customer_sessions where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
     await tx.execute(sql`delete from commerce.customer_sign_in_links where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
     await tx.execute(sql`delete from commerce.checkout_accounts where store_id = ${sid}::uuid and customer_id = ${cid}::uuid`);
+    // Draft orders staff made for the account (D173): deleted, never matched by an address staff typed. A sent one's order was cancelled above (the order's own trigger made the draft expired), so it can go; its lines go with it.
+    await tx.execute(sql`delete from commerce.draft_orders where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and status <> 'sent'`);
   }
   await tx.execute(sql`delete from commerce.customer_codes where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
   await tx.execute(sql`
@@ -630,7 +634,8 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   // Carts: the person and the company details; their delivery quotes lose the postal code; reminders lose the address and the lines (the opt-out stays).
   const cartIds = uuidList(s.cartIds);
   await tx.execute(sql`
-    update commerce.carts set customer_id = null, company_name = null, organisation_number = null, vat_number = null, vat_check_id = null, affiliate_code = null
+    update commerce.carts set customer_id = null, company_name = null, organisation_number = null, vat_number = null, vat_check_id = null, affiliate_code = null,
+      is_gift = false, gift_to = null, gift_from = null, gift_message = null
     where store_id = ${sid}::uuid and id = any(${cartIds})
   `);
   await tx.execute(sql`

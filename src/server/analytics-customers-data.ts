@@ -167,7 +167,7 @@ async function readCustomers(store: Store, period: AnalyticsPeriod, settings: An
       ) rf on rf.order_id = o.id
       left join (
         select ol.order_id, sum(coalesce(ol.unit_cost_minor, 0) * ol.quantity)::bigint as cogs,
-          bool_or(ol.variant_id is not null and ol.unit_cost_minor is null) as unknown,
+          bool_or((ol.variant_id is not null or ol.custom) and ol.unit_cost_minor is null) as unknown,
           bool_or(ol.delivery = 'physical') as physical
         from commerce.order_lines ol
         where ol.store_id = ${id}::uuid
