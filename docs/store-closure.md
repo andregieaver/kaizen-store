@@ -67,3 +67,8 @@ notes, refunds, returns, host commissions, data and privacy jobs, and retention.
 `src/server/store-closure.ts` (the service), `src/server/permissions.ts` (`memberCan()`), the owner page and actions under
 `src/app/admin/(gated)/[store]/settings/close/`, the platform's under `src/app/admin/(gated)/platform/stores/[store]/`, tests
 `src/lib/store-closure.test.ts`, `src/lib/fresh-sign-in.test.ts`, `src/server/store-closure.int.test.ts`.
+
+## Verified in production
+
+On 6 October 2026 the owner created a test store and closed it through the real sign-in flow, then reopened it; the platform suspended, closed and
+reopened a store from `/admin/platform/stores/{store}`, and the owners received the emails each time.
