@@ -164,7 +164,7 @@ describe("tag_orders and archive_orders", () => {
     const answer = await run(store, "tag_orders", { orders: [a.number, copied.number], add: ["VIP", "gift wrap"] });
     expect(answer.done).toBe("Tagged 2 of 2 orders.");
     expect(answer.not_done).toEqual([]);
-    const tags = await db().execute<Row>(sql`select o.number, t.label from commerce.order_tags t join commerce.orders o on o.id = t.order_id where t.store_id = ${store.storeId}::uuid order by 1, 2`);
+    const tags = await db().execute<Row>(sql`select o.number, t.label from commerce.order_tags t join commerce.orders o on o.id = t.order_id where t.store_id = ${store.storeId}::uuid order by o.number collate "C", t.label collate "C"`);
     expect(tags.map((r) => [r.number, r.label])).toEqual([[a.number, "VIP"], [a.number, "gift wrap"], [copied.number, "VIP"], [copied.number, "gift wrap"]].sort());
     const removed = await run(store, "tag_orders", { orders: [a.number], remove: ["vip"] });
     expect(removed.done).toBe("Took tags off 1 of 1 order.");
