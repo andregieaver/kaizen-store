@@ -10,10 +10,14 @@ import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plan
 import { mainCurrency } from "@/lib/markets";
 import { billingMode, getStoreBilling, listPlans, listStoreInvoices } from "@/server/billing";
 import { listStorePeople } from "@/server/platform-customers";
+import { closureBlockers, STATUS_WORDS } from "@/lib/store-closure";
+import { storeObligations, storeState } from "@/server/store-closure";
 import { getStore } from "@/server/stores";
 
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
 import { requirePlatformAdmin } from "@/server/auth";
+
+import { closeStoreForPlatformAction, reopenStoreForPlatformAction, suspendStoreAction } from "./actions";
 
 export const metadata: Metadata = { title: "Store plan" };
 
@@ -30,6 +34,8 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
     listStorePeople(store.id),
     listStoreInvoices(store.id, 12),
   ]);
+  const [state, obligations] = await Promise.all([storeState(store.id), storeObligations(store.id)]);
+  const blockers = closureBlockers(obligations);
   const owner = people.find((p) => p.role === "owner");
   const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
   if (!billing) notFound();
@@ -219,6 +225,54 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           </label>
           <SubmitButton>Save fee</SubmitButton>
         </ActionForm>
+      </section>
+      <section aria-labelledby="status-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm">
+        <h2 id="status-heading" className="font-medium">
+          Store status: {STATUS_WORDS[state?.status ?? store.status]}
+        </h2>
+        {state?.reason && <p className="text-muted">Reason on file: {state.reason}</p>}
+        {state && state.status !== "active" ? (
+          <ActionForm action={reopenStoreForPlatformAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage="The store is open again.">
+            <p className="text-muted">Reopening starts sales again and tells the owners. A closed store&apos;s own domains were released when it closed and are not restored.</p>
+            <div>
+              <SubmitButton>Reopen the store</SubmitButton>
+            </div>
+          </ActionForm>
+        ) : (
+          <>
+            {blockers.length > 0 && (
+              <ul className="list-disc pl-5 text-muted">
+                {blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            )}
+            <ActionForm action={suspendStoreAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage="The store is suspended.">
+              <label className="flex flex-col gap-1 font-medium">
+                Suspend: pause sales and changes, nothing else is touched
+                <textarea name="reason" required minLength={5} maxLength={500} rows={2} placeholder="Why? The owners are emailed this." className={`${control} py-2`} />
+              </label>
+              <div>
+                <SubmitButton>Suspend the store</SubmitButton>
+              </div>
+            </ActionForm>
+            <ActionForm action={closeStoreForPlatformAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage="The store is closed.">
+              <label className="flex flex-col gap-1 font-medium">
+                Close: stops sales, ends the plan with its period, releases the domains, cancels orders waiting for payment
+                <textarea name="reason" required minLength={5} maxLength={500} rows={2} placeholder="Why? The owners are emailed this." className={`${control} py-2`} />
+              </label>
+              {blockers.length > 0 && (
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" name="force" />
+                  Close even though the above is still open
+                </label>
+              )}
+              <div>
+                <SubmitButton>Close the store</SubmitButton>
+              </div>
+            </ActionForm>
+          </>
+        )}
       </section>
       <section aria-labelledby="invoices-heading" className="rounded-lg border border-border bg-background p-5">
         <h2 id="invoices-heading" className="mb-3 font-medium">

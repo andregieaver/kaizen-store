@@ -641,7 +641,7 @@ export async function finishCardSetup(storeId: string, customerId: string, sessi
 export async function prepareDueDeliveries(limit = 200): Promise<{ ordered: number; other: number }> {
   const schedules = await db().execute<Row>(sql`
     select d.*, s.time_zone from commerce.delivery_schedules d
-    join commerce.stores s on s.id = d.store_id and 'deliveries' = any(s.modules) and s.status <> 'closed'
+    join commerce.stores s on s.id = d.store_id and 'deliveries' = any(s.modules) and s.status = 'active'
     where d.active
   `);
   const counts = { ordered: 0, other: 0 };

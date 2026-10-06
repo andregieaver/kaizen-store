@@ -8,6 +8,7 @@ import { cache } from "react";
 import { db } from "@/db/client";
 import { areaOfAction, type AuditChanges } from "@/lib/audit";
 import { isColorChoice, type ColorChoice } from "@/lib/color-mode";
+import { signedInWithin } from "@/lib/fresh-sign-in";
 import { type PermissionHolder } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { assuranceOf, heldPath, KILL_SWITCH_ACTION, mayUseAdmin, twoStepKillSwitch, TWO_STEP_PATHS, type Assurance } from "@/lib/two-step";
@@ -241,6 +242,36 @@ export async function listStores(account: Account): Promise<StoreSummary[]> {
   }));
 }
 
+/** Whether the signed-in person proved who they are in the last ten minutes (D171): asked before closing a store. The claim is the verified token's own. */
+export async function signedInRecently(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getClaims();
+    return signedInWithin((data?.claims as { amr?: unknown } | undefined)?.amr, Math.floor(Date.now() / 1000));
+  } catch {
+    return false;
+  }
+}
+
+/** The account's stores that are closed (D171): kept out of the level switcher, listed on the stores page so an owner can open one to read its orders or reopen it. */
+export async function listClosedStores(account: Account): Promise<{ slug: string; name: string; role: Role; closedAt: Date | null }[]> {
+  const rows = await db().execute<Row>(sql`
+    select s.slug, s.name, m.role, s.closed_at
+    from commerce.store_members m
+    join commerce.stores s on s.id = m.store_id
+    where m.account_id = ${account.id}::uuid and m.disabled_at is null
+      and (m.expires_at is null or m.expires_at > now())
+      and s.status = 'closed' and not s.is_template
+    order by s.closed_at desc nulls last, s.slug
+  `);
+  return rows.map((row) => ({
+    slug: String(row.slug),
+    name: String(row.name),
+    role: row.role as Role,
+    closedAt: row.closed_at ? new Date(String(row.closed_at)) : null,
+  }));
+}
+
 /** A store's member, held at their second step, or nobody: what `loadMembership()` found. */
 type MembershipState = { state: "none" } | { state: "held"; assurance: Assurance } | { state: "ok"; membership: Membership };
 
@@ -248,7 +279,9 @@ const loadMembership = cache(async (storeSlug: string): Promise<MembershipState>
   const session = await readSession();
   if (!session) return { state: "none" };
   const store = await getStore(storeSlug);
-  if (!store || store.status === "closed") return { state: "none" };
+  // A closed store stays open to its members, who may read and handle what already happened or reopen it (D171): `memberCan()` keeps
+  // everything that sells or changes the shop out of their reach.
+  if (!store) return { state: "none" };
 
   // The store's requirement for two-step is read here, never from the cached store: a security decision is not stale for an hour.
   // A collaborator whose access has ended is not a member (`expires_at`), whether or not the daily job has marked it yet.

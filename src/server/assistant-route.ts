@@ -27,6 +27,8 @@ const turnInput = z.object({
  */
 export async function assistantTurn(request: Request, principal: Principal): Promise<Response> {
   if (!sameSite(request)) return new Response("Forbidden", { status: 403 });
+  // The assistant works through the owner's tools, which sell and publish: it is off while the store is not open (D171).
+  if (principal.store && principal.store.status !== "active") return Response.json({ error: "The assistant is off while the store is not open." }, { status: 403 });
   const input = turnInput.safeParse(await request.json().catch(() => null));
   if (!input.success) return Response.json({ error: "The message could not be read." }, { status: 400 });
 

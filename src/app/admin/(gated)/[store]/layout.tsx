@@ -8,7 +8,8 @@ import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
-import { canOpenPath } from "@/lib/permissions";
+import { canOpenPath, permissionOfPath } from "@/lib/permissions";
+import { keyAllowedWhenNotOpen, ownerMayReopen } from "@/lib/store-closure";
 import { storeAreas, storeTabs } from "@/lib/store-nav";
 import { holderOf } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
@@ -39,19 +40,22 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const isOwner = memberCan(member, "owner");
   // In test mode, Kaizen sets up the store's test Stripe account itself, after
   // the page is sent, so test purchases work without any setup (D20).
-  if (store.paymentsTest) {
+  // A store that is not open (D171) gets no Stripe set-up from a visit to its admin.
+  if (store.status === "active" && store.paymentsTest) {
     const ip = await requestIp();
     after(() => ensureTestAccount(store.id, account.id, ip));
   }
   // Payment methods added to Kaizen since the store's accounts were made (D23).
-  after(() => ensureStorePaymentMethods(store.id));
+  if (store.status === "active") after(() => ensureStorePaymentMethods(store.id));
   const stores = await storesOf(account);
 
   const base = `/admin/${store.slug}`;
   // The store's sections (D147): a tab each with its own sidebar, none for Home. The AI manager is in the header.
   // Only what the member can open (wave 1, 1f): their role's areas, and no page that would be a 404.
   const holder = holderOf(member);
-  const canOpen = (path: string) => canOpenPath(holder, path);
+  // A store that is not open (suspended or closed, D171) offers only what a member may still do there: its orders, customers and analytics.
+  const open = store.status === "active";
+  const canOpen = (path: string) => canOpenPath(holder, path) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, "read")));
   const tabs: NavItem[] = storeTabs(base, store, canOpen);
   const areas: NavArea[] = storeAreas(base, store, canOpen);
   return (
@@ -65,7 +69,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       actions={
         <>
           {/* The AI manager (D103), from every page of the store's admin, for owners. */}
-          {isOwner && (
+          {isOwner && open && (
             <AiManagerLauncher
               area="store"
               base={`${base}/assistant`}
@@ -107,6 +111,24 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       }
       fullWidth={FULL_WIDTH}
     >
+      {!open && (
+        <div role="status" className="mb-4 rounded-lg border border-border bg-surface p-4 text-sm">
+          <p className="font-medium">{store.status === "suspended" ? "This store is suspended." : "This store is closed."}</p>
+          <p className="text-muted">
+            {store.status === "suspended"
+              ? "Kaizen has paused it: it takes no orders and cannot be changed. You can still see and handle what was already sold."
+              : "It takes no orders. Its orders, invoices, returns and customer data stay here to read and download."}
+            {isOwner && store.status === "closed" && (
+              <>
+                {" "}
+                <Link href={`${base}/settings/close`} className="font-medium underline underline-offset-2">
+                  {ownerMayReopen(store.status, store.closedAt ? new Date(store.closedAt) : null, new Date()) ? "Reopen the store" : "About reopening"}
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
+      )}
       {children}
     </AdminFrame>
   );

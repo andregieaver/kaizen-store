@@ -414,7 +414,7 @@ export async function syncDueFeeds(fetcher: typeof fetch = fetch): Promise<{ syn
     update commerce.calendar_feeds f set synced_at = now()
     where f.id in (
       select id from commerce.calendar_feeds
-      where synced_at is null or synced_at < now() - make_interval(mins => ${SYNC_MINUTES})
+      where (synced_at is null or synced_at < now() - make_interval(mins => ${SYNC_MINUTES})) and commerce.store_is_active(store_id)
       order by synced_at nulls first
       limit ${SYNC_BATCH}
       for update skip locked

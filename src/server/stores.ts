@@ -27,6 +27,8 @@ export type Store = {
   slug: string;
   name: string;
   status: StoreStatus;
+  /** When the store was closed, as an ISO date (D171); null while it is not closed. */
+  closedAt: string | null;
   isTemplate: boolean;
   setupCompletedAt: string | null;
   /** Stripe is switched on with keys for its mode, so shoppers can pay. */
@@ -132,7 +134,7 @@ async function loadStore(slug: string): Promise<Store | null> {
 
   const [row] = await readDb().execute<Row>(sql`
     select
-      s.id, s.slug, s.name, s.status, s.is_template, s.setup_completed_at,
+      s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
       s.terms_at_checkout, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.modules, s.time_zone, s.booking_reminder_hours,
       s.locales, s.rates_auto, s.rates_updated_at,
@@ -180,6 +182,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     slug: String(row.slug),
     name: String(row.name),
     status: row.status as StoreStatus,
+    closedAt: row.closed_at ? new Date(String(row.closed_at)).toISOString() : null,
     isTemplate: Boolean(row.is_template),
     setupCompletedAt: row.setup_completed_at
       ? new Date(String(row.setup_completed_at)).toISOString()

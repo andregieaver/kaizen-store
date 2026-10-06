@@ -292,6 +292,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "form.subscription": "staff",
   "return.overdue": "staff",
   "experiment.guardrail": "staff",
+  "store.status": "staff",
   "referral.store_opened": "staff",
   "referral.credit_applied": "staff",
   "plan_reminder": "staff",

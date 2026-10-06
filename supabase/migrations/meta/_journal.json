@@ -1884,6 +1884,20 @@
       "when": 1791231497423,
       "tag": "20261005201817_cart_handoff",
       "breakpoints": true
+    },
+    {
+      "idx": 269,
+      "version": "7",
+      "when": 1791267128164,
+      "tag": "20261006061208_store_closure",
+      "breakpoints": true
+    },
+    {
+      "idx": 270,
+      "version": "7",
+      "when": 1791267135563,
+      "tag": "20261006061215_store_closure_rules",
+      "breakpoints": true
     }
   ]
 }

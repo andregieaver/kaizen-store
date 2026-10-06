@@ -556,6 +556,7 @@ export async function expiringReminders(days = BONUS_EXPIRY_REMINDER_DAYS): Prom
     select x.store_id, x.customer_id, x.first_at, x.amount_minor, commerce.bonus_currency(x.store_id) as currency
     from commerce.bonus_expiring(${days}) x
     join commerce.bonus_settings b on b.store_id = x.store_id and b.enabled
+    where commerce.store_is_active(x.store_id)
     order by x.first_at
     limit ${BATCH}
   `);

@@ -13,7 +13,7 @@ export default async function PlatformStoresPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
-  const stores = await listStoreBilling();
+  const stores = await listStoreBilling({ includeClosed: true });
   return (
     <>
       <div>
@@ -42,7 +42,10 @@ export default async function PlatformStoresPage() {
                   <Link href={`/admin/platform/stores/${store.slug}`} className="font-medium underline">
                     {store.name}
                   </Link>
-                  <span className="block text-muted">{store.slug}</span>
+                  <span className="block text-muted">
+                    {store.slug}
+                    {store.storeStatus !== "active" && <strong className="ml-2 font-medium text-foreground">{store.storeStatus === "closed" ? "Closed" : "Suspended"}</strong>}
+                  </span>
                 </td>
                 <td className="px-4 py-2">
                   {store.ownerEmail ? (

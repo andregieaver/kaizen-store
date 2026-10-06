@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StoresList } from "@/components/admin/stores-list";
-import { listStores, requireAccount } from "@/server/auth";
+import { listClosedStores, listStores, requireAccount } from "@/server/auth";
 import { COPY_PHASE_LABELS } from "@/lib/store-copy";
 import { copyProgressPath } from "@/lib/store-copy-paths";
 import { listHostings } from "@/server/hosts";
@@ -19,7 +19,7 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 /** All the account's stores, and a way to create another. */
 export default async function AllStoresPage() {
   const account = await requireAccount();
-  const [stores, hostings, copies] = await Promise.all([listStores(account), listHostings(account), listStoreCopies(account)]);
+  const [stores, hostings, copies, closed] = await Promise.all([listStores(account), listHostings(account), listStoreCopies(account), listClosedStores(account)]);
   const owned = stores.filter((store) => store.role === "owner").length;
   const canCreate = account.platformAdmin || (owned > 0 && owned < MAX_STORES_PER_OWNER);
   // Duplicating (D129) makes one more store, so it has the same room as creating one.
@@ -74,6 +74,26 @@ export default async function AllStoresPage() {
               <SubmitButton>Create store</SubmitButton>
             </div>
           </ActionForm>
+        </section>
+      )}
+      {closed.length > 0 && (
+        <section aria-labelledby="closed-heading" className="flex flex-col gap-2">
+          <h2 id="closed-heading" className="text-lg font-semibold">
+            Closed stores
+          </h2>
+          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+            {closed.map((c) => (
+              <li key={c.slug} className="p-4">
+                <Link href={`/admin/${c.slug}`} className="font-medium underline-offset-2 hover:underline">
+                  {c.name}
+                </Link>
+                <span className="block text-muted">
+                  Closed{c.closedAt ? ` ${c.closedAt.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}` : ""}. Open it to see its orders and invoices
+                  {c.role === "owner" ? ", or to reopen it." : "."}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
       {copies.length > 0 && (

@@ -39,7 +39,7 @@ async function staleTranslations(space: string, scope: SQL, limit: number): Prom
         ), '') as terms
       from commerce.product_translations t
       join commerce.products p on p.store_id = t.store_id and p.id = t.product_id
-      where p.status = 'active' and ${scope}
+      where p.status = 'active' and commerce.store_is_active(t.store_id) and ${scope}
     )
     select d.*, md5(concat_ws(chr(31), ${space}::text, d.title, d.terms, d.description)) as hash
     from docs d

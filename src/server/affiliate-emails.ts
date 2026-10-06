@@ -94,7 +94,7 @@ export async function runAffiliateJobs(): Promise<{ emailed: number }> {
   try {
     const rows = await db().execute<Row>(sql`
       select a.store_id, a.order_id from commerce.affiliate_attributions a
-      where a.status = 'rewarded' and a.reward_minor > 0 and a.rewarded_at > now() - make_interval(days => ${RECENT_DAYS})
+      where commerce.store_is_active(a.store_id) and a.status = 'rewarded' and a.reward_minor > 0 and a.rewarded_at > now() - make_interval(days => ${RECENT_DAYS})
         and not exists (select 1 from commerce.email_messages m where m.idempotency_key = 'affiliate-reward:' || a.order_id::text)
       order by a.rewarded_at
       limit ${BATCH}

@@ -224,10 +224,14 @@ describe("who is not let in at all", () => {
     expect(await p.checkPermission(store.slug, "orders:read")).toBeNull();
   });
 
-  it("answers a closed store with a 404 for everyone", async () => {
+  it("lets the members of a closed store read and handle what was sold, and answers everything else, and everyone else, with a 404 (D171)", async () => {
     const closed = await makeStore("guards-closed");
     await db().execute(sql`update commerce.stores set status = 'closed' where id = ${closed.id}::uuid`);
     signInAs(await linkAuthUser(closed.account.id));
+    await expect(p.requirePermission(closed.slug, "orders:read")).resolves.toBeTruthy();
+    await expect(p.requirePermission(closed.slug, "products:read")).rejects.toThrow("NEXT_NOT_FOUND");
+    await expect(p.requirePermission(closed.slug, "settings:write")).rejects.toThrow("NEXT_NOT_FOUND");
+    signInAs(ownerSub);
     await expect(p.requirePermission(closed.slug, "orders:read")).rejects.toThrow("NEXT_NOT_FOUND");
   });
 });

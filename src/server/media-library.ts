@@ -738,6 +738,7 @@ export async function embedMedia(owner: MediaOwner, connection: AiConnection, li
 export async function refreshMediaEmbeddings(): Promise<{ sites: number; embedded: number }> {
   const owners = await db().execute<Row>(sql`
     select distinct m.store_id, s.slug from commerce.media m left join commerce.stores s on s.id = m.store_id
+    where m.store_id is null or s.status = 'active'
   `);
   let embedded = 0;
   for (const row of owners) {

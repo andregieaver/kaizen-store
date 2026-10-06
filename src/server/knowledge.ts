@@ -242,7 +242,7 @@ export async function embedKnowledge(storeId: string | null, connection: AiConne
 
 /** The cron's share: for every site with its chat agent on, pages cut anew and passages given vectors. */
 export async function refreshKnowledge(): Promise<{ sites: number; cut: number; embedded: number }> {
-  const agents = await db().execute<Row>(sql`select store_id from commerce.chat_agents where enabled`);
+  const agents = await db().execute<Row>(sql`select store_id from commerce.chat_agents where enabled and (store_id is null or commerce.store_is_active(store_id))`);
   let cut = 0;
   let embedded = 0;
   for (const agent of agents) {

@@ -346,6 +346,8 @@ export type StoreBilling = {
   name: string;
   country: string | null;
   status: string | null;
+  /** The store's own status (D171): open, suspended or closed. */
+  storeStatus: "active" | "suspended" | "closed";
   planId: string | null;
   planName: string | null;
   priceId: string | null;
@@ -403,6 +405,7 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
     name: String(row.name),
     country: row.country ? String(row.country) : null,
     status,
+    storeStatus: row.store_status === "closed" ? "closed" : row.store_status === "suspended" ? "suspended" : "active",
     planId: row.plan_id ? String(row.plan_id) : null,
     planName: row.plan_name ? String(row.plan_name) : null,
     priceId: row.price_id ? String(row.price_id) : null,
@@ -430,9 +433,10 @@ function toBilling(row: Row, defaultBps: number): StoreBilling {
   };
 }
 
-export async function listStoreBilling(): Promise<StoreBilling[]> {
+/** Every store's billing; closed stores only for the platform's own list, which must find them to reopen them (D171). */
+export async function listStoreBilling({ includeClosed = false }: { includeClosed?: boolean } = {}): Promise<StoreBilling[]> {
   const [rows, defaultBps] = await Promise.all([
-    db().execute<Row>(billingQuery(sql`s.status <> 'closed'`)),
+    db().execute<Row>(billingQuery(includeClosed ? sql`true` : sql`s.status <> 'closed'`)),
     getSaleFeeBps(),
   ]);
   return rows.map((row) => toBilling(row, defaultBps));

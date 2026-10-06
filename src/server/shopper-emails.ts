@@ -1005,7 +1005,7 @@ export async function sendDueBookingReminders(limit = 100): Promise<number> {
       join commerce.orders o on o.store_id = b.store_id and o.id = b.order_id
       where b.status = 'confirmed' and b.reminded_at is null
         and b.starts_at > now()
-        and s.booking_reminder_hours > 0
+        and s.status = 'active' and s.booking_reminder_hours > 0
         and b.starts_at <= now() + make_interval(hours => s.booking_reminder_hours)
         and b.created_at <= b.starts_at - make_interval(hours => s.booking_reminder_hours)
         and o.status in ('paid', 'fulfilled') and o.email <> '' and o.restricted_at is null and o.anonymised_at is null

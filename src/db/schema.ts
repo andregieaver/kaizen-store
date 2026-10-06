@@ -399,6 +399,13 @@ export const stores = commerce.table(
     slug: text("slug").notNull().unique(),
     name: text("name").notNull(),
     status: storeStatus("status").notNull().default("active"),
+    /** Why the store is suspended or closed, in the words of whoever did it (D171). */
+    statusReason: text("status_reason"),
+    statusChangedAt: timestamp("status_changed_at", { withTimezone: true }),
+    /** The account that last changed the status (no foreign key: an account can go, the history stays). */
+    statusChangedBy: uuid("status_changed_by"),
+    /** When the store was closed: set and cleared by the database's rules, the start of the reopening period (D171). */
+    closedAt: timestamp("closed_at", { withTimezone: true }),
     /** The store new stores are copied from (docs/platform.md, P4). */
     /**
      * The languages the store is in (D109), as locales such as `nb-NO`, the

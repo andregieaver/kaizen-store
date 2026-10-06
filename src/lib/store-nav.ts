@@ -196,6 +196,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/domains", "Domains", "The addresses the store is reached at."),
           item("/settings/localization", "Languages and currencies", "The languages and currencies the store offers, and the exchange rates."),
           item("/settings/features", "Features", "Switch the store's optional modules on or off: bookings, subscription boxes and more."),
+          item("/settings/close", "Close store", "Stop sales and take the shop off the web. Nothing is deleted, and you can reopen it for thirty days."),
         ],
       },
       {
