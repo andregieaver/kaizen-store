@@ -4,6 +4,10 @@ A draft platform page, made in Kaizen's own page builder content (`/admin/platfo
 `df7280b5-51cf-494b-930d-b280801643aa`). **It is a draft and must stay one until the claims below are true.** It was written on the
 assumption that every wave of `docs/parity-plan.md` is built and tested; today that is not so.
 
+**Correction, 6 October 2026:** the row was inserted already published (`published_at` set at 09:12 UTC) instead of as a draft. It was unpublished
+by SQL (`published = null`, `published_at = null`) the same day, after the other comparison pages were added (`docs/comparison-pages.md`). Page caches may
+have kept the page for a short time; `first_published_at` stays set, which only affects dates. Insert new platform pages with `published` left null.
+
 ## Rules the copy follows
 
 - **Comparative advertising** (Directive 2006/114/EC, and the Norwegian Marketing Control Act): every statement about Shopify is objective and

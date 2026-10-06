@@ -1,0 +1,22 @@
+# Shopware 6 facts (research agent, read 2026-10-06; extension prices excl. VAT, third-party, change often)
+1 invoices/credit notes/cancellation invoices: NATIVE in core from the order, configurable number ranges, PDF, ZUGFeRD e-invoice since 6.6.10.0. https://docs.shopware.com/en/shopware-6-en/orders/overview . Gap-free guarantee and automatic credit note on refund: unverified.
+2 Omnibus: extension. Core has a regulation-price field, no history (community forum reply 6 Feb 2025). Pixup Media "Automatic calculation of the lowest price (§11 PAngV)" EUR 18.90/mo or 179.90/yr.
+3 withdrawal: NATIVE form + confirmation of receipt since 6.7.9.0 (April 2026, backported to 6.6), Community Edition up. Shopware says merchant must check deadlines and exclusions manually; no product-level exclusion setting found; digital products get an extra checkbox at checkout (wording not verified as waiver). Returns management: Commercial extension from Rise; one return per order, no automatic stock. https://www.shopware.com/en/news/withdrawal-button-requirement-germany-2026/
+4 GPSR: custom fields in CMS blocks since 6.6.9.0 (Shopware presents it as a way to handle GPSR); dedicated GPSR plugins exist (search excerpt only). Not verified dedicated core fields.
+5 DAC7: unverified.
+6a VAT per country with validity dates: native (Settings > Shop > Tax). 6b OSS: extension alphanauten "OSS" EUR 24.99/mo, no OSS report mentioned. 6c IOSS/OSS reports: unverified. 6d reverse charge: core checks VAT-ID format, B2B tax-free when valid VAT ID and minimum cart value; no VIES in core. 6e VIES: third-party extensions (search excerpt only).
+7 bookings/rentals: extension. RHIEM "Rental Products" EUR 69.50/mo (daily, overnight, hourly). Webkul Booking only to 6.5.7.2.
+8 multi-vendor: extension Webkul Multi-Seller Marketplace EUR 36/mo, listing compat to 6.5.6.1.
+9 several storefronts from one instance: NATIVE sales channels (language, currency, payment, shipping, domains each).
+10 loyalty: extension Kraftware EUR 19.99/mo. 11 referral: extension codegiganten EUR 29.90/mo. 12 wishlists: NATIVE. 13 reviews: NATIVE.
+14 back-in-stock: extension ACRIS EUR 19.99/mo. 15 pre-orders: extension EUR 3/mo (426), split-payment one EUR 49/mo (search excerpt).
+16 tiered/volume: NATIVE advanced pricing by quantity. Customer-specific pricing: Evolve and Beyond.
+17 scheduled reports: extension scope01 "Daily report mail" EUR 3.99/mo.
+18 AI: Copilot chat in admin on all plans from 6.7.1.0; Data Insights/Agentic need Shopware Intelligence+ (EUR 29/mo Community, 19 Rise+; 10 free requests/mo); Shopware AI needs Commercial (Rise+).
+19 Vipps/MobilePay: official plugin by WEXO from GitHub (stated ~6.5.0; Vipps NO, MobilePay DK/FI). Shopware Payments lists neither; Shopware Payments available in Germany and Austria.
+20 carriers: Bring Parcelshop (WEXO) to 6.6.6.1, last updated 18 Sep 2024 (excerpt); PostNord/Porterbuddy/Helthjem unverified.
+21 hosting: Community self-hosted (you run hosting, updates, security); Rise/Evolve/Beyond as self-hosted, SaaS (apps only, no plugins) or PaaS. DPA: SaaS AWS eu-central-1 Frankfurt; PaaS Frankfurt + Dublin DR; Datadog (USA) subprocessor for both, Fastly (USA) for PaaS. https://www.shopware.com/en/privacy/dpa/
+22 pricing: Community free, MIT. Rise from EUR 600/mo, Evolve from EUR 2,400/mo excl. VAT, Beyond custom; "based on GMV and further individual factors"; no transaction fee stated on pricing page (say "none stated"). Fair Usage Policy since 24 Mar 2025: Community merchants above EUR 1m annual GMV must subscribe to keep Account/Store access; "no immediate restrictions". https://www.shopware.com/en/pricing/
+23 migration: official Migration Assistant lists Shopware 5/6 and Magento only; third parties not assessed. Export: Import/Export CSV profiles (products, customers, orders), Admin API + Store API.
+24 strengths: MIT open source; API-first/headless; German/EU legal tooling in core (withdrawal form, ZUGFeRD, invoice/credit/cancellation docs); B2B components in Evolve (roles, quotes, budgets, approvals), Beyond: sales rooms, multi-inventory, subscriptions; Rule Builder/Flow Builder (Rise per commercial features page); choice of hosting.
+Cautions: Shopware 5-only listings must not be cited; don't say "free" for Commercial features; "none stated" not "none" for revenue share; no "EU-only no US vendors"; don't say Shopware can't import from Shopify; withdrawal exclusions left to merchant; unverified = "not verified".
