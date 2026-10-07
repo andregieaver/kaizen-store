@@ -133,7 +133,7 @@ CREATE UNIQUE INDEX "credit_notes_order_edit_key" ON "commerce"."credit_notes" U
 CREATE INDEX "inventory_reservations_order_edit_idx" ON "commerce"."inventory_reservations" USING btree ("store_id","order_edit_id") WHERE "commerce"."inventory_reservations"."order_edit_id" is not null;--> statement-breakpoint
 CREATE UNIQUE INDEX "invoices_original_key" ON "commerce"."invoices" USING btree ("store_id","order_id") WHERE "commerce"."invoices"."kind" = 'order';--> statement-breakpoint
 CREATE UNIQUE INDEX "invoices_order_edit_key" ON "commerce"."invoices" USING btree ("store_id","order_edit_id") WHERE "commerce"."invoices"."kind" = 'order_edit';--> statement-breakpoint
-CREATE INDEX "invoices_order_idx" ON "commerce"."invoices" USING btree ("store_id","order_id");--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "invoices_order_idx" ON "commerce"."invoices" USING btree ("store_id","order_id");--> statement-breakpoint
 CREATE INDEX "order_lines_order_edit_idx" ON "commerce"."order_lines" USING btree ("store_id","order_edit_id") WHERE "commerce"."order_lines"."order_edit_id" is not null;--> statement-breakpoint
 CREATE INDEX "payments_order_edit_idx" ON "commerce"."payments" USING btree ("store_id","order_edit_id") WHERE "commerce"."payments"."order_edit_id" is not null;--> statement-breakpoint
 CREATE INDEX "refunds_order_edit_idx" ON "commerce"."refunds" USING btree ("store_id","order_edit_id") WHERE "commerce"."refunds"."order_edit_id" is not null;--> statement-breakpoint
