@@ -150,7 +150,7 @@ export function PageBlockView({ block }: { block: PageBlock }) {
             width={size.width}
             height={size.height}
             unoptimized
-            className={`h-auto max-w-full bg-surface ${block.shape ? SHAPES[block.shape] : "rounded-lg"}`}
+            className={`h-auto max-w-full ${block.shape ? SHAPES[block.shape] : "rounded-lg"}`}
           />
           {block.caption && (
             <figcaption className="mt-2 text-sm text-muted [overflow-wrap:anywhere]">

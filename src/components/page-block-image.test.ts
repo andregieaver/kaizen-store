@@ -114,7 +114,9 @@ describe("a picture block on the site: its own size", () => {
     expect(out.img.attrs.alt).toBe("An oak table");
     expect(numberOf(out.img.attrs.width)).toBe(800);
     expect(numberOf(out.img.attrs.height)).toBe(600);
-    expect(out.img.classes).toEqual(expect.arrayContaining(["h-auto", "max-w-full", "bg-surface", "rounded-lg"]));
+    expect(out.img.classes).toEqual(expect.arrayContaining(["h-auto", "max-w-full", "rounded-lg"]));
+    // A picture with transparent parts shows the page behind it, never a grey placeholder colour.
+    expect(out.img.classes.filter((c) => /(^|:)bg-/.test(c))).toEqual([]);
     // `w-full` would stretch a small picture to the column, and is a cyclic percentage in a shrink-wrapped box.
     expect(out.img.classes).not.toContain("w-full");
     expect(out.img.classes.filter((c) => /(^|:)w-/.test(c))).toEqual([]);
