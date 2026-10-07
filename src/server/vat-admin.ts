@@ -223,7 +223,7 @@ export async function vatCoverage(): Promise<{ categories: VatCategoryRow[]; cou
     db().execute<Row>(sql`
       select c.code::text as code, c.name,
         exists (select 1 from commerce.markets m join commerce.stores s on s.id = m.store_id
-                where m.code = c.code and m.active and s.status <> 'closed' and not s.is_template) as in_use
+                where m.code = c.code and m.active and s.status <> 'closed' and not (s.is_template or s.starter)) as in_use
       from commerce.countries c
     `),
     db().execute<Row>(sql`

@@ -92,7 +92,7 @@ const standardTax = (over: Record<string, unknown> = {}) => ({
 const summary = (over: Record<string, unknown> = {}) => ({
   payable: [line],
   blocked: false,
-  checkout: { vatRate: 0.25, paymentsOn: true, shipping: null },
+  checkout: { vatRate: 0.25, paymentsOn: true, starter: false, shipping: null },
   fees: [],
   feeMinor: 0,
   ships: false,
@@ -477,5 +477,21 @@ describe("the cart's gift box (wave 3, run 2, D173)", () => {
   it("is in the slide-out cart too", async () => {
     giftState.enabled = true;
     expect(box(renderToString(await CartContents({ store, market, m, drawer: true })))).toBe(true);
+  });
+});
+
+describe("the cart of a store template (D175)", () => {
+  it("says the store takes no orders instead of drawing the checkout button", async () => {
+    cartSummary.mockResolvedValue(summary({ checkout: { vatRate: 0.25, paymentsOn: false, starter: true, shipping: null } }));
+    checkoutButton.mockClear();
+    const text = words(renderToString(await CartCheckout({ store, market, m })));
+    expect(checkoutButton).not.toHaveBeenCalled();
+    expect(text).toContain(m.starterCheckout);
+    expect(text).not.toContain(m.checkoutUnavailable);
+  });
+
+  it("keeps the ordinary words for a store whose payments are off", async () => {
+    cartSummary.mockResolvedValue(summary({ checkout: { vatRate: 0.25, paymentsOn: false, starter: false, shipping: null } }));
+    expect(words(renderToString(await CartCheckout({ store, market, m })))).toContain(m.checkoutUnavailable);
   });
 });

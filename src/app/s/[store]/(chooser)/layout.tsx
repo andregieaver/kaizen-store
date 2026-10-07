@@ -38,7 +38,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     metadataBase: new URL(storeSiteUrl(store.slug)),
     title: store.name,
     description,
-    ...(!(store.setupCompletedAt || store.isTemplate) || store.seo.hidden ? { robots: { index: false } } : {}),
+    // Not for search engines until opened, while hidden, or ever for a store template (D175).
+    ...(!(store.setupCompletedAt || store.isTemplate) || store.starter || store.seo.hidden ? { robots: { index: false } } : {}),
     alternates: {
       canonical: base,
       languages: {

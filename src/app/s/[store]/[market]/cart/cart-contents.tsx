@@ -682,7 +682,10 @@ function checkoutAction({ store, market, m, view }: Draw) {
           }}
         />
       ) : (
-        <p className="text-sm">{m.checkoutUnavailable}</p>
+        // A store template (D175) is a preview: it says so instead of the button.
+        <p className="text-sm" role={checkout.starter ? "note" : undefined}>
+          {checkout.starter ? m.starterCheckout : m.checkoutUnavailable}
+        </p>
       )}
       {blocked && <p className="text-sm">{m.noLongerAvailable}</p>}
     </>

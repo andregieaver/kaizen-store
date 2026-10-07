@@ -67,7 +67,7 @@ export async function listPlatformCustomers({ q = "", limit = 100 }: { q?: strin
       count(*) filter (where b.status in (${onPlan}))::int as on_plan
     from commerce.accounts a
     join commerce.store_members m on m.account_id = a.id and m.disabled_at is null
-    join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.is_template
+    join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter)
     left join commerce.store_billing b on b.store_id = s.id
     left join commerce.plans p on p.id = b.plan_id
     group by a.id
@@ -93,7 +93,7 @@ export async function getPlatformCustomer(accountId: string): Promise<PlatformCu
       count(*) filter (where b.status in (${onPlan}))::int as on_plan
     from commerce.accounts a
     left join commerce.store_members m on m.account_id = a.id and m.disabled_at is null
-    left join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.is_template
+    left join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter)
     left join commerce.store_billing b on b.store_id = s.id
     left join commerce.plans p on p.id = b.plan_id
     where a.id = ${accountId}::uuid

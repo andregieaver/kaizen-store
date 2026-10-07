@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { StarterCards } from "@/components/admin/starter-cards";
 import { referralPublicSettings } from "@/server/referrals";
+import { starterCards } from "@/server/store-starters";
 
 import { requestAccess } from "./actions";
 import { KaizenLifePrefill } from "./kaizen-life-prefill";
@@ -20,6 +22,8 @@ const control = "min-h-11 rounded-md border border-border bg-background px-3 fon
 export default async function SignUpPage() {
   // The referral program (D131): kept out of the address's way, so the page stays the same for everyone.
   const referrals = await referralPublicSettings();
+  // The store templates a new store can start from (D175); with none published, there is nothing to choose.
+  const cards = await starterCards();
   return (
     <main id="main" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16">
       <div>
@@ -45,6 +49,13 @@ export default async function SignUpPage() {
           <input name="storeName" required maxLength={80} autoComplete="organization" className={control} />
           <span className="font-normal text-muted">You can change it later.</span>
         </label>
+        {cards.length > 1 && (
+          <StarterCards
+            cards={cards}
+            legend="Start from (optional)"
+            hint="Each template is a store set up for one kind of business. Preview opens it in a new window."
+          />
+        )}
         <label className={field}>
           <span>
             What will you sell? <span className="font-normal text-muted">(optional)</span>

@@ -231,7 +231,8 @@ export async function listStores(account: Account): Promise<StoreSummary[]> {
     join commerce.stores s on s.id = m.store_id
     where m.account_id = ${account.id}::uuid and m.disabled_at is null
       and (m.expires_at is null or m.expires_at > now())
-      and s.status <> 'closed'
+      -- Store templates (D175) are the platform's work, reached from its Store templates page.
+      and s.status <> 'closed' and not s.starter
     order by lower(s.name), s.slug
   `);
   return rows.map((row) => ({
@@ -261,7 +262,7 @@ export async function listClosedStores(account: Account): Promise<{ slug: string
     join commerce.stores s on s.id = m.store_id
     where m.account_id = ${account.id}::uuid and m.disabled_at is null
       and (m.expires_at is null or m.expires_at > now())
-      and s.status = 'closed' and not s.is_template
+      and s.status = 'closed' and not (s.is_template or s.starter)
     order by s.closed_at desc nulls last, s.slug
   `);
   return rows.map((row) => ({

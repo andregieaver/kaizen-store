@@ -273,7 +273,7 @@ export function productItem(storeSlug: string, marketSlug: string, product: Grid
 
 export type GridStore = { id: string; name: string; markets: { code: string; currency: string }[] };
 
-/** Open stores and their markets, for choosing whose products a grid shows: the template (demo) store first. */
+/** Open stores and their markets, for choosing whose products a grid shows: the template (demo) store first; never a store template (D175). */
 export async function listGridStores(): Promise<GridStore[]> {
   const rows = await readDb().execute<Row>(sql`
     select s.id, s.name,
@@ -281,7 +281,7 @@ export async function listGridStores(): Promise<GridStore[]> {
         filter (where m.code is not null), '[]') as markets
     from commerce.stores s
     left join commerce.markets m on m.store_id = s.id and m.active
-    where s.status = 'active'
+    where s.status = 'active' and not s.starter
     group by s.id, s.name, s.is_template
     order by s.is_template desc, lower(s.name)
   `);

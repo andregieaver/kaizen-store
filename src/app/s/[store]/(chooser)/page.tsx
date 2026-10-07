@@ -33,6 +33,12 @@ export default async function Chooser({ params, searchParams }: PageProps<"/s/[s
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-6 py-24">
       <h1 className="text-4xl font-heading tracking-tight">{store.name}</h1>
+      {/* A store template (D175) says it is a preview, as its markets' header does. */}
+      {store.starter && (
+        <p role="note" lang={store.markets[0].lang} className="text-sm">
+          {t(store.markets[0].lang).starterNotice}
+        </p>
+      )}
       <p className="text-lg text-muted">
         {store.markets.map((market, index) => (
           <span key={market.slug}>

@@ -2038,6 +2038,20 @@
       "when": 1791361777886,
       "tag": "20261007082937_shipment_undo_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 291,
+      "version": "7",
+      "when": 1791366033155,
+      "tag": "20261007094033_store_starters",
+      "breakpoints": true
+    },
+    {
+      "idx": 292,
+      "version": "7",
+      "when": 1791366055502,
+      "tag": "20261007094055_store_starters_rules",
+      "breakpoints": true
     }
   ]
 }

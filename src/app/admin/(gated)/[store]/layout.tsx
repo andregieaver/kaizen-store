@@ -40,8 +40,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const isOwner = memberCan(member, "owner");
   // In test mode, Kaizen sets up the store's test Stripe account itself, after
   // the page is sent, so test purchases work without any setup (D20).
-  // A store that is not open (D171) gets no Stripe set-up from a visit to its admin.
-  if (store.status === "active" && store.paymentsTest) {
+  // A store that is not open (D171) gets no Stripe set-up from a visit to its admin, nor does a store template (D175), which takes no orders.
+  if (store.status === "active" && !store.starter && store.paymentsTest) {
     const ip = await requestIp();
     after(() => ensureTestAccount(store.id, account.id, ip));
   }
@@ -111,6 +111,23 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       }
       fullWidth={FULL_WIDTH}
     >
+      {store.starter && (
+        <div role="status" className="mb-4 rounded-lg border border-border bg-surface p-4 text-sm">
+          <p className="font-medium">This store is a store template.</p>
+          <p className="text-muted">
+            New stores made from it start with its products, services, staff, pages, menus, settings and page drafts. It takes no orders and
+            is never shown to search engines.
+            {account.platformAdmin && (
+              <>
+                {" "}
+                <Link href="/admin/platform/store-templates" className="font-medium underline underline-offset-2">
+                  Store templates
+                </Link>
+              </>
+            )}
+          </p>
+        </div>
+      )}
       {!open && (
         <div role="status" className="mb-4 rounded-lg border border-border bg-surface p-4 text-sm">
           <p className="font-medium">{store.status === "suspended" ? "This store is suspended." : "This store is closed."}</p>

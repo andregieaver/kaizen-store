@@ -56,7 +56,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
            pr.enabled as payments_on, pr.active_mode,
            exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'live' and a.card_payments = 'active') as live_ready
     from commerce.store_members m
-    join commerce.stores s on s.id = m.store_id and s.status <> 'closed'
+    -- Store templates (D175) are the platform's work, not the account's stores.
+    join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.starter
     left join commerce.store_roles sr on sr.store_id = m.store_id and sr.id = m.role_id
     left join commerce.store_billing b on b.store_id = s.id
     left join commerce.plans p on p.id = b.plan_id

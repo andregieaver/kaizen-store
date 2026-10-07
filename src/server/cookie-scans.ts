@@ -93,7 +93,7 @@ export async function claimScan(): Promise<{ id: string; storeId: string | null 
           select null::uuid as store_id
           union all
           select s.id from commerce.stores s
-          where s.status = 'active' and (s.is_template or s.setup_completed_at is not null)
+          where s.status = 'active' and not s.starter and (s.is_template or s.setup_completed_at is not null)
             and exists (select 1 from commerce.markets m where m.store_id = s.id and m.active)
         ), last as (
           select sites.store_id,

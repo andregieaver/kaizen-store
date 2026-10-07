@@ -1,7 +1,7 @@
 /**
  * The platform admin's sections (D144), pure data for its layout, its hub pages and the tests that keep them in step
- * with the admin map. Each section has a tab and, where it has pages of its own, a sidebar; Home, Stores, Customers and
- * Requests have none.
+ * with the admin map. Each section has a tab and, where it has pages of its own, a sidebar; Home, Customers and Requests
+ * have none. Stores has had one since store templates (D175).
  */
 
 export const PLATFORM_BASE = "/admin/platform";
@@ -19,6 +19,12 @@ export const WEBSITE_ITEMS: SectionItem[] = [
   item("/headers", "Header", "Headers built from components; choose the one Kaizen's site shows."),
   item("/footers", "Footer", "Footers built from components; choose the one Kaizen's site shows."),
   item("/fonts", "Fonts", "The self-hosted fonts Kaizen's pages use."),
+];
+
+/** The Stores section (D175): every store, and the store templates new stores start from. */
+export const STORE_ITEMS: SectionItem[] = [
+  item("/stores", "All stores", "Every store with its plan, subscription and fee.", true),
+  item("/store-templates", "Store templates", "Starting points for new stores, each a store set up for one kind of business: make, describe, publish, order and preview them."),
 ];
 
 export const PLAN_ITEMS: SectionItem[] = [

@@ -17,7 +17,8 @@ export default async function AdminOverview({ params }: Props) {
   const current = await requireMemberAny((await params).store);
   const { account, store } = current;
   // A new owner's first stop is the setup wizard.
-  if (!store.setupCompletedAt && memberCan(current, "owner")) redirect(`/admin/${store.slug}/setup`);
+  // A store template (D175) is never opened, so its owners are not sent to the setup wizard.
+  if (!store.setupCompletedAt && !store.starter && memberCan(current, "owner")) redirect(`/admin/${store.slug}/setup`);
 
   const [progress, center] = await Promise.all([getSetupProgress(store), controlCenter(account, store.slug)]);
   const figures = center.stores[0];

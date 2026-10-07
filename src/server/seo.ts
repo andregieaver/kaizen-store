@@ -146,7 +146,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   cacheLife("hours");
   cacheTag(STORES_TAG);
   const rows = await readDb().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.seo, s.locales, s.is_template, s.setup_completed_at, s.front_page_id, s.products_page_id,
+    select s.id, s.slug, s.name, s.seo, s.locales, s.is_template, s.starter, s.setup_completed_at, s.front_page_id, s.products_page_id,
       -- The legal pages (wave 1, 1e) keep their own address and stay in the sitemap once published: only D112's roles are left out.
       (select coalesce(array_agg(r.page_id), '{}') from commerce.page_roles r where r.store_id = s.id and r.role <> all(${LEGAL_ROLE_LIST}::text[])) as role_pages,
       greatest(s.created_at, s.setup_completed_at,
@@ -170,7 +170,8 @@ export async function listPublicStores(): Promise<PublicStore[]> {
       seo,
       markets,
       locales: effectiveLocales(((row.locales ?? []) as string[]).map(String), markets),
-      indexable: Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && markets.length > 0,
+      // A store template (D175) is a preview, never for search engines: out of every sitemap and llms.txt.
+      indexable: !row.starter && Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && markets.length > 0,
       updatedAt: new Date(String(row.updated_at)).toISOString(),
       frontPageId: row.front_page_id ? String(row.front_page_id) : null,
       productsPageId: row.products_page_id ? String(row.products_page_id) : null,

@@ -5,8 +5,10 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { suggestSlug } from "@/lib/slug";
+import { STARTER_CATEGORY_LABELS, type OfferedStarter } from "@/lib/store-starters";
 import { requirePlatformAdmin } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
+import { listOfferedStarters } from "@/server/store-starters";
 
 import { decideAction } from "../actions";
 
@@ -19,7 +21,7 @@ export default async function PlatformPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
-  const requests = await listAccessRequests();
+  const [requests, starters] = await Promise.all([listAccessRequests(), listOfferedStarters()]);
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
 
@@ -28,8 +30,8 @@ export default async function PlatformPage() {
       <div>
         <h1 className="text-2xl font-semibold">Access requests</h1>
         <p className="text-sm text-muted">
-          Approving creates the store as a copy of the demo template, makes the requester its
-          owner, and emails them a sign-in link.
+          Approving creates the store as a copy of the store template chosen (the Standard store is the demo
+          template), makes the requester its owner, and emails them a sign-in link.
         </p>
       </div>
 
@@ -40,7 +42,7 @@ export default async function PlatformPage() {
         {pending.length === 0 ? (
           <p className="text-sm text-muted">No requests are waiting.</p>
         ) : (
-          pending.map((request) => <PendingRequest key={request.id} request={request} />)
+          pending.map((request) => <PendingRequest key={request.id} request={request} starters={starters} />)
         )}
       </section>
 
@@ -54,6 +56,7 @@ export default async function PlatformPage() {
               <li key={request.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
                 <span>
                   {request.name} · {request.email} · {request.storeName}
+                  {request.starterTitle && <span className="text-muted"> · from {request.starterTitle}</span>}
                 </span>
                 <span className="text-muted">
                   {request.status === "approved" && request.storeSlug ? (
@@ -73,7 +76,9 @@ export default async function PlatformPage() {
   );
 }
 
-async function PendingRequest({ request }: { request: AccessRequest }) {
+async function PendingRequest({ request, starters }: { request: AccessRequest; starters: OfferedStarter[] }) {
+  // The template the requester chose (D175), even when it is no longer published: the admin then chooses another.
+  const gone = request.starterId && !starters.some((s) => s.id === request.starterId);
   // Suggest a free address; the admin can still change it.
   const base = suggestSlug(request.storeName) || suggestSlug(request.name);
   let slug = base;
@@ -125,6 +130,21 @@ async function PendingRequest({ request }: { request: AccessRequest }) {
             </span>
           </label>
         </div>
+        <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
+          Store template
+          <select name="starter" defaultValue={request.starterId ?? ""} className={control}>
+            <option value="">Standard store</option>
+            {starters.map((starter) => (
+              <option key={starter.id} value={starter.id}>
+                {starter.title} ({STARTER_CATEGORY_LABELS[starter.category]})
+              </option>
+            ))}
+            {gone && <option value={request.starterId ?? ""}>{request.starterTitle ?? "A template"} (not published: choose another)</option>}
+          </select>
+          <span className="font-normal text-muted">
+            {request.starterId ? "Chosen by the requester; change it if another fits better." : "The requester chose none."}
+          </span>
+        </label>
         <div className="flex flex-wrap gap-3">
           <SubmitButton name="decision" value="approve">
             Approve and create store

@@ -223,7 +223,7 @@ export async function refreshAltTexts(perSite = 4, sitesPerRun = 5): Promise<{ o
   const sites = await db().execute<Row>(sql`
     select m.store_id, s.slug from commerce.media m
     left join commerce.stores s on s.id = m.store_id
-    where (m.store_id is null or s.status = 'active') and m.kind = 'image' and m.content_type <> 'image/svg+xml' and (m.alt_source is null or m.alt_source = 'ai')
+    where (m.store_id is null or (s.status = 'active' and not s.starter)) and m.kind = 'image' and m.content_type <> 'image/svg+xml' and (m.alt_source is null or m.alt_source = 'ai')
       and (m.alt_tried_at is null or m.alt_tried_at < now() - interval '1 day')
     group by m.store_id, s.slug
     order by min(m.created_at)

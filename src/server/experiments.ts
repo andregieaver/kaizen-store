@@ -110,7 +110,7 @@ export function runningExperiments(storeId: string): Promise<RunningExperiment[]
 /** The store an address names, for the proxy: the id of an open store by its slug. */
 export function storeIdOfSlug(slug: string): Promise<string | null> {
   return remembered(`store:${slug}`, 60_000, async () => {
-    const [row] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug} and status = 'active' and not is_template limit 1`);
+    const [row] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug} and status = 'active' and not (is_template or starter) limit 1`);
     return row ? String(row.id) : null;
   });
 }

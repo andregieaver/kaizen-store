@@ -3,16 +3,16 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
-import { PLAN_ITEMS, SETTINGS_ITEMS, WEBSITE_ITEMS, sectionPrefixes, withBase } from "./platform-nav";
+import { PLAN_ITEMS, SETTINGS_ITEMS, STORE_ITEMS, WEBSITE_ITEMS, sectionPrefixes, withBase } from "./platform-nav";
 
 const ROOT = "src/app/admin/(gated)/platform";
 /** Sections with no sidebar, and what is in them. */
-const WITHOUT_SIDEBAR = ["stores", "customers", "requests", "assistant"];
+const WITHOUT_SIDEBAR = ["customers", "requests", "assistant"];
 /** Pages that are a section's first page, not in its sidebar. */
 const HUBS = ["website", "settings"];
 
 describe("the platform admin's sections (D144)", () => {
-  const sections = { website: WEBSITE_ITEMS, plans: PLAN_ITEMS, settings: SETTINGS_ITEMS };
+  const sections = { website: WEBSITE_ITEMS, stores: STORE_ITEMS, plans: PLAN_ITEMS, settings: SETTINGS_ITEMS };
 
   it("lists each page once, in one sidebar", () => {
     const paths = Object.values(sections).flatMap((items) => items.map((i) => i.path));

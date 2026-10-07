@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { StarterCards } from "@/components/admin/starter-cards";
 import { StoresList } from "@/components/admin/stores-list";
 import { listClosedStores, listStores, requireAccount } from "@/server/auth";
 import { COPY_PHASE_LABELS } from "@/lib/store-copy";
@@ -9,6 +10,7 @@ import { copyProgressPath } from "@/lib/store-copy-paths";
 import { listHostings } from "@/server/hosts";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
 import { listStoreCopies } from "@/server/store-copy";
+import { starterCards } from "@/server/store-starters";
 
 import { createStoreAction } from "./actions";
 
@@ -25,6 +27,8 @@ export default async function AllStoresPage() {
   // Duplicating (D129) makes one more store, so it has the same room as creating one.
   const canDuplicate = account.platformAdmin || (owned > 0 && owned < MAX_STORES_PER_OWNER);
   const full = !account.platformAdmin && owned >= MAX_STORES_PER_OWNER;
+  // The store templates to start from (D175): the Standard store and the published ones.
+  const cards = canCreate ? await starterCards() : [];
 
   return (
     <div className="flex flex-col gap-8">
@@ -40,14 +44,15 @@ export default async function AllStoresPage() {
       )}
 
       {canCreate && (
-        <section aria-labelledby="new-store" className="flex max-w-xl flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="new-store" className="flex max-w-3xl flex-col gap-3 rounded-lg border border-border bg-background p-5">
           <div>
             <h2 id="new-store" className="font-medium">
               Create a store
             </h2>
             <p className="text-sm text-muted">
-              It starts as a copy of the demo store, with you as owner. You then add your business
-              details, set up payments and choose its plan.
+              It starts as a copy of the store template you choose, with you as owner: its products and services, staff,
+              pages, menus and settings, ready to change. You then add your business details, set up payments and choose
+              its plan.
             </p>
           </div>
           <ActionForm action={createStoreAction} className="flex flex-col gap-3">
@@ -70,6 +75,7 @@ export default async function AllStoresPage() {
                 Lowercase letters, numbers and hyphens. Leave empty to make one from the name.
               </span>
             </label>
+            <StarterCards cards={cards} hint="Preview opens a template's store in a new window, to look around before you choose." />
             <div>
               <SubmitButton>Create store</SubmitButton>
             </div>

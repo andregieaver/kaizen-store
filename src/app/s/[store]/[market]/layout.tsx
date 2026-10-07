@@ -55,9 +55,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     metadataBase: new URL(storeSiteUrl(store.slug)),
     title: { default: title, template: `%s · ${store.name}` },
     description,
-    // A store is not for search engines until its owner opens it, or while they hide it.
+    // A store is not for search engines until its owner opens it, or while they hide it; a store template (D175) never is.
     // A version of the header, footer or product layout under an A/B test (D148) is never a page of its own for search engines.
-    ...(!(store.setupCompletedAt || store.isTemplate) || store.seo.hidden || Object.keys(ab).length > 0 ? { robots: { index: false } } : {}),
+    ...(!(store.setupCompletedAt || store.isTemplate) || store.starter || store.seo.hidden || Object.keys(ab).length > 0 ? { robots: { index: false } } : {}),
     alternates: {
       canonical,
       languages: {
@@ -107,8 +107,10 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
   const headerLayout = header.layout;
   const footerLayout = footer.layout;
   const uiTexts = uiTextsFor(market.lang);
-  const notice =
-    [
+  // A store template (D175) says only that it is one: a preview that takes no orders.
+  const notice = store.starter
+    ? m.starterNotice
+    : [
       !(store.setupCompletedAt || store.isTemplate) && m.previewNotice,
       !store.paymentsOn && (store.setupCompletedAt || store.isTemplate) && m.demoNotice,
       store.paymentsOn && store.paymentsTest && m.testNotice,

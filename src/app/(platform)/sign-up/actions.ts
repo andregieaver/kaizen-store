@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { REFERRAL_COOKIE, referralCodeFor } from "@/lib/referrals";
+import { starterChoice } from "@/lib/store-starters";
 import { createAccessRequest } from "@/server/platform";
 
 const input = z.object({
@@ -38,7 +39,8 @@ export async function requestAccess(_state: FormState, formData: FormData): Prom
   // An unknown or blocked code is dropped inside, so nothing here tells the visitor whether it was good.
   const referralCode = referralCodeFor(String(formData.get("ref") ?? ""), (await cookies()).get(REFERRAL_COOKIE)?.value);
   try {
-    await createAccessRequest({ ...parsed.data, referralCode });
+    // The store template chosen (D175): kept only when it is a published one, checked inside.
+    await createAccessRequest({ ...parsed.data, referralCode, starterId: starterChoice(formData.get("starter")) });
   } catch {
     return { status: "error", messages: ["Your request could not be saved. Please try again."] };
   }

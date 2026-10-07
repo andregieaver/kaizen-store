@@ -44,6 +44,7 @@ async function createStore(slug: string): Promise<Store> {
     status: "active",
     closedAt: null,
     isTemplate: false,
+    starter: false,
     setupCompletedAt: null,
     paymentsOn: false,
     paymentsTest: false,

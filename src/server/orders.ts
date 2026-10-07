@@ -464,13 +464,16 @@ export async function getCheckoutInfo(storeId: string, marketCode: string, view?
         where store_id = ${storeId}::uuid and market_code = ${marketCode}) as amount_minor,
       (select free_over_minor from commerce.shipping_rates
         where store_id = ${storeId}::uuid and market_code = ${marketCode}) as free_over_minor,
-      commerce.vat_rate(${marketCode}, 'standard') as vat_rate
+      commerce.vat_rate(${marketCode}, 'standard') as vat_rate,
+      exists (select 1 from commerce.stores s where s.id = ${storeId}::uuid and s.starter) as starter
   `);
   return {
     /** The market's VAT rate, for showing businesses amounts without it (B2B). */
     vatRate: Number(row?.vat_rate ?? 0),
+    /** A store template (D175): a preview that takes no orders, so payments are off and the cart says why. */
+    starter: Boolean(row?.starter),
     // Test payments also need Kaizen's own test keys to be set.
-    paymentsOn: Boolean(row?.payments_on) && (row?.active_mode !== "test" || platformModes().includes("test")),
+    paymentsOn: !row?.starter && Boolean(row?.payments_on) && (row?.active_mode !== "test" || platformModes().includes("test")),
     shipping:
       row?.amount_minor == null
         ? null

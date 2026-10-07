@@ -31,7 +31,8 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
   // The store's full address: its own host once it has one (P7).
   const origin = storeSiteUrl(store.slug);
   const base = `${origin}${storeBase(store.slug)}`;
-  const open = Boolean(store.setupCompletedAt || store.isTemplate);
+  // A store template (D175) is never open to search engines.
+  const open = Boolean(store.setupCompletedAt || store.isTemplate) && !store.starter;
   const findable = open && !seo.hidden;
 
   return (
@@ -50,7 +51,9 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
           {findable ? "Search engines can find your store" : "Search engines are asked to leave your store out"}
         </h2>
         <p className="text-sm">
-          {!open
+          {store.starter
+            ? "This is a store template: a preview for new stores to start from, never shown to search engines."
+            : !open
             ? "Your store is not opened yet. Once you finish the setup, search engines are welcome."
             : seo.hidden
               ? "You have hidden the store below. Shoppers with the link can still buy."

@@ -10,6 +10,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { PLAN_INTERVALS, percentToBps } from "@/lib/plans";
 import { parsePrice } from "@/lib/product-input";
 import { seoFromForm } from "@/lib/seo";
+import { starterChoice } from "@/lib/store-starters";
 import { siteUrl } from "@/lib/site";
 import { requireAccount, type Account } from "@/server/auth";
 import {
@@ -74,6 +75,8 @@ export async function decideAction(
     String(formData.get("slug") ?? "").trim().toLowerCase(),
     String(formData.get("storeName") ?? ""),
     site,
+    // The store template (D175) as the admin left it on the request; a form without the field keeps the requester's.
+    formData.has("starter") ? starterChoice(formData.get("starter")) : undefined,
   );
   if (!result.ok) return { status: "error", messages: result.problems };
   return {

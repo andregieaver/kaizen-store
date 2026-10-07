@@ -45,6 +45,7 @@ beforeAll(async () => {
       name: "Test",
       status: "active",
       isTemplate: false,
+      starter: false,
       setupCompletedAt: null,
       paymentsOn: true,
       paymentsTest: true,

@@ -126,34 +126,48 @@ export type SendOutcome = "sent" | "logged" | "failed" | "duplicate" | "suppress
 const REMOVED = "[removed]";
 
 /**
- * Whether an email must not be sent: it has no address left, or it is about an order or subscription whose person was erased. A restricted
- * order is cut loose from the person and used for nothing (docs/wave-1g-gdpr.md 2.4), an anonymised order has no address. The evidence kinds
- * (the withdrawal acknowledgement, D153) and the emails about privacy requests themselves are the person's own right and are never held back.
+ * Whether an email must not be sent, and why: it has no address left, it is about an order or subscription whose person was erased, or it
+ * would go to a shopper of a store template (D175), which is a preview and never writes to shoppers (sign-in codes and links included). A
+ * restricted order is cut loose from the person and used for nothing (docs/wave-1g-gdpr.md 2.4), an anonymised order has no address. The
+ * evidence kinds (the withdrawal acknowledgement, D153) and the emails about privacy requests themselves are the person's own right and are
+ * never held back.
  */
-async function suppressed(message: OutgoingEmail): Promise<boolean> {
-  if (!message.to || message.to === REMOVED) return true;
-  if (message.kind.startsWith("privacy.") || emailClassOf(message.kind) === "evidence") return false;
-  if (!message.orderId && !message.subscriptionId) return false;
+async function suppressed(message: OutgoingEmail): Promise<string | null> {
+  if (!message.to || message.to === REMOVED) return ERASED;
+  const kind = emailClassOf(message.kind);
+  if (message.storeId && (kind === "shopper" || kind === "security") && (await isStarter(message.storeId))) {
+    return "suppressed: a store template does not email shoppers";
+  }
+  if (message.kind.startsWith("privacy.") || kind === "evidence") return null;
+  if (!message.orderId && !message.subscriptionId) return null;
   const [row] = await db().execute<Row>(sql`
     select
       exists (select 1 from commerce.orders o where o.id = ${message.orderId ?? null}::uuid and (o.restricted_at is not null or o.anonymised_at is not null)) as order_gone,
       exists (select 1 from commerce.subscriptions s where s.id = ${message.subscriptionId ?? null}::uuid and s.email = ${REMOVED}) as subscription_gone
   `);
-  return Boolean(row?.order_gone || row?.subscription_gone);
+  return row?.order_gone || row?.subscription_gone ? ERASED : null;
+}
+
+const ERASED = "suppressed: the order or its person was erased";
+
+async function isStarter(storeId: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`select starter from commerce.stores where id = ${storeId}::uuid`);
+  return Boolean(row?.starter);
 }
 
 /** Keeps the email, then sends it if email is set up. Never throws. */
 export async function sendEmail(message: OutgoingEmail): Promise<SendOutcome> {
   let id: string;
   try {
-    if (await suppressed(message)) {
+    const held = await suppressed(message);
+    if (held) {
       // Kept as a row (its idempotency key stops a retried webhook from asking again) with nothing of the email in it.
       await db().execute(sql`
         insert into commerce.email_messages (
           store_id, kind, idempotency_key, to_address, subject, html, text, order_id, subscription_id, status, error
         ) values (
           ${message.storeId}::uuid, ${message.kind}, ${message.idempotencyKey ?? null}, ${REMOVED}, ${REMOVED}, '', '',
-          ${message.orderId ?? null}::uuid, ${message.subscriptionId ?? null}::uuid, 'failed', 'suppressed: the order or its person was erased'
+          ${message.orderId ?? null}::uuid, ${message.subscriptionId ?? null}::uuid, 'failed', ${held}
         )
         on conflict (idempotency_key) do nothing
       `);

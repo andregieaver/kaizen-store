@@ -231,7 +231,7 @@ async function platformOverview() {
         (select count(*)::int from commerce.store_billing b where b.status in ('active', 'trialing')) as on_plan,
         (select count(*)::int from commerce.store_billing b where b.status in ('past_due', 'unpaid')) as plan_overdue,
         (select count(*)::int from commerce.access_requests r where r.status = 'pending') as requests_waiting
-      from commerce.stores s where not s.is_template
+      from commerce.stores s where not (s.is_template or s.starter)
     `),
     listPlans(),
     countStoresWithOwnAi(),

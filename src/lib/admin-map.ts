@@ -648,6 +648,11 @@ const PAGES: readonly AdminPage[] = [
   platform("customers", "/customers", "Customers", "Platform", "Store owners with their stores, plans and invoices."),
   platform("customer", "/customers/[accountId]", "Customer", "Platform", "One store owner: stores, plans, invoices and emails."),
   platform("stores", "/stores", "Stores", "Platform", "Every store with its plan, subscription and fee."),
+  platform("store-templates", "/store-templates", "Store templates", "Platform", "Starting points for new stores (D175), each a store set up for one kind of business (appointments, retail, downloads, rentals and stays, subscriptions, services): make one, describe it, publish or unpublish it, order them, open its admin to set it up and preview its storefront.", {
+    tasks: ["Make a new store template", "Publish a store template", "Preview a store template", "Edit a store template's products and pages"],
+    keywords: ["starter", "starting point", "store template", "blueprint"],
+  }),
+  platform("store-template", "/store-templates/[starterId]", "Store template", "Platform", "One store template's title, summary, description, category and picture."),
   platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount."),
   platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "Platform", "One of a store's plan invoices."),
   platform("plans", "/plans", "Plans", "Platform", "Kaizen's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),

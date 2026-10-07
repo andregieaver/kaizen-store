@@ -43,7 +43,10 @@ otherwise.
    adjust the store name and address, and approve or decline.
    `commerce.approve_access_request()` creates the account (or reuses one),
    copies the template with `commerce.clone_store()` and records the decision,
-   in one transaction: if anything fails, nothing changes.
+   in one transaction: if anything fails, nothing changes. The requester may
+   choose a store template (D175, [`store-templates.md`](store-templates.md))
+   at sign-up, which the admin may change; `commerce.starter_source()` decides
+   what is copied.
 3. **Invitation.** The new owner is emailed a sign-in link. It lands on
    `/auth/confirm` and works in any browser (see README for the email
    template this needs).
@@ -54,6 +57,10 @@ otherwise.
    checklist stays right however a setting was changed.
 5. **Preview until open.** Before the owner opens it, the storefront works but
    says it is a preview and asks search engines not to index it.
+
+Store templates (D175) are other sources: real stores marked `starter`, made by
+the platform, which owners choose when they create a store; a starter's source
+adds its operational set-up (`clone_starter_setup()`, [`store-templates.md`](store-templates.md)).
 
 What `clone_store()` copies: markets, payment-method switches, product-safety
 contacts, stock locations and the catalogue (not archived products). Current

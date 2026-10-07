@@ -413,6 +413,11 @@ export const accessRequests = commerce.table(
     storeId: uuid("store_id").references((): AnyPgColumn => stores.id),
     /** The referral code the request came with (D131), checked against `referrers` when the request is approved. */
     referralCode: text("referral_code"),
+    /**
+     * The store template the requester chose (D175, docs/store-templates.md), kept only when it was a published one; the platform admin
+     * may change it before approving. Null: the Standard store (the default template).
+     */
+    starterId: uuid("starter_id").references((): AnyPgColumn => storeStarters.id),
     createdAt: createdAt(),
   },
   (t) => [
@@ -422,6 +427,7 @@ export const accessRequests = commerce.table(
     index("access_requests_decided_by_idx").on(t.decidedBy),
     index("access_requests_store_idx").on(t.storeId),
     index("access_requests_status_idx").on(t.status, t.createdAt),
+    index("access_requests_starter_idx").on(t.starterId),
   ],
 );
 
@@ -451,6 +457,13 @@ export const stores = commerce.table(
     ratesAuto: boolean("rates_auto").notNull().default(false),
     ratesUpdatedAt: timestamp("rates_updated_at", { withTimezone: true }),
     isTemplate: boolean("is_template").notNull().default(false),
+    /**
+     * A store template (D175, docs/store-templates.md): a real store the platform keeps as a starting point for new stores. Never also
+     * `is_template`, never unmarked; it takes no order, is not open for jobs (`store_is_active()`) and is never indexed.
+     */
+    starter: boolean("starter").notNull().default(false),
+    /** The store template this store was made from (D175), for the platform's counts; nothing behaves differently by it. */
+    madeFromStarter: uuid("made_from_starter").references((): AnyPgColumn => storeStarters.id),
     /** When the owner finished the setup wizard. */
     setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }),
     /**
@@ -573,12 +586,60 @@ export const stores = commerce.table(
       sql`${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'forgot-password', 'help', 'hosting', 'mail', 'platform', 'setup', 'sign-in', 'sign-up', 'status', 'stores', 'support', 'www')`,
     ),
     uniqueIndex("stores_one_template_idx").on(t.isTemplate).where(sql`${t.isTemplate}`),
+    check("stores_starter_not_template", sql`not (${t.starter} and ${t.isTemplate})`),
+    index("stores_made_from_starter_idx").on(t.madeFromStarter),
     index("stores_created_by_idx").on(t.createdBy),
     index("stores_country_idx").on(t.country),
     index("stores_front_page_idx").on(t.id, t.frontPageId),
     index("stores_products_page_idx").on(t.id, t.productsPageId),
     index("stores_header_menu_idx").on(t.id, t.headerMenuId),
     index("stores_footer_menu_idx").on(t.id, t.footerMenuId),
+  ],
+);
+
+/**
+ * Store templates (D175, docs/store-templates.md): the description of a store marked `starter`, what owners and the sign-up form are
+ * offered once `published`, in `position` order. One per starter store, never deleted (unpublished instead); the rules are in the
+ * `store_starters_rules` migration (only a starter store, store fixed, no delete). Classified `never` in `COPY_RULES`.
+ */
+export const storeStarters = commerce.table(
+  "store_starters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references((): AnyPgColumn => stores.id),
+    title: text("title").notNull(),
+    /** On the card, plain text. */
+    summary: text("summary").notNull().default(""),
+    /** Longer, plain text. */
+    description: text("description").notNull().default(""),
+    category: text("category").notNull(),
+    /** A picture on the site (`/…`) or over https, from Kaizen's media library; null: none. */
+    pictureUrl: text("picture_url"),
+    position: integer("position").notNull().default(0),
+    published: boolean("published").notNull().default(false),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    uniqueIndex("store_starters_store_idx").on(t.storeId),
+    index("store_starters_offered_idx").on(t.published, t.position),
+    index("store_starters_created_by_idx").on(t.createdBy),
+    index("store_starters_updated_by_idx").on(t.updatedBy),
+    check(
+      "store_starters_category",
+      sql`${t.category} in ('appointments', 'retail', 'downloads', 'rentals_stays', 'subscriptions', 'services', 'other')`,
+    ),
+    check("store_starters_title", sql`length(btrim(${t.title})) between 1 and 80`),
+    check("store_starters_summary", sql`length(${t.summary}) <= 200`),
+    check("store_starters_description", sql`length(${t.description}) <= 2000`),
+    check(
+      "store_starters_picture_url",
+      sql`${t.pictureUrl} is null or (length(${t.pictureUrl}) <= 2000 and ${t.pictureUrl} ~ '^(https://|/[^/])')`,
+    ),
   ],
 );
 

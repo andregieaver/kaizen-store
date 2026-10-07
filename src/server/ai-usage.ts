@@ -179,7 +179,7 @@ export async function usageByDay({ days, ownedBy = null, storeId = null }: Usage
 export async function ownedStores(accountId: string): Promise<{ id: string; slug: string; name: string }[]> {
   const rows = await db().execute<Row>(sql`
     select s.id, s.slug, s.name from commerce.store_members m
-    join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not s.is_template
+    join commerce.stores s on s.id = m.store_id and s.status <> 'closed' and not (s.is_template or s.starter)
     where m.account_id = ${accountId}::uuid and m.role = 'owner' and m.disabled_at is null
     order by s.name
   `);

@@ -4,7 +4,7 @@ import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
-import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, WEBSITE_ITEMS, sectionPrefixes, withBase } from "@/lib/platform-nav";
+import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, STORE_ITEMS, WEBSITE_ITEMS, sectionPrefixes, withBase } from "@/lib/platform-nav";
 import { requirePlatformAdmin } from "@/server/auth";
 import { countPendingRequests } from "@/server/platform";
 
@@ -23,17 +23,20 @@ const FULL_WIDTH = String.raw`^/admin/platform/(pages|articles|headers|footers)/
 const base = PLATFORM_BASE;
 
 /**
- * The platform's sections (D144), each with its own sidebar or none: Home, Customers, Stores and Requests need none.
+ * The platform's sections (D144), each with its own sidebar or none: Home, Customers and Requests need none; Stores has its
+ * store templates beside it (D175).
  * Every page of the level is in exactly one area, by its address, which also marks the section's tab.
  */
 const website = sectionPrefixes("/website", WEBSITE_ITEMS);
 const planPages = sectionPrefixes(null, PLAN_ITEMS);
+const storePages = sectionPrefixes(null, STORE_ITEMS);
 const settings = sectionPrefixes("/settings", SETTINGS_ITEMS);
 
 const areas: NavArea[] = [
   { prefixes: [], exact: [base], groups: [] },
   { prefixes: website, groups: [{ heading: "Website", items: withBase(WEBSITE_ITEMS) }] },
-  { prefixes: [`${base}/stores`, `${base}/customers`, `${base}/requests`, `${base}/assistant`], groups: [] },
+  { prefixes: storePages, groups: [{ heading: "Stores", items: withBase(STORE_ITEMS) }] },
+  { prefixes: [`${base}/customers`, `${base}/requests`, `${base}/assistant`], groups: [] },
   { prefixes: planPages, groups: [{ heading: "Plans", items: withBase(PLAN_ITEMS) }] },
   { prefixes: settings, groups: [{ heading: "Settings", items: withBase(SETTINGS_ITEMS) }] },
 ];
@@ -50,7 +53,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
   const tabs: NavItem[] = [
     { href: base, label: "Home", exact: true, icon: "home" },
     { href: `${base}/website`, label: "Website", icon: "monitor", also: website },
-    { href: `${base}/stores`, label: "Stores", icon: "shopping-bag" },
+    { href: `${base}/stores`, label: "Stores", icon: "shopping-bag", also: storePages },
     { href: `${base}/customers`, label: "Customers", icon: "users" },
     { href: `${base}/plans`, label: "Plans", icon: "credit-card", also: planPages },
     { href: `${base}/requests`, label: "Requests", icon: "bell", badge: waiting },
