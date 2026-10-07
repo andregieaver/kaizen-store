@@ -8,7 +8,7 @@
  */
 import { PRODUCT_PART_FEATURES, SITE_PART_FEATURES, type ProductPart, type SitePart } from "./page-content";
 import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
-import { shopPartFeature, type ShopPart } from "./store-parts";
+import { shopPartAfterSale, shopPartFeature, type ShopPart } from "./store-parts";
 
 /** A block as far as its part goes: a shop component, a site part or a product part (anything else stands behind no feature). */
 type PartBlock = { type: string; part?: unknown };
@@ -31,6 +31,14 @@ export function partFeature(block: PartBlock): FeatureRequirement | undefined {
 export function partFeatureOn(block: PartBlock, features: FeatureSource | null | undefined): boolean {
   if (!features) return true;
   return requirementMet(features, partFeature(block));
+}
+
+/**
+ * Whether the site still draws a block while its feature is off (D178): a shop component that serves shoppers' links to what they already
+ * have (`afterSale`, a subscription's page). The palette leaves it out all the same.
+ */
+export function partDrawsWhenOff(block: PartBlock): boolean {
+  return block.type === "storePart" && shopPartAfterSale(block.part as ShopPart);
 }
 
 /** Every feature tag of every part, for the test that holds them to real feature ids. */

@@ -2108,6 +2108,13 @@
       "when": 1791396929397,
       "tag": "20261007181529_store_features_customers_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 301,
+      "version": "7",
+      "when": 1791403459379,
+      "tag": "20261007200419_store_features_selling_rules",
+      "breakpoints": true
     }
   ]
 }

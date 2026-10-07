@@ -150,7 +150,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
         <p className="text-sm text-muted">
           Rates are units of the currency per 1 euro, as the European Central Bank publishes them. A currency needs a
           rate, and so does each country&apos;s own, before amounts can be shown in it. Converted amounts are rounded to
-          the step you choose. Subscriptions and weekly deliveries are only in a country&apos;s own currency.
+          the step you choose. Subscriptions and subscription boxes are only in a country&apos;s own currency.
         </p>
         <ActionForm action={saveCurrenciesAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <table className="w-full rounded-lg border border-border bg-background text-left text-sm">

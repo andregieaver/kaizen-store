@@ -59,7 +59,9 @@ async function Account({ store, market, query }: { store: Store; market: Market;
 
   const [orders, subscriptions, lastAddress, mine, bonus, referrals] = await Promise.all([
     listCustomerOrders(store.id, customer.id),
-    listCustomerSubscriptions(store.id, customer.id),
+    // Subscriptions (D178): the list is there while the feature is on; switching it off waits until none runs, and each one's own link
+    // from its emails keeps working.
+    featureOn(store, "subscriptions") ? listCustomerSubscriptions(store.id, customer.id) : Promise.resolve(null),
     customer.address.line1 ? Promise.resolve(null) : lastShippingAddress(store.id, customer.id),
     companyOf(store.id, customer.id),
     shopperBonus({ storeId: store.id, market }, customer.id),
@@ -148,6 +150,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
         )}
       </section>
 
+      {subscriptions && (
       <section aria-labelledby="subscriptions-heading" className="flex flex-col gap-3">
         <h2 id="subscriptions-heading" className="text-xl font-heading">{a.subscriptions}</h2>
         {subscriptions.length === 0 ? (
@@ -175,6 +178,7 @@ async function Account({ store, market, query }: { store: Store; market: Market;
           </ul>
         )}
       </section>
+      )}
 
       <section aria-labelledby="details-heading" className="flex flex-col gap-3">
         <h2 id="details-heading" className="text-xl font-heading">{a.details}</h2>

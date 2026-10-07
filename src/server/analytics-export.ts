@@ -8,6 +8,7 @@ import { addDays, bucketFor, todayIn, type AnalyticsPeriod } from "@/lib/analyti
 import { UNKNOWN_CHANNEL, channelLabel } from "@/lib/analytics-traffic";
 import { writeCsv, type DialectId, isDialect } from "@/lib/csv";
 import { mainCurrency } from "@/lib/markets";
+import { featureOn } from "@/lib/store-features";
 
 import { codeKindText, trendMonths } from "@/components/admin/analytics/discounts-view";
 import { WHERE_IT_WENT, lineOf, plainLabel } from "@/components/admin/analytics/finance-view";
@@ -461,7 +462,11 @@ const FORBIDDEN: AnalyticsExportResult = { ok: false, reason: "forbidden", messa
 const UNKNOWN: AnalyticsExportResult = { ok: false, reason: "unknown", message: "That table cannot be downloaded." };
 
 /** Whether this member may download this table (`analytics:write`, and the owner role for the tables of `OWNER_ONLY_TABLES`). */
-export const mayExportTable = (member: Membership, tableId: string): boolean => memberCan(member, "analytics:write") && (!OWNER_ONLY_TABLES.has(tableId) || memberCan(member, "owner"));
+export const mayExportTable = (member: Membership, tableId: string): boolean =>
+  memberCan(member, "analytics:write") &&
+  (!OWNER_ONLY_TABLES.has(tableId) || memberCan(member, "owner")) &&
+  // The subscriptions page is hidden while that feature is off (D178), and so are its files.
+  (ANALYTICS_TABLES[tableId]?.page !== "subscriptions" || featureOn(member.store, "subscriptions"));
 
 /** The table's rows as the page draws them for an address, before they are written: what the tests compare with the loaders. */
 export async function buildTable(ctx: AnalyticsContext, tableId: string, query: Query): Promise<{ table: AnalyticsTable; data: TableData; leftOut: LeftOut } | null> {

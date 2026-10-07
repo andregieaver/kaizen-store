@@ -538,7 +538,7 @@ const PAGES: readonly AdminPage[] = [
   store("design", "/settings/design", "Design", "Store", "The store's theme: colours, fonts, buttons, cards, light and dark; and design profiles, a whole look (theme, header, footer, product page and CSS) to apply and put back.", {
     keywords: ["theme", "colours", "fonts", "look", "design profile", "design template"],
   }),
-  store("close", "/settings/close", "Close store", "Store", "Closes the store: stops sales, ends the Kaizen plan at the end of its period, releases its domains and cancels orders waiting for payment, after a fresh sign-in and the store's address typed in. Blocked while paid goods are unsent or subscriptions and weekly deliveries run. Nothing is deleted; the owner can reopen for thirty days. For a closed or suspended store the page shows its status and the reopen button.", {
+  store("close", "/settings/close", "Close store", "Store", "Closes the store: stops sales, ends the Kaizen plan at the end of its period, releases its domains and cancels orders waiting for payment, after a fresh sign-in and the store's address typed in. Blocked while paid goods are unsent or subscriptions and subscription boxes run. Nothing is deleted; the owner can reopen for thirty days. For a closed or suspended store the page shows its status and the reopen button.", {
     needs: "owner",
     keywords: ["close store", "delete store", "archive store", "shut down", "stop selling", "reopen store", "suspend"],
     tasks: ["Close the store", "See what stops me closing the store", "Reopen a closed store"],

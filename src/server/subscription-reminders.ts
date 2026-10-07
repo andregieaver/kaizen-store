@@ -23,6 +23,8 @@ export async function sendDueReminders(now = new Date()): Promise<ReminderRun> {
     select store_id, id, reminded_for from commerce.subscriptions
     where status in ('active', 'paused') and email is not null
       and not cancel_at_period_end and cancel_at is null
+      -- Only in a store with Subscriptions on (D178; switching it off waits until none runs, so this is a guard).
+      and commerce.feature_on(store_id, 'subscriptions')
       and current_period_end between ${now.toISOString()}::timestamptz
                                  and ${now.toISOString()}::timestamptz + interval '8 days'
     order by current_period_end

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { defaultHours, openingHoursInput, parseOpeningHours, type OpeningHours } from "@/lib/opening-hours";
+import { featureOffText, featureOn, resourceFeature } from "@/lib/store-features";
 
 import { audit, type Membership } from "./auth";
 import { noShowFeeFor } from "./no-show";
@@ -113,6 +114,17 @@ const resourceColumns = sql`
     where b.store_id = r.store_id and b.resource_id = r.id and b.status = 'confirmed' and b.starts_at > now()) as upcoming
 `;
 
+/**
+ * Whether a resource of the store belongs to a feature that is on (D178): a member of staff while Appointments is on, a room or an item
+ * while Stays and rentals is. False for one that is not the store's. Changes to a resource and its calendar ask it.
+ */
+export async function resourceFeatureOn(store: { id: string; features: readonly string[] }, resourceId: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    select kind from commerce.booking_resources where store_id = ${store.id}::uuid and id = ${resourceId}::uuid
+  `);
+  return Boolean(row) && featureOn(store, resourceFeature(String(row.kind)));
+}
+
 /** The store's staff who take appointments (or its units or items), in their order; those switched off last. */
 export async function listResources(storeId: string, kinds: readonly ResourceKind[] = ["staff"]): Promise<BookingResource[]> {
   const rows = await db().execute<Row>(sql`
@@ -163,6 +175,8 @@ export async function saveResource(
   values: Record<string, unknown>,
   kind: ResourceKind = "staff",
 ): Promise<SaveResourceResult> {
+  // Staff are part of Appointments, rooms and items of Stays and rentals (D178): nothing of a feature that is off is changed.
+  if (!featureOn(store, resourceFeature(kind))) return { ok: false, problems: [featureOffText(resourceFeature(kind))] };
   const parsed = kind === "staff" ? resourceInput.safeParse(values) : unitInput.safeParse(values);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const r = parsed.data;
@@ -198,6 +212,7 @@ export async function saveResource(
  * switched off, so their bookings keep who they were with.
  */
 export async function removeResource({ account, store }: Membership, id: string): Promise<boolean> {
+  if (!(await resourceFeatureOn(store, id))) return false;
   const [booked] = await db().execute<Row>(sql`
     select 1 from commerce.bookings where store_id = ${store.id}::uuid and resource_id = ${id}::uuid limit 1
   `);

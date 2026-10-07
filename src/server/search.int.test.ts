@@ -24,6 +24,8 @@ beforeAll(async () => {
   const [store] = await db().execute<Row>(sql`
     select commerce.approve_access_request(${String(request.id)}::uuid, ${`search-${run}`}, 'Test', null) as id
   `);
+  // A new store starts with the shop alone (D178): the demo appointment, stay and rental are offered with their features on, as an owner switches them under Features.
+  await db().execute(sql`update commerce.stores set features = features || array['appointments', 'bookings']::text[] where slug = ${`search-${run}`}`);
   storeId = String(store.id);
   const rows = await db().execute<Row>(sql`select id, handle from commerce.products where store_id = ${storeId}::uuid`);
   for (const row of rows) handle.set(String(row.id), String(row.handle));

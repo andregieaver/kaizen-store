@@ -45,13 +45,13 @@ import { WishlistSection } from "@/app/s/[store]/[market]/wishlist/wishlist-sect
 import { t } from "@/lib/i18n";
 import type { StorePartBlock } from "@/lib/page-content";
 import { requirementMet } from "@/lib/store-features";
-import { routeOfPart, shopPartFeature, type ShopPart, type StoreRoute } from "@/lib/store-parts";
+import { routeOfPart, shopPartAfterSale, shopPartFeature, type ShopPart, type StoreRoute } from "@/lib/store-parts";
 import { storeAndMarket, type GridPlace } from "@/server/content-grid";
 
 /**
  * One of a store's working pages (D113) on a page built in the page builder:
  * the cart, checkout, order confirmation, My account, sign-in, wishlists, a
- * subscription, weekly deliveries or the cookies list, the same components
+ * subscription, subscription boxes or the cookies list, the same components
  * the standard pages are made of. It draws only on the route it belongs to,
  * where the address carries what it needs (`place.route`); anywhere else it
  * draws nothing. The cart, checkout and order pages also come in pieces
@@ -81,8 +81,9 @@ async function Part({
   const shop = await storeAndMarket(owner, marketCode);
   if (!shop) return null;
   const { store, market } = shop;
-  // A component of a store feature that is off draws nothing (D178): the bonus credits with the bonus program off.
-  if (!requirementMet(store, shopPartFeature(part))) return null;
+  // A component of a store feature that is off draws nothing (D178): the bonus credits with the bonus program off. One that serves shoppers'
+  // links to what they already have (a subscription's page) still draws.
+  if (!requirementMet(store, shopPartFeature(part)) && !shopPartAfterSale(part)) return null;
   const query = route.query ?? Promise.resolve({});
   const m = t(market.lang);
   const order = route.param ? { store, market, orderId: route.param, query } : null;

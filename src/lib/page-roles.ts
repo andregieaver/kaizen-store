@@ -11,7 +11,7 @@ import { STORE_PART_KEYS, isStorePart, type ShopPart, type StorePart } from "./s
  * page shown when an address is not found (a real 404); and (D113) the
  * store's working pages, each holding the component that draws it
  * (`STORE_PARTS`): cart, checkout, order confirmation, My account, sign-in,
- * wishlists, a subscription, weekly deliveries and cookies.
+ * wishlists, a subscription, subscription boxes and cookies.
  */
 export const PAGE_ROLES = ["blog", "search", "not_found", ...STORE_PART_KEYS] as const;
 export type PageRole = (typeof PAGE_ROLES)[number];
@@ -115,10 +115,10 @@ export const ROLE_COPY: Record<
     slug: "subscription-page",
   },
   deliveries: {
-    name: "Weekly deliveries page",
+    name: "Subscription boxes page",
     address: "/deliveries",
-    standard: "The standard deliveries page",
-    hint: "What shoppers see at their weekly deliveries (/deliveries), when you offer them: the standard page, or one of your published pages with the Weekly deliveries component.",
+    standard: "The standard subscription boxes page",
+    hint: "What shoppers see at their subscription box (/deliveries), when you offer subscription boxes: the standard page, or one of your published pages with the Subscription boxes component.",
     slug: "deliveries-page",
   },
   category: {

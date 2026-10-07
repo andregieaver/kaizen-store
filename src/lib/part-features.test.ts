@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { allPartFeatureTags, partFeature, partFeatureOn } from "./part-features";
+import { allPartFeatureTags, partDrawsWhenOff, partFeature, partFeatureOn } from "./part-features";
 import { SHOP_PART_KEYS, shopPartFeature } from "./store-parts";
 import { isFeatureId, type FeatureRequirement } from "./store-features";
 
@@ -33,5 +33,18 @@ describe("parts of pages that stand behind a store feature (D178)", () => {
     expect(partFeatureOn(credits, ["bonus"])).toBe(false);
     expect(partFeatureOn(credits, null)).toBe(true);
     expect(partFeatureOn({ type: "site", part: "logo" }, [])).toBe(true);
+  });
+
+  it("tags the Selling group's parts, and keeps a subscription's page drawn for its links (step 3)", () => {
+    expect(partFeature({ type: "storePart", part: "subscription" })).toBe("subscriptions");
+    expect(partFeature({ type: "storePart", part: "deliveries" })).toBe("boxes");
+    expect(partFeature({ type: "product", part: "host" })).toBe("bookings");
+    // History of an order stays: its subscription and bookings are shown whatever is switched on now.
+    expect(partFeature({ type: "storePart", part: "order_subscription" })).toBeUndefined();
+    expect(partFeature({ type: "storePart", part: "order_bookings" })).toBeUndefined();
+    expect(partFeatureOn({ type: "storePart", part: "subscription" }, ["shop"])).toBe(false);
+    expect(partDrawsWhenOff({ type: "storePart", part: "subscription" })).toBe(true);
+    expect(partDrawsWhenOff({ type: "storePart", part: "deliveries" })).toBe(false);
+    expect(partDrawsWhenOff({ type: "product", part: "host" })).toBe(false);
   });
 });

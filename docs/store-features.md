@@ -84,9 +84,9 @@ When a feature is off (not kept, or asleep):
    `src/lib/store-nav.ts` and on `AdminPage` in `src/lib/admin-map.ts`), its AI manager tools (`TOOL_FEATURES` in
    `src/lib/owner-tool-features.ts`) and, from step 2, its parts of other pages (a product's purchase options, the
    bonus panel on a customer).
-2. **Hidden in the storefront** (step 3): no subscribe option, no box button, no booking picker, no business toggle,
+2. **Hidden in the storefront**: no subscribe option, no box button, no booking picker, no business toggle,
    no credits, no currency or language chooser beyond the main one.
-3. **Refused by the server** (step 4): carts, checkout, actions, routes and tools refuse what belongs to it, whatever
+3. **Refused by the server**: carts, checkout, actions, routes and tools refuse what belongs to it, whatever
    a stale page sends.
 4. **Nothing is deleted**: products, plans, delivery days, staff, rooms, credits, referrers, translations, markets and
    currencies stay; switching back on restores them as they were.
@@ -155,6 +155,48 @@ cookie is not declared, new carts get no welcome discount and new orders are not
 the reward email goes out: that reward was promised. Referrers and their history are kept, an order's referral card stays on orders
 that have an attribution, and the analytics' "Welcome discounts (referral)" line shows a period that had some.
 
+## 4c. The Selling group (step 3)
+
+**One rule for what a shopper is offered.** A product is offered only while what its kind needs is on: an appointment needs
+*Appointments*, a stay or a rental *Stays and rentals*, a product sold only as a subscription *Subscriptions* (`kindOffered()`/`kindFeature()`
+in `src/lib/store-features.ts`, `commerce.kind_offered()` in SQL, migration `store_features_selling_rules`). It is part of `OFFERED`
+(`src/server/product-conditions.ts`), so every shopper-facing product read already asks it: listings, the product page (a 404), search,
+grids, recommendations, the sitemap and llms.txt, wishlists, WordPress, the chat agent, the cart and `placeOrder()`.
+`selling-readers.scan.test.ts` keeps `commerce.kind_offered()` to that one fragment. A new store starts with the shop alone, so the
+template's demo appointment, stay and rental are offered nowhere until the owner switches their feature on. The admin's product list says
+"Not shown: Appointments is off" beside such a product, and so does the setup wizard's product step.
+
+**Subscriptions (`subscriptions`).** Purchase options are offered while it is on (`plansOffered()`: the product page's options, a cart line on a
+plan and what a checkout sells; the scan test lists the readers). Off: a product sold both ways is sold once only, one sold only as a
+subscription is not offered, a line on a plan already in a cart is unavailable (the cart has no plan, renewal or consent tick, and checkout
+waits until it is removed), the product editor shows no purchase options (`saveProduct()` keeps the product's options and "only as a
+subscription" as stored, whatever a stale page sends), the discount editor does not offer "every renewal" (a code that has it keeps it), My
+account has no Subscriptions list, the customer's page no subscriptions figure or list, the integrations no subscription events (chosen ones
+are kept), the subscriptions analytics files are refused, and the renewal reminders skip the store. **After-sale stays**: a subscription's own
+page (`/subscription/{token}`, its shop component is `afterSale` and draws while the feature is off), its emails' links, the order's
+subscription card and the admin's links on orders. Switching off waits while any subscription runs, so there is nothing to renew.
+
+**Subscription boxes (`boxes`).** Every reader asks the feature (`commerce.feature_on(store, 'boxes')`; `store.deliveriesOn` is derived from
+it): the shopper's `/deliveries` (a 404) and its actions, My account's card, the product page's *Add to box*, the box cutoffs
+(`prepareDueDeliveries()`), the delivery days' editor (its action refuses). The shop component and page place are named *Subscription boxes*
+and tagged `boxes`. A box order already made stays chargeable and sendable from the order (switching off waits while a list is active or
+paused or a box order waits to be sent and paid).
+
+**Appointments (`appointments`) and Stays and rentals (`bookings`, with hosts).** Each kind apart: the product editor offers a kind only while
+its feature is on (a product keeps its own kind, and can still be edited; `saveProduct()` refuses making one of a kind that is off), so the
+accommodation VAT category (offered only for stays and rentals) follows. The booking pickers' loaders (`loadOffer()` and `loadRange()`)
+ask the booking's own feature, so no time is offered, checked, held (the cart, `placeOrder()`) or moved by a shopper while it is off.
+Staff (Appointments) and rooms and items (Stays and rentals) are changed, and their calendars' blocks and feeds kept, only while their feature
+is on (`saveResource()`, `removeResource()`, `resourceFeatureOn()`); a resource's published iCal (`/api/calendar/{token}.ics`) is a 404 and
+its other calendars are not read (`syncDueFeeds()`) while it is off. The week calendar is the appointments'; with only stays and rentals on
+it opens their calendar. Hosts are Stays and rentals': the host area (`getHosting()`, `listHostings()`) is not there while it is off, and the
+store's host actions refuse. The `host` product part is tagged `bookings`. Booking reminders go only for a booking whose feature is on. Hosts'
+commissions already owed are still paid out (`payHostCommissions()` is not gated: money owed is after-sale; switching off waits until none
+is unpaid). **After-sale stays**: an order's booking times and its `order_bookings` piece, the venue balance, a booking's emails and cancel
+link, staff cancelling a booking or marking a no-show, and the DAC7 report's file (a tax obligation for what was sold).
+
+The AI manager's `store_overview` names the features that are on; `list_bookings` lists each kind while its feature is on.
+
 ## 5. Blockers and warnings
 
 Counted by `featureFacts()` (one query, reusing `storeObligations()` of `src/server/store-closure.ts`); the rules are
@@ -201,13 +243,11 @@ The store's own country is `stores.country`'s market, else its first active mark
    tools gated, `FeatureOff` on the gated pages, the new Features page.
 2. **The framework for hiding, and the Customers group** (done): section 4a's helpers (`FeatureOffNote`, `resolveFeatureShop()`,
    part tags, cookie tags) and `business`, `bonus` and `referrals` hidden and refused everywhere, admin and storefront, with the
-   rules of section 4b (migration `store_features_customers_rules`). Later steps hide the other features' parts of pages (product
-   editor purchase options and kinds, currency and language choosers, hosts in products, analytics subscription figures, setup
-   steps) with the same helpers.
-3. **Storefront hiding**: subscribe options, box button and My account's box page, booking pickers, business toggle and
-   prices without VAT, credits and referral pages, currency and language choosers, other markets, sitemap and feeds.
-4. **Server enforcement**: carts, checkout, server actions, routes, crons (renewals, box cutoffs, reminders, calendar
-   sync) and AI tools refuse a feature that is off, with `checkout-kinds.int.test.ts` scenarios.
+   rules of section 4b (migration `store_features_customers_rules`).
+3. **The Selling group** (done): `subscriptions`, `boxes`, `appointments` and `bookings` hidden and refused everywhere, admin, storefront,
+   server and jobs, with the rules of section 4c (migration `store_features_selling_rules`), and `checkout-kinds.int.test.ts` scenarios.
+4. **Countries and languages**: `countries`, `languages` and `currencies`: currency and language choosers, other markets, sitemap and
+   feeds, the server refusing them.
 5. **Redirects and website mode**: the storefront with the shop off (no prices, cart or checkout, product pages as
    content), addresses of a feature that is off answered sensibly (a 404 or a redirect), legal starters following the
    features.

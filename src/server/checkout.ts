@@ -33,7 +33,7 @@ import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails
 import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable } from "./cart";
-import { OFFERED, STORE_AUDIENCE } from "./product-conditions";
+import { OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
@@ -149,7 +149,8 @@ function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
         cl.variant_id, cl.quantity, v.sku, v.options, v.delivery, p.id as product_id, p.audience,
         cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
         coalesce((sp.signup_fee ->> ${market.code})::bigint, 0) as signup_fee,
-        (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
+        -- A purchase option still offered (Subscriptions on, D178), or buying once where that is allowed.
+        (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) and ${plansOffered(sql`cl.store_id`)} end) as plan_ok,
         coalesce(v.tax_code, p.tax_code) as tax_code, p.withdrawal_exclusion,
         commerce.vat_rate(${market.code}, p.vat_category) as vat_rate,
         coalesce(tl.title, tf.title, p.handle) as title,

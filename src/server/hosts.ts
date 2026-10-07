@@ -9,6 +9,7 @@ import { db } from "@/db/client";
 
 import { audit, getAccount, requireAccount, type Account, type Membership } from "./auth";
 import { getStore, type Store } from "./stores";
+import { featureOn } from "@/lib/store-features";
 
 /**
  * Outside hosts (D71): a store running a marketplace lists stays and
@@ -161,6 +162,8 @@ export async function listHostings(account: Account): Promise<{ slug: string; na
     select s.slug, s.name, h.name as host_name from commerce.hosts h
     join commerce.stores s on s.id = h.store_id
     where h.account_id = ${account.id}::uuid and h.disabled_at is null and s.status <> 'closed'
+      -- Hosts are part of Stays and rentals (D178): while it is off the store has no host area.
+      and commerce.feature_on(s.id, 'bookings')
     order by lower(s.name)
   `);
   return rows.map((row) => ({ slug: String(row.slug), name: String(row.name), hostName: String(row.host_name) }));
@@ -170,7 +173,8 @@ export const getHosting = cache(async (storeSlug: string): Promise<Hosting | nul
   const account = await getAccount();
   if (!account) return null;
   const store = await getStore(storeSlug);
-  if (!store || store.status === "closed") return null;
+  // Hosts are part of Stays and rentals (D178): while it is off the host area is not there (a 404), and its actions are refused.
+  if (!store || store.status === "closed" || !featureOn(store, "bookings")) return null;
   const [row] = await db().execute<Row>(sql`
     select id, name, commission_bps from commerce.hosts
     where store_id = ${store.id}::uuid and account_id = ${account.id}::uuid and disabled_at is null

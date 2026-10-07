@@ -22,6 +22,8 @@ export type ProductRowView = {
   digitalVariants: number;
   stock: number;
   price: { min: number; max: number; currency: string } | null;
+  /** The feature that is off and keeps it from shoppers (D178), or null. */
+  hiddenBy?: string | null;
 };
 
 export type BulkTools = {
@@ -258,7 +260,10 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
                   </span>
                 </Link>
               </td>
-              <td className="px-4 py-2">{product.status === "active" ? "Published" : product.status === "draft" ? "Draft" : "Archived"}</td>
+              <td className="px-4 py-2">
+                {product.status === "active" ? "Published" : product.status === "draft" ? "Draft" : "Archived"}
+                {product.status === "active" && product.hiddenBy && <span className="block text-xs text-muted">Not shown: {product.hiddenBy} is off</span>}
+              </td>
               <td className="hidden px-4 py-2 sm:table-cell">
                 {product.digitalVariants > 0 && product.digitalVariants === product.variants ? (
                   <span className="text-muted">Digital</span>

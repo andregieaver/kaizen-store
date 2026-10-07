@@ -55,7 +55,8 @@ async function loadRange(q: Queryable, storeId: string, productId: string): Prom
     from commerce.appointment_settings a
     join commerce.products p on p.store_id = a.store_id and p.id = a.product_id
       and p.kind in ('stay', 'rental') and p.status = 'active'
-    join commerce.stores s on s.id = a.store_id and 'bookings' = any(s.modules)
+    -- Stays and rentals are booked while their store feature is on (D178): off, no dates are offered or held.
+    join commerce.stores s on s.id = a.store_id and commerce.feature_on(s.id, 'bookings')
     left join commerce.store_locations l on l.store_id = a.store_id and l.id = a.location_id
     where a.store_id = ${storeId}::uuid and a.product_id = ${productId}::uuid
   `);

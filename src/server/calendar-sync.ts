@@ -195,6 +195,8 @@ export async function calendarForToken(token: string): Promise<{ name: string; f
     select r.id, r.store_id, r.kind, r.name, s.time_zone
     from commerce.booking_resources r join commerce.stores s on s.id = r.store_id
     where r.calendar_token = ${token}
+      -- Published while the resource's feature is on (D178): staff are appointments', rooms and items stays and rentals'.
+      and commerce.feature_on(s.id, case when r.kind = 'staff' then 'appointments' else 'bookings' end)
   `);
   if (!resource) return null;
   const kind = asKind(resource.kind);
@@ -413,11 +415,14 @@ export async function syncDueFeeds(fetcher: typeof fetch = fetch): Promise<{ syn
   const due = await db().execute<Row>(sql`
     update commerce.calendar_feeds f set synced_at = now()
     where f.id in (
-      select id from commerce.calendar_feeds
-      where (synced_at is null or synced_at < now() - make_interval(mins => ${SYNC_MINUTES})) and commerce.store_is_active(store_id)
-      order by synced_at nulls first
+      select f2.id from commerce.calendar_feeds f2
+      join commerce.booking_resources r on r.store_id = f2.store_id and r.id = f2.resource_id
+      where (f2.synced_at is null or f2.synced_at < now() - make_interval(mins => ${SYNC_MINUTES})) and commerce.store_is_active(f2.store_id)
+        -- Only while the resource's feature is on (D178): staff are appointments', rooms and items stays and rentals'.
+        and commerce.feature_on(f2.store_id, case when r.kind = 'staff' then 'appointments' else 'bookings' end)
+      order by f2.synced_at nulls first
       limit ${SYNC_BATCH}
-      for update skip locked
+      for update of f2 skip locked
     )
     returning f.store_id, f.id
   `);

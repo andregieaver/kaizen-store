@@ -711,6 +711,8 @@ export const RELATED_MAX = 12;
  */
 export const PRODUCT_PART_FEATURES: Partial<Record<ProductPart, FeatureRequirement>> = {
   notice: "business",
+  // A stay's or rental's host (D71): hosts are part of Stays and rentals.
+  host: "bookings",
 };
 
 /** How custom fields (D118) are drawn: a specification table, `label: value` lines or small cards. */

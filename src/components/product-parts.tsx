@@ -51,7 +51,7 @@ import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
 import type { Store } from "@/server/stores";
 import { partFeatureOn } from "@/lib/part-features";
-import type { FeatureSource } from "@/lib/store-features";
+import { featureOn, type FeatureSource } from "@/lib/store-features";
 
 /**
  * The parts of a product's page (D79), each drawn where a product layout
@@ -454,7 +454,7 @@ async function AppointmentBooking({
     getAppointmentOffer(store.id, product.id),
     appointmentSlots(store.id, product.id),
   ]);
-  if (!store.bookingsOn || !offer || !week) return <p>{m.booking.notBookable}</p>;
+  if (!featureOn(store, "appointments") || !offer || !week) return <p>{m.booking.notBookable}</p>;
   const facts = [
     m.booking.duration(offer.rules.durationMinutes),
     offer.staff.length === 1 && m.booking.withStaff(offer.staff[0].name),
@@ -525,7 +525,7 @@ async function RangeBooking({
     rangeDates(store.id, product.id, null, undefined, firstPeriod),
     getRangePricing(store.id, product.id, market.code, market),
   ]);
-  if (!store.bookingsOn || !offer || !month) return <p>{m.booking.notBookable}</p>;
+  if (!featureOn(store, "bookings") || !offer || !month) return <p>{m.booking.notBookable}</p>;
   const stay = offer.kind === "stay";
   const { rules } = offer;
   // The fee and the seasons' prices (D70), for the variant by the night or day (else the first).

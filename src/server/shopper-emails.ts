@@ -1075,6 +1075,10 @@ export async function sendDueBookingReminders(limit = 100): Promise<number> {
       where b.status = 'confirmed' and b.reminded_at is null
         and b.starts_at > now()
         and s.status = 'active' and s.booking_reminder_hours > 0
+        -- The booking's own feature is on (D178): appointments, or stays and rentals. Switching one off waits until none is to come.
+        and commerce.feature_on(s.id, case when exists (
+          select 1 from commerce.products p where p.store_id = b.store_id and p.id = b.product_id and p.kind = 'appointment'
+        ) then 'appointments' else 'bookings' end)
         and b.starts_at <= now() + make_interval(hours => s.booking_reminder_hours)
         and b.created_at <= b.starts_at - make_interval(hours => s.booking_reminder_hours)
         and o.status in ('paid', 'fulfilled') and o.email <> '' and o.restricted_at is null and o.anonymised_at is null

@@ -61,6 +61,8 @@ beforeAll(async () => {
   const [store] = await db().execute<Row>(sql`
     select commerce.approve_access_request(${String(request.id)}::uuid, ${`cost-${run}`}, 'Test', null) as id
   `);
+  // A new store starts with the shop alone (D178): these tests sell subscriptions, as an owner switches them on under Features.
+  await db().execute(sql`update commerce.stores set features = features || array['subscriptions']::text[] where slug = ${`cost-${run}`}`);
   storeId = String(store.id);
   const rows = await db().execute<Row>(sql`select id, sku from commerce.product_variants where store_id = ${storeId}::uuid`);
   for (const row of rows) variant[String(row.sku)] = String(row.id);

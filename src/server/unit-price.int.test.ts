@@ -83,6 +83,8 @@ async function newStore(slug: string): Promise<string> {
   const [row] = await db().execute<Row>(sql`
     select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Test', null) as id
   `);
+  // A new store starts with the shop alone (D178): these tests sell subscriptions, as an owner switches them on under Features.
+  await db().execute(sql`update commerce.stores set features = features || array['subscriptions']::text[] where slug = ${slug}`);
   return String(row.id);
 }
 

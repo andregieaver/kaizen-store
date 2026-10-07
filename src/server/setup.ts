@@ -169,13 +169,14 @@ export async function completeSetup({ account, store }: Membership): Promise<Sav
   return { ok: true };
 }
 
-export type ProductRow = { handle: string; title: string; status: string };
+/** `kind`: goods, an appointment, a stay or a rental (the wizard says when a kind's feature is off, D178). */
+export type ProductRow = { handle: string; title: string; status: string; kind: string };
 
 /** The store's products, for the wizard's product step. */
 export async function listStoreProducts(store: Store): Promise<ProductRow[]> {
   const locale = store.markets[0]?.locale ?? "en";
   const rows = await db().execute<Row>(sql`
-    select p.handle, p.status, coalesce(tl.title, tf.title, p.handle) as title
+    select p.handle, p.status, p.kind, coalesce(tl.title, tf.title, p.handle) as title
     from commerce.products p
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
@@ -188,5 +189,6 @@ export async function listStoreProducts(store: Store): Promise<ProductRow[]> {
     handle: String(row.handle),
     title: String(row.title),
     status: String(row.status),
+    kind: String(row.kind),
   }));
 }

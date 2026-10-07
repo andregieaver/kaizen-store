@@ -11,7 +11,8 @@ import type { FeatureRequirement } from "./store-features";
 /*
  * A part or piece may stand behind a store feature (D178, `feature`: one id or several, any of which will do): while the feature is off it
  * draws nothing on the site, the builder's palette leaves it out, and a page that holds it shows "Switched off – not shown" on the canvas
- * (`partFeature()`, `src/lib/part-features.ts`). A test holds every tag to a real feature id.
+ * (`partFeature()`, `src/lib/part-features.ts`). A test holds every tag to a real feature id. A part marked `afterSale` serves shoppers'
+ * links to what they already have (a subscription's page): the palette leaves it out while the feature is off, but it still draws.
  */
 export const STORE_PARTS = {
   cart: {
@@ -39,12 +40,16 @@ export const STORE_PARTS = {
     hint: "The shopper's wishlists, ready for the cart.",
   },
   subscription: {
+    feature: "subscriptions",
+    // A subscriber's link from an email keeps working for a subscription that exists, with the feature off too: after-sale.
+    afterSale: true,
     name: "Subscription",
     hint: "One subscription to pause, skip or cancel. Its address carries a link's secret, from emails and My account.",
   },
   deliveries: {
-    name: "Weekly deliveries",
-    hint: "The shopper's list for the store's weekly deliveries, when that is switched on.",
+    feature: "boxes",
+    name: "Subscription boxes",
+    hint: "The shopper's list for the store's subscription boxes, delivered on its delivery days.",
   },
   cookies: {
     name: "Cookies",
@@ -237,6 +242,12 @@ export const routeOfPart = (part: ShopPart): StorePart => (isStorePiece(part) ? 
 export function shopPartFeature(part: ShopPart): FeatureRequirement | undefined {
   const entry: object = isStorePiece(part) ? STORE_PIECES[part] : STORE_PARTS[part];
   return "feature" in entry ? (entry.feature as FeatureRequirement) : undefined;
+}
+
+/** Whether a shop component still draws while its feature is off (D178): it serves shoppers' links to what they already have. */
+export function shopPartAfterSale(part: ShopPart): boolean {
+  const entry: object = isStorePiece(part) ? STORE_PIECES[part] : STORE_PARTS[part];
+  return "afterSale" in entry && entry.afterSale === true;
 }
 
 /** What the admin calls a component, and what it says it does. */

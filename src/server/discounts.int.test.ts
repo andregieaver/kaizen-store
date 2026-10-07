@@ -67,6 +67,8 @@ beforeAll(async () => {
   const [store] = await db().execute<Row>(sql`
     select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Test', null) as id
   `);
+  // A new store starts with the shop alone (D178): these tests sell subscriptions, as an owner switches them on under Features.
+  await db().execute(sql`update commerce.stores set features = features || array['subscriptions']::text[] where slug = ${slug}`);
   storeId = String(store.id);
   await db().execute(sql`
     insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due)

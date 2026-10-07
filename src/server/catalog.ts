@@ -17,7 +17,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
 
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
-import { OFFERED, STORE_AUDIENCE } from "./product-conditions";
+import { OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
 
 /**
  * Cache tags. Revalidate a store's catalogue tag after any product or price
@@ -269,9 +269,10 @@ export async function getProduct(storeId: string, market: Market, handle: string
     readDb().execute<Row>(sql`
       select id, interval, interval_count, discount_percent, trial_days, min_cycles,
         coalesce((signup_fee ->> ${marketCode})::bigint, 0) as signup_fee
-      from commerce.selling_plans
-      where product_id = ${product.id} and active
-      order by position, created_at
+      from commerce.selling_plans sp
+      -- Purchase options are offered while Subscriptions is on (D178); the product is then sold once only.
+      where sp.product_id = ${product.id} and sp.active and ${plansOffered(sql`sp.store_id`)}
+      order by sp.position, sp.created_at
     `),
     shownFieldsFor(storeId, "product", str(product.id), locale, market.lang, market.slug),
     shownFieldsForVariants(storeId, str(product.id), locale, market.lang, market.slug),

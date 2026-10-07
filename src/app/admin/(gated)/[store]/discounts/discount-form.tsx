@@ -6,6 +6,7 @@ import type { Store } from "@/server/stores";
 import { listProductChoices } from "@/server/discounts";
 
 import { saveDiscountAction } from "./actions";
+import { featureOn } from "@/lib/store-features";
 
 /** `datetime-local` text for a time, in Norwegian time. */
 function osloLocal(iso: string | null): string {
@@ -64,6 +65,7 @@ export async function DiscountForm({ store, discount }: { store: Store; discount
       used={discount?.used ?? 0}
       save={saveDiscountAction.bind(null, store.slug, discount?.id ?? null)}
       back={`/admin/${store.slug}/discounts`}
+      subscriptions={featureOn(store, "subscriptions")}
     />
   );
 }

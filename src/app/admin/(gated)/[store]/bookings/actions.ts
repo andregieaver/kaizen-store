@@ -6,8 +6,8 @@ import { z } from "zod";
 
 import type { FormState } from "@/components/admin/action-form";
 import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
-import { cancelBooking, removeResource, saveResource, type ResourceKind } from "@/server/bookings";
-import { addBlock, addFeed, removeBlock, removeFeed, resetCalendarToken, syncFeed } from "@/server/calendar-sync";
+import { cancelBooking, removeResource, resourceFeatureOn, saveResource, type ResourceKind } from "@/server/bookings";
+import { addBlock, addFeed, removeBlock, removeFeed, resetCalendarToken, resourceOfBlock, resourceOfFeed, syncFeed } from "@/server/calendar-sync";
 import { markNoShow } from "@/server/no-show";
 import { sendBookingCancelled } from "@/server/shopper-emails";
 
@@ -117,11 +117,17 @@ export async function noShowAction(
 
 const id = z.uuid();
 
+/** A resource's calendar is changed only while its feature is on (D178): staff Appointments', rooms and items Stays and rentals'. */
+const SWITCHED_OFF = "Its feature is switched off under Settings, Features.";
+const calendarOn = (store: { id: string; features: readonly string[] }, resourceId: string | null) =>
+  resourceId ? resourceFeatureOn(store, resourceId) : Promise.resolve(false);
+
 /** Closes a room, item or member of staff for some dates, saying if bookings are already there. */
 export async function addBlockAction(storeSlug: string, resourceId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const member = await checkPermission(storeSlug, "bookings:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!id.safeParse(resourceId).success) return { status: "error", messages: ["It is no longer in the store."] };
+  if (!(await resourceFeatureOn(member.store, resourceId))) return { status: "error", messages: [SWITCHED_OFF] };
   const result = await addBlock(member, resourceId, {
     from: formData.get("from"),
     to: formData.get("to"),
@@ -141,14 +147,14 @@ export async function addBlockAction(storeSlug: string, resourceId: string, _sta
 
 export async function removeBlockAction(storeSlug: string, blockId: string): Promise<void> {
   const member = await requirePermission(storeSlug, "bookings:write");
-  if (id.safeParse(blockId).success) await removeBlock(member, blockId);
+  if (id.safeParse(blockId).success && (await calendarOn(member.store, await resourceOfBlock(member.store.id, blockId)))) await removeBlock(member, blockId);
   refresh();
 }
 
 /** Makes (or replaces) the secret address other sites read the resource's calendar from. */
 export async function resetCalendarAction(storeSlug: string, resourceId: string): Promise<void> {
   const member = await requirePermission(storeSlug, "bookings:write");
-  if (id.safeParse(resourceId).success) await resetCalendarToken(member, resourceId);
+  if (id.safeParse(resourceId).success && (await calendarOn(member.store, resourceId))) await resetCalendarToken(member, resourceId);
   refresh();
 }
 
@@ -157,6 +163,7 @@ export async function addFeedAction(storeSlug: string, resourceId: string, _stat
   const member = await checkPermission(storeSlug, "bookings:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
   if (!id.safeParse(resourceId).success) return { status: "error", messages: ["It is no longer in the store."] };
+  if (!(await resourceFeatureOn(member.store, resourceId))) return { status: "error", messages: [SWITCHED_OFF] };
   const result = await addFeed(member, resourceId, { name: formData.get("name"), url: formData.get("url") });
   if (!result.ok) return { status: "error", messages: result.problems };
   refresh();
@@ -167,12 +174,12 @@ export async function addFeedAction(storeSlug: string, resourceId: string, _stat
 
 export async function syncFeedAction(storeSlug: string, feedId: string): Promise<void> {
   const member = await requirePermission(storeSlug, "bookings:write");
-  if (id.safeParse(feedId).success) await syncFeed(member.store.id, feedId);
+  if (id.safeParse(feedId).success && (await calendarOn(member.store, await resourceOfFeed(member.store.id, feedId)))) await syncFeed(member.store.id, feedId);
   refresh();
 }
 
 export async function removeFeedAction(storeSlug: string, feedId: string): Promise<void> {
   const member = await requirePermission(storeSlug, "bookings:write");
-  if (id.safeParse(feedId).success) await removeFeed(member, feedId);
+  if (id.safeParse(feedId).success && (await calendarOn(member.store, await resourceOfFeed(member.store.id, feedId)))) await removeFeed(member, feedId);
   refresh();
 }

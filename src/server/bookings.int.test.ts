@@ -26,6 +26,8 @@ beforeAll(async () => {
   const [store] = await db().execute<Row>(sql`
     select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Test', null) as id
   `);
+  // A new store starts with the shop alone (D178): the demo appointment, stay and rental are offered with their features on, as an owner switches them under Features.
+  await db().execute(sql`update commerce.stores set features = features || array['appointments', 'bookings']::text[] where slug = ${slug}`);
   storeId = String(store.id);
   const [account] = await db().execute<Row>(sql`
     insert into commerce.accounts (email, name) values (${`owner-${slug}@example.com`}, 'Owner') returning id
@@ -33,8 +35,8 @@ beforeAll(async () => {
   member = {
     account: { id: String(account.id), email: `owner-${slug}@example.com`, name: "Owner", platformAdmin: false },
     role: "owner",
-    // The bookings functions only need the store's id.
-    store: { id: storeId, slug } as Store,
+    // The bookings functions only need the store's id, and its features (D178).
+    store: { id: storeId, slug, features: ["shop", "appointments", "bookings"] } as unknown as Store,
   };
 });
 

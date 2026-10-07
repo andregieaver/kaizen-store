@@ -66,6 +66,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   const affiliate = customer.customerId && featureOn(store, "referrals") ? await customerAffiliate(store.id, customer.customerId) : null;
   // A company's part in the discount is selling to businesses' (D178): hidden, and not given, while that is off.
   const businessOn = featureOn(store, "business");
+  const subscriptionsOn = featureOn(store, "subscriptions");
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}`;
@@ -103,7 +104,8 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           ["Orders", String(customer.orders)],
           ["Spent", spent || "–"],
           ["Average order", moneyByCurrency(averageMinor, locale) || "–"],
-          ["Active subscriptions", String(customer.liveSubscriptions)],
+          // Subscriptions (D178): the figure and the list are there while the feature is on (off, none can be running).
+          ...(subscriptionsOn ? [["Active subscriptions", String(customer.liveSubscriptions)]] : []),
         ].map(([label, value]) => (
           <div key={label} className="flex flex-col gap-1 rounded-lg border border-border bg-background p-4">
             <span className="text-sm text-muted">{label}</span>
@@ -162,6 +164,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             )}
           </section>
 
+          {subscriptionsOn && (
           <section aria-labelledby="subscriptions" className={card}>
             <h2 id="subscriptions" className="mb-3 font-medium">Subscriptions</h2>
             {customer.subscriptionList.length === 0 ? (
@@ -187,6 +190,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               </ul>
             )}
           </section>
+          )}
 
           {customer.customerId && bonusSettings && bonus && showsBonus(bonusSettings.enabled, bonus.entries) && (
             <CustomerBonus

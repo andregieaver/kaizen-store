@@ -9,7 +9,9 @@ import { PagesTable } from "@/components/admin/pages-table";
 import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
-import { ROLE_COPY, ROLE_GROUPS, type PageRole } from "@/lib/page-roles";
+import { ROLE_COPY, ROLE_GROUPS, partOfRole, type PageRole } from "@/lib/page-roles";
+import { requirementMet } from "@/lib/store-features";
+import { shopPartFeature } from "@/lib/store-parts";
 import type { Term } from "@/lib/taxonomy";
 import { requirePageTypeAccess } from "@/server/permissions";
 import { testOfVersionPage } from "@/server/experiment-admin";
@@ -155,7 +157,8 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           {ROLE_GROUPS.map((group) => (
             <div key={group.name} className="flex flex-col gap-3">
               <h3 className="text-sm font-medium text-muted">{group.name}</h3>
-              {group.roles.map((role) => (
+              {/* A working page of a store feature that is off (D178) is not offered; one already chosen stays, so it can be changed. */}
+              {group.roles.filter((role) => roleOffered(store, role)).map((role) => (
                 <PageRoleForm
                   key={role}
                   storeSlug={store.slug}
@@ -545,3 +548,9 @@ const LAYOUT_STATES: Record<PageSummary["state"], string> = {
   published: "Published",
   changed: "Published, with unpublished changes",
 };
+
+/** Whether a store's Special pages offer a place (D178): its working page's feature is on, or a page is chosen for it already. */
+function roleOffered(store: { features: readonly string[]; pageRoles: Partial<Record<string, string>> }, role: PageRole): boolean {
+  const part = partOfRole(role);
+  return !part || requirementMet(store, shopPartFeature(part)) || Boolean(store.pageRoles[role]);
+}

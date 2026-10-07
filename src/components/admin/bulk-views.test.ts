@@ -49,6 +49,15 @@ const summary = (over: Partial<BatchSummary> = {}): BatchSummary => ({
 });
 
 describe("the products list", () => {
+  it("says beside a published product that a feature switched off keeps it from shoppers (D178)", () => {
+    const hidden: ProductRowView[] = [{ ...rows[0], id: "p3", title: "Massage", hiddenBy: "Appointments" }, { ...rows[1], id: "p4", title: "Draft stay", hiddenBy: "Stays and rentals" }];
+    const out = html(createElement(ProductsTable, { slug: "shop", rows: [...rows, ...hidden], archived: false, priceHeader: "Price (Norway)", locale: "en-GB", bulk: null }));
+    expect(out).toContain("Not shown: Appointments is off");
+    // A draft is not shown anyway: nothing more to say.
+    expect(out).not.toContain("Not shown: Stays and rentals is off");
+    expect(out.match(/Not shown:/g)).toHaveLength(1);
+  });
+
   it("is the plain list, with no tick boxes, for a member who cannot change products", () => {
     const out = html(createElement(ProductsTable, { slug: "shop", rows, archived: false, priceHeader: "Price (Norway)", locale: "en-GB", bulk: null }));
     expect(out).toContain("<caption");

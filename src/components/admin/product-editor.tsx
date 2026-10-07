@@ -404,7 +404,19 @@ export function ProductEditor(props: Props) {
         </section>
       )}
       {context.audience === "both" && <AudienceSection product={product} update={update} />}
-      {(context.bookingsOn || isBooked(product.kind)) && <KindSection product={product} update={update} />}
+      {/* The kinds a store's features offer (D178), and the product's own kind as it was loaded, which it keeps while its feature is off. */}
+      {(context.appointmentsOn || context.staysOn || isBooked(product.kind) || isBooked(props.initial.kind)) && (
+        <KindSection
+          product={product}
+          update={update}
+          offered={{
+            goods: true,
+            appointment: context.appointmentsOn || props.initial.kind === "appointment",
+            stay: context.staysOn || props.initial.kind === "stay",
+            rental: context.staysOn || props.initial.kind === "rental",
+          }}
+        />
+      )}
       {product.kind === "appointment" && product.appointment && (
         <AppointmentSection storeSlug={storeSlug} product={product} update={update} context={context} />
       )}
@@ -424,7 +436,16 @@ export function ProductEditor(props: Props) {
       )}
       {!isBooked(product.kind) && (
         <>
-          <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
+          {/* Purchase options while Subscriptions is on (D178); off, they are kept as they are and not offered to shoppers. */}
+          {context.subscriptionsOn ? (
+            <SubscriptionSection product={product} update={update} markets={context.markets} netPrices={context.audience === "businesses"} />
+          ) : (
+            product.plans.length > 0 && (
+              <p className="text-sm text-muted">
+                Purchase options: Subscriptions is switched off under Settings, Features, so this product&apos;s {product.plans.length === 1 ? "option is" : `${product.plans.length} options are`} kept but not offered.
+              </p>
+            )
+          )}
           <SafetySection product={product} update={update} operators={context.operators} countries={props.countries} />
         </>
       )}
@@ -2033,7 +2054,7 @@ function AudienceSection({ product, update }: SectionProps) {
 }
 
 /** Goods, or an appointment booked for a time (D65). */
-function KindSection({ product, update }: SectionProps) {
+function KindSection({ product, update, offered }: SectionProps & { offered: Record<ProductInput["kind"], boolean> }) {
   // Content for the unit price goes with a change to something that is not goods (D160): said once, where it happened.
   const [lostContent, setLostContent] = useState(false);
   const choose = (kind: ProductInput["kind"]) => {
@@ -2069,7 +2090,7 @@ function KindSection({ product, update }: SectionProps) {
               ["stay", "A stay", "Nights in a room or a home"],
               ["rental", "A rental", "Days with an item, such as a bike or a boat"],
             ] as const
-          ).map(([value, name, note]) => (
+          ).filter(([value]) => offered[value]).map(([value, name, note]) => (
             <label
               key={value}
               className="flex min-h-10 min-w-48 flex-1 cursor-pointer items-start gap-2 rounded-md border border-border p-3 has-checked:border-foreground sm:flex-none"

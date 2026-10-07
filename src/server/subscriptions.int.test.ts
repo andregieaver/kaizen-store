@@ -27,6 +27,8 @@ beforeAll(async () => {
   const [store] = await db().execute<Row>(sql`
     select commerce.approve_access_request(${String(request.id)}::uuid, ${`subs-${run}`}, 'Test', null) as id
   `);
+  // A new store starts with the shop alone (D178): these tests sell subscriptions, as an owner switches them on under Features.
+  await db().execute(sql`update commerce.stores set features = features || array['subscriptions']::text[] where slug = ${`subs-${run}`}`);
   storeId = String(store.id);
   const plans = await db().execute<Row>(sql`
     insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent, position)
@@ -316,6 +318,8 @@ describe("new stores", () => {
     const [store] = await db().execute<Row>(sql`
       select commerce.approve_access_request(${String(request.id)}::uuid, ${`copy-${run}`}, 'Test', null) as id
     `);
+    // A new store starts with the shop alone (D178): these tests sell subscriptions, as an owner switches them on under Features.
+    await db().execute(sql`update commerce.stores set features = features || array['subscriptions']::text[] where slug = ${`copy-${run}`}`);
     const plans = await db().execute<Row>(sql`
       select interval, interval_count, discount_percent from commerce.selling_plans where store_id = ${String(store.id)}::uuid
     `);

@@ -69,7 +69,7 @@ export const ROLE_NAMES: Record<TestedPlace, string> = {
   sign_in: "Sign-in page",
   wishlist: "Wishlist page",
   subscription: "Subscription page",
-  deliveries: "Weekly deliveries page",
+  deliveries: "Subscription boxes page",
 };
 
 /**

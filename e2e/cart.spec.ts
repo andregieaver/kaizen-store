@@ -205,6 +205,8 @@ test("a shopper subscribes from the product page and sees the terms in the cart"
   try {
     await db.begin(async (tx) => {
       const [store] = await tx`select id from commerce.stores where slug = 'demo'`;
+      // Purchase options are offered while Subscriptions is on (D178), as an owner switches it under Features.
+      await tx`update commerce.stores set features = array_append(features, 'subscriptions') where id = ${store.id} and not 'subscriptions' = any (features)`;
       const [maker] = await tx`select id from commerce.economic_operators where store_id = ${store.id} and country = 'SE'`;
       const [product] = await tx`
         insert into commerce.products (store_id, handle, tax_code, manufacturer_id)

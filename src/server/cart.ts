@@ -19,7 +19,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { freeResourcesAt } from "./appointments";
 import { attachVisitToCart } from "./analytics-visits";
 import { audit, type Membership } from "./auth";
-import { OFFERED, STORE_AUDIENCE } from "./product-conditions";
+import { OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
 import { checkRange, linePrice, rangePricing } from "./ranges";
 import { checkCartVatNumber, type CartVatDeps, type CartVatOutcome } from "./vat-checks";
 
@@ -167,8 +167,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
       coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on,
       cl.selling_plan_id, sp.interval, sp.interval_count, sp.discount_percent, sp.trial_days, sp.min_cycles,
       coalesce((sp.signup_fee ->> c.market_code)::bigint, 0) as signup_fee,
-      -- A purchase option still offered, or buying once where that is allowed.
-      (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) end) as plan_ok,
+      -- A purchase option still offered (Subscriptions on, D178), or buying once where that is allowed.
+      (case when cl.selling_plan_id is null then not p.subscription_only else coalesce(sp.active, false) and ${plansOffered(sql`cl.store_id`)} end) as plan_ok,
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url, coalesce(nullif(m.alt ->> ${market.locale}, ''), commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
       cp.amount_minor,
@@ -483,6 +483,7 @@ export async function sellableQuantity(
           ? sql`exists (
               select 1 from commerce.selling_plans sp
               where sp.store_id = v.store_id and sp.id = ${sellingPlanId}::uuid and sp.product_id = p.id and sp.active
+                and ${plansOffered(sql`sp.store_id`)}
             )`
           : sql`not p.subscription_only`
       }

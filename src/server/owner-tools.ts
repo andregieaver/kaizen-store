@@ -122,7 +122,7 @@ import { listPages, pagesTag, unpublishPage } from "./pages";
 import { listAdminProducts, setArchived } from "./products";
 import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
 import { storeTag, type Store } from "./stores";
-import { featureOn } from "@/lib/store-features";
+import { effectiveFeatures, featureOn } from "@/lib/store-features";
 
 type Row = Record<string, unknown>;
 
@@ -208,7 +208,8 @@ async function storeOverview({ store }: OwnerToolContext) {
     address: storeHref(store.slug, marketPath(store.slug, store.markets[0]?.slug ?? "")),
     payments: store.paymentsOn ? (store.paymentsTest ? "on, in test mode" : "on") : "off",
     sells_to: store.audience,
-    bookings_module: store.bookingsOn,
+    // The store's features (D178): what is switched on under Settings, Features.
+    features: effectiveFeatures(store),
     work_module: store.workOn,
     time_zone: store.timeZone,
     countries: store.markets.map((m) => ({ code: m.code, name: m.name, currency: m.currency, language: m.lang })),
@@ -569,10 +570,16 @@ async function dayStart(store: Store, day: string | undefined): Promise<Date> {
 }
 
 async function listBookingsTool({ store }: OwnerToolContext, input: OwnerToolInput<"list_bookings">) {
-  if (!store.bookingsOn) return { note: "The bookings module is off in this store." };
+  // Each kind of booking while its feature is on (D178): appointments, or stays and rentals.
+  const appointments = featureOn(store, "appointments");
+  const stays = featureOn(store, "bookings");
+  if (!appointments && !stays) return { note: "Appointments and stays and rentals are switched off in this store (Settings, Features)." };
   const from = await dayStart(store, input.from);
   const to = new Date(from.getTime() + input.days * 86_400_000);
-  const [staff, ranges] = await Promise.all([listBookings(store.id, from, to, ["staff"]), listBookings(store.id, from, to, ["unit", "item"])]);
+  const [staff, ranges] = await Promise.all([
+    appointments ? listBookings(store.id, from, to, ["staff"]) : Promise.resolve([]),
+    stays ? listBookings(store.id, from, to, ["unit", "item"]) : Promise.resolve([]),
+  ]);
   const time = new Intl.DateTimeFormat(mainLocale(store), { dateStyle: "medium", timeStyle: "short", timeZone: store.timeZone });
   return {
     time_zone: store.timeZone,

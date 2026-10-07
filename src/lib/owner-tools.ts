@@ -57,7 +57,7 @@ const productRef = z.string().trim().min(1).max(200).describe("The product's id,
 export const OWNER_TOOLS = [
   tool(
     "store_overview",
-    "The store at a glance: its name, whether it is open, its countries with their currencies and languages, who it sells to, its modules, and how many products and orders it has. Start here when unsure what the store is.",
+    "The store at a glance: its name, whether it is open, its countries with their currencies and languages, who it sells to, the features switched on (Settings, Features), and how many products and orders it has. Start here when unsure what the store is.",
     z.object({}),
   ),
   tool(

@@ -7,6 +7,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { TestSendButton } from "@/components/admin/test-send-button";
 import { EVENTS, INTEGRATIONS, isProvider } from "@/lib/integrations";
+import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { DEFAULT_EVENTS, getIntegration, listDeliveries, type DeliveryRow } from "@/server/integrations";
 import { slackAppOn } from "@/server/slack";
@@ -35,6 +36,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
   const returned = provider === "slack" ? SLACK_RETURN[String((await searchParams).slack ?? "")] : undefined;
   const current = await requirePermission(slug, "settings:read");
   const { store } = current;
+  const subscriptionsOn = featureOn(store, "subscriptions");
   const info = INTEGRATIONS.find((i) => i.id === provider);
   if (!info || info.comingSoon || !isProvider(provider)) notFound();
   const [integration, deliveries] = await Promise.all([getIntegration(store.id, provider), listDeliveries(store.id, provider)]);
@@ -133,7 +135,8 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
             </div>
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-1 text-sm font-medium">Events to send</legend>
-              {EVENTS.map((event) => (
+              {/* Subscriptions' events are offered while that feature is on (D178); one already chosen is kept as it is while it is off. */}
+              {EVENTS.filter((event) => !event.id.startsWith("subscription.") || subscriptionsOn).map((event) => (
                 <label key={event.id} className="flex items-start gap-2 text-sm">
                   <input type="checkbox" name="events" value={event.id} defaultChecked={chosen.has(event.id)} className="mt-0.5 size-4" />
                   <span>
@@ -142,6 +145,10 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
                   </span>
                 </label>
               ))}
+              {!subscriptionsOn &&
+                EVENTS.filter((event) => event.id.startsWith("subscription.") && chosen.has(event.id)).map((event) => (
+                  <input key={event.id} type="hidden" name="events" value={event.id} />
+                ))}
             </fieldset>
             <label className="flex items-center gap-2 text-sm font-medium">
               <input type="checkbox" name="enabled" defaultChecked={integration ? integration.enabled : true} className="size-4" />

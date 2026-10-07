@@ -506,7 +506,7 @@ export async function startCardSetup(
   if (!input.consent) return { ok: false, problem: "consent" };
   const [schedule] = await db().execute<Row>(sql`
     select d.id, d.currency from commerce.delivery_schedules d
-    join commerce.stores s on s.id = d.store_id and 'deliveries' = any(s.modules)
+    join commerce.stores s on s.id = d.store_id and commerce.feature_on(s.id, 'boxes')
     where d.store_id = ${shop.storeId}::uuid and d.id = ${input.scheduleId}::uuid and d.active and d.market_code = ${shop.market.code}
   `);
   if (!schedule) return { ok: false, problem: "schedule" };
@@ -638,7 +638,7 @@ export async function finishCardSetup(storeId: string, customerId: string, sessi
 export async function prepareDueDeliveries(limit = 200): Promise<{ ordered: number; other: number }> {
   const schedules = await db().execute<Row>(sql`
     select d.*, s.time_zone from commerce.delivery_schedules d
-    join commerce.stores s on s.id = d.store_id and 'deliveries' = any(s.modules) and s.status = 'active' and not s.starter
+    join commerce.stores s on s.id = d.store_id and commerce.feature_on(s.id, 'boxes') and s.status = 'active' and not s.starter
     where d.active
   `);
   const counts = { ordered: 0, other: 0 };
@@ -671,7 +671,7 @@ async function prepareDueFor(storeId: string, listId: string): Promise<void> {
     select d.*, s.time_zone, o.status as list_status, o.consent_at
     from commerce.standing_orders o
     join commerce.delivery_schedules d on d.store_id = o.store_id and d.id = o.schedule_id
-    join commerce.stores s on s.id = o.store_id and 'deliveries' = any(s.modules)
+    join commerce.stores s on s.id = o.store_id and commerce.feature_on(s.id, 'boxes')
     where o.store_id = ${storeId}::uuid and o.id = ${listId}::uuid and d.active
   `);
   if (!row || !["active", "paused"].includes(String(row.list_status)) || !row.consent_at) return;

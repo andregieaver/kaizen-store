@@ -207,6 +207,29 @@ export function requirementLabel(requirement: FeatureRequirement): string {
   return ids.map((id) => FEATURES_BY_ID[id].label).join(" or ");
 }
 
+/** What a server action says when a stale page asks for something of a feature that is off: "Appointments is switched off under …". */
+export function featureOffText(requirement: FeatureRequirement): string {
+  const ids: readonly FeatureId[] = typeof requirement === "string" ? [requirement] : requirement;
+  return `${requirementLabel(requirement)} ${ids.length > 1 ? "are" : "is"} switched off under Settings, Features.`;
+}
+
+/**
+ * The feature a kind of product needs to be offered (D178): an appointment Appointments, a stay or a rental Stays and rentals; goods none.
+ * SQL repeats it in `commerce.kind_offered()`.
+ */
+export function kindFeature(kind: string): FeatureId | null {
+  return kind === "appointment" ? "appointments" : kind === "stay" || kind === "rental" ? "bookings" : null;
+}
+
+/** Whether a store offers a kind of product now (its feature is on, or it needs none). */
+export function kindOffered(source: FeatureSource, kind: string): boolean {
+  const feature = kindFeature(kind);
+  return feature === null || featureOn(source, feature);
+}
+
+/** The feature a bookable resource belongs to (D178): staff take appointments, rooms and items stays and rentals. */
+export const resourceFeature = (kind: string): FeatureId => (kind === "staff" ? "appointments" : "bookings");
+
 /** The features that need this one (directly or not): switching it off puts them to sleep. */
 export const dependentsOf = (id: FeatureId): FeatureId[] => FEATURE_IDS.filter((other) => FEATURES_BY_ID[other].needs.includes(id));
 

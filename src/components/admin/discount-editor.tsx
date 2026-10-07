@@ -39,7 +39,10 @@ export function DiscountEditor({
   used,
   save,
   back,
+  subscriptions = true,
 }: {
+  /** Subscriptions is on (D178): only then is "keep it on every renewal" offered (a code that already has it keeps the tick). */
+  subscriptions?: boolean;
   initial: DiscountDraft;
   markets: Market[];
   products: { id: string; title: string }[];
@@ -150,6 +153,7 @@ export function DiscountEditor({
                 className={input}
               />
             </label>
+            {(subscriptions || initial.recurring) && (
             <label className="flex items-start gap-3 text-sm">
               <input
                 type="checkbox"
@@ -162,6 +166,7 @@ export function DiscountEditor({
                 <span className={`block ${hint}`}>Otherwise it only lowers the first payment.</span>
               </span>
             </label>
+            )}
           </>
         )}
         {d.kind === "fixed" && (

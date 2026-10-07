@@ -151,7 +151,7 @@ import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-
 import { hasMotion, type BackgroundMotion, type EnterMotion } from "@/lib/motion";
 import { backgroundMoves, drawTarget, motionSignature, switchBackground, type MotionPart } from "@/lib/motion-edit";
 import { PIECE_GROUPS, STORE_PART_KEYS, STORE_PARTS, piecesOf, shopPartCopy, type ShopPart } from "@/lib/store-parts";
-import { partFeature, partFeatureOn } from "@/lib/part-features";
+import { partDrawsWhenOff, partFeature, partFeatureOn } from "@/lib/part-features";
 import { requirementLabel } from "@/lib/store-features";
 import {
   copyBlock,
@@ -2325,7 +2325,7 @@ function BlockItem({
         <FontLinks families={blockFonts(block)} />
         {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
         {bindingOf(block) && <BindBadge bind={bindingOf(block)!} />}
-        {!partFeatureOn(block, actions.grid.features) ? (
+        {!partFeatureOn(block, actions.grid.features) && !partDrawsWhenOff(block) ? (
           <SwitchedOffStandIn block={block} />
         ) : block.type === "contentGrid" ? (
           <GridPreview block={block} grid={actions.grid} lang={actions.lang} />

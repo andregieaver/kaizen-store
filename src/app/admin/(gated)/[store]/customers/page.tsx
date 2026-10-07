@@ -6,6 +6,7 @@ import { Avatar } from "@/components/avatar";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { listCustomers } from "@/server/customer-admin";
+import { featureOn } from "@/lib/store-features";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -93,7 +94,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
                   </td>
                   <td className="px-4 py-2">
                     {c.orders}
-                    {c.liveSubscriptions > 0 && (
+                    {c.liveSubscriptions > 0 && featureOn(store, "subscriptions") && (
                       <span className="block text-xs text-muted">
                         {c.liveSubscriptions === 1 ? "1 subscription" : `${c.liveSubscriptions} subscriptions`}
                       </span>

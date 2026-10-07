@@ -22,7 +22,11 @@ hosts are its sellers.
   and digital products), `appointment`, `stay` or `rental`; it decides the
   editor's sections and the product page's picker.
 - **One booking module a store switches on** (`stores.modules`, later part
-  of plans). It holds what is not a product:
+  of plans; since D178 two store features, `docs/store-features.md` 4c:
+  *Appointments* for appointments and their staff, *Stays and rentals* for
+  stays, rentals, rooms, items, seasons and hosts. A product of a kind whose
+  feature is off is not offered to shoppers at all, `commerce.kind_offered()`,
+  and its times are neither shown, held nor moved). It holds what is not a product:
   - **Resources**: staff, rooms, room types, properties, rental items, each
     with a capacity. An appointment whose staff take more than one at a time
     is a class: the picker shows each time's seats, all and still free

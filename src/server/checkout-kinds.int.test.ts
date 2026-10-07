@@ -150,10 +150,10 @@ beforeAll(async () => {
     select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Test', null) as id
   `);
   storeId = String(store.id);
-  // A new store starts with the shop alone (D178): these tests book its demo appointment, stay and rental, sell to companies (the store sells
-  // to both private shoppers and businesses), and use bonus credits and a friend's welcome discount.
+  // A new store starts with the shop alone (D178): these tests book its demo appointment, stay and rental, sell subscriptions, sell to
+  // companies (the store sells to both private shoppers and businesses), and use bonus credits and a friend's welcome discount.
   await db().execute(sql`
-    update commerce.stores set features = features || array['appointments', 'bookings', 'business', 'bonus', 'referrals'], audience = 'both'
+    update commerce.stores set features = features || array['subscriptions', 'appointments', 'bookings', 'business', 'bonus', 'referrals'], audience = 'both'
     where id = ${storeId}::uuid
   `);
   await db().execute(sql`
@@ -2791,6 +2791,150 @@ describe("checkout with the Customers features switched off (D178)", () => {
       expect((await ledger(referrer.id)).pending).toBe(before.pending + Number(row.reward_minor));
     } finally {
       await features({ on: ["referrals"] });
+    }
+  });
+});
+
+/**
+ * The Selling features switched off (D178 step 3, `docs/store-features.md` 4c): subscriptions, appointments, and stays and rentals. With each
+ * off the cart refuses what belongs to it (a line on a plan, a time, a stay's nights), a line of it already in a cart becomes unavailable, and
+ * the cart page and `placeOrder()` agree on the rest, in kroner and shown in euro, with no subscription started and nothing booked. Switching the
+ * feature back on brings it back as it was.
+ */
+describe("checkout with the Selling features switched off (D178)", () => {
+  const features = async (change: { off?: string[]; on?: string[] }) => {
+    for (const id of change.off ?? []) await db().execute(sql`update commerce.stores set features = array_remove(features, ${id}) where id = ${storeId}::uuid`);
+    for (const id of change.on ?? []) await db().execute(sql`update commerce.stores set features = array_remove(features, ${id}) || array[${id}] where id = ${storeId}::uuid`);
+  };
+  let planId: string;
+
+  /** The cart as filled, and its checkout, held to the cart to the minor unit: total, VAT, what Stripe is asked for and what it renews. */
+  async function place(market: typeof no, fill: () => Promise<void>) {
+    jar.clear();
+    view = market;
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    await fill();
+    const cart = await getCart(shop());
+    expect(cart.lines.map((l) => l.status)).toEqual(cart.lines.map(() => "ok"));
+    const summary = await cartSummary(shop(), cart);
+    expect(summary.blocked).toBe(false);
+    const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: null });
+    expect(started).toMatchObject({ ok: true });
+    const open = (await getOpenCheckout(storeId, cartId()))!;
+    const { params } = fake.created.at(-1)!;
+    const order = (await getOrder(storeId, open.orderId))!;
+    expect({ total: order.totalMinor, vat: order.taxMinor, balance: order.balanceMinor }).toEqual({ total: summary.total, vat: summary.vat, balance: summary.balance });
+    expect(chargedNow(params)).toBe(summary.dueNowMinor);
+    await expectUnitPrices(cart, order, { euro: market === noInEuro });
+    return { cart, summary, open, params, order };
+  }
+
+  beforeAll(async () => {
+    await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 500 where store_id = ${storeId}::uuid`);
+    const [plan] = await db().execute<Row>(sql`
+      insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent)
+      values (${storeId}::uuid, ${product["demo-notatbok"]}::uuid, 'month', 1, 15) returning id
+    `);
+    planId = String(plan.id);
+  });
+  afterAll(async () => {
+    await features({ on: ["subscriptions", "appointments", "bookings"] });
+    await db().execute(sql`update commerce.selling_plans set active = false where id = ${planId}::uuid`);
+  });
+
+  it.each([
+    { name: "in kroner", market: () => no },
+    { name: "shown in euro", market: () => noInEuro },
+  ])("sells once only with Subscriptions off: no line on a plan, a plan line already in the cart unavailable, no subscription started, $name", async ({ market }) => {
+    if (market() === no) {
+      // A plan line put in the cart while it was on (in the country's own currency, where subscriptions are sold).
+      jar.clear();
+      view = no;
+      await add("DEMO-NOTEBOOK-LINED", 1, undefined, planId);
+      await features({ off: ["subscriptions"] });
+      try {
+        const stale = await getCart(shop());
+        expect(stale.lines.find((l) => l.plan)?.status).toBe("unavailable");
+        expect(await cartSummary(shop(), stale)).toMatchObject({ plan: null, renewal: null, blocked: true });
+        expect(await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", { subscription: true }, { customerId: null })).toMatchObject({ ok: false });
+      } finally {
+        await features({ on: ["subscriptions"] });
+      }
+    }
+    await features({ off: ["subscriptions"] });
+    try {
+      const placed = await place(market(), async () => {
+        const refused = await changeLine(shop(), variant["DEMO-NOTEBOOK-LINED"], 1, "add", planId);
+        expect(refused).not.toMatchObject({ outcome: "added" });
+        await add("DEMO-NOTEBOOK-LINED", 1);
+        await add("DEMO-MUG-WHITE", 2);
+      });
+      expect(placed.summary).toMatchObject({ plan: null, renewal: null });
+      expect(placed.params.mode).toBe("payment");
+      const [planned] = await db().execute<Row>(sql`select count(*)::int as n from commerce.order_lines where order_id = ${placed.open.orderId}::uuid and selling_plan_id is not null`);
+      expect(planned.n).toBe(0);
+      const [subs] = await db().execute<Row>(sql`select count(*)::int as n from commerce.subscriptions where first_order_id = ${placed.open.orderId}::uuid`);
+      expect(subs.n).toBe(0);
+    } finally {
+      await features({ on: ["subscriptions"] });
+    }
+    // On again: the plan line is taken as it was.
+    jar.clear();
+    view = no;
+    await add("DEMO-NOTEBOOK-LINED", 1, undefined, planId);
+    expect((await cartSummary(shop(), await getCart(shop()))).plan).toMatchObject({ id: planId, discountPercent: 15 });
+  });
+
+  it.each([
+    { name: "in kroner", market: () => no },
+    { name: "shown in euro", market: () => noInEuro },
+  ])("books no appointment, stay or rental with their features off, and a booking already in the cart is unavailable, $name", async ({ market }) => {
+    jar.clear();
+    view = market();
+    await addAppointment();
+    await features({ off: ["appointments", "bookings"] });
+    try {
+      const stale = await getCart(shop());
+      expect(stale.lines.map((l) => l.status)).toEqual(["unavailable"]);
+      expect((await cartSummary(shop(), stale)).blocked).toBe(true);
+      const placed = await place(market(), async () => {
+        const day = nextDay();
+        const massage = await changeLine(shop(), variant["DEMO-MASSAGE-60"], 1, "add", null, undefined, { startsAt: at(day, "10:00"), resourceId: null });
+        expect(massage).not.toMatchObject({ outcome: "added" });
+        const stay = await changeLine(shop(), variant["DEMO-HYTTE"], 2, "add", null, undefined, { startsAt: at(day, times["demo-hytte"].checkIn), resourceId: null });
+        expect(stay).not.toMatchObject({ outcome: "added" });
+        const bike = await changeLine(shop(), variant["DEMO-SYKKEL"], 2, "add", null, undefined, { startsAt: at(day, times["demo-sykkelutleie"].checkIn), resourceId: null });
+        expect(bike).not.toMatchObject({ outcome: "added" });
+        await add("DEMO-MUG-WHITE", 2);
+      });
+      expect(placed.order.balanceMinor).toBe(0);
+      const [booked] = await db().execute<Row>(sql`select count(*)::int as n from commerce.bookings where order_id = ${placed.open.orderId}::uuid`);
+      expect(booked.n).toBe(0);
+    } finally {
+      await features({ on: ["appointments", "bookings"] });
+    }
+    // On again: each is booked as before.
+    jar.clear();
+    view = market();
+    await addAppointment();
+    await addStay(2);
+    expect((await getCart(shop())).lines.map((l) => l.status)).toEqual(["ok", "ok"]);
+  });
+
+  it.each([
+    { name: "in kroner", market: () => no },
+    { name: "shown in euro", market: () => noInEuro },
+  ])("with only appointments off, still sells a stay, and the cart and the order agree, $name", async ({ market }) => {
+    await features({ off: ["appointments"] });
+    try {
+      const placed = await place(market(), async () => {
+        await addStay(2);
+        await add("DEMO-MUG-WHITE", 1);
+      });
+      const [held] = await db().execute<Row>(sql`select count(*)::int as n from commerce.bookings where order_id = ${placed.open.orderId}::uuid`);
+      expect(held.n).toBe(1);
+    } finally {
+      await features({ on: ["appointments"] });
     }
   });
 });

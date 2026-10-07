@@ -17,9 +17,19 @@ export const STORE_AUDIENCE = sql`commerce.store_audience(s.audience, s.features
 /**
  * The product `p` is offered in its store at all (D178, B2B): one for everyone always; one for a single kind of buyer only where the store
  * sells to that kind (or to both, where each shopper sees their own kind's). A business-only product is not offered where the store sells
- * to consumers, Sell to businesses switched off included. Every shopper-facing read of products asks it.
+ * to consumers, Sell to businesses switched off included. And it is offered only while what its kind needs is on (D178 step 3,
+ * `commerce.kind_offered()`): an appointment needs Appointments, a stay or a rental Stays and rentals, a product sold only as a subscription
+ * Subscriptions. Every shopper-facing read of products asks it.
  */
-export const OFFERED = sql`(p.audience = 'all' or commerce.product_offered(p.store_id, p.audience))`;
+export const OFFERED = sql`((p.audience = 'all' or commerce.product_offered(p.store_id, p.audience))
+  and ((p.kind = 'goods' and not p.subscription_only) or commerce.kind_offered(p.store_id, p.kind, p.subscription_only)))`;
+
+/**
+ * Purchase options (selling plans, D25) are offered while the store feature Subscriptions is on (D178), for the store whose id is given
+ * (`sp.store_id`, `cl.store_id`, `p.store_id`). A product sold only as a subscription is not offered at all while it is off (`OFFERED`);
+ * one sold both ways is sold once only, and a cart line on a plan is unavailable.
+ */
+export const plansOffered = (storeId: SQL) => sql`commerce.feature_on(${storeId}, 'subscriptions')`;
 
 export const textList = (values: string[]) => sql`array[${sql.join(values.map((v) => sql`${v}`), sql`, `)}]::text[]`;
 

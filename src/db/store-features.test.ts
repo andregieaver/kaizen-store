@@ -239,3 +239,33 @@ describe("the Customers group in the database (D178 step 2)", () => {
     expect(await paused()).toBeNull();
   });
 });
+
+describe("the Selling group in the database (D178 step 3)", () => {
+  it("offers a kind of product only while its feature is on, and a product sold only as a subscription only with Subscriptions", async () => {
+    const store = await createStore("kinds-offered");
+    const offered = async (kind: string, subscriptionOnly = false) =>
+      (await one<{ o: boolean }>("select commerce.kind_offered($1, $2, $3) as o", [store, kind, subscriptionOnly])).o;
+    await setFeatures(store, ["shop"]);
+    expect(await offered("goods")).toBe(true);
+    expect(await offered("appointment")).toBe(false);
+    expect(await offered("stay")).toBe(false);
+    expect(await offered("rental")).toBe(false);
+    expect(await offered("goods", true)).toBe(false);
+
+    await setFeatures(store, ["shop", "appointments"]);
+    expect(await offered("appointment")).toBe(true);
+    expect(await offered("stay")).toBe(false);
+    await setFeatures(store, ["shop", "bookings", "subscriptions"]);
+    expect(await offered("appointment")).toBe(false);
+    expect(await offered("stay")).toBe(true);
+    expect(await offered("rental")).toBe(true);
+    expect(await offered("goods", true)).toBe(true);
+
+    // Kept on but asleep: the shop is off, so nothing of them is offered.
+    await setFeatures(store, ["appointments", "bookings", "subscriptions"]);
+    for (const kind of ["appointment", "stay", "rental"]) expect(await offered(kind), kind).toBe(false);
+    expect(await offered("goods", true)).toBe(false);
+    // A store that is not there offers nothing of a feature.
+    expect((await one<{ o: boolean }>("select commerce.kind_offered($1, 'appointment', false) as o", [crypto.randomUUID()])).o).toBe(false);
+  });
+});

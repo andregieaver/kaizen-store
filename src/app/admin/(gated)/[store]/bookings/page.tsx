@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { requireFeature } from "@/components/admin/feature-off";
+import { featureOn } from "@/lib/store-features";
 import { layoutDay, minuteOfDay, weekStart } from "@/lib/booking-calendar";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { formatMoney } from "@/lib/money";
@@ -34,6 +36,8 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   const off = requireFeature(current, ["appointments", "bookings"]);
   if (off) return off;
   const { store } = current;
+  // The week calendar is the appointments'; with only stays and rentals on (D178), their own calendar is the place.
+  if (!featureOn(store, "appointments")) redirect(`/admin/${store.slug}/bookings/stays`);
   const query = await searchParams;
   const tz = store.timeZone;
   const today = todayIn(tz);

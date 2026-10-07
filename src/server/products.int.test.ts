@@ -30,7 +30,7 @@ let context: EditorContext;
 
 async function createStore(slug: string): Promise<Store> {
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.stores (slug, name, country) values (${slug}, ${slug}, 'NO') returning id
+    insert into commerce.stores (slug, name, country, features) values (${slug}, ${slug}, 'NO', '{shop,subscriptions,appointments,bookings}') returning id
   `);
   await db().execute(sql`
     insert into commerce.markets (store_id, code, currency, default_locale, locales, active)
@@ -55,8 +55,9 @@ async function createStore(slug: string): Promise<Store> {
     openCartOnAdd: false,
     returnPolicy: DEFAULT_RETURN_POLICY,
     visitCounting: false,
-    features: ["shop"],
-    bookingsOn: false,
+    // The Selling features are on (D178): these tests save subscriptions, appointments and stays.
+    features: ["shop", "subscriptions", "appointments", "bookings"],
+    bookingsOn: true,
     deliveriesOn: false,
     workOn: false,
     timeZone: "Europe/Oslo", bookingReminderHours: 24,

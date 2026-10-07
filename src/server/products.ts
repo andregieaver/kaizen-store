@@ -30,6 +30,7 @@ import type { PlanInterval } from "@/lib/subscriptions";
 import type { Term } from "@/lib/taxonomy";
 import { baseFits, isBase, measureFromColumns, normaliseMeasureAmount } from "@/lib/unit-price";
 import { unitPriceProblems } from "@/lib/unit-price-rules";
+import { FEATURES_BY_ID, featureOffText, featureOn, kindFeature } from "@/lib/store-features";
 
 import { aiFor } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
@@ -80,8 +81,14 @@ export type EditorContext = {
   activeLocations: number;
   /** The store's product categories and tags (D50). */
   terms: Term[];
-  /** Appointments are switched on (D65), with the staff who do them and the places they can be at. */
-  bookingsOn: boolean;
+  /**
+   * The Selling group's features that are on (D178): appointments can be made (D65), stays and rentals (D67), purchase options offered
+   * (D25). The editor offers a kind of product only while its feature is on (a product keeps its own), and the purchase options only while
+   * subscriptions are on; `saveProduct()` holds to the same.
+   */
+  appointmentsOn: boolean;
+  staysOn: boolean;
+  subscriptionsOn: boolean;
   /** The store's staff, rooms and homes, and items to rent (D65, D67); each kind of product picks from its own. */
   staff: { id: string; name: string; active: boolean; kind: "staff" | "unit" | "item" }[];
   places: { id: string; name: string }[];
@@ -149,7 +156,9 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     })),
     locationName: location ? String(location.name) : null,
     activeLocations: Number(counted?.n ?? 0),
-    bookingsOn: store.bookingsOn,
+    appointmentsOn: featureOn(store, "appointments"),
+    staysOn: featureOn(store, "bookings"),
+    subscriptionsOn: featureOn(store, "subscriptions"),
     staff: staff.map((row) => ({
       id: String(row.id),
       name: String(row.name),
@@ -241,6 +250,8 @@ export type AdminProductRow = {
   /** Active variants that are downloaded, which have no stock (D24). */
   digitalVariants: number;
   price: { min: number; max: number; currency: string } | null;
+  /** The feature that is off and keeps the product from shoppers (D178: an appointment with Appointments off), or null. */
+  hiddenBy: string | null;
 };
 
 /** The store's products for the admin list, most recently changed first. */
@@ -252,7 +263,7 @@ export async function listAdminProducts(
   const locale = market?.locale ?? "en";
   const rows = await db().execute<Row>(sql`
     select
-      p.id, p.handle, p.status,
+      p.id, p.handle, p.status, p.kind, p.subscription_only,
       coalesce(tl.title, tf.title, p.handle) as title,
       (select coalesce(m.thumbnail_url, m.url) from commerce.product_media m
         where m.product_id = p.id order by m.position limit 1) as image,
@@ -297,7 +308,16 @@ export async function listAdminProducts(
       row.min_amount === null
         ? null
         : { min: shown(row.min_amount, row.vat_rate), max: shown(row.max_amount, row.vat_rate), currency: String(row.currency) },
+    hiddenBy: hiddenBy(store, String(row.kind), Boolean(row.subscription_only)),
   }));
+}
+
+/** The label of the feature that keeps a product of this kind from shoppers while it is off (D178), or null when it is offered. */
+function hiddenBy(store: Store, kind: string, subscriptionOnly: boolean): string | null {
+  const needed = kindFeature(kind);
+  if (needed && !featureOn(store, needed)) return FEATURES_BY_ID[needed].label;
+  if (subscriptionOnly && !featureOn(store, "subscriptions")) return FEATURES_BY_ID.subscriptions.label;
+  return null;
 }
 
 /**
@@ -647,7 +667,18 @@ export async function saveProduct(
   /** How stock is written (D165, `StockMode`): the import and the bulk editor pass what they read, the editor passes nothing. */
   stockMode?: StockMode,
 ): Promise<SaveProductResult> {
-  const input = asKind(given);
+  // The Selling group's features (D178): a product becomes an appointment, a stay or a rental only while that feature is on (one that is
+  // already of its kind keeps it and can still be edited), and while Subscriptions is off its purchase options and "only as a
+  // subscription" are kept as they are, whatever a stale page sends.
+  const [stored] = productId
+    ? await db().execute<Row>(sql`select kind, subscription_only from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid`)
+    : [];
+  const neededFeature = kindFeature(given.kind);
+  if (neededFeature && !featureOn(store, neededFeature) && stored?.kind !== given.kind) {
+    return { ok: false, problems: [`${featureOffText(neededFeature)} Products of that kind can't be added until it is switched on.`] };
+  }
+  const subscriptionsOn = featureOn(store, "subscriptions");
+  const input = asKind(subscriptionsOn ? given : { ...given, subscriptionOnly: Boolean(stored?.subscription_only) });
   const euRows = await db().execute<Row>(sql`select code from commerce.countries where in_eu`);
   const problems = productProblems(input, {
     markets: context.markets,
@@ -724,7 +755,8 @@ export async function saveProduct(
       await saveVariants(tx, store.id, saved, context, input, locationId, stockMode, actor?.id ?? null);
       await saveAppointment(tx, store.id, saved, input, context);
       await saveFiles(tx, store.id, saved, input);
-      await savePlans(tx, store.id, saved, input, context.markets, context.audience);
+      // Kept as they are while Subscriptions is off (D178); a product that becomes a booking still loses them (it cannot be subscribed to).
+      if (subscriptionsOn || isBooked(input.kind)) await savePlans(tx, store.id, saved, input, context.markets, context.audience);
       await tx.execute(sql`delete from commerce.product_terms where store_id = ${store.id}::uuid and product_id = ${saved}::uuid`);
       for (const termId of termIds) {
         await tx.execute(sql`
