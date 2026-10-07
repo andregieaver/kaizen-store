@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { ADJUST_ROWS_MAX } from "@/lib/inventory";
+import { storeToday } from "./test-days";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -253,7 +254,7 @@ describe("the history", () => {
     // Reason, location and date range filters; the range ends at the store's next local midnight.
     expect((await stockHistory(store.member.store, { reason: "received", limit: 100 })).rows.every((r) => r.reason === "received")).toBe(true);
     expect((await stockHistory(store.member.store, { locationId: bergen, limit: 100 })).rows.every((r) => r.location === "Bergen")).toBe(true);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = storeToday();
     expect((await stockHistory(store.member.store, { from: today, to: today, limit: 100 })).rows.length).toBeGreaterThan(0);
     expect((await stockHistory(store.member.store, { from: "2001-01-01", to: "2001-01-02", limit: 100 })).rows).toHaveLength(0);
     const first = await stockHistory(store.member.store, { sku: "DEMO-TOTE", limit: 2 });

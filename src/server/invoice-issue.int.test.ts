@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { isDocumentToken } from "@/lib/document-token";
+import { storeToday } from "./test-days";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -23,7 +24,7 @@ type Row = Record<string, unknown>;
 
 let store: Awaited<ReturnType<typeof fx.makeStore>>;
 let other: Awaited<ReturnType<typeof fx.makeStore>>;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => storeToday();
 
 beforeAll(async () => {
   store = await fx.makeStore("iss");

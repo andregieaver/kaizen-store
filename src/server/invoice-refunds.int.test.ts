@@ -3,6 +3,7 @@ import type Stripe from "stripe";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { storeToday } from "./test-days";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -362,6 +363,6 @@ describe("a refund made before the invoice existed", () => {
     expect(result.invoices).toBeGreaterThanOrEqual(1);
     const notes = await fx.notesOf(own.storeId, order.orderId);
     expect(notes.map((x) => [x.documentNumber, x.totalMinor])).toEqual([["K-1", 3_000], ["K-2", 2_000]]);
-    expect(notes[0].issuedOn).toBe(new Date().toISOString().slice(0, 10));
+    expect(notes[0].issuedOn).toBe(storeToday());
   });
 });

@@ -7,6 +7,7 @@ import { orderColumns, PERSONAL_ORDER_COLUMNS } from "@/lib/order-csv";
 import { parseCsv } from "@/lib/csv";
 
 import { auditOf, depsWith, fakeStorage, jobRow, membersOf, rowsOfCsv, runToEnd, textOf } from "./data-test-support";
+import { storeToday } from "./test-days";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -46,7 +47,7 @@ afterAll(async () => {
   await closeDb();
 });
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => storeToday();
 const range = (extra: Record<string, unknown> = {}) => ({ mode: "range", from: "2020-01-01", to: today(), dialect: "standard", ...extra });
 
 async function fileOf(raw: Record<string, unknown>, who = members.owner): Promise<{ header: string[]; rows: Record<string, string>[]; csv: string }> {

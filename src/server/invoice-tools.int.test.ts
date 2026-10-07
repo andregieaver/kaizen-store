@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { attentionFor } from "@/lib/control-center";
+import { storeToday } from "./test-days";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -87,7 +88,7 @@ describe("list_invoices", () => {
     const first = await fx.invoiceOf(store.storeId, orders[0].orderId);
     const byOrder = await run(store, "list_invoices", { search: orders[0].number });
     expect(byOrder.documents.map((d: { number: string }) => d.number)).toEqual([first!.documentNumber]);
-    const today = new Date().toISOString().slice(0, 10);
+    const today = storeToday();
     expect((await run(store, "list_invoices", { from: today, to: today })).count).toBe(2);
     expect((await run(store, "list_invoices", { from: "2020-01-01", to: "2020-12-31" })).count).toBe(0);
     await expect(run(store, "list_invoices", { search: orders[0].email })).rejects.toThrow(/email address/);

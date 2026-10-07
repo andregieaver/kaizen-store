@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { storeToday } from "./test-days";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -335,7 +336,7 @@ describe("the accountant's CSV", () => {
     await fx.paidOrder(own, [["DEMO-MUG-WHITE", 2]], { billing: { name: "=HYPERLINK(\"http://evil\")", line1: "Gata 1", postalCode: "0150", city: "Oslo", country: "NO" } });
     await fx.paidOrder(own, [["DEMO-NOTEBOOK-LINED", 1]], { market: fx.noInEuro });
     const owner = await fx.ownerOf(own);
-    const day = new Date().toISOString().slice(0, 10);
+    const day = storeToday();
     const out = await exporter.exportDocuments(owner, "invoices", day, day);
     expect(out).toMatchObject({ ok: true, count: 2, truncated: false, fileName: `invoices-${day}-${day}.csv` });
     if (!out.ok) return;
