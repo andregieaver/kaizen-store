@@ -86,7 +86,9 @@ describe("store templates are not real stores (D175)", () => {
 
   it("copies a new store only from the source the database decides", () => {
     const copiers = files.filter((f) => /commerce\.clone_store\(/.test(code(f))).map((f) => path.relative(ROOT, f)).sort();
-    expect(copiers).toEqual(["src/server/platform.ts", "src/server/store-starters.ts"]);
+    // design-presets.ts makes a design profile's workspace (D177) from the default template, `starter_source(null)`; a store template's frozen
+    // copy is made in SQL (`commerce.freeze_starter()`), never here.
+    expect(copiers).toEqual(["src/server/design-presets.ts", "src/server/platform.ts", "src/server/store-starters.ts"]);
     for (const file of copiers) {
       const calls = code(path.join(ROOT, file)).match(/commerce\.clone_store\(\s*[^,]+/g) ?? [];
       for (const call of calls) expect(call, file).toMatch(/commerce\.starter_source\(/);

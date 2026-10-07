@@ -130,13 +130,12 @@ describe("the database's rules for store templates", () => {
     await refused(db().execute(sql`update commerce.stores set starter = true where id = ${String(first.id)}::uuid`), /stores\.starter_has_sales/);
   });
 
-  it("describes only a starter store, and never deletes a description", async () => {
+  it("describes only a starter store", async () => {
     const first = await one(sql`select id from commerce.stores where slug = ${`first-${run}`}`);
     await refused(
       db().execute(sql`insert into commerce.store_starters (store_id, title, category) values (${String(first.id)}::uuid, 'X', 'other')`),
       /store_starters\.not_starter/,
     );
-    await refused(db().execute(sql`delete from commerce.store_starters where id = ${spa.id}::uuid`), /store_starters\.kept/);
   });
 });
 
@@ -176,20 +175,25 @@ describe("setting the template up, then publishing it", () => {
     expect((await one(sql`select count(*)::int as n from commerce.stores where slug = ${`early-${run}`}`)).n).toBe(0);
   });
 
-  it("is offered once published, first in the order after a move up", async () => {
-    expect(await starters.setStarterPublished(admin, spa.id, true)).toEqual({ ok: true });
+  it("is offered once published, as its frozen copy, first in the order after a move up", async () => {
+    expect(await starters.publishStarter(admin, spa.id)).toEqual({ ok: true, copySlug: `${spaSlug}-v1`, notes: [] });
     const second = await starters.createStarter(admin, { slug: `shop-${run}`, details: details({ title: "Shop", category: "retail" }) });
     expect(second.ok).toBe(true);
     if (!second.ok) return;
-    await starters.setStarterPublished(admin, second.id, true);
+    await starters.publishStarter(admin, second.id);
     await starters.moveStarter(admin, second.id, "up");
     const offered = await starters.listOfferedStarters();
     const ids = offered.map((s) => s.id);
     expect(ids.indexOf(second.id)).toBeLessThan(ids.indexOf(spa.id));
-    expect(offered.find((s) => s.id === spa.id)).toMatchObject({ title: "Spa & salon", category: "appointments", storeSlug: spaSlug });
+    // Owners preview the copy made when it was published (D177), not the store the admin keeps working in.
+    expect(offered.find((s) => s.id === spa.id)).toMatchObject({ title: "Spa & salon", category: "appointments", storeSlug: `${spaSlug}-v1` });
     const cards = await starters.starterCards();
     expect(cards[0]).toMatchObject({ id: "", title: "Standard store" });
-    expect(cards.find((c) => c.id === spa.id)?.previewHref).toBe(`/s/${spaSlug}`);
+    expect(cards.find((c) => c.id === spa.id)?.previewHref).toBe(`/s/${spaSlug}-v1`);
+    const copy = await one(sql`select starter, starter_copy_of, made_from_starter from commerce.stores where slug = ${`${spaSlug}-v1`}`);
+    expect(copy).toEqual({ starter: true, starter_copy_of: spa.id, made_from_starter: null });
+    const audit = await one(sql`select details from commerce.audit_log where action = 'platform.starter_published' and store_id = ${spa.storeId}::uuid`);
+    expect(audit.details).toMatchObject({ starter: spa.id, copySlug: `${spaSlug}-v1` });
   });
 
   it("gives an owner's new store the template's set-up and nothing of its own", async () => {
@@ -264,19 +268,30 @@ describe("sign-up with a store template", () => {
     expect(made).toMatchObject({ made_from_starter: spa.id, modules: ["bookings"] });
   });
 
-  it("lets the platform admin change the choice, and refuses an unpublished template at approval", async () => {
+  it("refuses an unpublished template the admin chooses, and gives a request whose template was unpublished since the Standard store (D177)", async () => {
     await createAccessRequest({ name: "Ola", email: `ola-${run}@example.com`, storeName: "Ola", message: "", starterId: spa.id });
+    await createAccessRequest({ name: "Eva", email: `eva-${run}@example.com`, storeName: "Eva", message: "", starterId: spa.id });
     const ola = await one(sql`select id from commerce.access_requests where lower(email) = ${`ola-${run}@example.com`}`);
-    await starters.setStarterPublished(admin, spa.id, false);
-    expect(await approveAccessRequest(admin, String(ola.id), `ola-${run}`, "Ola", "https://example.com")).toEqual({
+    const eva = await one(sql`select id from commerce.access_requests where lower(email) = ${`eva-${run}@example.com`}`);
+    expect(await starters.unpublishStarter(admin, spa.id)).toEqual({ ok: true, pendingRequests: 2 });
+    // Chosen by the admin: refused in plain words, nothing made.
+    expect(await approveAccessRequest(admin, String(ola.id), `ola-${run}`, "Ola", "https://example.com", spa.id)).toEqual({
       ok: false,
       problems: ["That store template is not offered any more. Choose another."],
     });
     expect((await one(sql`select status from commerce.access_requests where id = ${String(ola.id)}::uuid`)).status).toBe("pending");
-    // The admin chooses the Standard store instead.
-    expect(await approveAccessRequest(admin, String(ola.id), `ola-${run}`, "Ola", "https://example.com", null)).toMatchObject({ ok: true });
+    // Kept from the request: the Standard store, and the admin is told.
+    expect(await approveAccessRequest(admin, String(ola.id), `ola-${run}`, "Ola", "https://example.com")).toMatchObject({
+      ok: true,
+      fellBack: { starter: "Spa & salon", design: null },
+    });
     expect((await one(sql`select made_from_starter from commerce.stores where slug = ${`ola-${run}`}`)).made_from_starter).toBeNull();
-    await starters.setStarterPublished(admin, spa.id, true);
+    // The request page leaves the choice empty for a template no longer offered, and the admin is told the same.
+    expect(await approveAccessRequest(admin, String(eva.id), `eva-${run}`, "Eva", "https://example.com", null)).toMatchObject({
+      ok: true,
+      fellBack: { starter: "Spa & salon" },
+    });
+    expect((await starters.publishStarter(admin, spa.id)).ok).toBe(true);
   });
 });
 
@@ -332,5 +347,90 @@ describe("a store template is not a real store", () => {
       `),
       /orders\.store_starter/,
     );
+  });
+});
+
+describe("the life of a store template (D177)", () => {
+  it("keeps saved details as a draft until it is published again; owners read the published ones", async () => {
+    expect(await starters.saveStarterDraft(admin, spa.id, details({ title: "Spa, salon and sauna" }))).toEqual({ ok: true });
+    expect((await starters.listOfferedStarters()).find((s) => s.id === spa.id)?.title).toBe("Spa & salon");
+    const row = await starters.getStarter(spa.id);
+    expect(row?.draft?.title).toBe("Spa, salon and sauna");
+    expect(starters.shownDetails(row!).title).toBe("Spa, salon and sauna");
+    expect(starters.starterLifecycle(row!).changed).toBe(true);
+    // Saving the published details again is no draft.
+    expect(await starters.saveStarterDraft(admin, spa.id, details())).toEqual({ ok: true });
+    expect((await starters.getStarter(spa.id))?.draft).toBeNull();
+    await starters.saveStarterDraft(admin, spa.id, details({ title: "Spa, salon and sauna" }));
+    expect(await starters.saveStarterDraft(owner, spa.id, details())).toMatchObject({ ok: false });
+  });
+
+  it("copies new stores from what was published, never from changes made in its store since", async () => {
+    await db().execute(sql`update commerce.stores set time_zone = 'Europe/Helsinki' where id = ${spa.storeId}::uuid`);
+    await db().execute(sql`insert into commerce.audit_log (store_id, action, details) values (${spa.storeId}::uuid, 'store.settings_saved', '{}'::jsonb)`);
+    expect((await starters.getStarter(spa.id))?.changedInStore).toBe(true);
+    expect(await createStoreForOwner(owner, "Before", `before-${run}`, spa.id)).toMatchObject({ ok: true });
+    expect((await one(sql`select time_zone from commerce.stores where slug = ${`before-${run}`}`)).time_zone).toBe("Europe/Stockholm");
+
+    const published = await starters.publishStarter(admin, spa.id);
+    expect(published).toMatchObject({ ok: true });
+    const copySlug = (published as { copySlug: string }).copySlug;
+    expect((await starters.listOfferedStarters()).find((s) => s.id === spa.id)).toMatchObject({ title: "Spa, salon and sauna", storeSlug: copySlug });
+    expect(await createStoreForOwner(owner, "After", `after-${run}`, spa.id)).toMatchObject({ ok: true });
+    expect(await one(sql`select time_zone, made_from_starter from commerce.stores where slug = ${`after-${run}`}`)).toEqual({ time_zone: "Europe/Helsinki", made_from_starter: spa.id });
+    // The copies it replaced are closed and kept; only one is open.
+    const copies = await db().execute<Row>(sql`select status from commerce.stores where starter_copy_of = ${spa.id}::uuid order by created_at`);
+    expect(copies.map((c) => c.status).filter((status) => status === "active")).toHaveLength(1);
+    expect(copies.length).toBeGreaterThan(1);
+    const row = await starters.getStarter(spa.id);
+    expect(row).toMatchObject({ draft: null, changedInStore: false, publishedSlug: copySlug });
+  });
+
+  it("never lists its frozen copies among anyone's stores, and nobody works in one", async () => {
+    const copies = await db().execute<Row>(sql`select slug from commerce.stores where starter_copy_of = ${spa.id}::uuid`);
+    const slugs = copies.map((c) => String(c.slug));
+    expect(slugs.length).toBeGreaterThan(0);
+    const { snapshotSources } = await import("./design-presets");
+    const { workStoresFor } = await import("./work-owner");
+    const seen = [
+      ...(await listStores(admin)).map((s) => s.slug),
+      ...(await snapshotSources(admin)).map((s) => s.slug),
+      ...(await listStoreBilling({ includeClosed: true })).map((s) => s.slug),
+      ...(await starters.listStarters()).map((s) => s.storeSlug),
+      ...Object.values(await workStoresFor(admin)).flatMap((list) => list.map((s: { slug: string }) => s.slug)),
+    ];
+    for (const slug of slugs) expect(seen).not.toContain(slug);
+  });
+
+  it("is taken out of the choices at once when unpublished or archived, and comes back unpublished when restored", async () => {
+    const shop = (await starters.listStarters()).find((s) => s.storeSlug === `shop-${run}`)!;
+    expect(await starters.archiveStarter(admin, shop.id)).toEqual({ ok: true });
+    expect((await starters.listOfferedStarters()).some((s) => s.id === shop.id)).toBe(false);
+    expect((await starters.listStarters()).some((s) => s.id === shop.id)).toBe(false);
+    expect((await starters.listStarters("archived")).find((s) => s.id === shop.id)).toMatchObject({ published: false });
+    expect(await starters.publishStarter(admin, shop.id)).toEqual({ ok: false, problems: ["This store template is archived. Restore it before publishing it."] });
+    expect(await createStoreForOwner(owner, "Shelved", `shelved-${run}`, shop.id)).toMatchObject({ ok: false });
+    expect(await starters.restoreStarter(admin, shop.id)).toEqual({ ok: true });
+    expect((await starters.getStarter(shop.id))).toMatchObject({ archivedAt: null, published: false });
+    const audit = await one(sql`
+      select count(*)::int as n from commerce.audit_log where target_id = ${shop.id} and action in ('platform.starter_archived', 'platform.starter_restored')
+    `);
+    expect(audit.n).toBe(2);
+  });
+
+  it("is deleted only while unused: its stores are closed and kept", async () => {
+    expect(await starters.deleteStarter(admin, spa.id)).toEqual({
+      ok: false,
+      problems: [expect.stringMatching(/^This store template cannot be deleted: \d+ stores were made from it and \d+ access requests name it\. Archive it instead\.$/)],
+    });
+    const unused = await starters.createStarter(admin, { slug: `unused-${run}`, details: details({ title: "Unused" }) });
+    if (!unused.ok) throw new Error("not made");
+    await starters.publishStarter(admin, unused.id);
+    const storeId = String((await one(sql`select store_id from commerce.store_starters where id = ${unused.id}::uuid`)).store_id);
+    expect(await starters.deleteStarter(owner, unused.id)).toMatchObject({ ok: false });
+    expect(await starters.deleteStarter(admin, unused.id)).toEqual({ ok: true });
+    expect((await one(sql`select count(*)::int as n from commerce.store_starters where id = ${unused.id}::uuid`)).n).toBe(0);
+    const closed = await db().execute<Row>(sql`select status from commerce.stores where id = ${storeId}::uuid or slug = ${`unused-${run}-v1`}`);
+    expect(closed.map((r) => r.status)).toEqual(["closed", "closed"]);
   });
 });

@@ -1,4 +1,4 @@
-# Store templates (D175)
+# Store templates (D175, D177)
 
 The platform's admins prepare **store templates**: starting points for new stores, each a real store set up for one kind of
 business (a spa taking appointments, a shop selling goods, downloads, rentals and stays, subscription boxes, services). A store
@@ -18,13 +18,16 @@ The interface calls them **Store templates**.
 * A row of **`commerce.store_starters`** describing it: `store_id` (unique, the store must be a starter), `title` (1 to 80), `summary` (up
   to 200, on the card), `description` (up to 2,000, plain text), `category` (`appointments`, `retail`, `downloads`, `rentals_stays`,
   `subscriptions`, `services`, `other`, a check), `picture_url` (optional; `https://…` or a path on the site, a check), `position` (the
-  order owners see), `published` (only published templates are offered), `created_by`/`updated_by`/`created_at`/`updated_at`.
+  order owners see), `published` (only published templates are offered), `created_by`/`updated_by`/`created_at`/`updated_at`. Since D177
+  (section 4a) also `draft` (details saved but not published), `published_store_id` (the frozen copy new stores are made from),
+  `published_at`, and `archived_at`/`archived_by` (`not (published and archived_at is not null)`, a check).
 * **`starter` and `is_template` are never both true** (`stores_starter_not_template`). The default template store stays as it is and is
   always offered as **Standard store**, first; it is not a row of `store_starters` and cannot be published as one. *Why:* the default is
   the source of every starter and of the demo storefront; giving it a second life as a starter would make its rules (it cannot be closed,
   it is prerendered) apply to something the platform can unpublish.
 * **Once a starter, always a starter** (`stores_starter_rules()`): `starter` can be set on a store that has no orders and no customers, and
-  never taken off. A template is retired by unpublishing it (it then stays as a store nobody is offered).
+  never taken off. A template is retired by unpublishing or archiving it, and deleted only while nothing used it (D177, section 4a); its
+  store is then closed, never deleted (D171).
 
 ## 2. A starter is not a real store
 
@@ -61,6 +64,14 @@ reader forces a decision.
 | `store-closure.ts` (`isTemplate` cannot close) | THE template | unchanged: a starter may be closed like any store |
 | migrations' demo and closure rules | THE template | unchanged |
 
+**Starters the platform keeps for itself (D177).** A store template's frozen copies (`stores.starter_copy_of`) and a design profile's
+workspaces (`design_presets.workspace_store_id`, `docs/design-profiles.md`) are starters too, so every row above leaves them out. They describe
+no store template, so they are also never listed where starters are (every list of templates joins `store_starters`), and **nobody works in
+them**: `loadMembership()` (`src/server/auth.ts`) honours a membership of a starter only while a `store_starters` row describes it (the
+person who made one is its owner on paper, as `clone_store()` needs an owner), so its store admin is a 404; the same condition keeps them out
+of `snapshotSources()` and `works()` (`design-presets.ts`), Kaizen Life's store list (`store-mcp.ts`) and Work's stores (`work-owner.ts`);
+`applyDesignPreset()` and `restoreDesignLook()` refuse them. A deleted template's store is such a store too.
+
 ## 3. The preview storefront
 
 * A starter's storefront is at its normal address, `/s/{slug}` and its markets (`{slug}.{store domain}` with P7), so a template can be
@@ -96,8 +107,41 @@ templates*. Platform admins only (`requirePlatformAdmin()` on every page and act
   so every platform admin can edit every template.
 * **Edit details** at `/admin/platform/store-templates/{id}`: title, summary, description, category, picture (uploaded to Kaizen's media
   library like other platform pictures, or chosen from it by address).
-* Every change is in the audit log (`platform.starter_created`, `_updated`, `_published`, `_unpublished`, `_moved`, `_joined`), with the
-  starter's store id.
+* Every change is in the audit log (`platform.starter_created`, `_updated`, `_published`, `_unpublished`, `_archived`, `_restored`,
+  `_deleted`, `_moved`, `_joined`; area `platform`), with the starter's store id.
+
+## 4a. Draft, publish, unpublish, archive, delete (D177)
+
+The same buttons on the list and on each template's page (`LifecycleButtons`, the states and choices in `src/lib/lifecycle.ts`):
+
+* **Save draft** (`saveStarterDraft()`): the details (title, summary, description, category, picture and the **recommended design
+  profile**, which is one of the details now) go to `store_starters.draft`; owners keep reading the columns until Publish. A draft equal to
+  what is published is none. The admin's pages show the draft in place of the published details and say so.
+* **Publish** (`publishStarter()`, one transaction): the draft becomes the columns (a recommended profile archived since is dropped, and the
+  admin is told), and the **working store is frozen**: `commerce.freeze_starter(starter, admin)` copies it with `clone_store()` (which, the
+  working store being a starter, adds `clone_starter_setup()`) into a new store `{slug}-v{n}`, marks it `starter` with `starter_copy_of` and
+  no `made_from_starter`, points `published_store_id` at it and closes the copy it replaces (`status = 'closed'` through
+  `stores_status_rules()`, never deleted). `published = true`, `published_at = now()`. Refused while archived (`store_starters.archived`) or
+  while the working store is not open (`.not_open`).
+* What a new store is copied from is still decided only by **`commerce.starter_source()`**: now `starter_offered_source()`, the published
+  and unarchived template's **frozen copy** (or, for a template published before D177 and not since, its working store, as before: the list
+  says "Publish it again to keep a copy"). So changes in the working store after a Publish reach no new store until the next Publish, and
+  owners' Preview cards (`listOfferedStarters()`) and the design profiles' public preview open the frozen copy. The admin previews both:
+  *Preview its store* (the working store) and *Preview as published*.
+* A store made from a frozen copy records the template (`clone_starter_setup()` reads `made_from_starter` from the source's own row or its
+  `starter_copy_of`).
+* **"Changed since published"**: a draft of the details, or an entry in the working store's activity log after `published_at` (not a
+  `platform.` action). An estimate: not every change is logged.
+* **Unpublish** (`unpublishStarter()`): out of the choices at once (`STARTERS_TAG`, `DESIGNS_TAG`); the admin is told how many pending access
+  requests chose it. At approval such a request gets the **Standard store**: `approve_access_request()` takes the default template when the
+  request's template is no longer offered (audit `starterFallback`), the request page leaves the choice empty with a sentence saying why,
+  and the approval's message names the template that gave way (`ApproveResult.fellBack`). A template the admin chooses that is not offered
+  is still refused.
+* **Archive** (`archiveStarter()`): unpublished, and hidden from every list but *Archived* (`?show=archived`); moving skips archived ones.
+  **Restore** brings it back unpublished.
+* **Delete** (`deleteStarter()`), offered only while unused and behind a confirmation: refused by the database when a store was made from it
+  (`store_starters.used`) or an access request names it (`store_starters.requested`), else its working store and every frozen copy are
+  closed and kept, and its row goes (`stores.starter_copy_of` set null; the closed stores stay hidden, see section 2).
 
 ## 5. Choosing one
 
@@ -107,9 +151,10 @@ templates*. Platform admins only (`requirePlatformAdmin()` on every page and act
 * **`/sign-up`**: the same cards, optional, Standard by default; the choice is kept on the request (`access_requests.starter_id`, a dropped
   value when it is not a published starter, without a word, like a referral code). The platform admin sees it on the request and may change
   it before approving.
-* **The server decides the source**: `commerce.starter_source(starter)` returns the starter's store when the starter is published, the
-  default template when none is given, and raises `store_starters.not_offered` otherwise. `createStoreForOwner()` and
-  `approve_access_request()` both call it, so an unpublished starter or any other store can never be the source.
+* **The server decides the source**: `commerce.starter_source(starter)` returns the starter's frozen copy (D177; its store when published
+  before D177) when the starter is published and not archived, the default template when none is given, and raises
+  `store_starters.not_offered` otherwise. `createStoreForOwner()` and `approve_access_request()` both use it, so an unpublished starter or any
+  other store can never be the source (approval of a request whose template is gone takes the Standard store, section 4a).
 * After the store is made, `stores.made_from_starter` keeps which template it came from (for the platform's counts on the list; nothing
   reads it to behave differently).
 
@@ -153,3 +198,4 @@ media library**: stores made from it would lose it (the same holds for the defau
   after the store template when a store is made, a store template may recommend one, and any store can apply one later.
 * An AI manager tool for store templates: none (the platform tools stay as they were); owners have none either.
 * Changing a store's template after it is made: a template is only a starting point; later changes to the template reach no store.
+* A precise "changed since published" for a template's store: it is estimated from the activity log (section 4a).

@@ -293,6 +293,9 @@ const loadMembership = cache(async (storeSlug: string): Promise<MembershipState>
     left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
     where m.store_id = ${store.id}::uuid and m.account_id = ${session.account.id}::uuid
       and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
+      -- A starter store is worked in only while it is a store template's working store (D177): a template's frozen copy, a design
+      -- profile's workspace and the store of a deleted template are the platform's, edited from its own pages or not at all.
+      and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
   `);
   if (!row) return { state: "none" };
 

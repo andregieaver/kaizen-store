@@ -648,16 +648,26 @@ const PAGES: readonly AdminPage[] = [
   platform("customers", "/customers", "Customers", "Platform", "Store owners with their stores, plans and invoices."),
   platform("customer", "/customers/[accountId]", "Customer", "Platform", "One store owner: stores, plans, invoices and emails."),
   platform("stores", "/stores", "Stores", "Platform", "Every store with its plan, subscription and fee."),
-  platform("store-templates", "/store-templates", "Store templates", "Platform", "Starting points for new stores (D175), each a store set up for one kind of business (appointments, retail, downloads, rentals and stays, subscriptions, services): make one, describe it, publish or unpublish it, order them, open its admin to set it up and preview its storefront.", {
+  platform("store-templates", "/store-templates", "Store templates", "Platform", "Starting points for new stores (D175, D177), each a store set up for one kind of business (appointments, retail, downloads, rentals and stays, subscriptions, services): make one, describe it, publish (keeping a copy of its store), unpublish, archive, restore or delete it, order them, open its admin to set it up and preview its storefront.", {
     tasks: ["Make a new store template", "Publish a store template", "Preview a store template", "Edit a store template's products and pages"],
     keywords: ["starter", "starting point", "store template", "blueprint"],
   }),
-  platform("store-template", "/store-templates/[starterId]", "Store template", "Platform", "One store template's title, summary, description, category and picture, and the design profile it recommends."),
-  platform("design-profiles", "/design-profiles", "Design profiles", "Platform", "A store's look kept to use again (D176): theme, header, footer, product page layout and CSS, never content or brand. Make one from a store, update it from its store, publish or unpublish it, order them and preview it on a store template; any store applies one from its Design settings and people creating a store choose one.", {
-    tasks: ["Make a design profile from a store", "Publish a design profile", "Preview a design profile", "Update a design profile from its store"],
+  platform("store-template", "/store-templates/[starterId]", "Store template", "Platform", "One store template's title, summary, description, category, picture and recommended design profile, saved as a draft; publish it (its store is kept as a copy new stores are made from), unpublish, archive or restore it, and delete it while nothing used it.", {
+    tasks: ["Publish a store template's changes", "Archive a store template", "Delete an unused store template"],
+    keywords: ["draft", "archive", "restore", "delete template"],
+  }),
+  platform("design-profiles", "/design-profiles", "Design profiles", "Platform", "A look kept to use again (D176, D177): theme, header, footer, product page layout and CSS, never content or brand. Make one from a store or from scratch, edit it on its own pages, publish, unpublish, archive, restore or delete it, order them and preview it; any store applies one from its Design settings and people creating a store choose one.", {
+    tasks: ["Make a design profile from a store", "Make a design profile from scratch", "Publish a design profile", "Preview a design profile", "Archive a design profile"],
     keywords: ["design template", "look", "theme preset", "style", "skin"],
   }),
-  platform("design-profile", "/design-profiles/[presetId]", "Design profile", "Platform", "One design profile's title, summary, description and picture, with previews on each store template."),
+  platform("design-profile", "/design-profiles/[presetId]", "Design profile", "Platform", "One design profile's details (title, summary, description, picture) saved as a draft, its life (publish, unpublish, archive, restore, delete while unused), previews of the published look and the draft on each store template, and starting its look again from a store."),
+  platform("design-profile.theme", "/design-profiles/[presetId]/theme", "Design profile theme", "Platform", "A design profile's theme: colours, fonts, headings, buttons, corners, layout, product cards, light and dark, in the theme editor; saved as the profile's draft.", {
+    keywords: ["colours", "fonts", "buttons", "corners", "dark mode"],
+  }),
+  platform("design-profile.header", "/design-profiles/[presetId]/header", "Design profile header", "Platform", "A design profile's header: the standard one, or its own built in the page builder; saved as the profile's draft."),
+  platform("design-profile.footer", "/design-profiles/[presetId]/footer", "Design profile footer", "Platform", "A design profile's footer: the standard one, or its own built in the page builder; saved as the profile's draft."),
+  platform("design-profile.product-layout", "/design-profiles/[presetId]/product-layout", "Design profile product page", "Platform", "A design profile's product page layout: the standard one, or its own built in the page builder; saved as the profile's draft."),
+  platform("design-profile.css", "/design-profiles/[presetId]/css", "Design profile CSS", "Platform", "A design profile's own CSS for every page, checked when saved; part of the profile's draft."),
   platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount; apply a design profile to it."),
   platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "Platform", "One of a store's plan invoices."),
   platform("plans", "/plans", "Plans", "Platform", "Kaizen's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),

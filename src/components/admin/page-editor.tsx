@@ -699,24 +699,38 @@ export function PageEditor({
 
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
-          <button
-            type="button"
-            onClick={() => submit(false)}
-            disabled={busy}
-            className="min-h-11 rounded-md border border-border px-4 font-medium disabled:opacity-50"
-          >
-            Save draft
-          </button>
-          <button
-            type="button"
-            onClick={requestPublish}
-            disabled={busy}
-            className="min-h-11 rounded-md bg-foreground px-5 font-medium text-background disabled:opacity-50"
-          >
-            {busy ? "Saving …" : saved?.published ? "Publish changes" : "Publish"}
-          </button>
+          {context.draftOnly ? (
+            // A design profile's workspace (D177): every save is the profile's draft, published with the profile from its own page.
+            <button
+              type="button"
+              onClick={() => submit(false)}
+              disabled={busy}
+              className="min-h-11 rounded-md bg-foreground px-5 font-medium text-background disabled:opacity-50"
+            >
+              {busy ? "Saving …" : "Save"}
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => submit(false)}
+                disabled={busy}
+                className="min-h-11 rounded-md border border-border px-4 font-medium disabled:opacity-50"
+              >
+                Save draft
+              </button>
+              <button
+                type="button"
+                onClick={requestPublish}
+                disabled={busy}
+                className="min-h-11 rounded-md bg-foreground px-5 font-medium text-background disabled:opacity-50"
+              >
+                {busy ? "Saving …" : saved?.published ? "Publish changes" : "Publish"}
+              </button>
+            </>
+          )}
           <p role="status" aria-live="polite" className="text-sm">
-            {message ?? (dirty ? "Unsaved changes." : state ? STATE_TEXT[state] : "Not saved yet.")}
+            {message ?? (dirty ? "Unsaved changes." : context.draftOnly ? (saved ? "Saved in the profile's draft." : "Not saved yet.") : state ? STATE_TEXT[state] : "Not saved yet.")}
             {/* One undo, only while nothing else has been changed since. */}
             {coolUndo && coolUndo.after === content.rows && (
               <button type="button" onClick={undoCool} className="ml-2 underline">
@@ -752,6 +766,14 @@ export function PageEditor({
             Custom CSS
             {(content.css || siteCss.trim()) && <span className="size-2 rounded-full bg-violet-600" title="Has custom CSS" />}
           </button>
+          {context.draftOnly ? (
+            <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
+              <span className="text-muted">{context.draftOnly.note}</span>
+              <a href={context.draftOnly.preview} target="_blank" rel="noopener" className="underline">
+                Preview the draft{dirty ? " (last saved)" : ""}
+              </a>
+            </div>
+          ) : (
           <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
             {saved && (
               <a href={`${adminBase}/${saved.id}/preview`} target="_blank" rel="noopener" className="underline">
@@ -806,6 +828,7 @@ export function PageEditor({
                 </button>
               ))}
           </div>
+          )}
         </div>
       </div>
     </div>

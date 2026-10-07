@@ -470,6 +470,12 @@ export const stores = commerce.table(
     starter: boolean("starter").notNull().default(false),
     /** The store template this store was made from (D175), for the platform's counts; nothing behaves differently by it. */
     madeFromStarter: uuid("made_from_starter").references((): AnyPgColumn => storeStarters.id),
+    /**
+     * A store template's frozen published copy (D177, docs/store-templates.md section 4): made by `commerce.freeze_starter()` when the
+     * template is published, what new stores are copied from (`commerce.starter_source()`) and what owners preview. Always `starter`, never
+     * worked in (no membership is honoured: `loadMembership()`), closed when a later publish replaces it. Null when the template is deleted.
+     */
+    starterCopyOf: uuid("starter_copy_of").references((): AnyPgColumn => storeStarters.id, { onDelete: "set null" }),
     /** When the owner finished the setup wizard. */
     setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }),
     /**
@@ -594,6 +600,9 @@ export const stores = commerce.table(
     uniqueIndex("stores_one_template_idx").on(t.isTemplate).where(sql`${t.isTemplate}`),
     check("stores_starter_not_template", sql`not (${t.starter} and ${t.isTemplate})`),
     index("stores_made_from_starter_idx").on(t.madeFromStarter),
+    index("stores_starter_copy_of_idx").on(t.starterCopyOf),
+    // A store template's frozen copy (D177) is a starter like it: never a real store.
+    check("stores_starter_copy_is_starter", sql`${t.starterCopyOf} is null or ${t.starter}`),
     index("stores_created_by_idx").on(t.createdBy),
     index("stores_country_idx").on(t.country),
     index("stores_front_page_idx").on(t.id, t.frontPageId),
@@ -605,8 +614,9 @@ export const stores = commerce.table(
 
 /**
  * Store templates (D175, docs/store-templates.md): the description of a store marked `starter`, what owners and the sign-up form are
- * offered once `published`, in `position` order. One per starter store, never deleted (unpublished instead); the rules are in the
- * `store_starters_rules` migration (only a starter store, store fixed, no delete). Classified `never` in `COPY_RULES`.
+ * offered once `published` (D177: from its frozen copy, `published_store_id`), in `position` order. One per starter store; deleted only
+ * while no store and no access request came from it (D177), else archived; the rules are in the `store_starters_rules` migrations (only a
+ * starter store, store fixed, delete only unused). Classified `never` in `COPY_RULES`.
  */
 export const storeStarters = commerce.table(
   "store_starters",
@@ -630,6 +640,18 @@ export const storeStarters = commerce.table(
      * restriction. Null: the template's own look.
      */
     recommendedDesign: uuid("recommended_design").references((): AnyPgColumn => designPresets.id),
+    /**
+     * Details saved but not published yet (D177): `{ title, summary, description, category, pictureUrl, recommendedDesign }`, read by the
+     * platform admin only; owners see the columns above until Publish copies it there. Null: no unpublished change of the details.
+     */
+    draft: jsonb("draft"),
+    /** The frozen copy new stores are made from and owners preview (D177, `commerce.freeze_starter()`); null until published under D177. */
+    publishedStoreId: uuid("published_store_id").references((): AnyPgColumn => stores.id),
+    /** The last Publish. */
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    /** Archived (D177): hidden from every list but the platform's Archived filter, never published while archived; Restore takes it back. */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    archivedBy: uuid("archived_by").references(() => accounts.id),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -638,6 +660,10 @@ export const storeStarters = commerce.table(
   (t) => [
     uniqueIndex("store_starters_store_idx").on(t.storeId),
     index("store_starters_recommended_design_idx").on(t.recommendedDesign),
+    index("store_starters_published_store_idx").on(t.publishedStoreId),
+    index("store_starters_archived_by_idx").on(t.archivedBy),
+    check("store_starters_archived_unpublished", sql`not (${t.published} and ${t.archivedAt} is not null)`),
+    check("store_starters_draft", sql`${t.draft} is null or jsonb_typeof(${t.draft}) = 'object'`),
     index("store_starters_offered_idx").on(t.published, t.position),
     index("store_starters_created_by_idx").on(t.createdBy),
     index("store_starters_updated_by_idx").on(t.updatedBy),
@@ -660,8 +686,9 @@ export const storeStarters = commerce.table(
  * make from a store and any store can apply (`applyDesignPreset()`, the one writer). `snapshot` is `DesignSnapshot` in
  * `src/lib/design-presets.ts` (versioned, `v` 1): the theme's settings, the chosen header, footer and standard product layout as rows,
  * and the site's CSS, cleaned of everything that points into the store it came from. Not store-owned (no `store_id`: the source is only
- * informational), so it is outside `COPY_RULES` and never copied with a store. Never deleted (unpublished instead): the rules are in the
- * `design_presets_rules` migration. Called "design presets" in code, never "template", "starter" or "theme" alone (D125, D175, D60).
+ * informational), so it is outside `COPY_RULES` and never copied with a store. Deleted only while unused (D177: no use, no access request;
+ * a recommendation is cleared), else archived: the rules are in the `design_presets_rules` migrations. Edited in its workspace store (D177)
+ * and published from it. Called "design presets" in code, never "template", "starter" or "theme" alone (D125, D175, D60).
  */
 export const designPresets = commerce.table(
   "design_presets",
@@ -681,6 +708,24 @@ export const designPresets = commerce.table(
     snapshotAt: timestamp("snapshot_at", { withTimezone: true }).notNull().defaultNow(),
     position: integer("position").notNull().default(0),
     published: boolean("published").notNull().default(false),
+    /**
+     * Details saved but not published yet (D177): `{ title, summary, description, pictureUrl }`, read by the platform admin only; stores see
+     * the columns above until Publish copies it there. Null: no unpublished change of the details.
+     */
+    draft: jsonb("draft"),
+    /**
+     * The profile's workspace (D177): a hidden store (`starter`, no `store_starters` row, never worked in through the store admin) where its
+     * look is edited from the profile's own pages; Publish takes its snapshot into `snapshot`. Null for a profile made before D177 until it is
+     * first edited.
+     */
+    workspaceStoreId: uuid("workspace_store_id").references((): AnyPgColumn => stores.id),
+    /** A key of the workspace's look as last published (or as made), to tell whether it changed since (`snapshotKey()`). */
+    workspaceKey: text("workspace_key"),
+    /** The last Publish. */
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    /** Archived (D177): hidden from every list but the platform's Archived filter, never published while archived; Restore takes it back. */
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    archivedBy: uuid("archived_by").references(() => accounts.id),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -688,6 +733,10 @@ export const designPresets = commerce.table(
   },
   (t) => [
     index("design_presets_offered_idx").on(t.published, t.position),
+    uniqueIndex("design_presets_workspace_idx").on(t.workspaceStoreId),
+    index("design_presets_archived_by_idx").on(t.archivedBy),
+    check("design_presets_archived_unpublished", sql`not (${t.published} and ${t.archivedAt} is not null)`),
+    check("design_presets_draft", sql`${t.draft} is null or jsonb_typeof(${t.draft}) = 'object'`),
     index("design_presets_source_store_idx").on(t.sourceStoreId),
     index("design_presets_created_by_idx").on(t.createdBy),
     index("design_presets_updated_by_idx").on(t.updatedBy),

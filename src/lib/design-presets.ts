@@ -333,7 +333,10 @@ export const designChoice = (value: unknown): string | null => starterChoice(val
 /** A design profile as owners and the sign-up form see it. */
 export type OfferedDesign = { id: string; title: string; summary: string; description: string; pictureUrl: string | null };
 
-/** A design profile as the platform admin sees it. */
+/**
+ * A design profile as the platform admin sees it. Its `OfferedDesign` fields are the **published** details (what stores see); `draft` is
+ * what was saved since (D177), shown to the admin in their place.
+ */
 export type DesignRow = OfferedDesign & {
   published: boolean;
   position: number;
@@ -342,11 +345,51 @@ export type DesignRow = OfferedDesign & {
   sourceStoreSlug: string | null;
   /** Stores it was applied to so far (`design_preset_uses`). */
   storesUsing: number;
+  /** Access requests that chose it (D177): with stores using it, what keeps it from being deleted. */
+  requests: number;
   /** Store templates that recommend it. */
   recommendedBy: string[];
   snapshotAt: string;
   readable: boolean;
+  /** Details saved but not published (D177), or null. */
+  draft: DesignDetails | null;
+  /** Its workspace store (D177), or null for a profile made before D177 that was not edited since. */
+  workspaceStoreId: string | null;
+  workspaceSlug: string | null;
+  /** The key of the workspace's look when it was last published or made (`snapshotKey()`). */
+  workspaceKey: string | null;
+  publishedAt: string | null;
+  archivedAt: string | null;
 };
+
+/** A saved draft of a profile's details (`design_presets.draft`), or null when it cannot be read. */
+export function readDesignDraft(value: unknown): DesignDetails | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const parsed = parseDesignDetails(value as Record<string, unknown>);
+  return parsed.ok ? parsed.details : null;
+}
+
+/** Whether two sets of details are the same (a draft equal to what is published is no draft). */
+export const sameDesignDetails = (a: DesignDetails, b: DesignDetails): boolean =>
+  a.title === b.title && a.summary === b.summary && a.description === b.description && (a.pictureUrl ?? null) === (b.pictureUrl ?? null);
+
+/** Where a new design profile starts (D177): a store's look, or Kaizen's standard one. */
+export type DesignOrigin = { kind: "store"; storeId: string } | { kind: "scratch" };
+
+/** The parts of a profile edited on its own pages (D177), in the order of its tabs, with their addresses under the profile's. */
+export const DESIGN_TABS = [
+  { key: "details", label: "Details", segment: "" },
+  { key: "theme", label: "Theme", segment: "/theme" },
+  { key: "header", label: "Header", segment: "/header" },
+  { key: "footer", label: "Footer", segment: "/footer" },
+  { key: "productLayout", label: "Product page", segment: "/product-layout" },
+  { key: "css", label: "CSS", segment: "/css" },
+] as const;
+export type DesignTab = (typeof DESIGN_TABS)[number]["key"];
+
+/** The address of one of a profile's own pages (D177). */
+export const designTabHref = (presetId: string, tab: DesignTab): string =>
+  `/admin/platform/design-profiles/${presetId}${DESIGN_TABS.find((t) => t.key === tab)?.segment ?? ""}`;
 
 /** A card to choose: a design profile, or "keep the look" (`id` empty). */
 export type DesignCard = Pick<OfferedDesign, "title" | "summary" | "description" | "pictureUrl"> & {
@@ -367,18 +410,26 @@ export function keepDesignCard(): DesignCard {
   };
 }
 
-/** The address of a design profile's preview: on a store template's front page and one product (the Standard store's when none). */
-export function designPreviewPath(presetId: string, starterId?: string | null, admin = false): string {
+/**
+ * The address of a design profile's preview: on a store template's front page and one product (the Standard store's when none); with
+ * `admin` unpublished ones too, and with `draft` the look in its workspace as last saved (D177).
+ */
+export function designPreviewPath(presetId: string, starterId?: string | null, admin = false, draft = false): string {
   const query = new URLSearchParams();
   if (starterId) query.set("starter", starterId);
   if (admin) query.set("as", "admin");
+  // The look in the profile's workspace, not yet published (D177): for platform admins only.
+  if (admin && draft) query.set("draft", "1");
   const search = query.toString();
   return `/admin/account/design-profiles/${presetId}/preview${search ? `?${search}` : ""}`;
 }
 
 /** The plain words for a refusal of the database's design profile rules, or null when the error is not one of them. */
 export function designRefusal(text: string): string | null {
-  if (text.includes("design_presets.kept")) return "A design profile is unpublished, never deleted.";
+  if (text.includes("design_presets.used")) return "A store applied this design profile, so it cannot be deleted. Archive it instead.";
+  if (text.includes("design_presets.requested")) return "An access request chose this design profile, so it cannot be deleted. Archive it instead.";
+  if (text.includes("design_presets.workspace_fixed") || text.includes("design_presets.not_workspace")) return "The design profile's workspace could not be set up. Try again.";
+  if (text.includes("design_presets_archived_unpublished")) return "An archived design profile is never published. Restore it first.";
   if (text.includes("design_preset_uses.restored")) return "The look from before was put back already.";
   if (text.includes("design_preset_uses.")) return "That record of a design profile cannot be changed.";
   if (text.includes("design_presets_snapshot")) return "The store's look is too large to keep as a design profile.";

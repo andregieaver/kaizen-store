@@ -141,23 +141,28 @@ afterAll(async () => {
 
 describe("a platform admin makes a design profile from a store (D176)", () => {
   it("refuses anyone who does not run the platform, and a store the admin does not work in", async () => {
-    expect(await designs.createDesign(owner, { storeId: target.id, details: details("Nope") })).toMatchObject({ ok: false });
-    expect(await designs.createDesign(admin, { storeId: target.id, details: details("Nope") })).toEqual({
+    expect(await designs.createDesign(owner, { origin: { kind: "store", storeId: target.id }, details: details("Nope") }, deps)).toMatchObject({ ok: false });
+    expect(await designs.createDesign(admin, { origin: { kind: "store", storeId: target.id }, details: details("Nope") }, deps)).toEqual({
       ok: false,
       problems: ["Choose a store you work in."],
     });
   });
 
-  it("keeps the store's look, unpublished and last, with nothing in it that points into the store", async () => {
-    const result = await designs.createDesign(admin, { storeId: source.id, details: details(`Nordic calm ${run}`) });
+  it("keeps the store's look in its workspace, unpublished and last, with nothing in it that points into the store", async () => {
+    const result = await designs.createDesign(admin, { origin: { kind: "store", storeId: source.id }, details: details(`Nordic calm ${run}`) }, deps);
     expect(result).toMatchObject({ ok: true });
     presetId = (result as { id: string }).id;
-    const row = await one(sql`select snapshot, published, source_store_id, position from commerce.design_presets where id = ${presetId}::uuid`);
+    const row = await one(sql`
+      select snapshot, published, source_store_id, workspace_store_id, workspace_key, position from commerce.design_presets where id = ${presetId}::uuid
+    `);
     expect(row.published).toBe(false);
-    expect(String(row.source_store_id)).toBe(source.id);
+    // The look is edited in the profile's workspace (D177), whose library its pictures are copied into; the store is not touched.
+    expect(row.workspace_store_id).not.toBeNull();
+    expect(row.source_store_id).toBe(row.workspace_store_id);
+    expect(row.workspace_key).toMatch(/^[0-9a-f]{64}$/);
     const json = JSON.stringify(row.snapshot);
-    for (const foreign of [source.id, source.headerMenu, source.footerMenu, source.headerPage, `/s/${source.slug}`]) expect(json).not.toContain(foreign);
-    expect(json).toContain(STORAGE);
+    for (const foreign of [source.id, source.headerMenu, source.footerMenu, source.headerPage, `/s/${source.slug}`, STORAGE]) expect(json).not.toContain(foreign);
+    expect(json).toContain(`/product-images/${String(row.workspace_store_id)}/`);
     const snapshot = row.snapshot as { theme: { settings: { light: { accent: string } } }; css: string; header: object; footer: object; productLayout: object };
     expect(snapshot.theme.settings.light.accent).toBe("#2f6f4e");
     expect(snapshot.css).toContain("letter-spacing");
@@ -173,7 +178,7 @@ describe("applying a design profile (D176)", () => {
       ok: false,
       problems: ["That design profile is not offered any more. Choose another."],
     });
-    expect(await designs.setDesignPublished(admin, presetId, true)).toEqual({ ok: true });
+    expect(await designs.publishDesign(admin, presetId)).toMatchObject({ ok: true });
   });
 
   it("is refused for a store the account does not work in, and for a store that is not open", async () => {
@@ -247,7 +252,7 @@ describe("applying a design profile (D176)", () => {
   });
 
   it("lets a platform admin try an unpublished profile on a store template, and on no other store", async () => {
-    const draft = await designs.createDesign(admin, { storeId: source.id, details: details(`Draft ${run}`) });
+    const draft = await designs.createDesign(admin, { origin: { kind: "store", storeId: source.id }, details: details(`Draft ${run}`) }, deps);
     const draftId = (draft as { id: string }).id;
     const starter = await starters.createStarter(admin, { slug: `tpl-${run}`, details: starterDetails() });
     const starterStore = String((await one(sql`select store_id from commerce.store_starters where id = ${(starter as { id: string }).id}::uuid`)).store_id);
@@ -278,7 +283,7 @@ describe("choosing a design profile when a store is made (D176)", () => {
   });
 
   it("refuses a profile that is not offered before making anything", async () => {
-    const draft = await designs.createDesign(admin, { storeId: source.id, details: details(`Hidden ${run}`) });
+    const draft = await designs.createDesign(admin, { origin: { kind: "store", storeId: source.id }, details: details(`Hidden ${run}`) }, deps);
     expect(await createStoreForOwner(owner, "Third", `third-${run}`, null, (draft as { id: string }).id)).toEqual({
       ok: false,
       problems: ["That design profile is not offered any more. Choose another."],
@@ -297,7 +302,7 @@ describe("choosing a design profile when a store is made (D176)", () => {
     const use = await one(sql`select applied_by from commerce.design_preset_uses where store_id = ${String(store.id)}::uuid`);
     expect(String(use.applied_by)).toBe(admin.id);
 
-    const hidden = await designs.createDesign(admin, { storeId: source.id, details: details(`Unpublished ${run}`) });
+    const hidden = await designs.createDesign(admin, { origin: { kind: "store", storeId: source.id }, details: details(`Unpublished ${run}`) }, deps);
     await createAccessRequest({ name: "Per", email: `per-${run}@example.com`, storeName: "Per", message: "", designPresetId: (hidden as { id: string }).id });
     expect((await one(sql`select design_preset_id from commerce.access_requests where lower(email) = ${`per-${run}@example.com`}`)).design_preset_id).toBeNull();
   });
@@ -336,23 +341,200 @@ describe("choosing a design profile when a store is made (D176)", () => {
   it("offers a store template's recommended profile first, while both are published", async () => {
     const starter = await starters.createStarter(admin, { slug: `rec-${run}`, details: starterDetails() });
     const starterId = (starter as { id: string }).id;
-    await starters.setStarterPublished(admin, starterId, true);
-    expect(await designs.setRecommendedDesign(admin, starterId, presetId)).toEqual({ ok: true });
-    expect((await designs.designChoices()).recommended[starterId]).toBe(presetId);
-    await designs.setDesignPublished(admin, presetId, false);
+    // The recommendation is one of the template's details (D177): a draft until the template is published.
+    expect(await starters.saveStarterDraft(admin, starterId, { ...starterDetails(), recommendedDesign: presetId })).toEqual({ ok: true });
     expect((await designs.designChoices()).recommended[starterId]).toBeUndefined();
-    await designs.setDesignPublished(admin, presetId, true);
-    expect(await designs.setRecommendedDesign(owner, starterId, presetId)).toMatchObject({ ok: false });
+    expect(await starters.publishStarter(admin, starterId)).toMatchObject({ ok: true });
+    expect((await designs.designChoices()).recommended[starterId]).toBe(presetId);
+    await designs.unpublishDesign(admin, presetId);
+    expect((await designs.designChoices()).recommended[starterId]).toBeUndefined();
+    await designs.publishDesign(admin, presetId);
+    expect(await starters.saveStarterDraft(owner, starterId, { ...starterDetails(), recommendedDesign: presetId })).toMatchObject({ ok: false });
   });
 });
 
 describe("the preview (D176)", () => {
   it("shows a published profile on the Standard store and refuses an unpublished one, unless a platform admin asks", async () => {
     expect(await designs.publicDesignPreview(presetId, null)).toMatchObject({ id: presetId, starterTitle: null });
-    const hidden = await designs.createDesign(admin, { storeId: source.id, details: details(`Secret ${run}`) });
+    const hidden = await designs.createDesign(admin, { origin: { kind: "store", storeId: source.id }, details: details(`Secret ${run}`) }, deps);
     const hiddenId = (hidden as { id: string }).id;
     expect(await designs.publicDesignPreview(hiddenId, null)).toBeNull();
     expect(await designs.adminDesignPreview(hiddenId, null)).toMatchObject({ id: hiddenId });
     expect(await designs.publicDesignPreview("not-an-id", null)).toBeNull();
+  });
+});
+
+describe("a design profile's workspace and its draft (D177)", () => {
+  let scratch: string;
+  let workspace: { id: string; slug: string };
+
+  it("starts from scratch with Kaizen's standard look, in a workspace of its own", async () => {
+    const made = await designs.createDesign(admin, { origin: { kind: "scratch" }, details: details(`Scratch ${run}`) }, deps);
+    expect(made).toMatchObject({ ok: true });
+    scratch = (made as { id: string }).id;
+    const row = await one(sql`
+      select d.snapshot, d.published, w.id, w.slug, w.starter, w.theme, w.custom_css, w.header_id, w.footer_id, w.product_layout_id,
+             (select count(*)::int from commerce.store_starters st where st.store_id = w.id) as described,
+             (select count(*)::int from commerce.products p where p.store_id = w.id) as products
+      from commerce.design_presets d join commerce.stores w on w.id = d.workspace_store_id where d.id = ${scratch}::uuid
+    `);
+    workspace = { id: String(row.id), slug: String(row.slug) };
+    expect(row).toMatchObject({ published: false, starter: true, custom_css: "", header_id: null, footer_id: null, product_layout_id: null, described: 0 });
+    // Copied from the default template, so the builders and previews have its demo products to draw.
+    expect(Number(row.products)).toBeGreaterThan(0);
+    expect(parseStoreTheme(row.theme)).toMatchObject({ base: "minimal", settings: templateSettings("minimal") });
+    expect(row.snapshot).toMatchObject({ header: null, footer: null, productLayout: null, css: "", theme: { base: "minimal" } });
+  });
+
+  it("is never listed among anyone's stores, never a source of a look, and never changed by applying", async () => {
+    const { listStores } = await import("./auth");
+    const { listStoreBilling } = await import("./billing");
+    const { workStoresFor } = await import("./work-owner");
+    const seen = [
+      ...(await listStores(admin)).map((s) => s.slug),
+      ...(await designs.snapshotSources(admin)).map((s) => s.slug),
+      ...(await listStoreBilling({ includeClosed: true })).map((s) => s.slug),
+      ...(await starters.listStarters()).map((s) => s.storeSlug),
+      ...(await starters.listOfferedStarters()).map((s) => s.storeSlug),
+      ...Object.values(await workStoresFor(admin)).flatMap((list) => list.map((s: { slug: string }) => s.slug)),
+    ];
+    expect(seen).not.toContain(workspace.slug);
+    expect(await designs.createDesign(admin, { origin: { kind: "store", storeId: workspace.id }, details: details("Loop") }, deps)).toEqual({
+      ok: false,
+      problems: ["Choose a store you work in."],
+    });
+    expect(await designs.applyDesignPreset(workspace.id, presetId, admin.id, deps)).toMatchObject({ ok: false, problems: [expect.stringMatching(/kept by the platform/)] });
+    expect(await designs.restoreDesignLook(workspace.id, admin.id)).toMatchObject({ ok: false });
+  });
+
+  it("is reached only by a platform admin, for its own profile", async () => {
+    expect(await designs.workspaceOf(owner, scratch)).toBeNull();
+    expect(await designs.workspaceOf(admin, scratch)).toMatchObject({ presetId: scratch, store: workspace });
+    expect(await designs.ensureWorkspace(owner, scratch)).toMatchObject({ ok: false });
+    expect(await designs.chooseWorkspaceLayout(owner, scratch, "header", "build")).toMatchObject({ ok: false });
+  });
+
+  it("keeps changes as a draft: stores see the published profile until it is published again", async () => {
+    expect(await designs.publishDesign(admin, scratch)).toMatchObject({ ok: true });
+    expect((await designs.publicDesignPreview(scratch, null))?.snapshot.theme.base).toBe("minimal");
+    // The admin builds a header and changes the theme in the workspace, and saves new details.
+    const header = await designs.chooseWorkspaceLayout(admin, scratch, "header", "build");
+    expect(header).toMatchObject({ ok: true, pageId: expect.any(String) });
+    const { saveStoreTheme } = await import("./themes");
+    expect(await saveStoreTheme(admin, workspace.id, { base: "bold", savedId: null, settings: templateSettings("bold") })).toMatchObject({ ok: true });
+    expect(await designs.saveDesignDraft(admin, scratch, details(`Scratch bold ${run}`))).toEqual({ ok: true });
+
+    const design = (await designs.getDesign(scratch))!;
+    expect(await designs.designChanged(design)).toBe(true);
+    expect(design.title).toBe(`Scratch ${run}`);
+    expect(designs.shownDesignDetails(design).title).toBe(`Scratch bold ${run}`);
+    // What stores see and apply is still the published profile; the admin's draft preview shows the workspace.
+    expect((await designs.publicDesignPreview(scratch, null))).toMatchObject({ title: `Scratch ${run}`, snapshot: { header: null, theme: { base: "minimal" } }, draft: false });
+    expect((await designs.adminDesignPreview(scratch, null, true))).toMatchObject({ title: `Scratch bold ${run}`, snapshot: { theme: { base: "bold" } }, draft: true });
+    expect((await designs.adminDesignPreview(scratch, null, true))?.snapshot.header).not.toBeNull();
+    expect((await designs.listOfferedDesigns()).find((d) => d.id === scratch)?.title).toBe(`Scratch ${run}`);
+
+    expect(await designs.publishDesign(admin, scratch)).toMatchObject({ ok: true });
+    const after = (await designs.getDesign(scratch))!;
+    expect(await designs.designChanged(after)).toBe(false);
+    expect(after).toMatchObject({ title: `Scratch bold ${run}`, draft: null });
+    expect((await designs.publicDesignPreview(scratch, null))?.snapshot).toMatchObject({ theme: { base: "bold" } });
+    expect((await designs.publicDesignPreview(scratch, null))?.snapshot.header).not.toBeNull();
+    // Choosing the standard header again is a draft change too.
+    expect(await designs.chooseWorkspaceLayout(admin, scratch, "header", "standard")).toEqual({ ok: true, pageId: null });
+    expect(await designs.designChanged((await designs.getDesign(scratch))!)).toBe(true);
+    // Building it again takes back the profile's own header, not a new one.
+    expect(await designs.chooseWorkspaceLayout(admin, scratch, "header", "build")).toEqual({ ok: true, pageId: (header as { pageId: string }).pageId });
+  });
+
+  it("gives a profile made before D177 a workspace the first time it is edited, without counting as changed", async () => {
+    const [legacy] = await db().execute<Row>(sql`
+      insert into commerce.design_presets (title, snapshot, published, published_at, source_store_id)
+      select ${`Legacy ${run}`}, snapshot, true, now(), ${source.id}::uuid from commerce.design_presets where id = ${presetId}::uuid
+      returning id
+    `);
+    const legacyId = String(legacy.id);
+    expect(await designs.workspaceOf(admin, legacyId)).toBeNull();
+    const ready = await designs.ensureWorkspace(admin, legacyId, deps);
+    expect(ready).toMatchObject({ ok: true });
+    const again = await designs.ensureWorkspace(admin, legacyId, deps);
+    expect((again as { workspace: { store: { id: string } } }).workspace.store.id).toBe((ready as { workspace: { store: { id: string } } }).workspace.store.id);
+    const design = (await designs.getDesign(legacyId))!;
+    expect(design.workspaceStoreId).not.toBeNull();
+    expect(await designs.designChanged(design)).toBe(false);
+    const ws = await one(sql`select theme, header_id from commerce.stores where id = ${design.workspaceStoreId}::uuid`);
+    expect(parseStoreTheme(ws.theme).settings.light.accent).toBe("#2f6f4e");
+    expect(ws.header_id).not.toBeNull();
+  });
+
+  it("can start its draft again from a store's look", async () => {
+    expect(await designs.copyStoreLookToDraft(owner, scratch, source.id, deps)).toMatchObject({ ok: false });
+    expect(await designs.copyStoreLookToDraft(admin, scratch, target.id, deps)).toEqual({ ok: false, problems: ["Choose a store you work in."] });
+    expect(await designs.copyStoreLookToDraft(admin, scratch, source.id, deps)).toMatchObject({ ok: true });
+    const draft = await designs.adminDesignPreview(scratch, null, true);
+    expect(draft?.snapshot.theme.settings.light.accent).toBe("#2f6f4e");
+    expect((await designs.publicDesignPreview(scratch, null))?.snapshot.theme.base).toBe("bold");
+  });
+});
+
+describe("the life of a design profile (D177)", () => {
+  it("is taken out of the choices at once when unpublished, and says which pending requests chose it", async () => {
+    const made = await designs.createDesign(admin, { origin: { kind: "scratch" }, details: details(`Chosen ${run}`) }, deps);
+    const id = (made as { id: string }).id;
+    await designs.publishDesign(admin, id);
+    await createAccessRequest({ name: "Mia", email: `mia-${run}@example.com`, storeName: "Mia", message: "", designPresetId: id });
+    expect(await designs.unpublishDesign(admin, id)).toEqual({ ok: true, pendingRequests: 1 });
+    expect((await designs.designChoices()).cards.some((c) => c.id === id)).toBe(false);
+    expect(await designs.isOfferedDesign(id)).toBe(false);
+    // Approved as asked: the store keeps its template's own design, and the admin is told.
+    const mia = await one(sql`select id from commerce.access_requests where lower(email) = ${`mia-${run}@example.com`}`);
+    expect(await approveAccessRequest(admin, String(mia.id), `mia-${run}`, "Mia", "https://example.com")).toMatchObject({
+      ok: true,
+      design: null,
+      fellBack: { starter: null, design: `Chosen ${run}` },
+    });
+    // A request chose it: it is archived, never deleted.
+    expect(await designs.deleteDesign(admin, id)).toEqual({ ok: false, problems: ["This design profile cannot be deleted: 1 access request names it. Archive it instead."] });
+  });
+
+  it("is archived out of every list and choice and every template's recommendation, and restored unpublished", async () => {
+    const made = await designs.createDesign(admin, { origin: { kind: "scratch" }, details: details(`Shelf ${run}`) }, deps);
+    const id = (made as { id: string }).id;
+    await designs.publishDesign(admin, id);
+    const starter = await starters.createStarter(admin, { slug: `shelf-${run}`, details: starterDetails() });
+    const starterId = (starter as { id: string }).id;
+    await starters.saveStarterDraft(admin, starterId, { ...starterDetails(), recommendedDesign: id });
+    await starters.publishStarter(admin, starterId);
+    await starters.saveStarterDraft(admin, starterId, { ...starterDetails(), summary: "Changed", recommendedDesign: id });
+
+    expect(await designs.archiveDesign(admin, id)).toEqual({ ok: true, clearedFrom: ["Spa"] });
+    expect((await designs.listDesigns()).some((d) => d.id === id)).toBe(false);
+    expect((await designs.listDesigns("archived")).find((d) => d.id === id)).toMatchObject({ published: false });
+    expect((await designs.designChoices()).cards.some((c) => c.id === id)).toBe(false);
+    expect(await designs.publicDesignPreview(id, null)).toBeNull();
+    const row = (await starters.getStarter(starterId))!;
+    expect(row.recommendedDesign).toBeNull();
+    expect(row.draft?.recommendedDesign).toBeNull();
+    expect(await designs.publishDesign(admin, id)).toEqual({ ok: false, problems: ["This design profile is archived. Restore it before publishing it."] });
+    expect(await designs.applyDesignPreset(target.id, id, admin.id, deps)).toMatchObject({ ok: false });
+
+    expect(await designs.restoreDesign(admin, id)).toEqual({ ok: true });
+    expect((await designs.getDesign(id))).toMatchObject({ archivedAt: null, published: false });
+  });
+
+  it("is deleted only while unused: a store that applied it keeps it, else its workspace is closed and kept", async () => {
+    expect(await designs.deleteDesign(admin, presetId)).toMatchObject({ ok: false, problems: [expect.stringMatching(/^This design profile cannot be deleted: \d+ stores applied it.* Archive it instead\.$/)] });
+    const made = await designs.createDesign(admin, { origin: { kind: "scratch" }, details: details(`Gone ${run}`) }, deps);
+    const id = (made as { id: string }).id;
+    const workspaceId = (await designs.getDesign(id))!.workspaceStoreId!;
+    const starter = await starters.createStarter(admin, { slug: `gone-${run}`, details: starterDetails() });
+    const starterId = (starter as { id: string }).id;
+    await starters.saveStarterDraft(admin, starterId, { ...starterDetails(), recommendedDesign: id });
+    await starters.publishStarter(admin, starterId);
+    expect(await designs.deleteDesign(owner, id)).toMatchObject({ ok: false });
+    expect(await designs.deleteDesign(admin, id)).toEqual({ ok: true, clearedFrom: ["Spa"] });
+    expect(await designs.getDesign(id)).toBeNull();
+    expect((await one(sql`select status from commerce.stores where id = ${workspaceId}::uuid`)).status).toBe("closed");
+    expect((await starters.getStarter(starterId))?.recommendedDesign).toBeNull();
   });
 });

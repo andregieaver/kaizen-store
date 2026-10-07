@@ -133,6 +133,11 @@ export type ApproveResult =
       /** The design profile chosen (D176): applied, or why not (the store is made all the same, with its template's look). */
       design: { title: string | null; problem: string | null } | null;
       storeId: string;
+      /**
+       * What the requester chose that was no longer offered at approval (D177): the store template (the store was made from the Standard
+       * store) and the design profile (the store keeps its template's own look), by title.
+       */
+      fellBack: { starter: string | null; design: string | null };
     }
   | { ok: false; problems: string[] };
 
@@ -140,8 +145,11 @@ export type ApproveResult =
  * Approves a request: account, store copied from the store template chosen
  * (D175: the requester's, or the one the admin changed it to; null is the
  * Standard store) and the decision, in one database transaction; then emails
- * a sign-in link. `commerce.starter_source()` refuses a template that is not
- * published, so nothing is created then.
+ * a sign-in link. `commerce.starter_source()` refuses a template the admin
+ * chose that is not offered, so nothing is created then; one the requester
+ * chose that was unpublished or archived since gives way to the Standard
+ * store (D177, `fellBack`), as an unoffered design profile gives way to the
+ * template's own look.
  */
 export async function approveAccessRequest(
   admin: Account,
@@ -157,10 +165,19 @@ export async function approveAccessRequest(
   const problem = slugProblem(slug);
   if (problem) return { ok: false, problems: [`Store address: ${problem}`] };
   if (!storeName.trim()) return { ok: false, problems: ["Enter a store name."] };
-  // A profile that is not offered is refused in plain words before anything is made.
+  // A profile the admin chose that is not offered is refused in plain words before anything is made.
   if (designPresetId && !(await isOfferedDesign(designPresetId))) {
     return { ok: false, problems: ["That design profile is not offered any more. Choose another."] };
   }
+  // What the requester chose (D175, D176), to say what gave way when it is no longer offered (D177).
+  const [asked] = await db().execute<Row>(sql`
+    select r.starter_id, st.title as starter_title, commerce.starter_offered_source(r.starter_id) is not null as starter_offered,
+           r.design_preset_id, d.title as design_title
+    from commerce.access_requests r
+    left join commerce.store_starters st on st.id = r.starter_id
+    left join commerce.design_presets d on d.id = r.design_preset_id
+    where r.id = ${requestId}::uuid
+  `);
 
   let email: string;
   let storeId: string;
@@ -196,12 +213,29 @@ export async function approveAccessRequest(
   } catch (error) {
     return { ok: false, problems: [approvalProblem(error, slug)] };
   }
+  // A profile the requester chose that was unpublished or archived since gives way to the template's own look (D177), and the admin is told.
+  // (Also when the admin left the choice empty on a request whose profile is gone: the request page offers none in its place.)
+  const askedDesign = asked?.design_preset_id ? String(asked.design_preset_id) : null;
+  const designGone = askedDesign !== null && !designPresetId && !(await isOfferedDesign(askedDesign));
+  const designFellBack = designGone ? (asked?.design_title ? String(asked.design_title) : "A design profile") : null;
+  if (designGone && chosenDesign === askedDesign) chosenDesign = null;
+  // The store template likewise: approval made the store from the Standard store (`approve_access_request()`).
+  const starterFellBack =
+    !starterId && asked?.starter_id && !asked.starter_offered ? (asked.starter_title ? String(asked.starter_title) : "A store template") : null;
   // The design profile chosen (D176), applied right after the store is made; a failure leaves the store with its template's look.
   const design = chosenDesign ? await applyChosenDesign(storeId, chosenDesign, admin.id) : null;
   // A store that came through a referral (D131, made by the approval itself): its referrer hears it is open. Best effort.
   await notifyReferralOpened(storeId).catch(() => null);
 
-  return { ok: true, slug, email, invited: await emailSignInLink(email, origin), design, storeId };
+  return {
+    ok: true,
+    slug,
+    email,
+    invited: await emailSignInLink(email, origin),
+    design,
+    storeId,
+    fellBack: { starter: starterFellBack, design: designFellBack },
+  };
 }
 
 /** Applies the design profile chosen for a store just made (D176), never throwing: the store stays whatever happens. */

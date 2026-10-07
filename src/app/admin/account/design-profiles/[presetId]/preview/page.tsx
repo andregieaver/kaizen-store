@@ -31,7 +31,8 @@ export const metadata: Metadata = { title: "Design profile preview", robots: { i
  * place of the store's own, exactly as `applyDesignPreset()` would place them (`layoutForStore()`), without writing anything. Open to
  * anyone, since people at sign-up are not signed in: it shows only a published profile on a published store template (or the Standard
  * store), its reads are cached per profile and template, it sets no cookie and reads none, and its content is inert (nothing can be
- * clicked, focused or submitted). With `as=admin`, a signed-in platform admin also sees unpublished profiles and templates. `noindex`.
+ * clicked, focused or submitted). With `as=admin`, a signed-in platform admin also sees unpublished profiles and templates (a template's
+ * working store rather than its published copy), and with `draft=1` the look in the profile's workspace as last saved (D177). `noindex`.
  */
 export default function DesignPreviewPage({ params, searchParams }: PageProps<"/admin/account/design-profiles/[presetId]/preview">) {
   return (
@@ -50,7 +51,8 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
     // Only here is the visitor read: a platform admin may look at what is not published yet.
     const account = await getAccount();
     if (!account?.platformAdmin) notFound();
-    preview = await adminDesignPreview(presetId, starterId);
+    // `draft`: the look in the profile's workspace as last saved, before it is published (D177).
+    preview = await adminDesignPreview(presetId, starterId, query.draft === "1");
   } else {
     preview = await publicDesignPreview(presetId, starterId);
   }
@@ -90,7 +92,10 @@ async function DesignPreview({ params, searchParams }: Pick<PageProps<"/admin/ac
   return (
     <div className="flex min-h-screen flex-col">
       <p role="status" className="sticky top-0 z-50 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 bg-foreground px-4 py-2 text-xs text-background">
-        <span className="font-medium">Preview of the design profile {preview.title}: nothing is saved or changed</span>
+        <span className="font-medium">
+          Preview of the design profile {preview.title}
+          {preview.draft ? " as drafted, not published yet" : ""}: nothing is saved or changed
+        </span>
         <span>On {preview.starterTitle ?? "the Standard store"}: its front page, then one of its products.</span>
       </p>
       {/* Nothing in the preview can be clicked, focused or submitted. */}

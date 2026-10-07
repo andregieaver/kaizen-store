@@ -90,12 +90,22 @@ export async function decideAction(
     : result.design.problem
       ? ` The design profile${result.design.title ? ` ${result.design.title}` : ""} could not be applied (${result.design.problem}): the store has its template's look; apply the profile from the store's page.`
       : ` Its design profile${result.design.title ? `, ${result.design.title},` : ""} is applied.`;
+  // What the requester chose that is no longer offered (D177): said, so the admin can change the store's template or look after.
+  const fellBack = [
+    result.fellBack.starter && ` The store template the requester chose, ${result.fellBack.starter}, is no longer offered: the store was made from the Standard store.`,
+    result.fellBack.design &&
+      ` The design profile the requester chose, ${result.fellBack.design}, is no longer offered: the store keeps its template's own design; apply another from the store's page.`,
+  ]
+    .filter(Boolean)
+    .join("");
   return {
     status: "ok",
     messages: [
       (result.invited
         ? `Store created at ${storeHref(result.slug, storeBase(result.slug))}. A sign-in link is on its way to ${result.email}.`
-        : `Store created at ${storeHref(result.slug, storeBase(result.slug))}, but the sign-in email could not be sent. Ask ${result.email} to sign in at ${site}/admin/sign-in.`) + design,
+        : `Store created at ${storeHref(result.slug, storeBase(result.slug))}, but the sign-in email could not be sent. Ask ${result.email} to sign in at ${site}/admin/sign-in.`) +
+        design +
+        fellBack,
     ],
   };
 }

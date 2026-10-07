@@ -2066,6 +2066,20 @@
       "when": 1791370710815,
       "tag": "20261007105830_design_presets_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1791378354099,
+      "tag": "20261007130554_starter_design_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1791378373717,
+      "tag": "20261007130613_starter_design_lifecycle_rules",
+      "breakpoints": true
     }
   ]
 }

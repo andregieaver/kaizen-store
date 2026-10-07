@@ -6,9 +6,12 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db, readDb } from "@/db/client";
 import { storeBase, storeHref } from "@/lib/paths";
 import { slugProblem } from "@/lib/slug";
+import { deleteBlocker, type ListFilter } from "@/lib/lifecycle";
 import {
   isStarterCategory,
   movedOrder,
+  readStarterDraft,
+  sameStarterDetails,
   standardCard,
   starterRefusal,
   type OfferedStarter,
@@ -25,7 +28,8 @@ import { templateStoreSlug } from "./stores";
  * Store templates (D175, `docs/store-templates.md`): the platform's starting points for new stores. Each is a real store marked
  * `starter`, made from the default template by `clone_store()`, and described by a row of `commerce.store_starters`. Platform admins make
  * and keep them here; owners and the sign-up form only read the published ones (`listOfferedStarters()`), and what a new store is copied
- * from is decided in SQL (`commerce.starter_source()`), never here.
+ * from is decided in SQL (`commerce.starter_source()`), never here. D177: details are saved as a draft and published with the store frozen
+ * into a hidden copy (`publishStarter()`); a template is unpublished, archived and restored, and deleted only while nothing used it.
  */
 
 type Row = Record<string, unknown>;
@@ -45,13 +49,16 @@ const toOffered = (row: Row): OfferedStarter => ({
   storeSlug: String(row.slug),
 });
 
-/** The published store templates, in the platform's order: what owners and the sign-up form are offered. */
+/**
+ * The published store templates, in the platform's order: what owners and the sign-up form are offered. Each is shown by its frozen copy
+ * (D177), the store new stores are made from; a template published before D177 and not since, by its working store as before.
+ */
 export async function listOfferedStarters(): Promise<OfferedStarter[]> {
   const rows = await readDb().execute<Row>(sql`
     select st.id, st.title, st.summary, st.description, st.category, st.picture_url, s.slug
     from commerce.store_starters st
-    join commerce.stores s on s.id = st.store_id and s.starter and s.status = 'active'
-    where st.published
+    join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
+    where st.published and st.archived_at is null
     order by st.position, lower(st.title), st.id
   `);
   return rows.map(toOffered);
@@ -75,14 +82,25 @@ export async function starterCards(): Promise<StarterCard[]> {
   ];
 }
 
-/** Every store template, published or not, for the platform admin. */
-export async function listStarters(): Promise<StarterRow[]> {
+const ROW_SELECT = sql`
+  select st.id, st.title, st.summary, st.description, st.category, st.picture_url, st.published, st.position, st.updated_at,
+         st.recommended_design, st.draft, st.published_at, st.archived_at, s.id as store_id, s.slug, s.name as store_name, p.slug as published_slug,
+         (select count(*)::int from commerce.stores m where m.made_from_starter = st.id and m.starter_copy_of is null) as stores_made,
+         (select count(*)::int from commerce.access_requests r where r.starter_id = st.id) as requests,
+         (st.published_at is not null and exists (
+           select 1 from commerce.audit_log a
+           where a.store_id = st.store_id and a.created_at > st.published_at and not starts_with(a.action, 'platform.')
+         )) as changed_in_store
+  from commerce.store_starters st
+  join commerce.stores s on s.id = st.store_id
+  left join commerce.stores p on p.id = st.published_store_id
+`;
+
+/** The store templates for the platform admin: the current ones (published or not), or the archived ones. */
+export async function listStarters(filter: ListFilter = "current"): Promise<StarterRow[]> {
   const rows = await db().execute<Row>(sql`
-    select st.id, st.title, st.summary, st.description, st.category, st.picture_url, st.published, st.position, st.updated_at,
-           st.recommended_design, s.id as store_id, s.slug, s.name as store_name,
-           (select count(*)::int from commerce.stores m where m.made_from_starter = st.id) as stores_made
-    from commerce.store_starters st
-    join commerce.stores s on s.id = st.store_id
+    ${ROW_SELECT}
+    where ${filter === "archived" ? sql`st.archived_at is not null` : sql`st.archived_at is null`}
     order by st.position, lower(st.title), st.id
   `);
   return rows.map(toRow);
@@ -91,18 +109,12 @@ export async function listStarters(): Promise<StarterRow[]> {
 /** One store template, for its edit page; null when there is none. */
 export async function getStarter(id: string): Promise<StarterRow | null> {
   if (!isUuid(id)) return null;
-  const [row] = await db().execute<Row>(sql`
-    select st.id, st.title, st.summary, st.description, st.category, st.picture_url, st.published, st.position, st.updated_at,
-           st.recommended_design, s.id as store_id, s.slug, s.name as store_name,
-           (select count(*)::int from commerce.stores m where m.made_from_starter = st.id) as stores_made
-    from commerce.store_starters st
-    join commerce.stores s on s.id = st.store_id
-    where st.id = ${id}::uuid
-  `);
+  const [row] = await db().execute<Row>(sql`${ROW_SELECT} where st.id = ${id}::uuid`);
   return row ? toRow(row) : null;
 }
 
 function toRow(row: Row): StarterRow {
+  const iso = (value: unknown) => (value ? new Date(String(value)).toISOString() : null);
   return {
     ...toOffered(row),
     published: Boolean(row.published),
@@ -110,10 +122,37 @@ function toRow(row: Row): StarterRow {
     storeId: String(row.store_id),
     storeName: String(row.store_name),
     storesMade: Number(row.stores_made ?? 0),
+    requests: Number(row.requests ?? 0),
     recommendedDesign: row.recommended_design ? String(row.recommended_design) : null,
+    draft: readStarterDraft(row.draft),
+    publishedSlug: row.published_slug ? String(row.published_slug) : null,
+    publishedAt: iso(row.published_at),
+    archivedAt: iso(row.archived_at),
+    changedInStore: Boolean(row.changed_in_store),
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   };
 }
+
+/** The template's details as the platform admin edits them: the draft when there is one, else what is published. */
+export const shownDetails = (starter: StarterRow): StarterDetails =>
+  starter.draft ?? {
+    title: starter.title,
+    summary: starter.summary,
+    description: starter.description,
+    category: starter.category,
+    pictureUrl: starter.pictureUrl,
+    recommendedDesign: starter.recommendedDesign,
+  };
+
+/** Facts for the state and the buttons (`src/lib/lifecycle.ts`). */
+export const starterLifecycle = (starter: StarterRow) => ({
+  published: starter.published,
+  archivedAt: starter.archivedAt,
+  publishedAt: starter.publishedAt,
+  // A template published before D177 has no frozen copy yet: publishing again freezes it.
+  changed: starter.draft !== null || starter.changedInStore || (starter.published && starter.publishedSlug === null),
+  used: starter.storesMade > 0 || starter.requests > 0,
+});
 
 const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
@@ -177,40 +216,149 @@ export async function createStarter(
   return { ok: true, id: created.id, slug: input.slug };
 }
 
-/** A store template's title, summary, description, category and picture. */
-export async function updateStarter(admin: Account, id: string, details: StarterDetails): Promise<StarterResult> {
+/** The design profile a template may recommend (D176): one that exists and is not archived; null clears it. */
+async function recommendable(presetId: string | null | undefined): Promise<boolean> {
+  if (!presetId) return true;
+  const [row] = await db().execute<Row>(sql`select 1 as ok from commerce.design_presets where id = ${presetId}::uuid and archived_at is null`);
+  return row !== undefined;
+}
+
+/**
+ * Saves a store template's details as a draft (D177): owners keep seeing what is published until Publish. A draft equal to what is
+ * published is no draft. The recommended design profile (D176) is one of the details.
+ */
+export async function saveStarterDraft(admin: Account, id: string, details: StarterDetails): Promise<StarterResult> {
   if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
-  let row: Row | undefined;
+  const starter = await getStarter(id);
+  if (!starter) return { ok: false, problems: ["Unknown store template."] };
+  const next: StarterDetails = { ...details, recommendedDesign: details.recommendedDesign === undefined ? shownDetails(starter).recommendedDesign ?? null : details.recommendedDesign };
+  if (!(await recommendable(next.recommendedDesign))) return { ok: false, problems: ["That design profile is gone or archived. Choose another."] };
+  const published = { ...shownDetails({ ...starter, draft: null }) };
+  const draft = sameStarterDetails(next, published) ? null : next;
   try {
-    [row] = await db().execute<Row>(sql`
-      update commerce.store_starters
-         set title = ${details.title}, summary = ${details.summary}, description = ${details.description},
-             category = ${details.category}, picture_url = ${details.pictureUrl}, updated_by = ${admin.id}::uuid
-       where id = ${id}::uuid
-      returning store_id
+    await db().execute(sql`
+      update commerce.store_starters set draft = ${draft ? JSON.stringify(draft) : null}::jsonb, updated_by = ${admin.id}::uuid where id = ${id}::uuid
     `);
   } catch (error) {
     return { ok: false, problems: [starterProblem(error)] };
   }
-  if (!row) return { ok: false, problems: ["Unknown store template."] };
-  await audit(admin.id, String(row.store_id), "platform.starter_updated", { starter: id, category: details.category }, {
+  await audit(admin.id, starter.storeId, "platform.starter_updated", { starter: id, category: next.category, draft: draft !== null }, {
     target: { type: "store_starter", id },
   });
   return { ok: true };
 }
 
-/** Offers a store template to owners and the sign-up form, or stops offering it (stores already made from it are not touched). */
-export async function setStarterPublished(admin: Account, id: string, published: boolean): Promise<StarterResult> {
+/**
+ * Publishes a store template (D177): its draft details become what owners read, and its working store is frozen into a hidden copy
+ * (`commerce.freeze_starter()`, `clone_store()` underneath) that new stores are made from and owners preview; the copy it replaces is closed.
+ * One transaction: a failure publishes nothing. Refused while archived.
+ */
+export async function publishStarter(admin: Account, id: string): Promise<StarterResult<{ copySlug: string; notes: string[] }>> {
   if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
-  const [row] = await db().execute<Row>(sql`
-    update commerce.store_starters set published = ${published}, updated_by = ${admin.id}::uuid
-     where id = ${id}::uuid and published is distinct from ${published}
-    returning store_id
-  `);
-  if (!row) return { ok: true };
-  await audit(admin.id, String(row.store_id), published ? "platform.starter_published" : "platform.starter_unpublished", { starter: id }, {
+  const notes: string[] = [];
+  let done: { storeId: string; copyId: string; copySlug: string };
+  try {
+    done = await db().transaction(async (tx) => {
+      const [row] = await tx.execute<Row>(sql`select store_id, draft, archived_at from commerce.store_starters where id = ${id}::uuid for update`);
+      if (!row) throw new Refused("Unknown store template.");
+      if (row.archived_at) throw new Refused("This store template is archived. Restore it before publishing it.");
+      const draft = readStarterDraft(row.draft);
+      if (draft) {
+        let recommended = draft.recommendedDesign ?? null;
+        if (recommended) {
+          const [preset] = await tx.execute<Row>(sql`select 1 as ok from commerce.design_presets where id = ${recommended}::uuid and archived_at is null`);
+          if (!preset) {
+            recommended = null;
+            notes.push("Its recommended design profile is gone or archived, so it recommends none now.");
+          }
+        }
+        await tx.execute(sql`
+          update commerce.store_starters
+             set title = ${draft.title}, summary = ${draft.summary}, description = ${draft.description}, category = ${draft.category},
+                 picture_url = ${draft.pictureUrl}, recommended_design = ${recommended}::uuid
+           where id = ${id}::uuid
+        `);
+      }
+      const [frozen] = await tx.execute<Row>(sql`select commerce.freeze_starter(${id}::uuid, ${admin.id}::uuid) as id`);
+      const [copy] = await tx.execute<Row>(sql`select id, slug from commerce.stores where id = ${String(frozen.id)}::uuid`);
+      await tx.execute(sql`
+        update commerce.store_starters set published = true, published_at = now(), draft = null, updated_by = ${admin.id}::uuid where id = ${id}::uuid
+      `);
+      return { storeId: String(row.store_id), copyId: String(copy.id), copySlug: String(copy.slug) };
+    });
+  } catch (error) {
+    if (error instanceof Refused) return { ok: false, problems: [error.message] };
+    console.error("[store-starters] publishing failed", error);
+    return { ok: false, problems: [starterRefusal(describe(error)) ?? "The store template could not be published. Nothing was changed; try again."] };
+  }
+  await audit(admin.id, done.storeId, "platform.starter_published", { starter: id, copy: done.copyId, copySlug: done.copySlug }, {
     target: { type: "store_starter", id },
   });
+  return { ok: true, copySlug: done.copySlug, notes };
+}
+
+class Refused extends Error {}
+
+/** Stops offering a store template at once (D177): stores made from it keep what they got; pending sign-ups that chose it get the Standard store. */
+export async function unpublishStarter(admin: Account, id: string): Promise<StarterResult<{ pendingRequests: number }>> {
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  const [row] = await db().execute<Row>(sql`
+    update commerce.store_starters set published = false, updated_by = ${admin.id}::uuid where id = ${id}::uuid and published
+    returning store_id, (select count(*)::int from commerce.access_requests r where r.starter_id = ${id}::uuid and r.status = 'pending') as pending
+  `);
+  if (!row) return { ok: true, pendingRequests: 0 };
+  await audit(admin.id, String(row.store_id), "platform.starter_unpublished", { starter: id }, { target: { type: "store_starter", id } });
+  return { ok: true, pendingRequests: Number(row.pending ?? 0) };
+}
+
+/** Archives a store template (D177): unpublished, and hidden from every list but the platform's Archived filter, until Restore. */
+export async function archiveStarter(admin: Account, id: string): Promise<StarterResult> {
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  const [row] = await db().execute<Row>(sql`
+    update commerce.store_starters set archived_at = now(), archived_by = ${admin.id}::uuid, published = false, updated_by = ${admin.id}::uuid
+     where id = ${id}::uuid and archived_at is null
+    returning store_id
+  `);
+  if (row) await audit(admin.id, String(row.store_id), "platform.starter_archived", { starter: id }, { target: { type: "store_starter", id } });
+  return { ok: true };
+}
+
+/** Restores an archived store template (D177): back in the list as an unpublished draft. */
+export async function restoreStarter(admin: Account, id: string): Promise<StarterResult> {
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  const [row] = await db().execute<Row>(sql`
+    update commerce.store_starters set archived_at = null, archived_by = null, updated_by = ${admin.id}::uuid
+     where id = ${id}::uuid and archived_at is not null
+    returning store_id
+  `);
+  if (row) await audit(admin.id, String(row.store_id), "platform.starter_restored", { starter: id }, { target: { type: "store_starter", id } });
+  return { ok: true };
+}
+
+/**
+ * Deletes a store template that nothing used (D177): no store was made from it and no access request names it (the database refuses
+ * otherwise, `store_starters.used` / `.requested`). Stores are never deleted (D171): its working store and its frozen copies are closed and
+ * stay, hidden; only the template's row goes.
+ */
+export async function deleteStarter(admin: Account, id: string): Promise<StarterResult> {
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  const starter = await getStarter(id);
+  if (!starter) return { ok: false, problems: ["Unknown store template."] };
+  const blocker = deleteBlocker("store template", { stores: starter.storesMade, requests: starter.requests });
+  if (blocker) return { ok: false, problems: [blocker] };
+  try {
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`select 1 from commerce.store_starters where id = ${id}::uuid for update`);
+      await tx.execute(sql`
+        update commerce.stores set status = 'closed', status_reason = 'Its store template was deleted.', status_changed_by = ${admin.id}::uuid
+         where (id = ${starter.storeId}::uuid or starter_copy_of = ${id}::uuid) and status <> 'closed'
+      `);
+      await tx.execute(sql`delete from commerce.store_starters where id = ${id}::uuid`);
+    });
+  } catch (error) {
+    return { ok: false, problems: [starterProblem(error)] };
+  }
+  await audit(admin.id, starter.storeId, "platform.starter_deleted", { starter: id, title: starter.title }, { target: { type: "store_starter", id } });
   return { ok: true };
 }
 
@@ -220,7 +368,9 @@ export async function moveStarter(admin: Account, id: string, direction: "up" | 
   const moved = await db().transaction(async (tx) => {
     // One mover at a time, so two admins reordering never interleave.
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('commerce.store_starters.position'))`);
-    const rows = await tx.execute<Row>(sql`select id, store_id from commerce.store_starters order by position, lower(title), id`);
+    const rows = await tx.execute<Row>(sql`
+      select id, store_id from commerce.store_starters where archived_at is null order by position, lower(title), id
+    `);
     const order = movedOrder(rows.map((r) => String(r.id)), id, direction);
     if (!order) return null;
     for (const [index, starterId] of order.entries()) {

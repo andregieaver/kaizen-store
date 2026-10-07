@@ -1,4 +1,4 @@
-# Design profiles (D176)
+# Design profiles (D176, D177)
 
 Store templates (D175, `docs/store-templates.md`) are the grunt work of a new store: modules, settings, products, pages. **Design profiles**
 are the look only, and any store can apply one: an owner from the store's Design settings, a platform admin from the store's page in the
@@ -54,10 +54,15 @@ Pictures and videos keep their addresses in the snapshot and are copied when the
 what a snapshot left out.
 
 **Table `commerce.design_presets`**: `title` (1 to 80), `summary` (to 200), `description` (to 2,000, plain text), `picture_url` (optional;
-`https://…` or a path on the site, Kaizen's media library), `snapshot` (an object with `v = 1`, at most 2 MB), `source_store_id` (the store it
-was taken from, informational: *Update from its store* reads it, and applying copies pictures from its library), `snapshot_at`, `position`,
-`published`, `created_by`/`updated_by`/`created_at`/`updated_at`. **Never deleted** (`design_presets_rules()`): unpublished instead. It has no
-`store_id` (it is the platform's, not a store's), so it is outside `COPY_RULES` by construction; see section 6.
+`https://…` or a path on the site, Kaizen's media library), `snapshot` (an object with `v = 1`, at most 2 MB: **the published look**, what
+applying and the public preview use), `source_store_id` (the store whose media library the snapshot's pictures are copied from when applied:
+since D177 the profile's workspace), `snapshot_at`, `position`, `published`, `created_by`/`updated_by`/`created_at`/`updated_at`; since D177
+`draft` (details saved but not published), `workspace_store_id` (unique, section 2a), `workspace_key` (a SHA-256 of the workspace's look when
+it was last published or made, `snapshotKey()`), `published_at`, `archived_at`/`archived_by` (`not (published and archived_at is not null)`).
+**Deleted only while unused** (D177, `design_presets_rules()`): refused when a store applied it (`design_presets.used`) or an access request
+chose it (`design_presets.requested`); a delete clears it as any store template's recommended profile, published and drafted, so nothing
+points at it. Otherwise archived. It has no `store_id` (it is the platform's, not a store's), so it is outside `COPY_RULES` by construction;
+see section 6.
 
 **`commerce.store_starters.recommended_design`** (nullable, a profile): a store template's recommended design, offered first when a store is
 made from it. **`commerce.access_requests.design_preset_id`** (nullable): a sign-up's choice.
@@ -69,6 +74,9 @@ once (`design_preset_uses_rules()`). It counts *applied to N stores* on the plat
 possible. `COPY_RULES`: `never`.
 
 ## 2. Making one (platform admins)
+
+*D177 replaced "a snapshot of a store, updated from its store" with a profile edited on its own pages; section 2a is the current contract,
+and what follows in this section holds where it does not contradict it.*
 
 `/admin/platform/design-profiles` (the Stores section's sidebar, after Store templates: `STORE_ITEMS` in `src/lib/platform-nav.ts`, and
 `ADMIN_PAGES`). Platform admins only (`requirePlatformAdmin()` on every page and action, and `admin.platformAdmin` in every server function).
@@ -88,6 +96,47 @@ possible. `COPY_RULES`: `never`.
 * Audited: `platform.design_preset_created`, `_retaken`, `_updated`, `_published`, `_unpublished`, `_moved`, `_recommended` (area
   `platform`), with the source store's id where there is one.
 
+## 2a. The profile's own pages, its workspace and its life (D177)
+
+**Making one** (`createDesign(admin, { origin, details })`, `/admin/platform/design-profiles`, *New design profile*): **from scratch**
+(Kaizen's standard look: the standard theme `minimal`, no header, footer or product layout chosen, so the standard ones, no CSS) or **from a
+store** the admin works in (its look as it is now, as `takeSnapshot()` cleans it). Either way the profile gets a **workspace**: a hidden store
+copied by `clone_store(starter_source(null), …)` from the default template (its demo products, pages and menus are what the builders and
+previews draw on), marked `starter`, described by no store template (`design_presets_rules()` holds that a workspace is such a store, one per
+profile, fixed once set), named like the template, at `design-{8 hex}`. "From a store" writes the store's look into the workspace through
+`writeWorkspaceLook()`, which places it exactly as applying does (`placeSnapshot()`: fonts, the store's pictures copied into the workspace's
+library, each layout with the workspace's menus by role and checked by `pageInput`/`pageRulesProblem()`), but keeps no saved theme and no use
+(a workspace is no store's look to put back, and writing it never makes the profile "used"). The profile's `snapshot` is then the workspace's
+look (`takeSnapshot(workspace, { drafts: true })`), unpublished, last in the order. A failure closes the workspace (kept, D171).
+
+**Editing** happens on the profile's pages, never by going to a store: `/admin/platform/design-profiles/{id}` (*Details*, with previews and
+*Start again from a store*), `/theme` (the store `ThemeEditor`), `/header`, `/footer`, `/product-layout` (the standard one, or *Build the
+profile's own …*: a page in the workspace starting as the standard one, `header-profile` and so on, chosen; edited in `PageEditor` and
+`PageBuilder`) and `/css` (a checked textarea; the builder's Custom CSS panel saves the same, *Global*). Each page checks
+`requirePlatformAdmin()` itself (`designPage()`/`designWorkspacePage()`); a profile from before D177 gets its workspace the first time a look
+tab opens (`ensureWorkspace()`: the published snapshot written into a fresh workspace, its key stored so it does not count as changed; two
+admins at once get one, the other is closed). The builder's context (`workspacePageContext()`) binds **the profile's own actions**
+(`workspace-actions.ts`): each calls `requirePlatformAdmin()` and `workspaceOf()` (the profile's workspace or nothing) and saves only the
+workspace's chosen header, footer or product layout of that kind; never a store's actions (`design-presets.scan.test.ts`). The builder is in
+`draftOnly` mode (`PageOwnerContext.draftOnly`): one *Save* (a page draft; `takeSnapshot(…, { drafts: true })` reads drafts), no Publish,
+Unpublish, Duplicate, Delete or Save as template, and *Preview the draft*. No custom fields, templates or translations (a profile carries none).
+Uploads go to the workspace's library, from where applying copies them. Nobody works in a workspace through the store admin, and it is listed
+nowhere (`docs/store-templates.md` section 2, *Starters the platform keeps for itself*).
+
+**Draft until published.** Everything changed on those pages is the profile's draft; stores see and apply the published `snapshot` and
+details until **Publish** (`publishDesign()`): the draft details become the columns, and the workspace's look, through the same cleaning as
+ever (`takeSnapshot()` → `snapshotLayout()` → `sanitizeTemplate()`), becomes `snapshot` (`source_store_id` = the workspace, `workspace_key`
+its key). *Unpublished changes* shows while there is a draft of the details or the workspace's key differs from `workspace_key`
+(`designChanged()`). **Unpublish** takes it out of the choices at once and says how many pending access requests chose it; approved, such a
+request keeps the store template's own look and the admin's message says which profile gave way (`ApproveResult.fellBack`; the request page
+leaves the choice empty with a sentence). **Archive** (`archiveDesign()`): unpublished, hidden from every list and chooser but *Archived*
+(`?show=archived`), never applied, and cleared as every store template's recommended profile (published and drafted), whose names the admin is
+told. **Restore**: back, unpublished. **Delete** (`deleteDesign()`, only while unused, behind a confirmation): the row goes, its workspace is
+closed and kept, and recommendations are cleared (the trigger). *Start again from a store* (`copyStoreLookToDraft()`) replaces the draft look
+with a store's. *Update from its store* (`retakeDesign()`) is gone. Audited: `platform.design_preset_created` (with `origin`),
+`_workspace`, `_copied`, `_updated`, `_published`, `_unpublished`, `_archived`, `_restored`, `_deleted`, `_moved` (area `platform`). Stores keep
+their copy: applying stays a one-time copy, and nothing done to a profile changes a store that applied it.
+
 ## 3. Applying one
 
 **`applyDesignPreset(storeId, presetId, accountId, deps?)`** in `src/server/design-presets.ts` is the one writer of a profile's look into a
@@ -95,6 +144,8 @@ store (`design-presets.scan.test.ts` holds that only this module writes profiles
 function checks again that the account **works in the store** (an active, unexpired membership) or **runs the platform**, and refuses:
 
 * a store that is not open (suspended or closed, D171): "The store is not open, so its look cannot be changed.";
+* a store the platform keeps for itself (a store template's frozen copy or a profile's workspace, D177);
+* an archived profile, for everyone;
 * an account that neither works in the store nor runs the platform: "You do not work in this store.";
 * a profile that is not published, except a platform admin applying it to a **store template** (to try it out before publishing);
 * a snapshot that cannot be read, a font not in Google Fonts, a layout that does not fit the store (checked as below).
@@ -173,8 +224,10 @@ signed in:
   is named; anything else is not found (`publicDesignPreview()`, cached per profile and template under `DESIGNS_TAG` and `STARTERS_TAG`).
   The page reads the address, so it streams: a refusal is the not-found page with `noindex` and status 200, as a dynamic miss of the
   storefront's is (D168), never the preview;
-* with `as=admin` a signed-in platform admin also sees unpublished profiles and templates (`adminDesignPreview()`, never cached; only this
-  branch reads the session);
+* with `as=admin` a signed-in platform admin also sees unpublished and archived profiles and templates (`adminDesignPreview()`, never cached;
+  only this branch reads the session), a store template's working store rather than its frozen copy, and with `draft=1` the look in the
+  profile's workspace as last saved, with its draft title (D177);
+* owners and the sign-up page see a store template as published: its frozen copy (D177);
 * `noindex, nofollow`; it sets no cookie and stores nothing; its content is `inert` (nothing can be clicked, focused or submitted);
 * it draws the store template's **front page** (its chosen page, else the product grid as the storefront draws it) and **one product** (its
   first) with the profile's look: the store's own `Store` with the profile's theme, fonts and CSS, the header and footer through
@@ -214,6 +267,13 @@ signed in:
   recommended default; the public and admin preview reads.
 * `src/server/design-presets.scan.test.ts` (section 6), `src/components/admin/design-cards.test.ts` (cards and panel render, Preview
   `target="_blank" rel="noopener"`, the confirmation's words).
+* D177: `src/lib/lifecycle.test.ts` (states, buttons, delete blockers); `src/db/design-presets.test.ts` (deleted only while unused, the
+  recommendation cleared, archived never published, the workspace's rules); `src/server/design-presets.int.test.ts` (from scratch and from a
+  store into a workspace, the workspace listed nowhere and never applied to, draft versus published in the previews and `designChanged()`,
+  the lazy workspace of an old profile, *Start again*, unpublish with a pending request falling back at approval, archive clearing
+  recommendations, delete refused when used and closing the workspace when not); `src/server/design-workspace.int.test.ts` (the editor's
+  actions refuse a non-admin, another store's page, another kind, and save drafts only); the scan test holds that every editor action checks
+  the admin and the workspace and imports no store action.
 * `e2e/design-profiles.spec.ts`: the public preview of a published profile on a store template is `noindex`, shows the profile's colours and
   fonts on the template's front page, inert, and an unpublished profile (also asked as `as=admin` while signed out) is not shown.
 
@@ -221,6 +281,8 @@ signed in:
 
 * An AI manager tool for design profiles (owners apply them on the Design page).
 * Picking which parts of a profile to apply (all or nothing; the look before can be put back).
-* A profile's own copy of its pictures: they are copied from the source store's library when applied, so **deleting a picture from the
-  source store's media library drops it from later applies** (update the profile from its store, or keep the picture). Noted for the lead.
+* A profile's own copy of its pictures: they are copied from its workspace's library when applied (D177), so a picture deleted there is left
+  out of later applies. Nobody reaches a workspace's media library page (its store admin is closed to everyone); the builder's upload adds to
+  it. Noted for the lead.
+* Editing a profile's menus' links or demo content: a workspace's menus and products are the default template's, only to draw on.
 * Layouts for categories, tags or single products, menus' links, and words in other languages are never part of a profile.

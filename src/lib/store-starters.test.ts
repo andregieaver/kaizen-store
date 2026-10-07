@@ -6,6 +6,8 @@ import {
   isStarterPicture,
   movedOrder,
   parseStarterDetails,
+  readStarterDraft,
+  sameStarterDetails,
   standardCard,
   starterChoice,
   starterRefusal,
@@ -73,5 +75,31 @@ describe("choosing a template", () => {
     expect(starterRefusal("store_starters.not_offered: that store template is not offered")).toMatch(/not offered any more/);
     expect(starterRefusal("stores.starter_has_sales: …")).toMatch(/cannot become a store template/);
     expect(starterRefusal("something else")).toBeNull();
+  });
+});
+
+describe("a store template's draft details (D177)", () => {
+  it("reads the recommended design profile as one of the details, only when the form has it", () => {
+    const withDesign = parseStarterDetails({ title: "Spa", category: "appointments", recommendedDesign: "0F8FAD5B-D9CB-469F-A165-70867728950E" });
+    expect(withDesign.ok && withDesign.details.recommendedDesign).toBe("0f8fad5b-d9cb-469f-a165-70867728950e");
+    const none = parseStarterDetails({ title: "Spa", category: "appointments", recommendedDesign: "" });
+    expect(none.ok && none.details.recommendedDesign).toBeNull();
+    const absent = parseStarterDetails({ title: "Spa", category: "appointments" });
+    expect(absent.ok && "recommendedDesign" in absent.details).toBe(false);
+  });
+
+  it("reads a stored draft, and compares details", () => {
+    const draft = readStarterDraft({ title: "Spa", summary: "", description: "", category: "appointments", pictureUrl: null, recommendedDesign: null });
+    expect(draft).toEqual({ title: "Spa", summary: "", description: "", category: "appointments", pictureUrl: null, recommendedDesign: null });
+    expect(readStarterDraft("nope")).toBeNull();
+    expect(readStarterDraft({ title: "", category: "appointments" })).toBeNull();
+    expect(sameStarterDetails(draft!, { ...draft!, recommendedDesign: undefined })).toBe(true);
+    expect(sameStarterDetails(draft!, { ...draft!, summary: "Treatments" })).toBe(false);
+  });
+
+  it("words the refusals of the lifecycle", () => {
+    expect(starterRefusal("store_starters.used: …")).toMatch(/Archive it instead/);
+    expect(starterRefusal("store_starters.requested: …")).toMatch(/access request/);
+    expect(starterRefusal("store_starters.archived: …")).toMatch(/Restore it/);
   });
 });

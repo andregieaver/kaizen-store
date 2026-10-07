@@ -62,6 +62,8 @@ export async function callerFromClaims(claims: Record<string, unknown>, clientId
     from commerce.accounts a
     join commerce.store_members m on m.account_id = a.id and m.role = 'owner' and m.disabled_at is null
     join commerce.stores s on s.id = m.store_id and s.status <> 'closed'
+      -- Never a store the platform keeps for itself (a store template's frozen copy, a design profile's workspace, D177).
+      and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
     where a.auth_user_id = ${claims.sub}::uuid and a.disabled_at is null
     order by s.name
   `);

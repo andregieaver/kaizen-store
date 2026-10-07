@@ -3,17 +3,22 @@ import { describe, expect, it } from "vitest";
 import {
   BRAND_FIELDS,
   DESIGN_SNAPSHOT_VERSION,
+  DESIGN_TABS,
   LOOK_FIELDS,
   beforeThemeName,
   designChoice,
   designPageSlug,
   designPreviewPath,
+  designRefusal,
   designSnapshotSchema,
+  designTabHref,
   keepDesignCard,
   layoutForStore,
   mapSnapshotMedia,
   parseDesignDetails,
   parseDesignSnapshot,
+  readDesignDraft,
+  sameDesignDetails,
   snapshotFonts,
   snapshotLayout,
   snapshotStorageUrls,
@@ -195,5 +200,35 @@ describe("details, choices and cards", () => {
     expect(keepDesignCard()).toMatchObject({ id: "", previewHref: null });
     expect(designPreviewPath("p1", "s1", true)).toBe("/admin/account/design-profiles/p1/preview?starter=s1&as=admin");
     expect(designPreviewPath("p1")).toBe("/admin/account/design-profiles/p1/preview");
+    // The draft (D177) is the platform admin's only.
+    expect(designPreviewPath("p1", null, true, true)).toBe("/admin/account/design-profiles/p1/preview?as=admin&draft=1");
+    expect(designPreviewPath("p1", null, false, true)).toBe("/admin/account/design-profiles/p1/preview");
+  });
+});
+
+describe("a design profile's draft and its own pages (D177)", () => {
+  it("reads a stored draft of the details, and compares details", () => {
+    const draft = readDesignDraft({ title: "Calm", summary: "Pale", description: "", pictureUrl: null });
+    expect(draft).toEqual({ title: "Calm", summary: "Pale", description: "", pictureUrl: null });
+    expect(readDesignDraft(null)).toBeNull();
+    expect(readDesignDraft({ title: "" })).toBeNull();
+    expect(sameDesignDetails(draft!, { ...draft! })).toBe(true);
+    expect(sameDesignDetails(draft!, { ...draft!, title: "Bold" })).toBe(false);
+  });
+
+  it("addresses each of its tabs under the profile", () => {
+    expect(DESIGN_TABS.map((t) => designTabHref("p1", t.key))).toEqual([
+      "/admin/platform/design-profiles/p1",
+      "/admin/platform/design-profiles/p1/theme",
+      "/admin/platform/design-profiles/p1/header",
+      "/admin/platform/design-profiles/p1/footer",
+      "/admin/platform/design-profiles/p1/product-layout",
+      "/admin/platform/design-profiles/p1/css",
+    ]);
+  });
+
+  it("words the refusals of the lifecycle", () => {
+    expect(designRefusal("design_presets.used: …")).toMatch(/Archive it instead/);
+    expect(designRefusal("design_presets.requested: …")).toMatch(/access request/);
   });
 });

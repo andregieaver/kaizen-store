@@ -115,8 +115,9 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         <div role="status" className="mb-4 rounded-lg border border-border bg-surface p-4 text-sm">
           <p className="font-medium">This store is a store template.</p>
           <p className="text-muted">
-            New stores made from it start with its products, services, staff, pages, menus, settings and page drafts. It takes no orders and
-            is never shown to search engines.
+            New stores made from it start with its products, services, staff, pages, menus, settings and page drafts, as they were when it was
+            last published: changes made here reach new stores when the template is published again. It takes no orders and is never shown to
+            search engines.
             {account.platformAdmin && (
               <>
                 {" "}

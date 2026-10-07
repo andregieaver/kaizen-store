@@ -38,7 +38,11 @@ export type OfferedStarter = {
   storeSlug: string;
 };
 
-/** A store template as the platform admin sees it. */
+/**
+ * A store template as the platform admin sees it. Its `OfferedStarter` fields are the **published** details (what owners see); `draft` is
+ * what was saved since (D177), shown to the admin in their place. `storeSlug` is its working store, `publishedSlug` the frozen copy owners
+ * preview and new stores are made from.
+ */
 export type StarterRow = OfferedStarter & {
   published: boolean;
   position: number;
@@ -46,8 +50,18 @@ export type StarterRow = OfferedStarter & {
   storeName: string;
   /** Stores made from it so far (`stores.made_from_starter`). */
   storesMade: number;
-  /** The design profile offered first for a store made from it (D176), or null. */
+  /** Access requests that name it (D177): with stores made, what keeps it from being deleted. */
+  requests: number;
+  /** The design profile offered first for a store made from it (D176), or null: the published choice. */
   recommendedDesign: string | null;
+  /** Details saved but not published (D177), or null. */
+  draft: StarterDetails | null;
+  /** The frozen copy's address (D177), or null when it was not published under D177 yet. */
+  publishedSlug: string | null;
+  publishedAt: string | null;
+  archivedAt: string | null;
+  /** Its working store changed since the last Publish, as its activity log tells (an estimate: not every change is logged). */
+  changedInStore: boolean;
   updatedAt: string;
 };
 
@@ -79,7 +93,26 @@ export type StarterDetails = {
   description: string;
   category: StarterCategory;
   pictureUrl: string | null;
+  /** The design profile (D176) offered first for a store made from it; part of the details since D177, published with them. */
+  recommendedDesign?: string | null;
 };
+
+/** A saved draft of a template's details (`store_starters.draft`), or null when it cannot be read. */
+export function readStarterDraft(value: unknown): StarterDetails | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const draft = value as Record<string, unknown>;
+  const parsed = parseStarterDetails({ ...draft, recommendedDesign: draft.recommendedDesign ?? "" });
+  return parsed.ok ? parsed.details : null;
+}
+
+/** Whether two sets of details are the same (a draft equal to what is published is no draft). */
+export const sameStarterDetails = (a: StarterDetails, b: StarterDetails): boolean =>
+  a.title === b.title &&
+  a.summary === b.summary &&
+  a.description === b.description &&
+  a.category === b.category &&
+  (a.pictureUrl ?? null) === (b.pictureUrl ?? null) &&
+  (a.recommendedDesign ?? null) === (b.recommendedDesign ?? null);
 
 /** A picture's address a template may carry: on the site (`/…`, not `//…`) or https. */
 export function isStarterPicture(value: string): boolean {
@@ -100,6 +133,8 @@ export function parseStarterDetails(form: {
   description?: unknown;
   category?: unknown;
   pictureUrl?: unknown;
+  /** The recommended design profile's id (D176); left out when the form has no such field. */
+  recommendedDesign?: unknown;
 }): { ok: true; details: StarterDetails } | { ok: false; problems: string[] } {
   const text = (value: unknown) => (typeof value === "string" ? value.trim() : "");
   const title = text(form.title);
@@ -117,7 +152,9 @@ export function parseStarterDetails(form: {
   if (!isStarterCategory(form.category)) problems.push("Choose a category.");
   if (picture && !isStarterPicture(picture)) problems.push("The picture's address must start with https:// or be a path on this site.");
   if (problems.length > 0) return { ok: false, problems };
-  return { ok: true, details: { title, summary, description, category: form.category as StarterCategory, pictureUrl: picture || null } };
+  const details: StarterDetails = { title, summary, description, category: form.category as StarterCategory, pictureUrl: picture || null };
+  if (form.recommendedDesign !== undefined) details.recommendedDesign = starterChoice(form.recommendedDesign);
+  return { ok: true, details };
 }
 
 /**
@@ -147,5 +184,10 @@ export function starterRefusal(text: string): string | null {
   if (text.includes("stores.starter_has_sales")) return "A store that has sold or has customers cannot become a store template.";
   if (text.includes("stores.starter_fixed")) return "A store template stays a store template.";
   if (text.includes("store_starters.not_starter")) return "Only a store made as a store template can be described as one.";
+  if (text.includes("store_starters.used")) return "Stores were made from this store template, so it cannot be deleted. Archive it instead.";
+  if (text.includes("store_starters.requested")) return "An access request chose this store template, so it cannot be deleted. Archive it instead.";
+  if (text.includes("store_starters.archived")) return "This store template is archived. Restore it before publishing it.";
+  if (text.includes("store_starters.not_open")) return "The store template's store is not open, so it cannot be published.";
+  if (text.includes("store_starters_archived_unpublished")) return "An archived store template is never published. Restore it first.";
   return null;
 }

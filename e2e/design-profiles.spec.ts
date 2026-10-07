@@ -72,3 +72,57 @@ test("an unpublished design profile has no public preview", async ({ page }) => 
     await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute("content", /noindex/);
   }
 });
+
+/**
+ * D177: what stores and people at sign-up see is the published profile, never its draft (the look in its workspace); and a store template is
+ * previewed as published, from its frozen copy, whatever happens to the store the platform keeps working in.
+ */
+test("the public preview shows the published look, never the workspace's draft", async ({ page }) => {
+  const { published, starter } = await arrange();
+  const sql = testDb();
+  try {
+    // A workspace whose draft look is dark, unlike the published snapshot (light, BACKGROUND).
+    const [request] = await sql`
+      insert into commerce.access_requests (email, name, store_name) values (${`ws-${Date.now().toString(36)}@example.com`}, 'Platform', 'Workspace') returning id`;
+    const [{ id: workspace }] = await sql`select commerce.approve_access_request(${request.id}, ${`design-${Date.now().toString(36)}`}, 'Workspace', null) as id`;
+    await sql`update commerce.stores set starter = true, theme = ${sql.json({ base: "bold", savedId: null, settings: { light: { background: "#101010" } } })} where id = ${workspace}`;
+    await sql`update commerce.design_presets set workspace_store_id = ${workspace}, draft = ${sql.json({ title: "Draft title", summary: "", description: "", pictureUrl: null })} where id = ${published}`;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/admin/account/design-profiles/${published}/preview?starter=${starter}`);
+  await expect(page.locator("[data-design-preview]")).toHaveCSS("background-color", "rgb(253, 246, 227)");
+  await expect(page.getByText("Draft title")).toHaveCount(0);
+  await expect(page.getByText("as drafted")).toHaveCount(0);
+  // The draft is for a signed-in platform admin only: asked for while signed out, it is not found.
+  await page.goto(`/admin/account/design-profiles/${published}/preview?as=admin&draft=1`);
+  await expect(page.locator("[data-design-preview]")).toHaveCount(0);
+});
+
+test("a store template is previewed from its published copy, whatever happens to the store kept working in", async ({ page }) => {
+  const { published, starter } = await arrange();
+  const sql = testDb();
+  try {
+    const [{ id: account }] = await sql`insert into commerce.accounts (email, platform_admin) values (${`freeze-${Date.now().toString(36)}@example.com`}, true) returning id`;
+    await sql`select commerce.freeze_starter(${starter}, ${account})`;
+    // The store the platform keeps working in is closed: owners still see the template as published.
+    await sql`update commerce.stores set status = 'closed' where id = (select store_id from commerce.store_starters where id = ${starter})`;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/admin/account/design-profiles/${published}/preview?starter=${starter}`);
+  await expect(page.locator("[data-design-preview]")).toHaveCSS("background-color", "rgb(253, 246, 227)");
+  await expect(page.locator("[data-design-preview] .product-card").first()).toBeVisible();
+});
+
+test("an archived design profile has no public preview", async ({ page }) => {
+  const { hidden, starter } = await arrange();
+  const sql = testDb();
+  try {
+    await sql`update commerce.design_presets set archived_at = now() where id = ${hidden}`;
+  } finally {
+    await sql.end();
+  }
+  await page.goto(`/admin/account/design-profiles/${hidden}/preview?starter=${starter}`);
+  await expect(page.locator("[data-design-preview]")).toHaveCount(0);
+});

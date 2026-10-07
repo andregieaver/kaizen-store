@@ -95,6 +95,12 @@ export type PageOwnerContext = {
   variantOf: PageType | null;
   /** Where a store's A/B tests are made (D148), for the builder's "A/B test this"; null for Kaizen's pages and for anything but a store's page. */
   experimentsHref: string | null;
+  /**
+   * A design profile's workspace (D177): the builder saves drafts only, which are published with the profile from its own page, so it offers
+   * no Publish, Unpublish, Duplicate, Delete or Save as template; `preview` is the profile's draft preview and `note` says where it is
+   * published. Absent everywhere else.
+   */
+  draftOnly?: { preview: string; note: string };
   actions: {
     /** `acknowledged`: the checker's blocking problems the owner has seen and chose to publish with (issue ids), recorded in the audit log. */
     save: (id: string | null, payload: string, publish: boolean, acknowledged?: string[]) => Promise<PageSaveState>;

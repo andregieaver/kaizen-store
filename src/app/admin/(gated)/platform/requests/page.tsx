@@ -80,7 +80,7 @@ export default async function PlatformPage() {
 }
 
 async function PendingRequest({ request, starters, designs }: { request: AccessRequest; starters: OfferedStarter[]; designs: OfferedDesign[] }) {
-  // The template the requester chose (D175), even when it is no longer published: the admin then chooses another.
+  // The template the requester chose (D175); one no longer offered (unpublished or archived, D177) gives way to the Standard store, and is said.
   const gone = request.starterId && !starters.some((s) => s.id === request.starterId);
   // The same for the design profile (D176).
   const designGone = request.designPresetId && !designs.some((d) => d.id === request.designPresetId);
@@ -137,32 +137,38 @@ async function PendingRequest({ request, starters, designs }: { request: AccessR
         </div>
         <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
           Store template
-          <select name="starter" defaultValue={request.starterId ?? ""} className={control}>
+          <select name="starter" defaultValue={gone ? "" : (request.starterId ?? "")} className={control}>
             <option value="">Standard store</option>
             {starters.map((starter) => (
               <option key={starter.id} value={starter.id}>
                 {starter.title} ({STARTER_CATEGORY_LABELS[starter.category]})
               </option>
             ))}
-            {gone && <option value={request.starterId ?? ""}>{request.starterTitle ?? "A template"} (not published: choose another)</option>}
           </select>
           <span className="font-normal text-muted">
-            {request.starterId ? "Chosen by the requester; change it if another fits better." : "The requester chose none."}
+            {gone
+              ? `The requester chose ${request.starterTitle ?? "a store template"}, which is no longer offered: the store is made from the Standard store unless you choose another.`
+              : request.starterId
+                ? "Chosen by the requester; change it if another fits better."
+                : "The requester chose none."}
           </span>
         </label>
         <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
           Design profile
-          <select name="design" defaultValue={request.designPresetId ?? ""} className={control}>
+          <select name="design" defaultValue={designGone ? "" : (request.designPresetId ?? "")} className={control}>
             <option value="">Keep the template&apos;s own design</option>
             {designs.map((design) => (
               <option key={design.id} value={design.id}>
                 {design.title}
               </option>
             ))}
-            {designGone && <option value={request.designPresetId ?? ""}>{request.designTitle ?? "A design profile"} (not published: choose another)</option>}
           </select>
           <span className="font-normal text-muted">
-            {request.designPresetId ? "Chosen by the requester; applied right after the store is made." : "The requester chose none."}
+            {designGone
+              ? `The requester chose ${request.designTitle ?? "a design profile"}, which is no longer offered: the store keeps its template's own design unless you choose another.`
+              : request.designPresetId
+                ? "Chosen by the requester; applied right after the store is made."
+                : "The requester chose none."}
           </span>
         </label>
         <div className="flex flex-wrap gap-3">

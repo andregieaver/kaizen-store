@@ -3,8 +3,11 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+
 import { db, readDb } from "@/db/client";
 import { cssProblem } from "@/lib/custom-css";
+import { canonicalJson, deleteBlocker, type ListFilter } from "@/lib/lifecycle";
 import {
   DESIGN_LAYOUT_KINDS,
   LAYOUT_PAGE_TYPE,
@@ -17,6 +20,8 @@ import {
   layoutForStore,
   mapSnapshotMedia,
   parseDesignSnapshot,
+  readDesignDraft,
+  sameDesignDetails,
   snapshotFonts,
   snapshotLayout,
   snapshotStorageUrls,
@@ -24,16 +29,20 @@ import {
   type DesignCard,
   type DesignDetails,
   type DesignLayoutKind,
+  type DesignOrigin,
   type DesignRow,
   type DesignSnapshot,
   type OfferedDesign,
   type SnapshotNotes,
 } from "@/lib/design-presets";
 import { pageInput, parsePageContent, type PageContent } from "@/lib/page-content";
+import { copyRow } from "@/lib/page-rows";
 import { storeOrigins } from "@/lib/paths";
+import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
+import { defaultFooter, defaultHeader } from "@/lib/site-layout";
 import { movedOrder } from "@/lib/store-starters";
 import { TEMPLATE_MEDIA_BYTES_MAX, TEMPLATE_MEDIA_MAX, isStorageUrl, leftoverStorageUrls } from "@/lib/template-content";
-import { parseStoreTheme } from "@/lib/theme";
+import { parseStoreTheme, templateSettings } from "@/lib/theme";
 
 import { audit, type Account } from "./auth";
 import { catalogTag } from "./catalog";
@@ -63,6 +72,7 @@ const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]
 const refuse = (message: string): { ok: false; problems: string[] } => ({ ok: false, problems: [message] });
 const UNKNOWN = "Unknown design profile.";
 const NOT_OFFERED = "That design profile is not offered any more. Choose another.";
+const KEPT = "This store is kept by the platform (a store template's published copy or a design profile's workspace): its look is not changed here.";
 
 function describe(error: unknown): string {
   const parts: string[] = [];
@@ -96,7 +106,7 @@ const toOffered = (row: Row): OfferedDesign => ({
 export async function listOfferedDesigns(): Promise<OfferedDesign[]> {
   const rows = await readDb().execute<Row>(sql`
     select id, title, summary, description, picture_url, snapshot from commerce.design_presets
-    where published order by position, lower(title), id
+    where published and archived_at is null order by position, lower(title), id
   `);
   return rows.filter((row) => parseDesignSnapshot(row.snapshot) !== null).map(toOffered);
 }
@@ -114,8 +124,8 @@ export async function designChoices(): Promise<{ cards: DesignCard[]; recommende
     listOfferedDesigns(),
     readDb().execute<Row>(sql`
       select st.id, st.recommended_design from commerce.store_starters st
-      join commerce.design_presets d on d.id = st.recommended_design and d.published
-      where st.published
+      join commerce.design_presets d on d.id = st.recommended_design and d.published and d.archived_at is null
+      where st.published and st.archived_at is null
     `),
   ]);
   const ids = new Set(offered.map((d) => d.id));
@@ -127,14 +137,18 @@ export async function designChoices(): Promise<{ cards: DesignCard[]; recommende
 
 const ROW_SELECT = sql`
   select d.id, d.title, d.summary, d.description, d.picture_url, d.published, d.position, d.snapshot_at, d.snapshot,
-         d.source_store_id, s.name as source_name, s.slug as source_slug,
+         d.source_store_id, s.name as source_name, s.slug as source_slug, d.draft, d.workspace_store_id, w.slug as workspace_slug,
+         d.workspace_key, d.published_at, d.archived_at,
          (select count(distinct u.store_id)::int from commerce.design_preset_uses u where u.preset_id = d.id) as stores_using,
+         (select count(*)::int from commerce.access_requests r where r.design_preset_id = d.id) as requests,
          coalesce((select array_agg(st.title order by st.position) from commerce.store_starters st where st.recommended_design = d.id), '{}') as recommended_by
   from commerce.design_presets d
   left join commerce.stores s on s.id = d.source_store_id
+  left join commerce.stores w on w.id = d.workspace_store_id
 `;
 
 function toRow(row: Row): DesignRow {
+  const iso = (value: unknown) => (value ? new Date(String(value)).toISOString() : null);
   return {
     ...toOffered(row),
     published: Boolean(row.published),
@@ -143,28 +157,67 @@ function toRow(row: Row): DesignRow {
     sourceStoreName: row.source_name ? String(row.source_name) : null,
     sourceStoreSlug: row.source_slug ? String(row.source_slug) : null,
     storesUsing: Number(row.stores_using ?? 0),
+    requests: Number(row.requests ?? 0),
     recommendedBy: ((row.recommended_by ?? []) as unknown[]).map(String),
     snapshotAt: new Date(String(row.snapshot_at)).toISOString(),
     readable: parseDesignSnapshot(row.snapshot) !== null,
+    draft: readDesignDraft(row.draft),
+    workspaceStoreId: row.workspace_store_id ? String(row.workspace_store_id) : null,
+    workspaceSlug: row.workspace_slug ? String(row.workspace_slug) : null,
+    workspaceKey: row.workspace_key ? String(row.workspace_key) : null,
+    publishedAt: iso(row.published_at),
+    archivedAt: iso(row.archived_at),
   };
 }
 
-/** Every design profile, published or not, for the platform admin. */
-export async function listDesigns(): Promise<DesignRow[]> {
-  const rows = await db().execute<Row>(sql`${ROW_SELECT} order by d.position, lower(d.title), d.id`);
+/** The design profiles for the platform admin: the current ones (published or not), or the archived ones. */
+export async function listDesigns(filter: ListFilter = "current"): Promise<DesignRow[]> {
+  const rows = await db().execute<Row>(sql`
+    ${ROW_SELECT} where ${filter === "archived" ? sql`d.archived_at is not null` : sql`d.archived_at is null`}
+    order by d.position, lower(d.title), d.id
+  `);
   return rows.map(toRow);
 }
 
-/** One design profile, for its edit page; null when there is none. */
+/** One design profile, for its own pages; null when there is none. */
 export async function getDesign(id: string): Promise<DesignRow | null> {
   if (!isUuid(id)) return null;
   const [row] = await db().execute<Row>(sql`${ROW_SELECT} where d.id = ${id}::uuid`);
   return row ? toRow(row) : null;
 }
 
+/** The profile's details as the platform admin edits them: the draft when there is one, else what is published. */
+export const shownDesignDetails = (design: DesignRow): DesignDetails =>
+  design.draft ?? { title: design.title, summary: design.summary, description: design.description, pictureUrl: design.pictureUrl };
+
+/**
+ * Whether a profile has changes not yet published (D177): details saved as a draft, or a workspace whose look is no longer the one last
+ * published (its key, `snapshotKey()`). A profile made before D177 without a workspace has only its details to compare.
+ */
+export async function designChanged(design: DesignRow): Promise<boolean> {
+  if (design.draft) return true;
+  if (!design.workspaceStoreId || !design.workspaceKey) return false;
+  const taken = await takeSnapshot(design.workspaceStoreId, { drafts: true });
+  return taken.ok ? snapshotKey(taken.snapshot) !== design.workspaceKey : false;
+}
+
+/** Facts for the state and the buttons (`src/lib/lifecycle.ts`). */
+export async function designLifecycle(design: DesignRow) {
+  return {
+    published: design.published,
+    archivedAt: design.archivedAt,
+    publishedAt: design.publishedAt,
+    changed: await designChanged(design),
+    used: design.storesUsing > 0 || design.requests > 0,
+  };
+}
+
+/** A store a design profile's look may be taken from is not one the platform keeps for itself (a frozen copy, a workspace, D177). */
+const NOT_HIDDEN = sql`not (s.starter and not exists (select 1 from commerce.store_starters hs where hs.store_id = s.id))`;
+
 /**
  * The stores a platform admin may take a snapshot from: those they work in (the default template and store templates among them, which
- * they reach as members), not closed.
+ * they reach as members), not closed, and never a store the platform keeps for itself (D177).
  */
 export async function snapshotSources(admin: Account): Promise<{ id: string; name: string; slug: string; kind: "template" | "starter" | "store" }[]> {
   if (!admin.platformAdmin) return [];
@@ -172,7 +225,7 @@ export async function snapshotSources(admin: Account): Promise<{ id: string; nam
     select s.id, s.name, s.slug, s.is_template, s.starter from commerce.stores s
     join commerce.store_members m on m.store_id = s.id and m.account_id = ${admin.id}::uuid and m.disabled_at is null
       and (m.expires_at is null or m.expires_at > now())
-    where s.status <> 'closed'
+    where s.status <> 'closed' and ${NOT_HIDDEN}
     order by s.is_template desc, s.starter desc, lower(s.name)
   `);
   return rows.map((row) => ({
@@ -201,14 +254,17 @@ function notesText(notes: SnapshotNotes[], cssDropped: boolean): string[] {
 /**
  * A snapshot of a store's look as it is now (D176): its theme, its chosen header, footer and standard product layout as last published
  * (none chosen or not published: the standard one), and its site CSS, each cleaned so that nothing in it points into the store
- * (`snapshotLayout()`). Reads only the store's look (`LOOK_FIELDS`) and its menus' ids, never its brand.
+ * (`snapshotLayout()`). Reads only the store's look (`LOOK_FIELDS`) and its menus' ids, never its brand. A profile's workspace (D177) is read
+ * with `drafts`: its layouts as last saved in the profile's builder, which saves drafts only.
  */
-export async function takeSnapshot(storeId: string): Promise<DesignResult<{ snapshot: DesignSnapshot; notes: string[] }>> {
+export async function takeSnapshot(storeId: string, options: { drafts?: boolean } = {}): Promise<DesignResult<{ snapshot: DesignSnapshot; notes: string[] }>> {
+  const content = options.drafts ? sql.raw("p.draft") : sql.raw("p.published");
+  const live = options.drafts ? sql`` : sql`and p.published_at is not null`;
   const [store] = await db().execute<Row>(sql`
     select s.id, s.slug, s.theme, s.custom_css, s.header_menu_id, s.footer_menu_id,
-      (select p.published from commerce.pages p where p.store_id = s.id and p.id = s.header_id and p.type = 'header' and p.published_at is not null) as header,
-      (select p.published from commerce.pages p where p.store_id = s.id and p.id = s.footer_id and p.type = 'footer' and p.published_at is not null) as footer,
-      (select p.published from commerce.pages p where p.store_id = s.id and p.id = s.product_layout_id and p.type = 'product_layout' and p.published_at is not null) as product_layout
+      (select ${content} from commerce.pages p where p.store_id = s.id and p.id = s.header_id and p.type = 'header' ${live}) as header,
+      (select ${content} from commerce.pages p where p.store_id = s.id and p.id = s.footer_id and p.type = 'footer' ${live}) as footer,
+      (select ${content} from commerce.pages p where p.store_id = s.id and p.id = s.product_layout_id and p.type = 'product_layout' ${live}) as product_layout
     from commerce.stores s where s.id = ${storeId}::uuid
   `);
   if (!store) return refuse("That store no longer exists.");
@@ -238,101 +294,466 @@ export async function takeSnapshot(storeId: string): Promise<DesignResult<{ snap
   return { ok: true, snapshot, notes: notesText(notes, rawCss !== "" && css === "") };
 }
 
-/** Whether the admin works in the store (a snapshot is only taken of a store they can see in its own admin). */
+/** A key of a snapshot (D177): equal snapshots give equal keys, so a workspace can tell whether its look changed since it was published. */
+export const snapshotKey = (snapshot: DesignSnapshot): string => createHash("sha256").update(canonicalJson(snapshot)).digest("hex");
+
+/** Whether the admin works in the store (a snapshot is only taken of a store they can see in its own admin), never one the platform keeps. */
 async function works(accountId: string, storeId: string): Promise<boolean> {
   const [row] = await db().execute<Row>(sql`
     select 1 as ok from commerce.store_members m join commerce.stores s on s.id = m.store_id
     where m.store_id = ${storeId}::uuid and m.account_id = ${accountId}::uuid and m.disabled_at is null
-      and (m.expires_at is null or m.expires_at > now()) and s.status <> 'closed'
+      and (m.expires_at is null or m.expires_at > now()) and s.status <> 'closed' and ${NOT_HIDDEN}
   `);
   return row !== undefined;
 }
 
-/** A new design profile from a store the platform admin works in: its snapshot now, unpublished and last in the order. */
+// ---------------------------------------------------------------------------
+// A profile's workspace (D177)
+// ---------------------------------------------------------------------------
+
+/** A design profile's workspace: the hidden store its look is edited in, from the profile's own pages. */
+export type DesignWorkspace = { presetId: string; title: string; store: { id: string; slug: string } };
+
+/** Kaizen's standard look (D177, "from scratch"): the standard theme, header, footer and product layout, no CSS. */
+const STANDARD_THEME = { base: "minimal", savedId: null, settings: templateSettings("minimal") };
+
+/**
+ * A new workspace: a hidden store copied from the default template (its demo products, pages and menus are what the builders and previews
+ * draw on), marked `starter` and described by no store template, so it is not a real store and is never listed or worked in (D175, D177),
+ * with Kaizen's standard look. The admin who made it is its owner on paper (`clone_store()` needs one); `loadMembership()` honours no
+ * membership of it.
+ */
+async function makeWorkspace(admin: Account): Promise<{ id: string; slug: string }> {
+  for (let attempt = 0; ; attempt += 1) {
+    const slug = `design-${randomBytes(4).toString("hex")}`;
+    try {
+      return await db().transaction(async (tx) => {
+        const [row] = await tx.execute<Row>(sql`
+          select commerce.clone_store(commerce.starter_source(null), ${slug},
+            (select t.name from commerce.stores t where t.id = commerce.starter_source(null)), ${admin.id}::uuid) as id
+        `);
+        const id = String(row.id);
+        await tx.execute(sql`
+          update commerce.stores set starter = true, theme = ${JSON.stringify(STANDARD_THEME)}::jsonb, custom_css = '',
+            header_id = null, footer_id = null, product_layout_id = null
+          where id = ${id}::uuid
+        `);
+        return { id, slug };
+      });
+    } catch (error) {
+      if (attempt < 4 && describe(error).includes("stores_slug")) continue;
+      throw error;
+    }
+  }
+}
+
+/** A workspace that is no longer wanted (its profile could not be made, or another admin made one first): closed and kept (D171). */
+async function closeWorkspace(storeId: string, accountId: string, reason: string): Promise<void> {
+  await db().execute(sql`
+    update commerce.stores set status = 'closed', status_reason = ${reason}, status_changed_by = ${accountId}::uuid
+     where id = ${storeId}::uuid and status <> 'closed'
+  `);
+}
+
+async function readWorkspace(presetId: string): Promise<{ title: string; workspace: { id: string; slug: string } | null; snapshot: unknown; sourceId: string | null } | null> {
+  const [row] = await db().execute<Row>(sql`
+    select d.title, d.draft, d.snapshot, d.source_store_id, w.id as workspace_id, w.slug as workspace_slug
+    from commerce.design_presets d left join commerce.stores w on w.id = d.workspace_store_id
+    where d.id = ${presetId}::uuid
+  `);
+  if (!row) return null;
+  return {
+    title: readDesignDraft(row.draft)?.title ?? String(row.title),
+    workspace: row.workspace_id ? { id: String(row.workspace_id), slug: String(row.workspace_slug) } : null,
+    snapshot: row.snapshot,
+    sourceId: row.source_store_id ? String(row.source_store_id) : null,
+  };
+}
+
+/**
+ * The profile's workspace for a platform admin, or null (D177): what every editor action checks before it writes, never making one.
+ * Null for anyone who does not run the platform, an unknown profile, and a profile without a workspace yet.
+ */
+export async function workspaceOf(account: Pick<Account, "platformAdmin">, presetId: string): Promise<DesignWorkspace | null> {
+  if (!account.platformAdmin || !isUuid(presetId)) return null;
+  const found = await readWorkspace(presetId);
+  return found?.workspace ? { presetId, title: found.title, store: found.workspace } : null;
+}
+
+/**
+ * The profile's workspace, made the first time a profile from before D177 is edited (D177): a fresh workspace with the profile's published
+ * snapshot written into it, as applying would place it, and its key kept so the profile does not count as changed. Two admins opening it at
+ * once get the same one (the second's is closed). Null for anyone who does not run the platform and an unknown profile.
+ */
+export async function ensureWorkspace(admin: Account, presetId: string, deps: ApplyDeps = {}): Promise<DesignResult<{ workspace: DesignWorkspace }>> {
+  if (!admin.platformAdmin || !isUuid(presetId)) return refuse(UNKNOWN);
+  const found = await readWorkspace(presetId);
+  if (!found) return refuse(UNKNOWN);
+  if (found.workspace) return { ok: true, workspace: { presetId, title: found.title, store: found.workspace } };
+  const snapshot = parseDesignSnapshot(found.snapshot);
+  if (!snapshot) return refuse("This design profile can no longer be read, so it cannot be edited.");
+  const made = await makeWorkspace(admin);
+  const written = await writeWorkspaceLook(made.id, snapshot, { sourceId: found.sourceId, accountId: admin.id, title: found.title, deps });
+  if (!written.ok) {
+    await closeWorkspace(made.id, admin.id, "Its design profile's look could not be written into it.");
+    return written;
+  }
+  const taken = await takeSnapshot(made.id, { drafts: true });
+  const [linked] = await db().execute<Row>(sql`
+    update commerce.design_presets set workspace_store_id = ${made.id}::uuid, workspace_key = ${taken.ok ? snapshotKey(taken.snapshot) : null}
+     where id = ${presetId}::uuid and workspace_store_id is null
+    returning id
+  `);
+  if (!linked) {
+    await closeWorkspace(made.id, admin.id, "Another workspace was made for its design profile first.");
+    const again = await workspaceOf(admin, presetId);
+    return again ? { ok: true, workspace: again } : refuse(UNKNOWN);
+  }
+  await audit(admin.id, made.id, "platform.design_preset_workspace", { preset: presetId, notes: written.notes.length }, { target: { type: "design_preset", id: presetId } });
+  return { ok: true, workspace: { presetId, title: found.title, store: made } };
+}
+
+/** The address of the page a profile's workspace keeps for a kind: `header-profile` and so on (`-2` … when taken). */
+const workspaceSlug = (kind: DesignLayoutKind, taken: Iterable<string> = []): string => designPageSlug(kind, "profile", taken);
+
+/** The page of a kind the workspace edits: the one chosen, else the one made for the profile before (`header-profile…`), else none. */
+async function workspaceLayoutPage(tx: Pick<ReturnType<typeof db>, "execute">, storeId: string, kind: DesignLayoutKind): Promise<string | null> {
+  const type = LAYOUT_PAGE_TYPE[kind];
+  const column = sql.raw(kind === "header" ? "header_id" : kind === "footer" ? "footer_id" : "product_layout_id");
+  const base = workspaceSlug(kind);
+  const [row] = await tx.execute<Row>(sql`
+    select coalesce(
+      (select p.id from commerce.pages p join commerce.stores s on s.id = p.store_id and s.${column} = p.id where p.store_id = ${storeId}::uuid and p.type = ${type}),
+      (select p.id from commerce.pages p where p.store_id = ${storeId}::uuid and p.type = ${type} and (p.slug = ${base} or p.slug like ${`${base}-%`})
+        order by p.updated_at desc limit 1)
+    ) as id
+  `);
+  return row?.id ? String(row.id) : null;
+}
+
+/**
+ * Writes a look into a profile's workspace (D177), through the same placing as applying (`placeSnapshot()`: fonts, pictures copied into its
+ * library, pages checked as the builder checks them): the theme and CSS, and each layout into the workspace's own page of its kind (the one
+ * chosen, else the profile's, else a new one), chosen; a part the look has as null is unchosen (the standard one). No saved theme and no use
+ * is kept: a workspace is no store's look to put back, and writing it never makes the profile "used".
+ */
+async function writeWorkspaceLook(
+  storeId: string,
+  snapshot: DesignSnapshot,
+  options: { sourceId: string | null; accountId: string; title: string; deps?: ApplyDeps },
+): Promise<DesignResult<{ notes: string[] }>> {
+  const facts = await actorFacts(storeId, options.accountId);
+  if (!facts) return refuse("That store no longer exists.");
+  const placed = await placeSnapshot(storeId, snapshot, { sourceId: options.sourceId, accountId: options.accountId, title: "Profile", menus: facts, deps: options.deps });
+  if (!placed.ok) return placed;
+  try {
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`select 1 from commerce.stores where id = ${storeId}::uuid for update`);
+      const chosen: Record<DesignLayoutKind, string | null> = { header: null, footer: null, productLayout: null };
+      for (const kind of DESIGN_LAYOUT_KINDS) {
+        const page = placed.pages[kind];
+        if (!page) continue;
+        const type = LAYOUT_PAGE_TYPE[kind];
+        const existing = await workspaceLayoutPage(tx, storeId, kind);
+        if (existing) {
+          const [row] = await tx.execute<Row>(sql`select slug from commerce.pages where id = ${existing}::uuid`);
+          const json = JSON.stringify({ ...page, slug: String(row.slug) });
+          await tx.execute(sql`
+            update commerce.pages set draft = ${json}::jsonb, published = ${json}::jsonb, published_at = coalesce(published_at, now()),
+              first_published_at = coalesce(first_published_at, now()), updated_by = ${options.accountId}::uuid
+            where id = ${existing}::uuid
+          `);
+          chosen[kind] = existing;
+        } else {
+          const taken = await tx.execute<Row>(sql`select slug from commerce.pages where store_id = ${storeId}::uuid and type = ${type}`);
+          const slug = workspaceSlug(kind, taken.map((r) => String(r.slug)));
+          const json = JSON.stringify({ ...page, slug });
+          const [row] = await tx.execute<Row>(sql`
+            insert into commerce.pages (store_id, type, slug, draft, published, published_at, first_published_at, created_by, updated_by)
+            values (${storeId}::uuid, ${type}, ${slug}, ${json}::jsonb, ${json}::jsonb, now(), now(), ${options.accountId}::uuid, ${options.accountId}::uuid)
+            returning id
+          `);
+          chosen[kind] = String(row.id);
+        }
+      }
+      const theme = { base: snapshot.theme.base, savedId: null, settings: snapshot.theme.settings };
+      await tx.execute(sql`
+        update commerce.stores set theme = ${JSON.stringify(theme)}::jsonb, custom_css = ${placed.siteCss},
+          header_id = ${chosen.header}::uuid, footer_id = ${chosen.footer}::uuid, product_layout_id = ${chosen.productLayout}::uuid
+        where id = ${storeId}::uuid
+      `);
+    });
+  } catch (error) {
+    console.error("[design-presets] writing a workspace failed", error);
+    return refuse("The look could not be written into the design profile. Nothing was changed; try again.");
+  }
+  return { ok: true, notes: placed.notes };
+}
+
+/**
+ * A new design profile (D177), unpublished and last: its workspace made with Kaizen's standard look, and from a store the admin works in
+ * that store's look written into it (as applying writes one); its snapshot taken from the workspace, so what is published later is what the
+ * admin built there.
+ */
 export async function createDesign(
   admin: Account,
-  input: { storeId: string; details: DesignDetails },
+  input: { origin: DesignOrigin; details: DesignDetails },
+  deps: ApplyDeps = {},
 ): Promise<DesignResult<{ id: string; notes: string[] }>> {
   if (!admin.platformAdmin) return refuse("Only Kaizen's admins make design profiles.");
-  if (!isUuid(input.storeId) || !(await works(admin.id, input.storeId))) return refuse("Choose a store you work in.");
-  const taken = await takeSnapshot(input.storeId);
-  if (!taken.ok) return taken;
+  const { origin } = input;
+  const notes: string[] = [];
+  let source: DesignSnapshot | null = null;
+  if (origin.kind === "store") {
+    if (!isUuid(origin.storeId) || !(await works(admin.id, origin.storeId))) return refuse("Choose a store you work in.");
+    const taken = await takeSnapshot(origin.storeId);
+    if (!taken.ok) return taken;
+    source = taken.snapshot;
+    notes.push(...taken.notes);
+  }
+  const workspace = await makeWorkspace(admin);
+  if (source && origin.kind === "store") {
+    const written = await writeWorkspaceLook(workspace.id, source, { sourceId: origin.storeId, accountId: admin.id, title: input.details.title, deps });
+    if (!written.ok) {
+      await closeWorkspace(workspace.id, admin.id, "Its design profile could not be made.");
+      return written;
+    }
+    notes.push(...written.notes);
+  }
+  const fresh = await takeSnapshot(workspace.id, { drafts: true });
+  if (!fresh.ok) {
+    await closeWorkspace(workspace.id, admin.id, "Its design profile could not be made.");
+    return fresh;
+  }
   const { title, summary, description, pictureUrl } = input.details;
   let id: string;
   try {
     const [row] = await db().execute<Row>(sql`
-      insert into commerce.design_presets (title, summary, description, picture_url, snapshot, source_store_id, position, published, created_by, updated_by)
-      values (${title}, ${summary}, ${description}, ${pictureUrl}, ${JSON.stringify(taken.snapshot)}::jsonb, ${input.storeId}::uuid,
-        (select coalesce(max(position), 0) + 1 from commerce.design_presets), false, ${admin.id}::uuid, ${admin.id}::uuid)
+      insert into commerce.design_presets (title, summary, description, picture_url, snapshot, source_store_id, workspace_store_id, workspace_key,
+        position, published, created_by, updated_by)
+      values (${title}, ${summary}, ${description}, ${pictureUrl}, ${JSON.stringify(fresh.snapshot)}::jsonb, ${workspace.id}::uuid, ${workspace.id}::uuid,
+        ${snapshotKey(fresh.snapshot)}, (select coalesce(max(position), 0) + 1 from commerce.design_presets), false, ${admin.id}::uuid, ${admin.id}::uuid)
       returning id
     `);
     id = String(row.id);
   } catch (error) {
+    await closeWorkspace(workspace.id, admin.id, "Its design profile could not be made.");
     return refuse(designProblem(error));
   }
-  await audit(admin.id, input.storeId, "platform.design_preset_created", { preset: id, title }, { target: { type: "design_preset", id } });
-  return { ok: true, id, notes: taken.notes };
+  await audit(admin.id, origin.kind === "store" ? origin.storeId : workspace.id, "platform.design_preset_created", {
+    preset: id,
+    title,
+    origin: origin.kind,
+    workspace: workspace.id,
+  }, { target: { type: "design_preset", id } });
+  return { ok: true, id, notes };
 }
 
-/** Takes the snapshot again from the profile's store, as it looks now (*Update from its store*). Stores that applied it keep what they got. */
-export async function retakeDesign(admin: Account, id: string): Promise<DesignResult<{ notes: string[] }>> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
-  const [preset] = await db().execute<Row>(sql`select source_store_id from commerce.design_presets where id = ${id}::uuid`);
-  if (!preset) return refuse(UNKNOWN);
-  const source = preset.source_store_id ? String(preset.source_store_id) : null;
-  if (!source || !(await works(admin.id, source))) return refuse("Its store is gone or you do not work in it: open the store's admin first, or make a new profile.");
-  const taken = await takeSnapshot(source);
+/**
+ * Replaces the look in a profile's workspace with a store's (D177, *Start again from a store*): the store's look now, written as creating
+ * from a store writes it. Only the draft changes: stores keep the published profile until Publish.
+ */
+export async function copyStoreLookToDraft(admin: Account, presetId: string, storeId: string, deps: ApplyDeps = {}): Promise<DesignResult<{ notes: string[] }>> {
+  if (!admin.platformAdmin || !isUuid(presetId)) return refuse(UNKNOWN);
+  if (!isUuid(storeId) || !(await works(admin.id, storeId))) return refuse("Choose a store you work in.");
+  const ready = await ensureWorkspace(admin, presetId, deps);
+  if (!ready.ok) return ready;
+  const taken = await takeSnapshot(storeId);
   if (!taken.ok) return taken;
-  try {
-    await db().execute(sql`
-      update commerce.design_presets set snapshot = ${JSON.stringify(taken.snapshot)}::jsonb, snapshot_at = now(), updated_by = ${admin.id}::uuid
-      where id = ${id}::uuid
-    `);
-  } catch (error) {
-    return refuse(designProblem(error));
-  }
-  await audit(admin.id, source, "platform.design_preset_retaken", { preset: id }, { target: { type: "design_preset", id } });
-  return { ok: true, notes: taken.notes };
+  const written = await writeWorkspaceLook(ready.workspace.store.id, taken.snapshot, { sourceId: storeId, accountId: admin.id, title: ready.workspace.title, deps });
+  if (!written.ok) return written;
+  await audit(admin.id, storeId, "platform.design_preset_copied", { preset: presetId, workspace: ready.workspace.store.id }, { target: { type: "design_preset", id: presetId } });
+  return { ok: true, notes: [...taken.notes, ...written.notes] };
 }
 
-/** A design profile's title, summary, description and picture. */
-export async function updateDesign(admin: Account, id: string, details: DesignDetails): Promise<DesignResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
-  let row: Row | undefined;
-  try {
-    [row] = await db().execute<Row>(sql`
-      update commerce.design_presets
-         set title = ${details.title}, summary = ${details.summary}, description = ${details.description},
-             picture_url = ${details.pictureUrl}, updated_by = ${admin.id}::uuid
-       where id = ${id}::uuid
-      returning source_store_id
-    `);
-  } catch (error) {
-    return refuse(designProblem(error));
-  }
-  if (!row) return refuse(UNKNOWN);
-  await audit(admin.id, row.source_store_id ? String(row.source_store_id) : null, "platform.design_preset_updated", { preset: id }, {
-    target: { type: "design_preset", id },
+/**
+ * Chooses the standard header, footer or product layout in a profile's workspace (`standard`), or one of the profile's own to build (`build`:
+ * the one made before, else a new page starting as the standard one, saved as a draft like everything in the workspace).
+ */
+export async function chooseWorkspaceLayout(admin: Account, presetId: string, kind: DesignLayoutKind, choice: "standard" | "build"): Promise<DesignResult<{ pageId: string | null }>> {
+  const workspace = await workspaceOf(admin, presetId);
+  if (!workspace) return refuse(UNKNOWN);
+  const storeId = workspace.store.id;
+  const column = sql.raw(kind === "header" ? "header_id" : kind === "footer" ? "footer_id" : "product_layout_id");
+  const type = LAYOUT_PAGE_TYPE[kind];
+  const pageId = await db().transaction(async (tx) => {
+    const [store] = await tx.execute<Row>(sql`select header_menu_id, footer_menu_id from commerce.stores where id = ${storeId}::uuid for update`);
+    if (choice === "standard") {
+      await tx.execute(sql`update commerce.stores set ${column} = null where id = ${storeId}::uuid`);
+      return null;
+    }
+    let id = await workspaceLayoutPage(tx, storeId, kind);
+    if (!id) {
+      const menus = { header: store.header_menu_id ? String(store.header_menu_id) : null, footer: store.footer_menu_id ? String(store.footer_menu_id) : null };
+      const start = kind === "header" ? defaultHeader(storeId, menus) : kind === "footer" ? defaultFooter(storeId, menus) : DEFAULT_PRODUCT_LAYOUT;
+      const taken = await tx.execute<Row>(sql`select slug from commerce.pages where store_id = ${storeId}::uuid and type = ${type}`);
+      const slug = workspaceSlug(kind, taken.map((r) => String(r.slug)));
+      const content = { ...start, title: designPageTitle(kind, "Profile"), slug, rows: start.rows.map((row) => copyRow(row, randomUUID)) };
+      const [row] = await tx.execute<Row>(sql`
+        insert into commerce.pages (store_id, type, slug, draft, created_by, updated_by)
+        values (${storeId}::uuid, ${type}, ${slug}, ${JSON.stringify(content)}::jsonb, ${admin.id}::uuid, ${admin.id}::uuid)
+        returning id
+      `);
+      id = String(row.id);
+    }
+    await tx.execute(sql`update commerce.stores set ${column} = ${id}::uuid where id = ${storeId}::uuid`);
+    return id;
   });
-  return { ok: true };
+  return { ok: true, pageId };
 }
 
-/** Offers a design profile to every store, or stops offering it (stores that applied it keep their look). */
-export async function setDesignPublished(admin: Account, id: string, published: boolean): Promise<DesignResult> {
-  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
-  const [row] = await db().execute<Row>(sql`select snapshot from commerce.design_presets where id = ${id}::uuid`);
-  if (!row) return refuse(UNKNOWN);
-  if (published && !parseDesignSnapshot(row.snapshot)) return refuse("Its snapshot can no longer be read: update it from its store first.");
-  const [changed] = await db().execute<Row>(sql`
-    update commerce.design_presets set published = ${published}, updated_by = ${admin.id}::uuid
-     where id = ${id}::uuid and published is distinct from ${published}
-    returning source_store_id
+/** The page a profile's builder edits for a kind (D177): the workspace's chosen one, or null for the standard one. */
+export async function workspaceChosenPage(workspace: DesignWorkspace, kind: DesignLayoutKind): Promise<string | null> {
+  const column = sql.raw(kind === "header" ? "header_id" : kind === "footer" ? "footer_id" : "product_layout_id");
+  const [row] = await db().execute<Row>(sql`
+    select p.id from commerce.stores s join commerce.pages p on p.store_id = s.id and p.id = s.${column} and p.type = ${LAYOUT_PAGE_TYPE[kind]}
+    where s.id = ${workspace.store.id}::uuid
   `);
-  if (!changed) return { ok: true };
-  await audit(admin.id, changed.source_store_id ? String(changed.source_store_id) : null, published ? "platform.design_preset_published" : "platform.design_preset_unpublished", { preset: id }, {
+  return row ? String(row.id) : null;
+}
+
+// ---------------------------------------------------------------------------
+// Details and the life of a profile (D177)
+// ---------------------------------------------------------------------------
+
+/** Saves a profile's details as a draft (D177): stores keep seeing what is published until Publish. A draft equal to what is published is none. */
+export async function saveDesignDraft(admin: Account, id: string, details: DesignDetails): Promise<DesignResult> {
+  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  const design = await getDesign(id);
+  if (!design) return refuse(UNKNOWN);
+  const draft = sameDesignDetails(details, shownDesignDetails({ ...design, draft: null })) ? null : details;
+  try {
+    await db().execute(sql`update commerce.design_presets set draft = ${draft ? JSON.stringify(draft) : null}::jsonb, updated_by = ${admin.id}::uuid where id = ${id}::uuid`);
+  } catch (error) {
+    return refuse(designProblem(error));
+  }
+  await audit(admin.id, design.workspaceStoreId, "platform.design_preset_updated", { preset: id, draft: draft !== null }, { target: { type: "design_preset", id } });
+  return { ok: true };
+}
+
+/**
+ * Publishes a profile (D177): its draft details become what stores read, and the look in its workspace, taken as a snapshot through the same
+ * cleaning as ever (`takeSnapshot()`/`snapshotLayout()`), becomes what applying and the public preview use; its pictures are copied from the
+ * workspace's library when applied. A profile without a workspace (made before D177 and not edited) keeps its snapshot. Refused while
+ * archived. Stores that applied it keep what they got.
+ */
+export async function publishDesign(admin: Account, id: string): Promise<DesignResult<{ notes: string[] }>> {
+  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  const design = await getDesign(id);
+  if (!design) return refuse(UNKNOWN);
+  if (design.archivedAt) return refuse("This design profile is archived. Restore it before publishing it.");
+  let snapshot: DesignSnapshot | null = null;
+  const notes: string[] = [];
+  if (design.workspaceStoreId) {
+    const taken = await takeSnapshot(design.workspaceStoreId, { drafts: true });
+    if (!taken.ok) return taken;
+    snapshot = taken.snapshot;
+    notes.push(...taken.notes);
+  } else if (!design.readable) {
+    return refuse("Its snapshot can no longer be read: open its Theme to make it again.");
+  }
+  const details = shownDesignDetails(design);
+  try {
+    const [row] = await db().execute<Row>(sql`
+      update commerce.design_presets
+         set title = ${details.title}, summary = ${details.summary}, description = ${details.description}, picture_url = ${details.pictureUrl}, draft = null,
+             ${snapshot
+               ? sql`snapshot = ${JSON.stringify(snapshot)}::jsonb, snapshot_at = now(), source_store_id = ${design.workspaceStoreId}::uuid, workspace_key = ${snapshotKey(snapshot)},`
+               : sql``}
+             published = true, published_at = now(), updated_by = ${admin.id}::uuid
+       where id = ${id}::uuid and archived_at is null
+      returning id
+    `);
+    if (!row) return refuse("This design profile is archived. Restore it before publishing it.");
+  } catch (error) {
+    return refuse(designProblem(error));
+  }
+  await audit(admin.id, design.workspaceStoreId, "platform.design_preset_published", { preset: id, snapshot: snapshot !== null }, { target: { type: "design_preset", id } });
+  return { ok: true, notes };
+}
+
+/** Stops offering a profile at once (D177): stores that applied it keep their look; pending sign-ups that chose it keep the template's own. */
+export async function unpublishDesign(admin: Account, id: string): Promise<DesignResult<{ pendingRequests: number }>> {
+  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  const [row] = await db().execute<Row>(sql`
+    update commerce.design_presets set published = false, updated_by = ${admin.id}::uuid where id = ${id}::uuid and published
+    returning workspace_store_id,
+      (select count(*)::int from commerce.access_requests r where r.design_preset_id = ${id}::uuid and r.status = 'pending') as pending
+  `);
+  if (!row) return { ok: true, pendingRequests: 0 };
+  await audit(admin.id, row.workspace_store_id ? String(row.workspace_store_id) : null, "platform.design_preset_unpublished", { preset: id }, {
     target: { type: "design_preset", id },
   });
+  return { ok: true, pendingRequests: Number(row.pending ?? 0) };
+}
+
+/**
+ * Archives a profile (D177): unpublished, hidden from every list but the platform's Archived filter, and no longer any store template's
+ * recommended profile (published or drafted): the templates it was cleared from are named back.
+ */
+export async function archiveDesign(admin: Account, id: string): Promise<DesignResult<{ clearedFrom: string[] }>> {
+  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  const done = await db().transaction(async (tx) => {
+    const [row] = await tx.execute<Row>(sql`
+      update commerce.design_presets set archived_at = now(), archived_by = ${admin.id}::uuid, published = false, updated_by = ${admin.id}::uuid
+       where id = ${id}::uuid and archived_at is null
+      returning workspace_store_id
+    `);
+    if (!row) return null;
+    const cleared = await tx.execute<Row>(sql`
+      update commerce.store_starters set recommended_design = null where recommended_design = ${id}::uuid returning title
+    `);
+    const drafts = await tx.execute<Row>(sql`
+      update commerce.store_starters set draft = jsonb_set(draft, '{recommendedDesign}', 'null'::jsonb)
+       where draft ->> 'recommendedDesign' = ${id} returning coalesce(draft ->> 'title', title) as title
+    `);
+    return { workspace: row.workspace_store_id ? String(row.workspace_store_id) : null, cleared: [...new Set([...cleared, ...drafts].map((r) => String(r.title)))] };
+  });
+  if (!done) return { ok: true, clearedFrom: [] };
+  await audit(admin.id, done.workspace, "platform.design_preset_archived", { preset: id, clearedFrom: done.cleared }, { target: { type: "design_preset", id } });
+  return { ok: true, clearedFrom: done.cleared };
+}
+
+/** Restores an archived profile (D177): back in the list as an unpublished draft. */
+export async function restoreDesign(admin: Account, id: string): Promise<DesignResult> {
+  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  const [row] = await db().execute<Row>(sql`
+    update commerce.design_presets set archived_at = null, archived_by = null, updated_by = ${admin.id}::uuid
+     where id = ${id}::uuid and archived_at is not null
+    returning workspace_store_id
+  `);
+  if (row) await audit(admin.id, row.workspace_store_id ? String(row.workspace_store_id) : null, "platform.design_preset_restored", { preset: id }, { target: { type: "design_preset", id } });
   return { ok: true };
+}
+
+/**
+ * Deletes a profile nothing used (D177): no store applied it and no access request names it (the database refuses otherwise,
+ * `design_presets.used` / `.requested`); a store template recommending it recommends none after (the database clears it). Its workspace is
+ * closed and stays (D171), hidden.
+ */
+export async function deleteDesign(admin: Account, id: string): Promise<DesignResult<{ clearedFrom: string[] }>> {
+  if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
+  const design = await getDesign(id);
+  if (!design) return refuse(UNKNOWN);
+  const blocker = deleteBlocker("design profile", { stores: design.storesUsing, requests: design.requests });
+  if (blocker) return refuse(blocker);
+  try {
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`delete from commerce.design_presets where id = ${id}::uuid`);
+      if (design.workspaceStoreId) {
+        await tx.execute(sql`
+          update commerce.stores set status = 'closed', status_reason = 'Its design profile was deleted.', status_changed_by = ${admin.id}::uuid
+           where id = ${design.workspaceStoreId}::uuid and status <> 'closed'
+        `);
+      }
+    });
+  } catch (error) {
+    return refuse(designProblem(error));
+  }
+  await audit(admin.id, design.workspaceStoreId, "platform.design_preset_deleted", { preset: id, title: design.title, clearedFrom: design.recommendedBy }, {
+    target: { type: "design_preset", id },
+  });
+  return { ok: true, clearedFrom: design.recommendedBy };
 }
 
 /** Moves a design profile one place up or down in the order stores see; the order is written again as 1, 2, 3 … */
@@ -340,7 +761,7 @@ export async function moveDesign(admin: Account, id: string, direction: "up" | "
   if (!admin.platformAdmin || !isUuid(id)) return refuse(UNKNOWN);
   const moved = await db().transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtext('commerce.design_presets.position'))`);
-    const rows = await tx.execute<Row>(sql`select id from commerce.design_presets order by position, lower(title), id`);
+    const rows = await tx.execute<Row>(sql`select id from commerce.design_presets where archived_at is null order by position, lower(title), id`);
     const order = movedOrder(rows.map((r) => String(r.id)), id, direction);
     if (!order) return false;
     for (const [index, presetId] of order.entries()) {
@@ -349,28 +770,6 @@ export async function moveDesign(admin: Account, id: string, direction: "up" | "
     return true;
   });
   if (moved) await audit(admin.id, null, "platform.design_preset_moved", { preset: id, direction }, { target: { type: "design_preset", id } });
-  return { ok: true };
-}
-
-/**
- * The design profile a store template (D175) offers first when a store is made from it, or none. A convenience only: the person creating
- * the store may choose any other, and the profile is offered only while published.
- */
-export async function setRecommendedDesign(admin: Account, starterId: string, presetId: string | null): Promise<DesignResult> {
-  if (!admin.platformAdmin || !isUuid(starterId) || (presetId !== null && !isUuid(presetId))) return refuse("Unknown store template.");
-  if (presetId) {
-    const [preset] = await db().execute<Row>(sql`select 1 as ok from commerce.design_presets where id = ${presetId}::uuid`);
-    if (!preset) return refuse(UNKNOWN);
-  }
-  const [row] = await db().execute<Row>(sql`
-    update commerce.store_starters set recommended_design = ${presetId}::uuid, updated_by = ${admin.id}::uuid
-     where id = ${starterId}::uuid
-    returning store_id
-  `);
-  if (!row) return refuse("Unknown store template.");
-  await audit(admin.id, String(row.store_id), "platform.design_preset_recommended", { starter: starterId, preset: presetId }, {
-    target: { type: "store_starter", id: starterId },
-  });
   return { ok: true };
 }
 
@@ -392,7 +791,7 @@ type PreviousLook = { theme: unknown; headerId: string | null; footerId: string 
 /** Who may change a store's look here: a platform admin, or someone who works in the store (the caller checked their permission). */
 async function actorFacts(storeId: string, accountId: string) {
   const [row] = await db().execute<Row>(sql`
-    select s.slug, s.status, s.starter, s.header_menu_id, s.footer_menu_id,
+    select s.slug, s.status, s.starter, s.header_menu_id, s.footer_menu_id, ${NOT_HIDDEN} as workable,
       (select a.platform_admin and a.disabled_at is null from commerce.accounts a where a.id = ${accountId}::uuid) as platform_admin,
       exists (
         select 1 from commerce.store_members m
@@ -405,6 +804,76 @@ async function actorFacts(storeId: string, accountId: string) {
 
 /** The cache tags a change of a store's look touches: its store (theme, CSS), its pages (header, footer) and its catalogue (product layouts). */
 export const designTags = (store: { id: string; slug: string }): string[] => [storeTag(store.slug), pagesTag(store.id), catalogTag(store.id)];
+
+/** A snapshot made ready for a store, before anything of the store is written (`placeSnapshot()`). */
+type Placed = { pages: Partial<Record<DesignLayoutKind, PageContent>>; siteCss: string; notes: string[]; copies: number; leftOut: number };
+
+/**
+ * Makes a snapshot ready for a store (D176, shared by applying and by writing a profile's workspace, D177): the fonts installed (D59), the
+ * source store's pictures copied into the store's library as D125's `applyTemplate()` copies a template's (any other upload left out), each
+ * layout placed with the store's own menus (`layoutForStore()`) and checked as the builder checks a save (`pageInput`,
+ * `pageRulesProblem()`, no other store's file left), and the CSS checked. Writes nothing but the fonts and the pictures' copies.
+ */
+async function placeSnapshot(
+  storeId: string,
+  snapshot: DesignSnapshot,
+  options: { sourceId: string | null; accountId: string; title: string; menus: Row; deps?: ApplyDeps },
+): Promise<DesignResult<Placed>> {
+  // Fonts first (D59): a page never shows a font Kaizen does not have.
+  const fonts = snapshotFonts(snapshot);
+  const unknown = fonts.filter((family) => !findFont(family));
+  if (unknown.length > 0) return refuse(`${unknown.join(", ")} ${unknown.length === 1 ? "is" : "are"} not in Google Fonts.`);
+  const installed = await (options.deps?.installFonts ?? installFonts)(fonts);
+  if (!installed.ok) return refuse(installed.problem);
+
+  // Pictures and videos: the source store's own files are copied into this store's library (D125's way); any other upload is left out.
+  const wanted = snapshotStorageUrls(snapshot);
+  const sourceId = options.sourceId;
+  const files = sourceId && sourceId !== storeId ? await libraryFilesByUrl(sourceId, wanted) : new Map<string, LibraryFile>();
+  const replaced = new Map<string, string>();
+  if (sourceId === storeId) for (const url of wanted) replaced.set(url, url);
+  const chosen = new Map<string, LibraryFile>();
+  let bytes = 0;
+  for (const url of wanted) {
+    const file = files.get(url);
+    if (!file || chosen.has(file.id)) continue;
+    if (chosen.size >= TEMPLATE_MEDIA_MAX || bytes + file.sizeBytes > TEMPLATE_MEDIA_BYTES_MAX) continue;
+    chosen.set(file.id, file);
+    bytes += file.sizeBytes;
+  }
+  const copies = new Map<string, { url: string; thumbnailUrl: string | null }>();
+  for (const file of chosen.values()) {
+    const copy = await copyToLibrary({ storeId, accountId: options.accountId }, file, options.deps?.copyFile);
+    if (copy) copies.set(file.id, copy);
+  }
+  for (const url of wanted) {
+    const file = files.get(url);
+    const copy = file && copies.get(file.id);
+    const next = copy ? (url === file.thumbnailUrl && url !== file.url ? copy.thumbnailUrl : copy.url) : null;
+    if (next) replaced.set(url, next);
+  }
+  const mapped = mapSnapshotMedia(snapshot, (url) => (isStorageUrl(url) ? (replaced.get(url) ?? null) : url));
+  const notes: string[] = [];
+  const leftOut = new Set(wanted.filter((url) => !replaced.has(url))).size;
+  if (leftOut > 0) notes.push(`${leftOut} ${leftOut === 1 ? "picture" : "pictures"} could not be copied and ${leftOut === 1 ? "was" : "were"} left out.`);
+
+  // The pages, checked as the builder checks a save; their addresses are chosen inside the transaction.
+  const menus = { header: options.menus.header_menu_id ? String(options.menus.header_menu_id) : null, footer: options.menus.footer_menu_id ? String(options.menus.footer_menu_id) : null };
+  const pages: Partial<Record<DesignLayoutKind, PageContent>> = {};
+  for (const kind of DESIGN_LAYOUT_KINDS) {
+    const layout = mapped[kind];
+    if (!layout) continue;
+    const content = layoutForStore(layout, menus, { title: designPageTitle(kind, options.title), slug: "design" });
+    const parsed = pageInput.safeParse(content);
+    const problem = parsed.success ? pageRulesProblem(storeId, LAYOUT_PAGE_TYPE[kind], parsed.data) : parsed.error.issues[0]?.message;
+    if (problem || !parsed.success) return refuse(`The profile's ${designPageTitle(kind, "").trim()} does not fit this store: ${problem ?? "it cannot be read"}`);
+    if (leftoverStorageUrls(parsed.data, new Set(replaced.values())).length > 0) return refuse("This design profile could not be made ready for your store.");
+    pages[kind] = parsed.data;
+  }
+  const siteCss = cssProblem(mapped.css) === null ? mapped.css : "";
+
+  return { ok: true, pages, siteCss, notes, copies: copies.size, leftOut };
+}
 
 /**
  * Applies a design profile to a store (D176): the one writer. Refused for a store that is not open (D171) or that the account neither works
@@ -422,68 +891,21 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
   const platformAdmin = Boolean(facts.platform_admin);
   if (!platformAdmin && !facts.member) return refuse("You do not work in this store.");
   if (facts.status !== "active") return refuse("The store is not open, so its look cannot be changed.");
+  // A store the platform keeps for itself (a store template's frozen copy, a profile's workspace, D177) is never changed by applying.
+  if (!facts.workable) return refuse(KEPT);
 
   const [preset] = await db().execute<Row>(sql`
-    select id, title, snapshot, published, source_store_id from commerce.design_presets where id = ${presetId}::uuid
+    select id, title, snapshot, published, archived_at, source_store_id from commerce.design_presets where id = ${presetId}::uuid
   `);
   if (!preset) return refuse(UNKNOWN);
-  if (!preset.published && !(platformAdmin && facts.starter)) return refuse(NOT_OFFERED);
+  if (preset.archived_at || (!preset.published && !(platformAdmin && facts.starter))) return refuse(NOT_OFFERED);
   const snapshot = parseDesignSnapshot(preset.snapshot);
   if (!snapshot) return refuse("This design profile can no longer be read.");
   const title = String(preset.title);
 
-  // Fonts first (D59): a page never shows a font Kaizen does not have.
-  const fonts = snapshotFonts(snapshot);
-  const unknown = fonts.filter((family) => !findFont(family));
-  if (unknown.length > 0) return refuse(`${unknown.join(", ")} ${unknown.length === 1 ? "is" : "are"} not in Google Fonts.`);
-  const installed = await (deps.installFonts ?? installFonts)(fonts);
-  if (!installed.ok) return refuse(installed.problem);
-
-  // Pictures and videos: the source store's own files are copied into this store's library (D125's way); any other upload is left out.
-  const wanted = snapshotStorageUrls(snapshot);
-  const sourceId = preset.source_store_id ? String(preset.source_store_id) : null;
-  const files = sourceId && sourceId !== storeId ? await libraryFilesByUrl(sourceId, wanted) : new Map<string, LibraryFile>();
-  const replaced = new Map<string, string>();
-  if (sourceId === storeId) for (const url of wanted) replaced.set(url, url);
-  const chosen = new Map<string, LibraryFile>();
-  let bytes = 0;
-  for (const url of wanted) {
-    const file = files.get(url);
-    if (!file || chosen.has(file.id)) continue;
-    if (chosen.size >= TEMPLATE_MEDIA_MAX || bytes + file.sizeBytes > TEMPLATE_MEDIA_BYTES_MAX) continue;
-    chosen.set(file.id, file);
-    bytes += file.sizeBytes;
-  }
-  const copies = new Map<string, { url: string; thumbnailUrl: string | null }>();
-  for (const file of chosen.values()) {
-    const copy = await copyToLibrary({ storeId, accountId }, file, deps.copyFile);
-    if (copy) copies.set(file.id, copy);
-  }
-  for (const url of wanted) {
-    const file = files.get(url);
-    const copy = file && copies.get(file.id);
-    const next = copy ? (url === file.thumbnailUrl && url !== file.url ? copy.thumbnailUrl : copy.url) : null;
-    if (next) replaced.set(url, next);
-  }
-  const placed = mapSnapshotMedia(snapshot, (url) => (isStorageUrl(url) ? (replaced.get(url) ?? null) : url));
-  const notes: string[] = [];
-  const leftOut = new Set(wanted.filter((url) => !replaced.has(url))).size;
-  if (leftOut > 0) notes.push(`${leftOut} ${leftOut === 1 ? "picture" : "pictures"} could not be copied and ${leftOut === 1 ? "was" : "were"} left out.`);
-
-  // The pages, checked as the builder checks a save; their addresses are chosen inside the transaction.
-  const menus = { header: facts.header_menu_id ? String(facts.header_menu_id) : null, footer: facts.footer_menu_id ? String(facts.footer_menu_id) : null };
-  const pages: Partial<Record<DesignLayoutKind, PageContent>> = {};
-  for (const kind of DESIGN_LAYOUT_KINDS) {
-    const layout = placed[kind];
-    if (!layout) continue;
-    const content = layoutForStore(layout, menus, { title: designPageTitle(kind, title), slug: "design" });
-    const parsed = pageInput.safeParse(content);
-    const problem = parsed.success ? pageRulesProblem(storeId, LAYOUT_PAGE_TYPE[kind], parsed.data) : parsed.error.issues[0]?.message;
-    if (problem || !parsed.success) return refuse(`The profile's ${designPageTitle(kind, "").trim()} does not fit this store: ${problem ?? "it cannot be read"}`);
-    if (leftoverStorageUrls(parsed.data, new Set(replaced.values())).length > 0) return refuse("This design profile could not be made ready for your store.");
-    pages[kind] = parsed.data;
-  }
-  const siteCss = cssProblem(placed.css) === null ? placed.css : "";
+  const ready = await placeSnapshot(storeId, snapshot, { sourceId: preset.source_store_id ? String(preset.source_store_id) : null, accountId, title, menus: facts, deps });
+  if (!ready.ok) return ready;
+  const { pages, siteCss, notes } = ready;
 
   let applied: { useId: string; savedTheme: string; pageIds: Record<string, string | null> };
   try {
@@ -551,8 +973,8 @@ export async function applyDesignPreset(storeId: string, presetId: string, accou
       title,
       savedTheme: applied.savedTheme,
       pages: applied.pageIds,
-      media: copies.size,
-      ...(leftOut > 0 && { mediaLeftOut: leftOut }),
+      media: ready.copies,
+      ...(ready.leftOut > 0 && { mediaLeftOut: ready.leftOut }),
       ...(platformAdmin && !facts.member && { byPlatform: true }),
     },
     { area: "website", target: { type: "design_preset", id: presetId } },
@@ -597,6 +1019,7 @@ export async function restoreDesignLook(storeId: string, accountId: string): Pro
   if (!facts) return refuse("That store no longer exists.");
   if (!facts.platform_admin && !facts.member) return refuse("You do not work in this store.");
   if (facts.status !== "active") return refuse("The store is not open, so its look cannot be changed.");
+  if (!facts.workable) return refuse(KEPT);
   let done: { useId: string; presetId: string; presetTitle: string };
   try {
     done = await db().transaction(async (tx) => {
@@ -657,19 +1080,28 @@ export type DesignPreview = {
   starterTitle: string | null;
   /** The profile's fonts that Kaizen has (D59): only these are linked, so a font not installed yet never holds the preview back. */
   fonts: string[];
+  /** The look in the profile's workspace, not yet published (D177, admins only). */
+  draft: boolean;
 };
 
-async function readPreview(presetId: string, starterId: string | null, admin: boolean): Promise<DesignPreview | null> {
+async function readPreview(presetId: string, starterId: string | null, admin: boolean, draft = false): Promise<DesignPreview | null> {
   if (!isUuid(presetId) || (starterId !== null && !isUuid(starterId))) return null;
   const [preset] = await readDb().execute<Row>(sql`
-    select id, title, snapshot from commerce.design_presets where id = ${presetId}::uuid and (published or ${admin})
+    select id, title, draft, snapshot, workspace_store_id from commerce.design_presets
+    where id = ${presetId}::uuid and (${admin} or (published and archived_at is null))
   `);
-  const snapshot = preset ? parseDesignSnapshot(preset.snapshot) : null;
-  if (!preset || !snapshot) return null;
+  if (!preset) return null;
+  // A draft (D177, admins only) is the look in the profile's workspace as last saved, with its draft title.
+  const taken = draft && preset.workspace_store_id ? await takeSnapshot(String(preset.workspace_store_id), { drafts: true }) : null;
+  const snapshot = taken ? (taken.ok ? taken.snapshot : null) : parseDesignSnapshot(preset.snapshot);
+  if (!snapshot) return null;
+  const title = draft ? (readDesignDraft(preset.draft)?.title ?? String(preset.title)) : String(preset.title);
+  // Owners see a store template as published: its frozen copy (D177). An admin sees its working store, as it is now.
   const [store] = starterId
     ? await readDb().execute<Row>(sql`
-        select s.slug, st.title from commerce.store_starters st join commerce.stores s on s.id = st.store_id and s.starter
-        where st.id = ${starterId}::uuid and s.status = 'active' and (st.published or ${admin})
+        select s.slug, st.title from commerce.store_starters st
+        join commerce.stores s on s.id = ${admin ? sql`st.store_id` : sql`coalesce(st.published_store_id, st.store_id)`} and s.starter
+        where st.id = ${starterId}::uuid and s.status = 'active' and (${admin} or (st.published and st.archived_at is null))
       `)
     : await readDb().execute<Row>(sql`select slug, null as title from commerce.stores where is_template`);
   if (!store) return null;
@@ -678,12 +1110,12 @@ async function readPreview(presetId: string, starterId: string | null, admin: bo
     ? []
     : await readDb().execute<Row>(sql`select family from commerce.fonts where family in (${sql.join(wanted.map((f) => sql`${f}`), sql`, `)})`);
   const fonts = wanted.filter((family) => installed.some((row) => row.family === family));
-  return { id: String(preset.id), title: String(preset.title), snapshot, storeSlug: String(store.slug), starterTitle: store.title ? String(store.title) : null, fonts };
+  return { id: String(preset.id), title, snapshot, storeSlug: String(store.slug), starterTitle: store.title ? String(store.title) : null, fonts, draft: taken !== null };
 }
 
 /**
  * A published profile on a published store template (or the default template), for the public preview: cached per profile and template
- * under `DESIGNS_TAG` and `STARTERS_TAG`, null for anything unpublished. Reads nothing of the visitor.
+ * under `DESIGNS_TAG` and `STARTERS_TAG`, null for anything unpublished or archived. Reads nothing of the visitor.
  */
 export async function publicDesignPreview(presetId: string, starterId: string | null): Promise<DesignPreview | null> {
   "use cache";
@@ -692,16 +1124,20 @@ export async function publicDesignPreview(presetId: string, starterId: string | 
   return readPreview(presetId, starterId, false);
 }
 
-/** The same for a platform admin (the caller checked): unpublished profiles and templates too. Never cached. */
-export async function adminDesignPreview(presetId: string, starterId: string | null): Promise<DesignPreview | null> {
-  return readPreview(presetId, starterId, true);
+/**
+ * The same for a platform admin (the caller checked): unpublished and archived profiles and templates too, and with `draft` the look in the
+ * profile's workspace as last saved (D177). Never cached.
+ */
+export async function adminDesignPreview(presetId: string, starterId: string | null, draft = false): Promise<DesignPreview | null> {
+  return readPreview(presetId, starterId, true, draft);
 }
 
 /** Every published store template, for the preview's chooser and the platform's pages. */
 export async function previewStarters(): Promise<{ id: string; title: string }[]> {
   const rows = await readDb().execute<Row>(sql`
-    select st.id, st.title from commerce.store_starters st join commerce.stores s on s.id = st.store_id and s.status = 'active'
-    where st.published order by st.position, lower(st.title)
+    select st.id, st.title from commerce.store_starters st
+    join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.status = 'active'
+    where st.published and st.archived_at is null order by st.position, lower(st.title)
   `);
   return rows.map((r) => ({ id: String(r.id), title: String(r.title) }));
 }

@@ -51,3 +51,21 @@ test("a store template is in no sitemap", async ({ request }) => {
   expect(index).not.toContain(slug);
   expect((await request.get(`/s/${slug}/store-sitemap.xml`)).status()).toBe(404);
 });
+
+test("a store template's published copy is a preview too, and its storefront follows what was published (D177)", async ({ page }) => {
+  const slug = await starterStore();
+  const sql = testDb();
+  let copy: string;
+  try {
+    const [{ id: account }] = await sql`insert into commerce.accounts (email, platform_admin) values (${`${slug}-admin@example.com`}, true) returning id`;
+    const [{ id: starter }] = await sql`select st.id from commerce.store_starters st join commerce.stores s on s.id = st.store_id where s.slug = ${slug}`;
+    const [{ id: copyId }] = await sql`select commerce.freeze_starter(${starter}, ${account}) as id`;
+    [{ slug: copy }] = await sql`select slug from commerce.stores where id = ${copyId}`;
+  } finally {
+    await sql.end();
+  }
+  expect(copy).toBe(`${slug}-v1`);
+  await page.goto(`/s/${copy}/no`);
+  await expect(page.getByText("Forhåndsvisning av butikkmal: denne butikken tar ikke imot bestillinger.").first()).toBeVisible();
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
+});

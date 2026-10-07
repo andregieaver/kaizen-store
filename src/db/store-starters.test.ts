@@ -4,9 +4,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDatabase } from "./testing";
 
 /**
- * Store templates (D175, docs/store-templates.md): the rules the database holds. A starter is a real store that never takes an order and
- * never stops being a starter; its description is a row of `store_starters`; `starter_source()` decides what a new store is copied from;
- * `clone_store()` brings a starter's operational set-up through `clone_starter_setup()`; approval copies the request's starter.
+ * Store templates (D175, D177, docs/store-templates.md): the rules the database holds. A starter is a real store that never takes an order
+ * and never stops being a starter; its description is a row of `store_starters`, deleted only while unused; `starter_source()` decides what a
+ * new store is copied from (D177: the frozen copy `freeze_starter()` made when it was published); `clone_store()` brings a starter's
+ * operational set-up through `clone_starter_setup()`; approval copies the request's starter while it is offered, else the Standard store.
  */
 let db: PGlite;
 let template: string;
@@ -84,7 +85,7 @@ describe("a store template's own rules (D175)", () => {
     await refused("update commerce.stores set starter = true where id = $1", [seller], /stores\.starter_has_sales/);
   });
 
-  it("describes only a starter store, keeps its store, checks its fields and is never deleted", async () => {
+  it("describes only a starter store, keeps its store and checks its fields", async () => {
     const plain = await createStore("plain-store");
     await refused("insert into commerce.store_starters (store_id, title, category) values ($1, 'X', 'other')", [plain], /store_starters\.not_starter/);
     const { store, starter } = await createStarter("described");
@@ -95,7 +96,6 @@ describe("a store template's own rules (D175)", () => {
     await refused("update commerce.store_starters set picture_url = 'javascript:alert(1)' where id = $1", [starter], /store_starters_picture_url/);
     await refused("update commerce.store_starters set picture_url = '//evil.example/x.png' where id = $1", [starter], /store_starters_picture_url/);
     await db.query("update commerce.store_starters set picture_url = '/media/spa.webp', summary = 'Spa' where id = $1", [starter]);
-    await refused("delete from commerce.store_starters where id = $1", [starter], /store_starters\.kept/);
   });
 });
 
@@ -171,17 +171,99 @@ describe("what a new store is copied from", () => {
     await db.query("update commerce.stores set audience = 'consumers' where id = $1", [template]);
   });
 
-  it("approves a request from the starter on it, and refuses one no longer offered", async () => {
+  it("approves a request from the starter on it, and from the Standard store once that starter is no longer offered (D177)", async () => {
     const spa = await createStarter("spa-approval", true);
-    const { id: request } = await one<{ id: string }>(
-      "insert into commerce.access_requests (email, name, store_name, starter_id) values ('new@example.com', 'New', 'New', $1) returning id",
-      [spa.starter],
-    );
-    await db.query("update commerce.store_starters set published = false where id = $1", [spa.starter]);
-    await refused("select commerce.approve_access_request($1, 'new-spa', 'New spa', null)", [request], /store_starters\.not_offered/);
-    expect((await one<{ status: string }>("select status from commerce.access_requests where id = $1", [request])).status).toBe("pending");
-    await db.query("update commerce.store_starters set published = true where id = $1", [spa.starter]);
-    const { id } = await one<{ id: string }>("select commerce.approve_access_request($1, 'new-spa', 'New spa', null) as id", [request]);
+    const request = async (email: string) =>
+      (
+        await one<{ id: string }>(
+          "insert into commerce.access_requests (email, name, store_name, starter_id) values ($1, 'New', 'New', $2) returning id",
+          [email, spa.starter],
+        )
+      ).id;
+    const first = await request("new@example.com");
+    const { id } = await one<{ id: string }>("select commerce.approve_access_request($1, 'new-spa', 'New spa', null) as id", [first]);
     expect((await one<{ made_from_starter: string }>("select made_from_starter from commerce.stores where id = $1", [id])).made_from_starter).toBe(spa.starter);
+
+    const second = await request("later@example.com");
+    await db.query("update commerce.store_starters set published = false where id = $1", [spa.starter]);
+    const { id: fallback } = await one<{ id: string }>("select commerce.approve_access_request($1, 'later-spa', 'Later', null) as id", [second]);
+    expect(await one("select made_from_starter, modules from commerce.stores where id = $1", [fallback])).toEqual({ made_from_starter: null, modules: [] });
+    const audit = await one<{ details: { starterFallback: boolean; starter: string } }>(
+      "select details from commerce.audit_log where action = 'platform.access_approved' and store_id = $1",
+      [fallback],
+    );
+    expect(audit.details).toMatchObject({ starterFallback: true, starter: spa.starter });
+    // The request still says what was asked for.
+    expect((await one<{ starter_id: string }>("select starter_id from commerce.access_requests where id = $1", [second])).starter_id).toBe(spa.starter);
+    await db.query("update commerce.store_starters set published = true where id = $1", [spa.starter]);
+  });
+});
+
+describe("publishing, archiving and deleting a store template (D177)", () => {
+  it("freezes its store into a hidden copy that new stores are made from; a later publish closes the copy it replaces", async () => {
+    const spa = await createStarter("frozen-spa");
+    await db.query("update commerce.stores set audience = 'both' where id = $1", [spa.store]);
+    const { id: copy } = await one<{ id: string }>("select commerce.freeze_starter($1, $2) as id", [spa.starter, owner]);
+    await db.query("update commerce.store_starters set published = true, published_at = now() where id = $1", [spa.starter]);
+    expect(await one("select slug, starter, starter_copy_of, made_from_starter, status, audience from commerce.stores where id = $1", [copy])).toEqual({
+      slug: "frozen-spa-v1",
+      starter: true,
+      starter_copy_of: spa.starter,
+      made_from_starter: null,
+      status: "active",
+      audience: "both",
+    });
+    expect((await one<{ id: string }>("select published_store_id as id from commerce.store_starters where id = $1", [spa.starter])).id).toBe(copy);
+    expect((await one<{ id: string }>("select commerce.starter_source($1) as id", [spa.starter])).id).toBe(copy);
+
+    // A change in the working store reaches no new store until the next publish.
+    await db.query("update commerce.stores set audience = 'businesses' where id = $1", [spa.store]);
+    const { id: made } = await one<{ id: string }>("select commerce.clone_store(commerce.starter_source($1), 'from-frozen', 'From', $2) as id", [spa.starter, owner]);
+    expect(await one("select audience, made_from_starter, starter from commerce.stores where id = $1", [made])).toEqual({
+      audience: "both",
+      made_from_starter: spa.starter,
+      starter: false,
+    });
+
+    const { id: second } = await one<{ id: string }>("select commerce.freeze_starter($1, $2) as id", [spa.starter, owner]);
+    expect((await one<{ status: string }>("select status from commerce.stores where id = $1", [copy])).status).toBe("closed");
+    expect(await one("select slug, audience from commerce.stores where id = $1", [second])).toEqual({ slug: "frozen-spa-v2", audience: "businesses" });
+    expect((await one<{ id: string }>("select commerce.starter_source($1) as id", [spa.starter])).id).toBe(second);
+  });
+
+  it("publishes only its own frozen copy, and a copy describes no store template", async () => {
+    const one1 = await createStarter("own-copy-a");
+    const other = await createStarter("own-copy-b");
+    const { id: copy } = await one<{ id: string }>("select commerce.freeze_starter($1, $2) as id", [one1.starter, owner]);
+    await refused("update commerce.store_starters set published_store_id = $2 where id = $1", [other.starter, copy], /store_starters\.not_copy/);
+    await refused("update commerce.store_starters set published_store_id = $2 where id = $1", [other.starter, other.store], /store_starters\.not_copy/);
+    await refused("insert into commerce.store_starters (store_id, title, category) values ($1, 'Copy', 'other')", [copy], /store_starters\.not_starter/);
+    await refused("update commerce.stores set starter_copy_of = $2 where id = $1", [template, one1.starter], /stores_starter_copy_is_starter/);
+  });
+
+  it("is never published or offered while archived", async () => {
+    const shelf = await createStarter("archived-spa", true);
+    expect((await one<{ id: string | null }>("select commerce.starter_offered_source($1) as id", [shelf.starter])).id).toBe(shelf.store);
+    await refused("update commerce.store_starters set archived_at = now() where id = $1", [shelf.starter], /store_starters_archived_unpublished/);
+    await db.query("update commerce.store_starters set archived_at = now(), published = false where id = $1", [shelf.starter]);
+    expect((await one<{ id: string | null }>("select commerce.starter_offered_source($1) as id", [shelf.starter])).id).toBeNull();
+    await refused("select commerce.starter_source($1)", [shelf.starter], /store_starters\.not_offered/);
+    await refused("select commerce.freeze_starter($1, $2)", [shelf.starter, owner], /store_starters\.archived/);
+  });
+
+  it("is deleted only while no store was made from it and no access request names it; its copies lose the link", async () => {
+    const unused = await createStarter("unused-spa");
+    const { id: copy } = await one<{ id: string }>("select commerce.freeze_starter($1, $2) as id", [unused.starter, owner]);
+    await db.query("update commerce.stores set status = 'closed' where id in ($1, $2)", [unused.store, copy]);
+    await db.query("delete from commerce.store_starters where id = $1", [unused.starter]);
+    expect(await one("select starter, starter_copy_of, status from commerce.stores where id = $1", [copy])).toEqual({ starter: true, starter_copy_of: null, status: "closed" });
+
+    const used = await createStarter("used-spa", true);
+    await one("select commerce.clone_store(commerce.starter_source($1), 'made-from-used', 'Made', $2) as id", [used.starter, owner]);
+    await refused("delete from commerce.store_starters where id = $1", [used.starter], /store_starters\.used/);
+
+    const asked = await createStarter("asked-spa", true);
+    await db.query("insert into commerce.access_requests (email, name, store_name, starter_id) values ('asker@example.com', 'A', 'A', $1)", [asked.starter]);
+    await refused("delete from commerce.store_starters where id = $1", [asked.starter], /store_starters\.requested/);
   });
 });
