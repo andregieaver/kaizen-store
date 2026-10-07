@@ -429,6 +429,7 @@ export function PageEditor({
           menus: context.menus,
           menusHref: context.menusHref,
           plans: context.plans,
+          features: context.features ?? null,
           actions,
         }}
         aside={

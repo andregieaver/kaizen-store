@@ -42,6 +42,7 @@ import { getPlatformPageRoles } from "./platform-roles";
 import type { SaveResult } from "./settings";
 import { getOpenStore, type Store } from "./stores";
 import { termsTag } from "./taxonomy";
+import { OFFERED } from "./product-conditions";
 
 type Row = Record<string, unknown>;
 
@@ -207,7 +208,7 @@ export async function listIndexedProducts(storeId: string): Promise<IndexedProdu
         from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
         where v.product_id = p.id and v.active) as markets
     from commerce.products p
-    where p.store_id = ${storeId}::uuid and p.status = 'active'
+    where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
     order by p.created_at, p.handle
   `);
   return rows
@@ -252,7 +253,7 @@ export async function listIndexedTerms(storeId: string): Promise<IndexedTerm[]> 
     from commerce.terms t
     join tree on tree.root_id = t.id
     join commerce.product_terms pt on pt.store_id = ${storeId}::uuid and pt.term_id = tree.id
-    join commerce.products p on p.store_id = ${storeId}::uuid and p.id = pt.product_id and p.status = 'active'
+    join commerce.products p on p.store_id = ${storeId}::uuid and p.id = pt.product_id and p.status = 'active' and ${OFFERED}
     join commerce.product_variants v on v.product_id = p.id and v.active
     join commerce.current_prices cp on cp.variant_id = v.id
     where t.store_id = ${storeId}::uuid and t.content_type = 'product'

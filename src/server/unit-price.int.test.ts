@@ -540,7 +540,8 @@ describe("where a country allows the small base", () => {
     });
 
     it("follows the store's VAT display: a business-only store compares the price without VAT, netted first", async () => {
-      await db().execute(sql`update commerce.stores set audience = 'businesses' where id = ${storeId}::uuid`);
+      // Selling to businesses only, with Sell to businesses on (D178).
+      await db().execute(sql`update commerce.stores set audience = 'businesses', features = features || array['business'] where id = ${storeId}::uuid`);
       try {
         const mug = (await getProduct(storeId, no, handle))!.variants.find((v) => v.sku === "DEMO-MUG-BLACK")!;
         expect(mug.price.vat.shown).toBe("excl");

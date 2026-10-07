@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { AcceptForm } from "@/components/company-forms";
 import { t } from "@/lib/i18n";
 import { previewInvite } from "@/server/companies";
-import { resolveShop } from "@/server/shop";
+import { resolveFeatureShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/account/company/invite/[token]">;
 
@@ -29,7 +29,8 @@ export default function InvitePage({ params }: Props) {
 
 async function Invite({ params }: { params: Props["params"] }) {
   const { store: storeSlug, market: marketSlug, token } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  // Company accounts are part of selling to businesses (D178): not there while it is switched off.
+  const shop = await resolveFeatureShop(storeSlug, marketSlug, "business");
   if (!shop) notFound();
   const { store, market } = shop;
   const m = t(market.lang).companyAccount;

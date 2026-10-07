@@ -134,7 +134,7 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     group: "customers",
     label: "Sell to businesses",
     words: "Prices without VAT for businesses, company accounts, VAT numbers at checkout and products for businesses only.",
-    offWords: "Businesses buy as private shoppers do, with VAT; Companies leaves the admin. Company accounts and past orders are kept.",
+    offWords: "Businesses buy as private shoppers do, with VAT, and products for businesses only are hidden; Companies leaves the admin. Company accounts and past orders are kept.",
     needs: ["shop"],
     setupPath: "/settings/company",
   },
@@ -143,7 +143,7 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     group: "customers",
     label: "Bonus program",
     words: "Customers earn credits on what they pay and use them as a price reduction.",
-    offWords: "Customers stop earning and using credits, and Bonus credits leaves the admin. Their credits are kept for when you switch it on again.",
+    offWords: "Customers stop earning and using credits, and Bonus credits leaves the admin. Their credits are kept, and do not expire, until you switch it on again.",
     needs: ["shop"],
     setupPath: "/bonus",
   },
@@ -152,7 +152,7 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     group: "customers",
     label: "Referral program",
     words: "Customers share a link; a friend gets a welcome discount and the customer earns bonus credits. Needs the bonus program.",
-    offWords: "Referral links stop giving discounts and rewards, and Referral program leaves the admin. Referrers and their history are kept.",
+    offWords: "Referral links stop giving discounts and new orders earn no rewards, and Referral program leaves the admin. Orders already placed are still rewarded; referrers and their history are kept.",
     needs: ["shop", "bonus"],
     setupPath: "/affiliates",
   },
@@ -409,12 +409,12 @@ export function featureWarnings(id: FeatureId, f: FeatureFacts, features: Featur
       break;
     case "bonus":
       if (f.creditHolders > 0 && f.creditsCurrency) {
-        out.push(`${many(f.creditHolders, "customer holds", "customers hold")} ${formatMoney(f.creditsMinor, f.creditsCurrency)} in credits. They can't use them while the program is off; nothing is taken away.`);
+        out.push(`${many(f.creditHolders, "customer holds", "customers hold")} ${formatMoney(f.creditsMinor, f.creditsCurrency)} in credits. They can't use them while the program is off; nothing is taken away, and expiry dates that pass meanwhile are moved on by as long as it was off.`);
       }
       break;
     case "referrals":
       if (f.referrers > 0) out.push(`${many(f.referrers, "customer has", "customers have")} a referral link that stops giving discounts.`);
-      if (f.pendingReferrals > 0) out.push(`${many(f.pendingReferrals, "reward is", "rewards are")} still pending and will be decided as usual.`);
+      if (f.pendingReferrals > 0) out.push(`${many(f.pendingReferrals, "reward is", "rewards are")} still pending: ${f.pendingReferrals === 1 ? "it was" : "they were"} earned while the program was on, so ${f.pendingReferrals === 1 ? "it is" : "they are"} decided as usual.`);
       break;
   }
   if (asleep.length > 0) {

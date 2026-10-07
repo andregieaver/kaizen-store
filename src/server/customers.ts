@@ -407,7 +407,7 @@ export async function startSession(storeId: string, customerId: string, { verifi
     update commerce.customers c set last_sign_in_at = now()
     from commerce.stores s
     where c.id = ${customerId}::uuid and s.id = c.store_id
-    returning c.organisation_number, s.audience
+    returning c.organisation_number, commerce.store_audience(s.audience, s.features) as audience
   `);
   (await cookies()).set(cookieName(storeId), token, {
     httpOnly: true,

@@ -57,6 +57,8 @@ beforeAll(async () => {
   `);
   const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`co-${run}`}, 'Kaffe', null) as id`);
   storeId = String(store.id);
+  // Company accounts are part of selling to businesses (D178): its feature on.
+  await db().execute(sql`update commerce.stores set audience = 'both', features = features || array['business'] where id = ${storeId}::uuid`);
   const [account] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`co-${run}@example.com`}`);
   member = {
     account: { id: String(account.id), email: String(account.email), name: "Kari", platformAdmin: false },

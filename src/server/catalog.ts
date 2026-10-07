@@ -17,6 +17,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { stockOf, UNLIMITED, type VariantStock } from "@/lib/stock-availability";
 
 import { fieldsTag, shownFieldsFor, shownFieldsForVariants } from "./custom-fields";
+import { OFFERED, STORE_AUDIENCE } from "./product-conditions";
 
 /**
  * Cache tags. Revalidate a store's catalogue tag after any product or price
@@ -160,7 +161,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
       p.audience,
-      s.audience as store_audience,
+      ${STORE_AUDIENCE} as store_audience,
       commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
@@ -185,7 +186,7 @@ export async function listProducts(storeId: string, market: Market): Promise<Pro
       join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
     ) pr on pr.min_amount is not null
-    where p.store_id = ${storeId}::uuid and p.status = 'active'
+    where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
     order by p.created_at, p.handle
   `);
 
@@ -220,7 +221,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
   const [product] = await readDb().execute<Row>(sql`
     select
       p.id, p.handle, p.withdrawal_exclusion, p.subscription_only, p.kind,
-      p.audience, s.audience as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
+      p.audience, ${STORE_AUDIENCE} as store_audience, commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate,
       coalesce(tl.title, tf.title) as title,
       coalesce(tl.description, tf.description, '') as description,
       coalesce(tl.safety_information, tf.safety_information, '') as safety_information,
@@ -243,7 +244,7 @@ export async function getProduct(storeId: string, market: Market, handle: string
       on mf.store_id = p.store_id and mf.id = p.manufacturer_id
     left join commerce.economic_operators rp
       on rp.store_id = p.store_id and rp.id = p.responsible_person_id
-    where p.store_id = ${storeId}::uuid and p.handle = ${handle} and p.status = 'active'
+    where p.store_id = ${storeId}::uuid and p.handle = ${handle} and p.status = 'active' and ${OFFERED}
   `);
   if (!product) return null;
 
@@ -430,7 +431,7 @@ export async function listGridProducts(
         select max(sp.discount_percent) from commerce.selling_plans sp where sp.product_id = p.id and sp.active
       ) end as subscriber_discount,
       p.audience,
-      s.audience as store_audience,
+      ${STORE_AUDIENCE} as store_audience,
       commerce.vat_rate(${marketCode}, p.vat_category) as vat_rate
     from commerce.products p
     join commerce.stores s on s.id = p.store_id
@@ -455,7 +456,7 @@ export async function listGridProducts(
       join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${marketCode}
     ) pr on pr.min_amount is not null
-    where p.store_id = ${storeId}::uuid and p.status = 'active'
+    where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
       and ${inTerms(filter.categoryIds)}
       and ${inTerms(filter.tagIds)}
       and ${given ? sql`p.id = any(${given}::uuid[])` : sql`true`}

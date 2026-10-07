@@ -24,7 +24,12 @@ describe("buyers and products", () => {
     expect(productShownTo("businesses", "private", "both")).toBe(false);
     expect(productShownTo("consumers", "business", "both")).toBe(false);
     expect(productShownTo("businesses", "business", "both")).toBe(true);
-    expect(productShownTo("businesses", "private", "consumers")).toBe(true);
+    // Not offered at all where the store sells to consumers (D178), whoever asks.
+    expect(productShownTo("businesses", "private", "consumers")).toBe(false);
+    expect(productShownTo("businesses", "business", "consumers")).toBe(false);
+    expect(productSoldTo("businesses", "business", "consumers")).toBe(false);
+    expect(productShownTo("businesses", "business", "businesses")).toBe(true);
+    expect(productShownTo("consumers", "business", "businesses")).toBe(false);
     expect(productShownTo("all", "business", "both")).toBe(true);
 
     expect(productSoldTo("businesses", "private", "both")).toBe(false);

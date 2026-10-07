@@ -28,6 +28,7 @@ import { companyOf } from "@/server/companies";
 import type { Store } from "@/server/stores";
 
 import { avatarAction } from "./actions";
+import { featureOn } from "@/lib/store-features";
 
 /**
  * My account (D28): signing in, then the customer's orders, subscriptions,
@@ -84,7 +85,8 @@ async function Account({ store, market, query }: { store: Store; market: Market;
         <SignOutButton store={store.slug} market={market.slug} label={a.signOut} />
       </div>
 
-      {mine && (
+      {/* A company account is part of selling to businesses (D178): its card is there only while that is on. */}
+      {mine && featureOn(store, "business") && (
         <Link
           href={`${base}/account/company`}
           className="flex items-center justify-between gap-4 rounded-lg border border-border p-4 hover:bg-surface"

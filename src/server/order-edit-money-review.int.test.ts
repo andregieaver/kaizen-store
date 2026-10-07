@@ -115,6 +115,8 @@ describe("a change recorded as paid in cash outside Kaizen", () => {
 describe("a payment for a change that could not be applied, given back in full", () => {
   it("leaves the customer's bonus credits as they were (the order did not change)", async () => {
     const bonus = await fxStore("money-bonus");
+    // The bonus program works only with its store feature on (D178).
+    await db().execute(sql`update commerce.stores set features = features || array['bonus'] where id = ${bonus.storeId}::uuid`);
     await db().execute(sql`
       insert into commerce.bonus_settings (store_id, enabled, earn_bps, pending_days, max_redeem_percent, currency)
       values (${bonus.storeId}::uuid, true, 1000, 0, 50, 'NOK') on conflict (store_id) do update set enabled = true, earn_bps = 1000, pending_days = 0

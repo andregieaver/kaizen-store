@@ -151,6 +151,8 @@ import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-
 import { hasMotion, type BackgroundMotion, type EnterMotion } from "@/lib/motion";
 import { backgroundMoves, drawTarget, motionSignature, switchBackground, type MotionPart } from "@/lib/motion-edit";
 import { PIECE_GROUPS, STORE_PART_KEYS, STORE_PARTS, piecesOf, shopPartCopy, type ShopPart } from "@/lib/store-parts";
+import { partFeature, partFeatureOn } from "@/lib/part-features";
+import { requirementLabel } from "@/lib/store-features";
 import {
   copyBlock,
   copyColumn,
@@ -411,6 +413,11 @@ export type GridContext = {
   menusHref: string;
   /** Kaizen's plans for the Plans component (D142); null on a store's pages. */
   plans: PlanChoice[] | null;
+  /**
+   * The store's features as kept (D178), so the palette offers only the parts of features that are on and the canvas marks a part of one
+   * that is off; absent for Kaizen's pages and a design profile's workspace, which offer every part.
+   */
+  features?: readonly string[] | null;
   actions: PageOwnerContext["actions"];
 };
 
@@ -825,7 +832,8 @@ export function PageBuilder({
             onAddRow={(layout) => addRow(layout)}
             onAddBlock={(type, part) => addBlock(type, lastColumn, Number.MAX_SAFE_INTEGER, part)}
             productParts={productParts}
-            siteParts={siteParts}
+            siteParts={siteParts && siteParts.filter((part) => partFeatureOn({ type: "site", part }, grid.features))}
+            features={grid.features ?? null}
             // A store's own pages can hold its search (D112); a header, footer or product layout has its own components.
             search={grid.owner !== null && !productParts && !siteParts}
             // Kaizen's plans (D142) are for Kaizen's own pages.
@@ -1026,6 +1034,7 @@ function Sidebar({
   plans,
   customFields,
   shop,
+  features,
   parts,
   pageType,
   onOpenSaved,
@@ -1057,6 +1066,8 @@ function Sidebar({
   customFields: boolean;
   /** The store's working pages' components can be added (D113). */
   shop: boolean;
+  /** The store's features as kept (D178): parts of a feature that is off are not offered. Null offers every part. */
+  features: readonly string[] | null;
   parts: SavedPart[];
   /** The kind of page being edited (D127). */
   pageType: PageType;
@@ -1126,7 +1137,7 @@ function Sidebar({
                 <>
                   <h3 className="text-xs font-medium tracking-wide text-muted uppercase">The product</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    {PRODUCT_PART_KEYS.map((part) => (
+                    {PRODUCT_PART_KEYS.filter((part) => partFeatureOn({ type: "product", part }, features)).map((part) => (
                       <PaletteTile
                         key={part}
                         id={`palette:product:${part}`}
@@ -1165,7 +1176,7 @@ function Sidebar({
                   <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Shop pages</h3>
                   <p className="text-xs text-muted">Each draws its working page where the page you choose for it is shown, and nothing elsewhere.</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {STORE_PART_KEYS.map((part) => (
+                    {STORE_PART_KEYS.filter((part) => partFeatureOn({ type: "storePart", part }, features)).map((part) => (
                       <PaletteTile
                         key={part}
                         id={`palette:shop:${part}`}
@@ -1182,7 +1193,7 @@ function Sidebar({
                       <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{group.name}</h3>
                       <p className="text-xs text-muted">{group.hint}</p>
                       <div className="grid grid-cols-2 gap-3">
-                        {piecesOf(group.route).map((part) => (
+                        {piecesOf(group.route).filter((part) => partFeatureOn({ type: "storePart", part }, features)).map((part) => (
                           <PaletteTile
                             key={part}
                             id={`palette:shop:${part}`}
@@ -2314,7 +2325,9 @@ function BlockItem({
         <FontLinks families={blockFonts(block)} />
         {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
         {bindingOf(block) && <BindBadge bind={bindingOf(block)!} />}
-        {block.type === "contentGrid" ? (
+        {!partFeatureOn(block, actions.grid.features) ? (
+          <SwitchedOffStandIn block={block} />
+        ) : block.type === "contentGrid" ? (
           <GridPreview block={block} grid={actions.grid} lang={actions.lang} />
         ) : block.type === "product" ? (
           <ProductStandIn block={block} />
@@ -5654,6 +5667,22 @@ function FieldsIcon() {
         <path d="M4 10h16M10 10v9" />
       </svg>
     </span>
+  );
+}
+
+/** A part of a store feature that is off (D178), on the canvas: the site draws nothing for it until the feature is switched on again. */
+function SwitchedOffStandIn({ block }: { block: PageBlock }) {
+  const feature = partFeature(block);
+  const name =
+    block.type === "storePart" ? shopPartCopy(block.part).name : block.type === "site" ? SITE_PARTS[block.part] : block.type === "product" ? PRODUCT_PARTS[block.part] : "This part";
+  return (
+    <div className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-surface p-4">
+      <p className="text-sm font-medium">{name}: switched off – not shown</p>
+      <p className="text-xs text-muted">
+        {feature ? `${requirementLabel(feature)} is switched off under Settings, Features, so the site leaves this out.` : "The site leaves this out."} It comes
+        back as it was when the feature is switched on again.
+      </p>
+    </div>
   );
 }
 

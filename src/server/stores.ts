@@ -4,7 +4,7 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { readDb } from "@/db/client";
-import { parseStoreAudience, type StoreAudience } from "@/lib/b2b";
+import { effectiveAudience, parseStoreAudience, type StoreAudience } from "@/lib/b2b";
 import type { StoreCurrency } from "@/lib/currency";
 import { localizationOf, type Localization } from "@/lib/localization";
 import { toMarket, type Market } from "@/lib/markets";
@@ -40,8 +40,13 @@ export type Store = {
   paymentsTest: boolean;
   /** The business behind the store, shown to shoppers. */
   details: StoreDetails;
-  /** Who the store sells to (B2B): consumers, businesses or both. */
+  /**
+   * Who the store sells to (B2B) as shoppers see it: the owner's choice while Sell to businesses is on (D178), else consumers
+   * (`effectiveAudience()`). Read this everywhere; `chosenAudience` is only for the settings that edit it.
+   */
   audience: StoreAudience;
+  /** The owner's own choice of audience (`stores.audience`), kept while Sell to businesses is off. */
+  chosenAudience: StoreAudience;
   /** Selling to both: ask first-time visitors whether they buy privately or for a business. */
   businessPopup: boolean;
   /** On phones, open the slide-out cart once something is added to it (D64). */
@@ -207,8 +212,9 @@ async function loadStore(slug: string): Promise<Store | null> {
       postalAddress: text(row.postal_address),
       country: text(row.country),
     },
-    audience: parseStoreAudience(row.audience),
-    businessPopup: Boolean(row.business_popup) && row.audience === "both",
+    audience: effectiveAudience(row.audience, normaliseFeatures(((row.features ?? []) as unknown[]).map(String))),
+    chosenAudience: parseStoreAudience(row.audience),
+    businessPopup: Boolean(row.business_popup) && effectiveAudience(row.audience, normaliseFeatures(((row.features ?? []) as unknown[]).map(String))) === "both",
     openCartOnAdd: Boolean(row.open_cart_on_add),
     returnPolicy: returnPolicyOf(row.return_policy),
     visitCounting: Boolean(row.visit_counting),

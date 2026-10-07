@@ -147,7 +147,8 @@ export async function memberDiscountFor(runner: Runner, storeId: string, custome
   const [row] = await runner.execute<Row>(sql`
     select t.name as tier_name, t.percent as tier_percent, t.active as tier_active,
            co.name as company_name, co.active as company_active, co.employee_share_percent, c.company_role,
-           ct.percent as company_tier_percent, ct.active as company_tier_active
+           ct.percent as company_tier_percent, ct.active as company_tier_active,
+           commerce.feature_on(c.store_id, 'business') as business_on
     from commerce.customers c
     left join commerce.customer_tiers t on t.store_id = c.store_id and t.id = c.tier_id
     left join commerce.customer_companies co on co.store_id = c.store_id and co.id = c.company_id
@@ -157,8 +158,9 @@ export async function memberDiscountFor(runner: Runner, storeId: string, custome
   if (!row) return null;
   return memberDiscount({
     own: row.tier_name && row.tier_active ? { name: String(row.tier_name), percent: Number(row.tier_percent) } : null,
+    // A company's discount is part of selling to businesses (D178): it stops while that is switched off; a customer's own group does not.
     company:
-      row.company_name && (row.company_role === "owner" || row.company_role === "employee")
+      row.business_on && row.company_name && (row.company_role === "owner" || row.company_role === "employee")
         ? {
             name: String(row.company_name),
             active: Boolean(row.company_active),
@@ -178,7 +180,8 @@ export async function memberDiscountFor(runner: Runner, storeId: string, custome
 export async function customerTierIds(runner: Runner, storeId: string, customerId: string | null): Promise<string[]> {
   if (!customerId) return [];
   const [row] = await runner.execute<Row>(sql`
-    select t.id as own, t.active as own_active, ct.id as company, ct.active as company_tier_active, co.active as company_active
+    select t.id as own, t.active as own_active, ct.id as company, ct.active as company_tier_active,
+           co.active and commerce.feature_on(c.store_id, 'business') as company_active
     from commerce.customers c
     left join commerce.customer_tiers t on t.store_id = c.store_id and t.id = c.tier_id
     left join commerce.customer_companies co on co.store_id = c.store_id and co.id = c.company_id

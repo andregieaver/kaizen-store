@@ -122,6 +122,7 @@ import { listPages, pagesTag, unpublishPage } from "./pages";
 import { listAdminProducts, setArchived } from "./products";
 import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
 import { storeTag, type Store } from "./stores";
+import { featureOn } from "@/lib/store-features";
 
 type Row = Record<string, unknown>;
 
@@ -807,7 +808,9 @@ async function getTaxProfileTool({ store }: OwnerToolContext) {
 
 /** What the VAT features need (D157): on or off, and what is missing, from `readiness()`. */
 async function taxReadinessTool({ store }: OwnerToolContext) {
-  const { readiness: lines } = await taxProfileView(store.id);
+  const { readiness: all } = await taxProfileView(store.id);
+  // Reverse charge is for selling to businesses (D178): left out while that is switched off, as the Tax page does.
+  const lines = featureOn(store, "business") ? all : all.filter((line) => line.key !== "reverse_charge");
   return {
     features: lines.map((line) => ({ feature: line.key, on: line.on, needs: line.needs, text: line.text })),
     page: adminLink(store, "/settings/tax"),

@@ -26,6 +26,7 @@ import {
   searchDraftVariantsAction,
   sendDraftAction,
 } from "../actions";
+import { featureOn } from "@/lib/store-features";
 
 export const metadata: Metadata = { title: "Draft order" };
 
@@ -92,6 +93,7 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
           defaultDays: settings.draftValidDays,
           mayRecordOutside,
           mayFindCustomers: mayFindDraftCustomers(member),
+          companyFields: featureOn(store, "business"),
           actions: {
             save: saveDraftAction.bind(null, store.slug, draftId),
             searchVariants: searchDraftVariantsAction.bind(null, store.slug),

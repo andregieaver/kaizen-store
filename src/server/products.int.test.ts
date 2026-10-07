@@ -50,6 +50,7 @@ async function createStore(slug: string): Promise<Store> {
     paymentsTest: false,
     details: { legalName: null, organisationNumber: null, contactEmail: null, postalAddress: null, country: "NO" },
     audience: "consumers",
+    chosenAudience: "consumers",
     businessPopup: false,
     openCartOnAdd: false,
     returnPolicy: DEFAULT_RETURN_POLICY,

@@ -8,6 +8,19 @@ import { sql, type SQL } from "drizzle-orm";
  * "in stock". Every value is passed as a parameter.
  */
 
+/**
+ * Who the store `s` sells to as its shoppers see it (D178): its chosen audience while Sell to businesses is on, else consumers. The one
+ * way SQL reads `stores.audience` for a shopper (`audience-readers.test.ts` lists the readers).
+ */
+export const STORE_AUDIENCE = sql`commerce.store_audience(s.audience, s.features)`;
+
+/**
+ * The product `p` is offered in its store at all (D178, B2B): one for everyone always; one for a single kind of buyer only where the store
+ * sells to that kind (or to both, where each shopper sees their own kind's). A business-only product is not offered where the store sells
+ * to consumers, Sell to businesses switched off included. Every shopper-facing read of products asks it.
+ */
+export const OFFERED = sql`(p.audience = 'all' or commerce.product_offered(p.store_id, p.audience))`;
+
 export const textList = (values: string[]) => sql`array[${sql.join(values.map((v) => sql`${v}`), sql`, `)}]::text[]`;
 
 /** In one of the store's product categories (by address), or one below it. */

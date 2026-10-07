@@ -10,7 +10,7 @@ import type { Market } from "@/lib/markets";
 
 import { changeLine } from "./cart";
 import { getCustomer } from "./customers";
-import { convertedSql } from "./product-conditions";
+import { convertedSql, OFFERED } from "./product-conditions";
 
 type Row = Record<string, unknown>;
 
@@ -111,7 +111,7 @@ export async function toggleSavedProduct(
     const [product] = await db().execute<Row>(sql`
       select p.id, (select case when count(*) = 1 then min(v.id::text) end from commerce.product_variants v
                     where v.product_id = p.id and v.active) as only_variant
-      from commerce.products p where p.store_id = ${storeId}::uuid and p.id = ${productId}::uuid and p.status = 'active'
+      from commerce.products p where p.store_id = ${storeId}::uuid and p.id = ${productId}::uuid and p.status = 'active' and ${OFFERED}
     `);
     if (product) {
       const listId = await defaultList(storeId, owner, defaultName);
@@ -170,7 +170,7 @@ export async function getWishlistItems(storeId: string, wishlistId: string): Pro
     select i.id, i.product_id, p.handle, i.variant_id, i.quantity
     from commerce.wishlist_items i
     join commerce.wishlists w on w.store_id = i.store_id and w.id = i.wishlist_id
-    join commerce.products p on p.store_id = i.store_id and p.id = i.product_id and p.status = 'active'
+    join commerce.products p on p.store_id = i.store_id and p.id = i.product_id and p.status = 'active' and ${OFFERED}
     where w.store_id = ${storeId}::uuid and w.id = ${wishlistId}::uuid and ${owns(owner)}
     order by i.created_at desc, i.id
   `);
@@ -346,7 +346,7 @@ export async function addWishlistToCart(
       w.keep_after_cart
     from commerce.wishlist_items i
     join commerce.wishlists w on w.store_id = i.store_id and w.id = i.wishlist_id
-    join commerce.products p on p.store_id = i.store_id and p.id = i.product_id and p.status = 'active'
+    join commerce.products p on p.store_id = i.store_id and p.id = i.product_id and p.status = 'active' and ${OFFERED}
     where w.store_id = ${storeId}::uuid and w.id = ${wishlistId}::uuid and ${owns(owner)}
       ${itemIds ? sql`and i.id in (${sql.join(itemIds.map((id) => sql`${id}::uuid`), sql`, `)})` : sql``}
     order by i.created_at, i.id

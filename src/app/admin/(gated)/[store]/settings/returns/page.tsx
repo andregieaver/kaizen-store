@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { ReturnSettingsForm } from "@/components/admin/returns/settings-form";
 import { languageName } from "@/lib/localization";
+import { featureOn } from "@/lib/store-features";
 import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { getInstructionTranslations, getReturnSettings } from "@/server/return-settings";
 
@@ -36,6 +37,7 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
         canEdit={memberCan(current, "owner")}
         action={saveReturnSettingsAction.bind(null, store.slug)}
         translateHref={`/admin/${store.slug}/translate`}
+        sellsToBusinesses={featureOn(store, "business")}
       />
     </div>
   );

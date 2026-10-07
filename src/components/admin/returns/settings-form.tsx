@@ -24,6 +24,7 @@ export function ReturnSettingsForm({
   canEdit,
   action,
   translateHref,
+  sellsToBusinesses = true,
 }: {
   settings: ReturnSettings;
   translations: InstructionTranslations;
@@ -33,6 +34,8 @@ export function ReturnSettingsForm({
   action: (state: FormState, form: FormData) => Promise<FormState>;
   /** `/admin/{store}/translate`, where AI can suggest the translations. */
   translateHref: string;
+  /** Sell to businesses is on (D178): only then is the choice about companies' returns shown; off, it is kept as it was. */
+  sellsToBusinesses?: boolean;
 }) {
   const address = settings.returnAddress;
   return (
@@ -104,10 +107,15 @@ export function ReturnSettingsForm({
               ever return requests you may decline, and only inside your own window.
             </span>
           </label>
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="b2bReturns" defaultChecked={settings.b2bReturns} className="mt-0.5 size-4" />
-            <span>Also accept return requests from companies. A company has no legal right of withdrawal, so this is your own offer.</span>
-          </label>
+          {sellsToBusinesses ? (
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" name="b2bReturns" defaultChecked={settings.b2bReturns} className="mt-0.5 size-4" />
+              <span>Also accept return requests from companies. A company has no legal right of withdrawal, so this is your own offer.</span>
+            </label>
+          ) : (
+            // Kept as it is while Sell to businesses is off (D178).
+            settings.b2bReturns && <input type="hidden" name="b2bReturns" value="on" />
+          )}
         </section>
 
         <section aria-labelledby="address" className={card}>

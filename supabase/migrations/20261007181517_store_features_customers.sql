@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."bonus_settings" ADD COLUMN "paused_at" timestamp with time zone;

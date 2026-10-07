@@ -13,6 +13,7 @@ import { Avatar } from "@/components/avatar";
 import { formatMoney } from "@/lib/money";
 import { exportProblemOf } from "@/lib/privacy-admin";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
+import { featureOn } from "@/lib/store-features";
 import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { customerAffiliate } from "@/server/affiliates";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -55,12 +56,16 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
   ]);
   if (!customer) notFound();
   const access = customer.customerId ? await customerAccess(store.id, customer.customerId) : null;
-  // Bonus credits (D130) belong to the account, so a guest has none.
-  const [bonusSettings, bonus] = customer.customerId
+  // Bonus credits (D130) belong to the account, so a guest has none; hidden while the bonus program's feature is off (D178).
+  const bonusOn = featureOn(store, "bonus");
+  const [bonusSettings, bonus] = customer.customerId && bonusOn
     ? await Promise.all([getBonusSettings(store.id), customerBonus(store.id, customer.customerId)])
     : [null, null];
-  // Referrals (D131) belong to the account too: their link, who referred them and the orders through links.
-  const affiliate = customer.customerId ? await customerAffiliate(store.id, customer.customerId) : null;
+  // Referrals (D131) belong to the account too: their link, who referred them and the orders through links; hidden while the
+  // referral program's feature is off (D178).
+  const affiliate = customer.customerId && featureOn(store, "referrals") ? await customerAffiliate(store.id, customer.customerId) : null;
+  // A company's part in the discount is selling to businesses' (D178): hidden, and not given, while that is off.
+  const businessOn = featureOn(store, "business");
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   const base = `/admin/${store.slug}`;
@@ -266,7 +271,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           {customer.customerId && (
             <section aria-labelledby="discount" className={`${card} text-sm`}>
               <h2 id="discount" className="mb-2 font-medium">Discount</h2>
-              {access?.companyName && (
+              {businessOn && access?.companyName && (
                 <p className="mb-2">
                   {access.role === "owner" ? "Main account of " : "Employee of "}
                   <Link href={`${base}/companies/${access.companyId}`} className="underline">
@@ -292,7 +297,8 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                 </div>
               </ActionForm>
               <p className="mt-2 text-xs text-muted">
-                With a company too, the better of the two discounts applies. <Link href={`${base}/customer-groups`} className="underline">Customer groups</Link>
+                {businessOn && "With a company too, the better of the two discounts applies. "}
+                <Link href={`${base}/customer-groups`} className="underline">Customer groups</Link>
               </p>
             </section>
           )}

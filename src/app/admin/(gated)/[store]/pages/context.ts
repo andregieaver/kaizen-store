@@ -61,6 +61,8 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     action.bind(null, store.slug, type);
   return {
     owner: store.id,
+    // The store's features (D178): the builder offers only the parts of those that are on.
+    features: store.features,
     type,
     defaultAuthor: author,
     adminBase: storePagesBase(store, type),

@@ -601,6 +601,8 @@ describe("what a return refunds", () => {
   });
 
   it("refunds what was paid in cash when bonus credits paid part of the goods", async () => {
+    // The bonus program works only with its store feature on (D178).
+    await db().execute(sql`update commerce.stores set features = features || array['bonus'] where id = ${storeId}::uuid`);
     await db().execute(sql`
       insert into commerce.bonus_settings (store_id, enabled, earn_bps, pending_days, max_redeem_percent, min_redeem_minor, currency)
       values (${storeId}::uuid, true, 500, 14, 50, 0, 'NOK')

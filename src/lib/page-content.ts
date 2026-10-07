@@ -28,6 +28,7 @@ import { termIdsSchema } from "./taxonomy";
 import { ICONS, type IconName } from "./icons";
 import { SOCIAL_NETWORKS, socialHref, type SocialNetwork } from "./social-links";
 import { embedUrl } from "./video-embed";
+import type { FeatureRequirement } from "./store-features";
 
 /**
  * A page built from blocks (D42): its title, address, picture, search texts,
@@ -704,6 +705,14 @@ export const PRODUCT_PARTS = {
 export type ProductPart = keyof typeof PRODUCT_PARTS;
 export const RELATED_MAX = 12;
 
+/**
+ * The product parts that stand behind a store feature (D178): drawn only while it is on, left out of the builder's palette while it is
+ * off, and shown as switched off on the canvas of a layout that holds one (`src/lib/part-features.ts`).
+ */
+export const PRODUCT_PART_FEATURES: Partial<Record<ProductPart, FeatureRequirement>> = {
+  notice: "business",
+};
+
 /** How custom fields (D118) are drawn: a specification table, `label: value` lines or small cards. */
 export const FIELD_DISPLAYS = { table: "Table", list: "List", cards: "Cards" } as const;
 export type FieldDisplay = keyof typeof FIELD_DISPLAYS;
@@ -801,6 +810,10 @@ export const SITE_PARTS = {
   withdrawal: "Withdrawal link",
 } as const;
 export type SitePart = keyof typeof SITE_PARTS;
+/** The site parts that stand behind a store feature (D178), as `PRODUCT_PART_FEATURES` for a header's or footer's parts. */
+export const SITE_PART_FEATURES: Partial<Record<SitePart, FeatureRequirement>> = {
+  buyerSwitch: "business",
+};
 const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets", "buyerSwitch", "colorMode", "withdrawal"];
 const KAIZEN_PARTS: readonly SitePart[] = ["signUp"];
 

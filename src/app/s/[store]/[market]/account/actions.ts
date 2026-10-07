@@ -135,7 +135,8 @@ export async function saveDetailsAction(
   const field = (name: string, max = 200) => String(form.get(name) ?? "").trim().slice(0, max);
   // The company they buy for (B2B), in stores that sell to businesses: both or neither.
   let company: { name: string; number: string } | undefined;
-  if (form.has("organisationNumber")) {
+  // Never while the store sells to consumers only (D178: Sell to businesses off included): a stale page's company is not kept.
+  if (form.has("organisationNumber") && found.shop.store.audience !== "consumers") {
     const name = field("companyName", COMPANY_NAME_MAX);
     const typed = field("organisationNumber", 40);
     const number = typed ? organisationNumber(found.shop.market.code, typed) : "";

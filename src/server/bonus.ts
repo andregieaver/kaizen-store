@@ -52,6 +52,13 @@ export type BonusProgram = {
   currency: string;
   /** The store's rates (units per 1 EUR), which convert the credits into what a market shows. */
   rates: Map<string, { rate: number | null }>;
+  /** The store feature `bonus` is on (D178, with the shop). */
+  featureOn: boolean;
+  /**
+   * The program works: the feature is on and its own switch (`settings.enabled`) is on (`commerce.bonus_program_on()`). Everything a
+   * shopper sees or does with credits asks this; `settings.enabled` alone is only the owner's switch on the Bonus page.
+   */
+  on: boolean;
 };
 
 const toSettings = (row: Row | undefined): BonusSettings =>
@@ -75,19 +82,26 @@ export async function getBonusSettings(storeId: string): Promise<BonusSettings> 
 export async function bonusProgram(runner: Runner, storeId: string): Promise<BonusProgram> {
   const [row] = await runner.execute<Row>(sql`
     select b.enabled, b.earn_bps, b.pending_days, b.max_redeem_percent, b.min_redeem_minor, b.expires_months,
-           commerce.bonus_currency(${storeId}::uuid) as currency
+           commerce.bonus_currency(${storeId}::uuid) as currency, commerce.feature_on(${storeId}::uuid, 'bonus') as feature_on
     from (select 1) one
     left join commerce.bonus_settings b on b.store_id = ${storeId}::uuid
   `);
   const rates = await runner.execute<Row>(sql`
     select currency, rate from commerce.store_currencies where store_id = ${storeId}::uuid
   `);
+  const settings = toSettings(row);
+  const featureOn = Boolean(row?.feature_on);
   return {
-    settings: toSettings(row),
+    settings,
     currency: String(row?.currency ?? "EUR").trim(),
     rates: new Map(rates.map((r) => [String(r.currency).trim(), { rate: r.rate === null ? null : Number(r.rate) }])),
+    featureOn,
+    on: featureOn && settings.enabled,
   };
 }
+
+/** The answer to a change of the program while its store feature is off (D178): the Bonus page is hidden then, and so is every change. */
+export const BONUS_FEATURE_OFF = "The bonus program is switched off under Settings, Features. Switch it on there first.";
 
 /** Who may change what: the account's role in the store (an owner, or an admin), or null. */
 export async function roleIn(accountId: string, storeId: string): Promise<"owner" | "admin" | null> {
@@ -107,6 +121,7 @@ export async function roleIn(accountId: string, storeId: string): Promise<"owner
 export async function saveBonusSettings(account: Account, storeId: string, raw: unknown): Promise<BonusResult> {
   if ((await roleIn(account.id, storeId)) !== "owner")
     return { ok: false, problems: ["Only an owner can change the bonus program."] };
+  if (!(await bonusProgram(db(), storeId)).featureOn) return { ok: false, problems: [BONUS_FEATURE_OFF] };
   const parsed = bonusSettingsInput.safeParse(raw);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((issue) => issue.message))] };
   const s = parsed.data;
@@ -217,7 +232,8 @@ export async function bonusOverview(storeId: string): Promise<BonusOverview> {
         where store_id = ${storeId}::uuid and created_at > now() - interval '30 days')::bigint as earned,
       (select coalesce(-sum(amount_minor) filter (where kind = 'redeem'), 0) from commerce.bonus_entries
         where store_id = ${storeId}::uuid and created_at > now() - interval '30 days')::bigint as redeemed,
-      (select coalesce(-sum(amount_minor) filter (where kind = 'expire'), 0) from commerce.bonus_entries
+      -- Credits moved when the program came back on after a pause (D178, commerce.bonus_resume()) did not expire: they were granted again.
+      (select coalesce(-sum(amount_minor) filter (where kind = 'expire' and idempotency_key not like 'expire-paused:%'), 0) from commerce.bonus_entries
         where store_id = ${storeId}::uuid and created_at > now() - interval '30 days')::bigint as expired
   `);
   return {
@@ -244,6 +260,7 @@ export async function adjustBonus(
   note: string,
 ): Promise<BonusResult> {
   if (!(await roleIn(account.id, storeId))) return { ok: false, problems: ["You do not have access to this store."] };
+  if (!(await bonusProgram(db(), storeId)).featureOn) return { ok: false, problems: [BONUS_FEATURE_OFF] };
   const reason = String(note ?? "").trim();
   if (reason.length < 3 || reason.length > 200)
     return { ok: false, problems: ["Write a reason of 3 to 200 characters."] };
@@ -313,7 +330,7 @@ export async function creditState(
 ): Promise<CreditState | null> {
   if (!customerId) return null;
   const program = known ?? (await bonusProgram(runner, shop.storeId));
-  if (!program.settings.enabled) return null;
+  if (!program.on) return null;
   const market = shop.market;
   const balance = await readBalance(runner, shop.storeId, customerId);
   const inMarket = (minor: number, rounding: "down" | "up" = "down") =>
@@ -385,7 +402,7 @@ export function cartBonusOf(
   earns: boolean,
 ): CartBonus {
   const settings = program.settings;
-  if (!settings.enabled) {
+  if (!program.on) {
     return {
       enabled: false,
       signedIn,
@@ -439,7 +456,7 @@ export async function setCartCredits(
     return { ok: false, problems: ["Enter an amount of credits to use."] };
   if (!customerId) return { ok: false, problems: ["Sign in to use credits."] };
   const program = await bonusProgram(db(), shop.storeId);
-  if (!program.settings.enabled) return { ok: false, problems: ["The store's bonus program is off."] };
+  if (!program.on) return { ok: false, problems: ["The store's bonus program is off."] };
   let using = 0;
   if (amountMinor > 0) {
     const bonus = await cartBonus(shop, cartId, customerId);
@@ -478,7 +495,7 @@ export async function shopperBonus(shop: Shop, customerId: string): Promise<Shop
   const inShown = (minor: number) => (convertible ? (minor < 0 ? -(rate(-minor) ?? 0) : (rate(minor) ?? 0)) : minor);
   const balance = toBalance(raw, currency);
   return {
-    enabled: program.settings.enabled,
+    enabled: program.on,
     currency,
     balance: {
       currency,
@@ -507,7 +524,8 @@ const BATCH = 200;
 
 /**
  * Every five minutes: credits past their expiry are written off (oldest first); customers whose credits expire within
- * 14 days get one reminder per expiry date; and credits held by unpaid orders that lapsed without the payment provider
+ * 14 days get one reminder per expiry date (neither for a store whose program is off, D178: its credits do not expire
+ * while it is, and `commerce.bonus_resume()` moves the dates that passed when it comes back on); and credits held by unpaid orders that lapsed without the payment provider
  * telling us are given back (a payment that arrives later is still accepted: the credits are taken again). Never
  * throws: a failing step is left for the next run.
  */
@@ -555,8 +573,7 @@ export async function expiringReminders(days = BONUS_EXPIRY_REMINDER_DAYS): Prom
   const rows = await db().execute<Row>(sql`
     select x.store_id, x.customer_id, x.first_at, x.amount_minor, commerce.bonus_currency(x.store_id) as currency
     from commerce.bonus_expiring(${days}) x
-    join commerce.bonus_settings b on b.store_id = x.store_id and b.enabled
-    where commerce.store_is_active(x.store_id)
+    where commerce.store_is_active(x.store_id) and commerce.bonus_program_on(x.store_id)
     order by x.first_at
     limit ${BATCH}
   `);

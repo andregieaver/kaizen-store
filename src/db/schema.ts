@@ -7112,6 +7112,12 @@ export const bonusSettings = commerce.table(
     expiresMonths: integer("expires_months"),
     /** The credits' currency: what the ledger's amounts are in. */
     currency: char("currency", { length: 3 }).notNull(),
+    /**
+     * Since when the program has been off (its own switch, or the store feature `bonus` with what it needs, D178); null while it
+     * is on. Kept by the database (`commerce.bonus_pause_sync()`): nothing expires while it is off, and when it comes back on,
+     * credits whose expiry passed meanwhile get their date moved by as long as it was off (`commerce.bonus_resume()`).
+     */
+    pausedAt: timestamp("paused_at", { withTimezone: true }),
     updatedAt: updatedAt(),
     updatedBy: uuid("updated_by").references(() => accounts.id),
   },

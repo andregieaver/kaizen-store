@@ -8,6 +8,7 @@ import { requirePermission } from "@/server/permissions";
 
 import { saveFieldGroupAction } from "../actions";
 import { editorTerms, roleOptions, storeLanguages } from "../data";
+import { featureOn } from "@/lib/store-features";
 
 export const metadata: Metadata = { title: "New group of custom fields" };
 
@@ -31,6 +32,7 @@ export default async function NewFieldGroupPage({ params, searchParams }: PagePr
         roles={roleOptions()}
         languages={storeLanguages(store)}
         currencies={moneyCurrencies(store)}
+        sellsToBusinesses={featureOn(store, "business")}
         save={saveFieldGroupAction.bind(null, store.slug)}
         base={base}
       />

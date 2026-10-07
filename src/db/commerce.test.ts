@@ -5255,7 +5255,8 @@ describe("the bonus program (D130)", () => {
 
   beforeAll(async () => {
     shop = await createStore("bonus-shop", ["NO", "DE"]);
-    await db.query("update commerce.stores set country = 'NO' where id = $1", [shop]);
+    // The program works only with its store feature on (D178).
+    await db.query("update commerce.stores set country = 'NO', features = '{shop,bonus}' where id = $1", [shop]);
     await db.query(
       `insert into commerce.store_currencies (store_id, currency, rate, round_to, position)
        values ($1, 'NOK', 11.5, 1, 0), ($1, 'EUR', 1, 1, 1)`,

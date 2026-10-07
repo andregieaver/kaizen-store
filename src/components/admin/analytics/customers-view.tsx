@@ -33,6 +33,8 @@ export type CustomersViewProps = {
   /** Only an owner can open Analytics settings and the localization settings. */
   isOwner: boolean;
   report: CustomersReport;
+  /** The bonus program's feature is on (D178): advice that names bonus credit is given only then. */
+  bonusOn?: boolean;
 };
 
 /** A repeat rate over fewer customers than this is called a rough guide. */
@@ -82,6 +84,12 @@ export function lastOrderText(iso: string, timeZone: string): string {
   } catch {
     return NO_FIGURE;
   }
+}
+
+/** The advice for a group: without the bonus program (D178) it never suggests bonus credit. */
+export function segmentAction(segment: RfmSegment, bonusOn: boolean): string {
+  if (segment === "Loyal" && !bonusOn) return "Keep them happy: ask for a review, or thank them with a small gift.";
+  return SEGMENT_COPY[segment].action;
 }
 
 /** What each customer group means and what to do about it, in plain words (the groups are defined by `segmentOf()`). */
@@ -178,7 +186,7 @@ function predictionReason(report: CustomersReport): string {
 // The view
 // ---------------------------------------------------------------------------
 
-export function CustomersView({ base, locale, timeZone, isOwner, report }: CustomersViewProps) {
+export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn = true }: CustomersViewProps) {
   const money = moneyOf(report.currency, locale);
   const decimal = decimalOf();
   const settingsHref = `${base}/analytics/settings`;
@@ -507,7 +515,7 @@ export function CustomersView({ base, locale, timeZone, isOwner, report }: Custo
                       <p className="text-xs text-muted">{`Average ${money(s.averageRevenueMinor)} spent in ${s.averageOrders === null ? NO_FIGURE : decimal(s.averageOrders)} orders; last order ${s.averageRecencyDays === null ? NO_FIGURE : formatCount(s.averageRecencyDays)} days ago on average.`}</p>
                       <p className="text-sm">
                         <span className="font-medium">What to do: </span>
-                        {copy.action}
+                        {segmentAction(s.segment, bonusOn)}
                       </p>
                     </>
                   ) : (

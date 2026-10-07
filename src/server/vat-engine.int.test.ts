@@ -209,7 +209,10 @@ beforeAll(async () => {
   `);
   const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Test', null) as id`);
   storeId = String(created.id);
-  await db().execute(sql`update commerce.stores set country = 'SE' where id = ${storeId}::uuid`);
+  // A store selling to businesses as well as private shoppers (D178: Sell to businesses on; the bonus program for the credits scenario).
+  await db().execute(sql`
+    update commerce.stores set country = 'SE', audience = 'both', features = features || array['business', 'bonus'] where id = ${storeId}::uuid
+  `);
   await db().execute(sql`
     insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due)
     values (${storeId}::uuid, 'test', ${`acct_vat${run}`}, 'active', false)

@@ -18,6 +18,7 @@ import { getProduct, getVariantStock } from "./catalog";
 import { createHandoffCart } from "./cart-handoff";
 import { marketIn } from "./shop";
 import type { Store } from "./stores";
+import { OFFERED } from "./product-conditions";
 
 type Row = Record<string, unknown>;
 
@@ -40,7 +41,7 @@ export async function cardCarts(store: Store, market: Market, productIds: string
     from commerce.products p
     join commerce.product_variants v on v.store_id = p.store_id and v.product_id = p.id and v.active
     join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
-    where p.store_id = ${store.id}::uuid and p.status = 'active' and p.id = any(${`{${productIds.join(",")}}`}::uuid[])
+    where p.store_id = ${store.id}::uuid and p.status = 'active' and ${OFFERED} and p.id = any(${`{${productIds.join(",")}}`}::uuid[])
     group by p.id, p.kind, p.subscription_only, p.audience
   `);
   const stock = await getVariantStock(store.id, rows.flatMap((r) => r.variant_ids as string[]));
@@ -189,7 +190,7 @@ export async function quoteCart(store: Store, marketRef: string | null, lines: C
       coalesce(nullif(m.alt ->> ${market.locale}, ''), commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
       cp.amount_minor, cp.prior_30d_minor
     from commerce.product_variants v
-    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active'
+    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id and p.status = 'active' and ${OFFERED}
     join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${market.locale}
     left join lateral (select title from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true

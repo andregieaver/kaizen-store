@@ -7,13 +7,16 @@ import { INVITES_PER_BATCH, parseInviteEmails } from "@/lib/customer-tiers";
 import { t } from "@/lib/i18n";
 import { companyOf, createInvites, removeMember, revokeInvite } from "@/server/companies";
 import { getCustomer } from "@/server/customers";
-import { resolveShop } from "@/server/shop";
+import { resolveFeatureShop } from "@/server/shop";
 
 export type InviteState = { ok: boolean; message: string | null };
 
-/** The signed-in customer and their company, when they are its main account: only that account manages it. */
+/**
+ * The signed-in customer and their company, when they are its main account: only that account manages it. Nothing while selling to
+ * businesses is switched off (D178), so a stale page changes nothing.
+ */
 async function asMainAccount(storeSlug: string, marketSlug: string) {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveFeatureShop(storeSlug, marketSlug, "business");
   const customer = shop ? await getCustomer(shop.store.id) : null;
   const mine = shop && customer ? await companyOf(shop.store.id, customer.id) : null;
   if (!shop || !customer || !mine || mine.role !== "owner") return null;
@@ -64,7 +67,7 @@ export async function removeEmployeeAction(storeSlug: string, marketSlug: string
 
 /** An employee leaves the company themselves. The main account cannot: the store moves that. */
 export async function leaveCompanyAction(storeSlug: string, marketSlug: string): Promise<void> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveFeatureShop(storeSlug, marketSlug, "business");
   const customer = shop ? await getCustomer(shop.store.id) : null;
   const mine = shop && customer ? await companyOf(shop.store.id, customer.id) : null;
   if (!shop || !customer || !mine || mine.role !== "employee") return;

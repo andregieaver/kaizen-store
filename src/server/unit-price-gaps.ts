@@ -6,6 +6,7 @@ import { db } from "@/db/client";
 import { priceVat } from "@/lib/pricing";
 import { unitPriceShown, type ShownMeasure, type UnitPriceShown } from "@/lib/unit-price";
 import { shownMeasureFromColumns, type UnitPriceCategory } from "@/lib/unit-price-rules";
+import { STORE_AUDIENCE } from "./product-conditions";
 
 /**
  * Which products still need their content for the unit price (D160, `docs/wave-1d-unit-price.md` 2.2 and 3.3). "Needs"
@@ -146,7 +147,7 @@ export type VariantUnitPrice = {
 export async function variantUnitPrices(storeId: string, productId: string): Promise<VariantUnitPrice[]> {
   const rows = await db().execute<Row>(sql`
     select v.sku, v.measure_amount, v.measure_unit, v.measure_base, cp.market_code, cp.currency, cp.amount_minor,
-      commerce.vat_rate(cp.market_code, p.vat_category) as vat_rate, s.audience
+      commerce.vat_rate(cp.market_code, p.vat_category) as vat_rate, ${STORE_AUDIENCE} as audience
     from commerce.product_variants v
     join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
     join commerce.stores s on s.id = p.store_id

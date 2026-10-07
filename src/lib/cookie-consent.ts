@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { FeatureId } from "./store-features";
 
 /**
  * Cookie consent (D58), for Kaizen's own site and each store: the optional
@@ -129,6 +130,11 @@ export type KnownCookie = {
   tool?: keyof TrackingSettings;
   /** Set only in stores selling to both private shoppers and businesses (D63). */
   buyers?: boolean;
+  /**
+   * Set only while this store feature is on (D178): `siteCookies()` and the cookie page leave it out while the feature is off, even
+   * when an earlier scan found it.
+   */
+  feature?: FeatureId;
   /** Set only on sites whose chat agent is on (D81). */
   chat?: boolean;
   /** Set only in stores that let visitors choose light or dark (D99). */
@@ -273,6 +279,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     days: 90,
     on: "store",
     affiliate: true,
+    feature: "referrals",
     purpose: {
       en: "Remembers which friend's referral link you came from, so the store can give you a welcome discount and thank them; the number of days is the store's choice, at most 90.",
       nb: "Husker hvilken venns tipslenke du kom fra, slik at butikken kan gi deg velkomstrabatt og takke vennen; antall dager bestemmer butikken, høyst 90.",
@@ -330,6 +337,7 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     days: 365,
     on: "store",
     buyers: true,
+    feature: "business",
     purpose: {
       en: "Remembers whether you shop privately or for a business, to show the right prices and products.",
       nb: "Husker om du handler privat eller for en bedrift, for å vise riktige priser og varer.",

@@ -134,3 +134,23 @@ describe("a page behind a feature that is off (D178)", () => {
     expect(html(gate(["shop", "referrals"], "owner", "referrals")!)).toContain("Referral program needs the bonus program, which is switched off.");
   });
 });
+
+describe("a feature's part of another page while it is off (D178 step 2)", () => {
+  it("says what is off, with the way to Features for an owner and who can for others", async () => {
+    const { FeatureOffNote } = await import("./feature-off");
+    const owner = html(createElement(FeatureOffNote, { storeSlug: "kaffe", feature: "business", owner: true, what: "Selling to businesses" }));
+    expect(owner).toContain("Selling to businesses: Sell to businesses is switched off, so this is hidden.");
+    expect(owner).toContain('href="/admin/kaffe/settings/features"');
+    const staff = html(createElement(FeatureOffNote, { storeSlug: "kaffe", feature: "bonus", owner: false }));
+    expect(staff).toContain("Bonus program is switched off");
+    expect(staff).not.toContain("href=");
+  });
+
+  it("words the Customers group's warnings as the rules decided", () => {
+    const facts: FeatureFacts = { ...NO_FACTS, creditHolders: 2, creditsMinor: 12_000, creditsCurrency: "NOK", pendingReferrals: 1, businessProducts: 1 };
+    const rows = featureRows(["shop", "bonus", "referrals", "business"], facts, money);
+    expect(rows.bonus.warnings.join(" ")).toContain("expiry dates that pass meanwhile are moved on by as long as it was off");
+    expect(rows.referrals.warnings.join(" ")).toContain("earned while the program was on");
+    expect(rows.business.offWords).toContain("products for businesses only are hidden");
+  });
+});

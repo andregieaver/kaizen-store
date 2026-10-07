@@ -38,7 +38,8 @@ export async function saveAudienceAction(storeSlug: string, _state: FormState, f
     businessPopup: formData.get("businessPopup") === "on",
   });
   if (!parsed.success) return problems([...new Set(parsed.error.issues.map((issue) => issue.message))]);
-  await saveStoreAudience(member, parsed.data);
+  const saved = await saveStoreAudience(member, parsed.data);
+  if (!saved.ok) return problems([saved.problem]);
   updateTag(storeTag(member.store.slug));
   updateTag(catalogTag(member.store.id));
   return { status: "ok", messages: ["Saved."] };

@@ -66,3 +66,25 @@ export function requireFeature(member: { store: { slug: string; features: readon
   if (requirementMet(member.store, feature)) return null;
   return <FeatureOff storeSlug={member.store.slug} feature={feature} features={member.store} owner={can(member, "owner")} />;
 }
+
+/**
+ * A feature's part of another admin page while the feature is off (D178): one line in place of the part, saying what is off and, for an
+ * owner, linking to Features. Nothing is deleted: switching it on brings the part back as it was.
+ */
+export function FeatureOffNote({ storeSlug, feature, owner, what }: { storeSlug: string; feature: FeatureRequirement; owner: boolean; what?: string }) {
+  const label = requirementLabel(feature);
+  return (
+    <p className="text-sm text-muted">
+      {what ? `${what}: ` : ""}
+      {label} is switched off, so this is hidden.{" "}
+      {owner ? (
+        <Link href={`/admin/${storeSlug}/settings/features`} className="underline">
+          Switch it on under Features
+        </Link>
+      ) : (
+        "An owner can switch it on under Settings, Features"
+      )}
+      .
+    </p>
+  );
+}

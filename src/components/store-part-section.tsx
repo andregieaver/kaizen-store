@@ -44,7 +44,8 @@ import { TermListing } from "@/app/s/[store]/[market]/term-listing";
 import { WishlistSection } from "@/app/s/[store]/[market]/wishlist/wishlist-section";
 import { t } from "@/lib/i18n";
 import type { StorePartBlock } from "@/lib/page-content";
-import { routeOfPart, type ShopPart, type StoreRoute } from "@/lib/store-parts";
+import { requirementMet } from "@/lib/store-features";
+import { routeOfPart, shopPartFeature, type ShopPart, type StoreRoute } from "@/lib/store-parts";
 import { storeAndMarket, type GridPlace } from "@/server/content-grid";
 
 /**
@@ -80,6 +81,8 @@ async function Part({
   const shop = await storeAndMarket(owner, marketCode);
   if (!shop) return null;
   const { store, market } = shop;
+  // A component of a store feature that is off draws nothing (D178): the bonus credits with the bonus program off.
+  if (!requirementMet(store, shopPartFeature(part))) return null;
   const query = route.query ?? Promise.resolve({});
   const m = t(market.lang);
   const order = route.param ? { store, market, orderId: route.param, query } : null;

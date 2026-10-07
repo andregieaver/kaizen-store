@@ -35,6 +35,7 @@ import type { Address } from "./orders";
 import { getCheckoutAccount } from "./settings";
 import { sendDeliveryCard, sendDeliveryPrepared, sendDeliveryStarted } from "./shopper-emails";
 import { platformStripe } from "./stripe";
+import { OFFERED, STORE_AUDIENCE } from "./product-conditions";
 
 type Row = Record<string, unknown>;
 
@@ -147,7 +148,7 @@ export async function setDeliveriesModule({ account, store }: Membership, enable
 
 /** What may go on a list: the store's own goods that are shipped and sold once, active, with a price. */
 const listable = sql`
-  p.status = 'active' and v.active and v.delivery = 'physical' and p.kind = 'goods'
+  p.status = 'active' and v.active and v.delivery = 'physical' and p.kind = 'goods' and ${OFFERED}
   and not p.subscription_only and p.host_id is null
 `;
 
@@ -206,7 +207,7 @@ export type StandingOrderView = {
 };
 
 async function storeClock(storeId: string): Promise<{ timeZone: string; audience: string }> {
-  const [row] = await db().execute<Row>(sql`select time_zone, audience from commerce.stores where id = ${storeId}::uuid`);
+  const [row] = await db().execute<Row>(sql`select s.time_zone, ${STORE_AUDIENCE} as audience from commerce.stores s where s.id = ${storeId}::uuid`);
   return { timeZone: String(row?.time_zone ?? "Europe/Oslo"), audience: String(row?.audience ?? "consumers") };
 }
 

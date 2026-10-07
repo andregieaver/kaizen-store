@@ -16,7 +16,8 @@ async function storeFor(audience: "both" | "businesses"): Promise<string> {
       insert into commerce.access_requests (email, name, store_name)
       values (${`${slug}@example.com`}, 'Kari', 'Karis Firma') returning id`;
     await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Karis Firma', null)`;
-    await sql`update commerce.stores set audience = ${audience}, business_popup = ${audience === "both"} where slug = ${slug}`;
+    // Sell to businesses on (D178): a new store starts with the shop alone.
+    await sql`update commerce.stores set audience = ${audience}, business_popup = ${audience === "both"}, features = features || array['business'] where slug = ${slug}`;
     // The tote bag is for businesses only.
     await sql`
       update commerce.products p set audience = 'businesses'

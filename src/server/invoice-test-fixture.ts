@@ -118,6 +118,13 @@ export type PayOptions = {
 export async function paidOrder(fx: Fixture, items: [sku: string, quantity: number][], o: PayOptions = {}): Promise<Placed> {
   const market = o.market ?? no;
   const email = o.email ?? `shopper-${unique("s")}@example.com`;
+  // A company buys only where the store sells to businesses (D178: Sell to businesses on, selling to both).
+  if (o.company) {
+    await db().execute(sql`
+      update commerce.stores set audience = case when audience = 'consumers' then 'both' else audience end, features = features || array['business']
+      where id = ${fx.storeId}::uuid
+    `);
+  }
   const [cart] = await db().execute<Row>(sql`
     insert into commerce.carts (store_id, market_code, currency, locale, expires_at, discount_code, company_name, organisation_number)
     values (${fx.storeId}::uuid, ${market.code}, ${market.currency}, ${market.locale}, now() + interval '1 day', ${o.code ?? null}, ${o.company?.name ?? null}, ${o.company?.number ?? null})

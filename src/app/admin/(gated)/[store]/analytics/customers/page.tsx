@@ -6,6 +6,7 @@ import { CustomersView } from "@/components/admin/analytics/customers-view";
 import { queryText } from "@/lib/analytics-export";
 import { analyticsContext } from "@/server/analytics-context";
 import { customersReport } from "@/server/analytics-customers-data";
+import { featureOn } from "@/lib/store-features";
 
 export const metadata: Metadata = { title: "Customer analytics" };
 
@@ -29,7 +30,7 @@ export default async function AnalyticsCustomersPage({ params, searchParams }: P
           title="Customers"
           description="Do customers come back, what is a customer worth, and who are your best? The period picks the customers who ordered in it; repeat rates, lifetime value, groups and cohorts always look at the whole history."
         />
-        <CustomersView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} timeZone={store.timeZone} isOwner={ctx.owner} report={report} />
+        <CustomersView base={ctx.base} locale={store.markets[0]?.locale ?? "en"} timeZone={store.timeZone} isOwner={ctx.owner} report={report} bonusOn={featureOn(store, "bonus")} />
       </div>
     </ExportScope>
   );

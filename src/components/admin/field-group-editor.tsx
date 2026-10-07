@@ -95,7 +95,10 @@ export function FieldGroupEditor({
   save,
   base,
   actions,
+  sellsToBusinesses = true,
 }: {
+  /** Sell to businesses is on (D178): only then is "Sold to" a rule to choose (a rule already using it stays as it is). */
+  sellsToBusinesses?: boolean;
   initial: FieldGroupInput;
   terms: EditorTerm[];
   /** The store's special pages, for the location rules. */
@@ -360,6 +363,7 @@ export function FieldGroupEditor({
             draft={draft}
             terms={terms}
             roles={roles}
+            sellsToBusinesses={sellsToBusinesses}
             onChange={(location) => change((g) => ({ ...g, location }))}
           />
         </section>
@@ -632,14 +636,16 @@ function LocationBuilder({
   draft,
   terms,
   roles,
+  sellsToBusinesses,
   onChange,
 }: {
+  sellsToBusinesses: boolean;
   draft: Draft;
   terms: EditorTerm[];
   roles: { value: string; label: string }[];
   onChange: (location: LocationRule[][]) => void;
 }) {
-  const params = locationParamsFor(draft.entities);
+  const params = locationParamsFor(draft.entities).filter((p) => sellsToBusinesses || p.param !== "audience");
   const location = draft.location;
   const everywhere = entitiesText(draft.entities).toLowerCase();
   // The store, customers and orders have nothing for rules to ask about.

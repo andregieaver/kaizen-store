@@ -7,6 +7,7 @@ import { motionNeeds } from "@/lib/motion-attrs";
 import type { PageBlock, PageContent, SiteBlock } from "@/lib/page-content";
 import { flowRows } from "@/lib/page-modal";
 import { localizePage } from "@/lib/page-translation";
+import { partFeatureOn } from "@/lib/part-features";
 import { marketPath } from "@/lib/paths";
 import { siteBlocks } from "@/lib/site-layout";
 import type { GridPlace } from "@/server/content-grid";
@@ -49,6 +50,8 @@ export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
     return true;
   }
   const { store } = ctx;
+  // A part of a store feature that is off draws nothing (D178): the business or private switch with Sell to businesses off.
+  if (!partFeatureOn(block, store)) return false;
   switch (block.part) {
     case "signUp":
       return false;

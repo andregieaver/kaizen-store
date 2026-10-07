@@ -3,7 +3,11 @@
 A store's signed-in customers refer friends. A friend's first order through their link gets a **welcome discount**; the
 customer who shared the link earns **bonus credits** (the D130 ledger) on what the friend pays. Switched on by the owner
 under Sales → Referral program (`/admin/{store}/affiliates`); off by default, and it works only while the **bonus program
-is on**, because the reward is bonus credits. The contract shared by the screens and the server is `src/lib/affiliates.ts`;
+is on**, because the reward is bonus credits. Since D178 (`docs/store-features.md`) it also stands behind the store feature
+`referrals` (which needs the feature `bonus`): the feature is the gate (the page, the customer's referral section, link capture,
+the welcome discount, My account's referral page, the cookie and the AI tools are there only while it is on), and the program's
+own switch (`affiliate_settings.enabled`) stays on its page. It **works** only while the feature, its own switch and the bonus
+program are all on: `commerce.affiliate_program_on()`, `AffiliateProgram.on`, `affiliateSite().on`. The contract shared by the screens and the server is `src/lib/affiliates.ts`;
 the rules are in SQL (`commerce.affiliate_*`, migration `affiliate_rules`); the engine is `src/server/affiliates.ts`;
 checkout uses it from `cartSummary()` and `placeOrder()`.
 
@@ -33,8 +37,11 @@ checkout uses it from `cartSummary()` and `placeOrder()`.
   cancelled order, which is `reversed`, does).
 - **Guards** (recorded in `affiliate_attributions.status` / `reject_reason`): `self` (same customer, or the order's or the
   customer's email is the referrer's), `not_new` (the friend has ordered before and is not already this referrer's friend),
-  `blocked`, `limit` (the friend's orders have already earned `rewardOrders` rewards), `off` (either program is off when the
-  order is paid), `cap`, and `zero` (an order that earns nothing after rounding). Copied orders (D129) and hosts' orders
+  `blocked`, `limit` (the friend's orders have already earned `rewardOrders` rewards), `cap`, and `zero` (an order that earns
+  nothing after rounding). A program that is off when the order is **placed** attributes nothing (`affiliate_resolve()` says
+  `off`). One switched off **after** an order was attributed (its own switch, the bonus program, or the store features, D178) no
+  longer stops the reward: the order was placed while the program was on, so the referrer is rewarded when it is paid, as
+  promised, and the reward email goes out as usual. Rows rejected as `off` before D178 keep their reason. Copied orders (D129) and hosts' orders
   (D71) are never attributed and never earn; a guest's order is never attributed.
 - **Taken back** by refund and cancellation, exactly as the bonus program takes back the friend's own earnings.
 

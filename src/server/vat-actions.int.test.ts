@@ -83,7 +83,8 @@ async function makeStore(name: string, country: string) {
   const email = `${name}@example.com`;
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${email}, 'Kari', ${name}) returning id`);
   const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${name}, ${name}, null) as id`);
-  await db().execute(sql`update commerce.stores set country = ${country} where id = ${String(store.id)}::uuid`);
+  // Selling to businesses as well (D178: Sell to businesses on), so a cart can be a company's.
+  await db().execute(sql`update commerce.stores set country = ${country}, audience = 'both', features = features || array['business'] where id = ${String(store.id)}::uuid`);
   const [row] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${email}`);
   people.byStore.set(name, { id: String(row.id), email: String(row.email), name: "Kari", platformAdmin: false });
   return String(store.id);

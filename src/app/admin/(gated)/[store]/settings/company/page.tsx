@@ -4,9 +4,11 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { AUDIENCE_LABELS, AudienceFields } from "@/components/admin/audience-fields";
 import { BusinessDetailsFields } from "@/components/admin/business-details-fields";
+import { FeatureOffNote } from "@/components/admin/feature-off";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { PlaceFields } from "@/components/admin/place-fields";
 import { weekSummary } from "@/lib/opening-hours";
+import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getCompany, KIND_LABELS, type StoreLocation } from "@/server/company";
 import { listCountries } from "@/server/stores";
@@ -62,9 +64,12 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
           Who you sell to. Prices are always charged with VAT; businesses see them without it, and give their company&apos;s name and
           organisation number at checkout.
         </p>
-        {memberCan(member, "owner") ? (
+        {!featureOn(store, "business") ? (
+          // Sell to businesses is off (D178): the store sells to consumers, whatever was chosen here before (kept for when it is on again).
+          <FeatureOffNote storeSlug={store.slug} feature="business" owner={memberCan(member, "owner")} what="Selling to businesses" />
+        ) : memberCan(member, "owner") ? (
           <ActionForm action={saveAudienceAction.bind(null, store.slug)} className="flex flex-col gap-4">
-            <AudienceFields audience={store.audience} businessPopup={store.businessPopup} />
+            <AudienceFields audience={store.chosenAudience} businessPopup={store.businessPopup} />
             <div>
               <SubmitButton>Save customers</SubmitButton>
             </div>

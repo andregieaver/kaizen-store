@@ -9,6 +9,7 @@ import { affiliateTag, saveAffiliateSettings, setAffiliateBlocked } from "@/serv
 import { catalogTag } from "@/server/catalog";
 import { cookiesTag } from "@/server/site-cookies";
 import { storeTag } from "@/server/stores";
+import { featureOn } from "@/lib/store-features";
 
 /**
  * Saves the referral program's settings (D131). Only an owner changes what shoppers are promised; the server checks
@@ -43,6 +44,8 @@ export async function blockAffiliateAction(
 ): Promise<AffiliateResult> {
   const member = await checkPermission(storeSlug, "marketing:write");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
+  // The referral program's page and parts are hidden while its feature is off (D178), and so is every change.
+  if (!featureOn(member.store, "referrals")) return { ok: false, problems: ["The referral program is switched off under Settings, Features."] };
   if (!z.uuid().safeParse(customerId).success) return { ok: false, problems: ["Unknown customer."] };
   const result = await setAffiliateBlocked(member.account, member.store.id, customerId, Boolean(blocked), String(note ?? ""));
   if (result.ok) refresh();

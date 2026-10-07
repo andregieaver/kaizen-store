@@ -11,7 +11,7 @@ import { companyOf, listInvites, listMembers } from "@/server/companies";
 import { getCustomer } from "@/server/customers";
 import { memberDiscountFor } from "@/server/customer-tiers";
 import { db } from "@/db/client";
-import { resolveShop } from "@/server/shop";
+import { resolveFeatureShop } from "@/server/shop";
 
 import { leaveCompanyAction, removeEmployeeAction, revokeInviteAction } from "./actions";
 
@@ -37,7 +37,8 @@ export default function CompanyPage({ params }: Props) {
 
 async function Company({ params }: { params: Props["params"] }) {
   const { store: storeSlug, market: marketSlug } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  // Company accounts are part of selling to businesses (D178): not there while it is switched off.
+  const shop = await resolveFeatureShop(storeSlug, marketSlug, "business");
   if (!shop) notFound();
   const { store, market } = shop;
   const account = marketPath(store.slug, market.slug, "/account");

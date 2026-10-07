@@ -16,6 +16,7 @@ import {
 } from "@/lib/cookie-consent";
 import { cookieNoteInput, parseScannedItems, reviewFindings, type CookieNote, type ScannedItem } from "@/lib/cookie-scan";
 import { codeCategories, customCodeInput, type CustomCode } from "@/lib/custom-code";
+import { featureOn } from "@/lib/store-features";
 
 import { affiliateSite } from "./affiliates";
 import { audit, type Account } from "./auth";
@@ -29,6 +30,15 @@ type Row = Record<string, unknown>;
 
 /** Revalidate after a site's scan finishes or its notes change. */
 export const cookiesTag = (storeId: string | null) => `cookies:${storeId ?? "kaizen"}`;
+
+/** The features a store keeps on (D178), cached with the cookie list: a switch refreshes `cookiesTag` (`refreshFeatureTags()`). */
+async function storeFeatures(storeId: string): Promise<string[]> {
+  "use cache";
+  cacheLife("hours");
+  cacheTag(cookiesTag(storeId));
+  const [row] = await readDb().execute<Row>(sql`select features from commerce.stores where id = ${storeId}::uuid`);
+  return ((row?.features ?? []) as unknown[]).map(String);
+}
 
 /** A site's latest finished scan and the owner's notes, cached until either changes. */
 async function siteFindings(storeId: string | null): Promise<{ items: ScannedItem[]; notes: CookieNote[] }> {
@@ -78,8 +88,14 @@ export async function siteCookies(
   options: { buyers?: boolean; colorMode?: boolean } = {},
 ): Promise<{ cookies: ListedCookie[]; categories: OptionalCategory[] }> {
   const listed = new Map<string, ListedCookie>();
-  const list = ({ name, provider, category, days, purpose }: KnownCookie) =>
-    listed.has(name) || listed.set(name, { name, provider, category, days, purpose });
+  // A cookie of a store feature that is off (D178) is not the site's while it is: left out, even when an earlier scan found it.
+  const features = storeId === null ? null : await storeFeatures(storeId);
+  const offFeature = (cookie: KnownCookie) => Boolean(cookie.feature && features && !featureOn(features, cookie.feature));
+  const list = (cookie: KnownCookie) => {
+    const { name, provider, category, days, purpose } = cookie;
+    if (offFeature(cookie)) return;
+    if (!listed.has(name)) listed.set(name, { name, provider, category, days, purpose });
+  };
   // The chat agent keeps its conversation in the tab while it is on (D81).
   const chat = (await getChatAgent(storeId))?.enabled ?? false;
   // Pop-ups that remember being closed keep it in the browser, as a preference (D121).

@@ -21,6 +21,7 @@ import type { BuyerVatState } from "@/lib/vies";
 
 import { getTaxProfile, storeCountry } from "./tax-profile";
 import { stateOfCheck, toCheck, type VatCheck } from "./vat-checks";
+import { STORE_AUDIENCE } from "./product-conditions";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -89,15 +90,18 @@ export async function loadTaxFacts(runner: Runner, input: TaxFactsInput): Promis
     cartId
       ? runner.execute<Row>(sql`
           select c.company_name, c.organisation_number, c.vat_number, k.id as check_id, k.purpose, k.cart_id, k.number, k.status,
-                 k.source, k.name, k.address, k.request_identifier, k.error, k.requested_at
+                 k.source, k.name, k.address, k.request_identifier, k.error, k.requested_at,
+                 ${STORE_AUDIENCE} <> 'consumers' as to_business
           from commerce.carts c
+          join commerce.stores s on s.id = c.store_id
           left join commerce.vat_checks k on k.store_id = c.store_id and k.id = c.vat_check_id
           where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid
         `)
       : Promise.resolve([] as Row[]),
   ]);
   const row = cart[0];
-  const business = Boolean(row?.company_name && row?.organisation_number);
+  // A company is bought for only where the store sells to businesses (D178: with Sell to businesses off, every cart is a private buyer's).
+  const business = Boolean(row?.to_business && row?.company_name && row?.organisation_number);
   const buyerVatNumber = business && row?.vat_number ? String(row.vat_number) : null;
   const check = business && row?.check_id ? toCheck({ ...row, id: row.check_id }) : null;
   const seller = sellerFacts(profile, country);

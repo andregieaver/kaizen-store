@@ -17,11 +17,13 @@ import {
   type FeatureId,
 } from "@/lib/store-features";
 
+import { affiliateTag } from "./affiliates";
 import { audit, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
 import { pagesTag } from "./pages";
 import { memberCan } from "./permissions";
 import { refreshTag } from "./refresh";
+import { cookiesTag } from "./site-cookies";
 import { STORES_TAG } from "./seo";
 import { storeObligations } from "./store-closure";
 import { storeTag } from "./stores";
@@ -218,10 +220,16 @@ export async function setFeature(member: Membership, id: FeatureId, on: boolean,
   return { ok: true, features: after, changed: true };
 }
 
-/** The caches a feature's switch reaches: the store (its admin and storefront), its catalogue, the list of stores and its pages. */
+/**
+ * The caches a feature's switch reaches: the store (its admin and storefront, its audience among them), its catalogue (products for
+ * businesses only come and go with Sell to businesses), the list of stores, its pages (shop components of a feature), the referral
+ * program's storefront read (`affiliateSite()`, with the bonus and referral features) and its cookie list.
+ */
 export function refreshFeatureTags(store: { id: string; slug: string }): void {
   refreshTag(storeTag(store.slug));
   refreshTag(catalogTag(store.id));
   refreshTag(STORES_TAG);
   refreshTag(pagesTag(store.id));
+  refreshTag(affiliateTag(store.id));
+  refreshTag(cookiesTag(store.id));
 }

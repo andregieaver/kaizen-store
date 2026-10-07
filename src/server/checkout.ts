@@ -33,6 +33,7 @@ import { sendBookingStaffNotices, sendOrderConfirmation } from "./shopper-emails
 import { decideTax, loadTaxFacts } from "./tax-treatment";
 import { refreshStaleCartCheck } from "./vat-checks";
 import { bookable } from "./cart";
+import { OFFERED, STORE_AUDIENCE } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
@@ -155,7 +156,7 @@ function orderLineRows(tx: Tx, market: Market, source: SQL, where: SQL) {
         cp.amount_minor, cl.starts_at, cl.resource_id, aps.payment, aps.deposit_percent,
         p.kind, aps.check_in_time, aps.check_out_time, v.rental_period, p.host_id, v.cost_minor,
         v.measure_amount, v.measure_unit, v.measure_base, v.stock_policy, v.backorder_days,
-        (p.status = 'active' and v.active and ${bookable}) as sellable
+        (p.status = 'active' and v.active and ${bookable} and ${OFFERED}) as sellable
       from ${source}
       join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
       join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
@@ -195,7 +196,10 @@ export async function placeOrder(
   const { storeId, market } = shop;
   return inTransaction(async (tx): Promise<PlaceResult> => {
     const [cart] = await tx.execute<Row>(sql`
-      select c.id, c.discount_code, c.company_name, c.organisation_number, s.audience as store_audience, s.time_zone,
+      -- A company is bought for only where the store sells to businesses (B2B; D178: never with Sell to businesses off).
+      select c.id, c.discount_code, ${STORE_AUDIENCE} as store_audience, s.time_zone,
+        case when ${STORE_AUDIENCE} <> 'consumers' then c.company_name end as company_name,
+        case when ${STORE_AUDIENCE} <> 'consumers' then c.organisation_number end as organisation_number,
         c.bonus_request_minor, c.affiliate_code, c.is_gift, c.gift_to, c.gift_from, c.gift_message,
         coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on
       from commerce.carts c

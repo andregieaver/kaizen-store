@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { Messages } from "./i18n";
 import { MAX_LINE_QUANTITY } from "./cart";
 import { LOW_STOCK_THRESHOLD, stockLevel, type StockLevel } from "./pricing";
+import { audienceOffered, parseProductAudience, parseStoreAudience } from "./b2b";
 
 /** Most lines one cart holds when handed over: a basket on another site is a few things, not a catalogue. */
 export const CART_LINES_MAX = 30;
@@ -44,7 +45,9 @@ export type NotCartable = "booking" | "subscription" | "business_only" | "servic
 export function cartableReason(product: { kind: string; subscriptionOnly: boolean; audience: string }, storeAudience: string, deliveries: readonly string[]): NotCartable | null {
   if (product.kind !== "goods") return "booking";
   if (product.subscriptionOnly) return "subscription";
-  if (product.audience !== "all" && storeAudience === "both") return "business_only";
+  // A product for one kind of buyer where the store sells to both, or one the store does not offer at all (D178: a business-only product
+  // with Sell to businesses off), is never put in a cart from another site.
+  if (product.audience !== "all" && (storeAudience === "both" || !audienceOffered(parseStoreAudience(storeAudience), parseProductAudience(product.audience)))) return "business_only";
   if (deliveries.some((d) => d !== "physical" && d !== "digital")) return "service";
   return null;
 }

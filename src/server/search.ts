@@ -10,7 +10,7 @@ import { vectorLiteral } from "@/lib/vectors";
 
 import { aiFor } from "./ai";
 import { listGridProducts, type GridProduct } from "./catalog";
-import { convertedSql, inCategories, inStockNow, withTags } from "./product-conditions";
+import { convertedSql, inCategories, inStockNow, OFFERED, withTags } from "./product-conditions";
 
 /**
  * Keyword search (Phase 2, S1): in Postgres, with no AI. A product matches
@@ -123,7 +123,7 @@ export async function matchingIds(
           and (lower(te.name) = q.text or extensions.word_similarity(q.text, lower(te.name)) >= 0.7)
         limit 1
       ) term on true
-      where p.store_id = ${storeId}::uuid and p.status = 'active'
+      where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
         and exists (
           select 1 from commerce.current_prices cp
           join commerce.product_variants v on v.id = cp.variant_id
@@ -179,7 +179,7 @@ export async function meaningMatches(
     join commerce.products p on p.store_id = e.store_id and p.id = e.product_id
     where e.store_id = ${storeId}::uuid and e.space = ${meaning.space}
       and extensions.vector_dims(e.embedding) = extensions.vector_dims(q.v)
-      and p.status = 'active'
+      and p.status = 'active' and ${OFFERED}
       and exists (
         select 1 from commerce.current_prices cp
         join commerce.product_variants v on v.id = cp.variant_id
@@ -202,7 +202,7 @@ export async function filteredIds(shop: Shop, filters: SearchFilters, limit: num
   const { storeId, market } = shop;
   const rows = await readDb().execute<Row>(sql`
     select p.id from commerce.products p
-    where p.store_id = ${storeId}::uuid and p.status = 'active'
+    where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED}
       and exists (
         select 1 from commerce.current_prices cp
         join commerce.product_variants v on v.id = cp.variant_id

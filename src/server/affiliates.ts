@@ -55,7 +55,9 @@ export type AffiliateProgram = {
   settings: AffiliateSettings;
   /** The bonus program, whose credits are the reward and whose currency and rates convert amounts. */
   bonus: BonusProgram;
-  /** Both switches are on: the program works. */
+  /** The store feature `referrals` is on (D178; it needs the bonus feature and the shop). */
+  featureOn: boolean;
+  /** The feature and both programs' switches are on: the program works (`commerce.affiliate_program_on()`). */
   on: boolean;
 };
 
@@ -75,35 +77,37 @@ const toSettings = (row: Row | undefined): AffiliateSettings =>
 /** The settings, the bonus program and whether both are on, in one read. */
 export async function affiliateProgram(runner: Runner, storeId: string, known?: BonusProgram): Promise<AffiliateProgram> {
   const [row] = await runner.execute<Row>(sql`
-    select a.enabled, a.reward_bps, a.reward_orders, a.friend_percent, a.friend_max_minor, a.monthly_cap_minor, a.cookie_days
+    select a.enabled, a.reward_bps, a.reward_orders, a.friend_percent, a.friend_max_minor, a.monthly_cap_minor, a.cookie_days,
+           commerce.feature_on(${storeId}::uuid, 'referrals') as feature_on
     from (select 1) one
     left join commerce.affiliate_settings a on a.store_id = ${storeId}::uuid
   `);
   const bonus = known ?? (await bonusProgram(runner, storeId));
   const settings = toSettings(row);
-  return { settings, bonus, on: settings.enabled && bonus.settings.enabled };
+  const featureOn = Boolean(row?.feature_on);
+  return { settings, bonus, featureOn, on: featureOn && settings.enabled && bonus.on };
 }
 
 /** The store's affiliate settings; the defaults, with the program off, when it has none. */
 export async function getAffiliateSettings(storeId: string): Promise<AffiliateSettings & { bonusOn: boolean; currency: string }> {
   const program = await affiliateProgram(db(), storeId);
-  return { ...program.settings, bonusOn: program.bonus.settings.enabled, currency: program.bonus.currency };
+  return { ...program.settings, bonusOn: program.bonus.on, currency: program.bonus.currency };
 }
 
 /**
- * What the storefront's layouts need of the program: whether it works, and how long its cookie lasts. Cached until the
- * program's or the bonus program's settings change (both actions call `updateTag(affiliateTag(storeId))`).
+ * What the storefront's layouts need of the program: whether it works (the store features `referrals` and `bonus` with both programs'
+ * switches, D178), and how long its cookie lasts. Cached until the program's or the bonus program's settings or the store's features
+ * change (both actions call `updateTag(affiliateTag(storeId))`, and `refreshFeatureTags()` refreshes it).
  */
 export async function affiliateSite(storeId: string): Promise<{ on: boolean; cookieDays: number; friendPercent: number }> {
   "use cache";
   cacheLife("hours");
   cacheTag(affiliateTag(storeId));
   const [row] = await readDb().execute<Row>(sql`
-    select coalesce(a.enabled, false) and coalesce(b.enabled, false) as on, coalesce(a.cookie_days, 30) as cookie_days,
+    select commerce.affiliate_program_on(${storeId}::uuid) as on, coalesce(a.cookie_days, 30) as cookie_days,
            coalesce(a.friend_percent, 0) as friend_percent
     from (select 1) one
     left join commerce.affiliate_settings a on a.store_id = ${storeId}::uuid
-    left join commerce.bonus_settings b on b.store_id = ${storeId}::uuid
   `);
   return { on: Boolean(row?.on), cookieDays: Number(row?.cookie_days ?? 30), friendPercent: Number(row?.friend_percent ?? 0) };
 }
@@ -118,6 +122,9 @@ export async function saveAffiliateSettings(account: Account, storeId: string, r
   const parsed = affiliateSettingsInput.safeParse(raw);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((issue) => issue.message))] };
   const s = parsed.data;
+  if (!(await affiliateProgram(db(), storeId)).featureOn) {
+    return { ok: false, problems: ["The referral program is switched off under Settings, Features. Switch it on there first."] };
+  }
   const before = await getAffiliateSettings(storeId);
   if (s.enabled && !before.bonusOn) {
     return {

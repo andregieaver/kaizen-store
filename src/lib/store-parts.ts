@@ -6,6 +6,13 @@
  * the address, the link's secret): elsewhere they draw nothing, so a cart
  * component on the About page does no harm.
  */
+import type { FeatureRequirement } from "./store-features";
+
+/*
+ * A part or piece may stand behind a store feature (D178, `feature`: one id or several, any of which will do): while the feature is off it
+ * draws nothing on the site, the builder's palette leaves it out, and a page that holds it shows "Switched off – not shown" on the canvas
+ * (`partFeature()`, `src/lib/part-features.ts`). A test holds every tag to a real feature id.
+ */
 export const STORE_PARTS = {
   cart: {
     name: "Cart",
@@ -93,6 +100,7 @@ export const STORE_PIECES = {
   },
   cart_credits: {
     route: "cart",
+    feature: "bonus",
     name: "Bonus credits",
     hint: "Where a signed-in shopper uses their bonus credits, or sees what the order earns; a guest is invited to sign in. Nothing in a store without a bonus program.",
   },
@@ -118,6 +126,7 @@ export const STORE_PIECES = {
   },
   checkout_credits: {
     route: "checkout",
+    feature: "bonus",
     name: "Checkout bonus credits",
     hint: "Where a signed-in shopper uses their bonus credits at the checkout, or sees what the order earns. Nothing in a store without a bonus program.",
   },
@@ -206,7 +215,7 @@ export const STORE_PIECES = {
     name: "Continue shopping",
     hint: "A link back to the store's front page.",
   },
-} as const satisfies Record<string, { route: StorePart; name: string; hint: string }>;
+} as const satisfies Record<string, { route: StorePart; name: string; hint: string; feature?: FeatureRequirement }>;
 
 export type StorePiece = keyof typeof STORE_PIECES;
 
@@ -223,6 +232,12 @@ export const isShopPart = (value: unknown): value is ShopPart => isStorePart(val
 
 /** The working page a component draws on: its own for a whole page, the page it is a piece of otherwise. */
 export const routeOfPart = (part: ShopPart): StorePart => (isStorePiece(part) ? STORE_PIECES[part].route : part);
+
+/** The store feature a shop component stands behind (D178), if any. */
+export function shopPartFeature(part: ShopPart): FeatureRequirement | undefined {
+  const entry: object = isStorePiece(part) ? STORE_PIECES[part] : STORE_PARTS[part];
+  return "feature" in entry ? (entry.feature as FeatureRequirement) : undefined;
+}
 
 /** What the admin calls a component, and what it says it does. */
 export const shopPartCopy = (part: ShopPart): { name: string; hint: string } => (isStorePiece(part) ? STORE_PIECES[part] : STORE_PARTS[part]);

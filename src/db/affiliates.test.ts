@@ -15,7 +15,7 @@ let counter = 0;
 
 beforeAll(async () => {
   db = await createTestDatabase();
-  const { id } = await one<{ id: string }>("insert into commerce.stores (slug, name, country) values ('aff-shop', 'Aff', 'NO') returning id");
+  const { id } = await one<{ id: string }>("insert into commerce.stores (slug, name, country, features) values ('aff-shop', 'Aff', 'NO', '{shop,bonus,referrals}') returning id");
   shop = id;
   await db.query(
     `insert into commerce.markets (store_id, code, currency, default_locale, locales, active)
@@ -433,17 +433,29 @@ describe("the reward when an order is paid", () => {
     await programs();
   });
 
-  it("does not reward a guard that applies when it is paid: the program off, a blocked referrer, the referrer's own email", async () => {
+  it("does not reward a guard that applies when it is paid: a blocked referrer, the referrer's own email; the program off is no such guard", async () => {
     await programs();
     const a = await affiliate();
-    // Switched off between placing and paying.
+    // Switched off between placing and paying, by its own switch or its store feature (D178): the order was attributed while the program
+    // was on, so its reward is still given when it is paid.
     const c1 = await customer();
     const o1 = await order(c1, 10_000);
     await attribute(o1, a.code);
     await programs({ affiliate: false });
     await pay(o1);
-    expect(await attribution(o1)).toMatchObject({ status: "rejected", reject_reason: "off", reward_minor: 0 });
+    expect(await attribution(o1)).toMatchObject({ status: "rewarded" });
     await programs();
+    const c0 = await customer();
+    const o0 = await order(c0, 10_000);
+    await attribute(o0, a.code);
+    await db.query("update commerce.stores set features = '{shop,bonus}' where id = $1", [shop]);
+    // A new order while it is off is not attributed at all.
+    const late = await order(await customer(), 10_000);
+    expect(await attribute(late, a.code)).toBe("off");
+    await pay(o0);
+    expect(await attribution(o0)).toMatchObject({ status: "rewarded" });
+    expect(await attribution(late)).toBeUndefined();
+    await db.query("update commerce.stores set features = '{shop,bonus,referrals}' where id = $1", [shop]);
     // Blocked meanwhile.
     const c2 = await customer();
     const o2 = await order(c2, 10_000);
@@ -458,7 +470,8 @@ describe("the reward when an order is paid", () => {
     await attribute(o3, a.code);
     await pay(o3);
     expect(await attribution(o3)).toMatchObject({ status: "rejected", reject_reason: "self" });
-    expect(await entries(a.id)).toEqual([]);
+    // The two orders placed while the program was on, and nothing else.
+    expect(await entries(a.id)).toHaveLength(2);
   });
 
   it("does not reward a friend who paid another order first, even when both were placed as first orders", async () => {

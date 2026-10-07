@@ -19,6 +19,7 @@ import { shownMeasureFromColumns } from "@/lib/unit-price-rules";
 import { freeResourcesAt } from "./appointments";
 import { attachVisitToCart } from "./analytics-visits";
 import { audit, type Membership } from "./auth";
+import { OFFERED, STORE_AUDIENCE } from "./product-conditions";
 import { checkRange, linePrice, rangePricing } from "./ranges";
 import { checkCartVatNumber, type CartVatDeps, type CartVatOutcome } from "./vat-checks";
 
@@ -171,7 +172,7 @@ export async function getCart(shop: Shop): Promise<Cart> {
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url, coalesce(nullif(m.alt ->> ${market.locale}, ''), commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
       cp.amount_minor,
-      (p.status = 'active' and v.active and ${bookable}) as sellable,
+      (p.status = 'active' and v.active and ${bookable} and ${OFFERED}) as sellable,
       va.in_stock, va.raw_available, va.stock_policy, va.backorder_days
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
@@ -328,9 +329,11 @@ function rangeEnd(row: Row, count: number): string | null {
  * The company the shopper buys for (B2B), or null to buy privately: kept on the cart for the order. A different company
  * (or none) takes the EU VAT number typed for the old one and its check off the cart (D157): a number belongs to one company.
  */
-export async function setCartCompany(shop: Shop, company: CartCompany | null): Promise<void> {
+export async function setCartCompany(shop: Shop, given: CartCompany | null): Promise<void> {
   const cartId = await readCartId(shop);
   if (!cartId) return;
+  // Only where the store sells to businesses (D178: a stale page of a store that stopped is bought privately).
+  const company = given && (await sellsToBusinesses(shop.storeId)) ? given : null;
   await db().execute(sql`
     update commerce.carts set company_name = ${company?.name ?? null}, organisation_number = ${company?.number ?? null},
       vat_number = case when ${company?.number ?? null}::text is not null and organisation_number is not distinct from ${company?.number ?? null} then vat_number end,
@@ -421,6 +424,12 @@ export async function getCartCount(shop: Shop): Promise<number> {
 }
 
 /** Whether the shopper has chosen to buy for a business (B2B). */
+/** Whether the store sells to businesses as shoppers see it (B2B, D178: its chosen audience is not consumers and Sell to businesses is on). */
+export async function sellsToBusinesses(storeId: string, runner: Pick<ReturnType<typeof db>, "execute"> = db()): Promise<boolean> {
+  const [row] = await runner.execute<Row>(sql`select ${STORE_AUDIENCE} <> 'consumers' as yes from commerce.stores s where s.id = ${storeId}::uuid`);
+  return Boolean(row?.yes);
+}
+
 async function buysForBusiness(storeId: string): Promise<boolean> {
   return parseBuyer((await cookies()).get(buyerCookie(storeId))?.value) === "business";
 }
@@ -464,9 +473,11 @@ export async function sellableQuantity(
     where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid and v.active
       -- Appointments, stays and rentals are booked for a time (D65, D67), and goods have none.
       and (p.kind = 'goods') = ${booking === null}
-      -- Business-only products (B2B) are sold to businesses, where the store sells to both.
+      -- A product is offered only where the store sells to its kind (D178: never a business-only one where it sells to consumers, Sell to
+      -- businesses switched off included), and business-only products are sold to businesses where the store sells to both (B2B).
+      and ${OFFERED}
       and (p.audience <> 'businesses' or ${await buysForBusiness(storeId)}
-        or (select s.audience from commerce.stores s where s.id = v.store_id) <> 'both')
+        or (select ${STORE_AUDIENCE} from commerce.stores s where s.id = v.store_id) <> 'both')
       and ${
         sellingPlanId
           ? sql`exists (

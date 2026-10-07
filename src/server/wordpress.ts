@@ -35,6 +35,7 @@ import { gridScope } from "./content-grid";
 import { marketIn } from "./shop";
 import { getStore, type Store } from "./stores";
 import { currentTerms } from "./taxonomy";
+import { OFFERED } from "./product-conditions";
 
 type Row = Record<string, unknown>;
 
@@ -278,7 +279,7 @@ export async function pickProducts(store: Store, query: string, limit: number): 
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${store.markets[0]?.locale ?? "en-GB"}
     left join lateral (select title from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
     left join lateral (select url, thumbnail_url from commerce.product_media where product_id = p.id order by position limit 1) m on true
-    where p.store_id = ${store.id}::uuid and p.status = 'active'
+    where p.store_id = ${store.id}::uuid and p.status = 'active' and ${OFFERED}
       and (${needle} = '' or coalesce(tl.title, tf.title) ilike ${`%${needle}%`} escape '\\' or p.handle ilike ${`%${needle}%`} escape '\\')
     order by p.created_at desc, p.handle
     limit ${Math.max(1, Math.min(50, limit))}

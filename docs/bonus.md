@@ -1,7 +1,11 @@
 # The bonus program (D130)
 
 A store's signed-in customers earn **credits** on what they pay and use them as a price reduction on a later order.
-Switched on by the owner under Sales → Bonus credits (`/admin/{store}/bonus`); off by default. The contract shared by the
+Switched on by the owner under Sales → Bonus credits (`/admin/{store}/bonus`); off by default. Since D178 (`docs/store-features.md`) the
+program also stands behind the store feature `bonus` (Settings → Features): the feature is the gate (the Bonus page, the customer's bonus
+panel, the cart's and checkout's credits, My account's credits and the AI tools are there only while it is on), and the program's own
+switch (`bonus_settings.enabled`) stays on the Bonus page, so the rules can be set up before shoppers see them. The program **works**
+only while both are on: `commerce.bonus_program_on()` in SQL, `BonusProgram.on` in code. The contract shared by the
 screens and the server is `src/lib/bonus.ts`; the rules are in SQL (`commerce.bonus_*`, migration `bonus_program_rules`);
 the engine is `src/server/bonus.ts`; checkout uses it from `cartSummary()` and `placeOrder()`.
 
@@ -78,7 +82,7 @@ online, `G` granted):
 4. *Paid* (trigger on `orders.status`, so every path: webhook, return page, venue confirmation, renewals, late
    payment): the order earns `G = floor(Σ(line total − venue) × bps / 10 000)` converted (rounded down) into the credits'
    currency, `available_at = paid_at + pendingDays`, once; nothing for a guest, a copy, a host's order, a program that is
-   off by then, or a base that rounds to 0. The used credits simply stay used.
+   off by then (its own switch or the store feature, D178), or a base that rounds to 0. The used credits simply stay used.
 5. *Unpaid* (`cancel_unpaid_order`, checkout expiry, a replaced checkout, or the job below): the held credits come back as
    a `restore` lot usable at once. If the payment arrives **after** the order was cancelled, the credits are taken again
    as far as the customer still has them; a shortfall is the store's and is noted as a `bonus.short` order event.
@@ -96,6 +100,16 @@ lot past its date (what is left of it); customers with credits expiring within 1
 date (`sendBonusExpiryEmail`, idempotency key `bonus-expiry:{customer}:{date}`, skipped for opted-out emails and when the
 program is off); unpaid orders holding credits for more than 2 hours are cancelled, which gives the credits back.
 
+**Expiry pauses while the program is off** (D178): `bonus_settings.paused_at` is set when the program stops working (its own
+switch, or the store feature `bonus` with what it needs) and cleared when it works again, by the database (`bonus_settings_pause`
+on the settings, `stores_features_after()` → `bonus_pause_sync()` on the store's features), whatever path made the change. While
+it is set, `bonus_expire_due()` writes nothing off for the store and `bonus_expiring()` reminds nobody. When the program comes
+back on, `bonus_resume()` moves every lot whose date passed during the pause: what is left of it is expired (key
+`expire-paused:{lot}`, not counted as expired in the overview) and granted again as a `restore` lot of the same amount
+(`resume:{lot}`, usable as before), expiring as long after its old date as the program was off, so the customer gets back
+the time they could not use. Lots whose date is still ahead keep it. The ledger stays append-only and every balance whole.
+Programs that were off when this came (migration `store_features_customers_rules`) start their pause then.
+
 **Staff** add or remove credits with a reason (`adjustBonus`): adding is usable at once and follows the store's expiry;
 removing takes usable credits first and never goes below zero. Audited (`customer.bonus_adjusted`). Settings changes are
 audited (`store.bonus_settings`) and never touch what was already earned.
@@ -109,7 +123,7 @@ audited (`store.bonus_settings`) and never touch what was already earned.
 - **Subscription renewals redeeming.** Renewals earn when paid (on their lines, not shipping) but cannot use credits; the
   first order can use them on goods bought once next to the subscription.
 - Tier multipliers (higher earn rates per customer group), transfers between customers, credits as gift cards, credits on
-  shipping, expiry that pauses while the program is off, reminders in the customer's own currency preference.
+  shipping, reminders in the customer's own currency preference.
 - Refunds made directly in Stripe's Dashboard: Kaizen has no refund webhook, so such a refund is not seen and credits do not
   move; refund from the order page (`refundOrder`), which records the refund and so moves the credits.
 - A refund that changes status to `failed` after it was recorded does not put the credits back (nothing updates refund

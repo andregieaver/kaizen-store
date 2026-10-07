@@ -113,12 +113,32 @@ describe("product listings' sort and filters (D78)", () => {
 
   it("in a store selling to both, shows each kind of buyer only their products", async () => {
     await db().execute(sql`update commerce.products set audience = 'businesses' where store_id = ${storeId}::uuid and handle = 'demo-bordlampe'`);
+    await db().execute(sql`update commerce.stores set audience = 'both', features = features || array['business'] where id = ${storeId}::uuid`);
     try {
       const both = { buyer: "private" as const, audienceBoth: true };
       expect(await find({}, {}, both)).not.toContain("demo-bordlampe");
       expect(await find({}, {}, { buyer: "business", audienceBoth: true })).toContain("demo-bordlampe");
     } finally {
       await db().execute(sql`update commerce.products set audience = 'all' where store_id = ${storeId}::uuid and handle = 'demo-bordlampe'`);
+      await db().execute(sql`update commerce.stores set audience = 'consumers', features = array_remove(features, 'business') where id = ${storeId}::uuid`);
+    }
+  });
+
+  it("never lists a business-only product where the store sells to consumers, Sell to businesses switched off included (D178)", async () => {
+    await db().execute(sql`update commerce.products set audience = 'businesses' where store_id = ${storeId}::uuid and handle = 'demo-bordlampe'`);
+    try {
+      // The store's own choice is consumers: nobody sees it, whatever kind of buyer they say they are.
+      expect(await find({}, {}, privateBuyer)).not.toContain("demo-bordlampe");
+      expect(await find({}, {}, business)).not.toContain("demo-bordlampe");
+      // Selling to both, but with the feature off: the store sells to consumers.
+      await db().execute(sql`update commerce.stores set audience = 'both' where id = ${storeId}::uuid`);
+      expect(await find({}, {}, { buyer: "business", audienceBoth: true })).not.toContain("demo-bordlampe");
+      // On again: there for businesses.
+      await db().execute(sql`update commerce.stores set features = features || array['business'] where id = ${storeId}::uuid`);
+      expect(await find({}, {}, { buyer: "business", audienceBoth: true })).toContain("demo-bordlampe");
+    } finally {
+      await db().execute(sql`update commerce.products set audience = 'all' where store_id = ${storeId}::uuid and handle = 'demo-bordlampe'`);
+      await db().execute(sql`update commerce.stores set audience = 'consumers', features = array_remove(features, 'business') where id = ${storeId}::uuid`);
     }
   });
 });

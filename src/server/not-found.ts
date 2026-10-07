@@ -22,6 +22,7 @@ import { type Membership } from "./auth";
 import { NO_ACCESS, memberCan } from "./permissions";
 import { pgTextArray } from "./pg-arrays";
 import { lockRedirects, createRedirect, type RedirectFailure, type SavedRedirect } from "./redirects";
+import { OFFERED } from "./product-conditions";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -119,7 +120,7 @@ async function candidatesFor(storeId: string, paths: readonly string[]): Promise
       select 'product' as kind, '/p/' || p.handle as path, p.handle as slug, coalesce(t.title, p.handle) as title
         from commerce.products p
         left join lateral (select title from commerce.product_translations x where x.product_id = p.id order by x.locale limit 1) t on true
-       where p.store_id = ${storeId}::uuid and p.status = 'active' and (p.handle ilike any(${like}::text[]) or t.title ilike any(${like}::text[]))
+       where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED} and (p.handle ilike any(${like}::text[]) or t.title ilike any(${like}::text[]))
       union all
       select t.kind, '/' || t.kind || '/' || t.slug, t.slug, t.name from commerce.terms t
        where t.store_id = ${storeId}::uuid and t.content_type = 'product' and (t.slug ilike any(${like}::text[]) or t.name ilike any(${like}::text[]))

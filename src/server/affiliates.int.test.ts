@@ -112,7 +112,8 @@ beforeAll(async () => {
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`aff-${run}@example.com`}, 'Test', 'Test') returning id`);
   const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`aff-${run}`}, 'Affiliate test', null) as id`);
   storeId = String(store.id);
-  await db().execute(sql`update commerce.stores set country = 'NO' where id = ${storeId}::uuid`);
+  // The programs work only with their store features on (D178).
+  await db().execute(sql`update commerce.stores set country = 'NO', features = features || array['bonus', 'referrals'] where id = ${storeId}::uuid`);
   await db().execute(sql`insert into commerce.store_currencies (store_id, currency, rate, round_to, position) values (${storeId}::uuid, 'NOK', 11.5, 1, 0), (${storeId}::uuid, 'EUR', 1, 1, 1) on conflict do nothing`);
   owner = await account("owner", "owner");
   admin = await account("admin", "admin");

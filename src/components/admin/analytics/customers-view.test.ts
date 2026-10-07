@@ -575,3 +575,13 @@ describe("the page at phone width", () => {
     expect(markup).not.toMatch(/max-w-\d?xl/);
   });
 });
+
+describe("the customer groups' advice without the bonus program (D178)", () => {
+  it("names bonus credit only while the bonus program's feature is on", async () => {
+    const { segmentAction, SEGMENT_COPY } = await import("./customers-view");
+    expect(segmentAction("Loyal", true)).toBe(SEGMENT_COPY.Loyal.action);
+    expect(segmentAction("Loyal", true)).toContain("bonus credit");
+    expect(segmentAction("Loyal", false)).not.toMatch(/bonus/i);
+    for (const segment of RFM_SEGMENTS) expect(segmentAction(segment, false)).not.toMatch(/bonus/i);
+  });
+});

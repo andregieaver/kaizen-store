@@ -70,6 +70,11 @@ export type PageOwnerContext = {
   standardMenus: StandardMenus;
   /** Where the owner's menus are edited. */
   menusHref: string;
+  /**
+   * The store's features as kept (D178): the builder offers only the parts of features that are on, and marks a part of one that is off
+   * on the canvas. Absent for Kaizen's pages and a design profile's workspace (whose look serves any store), which offer every part.
+   */
+  features?: readonly string[];
   /** Kaizen's plans for the Plans component (D142), on Kaizen's own pages; null for a store, which does not sell Kaizen's plans. */
   plans: PlanChoice[] | null;
   /** The owner's own CSS for every page of its site (D100), edited in the builder's CSS panel. */

@@ -102,7 +102,8 @@ beforeAll(async () => {
   );
   storeId = String(store.id);
   // A store's main currency is its own country's: Norway's, here.
-  await db().execute(sql`update commerce.stores set country = 'NO' where id = ${storeId}::uuid`);
+  // The program works only with its store feature on (D178).
+  await db().execute(sql`update commerce.stores set country = 'NO', features = features || array['bonus'] where id = ${storeId}::uuid`);
   owner = await account("owner", "owner");
   admin = await account("admin", "admin");
   stranger = await account(null, "stranger");

@@ -422,7 +422,7 @@ describe("downloads (D24)", () => {
 
 describe("buying for a business (B2B)", () => {
   it("needs the company for business-only products, and keeps it on the order", async () => {
-    await db().execute(sql`update commerce.stores set audience = 'both' where id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.stores set audience = 'both', features = features || array['business'] where id = ${storeId}::uuid`);
     await db().execute(sql`
       update commerce.products set audience = 'businesses'
       where store_id = ${storeId}::uuid and id = (select product_id from commerce.product_variants where id = ${await variant("DEMO-TOTE")}::uuid)
@@ -446,8 +446,21 @@ describe("buying for a business (B2B)", () => {
         ok: false,
         problem: "company",
       });
+
+      // Sell to businesses switched off (D178): the store sells to consumers, so a business-only product is not sold at all, a company
+      // on the cart is not kept, and the rest is bought privately.
+      await db().execute(sql`update commerce.stores set audience = 'both', features = array_remove(features, 'business') where id = ${storeId}::uuid`);
+      const stale = await cart(no, [["DEMO-TOTE", 1]]);
+      await db().execute(sql`update commerce.carts set company_name = 'Kaizen AS', organisation_number = '923609016' where id = ${stale}::uuid`);
+      expect(await placeOrder({ storeId, market: no }, stale)).toEqual({ ok: false, problem: "unavailable" });
+      const mugs = await cart(no, [["DEMO-MUG-WHITE", 1]]);
+      await db().execute(sql`update commerce.carts set company_name = 'Kaizen AS', organisation_number = '923609016' where id = ${mugs}::uuid`);
+      const privately = await placeOrder({ storeId, market: no }, mugs);
+      if (!privately.ok) throw new Error(privately.problem);
+      expect(privately.order.company).toBeNull();
+      expect(await orderRow(privately.order.orderId)).toMatchObject({ company_name: null, organisation_number: null });
     } finally {
-      await db().execute(sql`update commerce.stores set audience = 'consumers' where id = ${storeId}::uuid`);
+      await db().execute(sql`update commerce.stores set audience = 'consumers', features = array_remove(features, 'business') where id = ${storeId}::uuid`);
       await db().execute(sql`update commerce.products set audience = 'all' where store_id = ${storeId}::uuid`);
     }
   });

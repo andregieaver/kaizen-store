@@ -42,7 +42,8 @@ async function member(role: "owner" | "admin"): Promise<Membership> {
   return {
     account: { id: String(account.id), email: `${role}-${slug}@example.com`, name: role, platformAdmin: false },
     role,
-    store: { id: storeId, slug, markets: [] } as unknown as Store,
+    // Sell to businesses on (D178), as the store row says.
+    store: { id: storeId, slug, markets: [], features: ["shop", "business"] } as unknown as Store,
   };
 }
 
@@ -50,7 +51,7 @@ const auditOf = async (action: string) =>
   db().execute<Row>(sql`select details, account_id from commerce.audit_log where store_id = ${storeId}::uuid and action = ${action} order by created_at`);
 
 beforeAll(async () => {
-  const [created] = await db().execute<Row>(sql`insert into commerce.stores (slug, name, country) values (${slug}, 'Tax test', 'SE') returning id`);
+  const [created] = await db().execute<Row>(sql`insert into commerce.stores (slug, name, country, features) values (${slug}, 'Tax test', 'SE', '{shop,business}') returning id`);
   storeId = String(created.id);
   owner = await member("owner");
   admin = await member("admin");
@@ -290,6 +291,12 @@ describe("the AI manager reads the tax profile, and cannot change it", () => {
     const readiness = (await run("tax_readiness")) as { features: { feature: string; on: boolean; needs: string[] }[] };
     expect(readiness.features.find((f) => f.feature === "reverse_charge")).toMatchObject({ on: true, needs: [] });
     expect(readiness.features.find((f) => f.feature === "ioss")).toMatchObject({ on: false });
+    // Without Sell to businesses (D178), reverse charge is not one of the store's VAT features.
+    const consumersOnly = (await ownerTools.runOwnerTool({ account: owner.account, store: { ...owner.store, features: ["shop"] }, invalidate: () => {} }, "tax_readiness", {})) as {
+      features: { feature: string }[];
+    };
+    expect(consumersOnly.features.map((f) => f.feature)).not.toContain("reverse_charge");
+    expect(consumersOnly.features.map((f) => f.feature)).toContain("ioss");
   });
 
   it("has no tool that changes a VAT number, a registration or a rate", async () => {

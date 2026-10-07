@@ -54,6 +54,7 @@ import type { SaveResult } from "./settings";
 import { refreshFieldSearch, refreshStoreFieldSearch } from "./field-search";
 import { marketIn } from "./shop";
 import { getStore, storeTag } from "./stores";
+import { OFFERED } from "./product-conditions";
 
 type Row = Record<string, unknown>;
 type Runner = Pick<ReturnType<typeof db>, "execute">;
@@ -889,7 +890,7 @@ async function resolveRelations(
       from commerce.products p
       left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = ${locale}
       left join lateral (select title from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
-      where p.store_id = ${storeId}::uuid and p.status = 'active' and p.id in (${list(wanted.product)})
+      where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED} and p.id in (${list(wanted.product)})
     `);
     for (const r of rows) found.product.set(String(r.id), { label: String(r.title), href: base(`/p/${String(r.handle)}`), image: r.image ? String(r.image) : null });
   }

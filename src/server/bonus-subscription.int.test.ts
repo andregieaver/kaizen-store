@@ -38,6 +38,8 @@ beforeAll(async () => {
     sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${`bsub-${run}`}, 'Test', null) as id`,
   );
   storeId = String(store.id);
+  // The bonus program works only with its store feature on (D178).
+  await db().execute(sql`update commerce.stores set features = features || array['bonus', 'subscriptions'] where id = ${storeId}::uuid`);
   const [p] = await db().execute<Row>(sql`
     insert into commerce.selling_plans (store_id, product_id, interval, interval_count, discount_percent)
     select store_id, id, 'month'::commerce.plan_interval, 1, 10 from commerce.products where store_id = ${storeId}::uuid and handle = 'demo-notatbok' returning id

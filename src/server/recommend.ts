@@ -54,7 +54,7 @@ import { gridScope, productItem, storeAndMarket, withTileFields } from "./conten
 import { getCustomer } from "./customers";
 import { fieldsTag, shownFieldsFor } from "./custom-fields";
 import { pagesTag } from "./pages";
-import { convertedSql, inStockNow } from "./product-conditions";
+import { convertedSql, inStockNow, OFFERED } from "./product-conditions";
 import { queryVector } from "./query-vector";
 import { getRecommendSettings, recommendTag, tokensUsedThisMonth } from "./recommend-settings";
 import { CacheLate, cached, cacheKey } from "./search-cache";
@@ -146,7 +146,7 @@ function recommendable(storeId: string, market: Market, viewer: { buyer: "privat
     termIds.length === 0
       ? sql`true`
       : sql`exists (select 1 from commerce.product_terms pt where pt.store_id = p.store_id and pt.product_id = p.id and pt.term_id = any(${uuidArray(termIds)}))`;
-  return sql`p.status = 'active'
+  return sql`p.status = 'active' and ${OFFERED}
     and exists (select 1 from commerce.current_prices cp join commerce.product_variants v on v.id = cp.variant_id
       where v.product_id = p.id and v.active and cp.market_code = ${market.code})
     and ${inStockNow()}
@@ -286,7 +286,7 @@ async function popularIds(storeId: string, scope: { categoryIds: string[]; tagId
       where l.store_id = ${storeId}::uuid and not l.gift
       group by v.product_id
     ) s on s.product_id = p.id
-    where p.store_id = ${storeId}::uuid and p.status = 'active' and ${inTerms(scope.categoryIds)} and ${inTerms(scope.tagIds)}
+    where p.store_id = ${storeId}::uuid and p.status = 'active' and ${OFFERED} and ${inTerms(scope.categoryIds)} and ${inTerms(scope.tagIds)}
     order by coalesce(s.sold, 0) desc, p.created_at desc, p.id
     limit ${limit}
   `);

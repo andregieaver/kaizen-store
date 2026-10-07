@@ -47,6 +47,8 @@ export type DraftEditorProps = {
   mayRecordOutside: boolean;
   /** The member may read customers (`customers:read`): without it the picker is not drawn, the email is typed. */
   mayFindCustomers: boolean;
+  /** Sell to businesses is on (D178): only then are the company's fields offered (a company the draft already has stays on it). */
+  companyFields?: boolean;
   actions: DraftEditorActions;
   /** The screen shows a link once; the editor hands it up when a send made one. */
   onResult: (result: DraftActionResponse) => void;
@@ -91,7 +93,7 @@ const card = "flex flex-col gap-3 rounded-lg border border-border bg-background 
  * and beside it the summary the SERVER works out from what it saved. The draft saves itself a moment after a change (an open draft holds no stock and takes no number, so saving is harmless) and on *Save draft*; a save carries the
  * version the editor loaded, so a second person's change is refused instead of overwritten. Everything is checked again by the server. Sending and recording a payment outside Kaizen are at the bottom.
  */
-export function DraftEditor({ number, initial, version: initialVersion, currency: initialCurrency, locale: initialLocale, initialSummary, initialProblems, marketOptions, categories, defaultDays, mayRecordOutside, mayFindCustomers, actions, onResult }: DraftEditorProps) {
+export function DraftEditor({ number, initial, version: initialVersion, currency: initialCurrency, locale: initialLocale, initialSummary, initialProblems, marketOptions, categories, defaultDays, mayRecordOutside, mayFindCustomers, companyFields = true, actions, onResult }: DraftEditorProps) {
   const initialForm = useMemo(() => formFromDraft(initial), [initial]);
   const [form, setForm] = useState<EditorState>(initialForm);
   const formRef = useRef(form);
@@ -418,9 +420,10 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
           <h3 className="text-sm font-medium">Shipping address {!ships && <span className="font-normal text-muted">(nothing is shipped)</span>}</h3>
           <AddressFields prefix="ship" value={form.shippingAddress} onChange={(next) => patch({ shippingAddress: next })} />
           <details className="text-sm">
-            <summary className="cursor-pointer font-medium">Billing address and company</summary>
+            <summary className="cursor-pointer font-medium">{companyFields || form.companyName || form.organisationNumber ? "Billing address and company" : "Billing address"}</summary>
             <div className="mt-3 flex flex-col gap-3">
               <AddressFields prefix="bill" value={form.billingAddress} onChange={(next) => patch({ billingAddress: next })} />
+              {(companyFields || form.companyName || form.organisationNumber) && (
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1 font-medium">
                   Company name
@@ -431,7 +434,10 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
                   <input value={form.organisationNumber} onChange={(e) => patch({ organisationNumber: e.target.value })} maxLength={30} className={field} />
                 </label>
               </div>
-              <p className={hint}>A company needs both. A draft never uses reverse charge: VAT is charged, because a draft has no checked VAT number.</p>
+              )}
+              {(companyFields || form.companyName || form.organisationNumber) && (
+                <p className={hint}>A company needs both. A draft never uses reverse charge: VAT is charged, because a draft has no checked VAT number.</p>
+              )}
             </div>
           </details>
         </section>

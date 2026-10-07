@@ -50,6 +50,8 @@ import { relatedProducts } from "@/server/listing";
 import { getRangeOffer, getRangePricing, rangeDates } from "@/server/ranges";
 import { getShippingFacts, storeFacts } from "@/server/seo";
 import type { Store } from "@/server/stores";
+import { partFeatureOn } from "@/lib/part-features";
+import type { FeatureSource } from "@/lib/store-features";
 
 /**
  * The parts of a product's page (D79), each drawn where a product layout
@@ -329,7 +331,9 @@ function galleryImages(product: ProductDetail): ProductDetail["images"] {
 }
 
 /** Whether a part has anything to show for this product; one that has not is left out, space and all. */
-export function productPartShows(block: ProductBlock, product: ProductDetail, campaigns?: Notices): boolean {
+export function productPartShows(block: ProductBlock, product: ProductDetail, campaigns?: Notices, features?: FeatureSource): boolean {
+  // A part of a store feature that is off draws nothing (D178).
+  if (!partFeatureOn(block, features)) return false;
   switch (block.part) {
     case "campaigns":
       return noticesFor(campaigns, product.id).length > 0;
@@ -879,7 +883,7 @@ export function ProductLayoutView({ layout, ctx, inAdmin = false }: { layout: Pa
       place={{ pageId: null, owner: store.id, market: market.slug, product: product.id }}
       inAdmin={inAdmin}
       renderBlock={(block) =>
-        block.type === "product" && productPartShows(block, product, ctx.campaigns) ? <ProductPartView block={block} ctx={ctx} /> : null
+        block.type === "product" && productPartShows(block, product, ctx.campaigns, store) ? <ProductPartView block={block} ctx={ctx} /> : null
       }
     />
   );

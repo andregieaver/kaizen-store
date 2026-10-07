@@ -72,7 +72,9 @@ Every store gets `shop`. Then, what a store uses stays on, the rest starts off:
 - The store's row is locked while the facts are counted and the change written; every change is audited as
   `store.feature` (area `settings`, target the store, `changes.features` before and after, and in `details` the
   feature, on/off and the features that came on or went to sleep with it).
-- Caches: `storeTag`, `catalogTag`, `STORES_TAG` and the store's `pagesTag`, through `refreshTag()`.
+- Caches (`refreshFeatureTags()`): `storeTag`, `catalogTag` (products for businesses only come and go), `STORES_TAG`, the store's
+  `pagesTag` (shop components of a feature), `affiliateTag` (the referral program's storefront read) and `cookiesTag`, through
+  `refreshTag()`.
 
 ## 4. The "off" contract
 
@@ -93,6 +95,66 @@ When a feature is off (not kept, or asleep):
 6. **Shoppers' after-sale links keep working**: an order page, a subscription's manage link, a booking's cancel link,
    a hosted invoice, a withdrawal or return.
 
+## 4a. The framework for hiding (step 2, used by every later step)
+
+- **Admin pages inside pages**: a feature's part of another admin page asks `featureOn(store, id)` and shows `FeatureOffNote`
+  (`src/components/admin/feature-off.tsx`: what is off and, for an owner, the way to Features) or nothing in its place; a server action
+  behind such a part refuses with plain words whatever a stale page sends.
+- **Storefront routes**: a feature's route resolves its shop with `resolveFeatureShop(store, market, feature)` (`src/server/shop.ts`),
+  null while the feature is off, and calls `notFound()`; a component asks `featureOn(store, id)` of the store it was given.
+- **Builder parts**: shop components (`STORE_PARTS`/`STORE_PIECES`, `feature` on the entry), site parts (`SITE_PART_FEATURES`) and product
+  parts (`PRODUCT_PART_FEATURES`) may stand behind a feature (an id, or several any of which will do). `partFeature()`/`partFeatureOn()`
+  (`src/lib/part-features.ts`) read the tag for any block: `StorePartSection`, `sitePartShows()` and `productPartShows()` draw nothing
+  while it is off, the builder's palette leaves the part out (`PageOwnerContext.features`, a store's pages only), and a part already on a
+  page shows "Switched off – not shown" on the canvas. `src/lib/part-features.test.ts` holds every tag to a real feature id.
+- **Cookies**: a `KNOWN_COOKIES` entry may carry `feature`; `siteCookies()` (and so the cookie page and the banner) leaves it out while
+  the feature is off, even when an earlier scan found it.
+
+## 4b. The Customers group (step 2)
+
+**Sell to businesses (`business`).** The switch gates `stores.audience`: while it is on the owner's choice (consumers, businesses or both,
+the Company settings' Customers card) applies; while it is off the store sells to **consumers**, and the choice is kept for when it comes
+back. There is one reading of it: `effectiveAudience()` (`src/lib/b2b.ts`), which `getStore()` gives as `store.audience` (the choice
+itself is `store.chosenAudience`, read only by the card), and `commerce.store_audience(audience, features)` in SQL (`STORE_AUDIENCE` in
+`src/server/product-conditions.ts`); `audience-readers.scan.test.ts` keeps it so. Following from it:
+
+- A product for one kind of buyer is offered only where the store sells to that kind (`audienceOffered()`,
+  `commerce.audience_offered()`/`product_offered()`, the fragment `OFFERED` on every shopper-facing product read: catalogue, listings,
+  search, recommendations, sitemap, wishlists, subscription boxes, WordPress, the cart and `placeOrder()`). So a business-only product is
+  neither shown nor sold while the feature is off, and the same rule closes the earlier gap where an owner had simply chosen consumers.
+  The product keeps its audience; it comes back with the feature.
+- Shoppers are private buyers (`getBuyer()`), prices are shown with VAT, there is no business switch, popup, `data-buyer` script or
+  `buyer_…` cookie, and the cart asks for no company. A company typed on a stale page is not kept (`setCartCompany()`), the tax facts
+  treat every cart as a private buyer's (`loadTaxFacts()`), and `placeOrder()` puts no company on the order, so reverse charge cannot be
+  chosen. Switching the feature off clears the company and VAT number of the store's **open** carts in the database
+  (`stores_features_after()`).
+- A company account's discount stops (`memberDiscountFor()`, `customerTierIds()`); a customer's own group keeps theirs. Company
+  accounts, their invitations and My company (`/account/company`, its invitation page and actions) are not there (404), and the admin's
+  Companies are hidden (step 1), as are the company on a customer's page, the Customers card, companies' returns on the Returns settings
+  (kept as set), reverse charge on the Tax page and in `tax_readiness`, the company fields of a draft order (a company already on a draft
+  stays) and "Sold to" among custom fields' rules.
+- History stays: past orders keep their company, reverse charge and VAT relief, and their VAT treatment panel, invoices and emails show
+  them as they were. The VAT treatment panel is every order's frozen VAT record, so it stays for every order.
+
+**The bonus program (`bonus`).** The feature is the gate; `bonus_settings.enabled` stays the program's own switch on the Bonus page, so the
+rules can be set up while the feature is on. The program works when both are on: `commerce.bonus_program_on()`, `BonusProgram.on`.
+Off: credits are neither used (`bonus_redeem()` raises `bonus.off`; the cart and checkout pieces `cart_credits`/`checkout_credits` and
+My account's credits and `/account/bonus` are gone) nor earned (`bonus_order_paid()`), the Bonus page, the customer's bonus panel and
+the AI tools are hidden and their actions refused (`saveBonusSettings()`, `adjustBonus()`), and the analytics' advice no longer
+suggests bonus credit. **Expiry pauses**: nothing expires and nobody is reminded while it is off (`bonus_settings.paused_at`), and when
+it comes back on, credits whose date passed meanwhile are given that time back (`bonus_resume()`, `docs/bonus.md`). Balances are kept;
+past orders keep the credits they used and earned, and the analytics' discount line "Bonus credits" still shows a period that had
+some (it is drawn only for a period with any, on or off).
+
+**The referral program (`referrals`, needs `bonus`).** The feature is the gate; `affiliate_settings.enabled` stays the program's own
+switch. It works when the feature, its switch and the bonus program are all on (`commerce.affiliate_program_on()`, `affiliateSite()`).
+Off: no link is captured (`StoreAffiliate`, the country chooser's `KeepReferral`), the hidden code fields stay empty, the `kaizen_aff_…`
+cookie is not declared, new carts get no welcome discount and new orders are not attributed, My account's referral card and
+`/account/referrals` are gone, and the admin page, the customer's referral section and the AI tools are hidden and their actions refused.
+**An order attributed while it was on is still rewarded when it is paid** (`affiliate_order_paid()` no longer rejects it as `off`), and
+the reward email goes out: that reward was promised. Referrers and their history are kept, an order's referral card stays on orders
+that have an attribution, and the analytics' "Welcome discounts (referral)" line shows a period that had some.
+
 ## 5. Blockers and warnings
 
 Counted by `featureFacts()` (one query, reusing `storeObligations()` of `src/server/store-closure.ts`); the rules are
@@ -109,8 +171,8 @@ pure (`featureBlockers()`, `featureWarnings()` in `src/lib/store-features.ts`).
 | `languages` | — | languages besides the main one hidden (translations kept) |
 | `currencies` | — | extra currencies no longer offered |
 | `business` | — | open carts with a VAT number; products for businesses only; company accounts |
-| `bonus` | — | customers holding credits and what they hold (in the program's currency); the referral program going to sleep |
-| `referrals` | — | referrers whose links stop giving discounts; rewards still pending |
+| `bonus` | — | customers holding credits and what they hold (in the program's currency), and that their expiry dates move on by the pause; the referral program going to sleep |
+| `referrals` | — | referrers whose links stop giving discounts; rewards still pending (still decided as usual: they were earned while it was on) |
 
 The store's own country is `stores.country`'s market, else its first active market (as `getStore()` orders them).
 
@@ -137,9 +199,11 @@ The store's own country is `stores.country`'s market, else its first active mark
 1. **Foundation and the Features page** (this change): the registry, `stores.features` with its backfill and the modules
    mirror, `feature_on()`, `setFeature()` with blockers, warnings, needs and the audit, the navigation, admin map and AI
    tools gated, `FeatureOff` on the gated pages, the new Features page.
-2. **Admin surfaces inside pages**: hide each feature's parts of other pages (product editor purchase options and kinds,
-   customer bonus panel, company fields, currency and language choosers in settings, hosts in products, analytics
-   subscription figures, setup steps) and the AI manager's words about them.
+2. **The framework for hiding, and the Customers group** (done): section 4a's helpers (`FeatureOffNote`, `resolveFeatureShop()`,
+   part tags, cookie tags) and `business`, `bonus` and `referrals` hidden and refused everywhere, admin and storefront, with the
+   rules of section 4b (migration `store_features_customers_rules`). Later steps hide the other features' parts of pages (product
+   editor purchase options and kinds, currency and language choosers, hosts in products, analytics subscription figures, setup
+   steps) with the same helpers.
 3. **Storefront hiding**: subscribe options, box button and My account's box page, booking pickers, business toggle and
    prices without VAT, credits and referral pages, currency and language choosers, other markets, sitemap and feeds.
 4. **Server enforcement**: carts, checkout, server actions, routes, crons (renewals, box cutoffs, reminders, calendar

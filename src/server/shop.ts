@@ -3,6 +3,7 @@ import "server-only";
 import { splitSiteVersions } from "@/lib/ab-site";
 import { conversionFor } from "@/lib/localization";
 import { findMarket, type Market } from "@/lib/markets";
+import { requirementMet, type FeatureRequirement } from "@/lib/store-features";
 
 import { getOpenStore, templateStoreSlug, type Store } from "./stores";
 
@@ -56,4 +57,18 @@ export async function prerenderedShops(): Promise<{ store: string; market: strin
     ? store.markets.map((market) => ({ store: store.slug, market: market.slug }))
     : [];
   return params.length > 0 ? params : [{ store: "_", market: "_" }];
+}
+
+/**
+ * The same, for a route of a store feature (D178): null while the feature is off, so the route answers as for an address that is not
+ * there. The pattern for a feature's storefront routes: `const shop = await resolveFeatureShop(store, market, "business"); if (!shop)
+ * notFound();`. A component inside a page asks `featureOn(store, id)` of the store it was given.
+ */
+export async function resolveFeatureShop(
+  storeSlug: string,
+  marketParam: string,
+  feature: FeatureRequirement,
+): Promise<{ store: Store; market: Market; ab: Record<string, string> } | null> {
+  const shop = await resolveShop(storeSlug, marketParam);
+  return shop && requirementMet(shop.store, feature) ? shop : null;
 }

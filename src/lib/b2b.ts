@@ -10,6 +10,7 @@
  * name and organisation number.
  */
 import { vatIncluded } from "./checkout";
+import { featureOn, type FeatureSource } from "./store-features";
 
 export const STORE_AUDIENCES = ["consumers", "businesses", "both"] as const;
 export type StoreAudience = (typeof STORE_AUDIENCES)[number];
@@ -24,6 +25,24 @@ export const parseStoreAudience = (value: unknown): StoreAudience =>
 
 export const parseProductAudience = (value: unknown): ProductAudience =>
   PRODUCT_AUDIENCES.includes(value as ProductAudience) ? (value as ProductAudience) : "all";
+
+/**
+ * Who a store sells to as its shoppers see it (D178): the owner's choice while the feature `business` (Sell to businesses) is on, else
+ * consumers. The one reading of `stores.audience`: `getStore()` gives this as `store.audience` (the owner's own choice is
+ * `store.chosenAudience`), and SQL reads it as `commerce.store_audience(s.audience, s.features)`. A scan test lists the readers.
+ */
+export function effectiveAudience(chosen: unknown, features: FeatureSource): StoreAudience {
+  return featureOn(features, "business") ? parseStoreAudience(chosen) : "consumers";
+}
+
+/**
+ * Whether a product is offered at all in a store selling to `store` (D178, the same rule as `commerce.audience_offered()`): one for
+ * everyone always; in a store selling to both, any (each shopper sees their own kind's); in a store selling to one kind, only that
+ * kind's. So a business-only product is neither shown nor sold where the store sells to consumers.
+ */
+export function audienceOffered(store: StoreAudience, product: ProductAudience): boolean {
+  return product === "all" || store === "both" || (product === "businesses") === (store === "businesses");
+}
 
 /** The shopper's choice in a store selling to both: necessary, read by the page's first script. */
 export const buyerCookie = (storeId: string) => `buyer_${storeId}`;
@@ -63,14 +82,16 @@ export function withVat(netMinor: number, rate: number): number {
   return Math.round((netMinor * (10_000 + basisPoints(rate))) / 10_000);
 }
 
-/** Whether a buyer is shown a product: always, unless the store sells to both and the product is for the others. */
+/** Whether a buyer is shown a product: one offered in the store (`audienceOffered()`), and in a store selling to both, for their kind. */
 export function productShownTo(product: ProductAudience, buyer: Buyer, store: StoreAudience): boolean {
+  if (!audienceOffered(store, product)) return false;
   if (store !== "both" || product === "all") return true;
   return (product === "businesses") === (buyer === "business");
 }
 
-/** Whether a buyer may buy a product: business-only ones need a business buyer. */
+/** Whether a buyer may buy a product: one offered in the store, and business-only ones need a business buyer. */
 export function productSoldTo(product: ProductAudience, buyer: Buyer, store: StoreAudience): boolean {
+  if (!audienceOffered(store, product)) return false;
   return store !== "both" || product !== "businesses" || buyer === "business";
 }
 
