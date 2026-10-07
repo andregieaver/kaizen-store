@@ -57,6 +57,7 @@ reader forces a decision.
 | market and chooser layouts (`robots`, notice) | template or open | `noindex` and the template notice when `starter` |
 | `settings/seo/page.tsx` (`open`) | template or open | not open when `starter` |
 | `stores.ts` `templateStoreSlug()`, `billing.ts` `planCurrencies()`, `plan-reminders.ts`, `db/health.ts` | THE template | unchanged |
+| `design-presets.ts` (D176: the Standard store a design profile is previewed on, and the template named among a snapshot's sources) | THE template | a starter is previewed and listed as a store template, by its own row |
 | `store-closure.ts` (`isTemplate` cannot close) | THE template | unchanged: a starter may be closed like any store |
 | migrations' demo and closure rules | THE template | unchanged |
 
@@ -148,6 +149,7 @@ media library**: stores made from it would lose it (the same holds for the defau
 
 ## 7. Not built
 
-* A theme marketplace or a template's look as a separate choice (later).
+* A theme marketplace (later). A template's look as a separate choice is now **design profiles** (D176, `docs/design-profiles.md`): chosen
+  after the store template when a store is made, a store template may recommend one, and any store can apply one later.
 * An AI manager tool for store templates: none (the platform tools stay as they were); owners have none either.
 * Changing a store's template after it is made: a template is only a starting point; later changes to the template reach no store.

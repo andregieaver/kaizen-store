@@ -193,7 +193,7 @@ describe("setting the template up, then publishing it", () => {
   });
 
   it("gives an owner's new store the template's set-up and nothing of its own", async () => {
-    expect(await createStoreForOwner(owner, "My spa", `myspa-${run}`, spa.id)).toEqual({ ok: true, slug: `myspa-${run}` });
+    expect(await createStoreForOwner(owner, "My spa", `myspa-${run}`, spa.id)).toMatchObject({ ok: true, slug: `myspa-${run}` });
     const store = await one(sql`
       select s.id, s.modules, s.time_zone, s.audience, s.terms_at_checkout, s.custom_css, s.tracking, s.legal_name, s.starter, s.made_from_starter,
              s.setup_completed_at
@@ -244,7 +244,7 @@ describe("setting the template up, then publishing it", () => {
   });
 
   it("still makes a Standard store from the default template", async () => {
-    expect(await createStoreForOwner(owner, "Plain", `plain-${run}`)).toEqual({ ok: true, slug: `plain-${run}` });
+    expect(await createStoreForOwner(owner, "Plain", `plain-${run}`)).toMatchObject({ ok: true, slug: `plain-${run}` });
     const store = await one(sql`select made_from_starter, audience, modules from commerce.stores where slug = ${`plain-${run}`}`);
     expect(store.made_from_starter).toBeNull();
   });

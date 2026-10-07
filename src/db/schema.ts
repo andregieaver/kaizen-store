@@ -418,6 +418,11 @@ export const accessRequests = commerce.table(
      * may change it before approving. Null: the Standard store (the default template).
      */
     starterId: uuid("starter_id").references((): AnyPgColumn => storeStarters.id),
+    /**
+     * The design profile the requester chose (D176, docs/design-profiles.md), kept only when it was a published one; the platform admin
+     * may change it before approving, and it is applied right after the store is made. Null: the store template's own look.
+     */
+    designPresetId: uuid("design_preset_id").references((): AnyPgColumn => designPresets.id),
     createdAt: createdAt(),
   },
   (t) => [
@@ -428,6 +433,7 @@ export const accessRequests = commerce.table(
     index("access_requests_store_idx").on(t.storeId),
     index("access_requests_status_idx").on(t.status, t.createdAt),
     index("access_requests_starter_idx").on(t.starterId),
+    index("access_requests_design_preset_idx").on(t.designPresetId),
   ],
 );
 
@@ -619,6 +625,11 @@ export const storeStarters = commerce.table(
     pictureUrl: text("picture_url"),
     position: integer("position").notNull().default(0),
     published: boolean("published").notNull().default(false),
+    /**
+     * The design profile (D176) offered first when a store is made from this template: only the default choice on the cards, never a
+     * restriction. Null: the template's own look.
+     */
+    recommendedDesign: uuid("recommended_design").references((): AnyPgColumn => designPresets.id),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedBy: uuid("updated_by").references(() => accounts.id),
     createdAt: createdAt(),
@@ -626,6 +637,7 @@ export const storeStarters = commerce.table(
   },
   (t) => [
     uniqueIndex("store_starters_store_idx").on(t.storeId),
+    index("store_starters_recommended_design_idx").on(t.recommendedDesign),
     index("store_starters_offered_idx").on(t.published, t.position),
     index("store_starters_created_by_idx").on(t.createdBy),
     index("store_starters_updated_by_idx").on(t.updatedBy),
@@ -640,6 +652,89 @@ export const storeStarters = commerce.table(
       "store_starters_picture_url",
       sql`${t.pictureUrl} is null or (length(${t.pictureUrl}) <= 2000 and ${t.pictureUrl} ~ '^(https://|/[^/])')`,
     ),
+  ],
+);
+
+/**
+ * Design profiles (D176, docs/design-profiles.md): a frozen snapshot of a store's look, never its content, that the platform's admins
+ * make from a store and any store can apply (`applyDesignPreset()`, the one writer). `snapshot` is `DesignSnapshot` in
+ * `src/lib/design-presets.ts` (versioned, `v` 1): the theme's settings, the chosen header, footer and standard product layout as rows,
+ * and the site's CSS, cleaned of everything that points into the store it came from. Not store-owned (no `store_id`: the source is only
+ * informational), so it is outside `COPY_RULES` and never copied with a store. Never deleted (unpublished instead): the rules are in the
+ * `design_presets_rules` migration. Called "design presets" in code, never "template", "starter" or "theme" alone (D125, D175, D60).
+ */
+export const designPresets = commerce.table(
+  "design_presets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    /** On the card, plain text. */
+    summary: text("summary").notNull().default(""),
+    /** Longer, plain text. */
+    description: text("description").notNull().default(""),
+    /** A preview picture on the site (`/…`) or over https, from Kaizen's media library; null: none. */
+    pictureUrl: text("picture_url"),
+    snapshot: jsonb("snapshot").notNull(),
+    /** The store the snapshot was taken from, for *Update from its store*; informational, nothing is read from it when applying but its pictures. */
+    sourceStoreId: uuid("source_store_id").references((): AnyPgColumn => stores.id),
+    /** When the snapshot was last taken. */
+    snapshotAt: timestamp("snapshot_at", { withTimezone: true }).notNull().defaultNow(),
+    position: integer("position").notNull().default(0),
+    published: boolean("published").notNull().default(false),
+    createdBy: uuid("created_by").references(() => accounts.id),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    index("design_presets_offered_idx").on(t.published, t.position),
+    index("design_presets_source_store_idx").on(t.sourceStoreId),
+    index("design_presets_created_by_idx").on(t.createdBy),
+    index("design_presets_updated_by_idx").on(t.updatedBy),
+    check("design_presets_title", sql`length(btrim(${t.title})) between 1 and 80`),
+    check("design_presets_summary", sql`length(${t.summary}) <= 200`),
+    check("design_presets_description", sql`length(${t.description}) <= 2000`),
+    check(
+      "design_presets_picture_url",
+      sql`${t.pictureUrl} is null or (length(${t.pictureUrl}) <= 2000 and ${t.pictureUrl} ~ '^(https://|/[^/])')`,
+    ),
+    check(
+      "design_presets_snapshot",
+      sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'v' = '1' and octet_length(${t.snapshot}::text) <= 2000000`,
+    ),
+  ],
+);
+
+/**
+ * Each time a design profile (D176) was applied to a store, with the look it replaced (`previous`: the theme as stored, the header, footer and
+ * standard product layout chosen and the site's CSS) and the saved theme made of it, so the owner can put the look from before back
+ * (`restoreDesignLook()`). Written only by `src/server/design-presets.ts`; never deleted, and only `restored_at`/`restored_by` change, once.
+ */
+export const designPresetUses = commerce.table(
+  "design_preset_uses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    presetId: uuid("preset_id")
+      .notNull()
+      .references(() => designPresets.id),
+    previous: jsonb("previous").notNull(),
+    /** The saved theme (D60) made of the theme it replaced; null once the owner deleted it. */
+    savedThemeId: uuid("saved_theme_id").references((): AnyPgColumn => storeThemes.id, { onDelete: "set null" }),
+    appliedBy: uuid("applied_by").references(() => accounts.id),
+    appliedAt: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
+    restoredAt: timestamp("restored_at", { withTimezone: true }),
+    restoredBy: uuid("restored_by").references(() => accounts.id),
+  },
+  (t) => [
+    index("design_preset_uses_store_idx").on(t.storeId, t.appliedAt),
+    index("design_preset_uses_preset_idx").on(t.presetId),
+    index("design_preset_uses_saved_theme_idx").on(t.savedThemeId),
+    index("design_preset_uses_applied_by_idx").on(t.appliedBy),
+    index("design_preset_uses_restored_by_idx").on(t.restoredBy),
+    check("design_preset_uses_previous", sql`jsonb_typeof(${t.previous}) = 'object'`),
   ],
 );
 

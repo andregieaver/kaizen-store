@@ -9,6 +9,7 @@ import { emailSignInLink } from "@/lib/supabase/mailer";
 import { starterRefusal } from "@/lib/store-starters";
 
 import { audit, type Account } from "./auth";
+import { applyDesignPreset, isOfferedDesign } from "./design-presets";
 import { notifyReferralOpened, usableReferralCode } from "./referrals";
 
 type Row = Record<string, unknown>;
@@ -22,6 +23,8 @@ export type AccessRequestInput = {
   referralCode?: string | null;
   /** The store template chosen (D175): a published starter's id, else nothing (the Standard store). */
   starterId?: string | null;
+  /** The design profile chosen (D176): a published profile's id, else nothing (the template's own look). */
+  designPresetId?: string | null;
 };
 
 /**
@@ -30,15 +33,17 @@ export type AccessRequestInput = {
  * has asked before. A referral code (D131) is kept with the request when it is
  * a real one of a referrer who is not blocked; any other is dropped without a
  * word, so the form reveals nothing about codes either. Approving the request
- * makes the referral, in SQL. A store template (D175) is kept only when it is a
- * published one; any other value is dropped the same way.
+ * makes the referral, in SQL. A store template (D175) and a design profile
+ * (D176) are kept only when they are published ones; any other value is dropped
+ * the same way.
  */
 export async function createAccessRequest(input: AccessRequestInput): Promise<void> {
   const referralCode = await usableReferralCode(input.referralCode);
   await db().execute(sql`
-    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id)
+    insert into commerce.access_requests (email, name, store_name, message, referral_code, starter_id, design_preset_id)
     values (${input.email}, ${input.name}, ${input.storeName}, ${input.message}, ${referralCode},
-      (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published))
+      (select st.id from commerce.store_starters st where st.id = ${input.starterId ?? null}::uuid and st.published),
+      (select d.id from commerce.design_presets d where d.id = ${input.designPresetId ?? null}::uuid and d.published))
     on conflict ((lower(email))) where status = 'pending' do nothing
   `);
 }
@@ -58,26 +63,31 @@ export type AccessRequest = {
   /** The store template the requester chose (D175), or null for the Standard store. */
   starterId: string | null;
   starterTitle: string | null;
+  /** The design profile the requester chose (D176), or null for the template's own look. */
+  designPresetId: string | null;
+  designTitle: string | null;
 };
 
 /** Pending requests first (oldest first), then the 20 latest decisions. */
 export async function listAccessRequests(): Promise<AccessRequest[]> {
   const rows = await db().execute<Row>(sql`
-    (select r.*, s.slug as store_slug, st.title as starter_title, exists (
+    (select r.*, s.slug as store_slug, st.title as starter_title, dp.title as design_title, exists (
        select 1 from commerce.accounts a where lower(a.email) = lower(r.email)
      ) as has_account
      from commerce.access_requests r
      left join commerce.stores s on s.id = r.store_id
      left join commerce.store_starters st on st.id = r.starter_id
+     left join commerce.design_presets dp on dp.id = r.design_preset_id
      where r.status = 'pending'
      order by r.created_at)
     union all
-    (select r.*, s.slug as store_slug, st.title as starter_title, exists (
+    (select r.*, s.slug as store_slug, st.title as starter_title, dp.title as design_title, exists (
        select 1 from commerce.accounts a where lower(a.email) = lower(r.email)
      ) as has_account
      from commerce.access_requests r
      left join commerce.stores s on s.id = r.store_id
      left join commerce.store_starters st on st.id = r.starter_id
+     left join commerce.design_presets dp on dp.id = r.design_preset_id
      where r.status <> 'pending'
      order by r.decided_at desc
      limit 20)
@@ -95,6 +105,8 @@ export async function listAccessRequests(): Promise<AccessRequest[]> {
     hasAccount: Boolean(row.has_account),
     starterId: row.starter_id ? String(row.starter_id) : null,
     starterTitle: row.starter_title ? String(row.starter_title) : null,
+    designPresetId: row.design_preset_id ? String(row.design_preset_id) : null,
+    designTitle: row.design_title ? String(row.design_title) : null,
   }));
 }
 
@@ -113,7 +125,15 @@ export async function isSlugTaken(slug: string): Promise<boolean> {
 }
 
 export type ApproveResult =
-  | { ok: true; slug: string; email: string; invited: boolean }
+  | {
+      ok: true;
+      slug: string;
+      email: string;
+      invited: boolean;
+      /** The design profile chosen (D176): applied, or why not (the store is made all the same, with its template's look). */
+      design: { title: string | null; problem: string | null } | null;
+      storeId: string;
+    }
   | { ok: false; problems: string[] };
 
 /**
@@ -131,13 +151,20 @@ export async function approveAccessRequest(
   origin: string,
   /** The store template to copy: an id, null for the Standard store, or left out to keep the requester's choice. */
   starterId?: string | null,
+  /** The design profile to apply after (D176): an id, null for the template's own look, or left out to keep the requester's choice. */
+  designPresetId?: string | null,
 ): Promise<ApproveResult> {
   const problem = slugProblem(slug);
   if (problem) return { ok: false, problems: [`Store address: ${problem}`] };
   if (!storeName.trim()) return { ok: false, problems: ["Enter a store name."] };
+  // A profile that is not offered is refused in plain words before anything is made.
+  if (designPresetId && !(await isOfferedDesign(designPresetId))) {
+    return { ok: false, problems: ["That design profile is not offered any more. Choose another."] };
+  }
 
   let email: string;
   let storeId: string;
+  let chosenDesign: string | null;
   try {
     const row = await db().transaction(async (tx) => {
       if (starterId !== undefined) {
@@ -148,23 +175,45 @@ export async function approveAccessRequest(
            where id = ${requestId}::uuid and status = 'pending' and starter_id is distinct from ${starterId}::uuid
         `);
       }
+      if (designPresetId !== undefined) {
+        await tx.execute(sql`
+          update commerce.access_requests set design_preset_id = ${designPresetId}::uuid
+           where id = ${requestId}::uuid and status = 'pending' and design_preset_id is distinct from ${designPresetId}::uuid
+        `);
+      }
       const [approved] = await tx.execute<Row>(sql`
         select commerce.approve_access_request(
           ${requestId}::uuid, ${slug}, ${storeName.trim()}, ${admin.id}::uuid
         ) as store_id,
-        (select email from commerce.access_requests where id = ${requestId}::uuid) as email
+        (select email from commerce.access_requests where id = ${requestId}::uuid) as email,
+        (select design_preset_id from commerce.access_requests where id = ${requestId}::uuid) as design_preset_id
       `);
       return approved;
     });
     email = String(row.email);
     storeId = String(row.store_id);
+    chosenDesign = row.design_preset_id ? String(row.design_preset_id) : null;
   } catch (error) {
     return { ok: false, problems: [approvalProblem(error, slug)] };
   }
+  // The design profile chosen (D176), applied right after the store is made; a failure leaves the store with its template's look.
+  const design = chosenDesign ? await applyChosenDesign(storeId, chosenDesign, admin.id) : null;
   // A store that came through a referral (D131, made by the approval itself): its referrer hears it is open. Best effort.
   await notifyReferralOpened(storeId).catch(() => null);
 
-  return { ok: true, slug, email, invited: await emailSignInLink(email, origin) };
+  return { ok: true, slug, email, invited: await emailSignInLink(email, origin), design, storeId };
+}
+
+/** Applies the design profile chosen for a store just made (D176), never throwing: the store stays whatever happens. */
+async function applyChosenDesign(storeId: string, presetId: string, accountId: string): Promise<{ title: string | null; problem: string | null }> {
+  try {
+    const [preset] = await db().execute<Row>(sql`select title from commerce.design_presets where id = ${presetId}::uuid`);
+    const result = await applyDesignPreset(storeId, presetId, accountId);
+    return { title: preset ? String(preset.title) : null, problem: result.ok ? null : result.problems.join(" ") };
+  } catch (error) {
+    console.error("[platform] the design profile could not be applied", error);
+    return { title: null, problem: "The design profile could not be applied." };
+  }
 }
 
 function approvalProblem(error: unknown, slug: string): string {
@@ -201,7 +250,9 @@ export async function declineAccessRequest(admin: Account, requestId: string): P
 /** How many stores one person may own; platform admins have no limit. */
 export const MAX_STORES_PER_OWNER = 10;
 
-export type CreateStoreResult = { ok: true; slug: string } | { ok: false; problems: string[] };
+export type CreateStoreResult =
+  | { ok: true; slug: string; storeId: string; design: { title: string | null; problem: string | null } | null }
+  | { ok: false; problems: string[] };
 
 /**
  * An owner creates another store: a copy of the store template chosen (D175:
@@ -211,11 +262,19 @@ export type CreateStoreResult = { ok: true; slug: string } | { ok: false; proble
  * who already own a store (or run the platform) can, so the beta stays
  * invite-only.
  */
-export async function createStoreForOwner(account: Account, name: string, slug: string, starterId: string | null = null): Promise<CreateStoreResult> {
+export async function createStoreForOwner(
+  account: Account,
+  name: string,
+  slug: string,
+  starterId: string | null = null,
+  /** The design profile to apply once the store is made (D176): a published profile's id, or null for the template's own look. */
+  designPresetId: string | null = null,
+): Promise<CreateStoreResult> {
   const problems: string[] = [];
   if (!name.trim()) problems.push("Enter a store name.");
   const problem = slugProblem(slug);
   if (problem) problems.push(`Store address: ${problem}`);
+  if (designPresetId && !(await isOfferedDesign(designPresetId))) problems.push("That design profile is not offered any more. Choose another.");
   if (problems.length > 0) return { ok: false, problems };
 
   const [owned] = await db().execute<Row>(sql`
@@ -243,6 +302,9 @@ export async function createStoreForOwner(account: Account, name: string, slug: 
     return { ok: false, problems: [approvalProblem(error, slug)] };
   }
   const [store] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${slug}`);
-  await audit(account.id, store ? String(store.id) : null, "store.created_by_owner", { slug, name: name.trim(), starter: starterId });
-  return { ok: true, slug };
+  const storeId = String(store.id);
+  await audit(account.id, storeId, "store.created_by_owner", { slug, name: name.trim(), starter: starterId, design: designPresetId });
+  // The design profile chosen (D176), applied right after; a failure leaves the store with its template's look.
+  const design = designPresetId ? await applyChosenDesign(storeId, designPresetId, account.id) : null;
+  return { ok: true, slug, storeId, design };
 }

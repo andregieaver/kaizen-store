@@ -46,6 +46,8 @@ export type StarterRow = OfferedStarter & {
   storeName: string;
   /** Stores made from it so far (`stores.made_from_starter`). */
   storesMade: number;
+  /** The design profile offered first for a store made from it (D176), or null. */
+  recommendedDesign: string | null;
   updatedAt: string;
 };
 

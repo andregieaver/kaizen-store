@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { DesignCards } from "@/components/admin/design-cards";
 import { StarterCards } from "@/components/admin/starter-cards";
 import { StoresList } from "@/components/admin/stores-list";
 import { listClosedStores, listStores, requireAccount } from "@/server/auth";
@@ -10,6 +11,7 @@ import { copyProgressPath } from "@/lib/store-copy-paths";
 import { listHostings } from "@/server/hosts";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
 import { listStoreCopies } from "@/server/store-copy";
+import { designChoices } from "@/server/design-presets";
 import { starterCards } from "@/server/store-starters";
 
 import { createStoreAction } from "./actions";
@@ -29,6 +31,8 @@ export default async function AllStoresPage() {
   const full = !account.platformAdmin && owned >= MAX_STORES_PER_OWNER;
   // The store templates to start from (D175): the Standard store and the published ones.
   const cards = canCreate ? await starterCards() : [];
+  // The design profiles to apply after (D176): keep the template's own look first; a template may recommend one.
+  const designs = canCreate ? await designChoices() : { cards: [], recommended: {} };
 
   return (
     <div className="flex flex-col gap-8">
@@ -76,6 +80,14 @@ export default async function AllStoresPage() {
               </span>
             </label>
             <StarterCards cards={cards} hint="Preview opens a template's store in a new window, to look around before you choose." />
+            {designs.cards.length > 1 && (
+              <DesignCards
+                cards={designs.cards}
+                recommended={designs.recommended}
+                legend="Design profile"
+                hint="The look only: colours, fonts, header, footer and product page. Your products, pages and menus are the template's. Preview opens it in a new window."
+              />
+            )}
             <div>
               <SubmitButton>Create store</SubmitButton>
             </div>

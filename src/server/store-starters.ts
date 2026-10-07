@@ -79,7 +79,7 @@ export async function starterCards(): Promise<StarterCard[]> {
 export async function listStarters(): Promise<StarterRow[]> {
   const rows = await db().execute<Row>(sql`
     select st.id, st.title, st.summary, st.description, st.category, st.picture_url, st.published, st.position, st.updated_at,
-           s.id as store_id, s.slug, s.name as store_name,
+           st.recommended_design, s.id as store_id, s.slug, s.name as store_name,
            (select count(*)::int from commerce.stores m where m.made_from_starter = st.id) as stores_made
     from commerce.store_starters st
     join commerce.stores s on s.id = st.store_id
@@ -93,7 +93,7 @@ export async function getStarter(id: string): Promise<StarterRow | null> {
   if (!isUuid(id)) return null;
   const [row] = await db().execute<Row>(sql`
     select st.id, st.title, st.summary, st.description, st.category, st.picture_url, st.published, st.position, st.updated_at,
-           s.id as store_id, s.slug, s.name as store_name,
+           st.recommended_design, s.id as store_id, s.slug, s.name as store_name,
            (select count(*)::int from commerce.stores m where m.made_from_starter = st.id) as stores_made
     from commerce.store_starters st
     join commerce.stores s on s.id = st.store_id
@@ -110,6 +110,7 @@ function toRow(row: Row): StarterRow {
     storeId: String(row.store_id),
     storeName: String(row.store_name),
     storesMade: Number(row.stores_made ?? 0),
+    recommendedDesign: row.recommended_design ? String(row.recommended_design) : null,
     updatedAt: new Date(String(row.updated_at)).toISOString(),
   };
 }

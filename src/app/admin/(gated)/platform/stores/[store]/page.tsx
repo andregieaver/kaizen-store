@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CustomerBar } from "@/components/admin/customer-bar";
+import { DesignProfilePanel } from "@/components/admin/design-profile-panel";
+import { designPreviewPath } from "@/lib/design-presets";
+import { latestDesignUse, listDesigns } from "@/server/design-presets";
 import { InvoiceList } from "@/components/admin/plan-invoices";
 import { PlanDiscount } from "@/components/admin/plan-discount";
 import { formatBps, isOnPlan, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
@@ -17,6 +20,7 @@ import { getStore } from "@/server/stores";
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
 import { requirePlatformAdmin } from "@/server/auth";
 
+import { applyDesignToStoreAction, restoreDesignForStoreAction } from "../../design-profiles/actions";
 import { closeStoreForPlatformAction, reopenStoreForPlatformAction, suspendStoreAction } from "./actions";
 
 export const metadata: Metadata = { title: "Store plan" };
@@ -34,7 +38,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
     listStorePeople(store.id),
     listStoreInvoices(store.id, 12),
   ]);
-  const [state, obligations] = await Promise.all([storeState(store.id), storeObligations(store.id)]);
+  const [state, obligations, designs, latestDesign] = await Promise.all([storeState(store.id), storeObligations(store.id), listDesigns(), latestDesignUse(store.id)]);
   const blockers = closureBlockers(obligations);
   const owner = people.find((p) => p.role === "owner");
   const date = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
@@ -280,6 +284,18 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         </h2>
         <InvoiceList storeSlug={store.slug} invoices={invoices} date={date} />
       </section>
+
+      {/* Design profiles (D176): a platform admin applies one to any store, a store template's included (an unpublished one only there). */}
+      <DesignProfilePanel
+        designs={designs
+          .filter((d) => d.readable && (d.published || store.starter))
+          .map((d) => ({ ...d, previewHref: designPreviewPath(d.id, null, true) }))}
+        latest={latestDesign}
+        apply={applyDesignToStoreAction.bind(null, store.slug)}
+        restore={restoreDesignForStoreAction.bind(null, store.slug)}
+        canChange={store.status === "active"}
+        closedNote="The store is not open, so its look cannot be changed."
+      />
 
       <section aria-labelledby="people-heading" className="rounded-lg border border-border bg-background p-5 text-sm">
         <h2 id="people-heading" className="mb-3 font-medium">

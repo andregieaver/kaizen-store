@@ -1,24 +1,34 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { DesignProfilePanel } from "@/components/admin/design-profile-panel";
 import { ThemeEditor } from "@/components/admin/theme-editor";
-import { requirePermission } from "@/server/permissions";
+import { designPreviewPath } from "@/lib/design-presets";
+import { latestDesignUse, listOfferedDesigns } from "@/server/design-presets";
+import { memberCan, requirePermission } from "@/server/permissions";
 import { listSavedThemes } from "@/server/themes";
 
 import {
+  applyDesignAction,
   deleteSavedThemeAction,
   installStoreFontAction,
   saveCartBehaviourAction,
   saveSavedThemeAction,
   saveThemeAction,
+  restoreDesignAction,
 } from "./actions";
 
 export const metadata: Metadata = { title: "Design" };
 
 /** The store's theme (D60): colours, fonts, buttons, corners, layout and product cards. */
-export default async function StoreDesignPage({ params }: PageProps<"/admin/[store]/settings/design">) {
-  const { store } = await requirePermission((await params).store, "website:read");
-  const saved = await listSavedThemes(store.id);
+export default async function StoreDesignPage({ params, searchParams }: PageProps<"/admin/[store]/settings/design">) {
+  const member = await requirePermission((await params).store, "website:read");
+  const { store } = member;
+  const [saved, designs, latest] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id)]);
+  // Design profiles (D176): applied by those who may change the website.
+  const canChange = memberCan(member, "website:write");
+  // A new store whose chosen design profile could not be applied lands here (`createStoreAction`).
+  const designFailed = (await searchParams).design === "failed";
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -28,7 +38,22 @@ export default async function StoreDesignPage({ params }: PageProps<"/admin/[sto
           Pages you build use it too.
         </p>
       </div>
+      {designFailed && (
+        <p role="alert" className="max-w-3xl rounded-lg border border-border bg-background p-4 text-sm">
+          The store is made, but the design profile you chose could not be applied: it has its store template&apos;s look. Apply the
+          profile below, or choose another.
+        </p>
+      )}
+      <DesignProfilePanel
+        designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id) }))}
+        latest={latest}
+        apply={canChange ? applyDesignAction.bind(null, store.slug) : null}
+        restore={canChange ? restoreDesignAction.bind(null, store.slug) : null}
+        canChange={canChange}
+      />
       <ThemeEditor
+        // A design profile applied or put back changes the theme under the editor: it starts again from the store's.
+        key={JSON.stringify(store.theme)}
         storeName={store.name}
         current={store.theme}
         saved={saved}

@@ -3,9 +3,11 @@
 import { updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
+import { designChoice } from "@/lib/design-presets";
 import { BUILDER_WRITE } from "@/lib/permissions";
 import { NO_ACCESS, checkPermission, requireAnyPermission, requirePermission } from "@/server/permissions";
 import { setOpenCartOnAdd } from "@/server/cart";
+import { applyDesignPreset, designTags, restoreDesignLook } from "@/server/design-presets";
 import { installFont } from "@/server/fonts";
 import { storeTag } from "@/server/stores";
 import { deleteSavedTheme, saveSavedTheme, saveStoreTheme } from "@/server/themes";
@@ -56,4 +58,30 @@ export async function saveCartBehaviourAction(storeSlug: string, _state: FormSta
   // Product pages pass the choice to their add-to-cart buttons.
   updateTag(storeTag(member.store.slug));
   return { status: "ok", messages: ["Saved."] };
+}
+
+/**
+ * Applies a design profile to the store (D176): the theme, a header, footer and product layout as new pages, and the CSS; the look from
+ * before is kept so it can be put back.
+ */
+export async function applyDesignAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const presetId = designChoice(formData.get("design"));
+  if (!presetId) return { status: "error", messages: ["Choose a design profile."] };
+  const result = await applyDesignPreset(member.store.id, presetId, member.account.id);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  for (const tag of designTags(member.store)) updateTag(tag);
+  const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
+  return { status: "ok", messages: [`Applied. Your look from before is kept as the saved theme “${result.savedTheme}”, and can be put back here.${notes}`] };
+}
+
+/** Puts back the store's look from before its latest design profile (D176). */
+export async function restoreDesignAction(storeSlug: string): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const result = await restoreDesignLook(member.store.id, member.account.id);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  for (const tag of designTags(member.store)) updateTag(tag);
+  return { status: "ok", messages: [`The look from before ${result.presetTitle} is back.`] };
 }

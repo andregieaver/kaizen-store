@@ -254,6 +254,8 @@ export const NOT_PERSONAL: Record<string, string> = {
   retention_rules: "The platform's retention schedule: periods, sources and dates, never a person.",
   resource_blocks: "A closure of a room or item and the staff's note about it, not about a customer.",
   saved_parts: "A saved page part's name and content.",
+  design_presets: "A design profile's title, description and snapshot of a store's look (D176): theme settings, header, footer and layout rows, CSS; never a person's data.",
+  design_preset_uses: "Which design profile a store applied and the look it replaced (D176): a theme, page ids and CSS, and the staff account that did it.",
   shipping_carriers: "The store's own agreement and details with a carrier.",
   shipping_vat_rules: "A country's shipping VAT rule and a note.",
   store_themes: "A saved design theme's name.",

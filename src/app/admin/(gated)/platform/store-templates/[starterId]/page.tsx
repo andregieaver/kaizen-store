@@ -7,9 +7,11 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StarterPictureField } from "@/components/admin/starter-picture-field";
 import { STARTER_CATEGORIES, STARTER_CATEGORY_LABELS, STARTER_LIMITS } from "@/lib/store-starters";
 import { requirePlatformAdmin } from "@/server/auth";
+import { listDesigns } from "@/server/design-presets";
 import { getStarter, starterPreviewHref } from "@/server/store-starters";
 
 import { uploadPlatformImageAction } from "../../actions";
+import { recommendDesignAction } from "../../design-profiles/actions";
 import { updateStarterAction } from "../actions";
 
 export const metadata: Metadata = { title: "Store template" };
@@ -21,7 +23,7 @@ const field = "flex flex-col gap-1 text-sm font-medium";
 export default async function StoreTemplatePage({ params }: PageProps<"/admin/platform/store-templates/[starterId]">) {
   await connection();
   await requirePlatformAdmin();
-  const starter = await getStarter((await params).starterId);
+  const [starter, designs] = await Promise.all([getStarter((await params).starterId), listDesigns()]);
   if (!starter) notFound();
 
   return (
@@ -68,6 +70,30 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
           <SubmitButton>Save</SubmitButton>
         </div>
       </ActionForm>
+      <section aria-labelledby="recommended-design" className="flex flex-col gap-2 rounded-lg border border-border bg-background p-5">
+        <h2 id="recommended-design" className="font-medium">
+          Recommended design profile
+        </h2>
+        <p className="text-sm text-muted">
+          Chosen first when a store is made from this template (D176), while it is published; the person may choose another. To change this
+          template&apos;s own look, apply a profile from its page under All stores, or edit it in its admin.
+        </p>
+        <ActionForm action={recommendDesignAction.bind(null, starter.id)} className="flex flex-wrap items-end gap-3">
+          <label className={field}>
+            Design profile
+            <select name="design" defaultValue={starter.recommendedDesign ?? ""} className={control}>
+              <option value="">None: the template&apos;s own look</option>
+              {designs.map((design) => (
+                <option key={design.id} value={design.id}>
+                  {design.title}
+                  {!design.published && " (not published)"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <SubmitButton>Save</SubmitButton>
+        </ActionForm>
+      </section>
     </div>
   );
 }

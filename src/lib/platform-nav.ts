@@ -21,10 +21,11 @@ export const WEBSITE_ITEMS: SectionItem[] = [
   item("/fonts", "Fonts", "The self-hosted fonts Kaizen's pages use."),
 ];
 
-/** The Stores section (D175): every store, and the store templates new stores start from. */
+/** The Stores section (D175): every store, the store templates new stores start from, and the design profiles any store can apply (D176). */
 export const STORE_ITEMS: SectionItem[] = [
   item("/stores", "All stores", "Every store with its plan, subscription and fee.", true),
   item("/store-templates", "Store templates", "Starting points for new stores, each a store set up for one kind of business: make, describe, publish, order and preview them."),
+  item("/design-profiles", "Design profiles", "A store's look kept to use again (theme, header, footer, product page and CSS): make one from a store, publish, order and preview them."),
 ];
 
 export const PLAN_ITEMS: SectionItem[] = [

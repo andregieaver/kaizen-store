@@ -40,7 +40,7 @@ afterAll(async () => {
 describe("owners creating more stores", () => {
   it("gives an owner a second store, copied from the demo, with them as owner", async () => {
     const result = await createStoreForOwner(owner, "Second store", `second-${run}`);
-    expect(result).toEqual({ ok: true, slug: `second-${run}` });
+    expect(result).toMatchObject({ ok: true, slug: `second-${run}`, design: null });
     const [row] = await db().execute<Row>(sql`
       select m.role,
              (select count(*)::int from commerce.products p where p.store_id = s.id) as products

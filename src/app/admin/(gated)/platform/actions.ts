@@ -10,6 +10,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { PLAN_INTERVALS, percentToBps } from "@/lib/plans";
 import { parsePrice } from "@/lib/product-input";
 import { seoFromForm } from "@/lib/seo";
+import { designChoice } from "@/lib/design-presets";
 import { starterChoice } from "@/lib/store-starters";
 import { siteUrl } from "@/lib/site";
 import { requireAccount, type Account } from "@/server/auth";
@@ -26,6 +27,7 @@ import {
 import { connectPlatformWebhooks, setCheckoutUi, setSaleFeeBps } from "@/server/connect";
 import { startVideoUpload, type UploadResult, type VideoUpload } from "@/server/media";
 import { registerVideo, uploadToLibrary } from "@/server/media-library";
+import { designTags } from "@/server/design-presets";
 import { approveAccessRequest, declineAccessRequest } from "@/server/platform";
 import { PLATFORM_SEO_TAG, savePlatformSeo } from "@/server/seo";
 import {
@@ -77,14 +79,23 @@ export async function decideAction(
     site,
     // The store template (D175) as the admin left it on the request; a form without the field keeps the requester's.
     formData.has("starter") ? starterChoice(formData.get("starter")) : undefined,
+    // The design profile (D176) likewise.
+    formData.has("design") ? designChoice(formData.get("design")) : undefined,
   );
   if (!result.ok) return { status: "error", messages: result.problems };
+  // A design profile applied changed the new store's look (its storefront was never cached yet, but its admin may be).
+  if (result.design && !result.design.problem) for (const tag of designTags({ id: result.storeId, slug: result.slug })) updateTag(tag);
+  const design = !result.design
+    ? ""
+    : result.design.problem
+      ? ` The design profile${result.design.title ? ` ${result.design.title}` : ""} could not be applied (${result.design.problem}): the store has its template's look; apply the profile from the store's page.`
+      : ` Its design profile${result.design.title ? `, ${result.design.title},` : ""} is applied.`;
   return {
     status: "ok",
     messages: [
-      result.invited
+      (result.invited
         ? `Store created at ${storeHref(result.slug, storeBase(result.slug))}. A sign-in link is on its way to ${result.email}.`
-        : `Store created at ${storeHref(result.slug, storeBase(result.slug))}, but the sign-in email could not be sent. Ask ${result.email} to sign in at ${site}/admin/sign-in.`,
+        : `Store created at ${storeHref(result.slug, storeBase(result.slug))}, but the sign-in email could not be sent. Ask ${result.email} to sign in at ${site}/admin/sign-in.`) + design,
     ],
   };
 }

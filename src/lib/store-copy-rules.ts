@@ -229,6 +229,7 @@ export const COPY_RULES: Record<string, CopyRule> = {
   standing_orders: never("No subscription box list is copied, so nobody is delivered to twice."),
   store_billing: never("The plan and billing belong to the original."),
   store_domains: never("A domain belongs to one store."),
+  design_preset_uses: never("Which design profiles (D176) the original applied, with the look each replaced: the copy has the original's look already, and its own history starts empty."),
   store_starters: never("A store template's listing (D175) is the platform's: a copy of a template is an ordinary store, never offered as one."),
   store_integrations: never("Webhook addresses are secrets."),
   store_members: never("Only the person copying owns the new store."),

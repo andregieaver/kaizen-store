@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { DesignCards } from "@/components/admin/design-cards";
 import { StarterCards } from "@/components/admin/starter-cards";
 import { referralPublicSettings } from "@/server/referrals";
+import { designChoices } from "@/server/design-presets";
 import { starterCards } from "@/server/store-starters";
 
 import { requestAccess } from "./actions";
@@ -24,6 +26,8 @@ export default async function SignUpPage() {
   const referrals = await referralPublicSettings();
   // The store templates a new store can start from (D175); with none published, there is nothing to choose.
   const cards = await starterCards();
+  // The design profiles to apply after (D176); with none published, there is nothing to choose.
+  const designs = await designChoices();
   return (
     <main id="main" className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center gap-6 px-6 py-16">
       <div>
@@ -54,6 +58,14 @@ export default async function SignUpPage() {
             cards={cards}
             legend="Start from (optional)"
             hint="Each template is a store set up for one kind of business. Preview opens it in a new window."
+          />
+        )}
+        {designs.cards.length > 1 && (
+          <DesignCards
+            cards={designs.cards}
+            recommended={designs.recommended}
+            legend="Design profile (optional)"
+            hint="The look only: colours, fonts, header, footer and product page. Preview opens it in a new window."
           />
         )}
         <label className={field}>

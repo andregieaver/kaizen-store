@@ -538,8 +538,8 @@ const PAGES: readonly AdminPage[] = [
   store("footer.new", "/footers/new", "New footer", "Store", "Starts a custom footer."),
   store("footer", "/footers/[pageId]", "Footer", "Store", "Builds a custom footer."),
   store("footer.preview", "/footers/[pageId]/preview", "Footer preview", "Store", "Previews a custom footer."),
-  store("design", "/settings/design", "Design", "Store", "The store's theme: colours, fonts, buttons, cards, light and dark.", {
-    keywords: ["theme", "colours", "fonts", "look"],
+  store("design", "/settings/design", "Design", "Store", "The store's theme: colours, fonts, buttons, cards, light and dark; and design profiles, a whole look (theme, header, footer, product page and CSS) to apply and put back.", {
+    keywords: ["theme", "colours", "fonts", "look", "design profile", "design template"],
   }),
   store("close", "/settings/close", "Close store", "Store", "Closes the store: stops sales, ends the Kaizen plan at the end of its period, releases its domains and cancels orders waiting for payment, after a fresh sign-in and the store's address typed in. Blocked while paid goods are unsent or subscriptions and weekly deliveries run. Nothing is deleted; the owner can reopen for thirty days. For a closed or suspended store the page shows its status and the reopen button.", {
     needs: "owner",
@@ -652,8 +652,13 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Make a new store template", "Publish a store template", "Preview a store template", "Edit a store template's products and pages"],
     keywords: ["starter", "starting point", "store template", "blueprint"],
   }),
-  platform("store-template", "/store-templates/[starterId]", "Store template", "Platform", "One store template's title, summary, description, category and picture."),
-  platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount."),
+  platform("store-template", "/store-templates/[starterId]", "Store template", "Platform", "One store template's title, summary, description, category and picture, and the design profile it recommends."),
+  platform("design-profiles", "/design-profiles", "Design profiles", "Platform", "A store's look kept to use again (D176): theme, header, footer, product page layout and CSS, never content or brand. Make one from a store, update it from its store, publish or unpublish it, order them and preview it on a store template; any store applies one from its Design settings and people creating a store choose one.", {
+    tasks: ["Make a design profile from a store", "Publish a design profile", "Preview a design profile", "Update a design profile from its store"],
+    keywords: ["design template", "look", "theme preset", "style", "skin"],
+  }),
+  platform("design-profile", "/design-profiles/[presetId]", "Design profile", "Platform", "One design profile's title, summary, description and picture, with previews on each store template."),
+  platform("store", "/stores/[store]", "Store", "Platform", "One store's plan: start, change or cancel it, its fee and discount; apply a design profile to it."),
   platform("store.invoice", "/stores/[store]/invoices/[invoiceId]", "Plan invoice", "Platform", "One of a store's plan invoices."),
   platform("plans", "/plans", "Plans", "Platform", "Kaizen's plans, their prices and fees, synced to Stripe.", { keywords: ["pricing", "tiers"] }),
   platform("plan-features", "/plans/features", "Plan features", "Platform", "Every feature in a table with the plans as columns, and a box to tick what each plan includes.", {

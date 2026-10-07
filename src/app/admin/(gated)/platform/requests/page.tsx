@@ -5,9 +5,11 @@ import { connection } from "next/server";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { suggestSlug } from "@/lib/slug";
+import type { OfferedDesign } from "@/lib/design-presets";
 import { STARTER_CATEGORY_LABELS, type OfferedStarter } from "@/lib/store-starters";
 import { requirePlatformAdmin } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
+import { listOfferedDesigns } from "@/server/design-presets";
 import { listOfferedStarters } from "@/server/store-starters";
 
 import { decideAction } from "../actions";
@@ -21,7 +23,7 @@ export default async function PlatformPage() {
   // Per request: admin pages never read the database while the site is built.
   await connection();
   await requirePlatformAdmin();
-  const [requests, starters] = await Promise.all([listAccessRequests(), listOfferedStarters()]);
+  const [requests, starters, designs] = await Promise.all([listAccessRequests(), listOfferedStarters(), listOfferedDesigns()]);
   const pending = requests.filter((r) => r.status === "pending");
   const decided = requests.filter((r) => r.status !== "pending");
 
@@ -31,7 +33,7 @@ export default async function PlatformPage() {
         <h1 className="text-2xl font-semibold">Access requests</h1>
         <p className="text-sm text-muted">
           Approving creates the store as a copy of the store template chosen (the Standard store is the demo
-          template), makes the requester its owner, and emails them a sign-in link.
+          template), applies the design profile chosen, makes the requester its owner, and emails them a sign-in link.
         </p>
       </div>
 
@@ -42,7 +44,7 @@ export default async function PlatformPage() {
         {pending.length === 0 ? (
           <p className="text-sm text-muted">No requests are waiting.</p>
         ) : (
-          pending.map((request) => <PendingRequest key={request.id} request={request} starters={starters} />)
+          pending.map((request) => <PendingRequest key={request.id} request={request} starters={starters} designs={designs} />)
         )}
       </section>
 
@@ -57,6 +59,7 @@ export default async function PlatformPage() {
                 <span>
                   {request.name} · {request.email} · {request.storeName}
                   {request.starterTitle && <span className="text-muted"> · from {request.starterTitle}</span>}
+                  {request.designTitle && <span className="text-muted"> · design {request.designTitle}</span>}
                 </span>
                 <span className="text-muted">
                   {request.status === "approved" && request.storeSlug ? (
@@ -76,9 +79,11 @@ export default async function PlatformPage() {
   );
 }
 
-async function PendingRequest({ request, starters }: { request: AccessRequest; starters: OfferedStarter[] }) {
+async function PendingRequest({ request, starters, designs }: { request: AccessRequest; starters: OfferedStarter[]; designs: OfferedDesign[] }) {
   // The template the requester chose (D175), even when it is no longer published: the admin then chooses another.
   const gone = request.starterId && !starters.some((s) => s.id === request.starterId);
+  // The same for the design profile (D176).
+  const designGone = request.designPresetId && !designs.some((d) => d.id === request.designPresetId);
   // Suggest a free address; the admin can still change it.
   const base = suggestSlug(request.storeName) || suggestSlug(request.name);
   let slug = base;
@@ -143,6 +148,21 @@ async function PendingRequest({ request, starters }: { request: AccessRequest; s
           </select>
           <span className="font-normal text-muted">
             {request.starterId ? "Chosen by the requester; change it if another fits better." : "The requester chose none."}
+          </span>
+        </label>
+        <label className="flex max-w-md flex-col gap-1 text-sm font-medium">
+          Design profile
+          <select name="design" defaultValue={request.designPresetId ?? ""} className={control}>
+            <option value="">Keep the template&apos;s own design</option>
+            {designs.map((design) => (
+              <option key={design.id} value={design.id}>
+                {design.title}
+              </option>
+            ))}
+            {designGone && <option value={request.designPresetId ?? ""}>{request.designTitle ?? "A design profile"} (not published: choose another)</option>}
+          </select>
+          <span className="font-normal text-muted">
+            {request.designPresetId ? "Chosen by the requester; applied right after the store is made." : "The requester chose none."}
           </span>
         </label>
         <div className="flex flex-wrap gap-3">
