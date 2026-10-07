@@ -30,7 +30,7 @@ import type { AnalyticsSettings } from "@/lib/analytics-settings";
 import { convertMinor } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { CUSTOMER_JOIN, CUSTOMER_KEY, HAS_CUSTOMER, dayStart, inPeriod, num, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, num, type Row } from "./analytics-sql";
 import { setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -162,7 +162,7 @@ async function readCustomers(store: Store, period: AnalyticsPeriod, settings: An
         select p.order_id, sum(r.amount_minor)::numeric as amount
         from commerce.refunds r
         join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
-        where r.store_id = ${id}::uuid and r.status = 'succeeded'
+        where r.store_id = ${id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND}
         group by p.order_id
       ) rf on rf.order_id = o.id
       left join (

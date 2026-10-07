@@ -80,6 +80,7 @@ export const orderDocuments = (over: Partial<OrderDocuments> = {}): OrderDocumen
   eligibility: "ok",
   invoice: { id: "22222222-2222-4222-8222-222222222222", type: "invoice", documentNumber: "F-17", issuedOn: "2026-10-05", token: "inv_x", hasPdf: true, totalMinor: 100_000, currency: "NOK" },
   creditNotes: [],
+  additionalInvoices: [],
   waiting: null,
   shopperNote: null,
   staffNote: null,

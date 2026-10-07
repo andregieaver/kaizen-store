@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { emailText } from "./email-text";
 import { t } from "./i18n";
+import { editDocumentText } from "./invoice-text";
 import { templateArguments, templateProblem } from "./icu-lite";
 import { catalogOf, CHOOSING, HAND_WRITTEN_ONLY, isHandWrittenOnly, overlayMessages, runTemplate, sourceHash } from "./ui-catalog";
 
@@ -230,5 +231,57 @@ describe("the words of wave 3's orders (D173): gift messages, the pay link's pag
     expect(t("en").gift.counter(250)).toBe("250 characters left");
     expect(runTemplate("ui:gift.counter", ui.find((e) => e.key === "ui:gift.counter")!.source, [1], "en")).toBe("1 character left");
     expect(runTemplate("ui:gift.counter", ui.find((e) => e.key === "ui:gift.counter")!.source, [250], "en")).toBe("250 characters left");
+  });
+});
+
+describe("the words of wave 3's fulfilment and order changes (D174)", () => {
+  const LANGS = ["nb", "sv", "da", "en"] as const;
+  const leaves = (node: unknown, path: string[] = []): [string, unknown][] =>
+    typeof node === "string" || typeof node === "function"
+      ? [[path.join("."), node]]
+      : node && typeof node === "object"
+        ? Object.entries(node).flatMap(([k, v]) => leaves(v, [...path, k]))
+        : [];
+  const say = (value: unknown) => (typeof value === "function" ? String((value as (...a: unknown[]) => unknown)("1042", "3. november")) : String(value));
+
+  it("has the same words in nb, sv, da and en, all filled in, and the Nordic ones are not English", () => {
+    for (const section of ["fulfilment", "slip", "orderChange"] as const) {
+      const english = leaves(t("en")[section]);
+      for (const lang of LANGS) {
+        const own = leaves(t(lang)[section]);
+        expect(own.map(([k]) => k), `${lang} ${section}`).toEqual(english.map(([k]) => k));
+        for (const [path, value] of own) {
+          const text = say(value);
+          expect(text.trim().length, `${lang} ${section}.${path}`).toBeGreaterThan(1);
+          if (lang !== "en" && /\p{L}{5,}/u.test(text) && !/^(Sendt|Kontakt|Status)/.test(text)) {
+            expect(text, `${lang} ${section}.${path}`).not.toBe(say(english.find(([k]) => k === path)?.[1]));
+          }
+        }
+      }
+    }
+    for (const section of ["orderChanged", "shippedPart"] as const) {
+      const english = leaves(emailText("en")[section]).map(([k]) => k);
+      for (const lang of LANGS) expect(leaves(emailText(lang)[section]).map(([k]) => k), `${lang} ${section}`).toEqual(english);
+    }
+    for (const lang of LANGS) for (const [path, value] of leaves(editDocumentText(lang))) expect(say(value).length, `${lang} ${path}`).toBeGreaterThan(3);
+  });
+
+  it("says the pay sentence and the receipt sentence as the spec has them", () => {
+    expect(emailText("en").orderChanged.payBy("149.00 kr", "13 October")).toBe("To confirm the change, pay 149.00 kr by 13 October. If you do not, your order stays as it was.");
+    expect(emailText("en").orderChanged.subject("Shop", "1042")).toBe("Shop: your order 1042 has been changed");
+    expect(emailText("nb").orderChanged.subject("Butikken", "1042")).toBe("Butikken: bestillingen din 1042 er endret");
+    expect(t("en").fulfilment.receipt).toBe("Your 14 days to change your mind count from the day you receive the last parcel.");
+    expect(emailText("en").shippedPart.restFollows).toBe("The rest of your order follows in another parcel.");
+    expect(t("en").slip.moreFollows).toBe("More of this order follows in another parcel.");
+    expect(t("en").fulfilment.states.partly_sent).toBe("Partly sent");
+    expect(editDocumentText("en").settledByOrder("F-17")).toBe("Settled against the payment for invoice F-17");
+    expect(editDocumentText("de")).toBe(editDocumentText("en"));
+  });
+
+  it("keeps the change, its pay page, its email and the legal parcel words out of the catalogue, and lets the plain state words in", () => {
+    for (const prefix of ["ui:orderChange.", "email:orderChanged.", "email:shippedPart.", "ui:fulfilment.receipt", "ui:slip.moreFollows"]) expect(HAND_WRITTEN_ONLY).toContain(prefix);
+    expect(all.filter((e) => /^(ui:orderChange\.|email:orderChanged\.|email:shippedPart\.|ui:fulfilment\.receipt|ui:slip\.moreFollows)/.test(e.key)).map((e) => e.key)).toEqual([]);
+    for (const key of ["ui:fulfilment.states.partly_sent", "ui:fulfilment.parcel", "ui:fulfilment.stillToCome", "ui:slip.alreadySent"]) expect(all.some((e) => e.key === key), key).toBe(true);
+    expect(isHandWrittenOnly("ui:fulfilment.states.sent")).toBe(false);
   });
 });

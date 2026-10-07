@@ -153,7 +153,9 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
         (select min(e.created_at) from commerce.order_events e where e.store_id = o.store_id and e.order_id = o.id and e.type = 'order.paid'),
         (select min(p.updated_at) from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured')
       ) as paid_at,
-      (select i.document_number from commerce.invoices i where i.store_id = o.store_id and i.order_id = o.id order by i.number limit 1) as invoice_number,
+      (select i.document_number from commerce.invoices i where i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order' order by i.number limit 1) as invoice_number,
+      -- Wave 3 run 3 (D174): where the sending stands (the order page's own state) and whether staff changed the order after purchase.
+      commerce.order_fulfilment(o.id) as fulfilment, o.edited_at is not null as edited,
       ref.amount as refunded, ref.n as refund_count, ref.last_at as last_refund_at
     from commerce.orders o
     left join lateral (
@@ -163,7 +165,8 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
     left join lateral (
       select coalesce(sum(r.amount_minor), 0) as amount, count(*) as n, max(r.created_at) as last_at
       from commerce.refunds r join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
-      where r.store_id = o.store_id and p.order_id = o.id and r.status = 'succeeded'
+      -- The refund of an order change's lower total is not a refund here (D174, docs/analytics.md): the order's total is already the changed one.
+      where r.store_id = o.store_id and p.order_id = o.id and r.status = 'succeeded' and r.order_edit_id is null
     ) ref on true
     where ${filterOf(store, o)} ${pos ? sql`and (o.placed_at, o.id) > (${pos.at}::timestamptz, ${pos.id}::uuid)` : sql``}
     order by o.placed_at, o.id limit ${limit + 1}
@@ -239,6 +242,8 @@ async function readOrders(store: Store, o: OrderExportOptions, position: unknown
       deliveryService: str(r.delivery_label),
       tags: Array.isArray(r.tag_labels) ? (r.tag_labels as unknown[]).map(String) : [],
       archived: r.archived === true,
+      fulfilment: r.fulfilment === null || r.fulfilment === undefined ? null : String(r.fulfilment),
+      edited: r.edited === true,
       source: r.order_source === "draft" ? "draft" : "checkout",
       isGift: r.is_gift === true,
       giftTo: str(r.gift_to),

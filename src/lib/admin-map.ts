@@ -87,7 +87,7 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["assistant", "ai", "chat", "memory"],
   }),
-  store("orders", "/orders", "Orders", "Main", "Every order, newest first, with a search (order number, email, name, product title or SKU, tag, tracking number), filters (payment, fulfilment, status, tag, market, source, gifts, a date range, archived) kept in the address, saved views, a column choice, and bulk actions on ticked orders: add or remove tags, archive, mark as sent, print packing slips.", {
+  store("orders", "/orders", "Orders", "Main", "Every order, newest first, with a search (order number, email, name, product title or SKU, tag, tracking number), filters (payment, fulfilment, status, tag, market, source, gifts, a date range, archived) kept in the address, saved views, a column choice, and bulk actions on ticked orders: add or remove tags, archive, mark as sent, print packing slips or a pick list. Partly sent orders and changes waiting for the customer's payment are fulfilment filters.", {
     tasks: [
       "Find an order (?q=)",
       "See what is waiting to be sent (?show=to-send)",
@@ -97,24 +97,34 @@ const PAGES: readonly AdminPage[] = [
       "Save the filters as a view",
       "Tag, archive or mark as sent several orders at once",
       "Print packing slips for several orders",
+      "Print a pick list of what the ticked orders still need",
+      "See partly sent orders (?ship=partly_sent)",
     ],
     keywords: ["sales", "purchases", "to send", "shipping", "search orders", "filter orders", "saved view", "tag", "archive", "bulk", "mass edit", "select orders", "gift orders", "staff-made", "ordrer", "søk"],
   }),
-  store("order", "/orders/[orderId]", "Order", "Main", "Everything about one order: lines, payment, sending with tracking, refunds, cancelling, contact, notes, history and emails.", {
-    tasks: ["Mark it sent with tracking", "Refund all or part and restock", "Cancel it", "Correct the address", "Add a note", "Resend the confirmation"],
-    keywords: ["refund", "tracking", "ship", "cancel order"],
+  store("order", "/orders/[orderId]", "Order", "Main", "Everything about one order: lines, payment, sending in parcels (choose the items and quantities of each parcel, with its own tracking, email and packing slip), refunds, cancelling, changing its items after purchase (or why it cannot be changed, and a change waiting for the customer's payment), contact, notes, history and emails.", {
+    tasks: ["Mark it sent with tracking", "Send part of it now and the rest later", "Email a parcel's tracking again", "Refund all or part and restock", "Cancel it", "Change its items", "Send a change's pay link again, or cancel the change", "Correct the address", "Add a note", "Resend the confirmation"],
+    keywords: ["refund", "tracking", "ship", "cancel order", "partial fulfilment", "partly sent", "split shipment", "parcel", "edit order", "change order"],
+  }),
+  store("order.edit", "/orders/[orderId]/edit", "Edit order", "Main", "Changes a paid order that is not sent yet: lower a quantity, take an item off, add products (at the market's price or one you type) and change the shipping, with the reason. Items kept keep their price and discounts. The summary is worked out by the checkout's own rules: a lower total is refunded at once, a higher one is paid by the customer through a pay link (or recorded as paid outside Kaizen) before the order changes. The order keeps its number; an invoiced order gets a credit note and an additional invoice.", {
+    tasks: ["Take an item off an order", "Lower a quantity", "Add a product to a paid order", "Change the shipping price", "Send the customer a pay link for a higher total", "Record a change as paid outside Kaizen"],
+    keywords: ["edit order", "change order", "modify order", "add item", "remove item", "order edit", "endre ordre", "swap item"],
   }),
   store("orders.export", "/orders/export", "Export orders", "Main", "Downloads orders as a CSV file for your bookkeeping: one row for each order line (or each order), with the VAT of each line and of the shipping, discounts, refunds, payment, the amounts in the order's currency and the store's, and copied history and hosts' orders marked. The owner's only, because it can hold personal data; the file is made without contact details unless you choose them, and is never emailed.", {
     needs: "owner",
     tasks: ["Export the orders of a period", "Export some orders by their numbers", "Include the buyer's email and address", "Download a finished export"],
     keywords: ["export orders", "csv", "orders spreadsheet", "accountant", "bookkeeping", "download orders", "excel", "eksporter ordre"],
   }),
-  store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "Main", "A printable packing slip for one order, without prices; for a gift order it also prints the buyer's gift message.", {
+  store("order.packing-slip", "/orders/[orderId]/packing-slip", "Packing slip", "Main", "A printable packing slip for one order, without prices: what is still to send (all of it, marked already sent, when nothing is left), or one parcel's items (?shipment=) with a line when more follows; for a gift order it also prints the buyer's gift message.", {
     keywords: ["print", "slip", "pack", "gift receipt", "gift slip"],
   }),
-  store("orders.packing-slips", "/orders/packing-slips", "Packing slips", "Main", "Packing slips for several orders in one document, each order on its own page and in its own language, without prices. Orders with nothing to ship and copied history are left out, with the reason.", {
+  store("orders.packing-slips", "/orders/packing-slips", "Packing slips", "Main", "Packing slips for several orders in one document, each order on its own page and in its own language, without prices, each with what is still to send (a partly sent order its remainder). Orders already sent, withdrawn, with nothing to ship and copied history are left out, with the reason.", {
     keywords: ["print packing slips", "bulk print", "print many", "pick", "gift slip"],
     tasks: ["Print the slips of the orders you ticked"],
+  }),
+  store("orders.pick-list", "/orders/pick-list", "Pick list", "Main", "What to take off the shelves for the ticked orders (at most 100): the units still to send summed by product, variant and SKU with the number of orders, or listed order by order. Downloads, services, units already sent and units withdrawn before sending are left out, and orders that cannot be picked are listed with the reason. No prices, names or addresses.", {
+    tasks: ["Print a pick list of the ticked orders", "Pick by product or by order", "Sort by SKU, title or quantity"],
+    keywords: ["pick list", "picking list", "picklist", "warehouse", "pick", "plukkliste"],
   }),
   store("orders.drafts", "/orders/drafts", "Draft orders", "Main", "Draft orders: orders you make for a customer, newest first, with what each is worth and where it stands (open, sent, paid, expired). A draft holds no stock until it is sent as a pay link.", {
     tasks: ["Make a draft order", "See drafts waiting for payment (?status=sent)", "Open a draft"],

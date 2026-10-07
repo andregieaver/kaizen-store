@@ -6,7 +6,7 @@ import { db } from "@/db/client";
 import { formatMoney } from "@/lib/money";
 import type { OwnerToolInput } from "@/lib/owner-tools";
 
-import { OWED_LINE } from "./analytics-sql";
+import { OWED_LINE, OWED_UNITS } from "./analytics-sql";
 import { onHandActive } from "./stock-sql";
 import type { Store } from "./stores";
 
@@ -314,7 +314,7 @@ export async function restockSuggestions({ store }: Ctx, { days, cover_days, lea
     select v.id, v.sku, v.options, coalesce(tl.title, p.handle) as title, p.id as product_id,
       ${onHandActive(sql`v.id`)} as on_hand,
       coalesce((
-        select sum(ol.backorder_quantity) from commerce.order_lines ol
+        select sum(${OWED_UNITS}) from commerce.order_lines ol
         join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
         where ol.store_id = v.store_id and ol.variant_id = v.id and ${OWED_LINE}
       ), 0)::int as owed,

@@ -179,6 +179,7 @@ export const TOOL_WORDS: Record<string, string> = {
   sales_summary: "Adding up sales",
   list_orders: "Looking at orders",
   get_order: "Reading the order",
+  pick_list: "Making the pick list",
   list_draft_orders: "Looking at draft orders",
   tag_orders: "Tagging orders",
   archive_orders: "Archiving orders",

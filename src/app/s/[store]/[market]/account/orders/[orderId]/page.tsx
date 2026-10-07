@@ -7,6 +7,7 @@ import { z } from "zod";
 import { BackorderOrderLine } from "@/components/backorder-note";
 import { GiftNote } from "@/components/gift-note";
 import { OrderDocuments } from "@/components/documents/order-documents";
+import { OrderShipments } from "@/components/order-shipments";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
 import { LineUnitPrice } from "@/components/price";
 import { OwnBookings } from "@/components/own-bookings";
@@ -23,6 +24,7 @@ import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import { vatText } from "@/lib/vat-text";
 import { getCustomer, ownsOrder } from "@/server/customers";
+import { shopperFulfilment } from "@/server/fulfilment";
 import { getOrderDocuments } from "@/server/invoices";
 import { getOrderAdmin } from "@/server/order-admin";
 import { getOrderDownloads } from "@/server/orders";
@@ -54,7 +56,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
   const customer = await getCustomer(store.id);
   if (!customer) redirect(`${base}/account`);
   if (!z.uuid().safeParse(orderId).success || !(await ownsOrder(store.id, customer.id, orderId))) notFound();
-  const [order, downloads, subscription, returns, documents] = await Promise.all([
+  const [order, downloads, subscription, returns, documents, fulfilment] = await Promise.all([
     getOrderAdmin(store.id, orderId),
     getOrderDownloads(store.id, orderId),
     getSubscriptionForOrder(store.id, orderId),
@@ -62,6 +64,8 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
     listOrderReturns(store.id, orderId),
     // Its invoice and credit notes (D159), found by the order's own id: the customer's ownership was checked above.
     getOrderDocuments(store.id, orderId),
+    // Its parcels, each with its lines, and what is still to come (D174): the customer's ownership was checked above.
+    shopperFulfilment(store.id, orderId),
   ]);
   if (!order) notFound();
   const m = t(market.lang);
@@ -90,22 +94,8 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
         </p>
       </div>
 
-      {order.shipments.length > 0 && (
-        <section className="flex flex-col gap-1 rounded-lg border border-border p-4">
-          {order.shipments.map((s) => (
-            <p key={s.id} className="flex flex-wrap items-center justify-between gap-3">
-              <span>
-                {date(s.createdAt)}: {s.carrier} {s.trackingNumber && <span className="font-mono">{s.trackingNumber}</span>}
-              </span>
-              {s.trackingUrl && (
-                <a href={s.trackingUrl} target="_blank" rel="noreferrer" className="underline">
-                  {a.tracking}
-                </a>
-              )}
-            </p>
-          ))}
-        </section>
-      )}
+      {/* The parcels and what is still to come (D174); nothing before the first parcel. */}
+      <OrderShipments fulfilment={fulfilment} m={m} locale={market.locale} timeZone={store.timeZone} business={order.company !== null} />
 
       <OwnBookings order={order} store={store.slug} market={market} m={m} sessionId={null} />
 

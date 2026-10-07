@@ -249,3 +249,42 @@ describe("the gift box and the pay link", () => {
     expect(page).toMatch(/referrer: "no-referrer"/);
   });
 });
+
+/**
+ * A change's pay link and the parcels on the order page (wave 3, run 3, D174, `docs/wave-3-fulfilment.md` 6.4 (h)): the change page carries a bearer token in its address like a draft's pay link,
+ * so it draws none of the forbidden extras, its button's client bundle reaches no zod and no server code, and it is guarded, never indexed and not passed on as a referrer. The parcels
+ * component is drawn on the order page, a pay route: a server component that imports no zod and reaches no forbidden module.
+ */
+describe("the change pay link and the order's parcels", () => {
+  const atActions = (file: string) => /\/actions\.ts$/.test(file);
+  const importedBy = (entry: string) => {
+    const seen = reach(entry, atActions);
+    return [...seen.keys()].flatMap((file) => [...readFileSync(file, "utf8").matchAll(/from\s+["']([^"']+)["']/g)].map((m) => ({ file: rel(file), specifier: m[1] })));
+  };
+
+  it("the change page's button reaches no zod, no server-only module and no server code", () => {
+    const imports = importedBy(join(MARKET, "account/change/[token]/change-form.tsx"));
+    const offenders = imports.filter(({ specifier }) => specifier === "zod" || specifier === "server-only" || specifier.startsWith("@/server/") || specifier.startsWith("@/db/"));
+    expect(offenders).toEqual([]);
+  });
+
+  it.each(["account/change/[token]/page.tsx", "account/change/[token]/change-view.tsx", "account/change/[token]/change-form.tsx"])("%s reaches none of the forbidden extras", (page) => {
+    expect(forbiddenFrom(join(MARKET, page), stop)).toEqual([]);
+  });
+
+  it("the change page is guarded like a pay route, is not indexed and is not passed on as a referrer", () => {
+    const page = readFileSync(join(MARKET, "account/change/[token]/page.tsx"), "utf8");
+    expect(page).toMatch(/<PayRouteGuard store=\{store\.slug\} \/>/);
+    expect(page).toMatch(/robots: \{ index: false, follow: false \}/);
+    expect(page).toMatch(/referrer: "no-referrer"/);
+  });
+
+  it("the parcels component imports no zod and no server code as values, and reaches none of the forbidden extras", () => {
+    const entry = join(SRC, "components/order-shipments.tsx");
+    const values = importsOf(readFileSync(entry, "utf8"));
+    expect(values.filter((s) => s === "zod" || s === "server-only" || s.startsWith("@/server/") || s.startsWith("@/db/"))).toEqual([]);
+    expect(forbiddenFrom(entry, stop)).toEqual([]);
+    // And the order page draws it.
+    expect(readFileSync(join(MARKET, "order/[orderId]/order-section.tsx"), "utf8")).toMatch(/<OrderShipments /);
+  });
+});

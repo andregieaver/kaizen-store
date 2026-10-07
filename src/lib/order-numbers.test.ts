@@ -63,7 +63,7 @@ describe("where the order operations write (wave 3, D173)", () => {
     expect(draftWriters).toEqual(["src/server/draft-orders.ts", "src/server/privacy-erasure.ts"]);
   });
 
-  it("a payment taken outside Kaizen is inserted only by the draft's paid-outside function", () => {
-    expect(writers(/insert\s+into\s+commerce\.payments[^;]*?'manual'/i)).toEqual(["src/server/draft-orders.ts"]);
+  it("a payment taken outside Kaizen is inserted only by the draft's paid-outside function and an order change's (D174)", () => {
+    expect(writers(/insert\s+into\s+commerce\.payments[^;]*?'manual'/i)).toEqual(["src/server/draft-orders.ts", "src/server/order-edits.ts"]);
   });
 });

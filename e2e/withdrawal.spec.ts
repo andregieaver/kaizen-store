@@ -23,6 +23,10 @@ async function paidOrder(
   const db = testDb();
   try {
     const [store] = await db`select id from commerce.stores where slug = ${options.store ?? "demo"}`;
+    // A physical line has a variant, as every line the checkout writes does (D174, docs/wave-3-fulfilment.md 3.11 item 6): only such a line is sent in a parcel.
+    const [variant] = await db`
+      select v.id from commerce.product_variants v
+      where v.store_id = ${store.id} and v.delivery = 'physical' order by v.sku limit 1`;
     const [order] = await db`
       insert into commerce.orders (store_id, number, market_code, currency, locale, email, status,
         subtotal_minor, shipping_minor, tax_minor, total_minor, billing_address, shipping_address, delivered_at)
@@ -30,19 +34,29 @@ async function paidOrder(
         ${items.length * 20000}, 0, ${items.length * 4000}, ${items.length * 20000}, '{}', '{"line1":"Gata 1"}',
         ${options.deliveredDaysAgo === undefined ? null : db`now() - ${`${options.deliveredDaysAgo} days`}::interval`})
       returning id`;
+    const lines: { id: string; quantity: number }[] = [];
     for (const [i, item] of items.entries()) {
-      await db`
-        insert into commerce.order_lines (store_id, order_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion)
-        values (${store.id}, ${order.id}, ${`WD-${n}-${i}`}, ${item.title}, ${item.quantity}, 20000, ${item.quantity * 20000},
-          ${item.quantity * 4000}, 0.25, 'txcd_99999999', ${item.exclusion ?? "none"}::commerce.withdrawal_exclusion)`;
+      const [line] = await db`
+        insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion)
+        values (${store.id}, ${order.id}, ${variant.id}, ${`WD-${n}-${i}`}, ${item.title}, ${item.quantity}, 20000, ${item.quantity * 20000},
+          ${item.quantity * 4000}, 0.25, 'txcd_99999999', ${item.exclusion ?? "none"}::commerce.withdrawal_exclusion)
+        returning id`;
+      lines.push({ id: line.id, quantity: item.quantity });
     }
     await db`
       insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
       values (${store.id}, ${order.id}, 'stripe', ${key}, ${items.length * 20000}, 'NOK', 'captured')`;
-    // Sent a day ago, so a withdrawal has goods to send back (a withdrawal before sending is its own case).
-    await db`
+    // Sent a day ago, every unit in the one parcel (D174: a parcel names its units), so a withdrawal has goods to send back
+    // (a withdrawal before sending is its own case).
+    const [shipment] = await db`
       insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at)
-      values (${store.id}, ${order.id}, 'Bring', ${`T-${n}`}, now() - interval '1 day')`;
+      values (${store.id}, ${order.id}, 'Bring', ${`T-${n}`}, now() - interval '1 day')
+      returning id`;
+    for (const line of lines) {
+      await db`
+        insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
+        values (${store.id}, ${shipment.id}, ${line.id}, ${line.quantity})`;
+    }
     return { orderId: order.id, number, email, key };
   } finally {
     await db.end();

@@ -24,6 +24,7 @@ import { refreshTag } from "./refresh";
 import { getCheckoutAccount } from "./settings";
 import { platformStripe } from "./stripe";
 import { storeTag } from "./stores";
+import { cancelEditsForClosure } from "./order-edits";
 
 /**
  * Closing, suspending and reopening a store (D171, `docs/store-closure.md`). Authorisation is the caller's (the owner's action asks `checkOwnerRole()`, the
@@ -154,6 +155,8 @@ export async function closeStore(actor: Account, storeId: string, options: Close
   }
 
   const warnings: string[] = [];
+  // Order changes waiting for the customer's payment (D174) end with the store: their sessions closed, their held units released.
+  await cancelEditsForClosure(storeId).catch(() => 0);
   const checkouts = await cancelOpenCheckouts(storeId);
   if (checkouts.failed > 0) warnings.push(`${checkouts.failed} order${checkouts.failed === 1 ? "" : "s"} waiting for payment could not be cancelled and will be cancelled by the daily clean-up.`);
 

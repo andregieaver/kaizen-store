@@ -11,10 +11,12 @@ import {
   NoteForm,
   RefundForm,
   ResendButton,
-  SendForm,
 } from "@/components/admin/order-actions";
 import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/order-affiliate";
 import { GiftCard } from "@/components/admin/orders/gift-card";
+import { OrderEditCard } from "@/components/admin/orders/order-edit-card";
+import { SendParcelForm } from "@/components/admin/orders/send-parcel";
+import { ShipmentList } from "@/components/admin/orders/shipment-list";
 import { ArchiveButton, TagsCard } from "@/components/admin/orders/order-ops";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { BringBooking } from "@/components/admin/bring-booking";
@@ -39,7 +41,9 @@ import { t } from "@/lib/i18n";
 import { formatMoney, minorUnitDigits } from "@/lib/money";
 import { ARCHIVE_REASON_TEXT, archiveBlock } from "@/lib/order-archive";
 import { MANUAL_METHOD_LABELS } from "@/lib/draft-input";
-import { ORDER_OPS_EVENT_LABELS } from "@/lib/order-ops-events";
+import { FULFILMENT_STATE_LABELS } from "@/lib/fulfilment";
+import { fulfilmentEventText } from "@/lib/fulfilment-events-text";
+import { FULFILMENT_EVENT_LABELS, ORDER_OPS_EVENT_LABELS } from "@/lib/order-ops-events";
 import { opsEventText } from "@/lib/order-ops-events-text";
 import { ORDER_STATUS_LABELS as STATUS_LABELS } from "@/lib/order-status";
 import { isReturnEvent, eventSentence } from "@/lib/return-admin";
@@ -66,7 +70,10 @@ import { mayRecordOutsidePayment } from "@/server/order-settings";
 import { tagSuggestions } from "@/server/order-tags";
 import { listCartAdds } from "@/server/wishlist-admin";
 
-import { saveOrderFieldsAction } from "../actions";
+import { orderEditability } from "@/server/order-edits";
+
+import { resendShippedAction, saveOrderFieldsAction, sendOrderAction } from "../actions";
+import { cancelOrderEditAction, recordWaitingEditPaidOutsideAction, resendOrderEditAction } from "./edit/actions";
 import { archiveOrderAction, changeTagsAction, unarchiveOrderAction } from "../ops-actions";
 import { markDeliveredAction, registerWithdrawalAction } from "../../returns/actions";
 import { todayIn } from "@/lib/work-dates";
@@ -91,6 +98,7 @@ const EVENT_LABELS: Record<string, string> = {
   "subscription.resume": "Subscription kept after all",
   "subscription.cancel_now": "Subscription cancelled",
   ...ORDER_OPS_EVENT_LABELS,
+  ...FULFILMENT_EVENT_LABELS,
 };
 
 const card = "rounded-lg border border-border bg-background p-5";
@@ -129,12 +137,23 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
     // The store's tags in use, as suggestions.
     tagSuggestions(store.id),
   ]);
+  // Whether its items can be changed now, and if not why, in words (D174 2.2: copied, unpaid, sent and the rest included).
+  const editability = order ? await orderEditability(store.id, orderId) : null;
   if (!order) notFound();
   const canWrite = memberCan(member, "orders:write");
   const archiveFacts1 = archiveFacts.get(orderId);
   const archiveBlocked = order.archivedAt || !archiveFacts1 ? null : archiveBlock(archiveFacts1);
   // Money taken outside Kaizen is refunded by being recorded: the owner, or staff when the owner allows it.
   const outsideAllowed = order.paidOutside ? await mayRecordOutsidePayment(member) : true;
+  // Recording money taken outside Kaizen for a change (D174, D173's rule): the owner, or staff when the owner allows it.
+  const mayRecordOutside = canWrite ? await mayRecordOutsidePayment(member) : false;
+  const fulfilment = order.fulfilment;
+  const awaitingEdit = order.edits.find((e) => e.status === "awaiting_payment") ?? null;
+  const parcelRows = fulfilment.lines
+    .filter((l) => l.physical)
+    .map((l) => ({ lineId: l.lineId, title: l.title, sku: l.sku, ordered: l.quantity, sent: l.shipped, withdrawn: l.withdrawn, toSend: l.toSend, closed: l.closed, backordered: Math.min(l.backordered, l.toSend), backorderDays: l.backorderDays }));
+  // A carrier is booked only for units still to send, and never while a change waits for the customer's payment (D174 2.1, 2.2).
+  const bookable = fulfilment.unitsToSend > 0 && !awaitingEdit && canWrite;
   // Posten / Bring (D134): ready when the store's agreement is complete; the parcel's weight is guessed from its products.
   const [bring, porterbuddy, helthjem, estimatedGrams] = await Promise.all([getCarrier(store.id, "bring"), getCarrier(store.id, "porterbuddy"), getCarrier(store.id, "helthjem"), estimateWeightGrams(store.id, order.id)]);
   const locale = store.markets[0]?.locale ?? order.locale;
@@ -194,7 +213,10 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           </Link>
           <h1 className="text-2xl font-semibold">Order #{order.number}</h1>
           <p className="text-sm text-muted">
-            {cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : STATUS_LABELS[order.status]} · placed{" "}
+            {cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : STATUS_LABELS[order.status]}
+            {fulfilment.state === "partly_sent" && ` · ${FULFILMENT_STATE_LABELS.partly_sent.toLowerCase()} (${fulfilment.unitsToSend} ${fulfilment.unitsToSend === 1 ? "unit" : "units"} still to send)`}
+            {awaitingEdit && " · change awaiting payment"}
+            {order.edits.some((e) => e.status === "applied") && " · edited"} · placed{" "}
             {when(order.placedAt)} ·{" "}
             {order.marketCode}
             {order.archivedAt && " · archived"}
@@ -402,6 +424,28 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             )}
           </section>
 
+          {editability && (
+            <OrderEditCard
+              editHref={`/admin/${store.slug}/orders/${order.id}/edit`}
+              canWrite={canWrite}
+              blockText={editability.text}
+              edits={order.edits}
+              money={money}
+              when={when}
+              hasEmail={Boolean(order.email)}
+              mayRecordOutside={mayRecordOutside}
+              awaitingActions={
+                canWrite && awaitingEdit
+                  ? {
+                      resend: resendOrderEditAction.bind(null, store.slug, awaitingEdit.id),
+                      cancel: cancelOrderEditAction.bind(null, store.slug, awaitingEdit.id),
+                      paidOutside: recordWaitingEditPaidOutsideAction.bind(null, store.slug, awaitingEdit.id),
+                    }
+                  : null
+              }
+            />
+          )}
+
           {!order.copied && (
             <VatTreatmentPanel
               treatment={treatment}
@@ -429,7 +473,9 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {(paid || toCharge) && order.ships && (
             <section aria-labelledby="sending" className={card}>
-              <h2 id="sending" className="mb-3 font-medium">{order.shipments.length > 0 ? "Sent" : toCharge ? "Send and charge" : "Send the order"}</h2>
+              <h2 id="sending" className="mb-3 font-medium">
+                {fulfilment.state === "partly_sent" ? "Partly sent" : order.shipments.length > 0 ? "Sent" : toCharge ? "Send and charge" : "Send the order"}
+              </h2>
               {weekly && toCharge && (
                 <div className="mb-4 flex flex-col gap-1 text-sm">
                   <p>
@@ -440,35 +486,20 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   {weekly.lastFailure && <p role="alert" className="text-red-700 dark:text-red-400">Last try: {weekly.lastFailure}</p>}
                 </div>
               )}
-              {order.shipments.length > 0 && (
-                <ul className="mb-4 flex flex-col gap-1 text-sm">
-                  {order.shipments.map((s) => (
-                    <li key={s.id}>
-                      {when(s.createdAt)}: {s.carrier || "Parcel"}{" "}
-                      {s.trackingNumber && <span className="font-mono">{s.trackingNumber}</span>}{" "}
-                      {s.trackingUrl && (
-                        <a href={s.trackingUrl} target="_blank" rel="noreferrer" className="underline">
-                          Track
-                        </a>
-                      )}
-                      {s.hasLabel && (
-                        <>
-                          {" · "}
-                          <a href={`/admin/${store.slug}/orders/${order.id}/label/${s.id}`} target="_blank" rel="noreferrer" className="underline">
-                            Print label
-                          </a>
-                        </>
-                      )}
-                      {trackedCarrier(s) && s.trackingNumber && (
-                        <Suspense fallback={null}>
-                          <CarrierStatus storeId={store.id} carrier={trackedCarrier(s)!} trackingNumber={s.trackingNumber} />
-                        </Suspense>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {bring?.complete && order.status !== "pending_payment" && !order.copied && (
+              <ShipmentList
+                shipments={order.shipments}
+                base={`/admin/${store.slug}/orders/${order.id}`}
+                when={when}
+                emailAgain={canWrite && order.email ? (shipmentId) => resendShippedAction.bind(null, store.slug, order.id, shipmentId) : null}
+                status={(s) =>
+                  trackedCarrier(s) && s.trackingNumber ? (
+                    <Suspense fallback={null}>
+                      <CarrierStatus storeId={store.id} carrier={trackedCarrier(s)!} trackingNumber={s.trackingNumber} />
+                    </Suspense>
+                  ) : null
+                }
+              />
+              {bring?.complete && order.status !== "pending_payment" && !order.copied && bookable && (
                 <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Posten / Bring</summary>
                   <div className="mt-3">
@@ -479,11 +510,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       test={bring.environment === "test"}
                       hasEmail={Boolean(order.email)}
                       chosen={order.delivery?.carrier === "bring" ? order.delivery : null}
+                      rows={parcelRows}
                     />
                   </div>
                 </details>
               )}
-              {porterbuddy?.complete && order.delivery?.carrier === "porterbuddy" && order.delivery.window && order.status !== "pending_payment" && !order.copied && (
+              {porterbuddy?.complete && order.delivery?.carrier === "porterbuddy" && order.delivery.window && order.status !== "pending_payment" && !order.copied && bookable && (
                 <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Porterbuddy</summary>
                   <div className="mt-3">
@@ -494,11 +526,12 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       test={porterbuddy.environment === "test"}
                       hasEmail={Boolean(order.email)}
                       book={porterbuddyBookAction.bind(null, store.slug, order.id)}
+                      rows={parcelRows}
                     />
                   </div>
                 </details>
               )}
-              {helthjem?.complete && order.delivery?.carrier === "helthjem" && order.status !== "pending_payment" && !order.copied && (
+              {helthjem?.complete && order.delivery?.carrier === "helthjem" && order.status !== "pending_payment" && !order.copied && bookable && (
                 <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Helthjem</summary>
                   <div className="mt-3">
@@ -509,19 +542,31 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                       test={helthjem.environment === "test"}
                       hasEmail={Boolean(order.email)}
                       book={helthjemBookAction.bind(null, store.slug, order.id)}
+                      rows={parcelRows}
                     />
                   </div>
                 </details>
               )}
-              {order.shipments.length > 0 ? (
-                <details>
-                  <summary className="cursor-pointer text-sm underline">Add another parcel</summary>
-                  <div className="mt-3">
-                    <SendForm {...ids} carriers={CARRIERS.map(({ id, name }) => ({ id, name }))} hasEmail={Boolean(order.email)} />
-                  </div>
-                </details>
+              {!canWrite ? null : awaitingEdit ? (
+                <p className="text-sm text-muted">A change to this order waits for the customer&apos;s payment. Nothing is sent until it is paid, cancelled or expired.</p>
+              ) : fulfilment.unitsToSend === 0 && !toCharge ? (
+                <p className="text-sm text-muted">
+                  {fulfilment.state === "withdrawn"
+                    ? "Every item was withdrawn before it was sent, so there is nothing to send."
+                    : fulfilment.state === "closed"
+                      ? "What was left was taken off what is still to send (refunded or put back as not sent), so there is nothing to send."
+                      : "Nothing of this order is left to send."}
+                </p>
               ) : (
-                <SendForm {...ids} carriers={CARRIERS.map(({ id, name }) => ({ id, name }))} hasEmail={Boolean(order.email)} />
+                <SendParcelForm
+                  rows={parcelRows}
+                  basis={fulfilment.basis}
+                  carriers={CARRIERS.map(({ id, name }) => ({ id, name }))}
+                  hasEmail={Boolean(order.email)}
+                  whole={weekly !== null}
+                  submitLabel={toCharge ? "Charge and send" : order.shipments.length > 0 ? "Send another parcel" : "Send this parcel"}
+                  send={sendOrderAction.bind(null, store.slug, order.id)}
+                />
               )}
             </section>
           )}
@@ -536,6 +581,11 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   ? "The money was taken outside Kaizen, so Kaizen sends nothing: you pay the customer back yourself and record it here."
                   : "Refunds go back to the customer's card or payment method through Stripe; Kaizen's fee on the refunded amount is returned to you."}
               </p>
+              {awaitingEdit && (
+                <p role="note" className="mb-3 rounded-md border border-border bg-surface p-3 text-sm">
+                  A change to this order waits for the customer&apos;s payment: cancel the change, or wait for it, before refunding.
+                </p>
+              )}
               <BonusRefundNote bonus={bonus} currency={bonusCurrency} locale={locale} refund={{ refundedMinor: order.refundedMinor, totalMinor: order.totalMinor }} />
               <RefundForm
                 {...ids}
@@ -546,6 +596,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 hasEmail={Boolean(order.email)}
                 canRefund={order.canRefund && order.refundableMinor > 0}
                 outside={order.paidOutside ? { allowed: outsideAllowed } : null}
+                unitsToSend={order.status === "paid" ? fulfilment.unitsToSend : 0}
               />
               {order.refunds.length > 0 && (
                 <ul className="mt-4 flex flex-col gap-1 border-t border-border pt-3 text-sm">
@@ -561,7 +612,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
-          {(order.status === "paid" || toCharge) && (
+          {((order.status === "paid" && order.shipments.length === 0) || toCharge) && (
             <section aria-labelledby="cancel" className={card}>
               <h2 id="cancel" className="mb-1 font-medium">Cancel the order</h2>
               {order.subscriptionId && (
@@ -588,6 +639,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               withdrawalPage={storeHref(store.slug, marketPath(store.slug, order.marketCode, "/withdraw"))}
               timeZone={store.timeZone}
               today={todayIn(store.timeZone)}
+              partlySent={fulfilment.state === "partly_sent"}
               actions={{
                 markDelivered: markDeliveredAction.bind(null, store.slug, orderId),
                 registerWithdrawal: registerWithdrawalAction.bind(null, store.slug, orderId),
@@ -742,6 +794,9 @@ function EventLine({ event, money, currency, base, locationNames }: { event: Ord
   // Draft orders and the wave 3 operations (D173), in words.
   const ops = opsEventText(event.type, data, money);
   if (ops !== null) return <>{ops}</>;
+  // Parcels and changes of the order (D174), in words.
+  const parcel = fulfilmentEventText(event.type, data, money);
+  if (parcel !== null) return <>{parcel}</>;
   if (event.type === "note.added") {
     return (
       <>
@@ -767,15 +822,6 @@ function EventLine({ event, money, currency, base, locationNames }: { event: Ord
       <>
         {label}
         {sold.length > 0 && `: ${sold.map((r) => `${r.quantity} × ${r.sku}`).join(", ")}`}
-      </>
-    );
-  }
-  if (event.type === "order.sent") {
-    return (
-      <>
-        {label}
-        {data.carrier ? ` with ${String(data.carrier)}` : ""}
-        {data.tracking ? ` (${String(data.tracking)})` : ""}
       </>
     );
   }

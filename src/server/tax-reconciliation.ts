@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 import { mainCurrency } from "@/lib/markets";
 import { CAUSES, allBalanced, bridgeSentence, reconcile, reconcileMain, refundsLine, type Cause, type CurrencyBridge, type CurrencySums, type MainBridge, type RefundsLine, type Sum } from "@/lib/tax-reconciliation";
 
-import { inPeriod, num, PAID, toMainOne, type Row } from "./analytics-sql";
+import { inPeriod, NOT_EDIT_REFUND, num, PAID, toMainOne, type Row } from "./analytics-sql";
 import { setBasedSnapshot, type SetBasedRead } from "./analytics-totals";
 import type { Store } from "./stores";
 import { checkRange, documentGroups, sellerFacts, vatReportOf, type TaxRange, type VatReportView } from "./tax-reports";
@@ -14,7 +14,8 @@ import { checkRange, documentGroups, sellerFacts, vatReportOf, type TaxRange, ty
  * The reconciliation of the VAT report against Finance and the orders (D161, `docs/wave-1c-reports.md` 2.2.1 and 4.7). Per document
  * currency, in integer minor units and with no conversion:
  *
- *   report's VAT = Finance's VAT + timing_in + not_captured - timing_out - invoicing_off - test_mode - waiting - other
+ *   report's VAT = Finance's VAT + timing_in + not_captured + edit_in + edit_credited - timing_out - edit_out - invoicing_off - test_mode - waiting
+ *                  - edit_waiting - other
  *
  * Finance's VAT is the sum of `tax_minor` of the paid orders (`PAID` of `analytics-sql.ts`: never a copied or a host's order) placed
  * in the range; the report's is the sum of `tax_minor` of the invoices whose supply date is in it. Each difference is a named cause with
@@ -29,6 +30,19 @@ import { checkRange, documentGroups, sellerFacts, vatReportOf, type TaxRange, ty
  */
 
 const CAUSE_SET = new Set<string>(CAUSES);
+
+/**
+ * What the applied changes of the order `o` moved its VAT by (D174), as their documents say: an issued change's additional invoice less its credit note,
+ * a change whose documents wait by its own `tax_delta`. A change written into the order's own invoice (`in_original`, the invoice was issued after it) or
+ * of an order with no invoice moved nothing that needs naming.
+ */
+const EDIT_MOVED = sql`
+  select sum(case when e.documents = 'issued' then coalesce(ei.tax_minor, 0) - coalesce(ec.tax_minor, 0) else e.tax_delta end) as moved
+  from commerce.order_edits e
+  left join commerce.invoices ei on ei.store_id = e.store_id and ei.order_edit_id = e.id and ei.kind = 'order_edit'
+  left join commerce.credit_notes ec on ec.store_id = e.store_id and ec.order_edit_id = e.id and ec.source = 'order_edit'
+  where e.store_id = o.store_id and e.order_id = o.id and e.status = 'applied' and e.documents in ('issued', 'waiting')
+`;
 
 export type Undocumented = {
   /** Paid orders of the range that have no invoice at all (invoicing off, test mode, waiting, other): the header line's count. */
@@ -67,7 +81,10 @@ export async function currencySums(store: Store, range: TaxRange, read: SetBased
     await read<Row>(sql`
       select currency, cause, count(*)::int as orders, coalesce(sum(tax_minor), 0)::bigint as tax
       from (
-        select o.currency::text as currency, o.tax_minor,
+        select o.currency::text as currency,
+          -- An edited order (D174): Finance's VAT is the order's now; its original invoice's part is that less what its changes moved (each in
+          -- editParts below), so the original invoice bridges on its own. An order with no invoice of its own is one undocumented row, whole.
+          o.tax_minor - case when i.id is null then 0 else coalesce(ed.moved, 0) end as tax_minor,
           case
             when i.id is null then
               case commerce.invoice_eligibility(o.id) when 'disabled' then 'invoicing_off' when 'test_mode' then 'test_mode' when 'ok' then 'waiting' else 'other' end
@@ -75,7 +92,38 @@ export async function currencySums(store: Store, range: TaxRange, read: SetBased
             else 'timing_out'
           end as cause
         from commerce.orders o
-        left join commerce.invoices i on i.store_id = o.store_id and i.order_id = o.id
+        left join commerce.invoices i on i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'
+        left join lateral (${EDIT_MOVED}) ed on true
+        where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
+      ) t
+      group by currency, cause
+    `);
+  const editParts =
+    // Finance's side of the changes (D174): per applied change of a paid order placed in the range that has its own invoice, the VAT its additional
+    // invoice added (matched, or `edit_out` when dated outside the range), the VAT its credit note took off (`edit_credited`: in Finance's figure
+    // already, never in the report's VAT charged) and the VAT of a change whose documents wait (`edit_waiting`).
+    await read<Row>(sql`
+      select currency, cause, count(*)::int as orders, coalesce(sum(tax_minor), 0)::bigint as tax
+      from (
+        select o.currency::text as currency, ei.tax_minor,
+          case when ei.supply_date >= ${from}::date and ei.supply_date < ${to}::date then 'edit_matched' else 'edit_out' end as cause
+        from commerce.orders o
+        join commerce.invoices i on i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'
+        join commerce.order_edits e on e.store_id = o.store_id and e.order_id = o.id and e.status = 'applied' and e.documents = 'issued'
+        join commerce.invoices ei on ei.store_id = e.store_id and ei.order_edit_id = e.id and ei.kind = 'order_edit'
+        where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
+        union all
+        select o.currency::text, ec.tax_minor, 'edit_credited'
+        from commerce.orders o
+        join commerce.invoices i on i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'
+        join commerce.order_edits e on e.store_id = o.store_id and e.order_id = o.id and e.status = 'applied' and e.documents = 'issued'
+        join commerce.credit_notes ec on ec.store_id = e.store_id and ec.order_edit_id = e.id and ec.source = 'order_edit'
+        where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
+        union all
+        select o.currency::text, e.tax_delta, 'edit_waiting'
+        from commerce.orders o
+        join commerce.invoices i on i.store_id = o.store_id and i.order_id = o.id and i.kind = 'order'
+        join commerce.order_edits e on e.store_id = o.store_id and e.order_id = o.id and e.status = 'applied' and e.documents = 'waiting'
         where o.store_id = ${id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, range)}
       ) t
       group by currency, cause
@@ -83,12 +131,13 @@ export async function currencySums(store: Store, range: TaxRange, read: SetBased
   const invoices =
     // The report's side: every invoice dated in the range, and why it is not in Finance's (placed before, or not counted as paid).
     await read<Row>(sql`
-      select currency, cause, count(*)::int as orders, coalesce(sum(tax_minor), 0)::bigint as tax
+      select currency, cause, count(distinct order_id)::int as orders, coalesce(sum(tax_minor), 0)::bigint as tax
       from (
-        select i.currency::text as currency, i.tax_minor,
+        select i.currency::text as currency, i.tax_minor, i.order_id,
           case
             when not ${PAID} then 'not_captured'
             when ${inPeriod(store, sql`o.placed_at`, range)} then null
+            when i.kind = 'order_edit' then 'edit_in'
             else 'timing_in'
           end as cause
         from commerce.invoices i
@@ -116,6 +165,22 @@ export async function currencySums(store: Store, range: TaxRange, read: SetBased
       sums.causes[cause as Cause] = add(sums.causes[cause as Cause], num(row, "orders"), num(row, "tax"));
     }
   }
+  // The changes' parts of Finance's orders (D174): the order is already counted once above, so these add VAT to Finance's figure (or, for a credit
+  // note, take it away) without adding an order; each is a cause unless its additional invoice is dated in the range (matched with the report's row).
+  for (const row of editParts) {
+    const sums = of(String(row.currency).trim());
+    const tax = num(row, "tax");
+    const cause = String(row.cause);
+    if (cause === "edit_matched") {
+      sums.finance = add(sums.finance, 0, tax);
+      continue;
+    }
+    if (!CAUSE_SET.has(cause)) throw new Error(`Unknown reconciliation cause: ${cause}`);
+    // A credit note's VAT is already out of the order's figure: Finance holds it as less, the cause names it as more on the way to the report.
+    const credit = cause === "edit_credited";
+    sums.finance = add(sums.finance, 0, credit ? -tax : tax);
+    sums.causes[cause as Cause] = add(sums.causes[cause as Cause], num(row, "orders"), tax);
+  }
   for (const row of invoices) {
     const sums = of(String(row.currency).trim());
     sums.report = add(sums.report, num(row, "orders"), num(row, "tax"));
@@ -137,7 +202,7 @@ async function refundComparison(store: Store, range: TaxRange, read: SetBasedRea
       from commerce.refunds r
       join commerce.payments rp on rp.store_id = r.store_id and rp.id = r.payment_id
       join commerce.orders o on o.store_id = rp.store_id and o.id = rp.order_id
-      where r.store_id = ${id}::uuid and r.status = 'succeeded' and ${inPeriod(store, sql`r.created_at`, range)}
+      where r.store_id = ${id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND} and ${inPeriod(store, sql`r.created_at`, range)}
         and o.copied_from is null and o.host_id is null
       group by rp.currency
     `);

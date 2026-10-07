@@ -104,6 +104,13 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "ui:draftPay.",
   "email:draft.",
   "email:giftMessage.",
+  // Wave 3, run 3 (D174): the change to an order and its pay page, and what the parcel words say about the right of withdrawal and the rest of an order. The plain
+  // fulfilment states and parcel labels (`ui:fulfilment.states.*`, `parcel`, `sentOn`, …) are interface text and may be translated.
+  "ui:orderChange.",
+  "email:orderChanged.",
+  "email:shippedPart.",
+  "ui:fulfilment.receipt",
+  "ui:slip.moreFollows",
 ];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));

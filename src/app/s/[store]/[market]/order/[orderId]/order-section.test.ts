@@ -19,6 +19,14 @@ const documentsNow = vi.hoisted(() => ({
   value: { eligibility: "disabled", invoice: null, creditNotes: [], waiting: null, shopperNote: null, staffNote: null } as Record<string, unknown>,
 }));
 vi.mock("@/server/invoices", () => ({ getOrderDocuments: async () => documentsNow.value }));
+// The order's parcels and what is still to come (D174).
+const fulfilmentNow = vi.hoisted(() => ({ value: null as null | Record<string, unknown>, calls: 0 }));
+vi.mock("@/server/fulfilment", () => ({
+  shopperFulfilment: async () => {
+    fulfilmentNow.calls += 1;
+    return fulfilmentNow.value;
+  },
+}));
 vi.mock("@/app/s/[store]/[market]/account/actions", () => ({ checkoutSignInAction: async () => undefined }));
 vi.mock("@/components/own-bookings", () => ({ OwnBookings: () => null }));
 vi.mock("@/components/account-sign-in", () => ({ PasswordReset: () => null }));
@@ -28,7 +36,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { Store } from "@/server/stores";
 
-import { OrderDetails, OrderDocuments, OrderLines, OrderTerms, OrderTotals } from "./order-section";
+import { OrderDetails, OrderDocuments, OrderLines, OrderParcels, OrderTerms, OrderTotals } from "./order-section";
 
 const text = (markup: string) =>
   markup
@@ -88,6 +96,8 @@ const totals = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   termsNow.record = null;
+  fulfilmentNow.value = null;
+  fulfilmentNow.calls = 0;
   documentsNow.value = { eligibility: "disabled", invoice: null, creditNotes: [], waiting: null, shopperNote: null, staffNote: null };
   getShopperOrder.mockResolvedValue(order());
 });
@@ -542,5 +552,57 @@ describe("the order's gift message (wave 3, run 2, D173)", () => {
     expect(markup).not.toContain("<b>x</b>");
     expect(markup).not.toContain("<i>Kari</i>");
     expect(markup).toContain("&lt;script&gt;alert(1)&lt;/script&gt; &amp;amp; &lt;b&gt;x&lt;/b&gt;");
+  });
+});
+
+describe("the order's parcels (wave 3, run 3, D174)", () => {
+  const html = async (element: Promise<unknown>) => renderToString((await element) as never);
+  const partly = {
+    state: "partly_sent",
+    parcels: [
+      {
+        id: "p1",
+        createdAt: "2026-10-05T09:00:00.000Z",
+        carrier: "Posten",
+        trackingNumber: "70712345678901234",
+        trackingUrl: "https://sporing.posten.no/sporing/70712345678901234",
+        legacy: false,
+        lines: [{ lineId: "l1", sku: "SWEATER", title: "Wool sweater", quantity: 2 }],
+      },
+    ],
+    stillToCome: [{ lineId: "l1", sku: "SWEATER", title: "Wool sweater", quantity: 1, backordered: 0, backorderDays: null }],
+  };
+
+  it("are on the whole order page above the lines, with each parcel's lines and what is still to come", async () => {
+    fulfilmentNow.value = partly;
+    const page = text(await html(OrderDetails(shop)));
+    expect(page).toContain("Partly sent");
+    expect(page).toContain("Parcel 1");
+    expect(page).toContain("2 × Wool sweater");
+    expect(page).toMatch(/Still to come 1 × Wool sweater/);
+    expect(page.indexOf("Partly sent")).toBeLessThan(page.indexOf("Total"));
+  });
+
+  it("are a piece of their own for a page built from pieces (D117), and draw nothing before the first parcel", async () => {
+    fulfilmentNow.value = partly;
+    expect(text(await html(OrderParcels(shop)))).toContain("Partly sent");
+    fulfilmentNow.value = { state: "unsent", parcels: [], stillToCome: partly.stillToCome };
+    expect(await html(OrderParcels(shop))).toBe("");
+  });
+
+  it("are not read for an order that is not paid or ships nothing", async () => {
+    getShopperOrder.mockResolvedValue(order({ status: "pending_payment" }));
+    await html(OrderDetails(shop));
+    getShopperOrder.mockResolvedValue(order({ id: "6f1f3a1e-2b7c-4e0e-9a55-0c4c7a1d9b11", ships: false }));
+    await html(OrderDetails({ ...shop, orderId: "6f1f3a1e-2b7c-4e0e-9a55-0c4c7a1d9b11" }));
+    expect(fulfilmentNow.calls).toBe(0);
+  });
+
+  it("read in the store's language", async () => {
+    fulfilmentNow.value = partly;
+    const nb = { ...shop, market: { ...market, lang: "nb", locale: "nb-NO" } as Market };
+    const page = text(await html(OrderParcels(nb)));
+    expect(page).toContain("Delvis sendt");
+    expect(page).toContain("Kommer senere");
   });
 });

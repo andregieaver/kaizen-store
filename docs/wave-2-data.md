@@ -483,6 +483,12 @@ Fixed English snake_case header, no totals row, formula-safe, `decimalAmount()` 
   `unit_cost_main` (when known), `gift` (`true`/`false`), `line_delivery` (`physical`, `digital`, `service`).
 
 **Orders layout** is the identity, buyer and order-amount columns once per order, with `line_count` and without the line block. Both layouts end with no totals row.
+
+*As built (D173, D174, wave 3):* after the order amounts and before the line block, both profiles carry `tags`, `archived`, `source` (`checkout`, `draft`,
+`copied`), `gift_order` (D173), then `fulfilment` (`none`, `unsent`, `partly_sent`, `sent`, `withdrawn`, `closed`: `commerce.order_fulfilment()`, empty for an order
+not paid) and `edited` (`true`/`false`: staff changed the order after purchase, `orders.edited_at`) (D174, `docs/wave-3-fulfilment.md` 5.5); the Full profile
+adds `gift_to`, `gift_from`, `gift_message`. An edited order's lines and amounts are as they are now (the lines layout lists the lines after the change), and
+`refunded` never counts the refund of a change's lower total (its total is already the changed one; `docs/analytics.md`, *Refunds*).
 The columns never include: client secrets, the order page's key, payment tokens, card data, a provider's internal id other than the payment reference, password
 hashes or any session. `payment_reference` is the payment provider's id of the captured payment (a Stripe `pi_…`, which is a reference, not a credential) and
 is in the lines layout only.

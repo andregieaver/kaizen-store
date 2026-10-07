@@ -8,7 +8,6 @@ import {
   markBalancePaidAction,
   refundOrderAction,
   resendConfirmationAction,
-  sendOrderAction,
   updateContactAction,
   type OrderActionState,
 } from "@/app/admin/(gated)/[store]/orders/actions";
@@ -42,49 +41,6 @@ function Notify({ defaultChecked = true, children }: { defaultChecked?: boolean;
   );
 }
 
-/** Marks the order as sent with the parcel's carrier and tracking number. */
-export function SendForm({ storeSlug, orderId, carriers, hasEmail }: Ids & { carriers: { id: string; name: string }[]; hasEmail: boolean }) {
-  const [state, action, pending] = useActionState(sendOrderAction.bind(null, storeSlug, orderId), initial);
-  const [carrier, setCarrier] = useState(carriers[0]?.id ?? "other");
-  return (
-    <form action={action} className="flex flex-col gap-3">
-      <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
-        <label className={label}>
-          Carrier
-          <select name="carrier" value={carrier} onChange={(e) => setCarrier(e.target.value)} className={input}>
-            {carriers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className={label}>
-          <span>
-            Tracking number <span className="font-normal text-muted">(optional)</span>
-          </span>
-          <input name="trackingNumber" autoComplete="off" spellCheck={false} className={`${input} font-mono`} />
-        </label>
-      </div>
-      {carrier === "other" && (
-        <label className={label}>
-          <span>
-            Tracking link <span className="font-normal text-muted">(optional)</span>
-          </span>
-          <input name="trackingUrl" type="url" placeholder="https://…" className={input} />
-        </label>
-      )}
-      {hasEmail && <Notify>Email the customer that it is on its way</Notify>}
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending} className={primary}>
-          {pending ? "Saving …" : "Mark as sent"}
-        </button>
-        <Result state={state} />
-      </div>
-    </form>
-  );
-}
-
 /** Refunds any amount up to what is left, and puts chosen items back in stock. */
 export function RefundForm({
   storeSlug,
@@ -96,6 +52,7 @@ export function RefundForm({
   hasEmail,
   canRefund,
   outside = null,
+  unitsToSend = 0,
 }: Ids & {
   /**
    * The money was taken outside Kaizen (wave 3, D173): the refund is only RECORDED here, with no call to Stripe, and staff pay the customer back themselves. `allowed` is false when only the
@@ -110,6 +67,11 @@ export function RefundForm({
   locations?: { id: string; name: string }[];
   hasEmail: boolean;
   canRefund: boolean;
+  /**
+   * Units of the order still to send (D174). With any, the form offers *These units were not sent* (ticked): the units put back come off what is still to send, so
+   * the order is not waiting to send what was refunded.
+   */
+  unitsToSend?: number;
 }) {
   const [state, action, pending] = useActionState(refundOrderAction.bind(null, storeSlug, orderId), initial);
   const [amount, setAmount] = useState("");
@@ -186,6 +148,18 @@ export function RefundForm({
               {line.putBack && <p className="text-xs text-muted">{line.putBack}</p>}
             </div>
           ))}
+          {unitsToSend > 0 && (
+            <label className="mt-1 flex items-start gap-2 text-sm">
+              <input type="checkbox" name="notSent" defaultChecked className="mt-0.5 size-4" />
+              <span>
+                These units were not sent: take them off what is still to send
+                <span className="block text-xs text-muted">
+                  {unitsToSend} {unitsToSend === 1 ? "unit is" : "units are"} still to send. Untick it for goods that were sent and came back. With nothing to refund, this
+                  closes units that will not be sent.
+                </span>
+              </span>
+            </label>
+          )}
         </fieldset>
       )}
       {hasEmail && canRefund && !(outside && !outside.allowed) && <Notify>Email the customer about the refund</Notify>}

@@ -7,6 +7,8 @@ type SellerDetails = { legalName?: string | null; postalAddress?: string | null;
  * One packing slip (wave 3, D173, `docs/wave-3-orders.md` 2.5), drawn only from `packingSlipData()`: it has NO prices, no VAT, no totals and no payment, discount or invoice words,
  * because the data it is drawn from holds none (D27). In the ORDER's language. For a gift order it gains a block above the lines, *A gift for {To}* with the buyer's own words as
  * text (`white-space: pre-line`, escaped by React, never HTML) and *From {From}*; nothing else about the slip changes. `breakAfter` puts each slip of a bulk print on its own page.
+ * Sending in parts (D174): a slip prints what is still to send, one parcel's items (with "More of this order follows in another parcel" when units remain), or, reprinted
+ * for an order with nothing left, every item under *All items (already sent)*.
  */
 export function PackingSlipView({ slip, storeName, seller, breakAfter = false }: { slip: PackingSlip; storeName: string; seller: SellerDetails; breakAfter?: boolean }) {
   const m = t(slip.lang);
@@ -43,6 +45,7 @@ export function PackingSlipView({ slip, storeName, seller, breakAfter = false }:
           {gift.from && <p className="text-sm">{m.gift.slip.from(gift.from)}</p>}
         </section>
       )}
+      {slip.scope === "reprint" && <p className="text-lg font-semibold">{m.slip.alreadySent}</p>}
       <table className="w-full text-left">
         <thead>
           <tr className="border-b border-black">
@@ -67,6 +70,7 @@ export function PackingSlipView({ slip, storeName, seller, breakAfter = false }:
           ))}
         </tbody>
       </table>
+      {slip.moreFollows && <p className="border-2 border-black p-3 text-center font-medium">{m.slip.moreFollows}</p>}
       <p className="text-center text-lg">{m.thanks}</p>
     </article>
   );

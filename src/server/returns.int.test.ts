@@ -389,7 +389,11 @@ describe("the withdrawal function", () => {
     expect(business.order.lines[0]).toMatchObject({ refusal: "business_order" });
 
     const digital = await paidOrder([["DEMO-TOTE", 1]]);
-    await db().execute(sql`update commerce.order_lines set delivery = 'digital' where id = ${digital.lines[0].id}::uuid`);
+    // A paid order's line changes only inside an order change (D174, `order_lines_settled_guard()`): the fixture sets the edit context for its own order to make the line a download.
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`select set_config('kaizen.order_edit', ${digital.orderId}, true)`);
+      await tx.execute(sql`update commerce.order_lines set delivery = 'digital' where id = ${digital.lines[0].id}::uuid`);
+    });
     await db().execute(sql`update commerce.orders set digital_consent_at = now() where id = ${digital.orderId}::uuid`);
     const download = await w.lookupWithdrawableOrder(storeId, { orderNumber: digital.number, email: digital.email }, opts);
     expect(download!.lines[0]).toMatchObject({ right: "none", refusal: "digital_content" });
@@ -854,10 +858,11 @@ describe("the store's queue", () => {
 
 describe("the withdrawal link and the settings", () => {
   it("is in the order confirmation and the shipped email of a consumer's goods, with the order page's key", async () => {
-    const order = await paidOrder([["DEMO-TOTE", 1]]);
+    const order = await paidOrder([["DEMO-TOTE", 1]], { ship: false });
     await sendOrderConfirmation(storeId, order.orderId);
-    const shipment = await markSent(storeId, order.orderId, { carrier: "bring", trackingNumber: "370722", trackingUrl: null }, null);
-    await sendShipped(storeId, order.orderId, shipment!);
+    const sent = await markSent(storeId, order.orderId, { carrier: "bring", trackingNumber: "370722", trackingUrl: null }, null);
+    if (!sent.ok) throw new Error(sent.reason);
+    await sendShipped(storeId, order.orderId, sent.shipment);
     for (const kind of ["order.confirmation", "order.sent"]) {
       const [mail] = await db().execute<Row>(sql`select text, html from commerce.email_messages where order_id = ${order.orderId}::uuid and kind = ${kind}`);
       expect(String(mail.text), kind).toContain("Angre avtalen");

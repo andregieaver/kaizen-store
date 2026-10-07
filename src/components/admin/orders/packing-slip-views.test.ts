@@ -2,6 +2,7 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import type { PackingSlip } from "@/server/packing-slips";
 
@@ -102,6 +103,33 @@ describe("the packing slip", () => {
   it("puts each slip of a bulk print on its own page", () => {
     expect(draw(slip(), { breakAfter: true })).toContain("break-after:page");
     expect(draw(slip())).not.toContain("break-after");
+  });
+
+  it("says more follows on a parcel's slip when units remain, in each order's own language, and holds no money word then either (D174)", () => {
+    const words = { nb: "Mer av denne bestillingen kommer i en annen pakke.", sv: "", da: "", en: "" } as Record<string, string>;
+    for (const [lang, locale] of [["nb", "nb-NO"], ["sv", "sv-SE"], ["da", "da-DK"], ["en", "en-GB"]] as const) {
+      const parcel = plain(draw(slip({ lang, locale, scope: "parcel", shipmentId: "33333333-3333-4333-8333-333333333333", moreFollows: true, lines: [{ quantity: 1, title: "Mug (White)", sku: "MUG-W" }] })));
+      const expected = t(lang).slip.moreFollows;
+      expect(expected, lang).toMatch(/\w/);
+      if (words[lang]) expect(expected).toBe(words[lang]);
+      expect(parcel, lang).toContain(expected);
+      expect(parcel.replace(/Mug \(White\)|Kaffe AS|Gata \d|Kari Nordmann|Oslo/g, ""), lang).not.toMatch(MONEY_WORDS);
+      expect(plain(draw(slip({ lang, locale, scope: "parcel", moreFollows: false }))), lang).not.toContain(expected);
+    }
+  });
+
+  it("marks a reprint of an order with nothing left to send as already sent; a slip of what is still to send says nothing of the kind", () => {
+    const reprint = plain(draw(slip({ lang: "en", locale: "en-GB", scope: "reprint" })));
+    expect(reprint).toContain(t("en").slip.alreadySent);
+    expect(plain(draw(slip({ lang: "nb", locale: "nb-NO", scope: "reprint" })))).toContain("Alle varer (allerede sendt)");
+    expect(plain(draw(slip({ lang: "en", locale: "en-GB", scope: "to_send" })))).not.toContain(t("en").slip.alreadySent);
+  });
+
+  it("keeps the gift block on a parcel's slip", () => {
+    const text = plain(draw(slip({ lang: "en", locale: "en-GB", scope: "parcel", moreFollows: true, gift: { isGift: true, to: "Anna", from: "Kari", message: "Happy birthday" } })));
+    expect(text).toContain("A gift for Anna");
+    expect(text).toContain("Happy birthday");
+    expect(text).toContain(t("en").slip.moreFollows);
   });
 });
 

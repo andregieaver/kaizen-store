@@ -105,7 +105,8 @@ describe("sending an order", () => {
 
   it("marks a paid order as sent with its parcel, and emails the tracking once", async () => {
     const orderId = await paidOrder("DEMO-TOTE", 1);
-    const shipment = await markSent(storeId, orderId, { carrier: "bring", trackingNumber: "370722", trackingUrl: null }, null);
+    const sent = await markSent(storeId, orderId, { carrier: "bring", trackingNumber: "370722", trackingUrl: null }, null);
+    const shipment = sent.ok ? sent.shipment : null;
     expect(shipment).toMatchObject({ carrier: "Bring", trackingUrl: "https://sporing.bring.no/sporing/370722" });
     expect((await getOrderAdmin(storeId, orderId))?.status).toBe("fulfilled");
 

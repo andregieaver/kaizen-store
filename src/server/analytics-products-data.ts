@@ -9,7 +9,7 @@ import { allocateRefund, paretoSummary, productTable, type ParetoSummary, type P
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { dayKey, dayStart, FROM_CHECKOUT, inMain, inPeriod, num, PAID, type Row } from "./analytics-sql";
+import { dayKey, dayStart, FROM_CHECKOUT, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row } from "./analytics-sql";
 import { setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -245,7 +245,7 @@ async function loadRefunds(store: Store, period: AnalyticsPeriod, known: string)
       join commerce.orders o on o.store_id = rp.store_id and o.id = rp.order_id
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
       left join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
-      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${inPeriod(store, sql`r.created_at`, period)}
+      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND} and ${inPeriod(store, sql`r.created_at`, period)}
         and o.copied_from is null and o.host_id is null and rp.currency = any(${currencyList(known)})
       order by r.id, ol.id
       limit ${REFUND_ROW_CAP + 1}
@@ -255,7 +255,7 @@ async function loadRefunds(store: Store, period: AnalyticsPeriod, known: string)
       from commerce.refunds r
       join commerce.payments rp on rp.store_id = r.store_id and rp.id = r.payment_id
       join commerce.orders o on o.store_id = rp.store_id and o.id = rp.order_id
-      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${inPeriod(store, sql`r.created_at`, period)}
+      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND} and ${inPeriod(store, sql`r.created_at`, period)}
         and o.copied_from is null and o.host_id is null and not (rp.currency = any(${currencyList(known)}))
       group by 1
     `),

@@ -177,20 +177,22 @@ describe("the 14 days start when the goods are received, never from an estimate"
     expect(await w.startWithdrawal(storeId, statement(order), opts)).toMatchObject({ ok: true, matched: true, request: null, problems: [{ code: "no_right" }] });
   });
 
-  it("counts goods sent in parts from the last: a later shipment takes the recorded receipt back", async () => {
-    const order = await paid([["DEMO-TOTE", 1]]);
+  it("counts goods sent in parts from the last: the receipt waits for the last parcel (D174, CRD Art. 9(2)(b))", async () => {
+    const order = await paid([["DEMO-TOTE", 2]], { ship: false });
+    const [line] = order.lines;
     await db().execute(sql`update commerce.orders set placed_at = ${ago(35)} where id = ${order.orderId}::uuid`);
+    // The first part is sent: the order is partly sent, still paid, and no receipt can be recorded yet.
+    expect(await markSent(storeId, order.orderId, { carrier: "other", trackingNumber: "PART-1", trackingUrl: null }, null, null, { lines: [{ lineId: line.id, quantity: 1 }] })).toMatchObject({ ok: true, left: 1 });
     await db().execute(sql`update commerce.shipments set created_at = ${ago(30)} where order_id = ${order.orderId}::uuid`);
     const day = new Date(Date.now() - 20 * 86_400_000).toISOString().slice(0, 10);
-    expect(await markDelivered(storeId, { orderId: order.orderId, on: day }, null)).toMatchObject({ ok: true });
-    expect((await orderReturnsOverview(storeId, order.orderId))!.window!.state).toBe("closed");
-    // The second part is sent now: the goods are not all received, the date is taken back and the period has not started.
-    await markSent(storeId, order.orderId, { carrier: "other", trackingNumber: "PART-2", trackingUrl: null }, null);
-    const after = await orderReturnsOverview(storeId, order.orderId);
-    expect(after!.window).toMatchObject({ state: "statutory", basis: "sent", startDay: null });
-    expect(after!.deliveredOn).toBeNull();
-    const [event] = await db().execute<Row>(sql`select data from commerce.order_events where order_id = ${order.orderId}::uuid and type = 'order.delivery_reopened'`);
-    expect(event).toBeTruthy();
+    expect(await markDelivered(storeId, { orderId: order.orderId, on: day }, null)).toMatchObject({ ok: false });
+    const partly = await orderReturnsOverview(storeId, order.orderId);
+    expect(partly!.deliveredOn).toBeNull();
+    // The last part is sent: now the receipt can be recorded, and it is the last parcel's that counts.
+    expect(await markSent(storeId, order.orderId, { carrier: "other", trackingNumber: "PART-2", trackingUrl: null }, null)).toMatchObject({ ok: true, left: 0 });
+    expect(await markDelivered(storeId, { orderId: order.orderId, on: "" }, null)).toMatchObject({ ok: true });
+    // Nothing is left, so no later parcel can take the receipt back.
+    expect(await markSent(storeId, order.orderId, { carrier: "other", trackingNumber: "PART-3", trackingUrl: null }, null)).toEqual({ ok: false, reason: "nothing_to_send" });
   });
 
   it("only records a receipt for an order that was sent, never in the future, never before the order", async () => {
@@ -258,7 +260,7 @@ describe("a refund is there from the proof of sending, and a withdrawal before s
   it("does not send a parcel whose every unit was withdrawn, and tells staff to leave out what was withdrawn of a part", async () => {
     const whole = await paid([["DEMO-TOTE", 1]], { ship: false });
     await withdraw(whole);
-    expect(await markSent(storeId, whole.orderId, { carrier: "other", trackingNumber: "T", trackingUrl: null }, null)).toBeNull();
+    expect(await markSent(storeId, whole.orderId, { carrier: "other", trackingNumber: "T", trackingUrl: null }, null)).toEqual({ ok: false, reason: "withdrawn_in_full" });
     const [shipments] = await db().execute<Row>(sql`select count(*)::int as n from commerce.shipments where order_id = ${whole.orderId}::uuid`);
     expect(shipments.n).toBe(0);
 
@@ -269,7 +271,7 @@ describe("a refund is there from the proof of sending, and a withdrawal before s
     expect(overview!.sent).toBe(false);
     expect(overview!.heldBack).toEqual([{ title: expect.any(String), quantity: 1 }]);
     // The rest can still be sent.
-    expect(await markSent(storeId, partial.orderId, { carrier: "other", trackingNumber: "T2", trackingUrl: null }, null)).not.toBeNull();
+    expect(await markSent(storeId, partial.orderId, { carrier: "other", trackingNumber: "T2", trackingUrl: null }, null)).toMatchObject({ ok: true, left: 0 });
   });
 });
 

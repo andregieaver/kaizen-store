@@ -86,8 +86,9 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     when: "The owner asks about orders to send, packing or tracking.",
     steps: [
       "Call list_orders with which to_send; oldest first matters most.",
-      "For each, the order page has a printable packing slip (order.packing-slip).",
-      "Marking sent needs the carrier and tracking number: mark_order_sent keeps it for their approval, one order at a time.",
+      "For each, the order page has a printable packing slip (order.packing-slip). For several, pick_list sums what to take off the shelves (by product or by order) and gives the printable list's address; the Orders page prints their packing slips in one go.",
+      "Marking sent needs the carrier and tracking number: mark_order_sent keeps it for their approval, one order at a time, and sends everything the order still has to send in one parcel.",
+      "Sending only some items (the rest later) is done on the order's page, parcel by parcel: each parcel gets its own tracking and email, and the order shows Partly sent until nothing is left (list_orders with ship partly_sent finds them).",
       "Subscription box orders are charged as they are marked sent: say so, and send them from their order page.",
     ],
   },
@@ -102,6 +103,7 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
       "Archiving only hides: archive_orders takes finished orders out of the default list and the queues, and keeps every number, document and figure. It refuses an order that still has to be sent, was never paid, or has an open return, and says why. Nothing is deleted.",
       "More than 25 orders, or a standing rule: the Orders page's bulk bar handles up to 250 (orders), and Settings, Orders can archive finished orders by itself after a number of days (open_admin_page).",
       "Saved views (a search and filters kept under a name) are made on the Orders page: say so rather than describing one.",
+      "Send in parts from the order's page: choose the items and quantities for this parcel, and the order stays Partly sent until everything is sent. Changing what a paid, unsent order holds (add, remove, fewer) is also done there, by staff; you cannot change an order, and get_order says what changed and what waits for the customer's payment.",
     ],
   },
   {

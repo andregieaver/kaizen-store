@@ -108,6 +108,43 @@ const text = {
       from: (name: string) => `Fra ${name}`,
       note: "Meldingen skrives ut på pakkseddelen. Butikken sender den ikke til mottakeren.",
     },
+    /**
+     * A change staff made to the order (wave 3, run 3, D174): the revised confirmation, with the refund, the pay link or nothing more to pay. The reason is said in fixed
+     * words (never staff's note; `other` says nothing). Hand-written only; needs human legal review before real use (docs/wave-3-fulfilment.md section 8).
+     */
+    // legal: needs review
+    orderChanged: {
+      subject: (store: string, number: string) => `${store}: bestillingen din ${number} er endret`,
+      heading: "Bestillingen din er endret",
+      intro: (number: string) => `Vi har endret bestilling ${number}. Her er det som er endret.`,
+      removed: "Tatt ut",
+      added: "Lagt til",
+      shipping: (amount: string) => `Ny frakt: ${amount}`,
+      newTotal: "Ny sum for bestillingen",
+      reasons: { customer_request: "Endringen er gjort etter ønske fra deg.", out_of_stock: "En vare var utsolgt.", store_error: "Vi gjorde en feil." },
+      refunded: (amount: string) => `Vi har refundert ${amount} til den samme betalingsmåten du brukte.`,
+      refundedOutside: (store: string, amount: string) => `${store} betaler ${amount} tilbake til deg.`,
+      payBy: (amount: string, date: string) => `For å bekrefte endringen betaler du ${amount} innen ${date}. Gjør du ikke det, forblir bestillingen som den var.`,
+      payButton: "Se og betal endringen",
+      nothingMore: "Du har ikke noe mer å betale.",
+      withdrawal: "De nye varene er en del av bestillingen din: Du kan angre innen 14 dager etter at du har mottatt den siste pakken i bestillingen, med de unntakene loven gir.",
+      /** The pay-link email: a change PROPOSED, applied only when the customer pays (CRD Art. 22). Never "has been changed". */
+      proposedSubject: (store: string, number: string) => `${store}: en endring av bestilling ${number} venter på betalingen din`,
+      proposedHeading: "Butikken foreslår en endring av bestillingen din",
+      proposedIntro: (number: string) => `Butikken foreslår å endre bestilling ${number}. Ingenting er endret ennå: Bestillingen blir endret først når du har betalt mellomlegget.`,
+      proposedRemoved: "Tas ut",
+      proposedAdded: "Legges til",
+      proposedReasons: { customer_request: "Du har bedt om endringen.", out_of_stock: "En vare er utsolgt.", store_error: "Vi gjorde en feil." },
+      documents: "Dokumenter for endringen",
+      seeOrder: "Se bestillingen",
+    },
+    /** A parcel of an order sent in parts (D174): its lines, and that the rest follows. Hand-written only; needs human legal review before real use. */
+    // legal: needs review
+    shippedPart: {
+      inParcel: "I denne pakken",
+      restFollows: "Resten av bestillingen kommer i en annen pakke.",
+      receipt: "Angrefristen på 14 dager regnes fra den dagen du mottar den siste pakken.",
+    },
     orderSubject: (store: string, number: string) => `Ordrebekreftelse ${number} fra ${store}`,
     orderHeading: "Takk for bestillingen!",
     orderIntro: (number: string) => `Vi har mottatt betalingen for ordre ${number}.`,
@@ -356,6 +393,43 @@ const text = {
       to: (name: string) => `Till ${name}`,
       from: (name: string) => `Från ${name}`,
       note: "Meddelandet skrivs ut på följesedeln. Butiken skickar det inte till mottagaren.",
+    },
+    /**
+     * A change staff made to the order (wave 3, run 3, D174): the revised confirmation, with the refund, the pay link or nothing more to pay. The reason is said in fixed
+     * words (never staff's note; `other` says nothing). Hand-written only; needs human legal review before real use (docs/wave-3-fulfilment.md section 8).
+     */
+    // legal: needs review
+    orderChanged: {
+      subject: (store: string, number: string) => `${store}: din beställning ${number} har ändrats`,
+      heading: "Din beställning har ändrats",
+      intro: (number: string) => `Vi har ändrat beställning ${number}. Här är vad som har ändrats.`,
+      removed: "Borttaget",
+      added: "Tillagt",
+      shipping: (amount: string) => `Ny frakt: ${amount}`,
+      newTotal: "Ny summa för beställningen",
+      reasons: { customer_request: "Ändringen är gjord på din begäran.", out_of_stock: "En vara var slutsåld.", store_error: "Vi gjorde ett misstag." },
+      refunded: (amount: string) => `Vi har återbetalat ${amount} till det betalsätt du använde.`,
+      refundedOutside: (store: string, amount: string) => `${store} betalar tillbaka ${amount} till dig.`,
+      payBy: (amount: string, date: string) => `För att bekräfta ändringen betalar du ${amount} senast ${date}. Om du inte gör det förblir beställningen som den var.`,
+      payButton: "Se och betala ändringen",
+      nothingMore: "Du har inget mer att betala.",
+      withdrawal: "De tillagda varorna ingår i din beställning: du kan ångra dig inom 14 dagar från att du tagit emot det sista paketet i beställningen, med de undantag som lagen medger.",
+      /** The pay-link email: a change PROPOSED, applied only when the customer pays (CRD Art. 22). Never "has been changed". */
+      proposedSubject: (store: string, number: string) => `${store}: en ändring av beställning ${number} väntar på din betalning`,
+      proposedHeading: "Butiken föreslår en ändring av din beställning",
+      proposedIntro: (number: string) => `Butiken föreslår att ändra beställning ${number}. Inget är ändrat ännu: beställningen ändras först när du har betalat mellanskillnaden.`,
+      proposedRemoved: "Tas bort",
+      proposedAdded: "Läggs till",
+      proposedReasons: { customer_request: "Du har bett om ändringen.", out_of_stock: "En vara är slutsåld.", store_error: "Vi gjorde ett misstag." },
+      documents: "Dokument för ändringen",
+      seeOrder: "Se beställningen",
+    },
+    /** A parcel of an order sent in parts (D174): its lines, and that the rest follows. Hand-written only; needs human legal review before real use. */
+    // legal: needs review
+    shippedPart: {
+      inParcel: "I det här paketet",
+      restFollows: "Resten av din beställning kommer i ett annat paket.",
+      receipt: "Ångerfristen på 14 dagar räknas från den dag du tar emot det sista paketet.",
     },
     orderSubject: (store: string, number: string) => `Orderbekräftelse ${number} från ${store}`,
     orderHeading: "Tack för din beställning!",
@@ -606,6 +680,43 @@ const text = {
       from: (name: string) => `Fra ${name}`,
       note: "Beskeden udskrives på pakkesedlen. Butikken sender den ikke til modtageren.",
     },
+    /**
+     * A change staff made to the order (wave 3, run 3, D174): the revised confirmation, with the refund, the pay link or nothing more to pay. The reason is said in fixed
+     * words (never staff's note; `other` says nothing). Hand-written only; needs human legal review before real use (docs/wave-3-fulfilment.md section 8).
+     */
+    // legal: needs review
+    orderChanged: {
+      subject: (store: string, number: string) => `${store}: din bestilling ${number} er ændret`,
+      heading: "Din bestilling er ændret",
+      intro: (number: string) => `Vi har ændret bestilling ${number}. Her er, hvad der er ændret.`,
+      removed: "Fjernet",
+      added: "Tilføjet",
+      shipping: (amount: string) => `Ny fragt: ${amount}`,
+      newTotal: "Ny sum for bestillingen",
+      reasons: { customer_request: "Ændringen er lavet efter dit ønske.", out_of_stock: "En vare var udsolgt.", store_error: "Vi lavede en fejl." },
+      refunded: (amount: string) => `Vi har refunderet ${amount} til den betalingsmåde, du brugte.`,
+      refundedOutside: (store: string, amount: string) => `${store} betaler ${amount} tilbage til dig.`,
+      payBy: (amount: string, date: string) => `For at bekræfte ændringen skal du betale ${amount} senest ${date}. Gør du ikke det, forbliver bestillingen, som den var.`,
+      payButton: "Se og betal ændringen",
+      nothingMore: "Du har ikke mere at betale.",
+      withdrawal: "De tilføjede varer er en del af din bestilling: Du kan fortryde inden for 14 dage efter, at du har modtaget den sidste pakke i bestillingen, med de undtagelser loven giver.",
+      /** The pay-link email: a change PROPOSED, applied only when the customer pays (CRD Art. 22). Never "has been changed". */
+      proposedSubject: (store: string, number: string) => `${store}: en ændring af bestilling ${number} venter på din betaling`,
+      proposedHeading: "Butikken foreslår en ændring af din bestilling",
+      proposedIntro: (number: string) => `Butikken foreslår at ændre bestilling ${number}. Intet er ændret endnu: Bestillingen ændres først, når du har betalt forskellen.`,
+      proposedRemoved: "Fjernes",
+      proposedAdded: "Tilføjes",
+      proposedReasons: { customer_request: "Du har bedt om ændringen.", out_of_stock: "En vare er udsolgt.", store_error: "Vi lavede en fejl." },
+      documents: "Dokumenter for ændringen",
+      seeOrder: "Se bestillingen",
+    },
+    /** A parcel of an order sent in parts (D174): its lines, and that the rest follows. Hand-written only; needs human legal review before real use. */
+    // legal: needs review
+    shippedPart: {
+      inParcel: "I denne pakke",
+      restFollows: "Resten af din bestilling kommer i en anden pakke.",
+      receipt: "Fortrydelsesfristen på 14 dage regnes fra den dag, du modtager den sidste pakke.",
+    },
     orderSubject: (store: string, number: string) => `Ordrebekræftelse ${number} fra ${store}`,
     orderHeading: "Tak for din bestilling!",
     orderIntro: (number: string) => `Vi har modtaget betalingen for ordre ${number}.`,
@@ -854,6 +965,43 @@ const text = {
       to: (name: string) => `To ${name}`,
       from: (name: string) => `From ${name}`,
       note: "The message is printed on the packing slip. The store does not send it to the recipient.",
+    },
+    /**
+     * A change staff made to the order (wave 3, run 3, D174): the revised confirmation, with the refund, the pay link or nothing more to pay. The reason is said in fixed
+     * words (never staff's note; `other` says nothing). Hand-written only; needs human legal review before real use (docs/wave-3-fulfilment.md section 8).
+     */
+    // legal: needs review
+    orderChanged: {
+      subject: (store: string, number: string) => `${store}: your order ${number} has been changed`,
+      heading: "Your order has been changed",
+      intro: (number: string) => `We have changed order ${number}. This is what changed.`,
+      removed: "Taken off",
+      added: "Added",
+      shipping: (amount: string) => `New shipping: ${amount}`,
+      newTotal: "New total for the order",
+      reasons: { customer_request: "The change was made at your request.", out_of_stock: "An item was out of stock.", store_error: "We made a mistake." },
+      refunded: (amount: string) => `We have refunded ${amount} to your original payment method.`,
+      refundedOutside: (store: string, amount: string) => `${store} pays ${amount} back to you.`,
+      payBy: (amount: string, date: string) => `To confirm the change, pay ${amount} by ${date}. If you do not, your order stays as it was.`,
+      payButton: "View and pay for the change",
+      nothingMore: "Nothing more to pay.",
+      withdrawal: "The added goods are part of your order: you can withdraw within 14 days of receiving the last parcel of the order, with the exceptions the law allows.",
+      /** The pay-link email: a change PROPOSED, applied only when the customer pays (CRD Art. 22). Never "has been changed". */
+      proposedSubject: (store: string, number: string) => `${store}: a change to your order ${number} is waiting for your payment`,
+      proposedHeading: "The store proposes a change to your order",
+      proposedIntro: (number: string) => `The store proposes to change order ${number}. Nothing has changed yet: your order changes only when you have paid the difference.`,
+      proposedRemoved: "To be taken off",
+      proposedAdded: "To be added",
+      proposedReasons: { customer_request: "You asked for the change.", out_of_stock: "An item is out of stock.", store_error: "We made a mistake." },
+      documents: "Documents for the change",
+      seeOrder: "See the order",
+    },
+    /** A parcel of an order sent in parts (D174): its lines, and that the rest follows. Hand-written only; needs human legal review before real use. */
+    // legal: needs review
+    shippedPart: {
+      inParcel: "In this parcel",
+      restFollows: "The rest of your order follows in another parcel.",
+      receipt: "Your 14 days to change your mind count from the day you receive the last parcel.",
     },
     orderSubject: (store: string, number: string) => `Order confirmation ${number} from ${store}`,
     orderHeading: "Thank you for your order!",

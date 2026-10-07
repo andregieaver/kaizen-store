@@ -143,3 +143,34 @@ describe("refundsLine", () => {
     expect(refundsLine(10000, 5000, 1).text).toContain("no invoice");
   });
 });
+
+describe("order changes in the bridge (D174)", () => {
+  it("adds edit_in and edit_credited, takes away edit_out and edit_waiting, and closes exactly", () => {
+    // Finance has the edited orders at their amounts now; the report has the original invoices and the additional invoices dated in the period.
+    const b = reconcile(
+      sums({
+        finance: { orders: 4, taxMinor: 10000 },
+        report: { orders: 4, taxMinor: 10000 + 300 + 200 - 150 - 50 },
+        causes: { edit_in: { orders: 1, taxMinor: 300 }, edit_credited: { orders: 1, taxMinor: 200 }, edit_out: { orders: 1, taxMinor: 150 }, edit_waiting: { orders: 1, taxMinor: 50 } },
+      }),
+    );
+    expect(b.balanced).toBe(true);
+    expect(b.lines.filter((l) => l.kind === "cause").map((l) => [l.cause, l.sign])).toEqual([
+      ["edit_in", 1],
+      ["edit_credited", 1],
+      ["edit_out", -1],
+      ["edit_waiting", -1],
+    ]);
+    for (const l of b.lines.filter((x) => x.kind === "cause")) {
+      expect(l.label.length).toBeGreaterThan(10);
+      expect(l.text).toMatch(/change/);
+    }
+  });
+
+  it("keeps a change whose documents wait apart from orders with no invoice, and carries the causes into the main-currency bridge", () => {
+    const nok = sums({ finance: { orders: 1, taxMinor: 1000 }, report: { orders: 1, taxMinor: 1200 }, causes: { edit_credited: { orders: 1, taxMinor: 200 } } });
+    const main = reconcileMain("NOK", [nok], 1200, () => null);
+    expect(main.lines.find((l) => l.cause === "edit_credited")).toMatchObject({ sign: 1, taxMinor: 200 });
+    expect(main.lines.some((l) => l.kind === "rounding" || l.kind === "exchange_rate")).toBe(false);
+  });
+});

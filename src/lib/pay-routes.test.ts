@@ -1,7 +1,7 @@
 import { pathToRegexp } from "next/dist/compiled/path-to-regexp";
 import { describe, expect, it } from "vitest";
 
-import { FORBIDDEN_ON_PAY_ROUTES, PAY_SEGMENTS, PAY_SOURCES, importsForbidden, isDocumentPath, isNoExtrasPath, isPayLinkPath, isPayPath } from "./pay-routes";
+import { FORBIDDEN_ON_PAY_ROUTES, PAY_SEGMENTS, PAY_SOURCES, importsForbidden, isChangeLinkPath, isDocumentPath, isNoExtrasPath, isPayLinkPath, isPayPath } from "./pay-routes";
 
 const PAY = [
   "/s/demo/no/cart",
@@ -166,5 +166,42 @@ describe("a draft order's pay link (wave 3, run 2, D173)", () => {
 
   it.each(NOT_LINKS)("%s is not one", (path) => {
     expect(isPayLinkPath(path)).toBe(false);
+  });
+});
+
+describe("a change's pay link (wave 3, run 3, D174)", () => {
+  const TOKEN = "B".repeat(43);
+  const LINKS = [
+    `/s/demo/no/account/change/${TOKEN}`,
+    `/s/demo/no-en-eur/account/change/${TOKEN}?x=1`,
+    `/no/account/change/${TOKEN}`,
+    `/se~tok_1/account/change/${TOKEN}#top`,
+  ];
+  const NOT_LINKS = [
+    "/s/demo/no/account/change",
+    "/s/demo/no/account/change/",
+    "/s/demo/no/account",
+    "/s/demo/no/account/changes/x",
+    "/s/demo/no/products/account/change/x",
+    "/account/change/x",
+    "/s/demo/no/change/x",
+    "/admin/demo/orders/x/edit",
+  ];
+
+  it.each(LINKS)("%s draws none of the layout's extras and is not a pay route", (path) => {
+    expect(isChangeLinkPath(path)).toBe(true);
+    expect(isNoExtrasPath(path)).toBe(true);
+    // No card is typed here: the button hands the customer to Stripe's own page.
+    expect(isPayPath(path)).toBe(false);
+    expect(isPayLinkPath(path)).toBe(false);
+    expect(isDocumentPath(path)).toBe(false);
+  });
+
+  it.each(NOT_LINKS)("%s is not one", (path) => {
+    expect(isChangeLinkPath(path)).toBe(false);
+  });
+
+  it("a draft's pay link is not a change's", () => {
+    expect(isChangeLinkPath(`/s/demo/no/account/pay/${TOKEN}`)).toBe(false);
   });
 });

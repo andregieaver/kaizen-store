@@ -9,7 +9,7 @@ import { allocateRefund } from "@/lib/analytics-products";
 import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
-import { CUSTOMER_JOIN, CUSTOMER_KEY, HAS_CUSTOMER, PAID, dayStart, inPeriod, num, toMainOne, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inPeriod, NOT_EDIT_REFUND, num, PAID, toMainOne, type Row } from "./analytics-sql";
 import { setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -174,7 +174,7 @@ const refundsOf = (store: Store, period: AnalyticsPeriod) => sql`
   join commerce.payments rp on rp.store_id = r.store_id and rp.id = r.payment_id
   join commerce.orders o on o.store_id = rp.store_id and o.id = rp.order_id
   ${CUSTOMER_JOIN}
-  where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${inPeriod(store, sql`r.created_at`, period)}
+  where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND} and ${inPeriod(store, sql`r.created_at`, period)}
     and o.copied_from is null and o.host_id is null and o.total_minor > 0
 `;
 
@@ -284,7 +284,7 @@ async function readCohort(store: Store, period: AnalyticsPeriod): Promise<Row[]>
       select distinct p.order_id
       from commerce.refunds r
       join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
-      where r.store_id = ${store.id}::uuid and r.status = 'succeeded'
+      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND}
     ) rfo on rfo.order_id = o.id
     where o.store_id = ${store.id}::uuid and ${PAID} and ${inPeriod(store, sql`o.placed_at`, period)}
     group by 1, 2

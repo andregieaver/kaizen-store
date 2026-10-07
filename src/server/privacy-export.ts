@@ -152,7 +152,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
   if (s.orderIds.length === 0) return [];
   const ids = uuidList(s.orderIds);
   const store = s.storeId;
-  const [orders, lines, payments, refunds, shipments, downloads, terms, events, bookings, tags] = await Promise.all([
+  const [orders, lines, payments, refunds, shipments, downloads, terms, events, bookings, tags, parcelLines, changes] = await Promise.all([
     db().execute<Row>(sql`
       select o.id, o.number, o.placed_at, o.status, trim(o.currency) as currency, o.subtotal_minor, o.shipping_minor, o.discount_minor,
         o.member_discount_minor, o.campaign_discount_minor, o.credit_minor, o.referral_discount_minor, o.vat_relief_minor, o.tax_minor, o.total_minor,
@@ -175,7 +175,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       where r.store_id = ${store}::uuid and p.order_id = any(${ids}) order by r.created_at, r.id
     `),
     db().execute<Row>(sql`
-      select order_id, carrier, tracking_number, created_at from commerce.shipments
+      select id, order_id, carrier, tracking_number, created_at, legacy from commerce.shipments
       where store_id = ${store}::uuid and order_id = any(${ids}) order by created_at, id
     `),
     db().execute<Row>(sql`
@@ -194,6 +194,17 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       where store_id = ${store}::uuid and order_id = any(${ids}) and order_line_id is not null
     `),
     db().execute<Row>(sql`select order_id, label from commerce.order_tags where store_id = ${store}::uuid and order_id = any(${ids}) order by order_id, created_at, key`),
+    // D174: what each parcel held (a legacy parcel's back-filled lines are left out: the customer was never told them), and the order's changes.
+    db().execute<Row>(sql`
+      select sl.shipment_id, l.sku, l.title, sl.quantity from commerce.shipment_lines sl
+      join commerce.shipments sh on sh.store_id = sl.store_id and sh.id = sl.shipment_id and not sh.legacy
+      join commerce.order_lines l on l.store_id = sl.store_id and l.id = sl.order_line_id
+      where sl.store_id = ${store}::uuid and sh.order_id = any(${ids}) order by sl.shipment_id, l.title, l.id
+    `),
+    db().execute<Row>(sql`
+      select order_id, seq, status, created_at, applied_at, difference_minor, trim(currency) as currency from commerce.order_edits
+      where store_id = ${store}::uuid and order_id = any(${ids}) order by order_id, seq
+    `),
   ]);
   const group = <T extends Row>(rows: T[], key: string) => {
     const map = new Map<string, T[]>();
@@ -213,6 +224,8 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
     downloads: group(downloads, "order_id"),
     events: group(events, "order_id"),
     tags: group(tags, "order_id"),
+    parcelLines: group(parcelLines, "shipment_id"),
+    changes: group(changes, "order_id"),
   };
   const termsOf = new Map(terms.map((x) => [strs(x.order_id), x]));
   const bookingOf = new Map(bookings.map((b) => [strs(b.order_line_id), b]));
@@ -275,7 +288,13 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
         providerReference: str(p.provider_reference),
       })),
       refunds: (byOrder.refunds.get(id) ?? []).map((r) => ({ amountMinor: num(r.amount_minor), currency: strs(r.currency), status: strs(r.status), createdAt: iso(r.created_at), reason: str(r.reason) })),
-      shipments: (byOrder.shipments.get(id) ?? []).map((x) => ({ carrier: str(x.carrier), trackingNumber: str(x.tracking_number), createdAt: iso(x.created_at) })),
+      shipments: (byOrder.shipments.get(id) ?? []).map((x) => ({
+        carrier: str(x.carrier),
+        trackingNumber: str(x.tracking_number),
+        createdAt: iso(x.created_at),
+        lines: (byOrder.parcelLines.get(strs(x.id)) ?? []).map((l) => ({ sku: str(l.sku), title: strs(l.title), quantity: num(l.quantity) })),
+      })),
+      changes: (byOrder.changes.get(id) ?? []).map((c) => ({ label: `E${num(c.seq)}`, status: strs(c.status), createdAt: iso(c.created_at), appliedAt: iso(c.applied_at), differenceMinor: num(c.difference_minor), currency: strs(c.currency) })),
       downloads: (byOrder.downloads.get(id) ?? []).map((d) => ({ fileName: str(d.file_name), downloads: num(d.downloads) })),
       terms: term ? { mode: strs(term.mode), acceptedAt: iso(term.accepted_at), locale: str(term.locale) } : null,
       events: (byOrder.events.get(id) ?? []).map((e) => ({ type: strs(e.type), createdAt: iso(e.created_at), reason: str(e.reason), note: str(e.note) })),

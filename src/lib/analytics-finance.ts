@@ -129,7 +129,7 @@ export function financeStatement(totals: Totals, settings: AnalyticsSettings, da
   const rounding = totals.revenueMinor - (totals.grossSalesMinor - totals.discountsMinor + totals.shippingMinor);
   if (rounding !== 0) push("rounding", ROUNDING_LABEL, rounding, { note: "VAT is taken off each line and each order, which differ by a few minor units." });
   push("revenue", "Revenue", totals.revenueMinor, { subtotal: true });
-  push("refunds", "Refunds", -totals.refundsMinor, { note: "Made in the period. Refunds made only in Stripe's dashboard are not seen." });
+  push("refunds", "Refunds", -totals.refundsMinor, { note: "Made in the period. Refunds made only in Stripe's dashboard are not seen. An order changed after purchase counts at its new amount on the day it was placed, so the refund of a change's lower total is not counted again here (D174)." });
   push("netRevenue", "Net revenue", netRevenue, { subtotal: true });
 
   const known = coverage === null ? "" : formatPercent(coverage, 0);

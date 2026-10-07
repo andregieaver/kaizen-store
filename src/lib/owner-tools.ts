@@ -74,8 +74,17 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "get_order",
-    "One order in full: its lines, totals, payment, what is left to refund, shipments, bookings and history, its tags, whether it is archived or staff-made (made from a draft order) and whether it was paid outside Kaizen and how. A gift order is said to be a gift; its message is the customer's own words to a third party and is not given here.",
+    "One order in full: its lines, totals, payment, what is left to refund, shipments, bookings and history, its tags, whether it is archived or staff-made (made from a draft order) and whether it was paid outside Kaizen and how. A gift order is said to be a gift; its message is the customer's own words to a third party and is not given here. Since wave 3 (D174) it also says where the sending stands (not sent, partly sent, sent, withdrawn before sending), what each parcel held, the units still to send per line, and the order's changes after purchase (E1, E2, …: when, the difference in the total, and whether applied, waiting for the customer's payment, cancelled or expired). Read-only: changing an order, sending part of it and recording a change's payment are done on the order's page.",
     z.object({ order: orderRef }),
+  ),
+  tool(
+    "pick_list",
+    "The pick list (D174): what to take off the shelves for some orders, worked out by the store from what each still has to send (downloads, services, units already in parcels and units withdrawn before sending are left out). Name the orders by number (up to 100), or leave them out for every paid order with something still to send, oldest first (at most 100). `by` product sums the units per variant and SKU with how many orders need it; `by` order lists each order's lines. Orders that cannot be picked are listed with the reason, and an order whose change waits for the customer's payment is picked as it stands, with a warning. No prices, names or addresses. Read-only: it changes nothing and marks nothing sent; give the printable list's address it returns. Repeat its sums; never add units yourself.",
+    z.object({
+      orders: z.array(orderRef).min(1).max(100).optional().describe("Order numbers (or ids). Leave out for everything still to send."),
+      by: z.enum(["product", "order"]).default("product").describe("Sum by product (variant and SKU), or list order by order."),
+      sort: z.enum(["sku", "title", "quantity"]).default("sku").describe("The order of the rows."),
+    }),
   ),
   tool(
     "list_draft_orders",
@@ -372,7 +381,7 @@ export const OWNER_TOOLS = [
   ),
   tool(
     "mark_order_sent",
-    "Marks a paid order as sent with the parcel's carrier and tracking number, and emails the customer. Needs the owner's approval.",
+    "Marks a paid order as sent with the parcel's carrier and tracking number, and emails the customer. Everything the order still has to send goes in this one parcel (a partly sent order: the rest); sending only some items is done on the order's page. Needs the owner's approval.",
     z.object({
       order: orderRef,
       carrier: z.string().trim().min(1).max(40).describe("The carrier, such as posten, bring, postnord, dhl, ups, other."),

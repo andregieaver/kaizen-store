@@ -23,7 +23,7 @@ import { discountsReport } from "./analytics-discounts-data";
 import { inventoryReport } from "./analytics-inventory-data";
 import { OTHER_ID, productsReport } from "./analytics-products-data";
 import { getAnalyticsSettings, listTargets, type StoredAnalyticsSettings } from "./analytics-settings";
-import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, inPeriod, num, PAID, type Row } from "./analytics-sql";
+import { CUSTOMER_JOIN, CUSTOMER_KEY, dayStart, HAS_CUSTOMER, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, type Row } from "./analytics-sql";
 import { periodTotals, seriesByBucket, setBased } from "./analytics-totals";
 import { marketingReport, sessionTotals, trafficReport, type MarketingReport, type TrafficReport } from "./analytics-traffic-data";
 import type { Store } from "./stores";
@@ -182,7 +182,7 @@ export async function productRefundRows(store: Store, today: string): Promise<Pr
       join commerce.orders o on o.store_id = rp.store_id and o.id = rp.order_id
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
       join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id
-      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${inPeriod(store, sql`r.created_at`, whole)}
+      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND} and ${inPeriod(store, sql`r.created_at`, whole)}
         and o.copied_from is null and o.host_id is null and o.total_minor > 0 and ol.delivery <> 'service'
         and v.product_id in (select product_id from sold)
       group by v.product_id

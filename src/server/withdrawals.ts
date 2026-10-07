@@ -23,6 +23,8 @@ import { unarchiveForReturn } from "./order-archive";
 import { guarded, refusal, type Refused } from "./return-errors";
 import { judge, loadFacts, recipientsOf, writeEvent, type OrderFacts } from "./return-facts";
 import { buildAcknowledgement, sendWithdrawalAcknowledgement } from "./return-emails";
+import { refreshFulfilment } from "./fulfilment";
+import { cancelEditsForWithdrawal, closeEditSessionsAfterWithdrawal } from "./order-edits";
 import { NOTHING_SENT_SQL } from "./return-sql";
 
 type Row = Record<string, unknown>;
@@ -597,7 +599,7 @@ async function writeConfirmation(
   facts: OrderFacts,
   eligible: LineEligibility[],
   by: { actor: "shopper" | "staff"; confirmedAt?: Date | null; note?: string | null; registered?: Record<string, unknown> },
-): Promise<{ ok: true; returnId: string; number: string } | Refused> {
+): Promise<{ ok: true; returnId: string; number: string; endedEdits: number } | Refused> {
   const declared = await tx.execute<Row>(sql`
     select order_line_id, quantity from commerce.withdrawal_request_lines
     where store_id = ${storeId}::uuid and withdrawal_request_id = ${requestId}::uuid order by order_line_id
@@ -647,7 +649,11 @@ async function writeConfirmation(
   };
   await writeEvent(tx, storeId, facts.orderId, "return.confirmed", data, by.actor);
   await writeEvent(tx, storeId, facts.orderId, "return.approved", { ...data, automatic: true }, "system");
-  return { ok: true, returnId: String(ret.id), number: String(ret.number) };
+  // D174: a withdrawal is never refused for an order change waiting for payment: the change is cancelled and its held units released, here; its Stripe sessions
+  // are closed after the commit. And a withdrawal of the last units still to send of a partly sent order makes it sent (`fulfilled`), in this transaction.
+  const ended = await cancelEditsForWithdrawal(tx, storeId, facts.orderId);
+  await refreshFulfilment(tx, storeId, facts.orderId);
+  return { ok: true, returnId: String(ret.id), number: String(ret.number), endedEdits: ended.length };
 }
 
 /**
@@ -675,7 +681,7 @@ export async function confirmWithdrawal(storeId: string, input: unknown): Promis
   const { lines: eligible } = judge(facts, new Date(String(first.submitted_at)));
 
   const made = await guarded(async () =>
-    db().transaction(async (tx): Promise<{ ok: true; already: boolean } | Refused> => {
+    db().transaction(async (tx): Promise<{ ok: true; already: boolean; endedEdits?: number } | Refused> => {
       const [request] = await tx.execute<Row>(sql`
         select * from commerce.withdrawal_requests where store_id = ${storeId}::uuid and id = ${requestId}::uuid for update
       `);
@@ -686,10 +692,11 @@ export async function confirmWithdrawal(storeId: string, input: unknown): Promis
       }
       const written = await writeConfirmation(tx, storeId, requestId, facts, eligible, { actor: "shopper" });
       if (!written.ok) return written;
-      return { ok: true, already: false };
+      return { ok: true, already: false, endedEdits: written.endedEdits };
     }),
   );
   if (!made.ok) return made;
+  if ("endedEdits" in made && made.endedEdits) await closeEditSessionsAfterWithdrawal(storeId, facts.orderId);
   return confirmedOutcome(storeId, requestId, made.already);
 }
 
@@ -788,10 +795,11 @@ export async function registerWithdrawal(storeId: string, input: unknown, accoun
         registered: { by: accountId, channel: data.channel, late: data.late },
       });
       if (!written.ok) return written;
-      return { ok: true as const, requestId, returnId: written.returnId, number: written.number };
+      return { ok: true as const, requestId, returnId: written.returnId, number: written.number, endedEdits: written.endedEdits };
     }),
   );
   if (!made.ok) return made;
+  if (made.endedEdits) await closeEditSessionsAfterWithdrawal(storeId, facts.orderId);
   // The acknowledgement goes out in the same request, to the order's own address, as for the consumer's own statement.
   const outcome = await sendWithdrawalAcknowledgement(storeId, made.requestId);
   await recordAcknowledgement(storeId, made.requestId, outcome.messageId);

@@ -1198,7 +1198,7 @@ export async function recordDraftPaidOutside(
 }
 
 /** The cash ceiling of a market's country in the order's currency when that is not the ceiling's own (the market's rates), or null when it cannot be converted. */
-async function cashLimitInCurrency(storeId: string, code: string, currency: string): Promise<number | null | undefined> {
+export async function cashLimitInCurrency(storeId: string, code: string, currency: string): Promise<number | null | undefined> {
   const rule = cashRuleOf(code);
   if (!rule || rule.currency === currency) return undefined;
   const store = await storeById(storeId);

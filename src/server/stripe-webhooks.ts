@@ -10,6 +10,7 @@ import { adoptDeliveryCard, isDeliveryOrder } from "./standing-orders";
 import { markCheckoutRecovered } from "./cart-reminders";
 import { sendReferrerRewardEmail } from "./affiliate-emails";
 import { linkOrderToCustomer, openCheckoutAccount } from "./customers";
+import { completeEditPayment, markEditSessionEnded } from "./order-edits";
 import { recordHostCommission } from "./host-payments";
 import { sendBookingStaffNotices, sendOrderConfirmation, sendWelcomeForOrder } from "./shopper-emails";
 import { applyStripeRefund, isRefundEvent, stripeForAccount } from "./stripe-refunds";
@@ -79,11 +80,19 @@ export async function applySession(
   eventType?: string,
 ): Promise<void> {
   const [payment] = await db().execute<Row>(sql`
-    select order_id from commerce.payments
+    select order_id, order_edit_id from commerce.payments
     where store_id = ${storeId}::uuid and provider = 'stripe' and provider_reference = ${session.id}
   `);
   if (!payment) return; // Not a session this store created.
   const orderId = String(payment.order_id);
+  // The difference of an order change (D174) on a paid order: the change is applied (or the money given back), the order is never completed again and never
+  // cancelled, and its addresses are never taken from this session. A session that lapses or fails marks only its own payment row.
+  if (payment.order_edit_id) {
+    const editFailed = eventType === "checkout.session.async_payment_failed";
+    if (session.status === "complete" && session.payment_status !== "unpaid" && !editFailed) await completeEditPayment(storeId, session.id);
+    else if (editFailed || session.status === "expired" || eventType === "checkout.session.expired") await markEditSessionEnded(storeId, session.id, editFailed ? "failed" : "cancelled");
+    return;
+  }
   // A weekly delivery paid by link (D102): its address and contact are the list's, and it stays when the link lapses.
   const delivery = await isDeliveryOrder(storeId, orderId);
 

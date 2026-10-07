@@ -212,7 +212,7 @@ export function starterPage(role: PageRole, m: Messages, id: NewId, home: string
     case "order":
       return page(m.thanks, [
         row(part("order_status")),
-        row(part("order_account"), part("order_bookings"), part("order_lines"), part("order_totals"), part("order_documents")),
+        row(part("order_account"), part("order_bookings"), part("order_parcels"), part("order_lines"), part("order_totals"), part("order_documents")),
         row(part("order_subscription"), part("order_downloads"), part("order_address"), part("order_terms"), part("order_continue")),
       ]);
     case "account":

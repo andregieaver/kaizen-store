@@ -2,10 +2,11 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { creditNoteSnapshot, parseWorking } from "@/lib/credit-allocation";
-import { buildInvoiceSnapshot, type InvoiceFacts, type OrderInvoiceSnapshot, type SnapshotBucket } from "@/lib/invoice-snapshot";
+import { creditNoteSnapshot, editCreditNote, parseWorking } from "@/lib/credit-allocation";
+import { buildEditInvoiceSnapshot, buildInvoiceSnapshot, type InvoiceFacts, type OrderInvoiceSnapshot, type SnapshotBucket } from "@/lib/invoice-snapshot";
 
 import { createInvoiceStore, creditNotesOf, invoiceOf, one, placeOrder, refund, refundReturn, refundReturnOutside, scalar, startReturn, workingOf, type DocRow, type OrderSpec } from "./invoice-fixture";
+import * as editFx from "./order-edit-fixture";
 import { createTestDatabase } from "./testing";
 
 /**
@@ -411,5 +412,162 @@ describe("a return's credit note: SQL and the oracle agree", () => {
   it("refunded outside Kaizen, in euros in a store of kroner", async () => {
     const { notes } = await returnParity(no, { lines: [{ sku: "OE", unit: 7777, quantity: 2, rate: 0.24 }, { sku: "OF", unit: 1717, rate: 0.14 }], shipping: 595, shippingRate: 0.24, market: "FI", currency: "EUR" }, ([a]) => workingOf({ lines: [{ lineId: a, quantity: 1, valueMinor: 7777, deductionMinor: 200 }], deliveryMinor: 0, returnShippingMinor: 0, amountMinor: 7577 }), "outside");
     expect(notes[0].snapshot.source).toBe("return_outside");
+  });
+});
+
+describe("a change's documents (D174): SQL and the oracle agree", () => {
+  let account = "";
+  beforeAll(async () => {
+    account = await scalar<string>(db, "insert into commerce.accounts (email) values ('parity-staff@example.com') returning id");
+  });
+  const edit = (storeId: string, orderId: string, o: editFx.EditOptions) => editFx.edit({ db, account }, storeId, orderId, o);
+
+  type Docs = { invoices: DocRow[]; notes: DocRow[] };
+  async function docsOf(orderId: string): Promise<Docs> {
+    const invoices = (
+      await db.query<DocRow & { kind: string; order_edit_id: string | null }>(
+        "select id, kind, order_edit_id, document_number, total_minor::text, tax_minor::text, net_minor::text, snapshot, public_token, issued_on::text, supply_date::text from commerce.invoices where order_id = $1 order by number",
+        [orderId],
+      )
+    ).rows;
+    return { invoices, notes: await creditNotesOf(db, orderId) };
+  }
+
+  /** Both documents of a change against the oracles, given what the database kept of the change and the order. */
+  async function editParity(storeId: string, orderId: string, editId: string) {
+    const { invoices, notes } = await docsOf(orderId);
+    const original = invoices.find((i: any) => i.kind === "order")!;
+    const e = await one<Record<string, any>>(db, "select * from commerce.order_edits where id = $1", [editId]);
+    const o = await one<Record<string, any>>(db, "select * from commerce.orders where id = $1", [orderId]);
+    const removed = (await db.query<Record<string, any>>("select * from commerce.order_edit_lines where order_edit_id = $1 and kind in ('remove', 'reduce') order by n", [editId])).rows;
+    const added = (
+      await db.query<Record<string, any>>(
+        `select ol.*, p.vat_category from commerce.order_lines ol
+           left join commerce.product_variants v on v.id = ol.variant_id left join commerce.products p on p.id = v.product_id
+          where ol.order_edit_id = $1 order by ol.ctid`,
+        [editId],
+      )
+    ).rows;
+    const shipGross = Number(e.shipping_after) - Number(e.shipping_before);
+    const addedTax = added.reduce((sum, l) => sum + Number(l.tax_minor), 0);
+    const removedTax = removed.reduce((sum, l) => sum + Number(l.tax_minor), 0);
+    const shipVatRaw = Number(e.tax_delta) - addedTax + removedTax;
+    const shipVat = shipGross > 0 ? Math.max(0, Math.min(shipVatRaw, shipGross)) : shipGross < 0 ? Math.max(0, Math.min(-shipVatRaw, -shipGross)) : 0;
+    const shipRate = Number(o.shipping_tax_rate);
+    const label = (o.delivery as { label?: string } | null)?.label ?? null;
+    const editNote = notes.find((n: any) => n.snapshot.source === "order_edit" && n.snapshot.reason.editSeq === e.seq);
+    const editInvoice = invoices.find((i: any) => i.order_edit_id === editId);
+    // The pool as it stood before the change's documents: the order's invoices and notes issued before them.
+    const othersBefore = invoices.filter((i: any) => i.kind === "order_edit" && i !== editInvoice && (!editInvoice || Number(i.document_number.replace(/\D/g, "")) < Number(editInvoice.document_number.replace(/\D/g, ""))));
+    const notesBefore = editNote ? notes.slice(0, notes.indexOf(editNote)) : notes;
+    const credit = editCreditNote({
+      invoice: { id: original.id, snapshot: original.snapshot },
+      others: othersBefore.map((i) => ({ snapshot: i.snapshot })),
+      earlier: notesBefore.map((n) => n.snapshot.buckets as SnapshotBucket[]),
+      removed: removed.map((l) => ({ lineId: l.order_line_id, sku: l.sku, title: l.title, quantity: l.quantity, totalMinor: Number(l.total_minor), taxMinor: Number(l.tax_minor), taxRate: Number(l.tax_rate) })),
+      shipping: shipGross < 0 ? { grossMinor: -shipGross, vatMinor: shipVat, rate: shipRate, label } : null,
+      seq: e.seq,
+      number: editNote?.document_number ?? "",
+      issuedOn: editNote?.issued_on ?? "",
+    });
+    if (editNote) expect(editNote.snapshot).toEqual(JSON.parse(JSON.stringify(credit.snapshot)));
+    else expect(credit.snapshot).toBeNull();
+
+    if (editInvoice) {
+      const st = await one<Record<string, any>>(db, "select s.*, c.currency::text as home from commerce.stores s left join commerce.countries c on c.code = s.country where s.id = $1", [storeId]);
+      const rates = Object.fromEntries((await db.query<{ currency: string; rate: string | null }>("select currency, rate::text as rate from commerce.store_currencies where store_id = $1", [storeId])).rows.map((r) => [r.currency, r.rate]));
+      const asOf = await scalar<string>(db, "select to_char(commerce.fx_as_of($1::uuid, $2, $3), 'YYYY-MM-DD')", [storeId, o.currency, st.home ?? o.currency]);
+      const pay = e.payment_id ? await one<Record<string, any>>(db, "select provider, method from commerce.payments where id = $1", [e.payment_id]) : null;
+      const oracle = buildEditInvoiceSnapshot(
+        {
+          original: { id: original.id, snapshot: original.snapshot },
+          seq: e.seq,
+          lines: added.map((l) => ({
+            id: l.id, sku: l.sku, title: l.title, quantity: l.quantity, unitPriceMinor: Number(l.unit_price_minor), totalMinor: Number(l.total_minor), taxMinor: Number(l.tax_minor),
+            taxRate: Number(l.tax_rate), delivery: l.delivery, gift: l.gift, vatCategory: l.vat_category,
+          })),
+          shipping: shipGross > 0 ? { grossMinor: shipGross, vatMinor: shipVat, rate: shipRate, label } : null,
+          payment: pay ? { provider: pay.provider, method: pay.method, differenceMinor: Number(e.difference_minor) } : null,
+          currency: o.currency,
+          sellerCountry: st.country,
+          fx: { homeCurrency: st.home, mainCurrency: await scalar<string>(db, "select commerce.main_currency($1)", [storeId]), rates, ratesAuto: st.rates_auto, ratesAsOf: asOf },
+        },
+        { number: editInvoice.document_number, issuedOn: editInvoice.issued_on, supplyDate: editInvoice.supply_date! },
+      );
+      expect(editInvoice.snapshot).toEqual(JSON.parse(JSON.stringify(oracle)));
+      expect([Number(editInvoice.total_minor), Number(editInvoice.tax_minor), Number(editInvoice.net_minor)]).toEqual([oracle.totals.grossMinor, oracle.totals.vatMinor, oracle.totals.netMinor]);
+    }
+    return { invoices, notes, editNote, editInvoice };
+  }
+
+  it("units taken off at two rates, a lower shipping charge and products added: the credit note and the additional invoice", async () => {
+    const { order } = await expectParity(no, {
+      lines: [{ sku: "E1", unit: 12999, quantity: 3, rate: 0.25, discount: 999 }, { sku: "E2", unit: 4950, quantity: 2, rate: 0.15, category: "food" }],
+      shipping: 9900,
+      shippingRate: 0.25,
+      deliveryLabel: "Posten",
+    });
+    const v = await editFx.newVariant(db, no);
+    const { editId } = await edit(no, order.id, {
+      quantities: { [order.lineIds[0]]: 1, [order.lineIds[1]]: 0 },
+      added: [{ variantId: v, unitPriceMinor: 3333, quantity: 3 }],
+      shipping: { kind: "set", amountMinor: 4900 },
+    });
+    const { editNote, editInvoice } = await editParity(no, order.id, editId);
+    expect(editNote!.snapshot.lines.map((l: any) => l.kind)).toEqual(["goods", "goods", "delivery"]);
+    expect(editInvoice!.snapshot.payments.map((p: any) => p.kind)).toEqual(["settled_by_order"]);
+  });
+
+  it("an order in euros in a store of kroner, a higher total paid online: the additional invoice's VAT in kroner at its own day's rate", async () => {
+    const { order } = await expectParity(no, { lines: [{ sku: "EE", unit: 7777, quantity: 2, rate: 0.24 }], shipping: 595, shippingRate: 0.24, market: "FI", currency: "EUR" });
+    const v = await editFx.newVariant(db, no);
+    const { editId } = await edit(no, order.id, { quantities: { [order.lineIds[0]]: 1 }, added: [{ variantId: v, unitPriceMinor: 9999, quantity: 1, rate: 0.24 }], payWith: "stripe" });
+    const { editInvoice, editNote, invoices } = await editParity(no, order.id, editId);
+    expect(editInvoice!.snapshot.vatHome.currency).toBe("NOK");
+    expect(editInvoice!.snapshot.payments.map((p: any) => [p.kind, p.amountMinor])).toEqual([["paid_online", 9999 - 7777], ["settled_by_order", 7777]]);
+    // The credit note reduces the original supply: its VAT in kroner is at the original invoice's rate.
+    expect(editNote!.snapshot.vatHome.fxRate).toBe(invoices.find((i: any) => i.kind === "order")!.snapshot.vatHome.fxRate);
+  });
+
+  it("a higher total recorded as paid outside Kaizen: the method on the additional invoice", async () => {
+    const { order } = await expectParity(no, { lines: [{ sku: "PO", unit: 5000, rate: 0.25 }] });
+    const v = await editFx.newVariant(db, no);
+    const { editId } = await edit(no, order.id, { added: [{ variantId: v, unitPriceMinor: 2500, quantity: 2 }], shipping: { kind: "keep" } });
+    const { editInvoice, editNote } = await editParity(no, order.id, editId);
+    expect(editNote).toBeUndefined();
+    expect(editInvoice!.snapshot.payments).toEqual([{ kind: "paid_outside", amountMinor: 5000, provider: "manual", method: "cash" }]);
+  });
+
+  it("two changes and then a refund: each change credits what the earlier left, and the refund is credited over all the order's documents", async () => {
+    const { order } = await expectParity(no, {
+      lines: [{ sku: "M1", unit: 10000, quantity: 2, rate: 0.25 }, { sku: "M2", unit: 3000, quantity: 3, rate: 0.15, category: "food" }],
+      shipping: 4900,
+      shippingRate: 0.25,
+    });
+    const v = await editFx.newVariant(db, no);
+    const first = await edit(no, order.id, { quantities: { [order.lineIds[1]]: 1 }, added: [{ variantId: v, unitPriceMinor: 7000, quantity: 1 }] });
+    await editParity(no, order.id, first.editId);
+    const added = await scalar<string>(db, "select id from commerce.order_lines where order_edit_id = $1", [first.editId]);
+    const second = await edit(no, order.id, { quantities: { [added]: 0, [order.lineIds[0]]: 1 } });
+    await editParity(no, order.id, second.editId);
+    // A goodwill refund afterwards, credited over the pool of the order's two invoices.
+    await refund(db, order.id, 4321);
+    const { invoices, notes } = await docsOf(order.id);
+    const last = notes[notes.length - 1];
+    const original = invoices.find((i: any) => i.kind === "order")!;
+    const result = creditNoteSnapshot({
+      invoice: { id: original.id, snapshot: original.snapshot },
+      others: invoices.filter((i: any) => i.kind === "order_edit").map((i) => ({ snapshot: i.snapshot })),
+      earlier: notes.slice(0, -1).map((n) => n.snapshot.buckets as SnapshotBucket[]),
+      source: "refund",
+      returnNumber: null,
+      refundMinor: 4321,
+      working: null,
+      number: last.document_number,
+      issuedOn: last.issued_on,
+    });
+    expect(last.snapshot).toEqual(JSON.parse(JSON.stringify(result.snapshot)));
+    // Per rate, the documents together never go below zero, and the audit of the numbers is clean.
+    expect(await db.query("select * from commerce.document_audit($1) where not ok", [no]).then((r) => r.rows)).toEqual([]);
   });
 });

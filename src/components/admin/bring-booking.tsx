@@ -3,7 +3,10 @@
 import { useState, useTransition } from "react";
 
 import { bringBookAction, bringOptionsAction, type BringBookState } from "@/app/admin/(gated)/[store]/orders/bring-actions";
+import { ParcelChoice } from "@/components/admin/orders/parcel-choice";
+import type { ParcelRow } from "@/components/admin/orders/send-parcel";
 import type { OrderDelivery } from "@/lib/delivery-options";
+import { parcelLinesFromChoice } from "@/lib/parcel-form";
 import type { BringOptions } from "@/server/bring-shipping";
 
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -14,7 +17,8 @@ const nok = (minor: number, currency: string) =>
 
 /**
  * Ships an order with Posten / Bring from its page (D134): the parcel's weight, Bring's services and prices for it, a pickup
- * point where the service needs one, and Book. Prices are what Bring charges the store (excluding VAT).
+ * point where the service needs one, and Book. Prices are what Bring charges the store (excluding VAT). With `rows` (D174) the booking
+ * takes the *In this parcel* choice: the chosen units, or everything still to send when nothing is lowered.
  */
 export function BringBooking({
   storeSlug,
@@ -23,6 +27,7 @@ export function BringBooking({
   test,
   hasEmail,
   chosen: shopperChoice = null,
+  rows = [],
 }: {
   storeSlug: string;
   orderId: string;
@@ -31,6 +36,8 @@ export function BringBooking({
   hasEmail: boolean;
   /** The service the shopper chose at checkout (D135), used unless the store picks another. */
   chosen?: OrderDelivery | null;
+  /** The order's physical lines with what is still to send (D174), for the parcel's choice. */
+  rows?: ParcelRow[];
 }) {
   const [weight, setWeight] = useState(estimatedGrams > 0 ? (estimatedGrams / 1000).toString().replace(".", ",") : "");
   const [dims, setDims] = useState({ l: "", w: "", h: "" });
@@ -38,6 +45,8 @@ export function BringBooking({
   const [service, setService] = useState("");
   const [point, setPoint] = useState("");
   const [notify, setNotify] = useState(true);
+  const [typed, setTyped] = useState<Record<string, string>>({});
+  const lines = parcelLinesFromChoice(rows, typed);
   const [problem, setProblem] = useState<string | null>(null);
   const [result, setResult] = useState<BringBookState | null>(null);
   const [busy, start] = useTransition();
@@ -69,7 +78,8 @@ export function BringBooking({
   const book = () =>
     start(async () => {
       setProblem(null);
-      setResult(await bringBookAction(storeSlug, orderId, { serviceId: service, pickupPointId: chosen?.needsPickupPoint ? point : undefined, notify: hasEmail && notify, parcel: parcel() }));
+      if (lines === "invalid") return;
+      setResult(await bringBookAction(storeSlug, orderId, { serviceId: service, pickupPointId: chosen?.needsPickupPoint ? point : undefined, notify: hasEmail && notify, parcel: parcel(), lines }));
     });
 
   return (
@@ -79,6 +89,7 @@ export function BringBooking({
           Test environment: Bring books a test shipment. Nothing is shipped and the order is not marked as sent.
         </p>
       )}
+      <ParcelChoice rows={rows} typed={typed} onChange={setTyped} />
       <div className="grid gap-3 sm:grid-cols-4">
         <label className={label}>
           Weight (kg)
@@ -152,7 +163,7 @@ export function BringBooking({
           <button
             type="button"
             onClick={book}
-            disabled={busy || !service || (chosen?.needsPickupPoint && !point)}
+            disabled={busy || !service || (chosen?.needsPickupPoint && !point) || lines === "invalid"}
             className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
           >
             {busy ? "Booking …" : test ? "Make a test booking" : "Book and mark as sent"}

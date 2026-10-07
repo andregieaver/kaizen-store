@@ -59,3 +59,64 @@ export type OrderAuditAction = (typeof ORDER_AUDIT_ACTIONS)[keyof typeof ORDER_A
 /** Every audit action here is in the activity log's `orders` area (a scan test fails for one that is not). */
 export const ORDER_AUDIT_ALL: readonly OrderAuditAction[] = Object.values(ORDER_AUDIT_ACTIONS);
 export const allInOrdersArea = (): boolean => ORDER_AUDIT_ALL.every((a) => areaOfAction(a) === "orders");
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Sending in parts and changing an order after purchase (wave 3, run 3, D174, docs/wave-3-fulfilment.md 4.8)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * The events written on an order by parcels and changes. A change's event carries `{ edit, seq, before, after, difference }` (amounts and ids, never a
+ * person's data) and staff's note only as `data.note`, which the erasure removes. A copied order takes none of these (the copied-order guards are not
+ * patched: a copied order is never sent or changed).
+ */
+export const FULFILMENT_EVENTS = {
+  /** A change applied to the order: its lines and totals before and after, the difference and what happened to the money. */
+  editApplied: "order.edit_applied",
+  /** A change with a higher total was sent to the customer, or a link to share was made: the order is unchanged until it is paid. */
+  editSent: "order.edit_sent",
+  editCancelled: "order.edit_cancelled",
+  editExpired: "order.edit_expired",
+  /** Staff recorded a change's difference as paid outside Kaizen (method and reference in `data.method` and `data.note`). */
+  editPaidOutside: "order.edit_paid_outside",
+  /** A payment arrived for a change that could no longer be applied and was refunded in full. */
+  editPaymentRefunded: "order.edit_payment_refunded",
+  /** The refund of a change's lower total: the change's own credit note covers it (written by `commerce.make_credit_note()`). */
+  coveredByEdit: "credit_note.covered_by_edit",
+  /**
+   * Stripe reported a change's refund as failed after the change was applied on its `pending` answer (review fix): the order reads lower and the customer is
+   * owed the money (`data.refundId`, `data.edit`, `data.amount`). The order page, the store checkup and the control center say so until it is refunded again.
+   */
+  editRefundFailed: "order.edit_refund_failed",
+  /**
+   * Units never sent were put back with *These units were not sent* ticked (a refund, or a restock with nothing refunded) and taken off what is still to send
+   * (`commerce.unsent_closures`): `data.units`, `data.lines` (`{ lineId, sku, title, quantity }`, as sold) and `data.refundId` when money went back with them.
+   */
+  unsentClosed: "order.unsent_closed",
+} as const;
+export type FulfilmentEvent = (typeof FULFILMENT_EVENTS)[keyof typeof FULFILMENT_EVENTS];
+
+export const FULFILMENT_EVENT_LABELS: Record<FulfilmentEvent, string> = {
+  "order.edit_applied": "Order changed",
+  "order.edit_sent": "Change sent to the customer for payment",
+  "order.edit_cancelled": "Change cancelled",
+  "order.edit_expired": "Change expired unpaid",
+  "order.edit_paid_outside": "Change paid outside Kaizen",
+  "order.edit_payment_refunded": "Late payment for a change refunded",
+  "credit_note.covered_by_edit": "Refund covered by the change's credit note",
+  "order.edit_refund_failed": "Refund of a change failed",
+  "order.unsent_closed": "Taken off what is still to send",
+};
+
+/** The audit actions of parcels and changes (amounts and counts only, never staff's note). Every one is in the activity log's `orders` area. */
+export const FULFILMENT_AUDIT_ACTIONS = {
+  sentPart: "order.sent_part",
+  editApplied: "order.edit_applied",
+  editSent: "order.edit_sent",
+  editCancelled: "order.edit_cancelled",
+  editPaidOutside: "order.edit_paid_outside",
+  /** Units taken off what is still to send with a refund or restock (`notSent`): the units and the refund's id, never staff's words. */
+  unsentClosed: "order.unsent_closed",
+} as const;
+export type FulfilmentAuditAction = (typeof FULFILMENT_AUDIT_ACTIONS)[keyof typeof FULFILMENT_AUDIT_ACTIONS];
+export const FULFILMENT_AUDIT_ALL: readonly FulfilmentAuditAction[] = Object.values(FULFILMENT_AUDIT_ACTIONS);
+export const fulfilmentInOrdersArea = (): boolean => FULFILMENT_AUDIT_ALL.every((a) => areaOfAction(a) === "orders");

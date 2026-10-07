@@ -2,27 +2,49 @@
  * The reconciliation of the VAT report against Finance and the orders (D161, `docs/wave-1c-reports.md` 2.2.1 and 4.7). Pure: the server
  * brings the sums, this says how they bridge. Per document currency and period, in integer minor units with no conversion:
  *
- *   R = F + timing_in + not_captured - timing_out - invoicing_off - test_mode - waiting - other
+ *   R = F + timing_in + not_captured + edit_in + edit_credited - timing_out - edit_out - invoicing_off - test_mode - waiting - edit_waiting - other
  *
  * where F is Finance's VAT (the sum of `tax_minor` of the paid orders placed in the period: `analytics-sql.ts`'s `PAID`, never a copied or
  * a host's order) and R the report's VAT charged (the invoices whose supply date is in the period). Finance dates an order by the day it
  * was placed, a document by its tax date; an order with no invoice (invoicing off, waiting, paid in test mode) is in Finance only. The
  * identity is exact in every currency; a bridge that does not balance is a bug and says so. Needs review: accountant (section 8, item 5).
+ *
+ * Order changes (D174, `docs/wave-3-fulfilment.md` 4.6 and 4.7): Finance reads an edited order at its amounts as they are now, dated by the day it
+ * was placed, while the change is documented by an additional invoice and a credit note dated by the change. The four `edit_*` causes name what that
+ * moves: an additional invoice dated in the period of an order placed in another (`edit_in`), one of this period's orders dated in another
+ * (`edit_out`), the VAT a change took off (`edit_credited`: Finance's order is already lower, the report's VAT charged does not subtract the change's
+ * credit note, which is in VAT credited) and a change whose documents wait (`edit_waiting`, its VAT moved, which can be below zero).
  */
 
-export const CAUSES = ["timing_in", "not_captured", "timing_out", "invoicing_off", "test_mode", "waiting", "other"] as const;
+export const CAUSES = ["timing_in", "not_captured", "edit_in", "edit_credited", "timing_out", "edit_out", "invoicing_off", "test_mode", "waiting", "edit_waiting", "other"] as const;
 export type Cause = (typeof CAUSES)[number];
 
 /** `+1` adds to Finance's figure on the way to the report's, `-1` takes away. */
-const SIGN: Record<Cause, 1 | -1> = { timing_in: 1, not_captured: 1, timing_out: -1, invoicing_off: -1, test_mode: -1, waiting: -1, other: -1 };
+const SIGN: Record<Cause, 1 | -1> = {
+  timing_in: 1,
+  not_captured: 1,
+  edit_in: 1,
+  edit_credited: 1,
+  timing_out: -1,
+  edit_out: -1,
+  invoicing_off: -1,
+  test_mode: -1,
+  waiting: -1,
+  edit_waiting: -1,
+  other: -1,
+};
 
 export const CAUSE_LABEL: Record<Cause, string> = {
   timing_in: "Invoices dated in this period for orders placed before it",
   not_captured: "Invoices for orders Finance does not count as paid",
+  edit_in: "Additional invoices of order changes dated in this period, for orders placed in another",
+  edit_credited: "VAT an order change took off (in the report's credit notes, not in its VAT charged)",
   timing_out: "Paid orders placed in this period whose invoice is dated after it",
+  edit_out: "Order changes of this period's orders whose additional invoice is dated in another period",
   invoicing_off: "Paid orders with no invoice: invoicing was off",
   test_mode: "Orders paid in Stripe's test mode (never invoiced)",
   waiting: "Paid orders whose invoice is waiting or failed",
+  edit_waiting: "Order changes whose documents are waiting or failed",
   other: "Other orders with no invoice",
 };
 
@@ -30,10 +52,18 @@ export const CAUSE_TEXT: Record<Cause, string> = {
   timing_in: "Finance counts an order on the day it was placed; an invoice is dated by the day of payment. These were placed earlier and paid in this period.",
   not_captured:
     "A booking confirmed at the venue, or a payment not captured: invoiced, but not counted as a paid order in Finance.",
+  edit_in:
+    "An order changed after purchase is counted by Finance at its new amount on the day it was placed; the change's additional invoice is dated by the change. These orders were placed in another period and changed in this one.",
+  edit_credited:
+    "Finance reads an order after its change, so the VAT on what the change removed is already gone from Finance's figure. The report shows it as the change's credit note, under VAT credited, not as less VAT charged.",
   timing_out: "Placed in this period and paid after it ended: Finance has them here, the invoice is in the next period. They are equal and opposite in the two periods.",
+  edit_out:
+    "Placed in this period and changed after it ended: Finance has the added VAT here, at the order's new amount; the change's additional invoice is in the period of the change.",
   invoicing_off: "Invoicing was switched off, or the order was paid before it was switched on: there is no invoice, so its VAT is in Finance only.",
   test_mode: "Paid with Stripe's test cards. Finance counts them; an invoice is never made for a test payment.",
   waiting: "The order is paid but its invoice is waiting (for example, the seller details are incomplete) or failed. See Invoices > Waiting.",
+  edit_waiting:
+    "The order's change is applied but its additional invoice or credit note is waiting or failed: Finance has the VAT the change moved (below zero when the change took VAT off). See Invoices > Waiting.",
   other: "Orders with no invoice for another reason (nothing to pay, or not paid).",
 };
 

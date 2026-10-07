@@ -32,7 +32,7 @@ import { canConvert } from "@/lib/currency";
 import { mainCurrency } from "@/lib/markets";
 
 import { getAnalyticsSettings, type StoredAnalyticsSettings } from "./analytics-settings";
-import { dayKey, dayOf, dayStart, inMain, inPeriod, num, PAID, toMainOne, type Row } from "./analytics-sql";
+import { dayKey, dayOf, dayStart, inMain, inPeriod, NOT_EDIT_REFUND, num, PAID, toMainOne, type Row } from "./analytics-sql";
 import type { Store } from "./stores";
 
 /**
@@ -404,7 +404,7 @@ async function loadBundles(
     from commerce.refunds r
     join commerce.payments rp on rp.store_id = r.store_id and rp.id = r.payment_id
     join commerce.orders o on o.store_id = rp.store_id and o.id = rp.order_id
-    where r.store_id = ${id}::uuid and r.status = 'succeeded' and ${inPeriod(store, sql`r.created_at`, period)}
+    where r.store_id = ${id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND} and ${inPeriod(store, sql`r.created_at`, period)}
       and o.copied_from is null and o.host_id is null
     group by 1, 2, 3
   `);

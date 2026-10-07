@@ -31,6 +31,7 @@ import {
   OrderContinue,
   OrderDetails,
   OrderDocuments,
+  OrderParcels,
   OrderDownloads,
   OrderLines,
   OrderStatus,
@@ -123,6 +124,8 @@ async function Part({
       return order && <OrderAccount {...order} />;
     case "order_bookings":
       return order && <OrderBookings {...order} />;
+    case "order_parcels":
+      return order && <OrderParcels {...order} />;
     case "order_lines":
       return order && <OrderLines {...order} />;
     case "order_totals":

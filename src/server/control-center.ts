@@ -3,13 +3,13 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { DRAFT_EXPIRING_DAYS, LOW_STOCK_AT, type SalesFigure, type StoreFigures } from "@/lib/control-center";
+import { DRAFT_EXPIRING_DAYS, EDIT_EXPIRING_DAYS, LOW_STOCK_AT, type SalesFigure, type StoreFigures } from "@/lib/control-center";
 import { totalOf } from "@/lib/ai-usage";
 import { can, type PermissionKey } from "@/lib/permissions";
 
 import { usageRows } from "./ai-usage";
 import type { Account } from "./auth";
-import { OWED_LINE } from "./analytics-sql";
+import { OWED_LINE, OWED_UNITS } from "./analytics-sql";
 import { invoiceAttention } from "./invoices";
 import { privacyAttention } from "./privacy-attention";
 import { returnAttention } from "./return-attention";
@@ -85,7 +85,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const customerIds = idsWith(storeRows, "customers:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -128,7 +128,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     `),
     // Units owed on backorder: what paid orders wait for (`OWED_LINE`, the Inventory page's own figure), for the variants it lists.
     productIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
-      select o.store_id, coalesce(sum(ol.backorder_quantity), 0)::int as owed
+      select o.store_id, coalesce(sum(${OWED_UNITS}), 0)::int as owed
       from commerce.orders o
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
       join commerce.product_variants v on v.store_id = ol.store_id and v.id = ol.variant_id and v.active and v.delivery = 'physical'
@@ -165,6 +165,25 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       where d.store_id in (${idList(orderIds)}) and d.status = 'sent'
       group by d.store_id
     `),
+    // Orders partly sent (D174, docs/analytics.md "Order changes and parcels"): paid, not copied, with a parcel and units still to send
+    // (`commerce.order_fulfilment()`, the order page's own state), and when the oldest one's first parcel left. Counts only.
+    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+      select o.store_id, count(*)::int as n, min(fs.first_at) as oldest
+      from commerce.orders o
+      cross join lateral (select min(s.created_at) as first_at from commerce.shipments s where s.store_id = o.store_id and s.order_id = o.id) fs
+      where o.store_id in (${idList(orderIds)}) and o.status = 'paid' and o.copied_from is null and fs.first_at is not null
+        and commerce.order_fulfilment(o.id) = 'partly_sent'
+      group by o.store_id
+    `),
+    // Order changes waiting for the customer's payment (D174), and those whose pay link ends within EDIT_EXPIRING_DAYS. Counts only.
+    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+      select e.store_id, count(*)::int as waiting,
+        count(*) filter (where e.expires_at is not null and e.expires_at <= now() + make_interval(days => ${EDIT_EXPIRING_DAYS}))::int as expiring
+      from commerce.order_edits e
+      join commerce.orders o on o.store_id = e.store_id and o.id = e.order_id and o.copied_from is null
+      where e.store_id in (${idList(orderIds)}) and e.status = 'awaiting_payment'
+      group by e.store_id
+    `),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -177,6 +196,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const stockBy = new Map(stockRows.map((r) => [String(r.store_id), r]));
   const owedBy = new Map(owedRows.map((r) => [String(r.store_id), Number(r.owed)]));
   const draftsBy = new Map(draftRows.map((r) => [String(r.store_id), r]));
+  const partlyBy = new Map(partlyRows.map((r) => [String(r.store_id), r]));
+  const changesBy = new Map(changeRows.map((r) => [String(r.store_id), r]));
 
   const stores: StoreFigures[] = storeRows.map((r) => {
     const id = String(r.id);
@@ -216,6 +237,8 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       ...(draftsBy.has(id)
         ? { drafts: { waiting: Number(draftsBy.get(id)!.waiting), oldestSentAt: draftsBy.get(id)!.oldest ? new Date(String(draftsBy.get(id)!.oldest)).toISOString() : null, expiringSoon: Number(draftsBy.get(id)!.expiring) } }
         : {}),
+      ...(partlyBy.has(id) ? { partlySent: { orders: Number(partlyBy.get(id)!.n), oldestFirstParcelAt: partlyBy.get(id)!.oldest ? new Date(String(partlyBy.get(id)!.oldest)).toISOString() : null } } : {}),
+      ...(changesBy.has(id) ? { orderChanges: { waiting: Number(changesBy.get(id)!.waiting), expiringSoon: Number(changesBy.get(id)!.expiring) } } : {}),
     };
   });
 

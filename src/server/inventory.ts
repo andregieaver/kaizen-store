@@ -128,7 +128,8 @@ function figuresCte(storeId: string, locationId: string | null): SQL {
       select variant_id, sum(on_hand)::int as on_hand, sum(held)::int as held from cells group by variant_id
     ),
     owed as (
-      select ol.variant_id, sum(ol.backorder_quantity)::int as owed
+      -- Owed (D172, refined by D174 4.7): per line, the backordered units still to send (a backordered unit already in a parcel is not owed).
+      select ol.variant_id, sum(least(ol.backorder_quantity, commerce.line_to_send(ol.id)))::int as owed
       from commerce.order_lines ol
       join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
       where ol.store_id = ${storeId}::uuid and ol.backorder_quantity > 0 and o.status = 'paid' and o.copied_from is null

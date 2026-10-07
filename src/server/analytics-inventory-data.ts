@@ -19,7 +19,7 @@ import {
 import { todayIn } from "@/lib/analytics-period";
 import { mainCurrency } from "@/lib/markets";
 
-import { dayOf, num, OWED_LINE, PAID, type Row } from "./analytics-sql";
+import { dayOf, num, OWED_LINE, OWED_UNITS, PAID, type Row } from "./analytics-sql";
 import { setBased } from "./analytics-totals";
 import type { Store } from "./stores";
 
@@ -172,7 +172,7 @@ export async function inventoryReport(store: Store, now: Date): Promise<Inventor
       group by il.variant_id
     ),
     ow as (
-      select ol.variant_id, sum(ol.backorder_quantity)::int as owed
+      select ol.variant_id, sum(${OWED_UNITS})::int as owed
       from commerce.orders o
       join commerce.order_lines ol on ol.store_id = o.store_id and ol.order_id = o.id
       where o.store_id = ${id}::uuid and ${OWED_LINE} and ol.variant_id in (select id from vs)

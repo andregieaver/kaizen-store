@@ -97,7 +97,10 @@ export type OrderRow = {
   lines: OrderLineRow[];
   payments: { provider: string; amountMinor: number; currency: string; status: string; createdAt: Ts; providerReference: string | null }[];
   refunds: { amountMinor: number; currency: string; status: string; createdAt: Ts; reason: string | null }[];
-  shipments: { carrier: string | null; trackingNumber: string | null; createdAt: Ts }[];
+  /** Each parcel with what was in it (D174; none for a parcel recorded before parcels named their lines). */
+  shipments: { carrier: string | null; trackingNumber: string | null; createdAt: Ts; lines?: { sku: string | null; title: string; quantity: number }[] }[];
+  /** The order's changes after purchase (D174): number, date, difference and state; never staff's note. */
+  changes?: { label: string; status: string; createdAt: Ts; appliedAt: Ts; differenceMinor: number; currency: string }[];
   downloads: { fileName: string | null; downloads: number }[];
   terms: { mode: string; acceptedAt: Ts; locale: string | null } | null;
   events: { type: string; createdAt: Ts; reason: string | null; note: string | null }[];
@@ -462,7 +465,13 @@ const shapeOrder = (o: OrderRow): Json => {
     })),
     payments: o.payments.map((p) => ({ provider: p.provider, amount: money(p.amountMinor, p.currency), status: p.status, createdAt: iso(p.createdAt), reference: text(p.providerReference) })),
     refunds: o.refunds.map((r) => ({ amount: money(r.amountMinor, r.currency), status: r.status, createdAt: iso(r.createdAt), reason: text(r.reason) })),
-    shipments: o.shipments.map((s) => ({ carrier: text(s.carrier), trackingNumber: text(s.trackingNumber), createdAt: iso(s.createdAt) })),
+    shipments: o.shipments.map((s) => ({
+      carrier: text(s.carrier),
+      trackingNumber: text(s.trackingNumber),
+      createdAt: iso(s.createdAt),
+      lines: (s.lines ?? []).map((l) => ({ sku: text(l.sku), title: l.title, quantity: int(l.quantity) })),
+    })),
+    changes: (o.changes ?? []).map((c) => ({ change: c.label, status: c.status, createdAt: iso(c.createdAt), appliedAt: iso(c.appliedAt), difference: money(c.differenceMinor, c.currency) })),
     downloads: o.downloads.map((d) => ({ fileName: text(d.fileName), count: int(d.downloads) })),
     termsAccepted: o.terms ? { mode: o.terms.mode, acceptedAt: iso(o.terms.acceptedAt), locale: text(o.terms.locale) } : null,
     events: o.events.map((e) => ({ type: e.type, createdAt: iso(e.createdAt), reason: text(e.reason), note: text(e.note) })),

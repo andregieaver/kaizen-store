@@ -30,9 +30,16 @@ const READERS: Record<string, { count: number; reason: string }> = {
   "src/server/draft-sessions.ts": { count: 1, reason: "closes the pending Stripe sessions of a draft's order" },
   "src/server/draft-orders.ts": { count: 2, reason: "counts a draft order's pending Stripe sessions in the transaction that records money paid outside (and a comment naming the manual provider)" },
   "src/server/order-admin.ts": {
-    count: 8,
-    reason: "the refund code: refundable is Stripe's and manual's captured money; the Stripe branch needs a Stripe payment on a connected account, the manual branch a manual one (recorded, no Stripe call); the venue's pending balance is marked paid there",
+    count: 7,
+    reason:
+      "the refund code: refundable is Stripe's and manual's captured money; a refund is split over the order's captured Stripe payments on a connected account and manual ones (recorded, no Stripe call), each within what it has left (D174 review); the venue's pending balance is marked paid there",
   },
+  "src/server/order-edits.ts": {
+    count: 7,
+    reason:
+      "an order change (D174): whether the order was paid through Stripe (a lower total is refunded there) or only outside Kaizen (refunded by being recorded), its test mode, what is left to refund (Stripe's and manual's captured money), the manual payment that records a change paid outside Kaizen, and the order's cash recorded outside Kaizen for the country's cash ceiling (review fix)",
+  },
+  "src/server/order-edit-emails.ts": { count: 1, reason: "the change email says the store pays a refund back itself when the refunded payment was taken outside Kaizen (manual)" },
   "src/server/order-export.ts": { count: 1, reason: "flags a venue payment made in Stripe's test mode in the order file; a manual payment is never a test payment (`payments_manual_real`)" },
   "src/server/orders.ts": { count: 3, reason: "the order page's key reads stripe, venue and manual payments; the other two read `payment_providers`" },
   "src/server/booking-changes.ts": { count: 1, reason: "the order page's key: stripe, venue and manual" },

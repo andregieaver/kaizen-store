@@ -55,8 +55,9 @@ describe("the gift message in the emails of an order", () => {
     await db().execute(sql`update commerce.orders set email = 'buyer-gift-ship@example.com' where id = ${placed.order.orderId}::uuid`);
 
     await sendOrderConfirmation(store.storeId, placed.order.orderId);
-    const shipment = await markSent(store.storeId, placed.order.orderId, { carrier: "bring", trackingNumber: "370722", trackingUrl: null }, null);
-    expect(shipment).not.toBeNull();
+    const sent = await markSent(store.storeId, placed.order.orderId, { carrier: "bring", trackingNumber: "370722", trackingUrl: null }, null);
+    expect(sent.ok).toBe(true);
+    const shipment = sent.ok ? sent.shipment : null;
     expect(await sendShipped(store.storeId, placed.order.orderId, shipment!)).toBe("logged");
 
     const mails = await db().execute<Row>(sql`

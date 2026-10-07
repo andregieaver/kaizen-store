@@ -238,3 +238,34 @@ describe("the control center and draft orders (D173)", () => {
     expect(texts({ drafts: { waiting: 4, oldestSentAt: "2026-10-01T00:00:00Z", expiringSoon: 2 }, hides: ["sales"] }, now)).toEqual([]);
   });
 });
+
+describe("the control center, parcels and order changes (D174)", () => {
+  const texts = (figures: Partial<StoreFigures>, now?: number) => attentionFor([store(figures)], now).map((i) => `${i.text} -> ${i.href}`);
+  const now = Date.parse("2026-10-07T12:00:00Z");
+
+  it("tells how many orders are partly sent and when the oldest one's first parcel left, and opens the list filtered to them", () => {
+    expect(texts({ partlySent: { orders: 2, oldestFirstParcelAt: "2026-10-03T12:00:00Z" } }, now)).toEqual([
+      "Kaffe: 2 orders are partly sent, with items still to send; the oldest one's first parcel left 4 days ago. -> /admin/kaffe/orders?ship=partly_sent",
+    ]);
+    expect(texts({ partlySent: { orders: 1, oldestFirstParcelAt: "2026-10-07T08:00:00Z" } }, now)).toEqual([
+      "Kaffe: 1 order is partly sent, with items still to send. -> /admin/kaffe/orders?ship=partly_sent",
+    ]);
+  });
+
+  it("tells how many changes wait for the customer's payment, and which pay links end within two days", () => {
+    expect(texts({ orderChanges: { waiting: 1, expiringSoon: 0 } }, now)).toEqual([
+      "Kaffe: 1 order change is waiting for the customer's payment. -> /admin/kaffe/orders?ship=edit_pending",
+    ]);
+    expect(texts({ orderChanges: { waiting: 3, expiringSoon: 2 } }, now)).toEqual([
+      "Kaffe: 3 order changes are waiting for the customer's payment; the pay links of 2 end within 2 days, and the order then stays as it was. -> /admin/kaffe/orders?ship=edit_pending",
+    ]);
+    expect(texts({ orderChanges: { waiting: 1, expiringSoon: 1 } }, now)[0]).toContain("the pay link of 1 ends within 2 days");
+  });
+
+  it("is not urgent, shows nothing when none, and nothing to a member who may not read orders (left out, never a 0)", () => {
+    const both = { partlySent: { orders: 5, oldestFirstParcelAt: "2026-09-01T00:00:00Z" }, orderChanges: { waiting: 2, expiringSoon: 2 } };
+    expect(attentionFor([store(both)], now).every((i) => !i.urgent)).toBe(true);
+    expect(texts({ partlySent: { orders: 0, oldestFirstParcelAt: null }, orderChanges: { waiting: 0, expiringSoon: 0 } }, now)).toEqual([]);
+    expect(texts({ ...both, hides: ["sales"] }, now)).toEqual([]);
+  });
+});

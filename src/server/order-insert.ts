@@ -151,6 +151,8 @@ export type OrderLineInsert = {
   listPriceMinor?: number | null;
   custom?: boolean;
   staffDiscountMinor?: number;
+  /** A line an order change added (D174): written only by `applyOrderEdit()`'s writer, inside the edit context, naming its change. */
+  orderEditId?: string | null;
 };
 
 /** Writes one order line and returns its id. */
@@ -162,7 +164,7 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
       selling_plan_id, plan_interval, plan_interval_count, venue_minor, booked_count,
       campaign_discount_minor, campaign_id, campaign_parts, gift, bonus_discount_minor, referral_discount_minor,
       unit_cost_minor, vat_relief_minor, measure_amount, measure_unit, measure_base, backorder_quantity, backorder_days,
-      list_price_minor, custom, staff_discount_minor
+      list_price_minor, custom, staff_discount_minor, order_edit_id
     ) values (
       ${storeId}::uuid, ${orderId}::uuid, ${line.variantId}::uuid, ${line.sku},
       ${line.title}, ${line.quantity}, ${line.unitPriceMinor}, ${line.discountMinor}, ${line.memberDiscountMinor ?? 0},
@@ -177,7 +179,7 @@ export async function insertOrderLine(tx: Db, storeId: string, orderId: string, 
       ${line.unitCostMinor ?? null}, ${line.vatReliefMinor ?? 0},
       ${line.measure?.amount ?? null}::numeric, ${line.measure?.unit ?? null}, ${line.measure?.base ?? null},
       ${line.backorderQuantity ?? 0}, ${line.backorderDays ?? null},
-      ${line.listPriceMinor ?? null}, ${line.custom ?? false}, ${line.staffDiscountMinor ?? 0}
+      ${line.listPriceMinor ?? null}, ${line.custom ?? false}, ${line.staffDiscountMinor ?? 0}, ${line.orderEditId ?? null}::uuid
     )
     returning id
   `);

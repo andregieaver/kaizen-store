@@ -89,6 +89,10 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("refunds", "shopper", via("order", "payment_id"), ["reason"], "orders", "keep", "Amount and status are kept; the reason is text staff typed (it can hold a name), so it is exported and replaced by a marker when the order is anonymised. " + KEEP_ORDER),
   entry("shipments", "shopper", via("order", "order_id"), ["tracking_number", "tracking_url", "label_url"], "orders", "keep", "A parcel's carrier and tracking number, linked to a person only through the order. " + "Kept with it."),
   entry("bookings", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A time slot of an appointment, stay or rental; " + KEEP_ORDER),
+  entry("shipment_lines", "shopper", via("order", "shipment_id"), ["shipment_id"], "orders", "keep", "Which units of an order went in which parcel (D174); ids and quantities, no personal field. " + KEEP_ORDER),
+  entry("order_edits", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "A change staff made to an order after purchase (D174): amounts, ids and dates, no personal field (staff's note is only in the history event's data.note, which anonymising removes; the pay link is kept only as a hash). " + KEEP_ORDER),
+  entry("order_edit_lines", "shopper", via("order", "order_edit_id"), ["order_edit_id"], "orders", "keep", "The items a change added or took off (D174): titles, SKUs, quantities and amounts, no personal field. " + KEEP_ORDER),
+  entry("unsent_closures", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "Units of an order line staff took off what was still to send (D174): ids, quantities and the staff account that did it, no personal field of the shopper. " + KEEP_ORDER),
   entry("order_terms", "shopper", via("order", "order_id"), ["order_id"], "orders", "keep", "The record of which terms were accepted and when; no personal field. " + KEEP_ORDER, { also: ["consents"] }),
   entry("legal_snapshots", "none", none, [], null, "none", "The store's own page text as it stood when accepted, never a person's data."),
   entry("order_events", "shopper", via("order", "order_id"), ["data.reason", "data.note"], "orders", "keep", "Events hold types, ids and dates, except the free text staff typed (data.reason of a cancellation or refund, data.note of a note): that is exported and removed when the order is anonymised, which the append-only rule allows for those two keys only.", {}),
@@ -270,6 +274,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   // To the shopper
   "order.confirmation": "shopper",
   "draft.pay_link": "shopper",
+  "order.changed": "shopper",
   "subscription.renewed": "shopper",
   "invoice.issued": "shopper",
   "credit_note.issued": "shopper",

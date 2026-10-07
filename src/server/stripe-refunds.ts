@@ -5,6 +5,8 @@ import type Stripe from "stripe";
 
 import { db } from "@/db/client";
 import { REFUND_REASON_DASHBOARD, REFUND_REASON_RECORDED } from "@/lib/refund-adopted";
+import { editLabel } from "@/lib/order-edit-status";
+import { FULFILMENT_EVENTS } from "@/lib/order-ops-events";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
 import { reverseHostCommission } from "./host-payments";
@@ -138,6 +140,25 @@ async function stillFailed(refund: Stripe.Refund, deps: RefundDeps): Promise<boo
   }
 }
 
+/**
+ * A change with a lower total is applied on Stripe's `pending` answer to its refund (D174, 2.7: the money is on its way). When that refund then fails, the order
+ * reads lower and the customer has not been paid back: the order says so once (`order.edit_refund_failed`), and the order page, the store checkup and the
+ * control center show it (`EDIT_REFUND_OWED_SQL`) until staff refund the customer again. Nothing else changes (the change, its documents and the order stand).
+ */
+async function flagFailedEditRefund(storeId: string, orderId: string, refundId: string): Promise<void> {
+  const [row] = await db().execute<Row>(sql`
+    select r.amount_minor, e.id as edit_id, e.seq from commerce.refunds r
+    join commerce.order_edits e on e.store_id = r.store_id and e.id = r.order_edit_id
+    where r.store_id = ${storeId}::uuid and r.id = ${refundId}::uuid and e.status = 'applied' and e.difference_minor < 0
+  `);
+  if (!row) return;
+  const [said] = await db().execute<Row>(sql`
+    select 1 as one from commerce.order_events where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and type = ${FULFILMENT_EVENTS.editRefundFailed} and data ->> 'refundId' = ${refundId}
+  `);
+  if (said) return;
+  await event(storeId, orderId, FULFILMENT_EVENTS.editRefundFailed, { refundId, edit: String(row.edit_id), label: editLabel(Number(row.seq)), amount: Number(row.amount_minor) }, "stripe");
+}
+
 /** Brings the store's refund row for this Stripe refund up to date, or records it. */
 export async function applyStripeRefund(storeId: string, refund: Stripe.Refund, deps: RefundDeps = {}): Promise<RefundApplied> {
   const status = refundStatusOf(refund.status);
@@ -173,6 +194,7 @@ export async function applyStripeRefund(storeId: string, refund: Stripe.Refund, 
     `);
     await event(storeId, orderId, "refund.status_changed", { refundId, from: before, to: status }, "stripe");
     if (status === "succeeded") await announce(storeId, refundId, deps);
+    if (status === "failed") await flagFailedEditRefund(storeId, orderId, refundId);
     return { outcome: "updated", refundId, status, orderId };
   }
 

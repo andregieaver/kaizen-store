@@ -13,6 +13,8 @@ export const LOW_STOCK_AT = 3;
 export const LATE_TO_SEND_DAYS = 3;
 /** A draft order whose pay link ends within this many days is said to be expiring (D173, wave 3). */
 export const DRAFT_EXPIRING_DAYS = 2;
+/** An order change waiting for the customer's payment whose pay link ends within this many days is said to be ending (D174, wave 3). */
+export const EDIT_EXPIRING_DAYS = 2;
 
 export type SalesFigure = { currency: string; week: number; prior: number; orders: number; priorOrders: number };
 
@@ -72,7 +74,20 @@ export type StoreFigures = {
   privacy?: PrivacyFigures;
   /** Draft orders waiting for payment (D173), only when some do and only for a member who may read orders (`sales` is not in `hides`). */
   drafts?: DraftFigures;
+  /**
+   * Orders partly sent (D174): paid orders with a parcel and units still to send, only when there are some and only for a member who may read orders
+   * (`sales` is not in `hides`). Counts only, never a customer.
+   */
+  partlySent?: PartlySentFigures;
+  /** Order changes waiting for the customer's payment (D174), only when some do and only for a member who may read orders. Counts only. */
+  orderChanges?: OrderChangeFigures;
 };
+
+/** Paid orders partly sent (D174): how many, and when the oldest one's first parcel left. */
+export type PartlySentFigures = { orders: number; oldestFirstParcelAt: string | null };
+
+/** Order changes waiting for the customer's payment (D174): how many, and how many of their pay links end within `EDIT_EXPIRING_DAYS`. */
+export type OrderChangeFigures = { waiting: number; expiringSoon: number };
 
 export type InvoiceFigures = { waiting: number; overdue: number };
 
@@ -162,6 +177,27 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
           action: "Open drafts",
         });
       }
+    }
+    // Orders partly sent (D174): the rest is still to send. Not urgent by itself: the orders are among those waiting to be sent above.
+    const partly = s.partlySent;
+    if (partly && partly.orders > 0 && !hidden(s, "sales")) {
+      const age = partly.oldestFirstParcelAt ? daysSince(partly.oldestFirstParcelAt, now) : 0;
+      items.push({
+        text: `${s.name}: ${plural(partly.orders, "order is", "orders are")} partly sent, with items still to send${age >= 1 ? `; the oldest one's first parcel left ${plural(age, "day", "days")} ago` : ""}.`,
+        href: `${base}/orders?ship=partly_sent`,
+        action: "Send the rest",
+      });
+    }
+    // Order changes waiting for the customer's payment (D174): the order stays as it was until they pay; when the link ends the held items are released.
+    const changes = s.orderChanges;
+    if (changes && changes.waiting > 0 && !hidden(s, "sales")) {
+      items.push({
+        text: `${s.name}: ${plural(changes.waiting, "order change is", "order changes are")} waiting for the customer's payment${
+          changes.expiringSoon > 0 ? `; ${changes.expiringSoon === 1 ? "the pay link of 1 ends" : `the pay links of ${changes.expiringSoon} end`} within ${plural(EDIT_EXPIRING_DAYS, "day", "days")}, and the order then stays as it was` : ""
+        }.`,
+        href: `${base}/orders?ship=edit_pending`,
+        action: "Open orders",
+      });
     }
     // A privacy request has a legal clock of one month (GDPR Art. 12(3)): overdue is urgent, due this week is a heads-up.
     const privacy = s.privacy;

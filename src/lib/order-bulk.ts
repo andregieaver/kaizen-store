@@ -9,7 +9,7 @@ import type { OrderListParams } from "./order-list";
 
 export { BULK_MAX, BULK_PRINT_MAX };
 
-export const BULK_ACTIONS = ["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips"] as const;
+export const BULK_ACTIONS = ["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 export const isBulkAction = (value: unknown): value is BulkAction => typeof value === "string" && (BULK_ACTIONS as readonly string[]).includes(value);
 
@@ -20,6 +20,7 @@ export const BULK_ACTION_LABELS: Record<BulkAction, string> = {
   unarchive: "Unarchive",
   mark_sent: "Mark as sent",
   print_slips: "Print packing slips",
+  print_pick_list: "Print pick list",
 };
 
 /** The permission each action needs: printing is a read, everything else a write. */
@@ -30,10 +31,11 @@ export const BULK_ACTION_PERMISSION: Record<BulkAction, "orders:read" | "orders:
   unarchive: "orders:write",
   mark_sent: "orders:write",
   print_slips: "orders:read",
+  print_pick_list: "orders:read",
 };
 
 /** The most orders one request of this action names. */
-export const bulkMaxFor = (action: BulkAction): number => (action === "print_slips" ? BULK_PRINT_MAX : BULK_MAX);
+export const bulkMaxFor = (action: BulkAction): number => (action === "print_slips" || action === "print_pick_list" ? BULK_PRINT_MAX : BULK_MAX);
 
 /** The orders a bulk action is for: ticked ones, or every order the list's own query matches (the server runs the query again). */
 export type BulkSelection = { kind: "ids"; ids: readonly string[] } | { kind: "matching"; params: OrderListParams };
@@ -67,6 +69,7 @@ export const BULK_REASONS = [
   "nothing_to_ship",
   "store_closed",
   "failed",
+  "edit_pending",
 ] as const;
 export type BulkReason = (typeof BULK_REASONS)[number];
 
@@ -90,6 +93,7 @@ export const BULK_REASON_TEXT: Record<BulkReason, string> = {
   nothing_to_ship: "There is nothing physical to ship.",
   store_closed: "The store is not open.",
   failed: "It could not be done. Try it from the order.",
+  edit_pending: "A change to it waits for the customer's payment: nothing is sent until it is paid, cancelled or expired.",
 };
 
 /** Why a whole request is refused before anything runs. */
@@ -191,6 +195,8 @@ export type MarkSentFacts = {
   backorderUnits: number;
   /** A weekly box (D102) whose card has not been charged yet: `markSent()` would charge it first. */
   deliveryUnpaid: boolean;
+  /** A change waits for the customer's payment (D174): nothing is sent meanwhile. */
+  editPending?: boolean;
 };
 
 /** Why *Mark as sent* cannot be done in bulk to this order, or null when it can (the first that holds). `store_closed` and `changed` are the server's. */
@@ -200,14 +206,27 @@ export function markSentBlock(order: MarkSentFacts): BulkReason | null {
   if (order.status === "pending_payment" || (order.status === "cancelled" && !order.paid)) return "unpaid";
   if (order.status !== "paid" || !order.physical) return "nothing_to_send";
   if (order.withdrawnInFull) return "withdrawn_in_full";
+  if (order.editPending) return "edit_pending";
   if (order.backorderUnits > 0) return "waiting_for_stock";
   if (order.deliveryUnpaid) return "delivery_unpaid";
   return null;
 }
 
-/** Why an order is left out of a printed set of packing slips, or null when it is printed. */
-export function slipSkip(order: { copied: boolean; physical: boolean }): "copied" | "nothing_to_ship" | null {
+/**
+ * Why an order is left out of a printed set of packing slips, or null when it is printed. With its fulfilment state (D174), a set prints what is still to send: an order
+ * with nothing left is skipped as `already_sent` (or `withdrawn_in_full` when it was withdrawn before anything was sent). The order's own slip reprints it instead.
+ */
+export function slipSkip(order: {
+  copied: boolean;
+  physical: boolean;
+  /** `fulfilmentState()` of the order (D174); absent: everything physical is printed, as before parcels named their lines. */
+  state?: "none" | "unsent" | "partly_sent" | "sent" | "withdrawn" | "closed";
+}): "copied" | "nothing_to_ship" | "already_sent" | "withdrawn_in_full" | "nothing_to_send" | null {
   if (order.copied) return "copied";
-  if (!order.physical) return "nothing_to_ship";
+  if (!order.physical || order.state === "none") return "nothing_to_ship";
+  if (order.state === "sent") return "already_sent";
+  if (order.state === "withdrawn") return "withdrawn_in_full";
+  // Nothing was sent and staff closed what was left as not to be sent (D174): no slip.
+  if (order.state === "closed") return "nothing_to_send";
   return null;
 }

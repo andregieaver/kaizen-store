@@ -263,7 +263,11 @@ describe("personal data", () => {
 
 describe("formula characters", () => {
   it("are made harmless in every text cell, and amounts stay numbers", async () => {
-    await db().execute(sql`update commerce.order_lines set title = '=HYPERLINK("http://x")', sku = '-1+1' where order_id = ${subject.ids.signedInOrder.orderId}::uuid and sku = 'DEMO-MUG-WHITE'`);
+    // A paid order's SKU changes only inside an order change (D174, `order_lines_settled_guard()`): the fixture sets the edit context for its own order to write one.
+    await db().transaction(async (tx) => {
+      await tx.execute(sql`select set_config('kaizen.order_edit', ${subject.ids.signedInOrder.orderId}, true)`);
+      await tx.execute(sql`update commerce.order_lines set title = '=HYPERLINK("http://x")', sku = '-1+1' where order_id = ${subject.ids.signedInOrder.orderId}::uuid and sku = 'DEMO-MUG-WHITE'`);
+    });
     await db().execute(sql`update commerce.orders set company_name = '+cmd|calc', billing_address = billing_address || '{"name": "@SUM(1)"}'::jsonb, discount_code = '=CODE' where id = ${subject.ids.signedInOrder.orderId}::uuid`);
     for (const dialect of ["standard", "excel_nordic"]) {
       const { csv } = await fileOf(range({ profile: "full", dialect }));

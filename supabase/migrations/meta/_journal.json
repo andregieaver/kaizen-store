@@ -1975,6 +1975,41 @@
       "when": 1791312745120,
       "tag": "20261006185225_orders_ops_fix_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 282,
+      "version": "7",
+      "when": 1791330809191,
+      "tag": "20261006235329_fulfilment",
+      "breakpoints": true
+    },
+    {
+      "idx": 283,
+      "version": "7",
+      "when": 1791330816067,
+      "tag": "20261006235336_fulfilment_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 284,
+      "version": "7",
+      "when": 1791339731974,
+      "tag": "20261007022211_fulfilment_plan_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 285,
+      "version": "7",
+      "when": 1791346792687,
+      "tag": "20261007041952_unsent_closures",
+      "breakpoints": true
+    },
+    {
+      "idx": 286,
+      "version": "7",
+      "when": 1791346808939,
+      "tag": "20261007042008_fulfilment_unsent_closures",
+      "breakpoints": true
     }
   ]
 }

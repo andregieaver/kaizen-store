@@ -405,3 +405,26 @@ describe("what wave 3 added to an order: tags, archived, source and gift (D173)"
     expect([cell(cols, row, "tags"), cell(cols, row, "archived"), cell(cols, row, "source"), cell(cols, row, "gift_order"), cell(cols, row, "gift_message")]).toEqual([null, "false", "checkout", "false", null]);
   });
 });
+
+describe("what wave 3's third run added to an order: fulfilment and edited (D174)", () => {
+  const one = (over: Partial<ExportOrder>, layout: "lines" | "orders" = "orders") => orderRows([order(over)], { layout, profile: "accounting", main })[0];
+
+  it("has fulfilment and edited in both profiles and layouts, after the gift and before the line block", () => {
+    for (const layout of ["lines", "orders"] as const) {
+      for (const profile of ["accounting", "full"] as const) {
+        const cols = orderColumns(layout, profile);
+        expect(cols.indexOf("fulfilment")).toBe(cols.indexOf("gift_order") + 1);
+        expect(cols.indexOf("edited")).toBe(cols.indexOf("fulfilment") + 1);
+        expect(PERSONAL_ORDER_COLUMNS).not.toContain("fulfilment");
+      }
+    }
+    expect(orderColumns("lines", "full").at(-1)).toBe("payment_reference");
+  });
+
+  it("writes the state as the database says it, empty when unknown, and edited as true or false", () => {
+    const cols = orderColumns("orders", "accounting");
+    expect([cell(cols, one({ fulfilment: "partly_sent", edited: true }), "fulfilment"), cell(cols, one({ fulfilment: "partly_sent", edited: true }), "edited")]).toEqual(["partly_sent", "true"]);
+    expect([cell(cols, one({}), "fulfilment"), cell(cols, one({}), "edited")]).toEqual([null, "false"]);
+    expect(cell(cols, one({ fulfilment: null, edited: false }), "fulfilment")).toBeNull();
+  });
+});

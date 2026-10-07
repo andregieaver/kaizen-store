@@ -161,6 +161,11 @@ export const STORE_PIECES = {
     name: "Bookings",
     hint: "The order's appointments, stays and rentals, to change or cancel while that is allowed.",
   },
+  order_parcels: {
+    route: "order",
+    name: "Parcels",
+    hint: "The order's parcels, each with its tracking and what was in it, and what is still to come when the order is sent in parts. Nothing before the first parcel.",
+  },
   order_lines: {
     route: "order",
     name: "Order items",

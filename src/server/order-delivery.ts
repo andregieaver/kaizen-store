@@ -14,7 +14,8 @@ type Row = Record<string, unknown>;
  * *Mark delivered* (D153): the day the consumer received the goods, the last of them when they came in parts. It is
  * what starts the 14 days of the right of withdrawal (CRD Art. 9(2)(b)), so it is only ever written by staff (or a
  * carrier's confirmed delivery), never estimated from the date a parcel was sent. Until it is written the right stays
- * open and the window says so. A later shipment takes it back (`markSent()`), because the goods are then not all received.
+ * open and the window says so. It needs the order sent in full (D174: a partly sent order stays `paid` and is refused `not_sent_in_full`). A later shipment
+ * takes it back (`markSent()`), because the goods are then not all received.
  */
 export const markDeliveredInput = z.object({
   orderId: z.uuid(),
@@ -47,6 +48,8 @@ export async function markDelivered(storeId: string, input: unknown, accountId: 
         return refusal("not_deliverable", "Only a paid order that has been sent can be marked as delivered.");
       }
       if (!order.first_sent) return refusal("not_sent", "Mark the order as sent before marking it delivered.");
+      // Goods ordered together and delivered separately are received when the last one is (CRD Art. 9(2)(b), D174): a partly sent order has no receipt yet.
+      if (String(order.status) === "paid") return refusal("not_sent_in_full", "Record the receipt when the last parcel has arrived: part of this order is still to send.");
       const zone = String(order.time_zone ?? "Europe/Oslo");
       const day = on ?? dayIn(now, zone);
       let at = noonOf(day, zone);

@@ -1,7 +1,8 @@
 import { DOCUMENT_CSS } from "@/components/work/invoice-document";
 import type { CreditNoteSnapshot, CreditRow } from "@/lib/credit-allocation";
-import type { OrderInvoiceSnapshot, SnapshotBucket, SnapshotLine, SnapshotShipping, SnapshotVatHome } from "@/lib/invoice-snapshot";
-import { documentText, treatmentStatements, type DocumentText } from "@/lib/invoice-text";
+import type { EditInvoiceSnapshot, OrderInvoiceSnapshot, SnapshotBucket, SnapshotLine, SnapshotPayment, SnapshotShipping, SnapshotVatHome } from "@/lib/invoice-snapshot";
+import { documentText, editDocumentText, treatmentStatements, type DocumentText, type EditDocumentText } from "@/lib/invoice-text";
+import { editLabel } from "@/lib/order-edit-status";
 import { minorUnitDigits } from "@/lib/money";
 import { addressLines, countryText, dayText, moneyText, percentText, printLocale, rateText } from "@/lib/work-invoice-print";
 
@@ -37,6 +38,26 @@ type Doc = OrderInvoiceSnapshot | CreditNoteSnapshot;
 const isCredit = (doc: Doc): doc is CreditNoteSnapshot => doc.documentType === "credit_note";
 
 /**
+ * A change's additional invoice (D174, `docs/wave-3-fulfilment.md` 4.6): it refers to the order's own invoice (VAT Directive Art. 219), its supply date is the
+ * day the change was paid or made (always printed), and the part the customer had already paid is "settled against" the original, never "to pay".
+ */
+const isEditInvoice = (doc: Doc): doc is EditInvoiceSnapshot =>
+  doc.documentType === "invoice" && (doc as Partial<EditInvoiceSnapshot>).invoiceKind === "order_edit" && Boolean((doc as Partial<EditInvoiceSnapshot>).refersTo);
+
+/** A change's credit note: what a change took off the order (nothing was returned, and its refund, if any, is the change's). */
+const isEditCredit = (doc: Doc): doc is CreditNoteSnapshot => isCredit(doc) && doc.reason.kind === "order_edit";
+
+/** The label of the change a document belongs to (`E2`), when the snapshot says. */
+function changeLabel(doc: Doc): string | null {
+  if (isEditInvoice(doc)) return doc.edit?.seq ? editLabel(doc.edit.seq) : null;
+  if (isCredit(doc) && doc.reason.kind === "order_edit" && doc.reason.editSeq) return editLabel(doc.reason.editSeq);
+  return null;
+}
+
+/** The document's title: an additional invoice is named so; any other invoice or credit note keeps its own word. */
+const titleOf = (doc: Doc, t: DocumentText, e: EditDocumentText): string => (isCredit(doc) ? t.creditNote : isEditInvoice(doc) ? e.additionalInvoice : t.invoice);
+
+/**
  * A seller who is not registered for VAT may not state any VAT on the document, nor say that an amount includes it (Denmark's momsloven
  * 52 a, read 2026-10-04; the same principle is general, the other countries' acts not read: needs review). Such a document is drawn without
  * a rate, a VAT amount, a VAT table or an ex-VAT/incl.-VAT split: one amount per row and one total, and the not-registered sentence.
@@ -66,19 +87,23 @@ function serviceText(line: SnapshotLine, locale: string): string | null {
   return from === to ? from : `${from} – ${to}`;
 }
 
-function Head({ doc, t, locale }: { doc: Doc; t: DocumentText; locale: string }) {
+function Head({ doc, t, e, locale }: { doc: Doc; t: DocumentText; e: EditDocumentText; locale: string }) {
   const credit = isCredit(doc);
-  const title = credit ? t.creditNote : t.invoice;
+  const title = titleOf(doc, t, e);
   // The payment day and the supply date (which is the payment day) are printed only when something was paid online: a booking whose whole total
-  // is left for the venue asserts no payment, and its services carry their own dates.
+  // is left for the venue asserts no payment, and its services carry their own dates. A change's additional invoice always has a supply date (the day the
+  // change was paid or made), and its payment day is its own payment's, which is that supply date (`make_edit_documents()`: the day the change was applied
+  // with its captured payment, or the day money recorded outside Kaizen was received), never the order's first payment day.
+  const edit = isEditInvoice(doc);
   const paid = !credit && paidOnline(doc);
+  const paidDay = edit ? doc.supplyDate : doc.order.paidOn;
   const facts: [string, string][] = [
     [t.issueDate, dayText(doc.issuedOn, locale)],
-    ...(paid ? ([[t.supplyDate, dayText(doc.supplyDate, locale)]] as [string, string][]) : []),
+    ...(paid || edit ? ([[t.supplyDate, dayText(doc.supplyDate, locale)]] as [string, string][]) : []),
     [t.orderNumber, doc.order.number],
     // "Paid online" only when Stripe took the money; a payment the seller recorded outside Kaizen is dated in its own words (D173).
     ...(paid
-      ? ([[!credit && doc.payments.some((p) => p.kind === "paid_online") ? t.paidOn : t.paidOutside, dayText(doc.order.paidOn, locale)]] as [string, string][])
+      ? ([[!credit && doc.payments.some((p) => p.kind === "paid_online") ? t.paidOn : t.paidOutside, dayText(paidDay, locale)]] as [string, string][])
       : []),
   ];
   return (
@@ -167,9 +192,9 @@ function Buyer({ doc, t, locale }: { doc: Doc; t: DocumentText; locale: string }
   );
 }
 
-function InvoiceLines({ doc, t, locale }: { doc: OrderInvoiceSnapshot; t: DocumentText; locale: string }) {
+function InvoiceLines({ doc, t, e, locale }: { doc: OrderInvoiceSnapshot; t: DocumentText; e: EditDocumentText; locale: string }) {
   const money = (minor: number) => moneyText(minor, doc.currency, locale);
-  const title = `${t.invoice} ${doc.number}`;
+  const title = `${titleOf(doc, t, e)} ${doc.number}`;
   const shipping: SnapshotShipping | null = doc.shipping;
   const vat = !hidesVat(doc);
   return (
@@ -234,10 +259,15 @@ function InvoiceLines({ doc, t, locale }: { doc: OrderInvoiceSnapshot; t: Docume
 }
 
 /** A credit note's rows: what was credited, as negative amounts (a deduction, which reduces the credit, as a positive one). */
-function CreditLines({ doc, t, locale }: { doc: CreditNoteSnapshot; t: DocumentText; locale: string }) {
+function CreditLines({ doc, t, e, locale }: { doc: CreditNoteSnapshot; t: DocumentText; e: EditDocumentText; locale: string }) {
   const money = (minor: number) => moneyText(-minor, doc.currency, locale);
   const title = `${t.creditNote} ${doc.number}`;
-  const describe = (row: CreditRow): string => [t.creditRows[row.kind], row.title].filter(Boolean).join(": ");
+  // A change's credit note names what the change took off: units removed from the order (never "returned goods": nothing was sent) and a lower shipping
+  // charge (never "shipping refunded": whether money went back is the change's, not this row's).
+  const edit = isEditCredit(doc);
+  const rowWord = (row: CreditRow): string =>
+    edit && row.kind === "goods" ? e.removedRow : edit && row.kind === "delivery" ? e.shippingLoweredRow : t.creditRows[row.kind];
+  const describe = (row: CreditRow): string => [rowWord(row), row.title].filter(Boolean).join(": ");
   const vat = !hidesVat(doc);
   return (
     <table className="wd-table">
@@ -369,7 +399,15 @@ function Statements({ doc, t, lang }: { doc: Doc; t: DocumentText; lang: string 
   );
 }
 
-function Payments({ doc, t, locale }: { doc: OrderInvoiceSnapshot; t: DocumentText; locale: string }) {
+/** A payment row's words. `settled_by_order` (a change's additional invoice) is settled against the original's payment: never "to pay at the venue". */
+function paymentWords(p: SnapshotPayment, doc: OrderInvoiceSnapshot, t: DocumentText, e: EditDocumentText): string {
+  if (p.kind === "paid_online") return t.paidOnline;
+  if (p.kind === "paid_outside") return `${t.paidOutside}${p.method ? ` (${t.paymentMethods[p.method]})` : ""}`;
+  if (p.kind === "settled_by_order") return e.settledByOrder(p.invoiceNumber ?? (isEditInvoice(doc) ? doc.refersTo.invoiceNumber : ""));
+  return t.payAtVenue;
+}
+
+function Payments({ doc, t, e, locale }: { doc: OrderInvoiceSnapshot; t: DocumentText; e: EditDocumentText; locale: string }) {
   if (doc.payments.length === 0) return null;
   return (
     <section className="wd-block wd-pay" aria-label={t.payment}>
@@ -377,13 +415,7 @@ function Payments({ doc, t, locale }: { doc: OrderInvoiceSnapshot; t: DocumentTe
       <dl>
         {doc.payments.map((p, i) => (
           <div key={i} style={{ display: "contents" }}>
-            <dt>
-              {p.kind === "paid_online"
-                ? t.paidOnline
-                : p.kind === "paid_outside"
-                  ? `${t.paidOutside}${p.method ? ` (${t.paymentMethods[p.method]})` : ""}`
-                  : t.payAtVenue}
-            </dt>
+            <dt>{paymentWords(p, doc, t, e)}</dt>
             <dd className="wd-num">{moneyText(p.amountMinor, doc.currency, locale)}</dd>
           </div>
         ))}
@@ -452,14 +484,16 @@ function Position({ doc, t, locale }: { doc: CreditNoteSnapshot; t: DocumentText
 export function OrderDocumentView({ snapshot }: { snapshot: OrderInvoiceSnapshot | CreditNoteSnapshot }) {
   const doc = snapshot;
   const t = documentText(doc.language);
+  const e = editDocumentText(doc.language);
   const locale = printLocale(doc.locale);
   const credit = isCredit(doc);
-  const title = `${credit ? t.creditNote : t.invoice} ${doc.number}`;
+  const title = `${titleOf(doc, t, e)} ${doc.number}`;
+  const label = changeLabel(doc);
   const footer = doc.seller.footerNote?.trim();
   return (
     <article className="wd" lang={doc.language} aria-label={title} data-document={doc.documentType}>
       <style>{DOCUMENT_CSS + EXTRA_CSS}</style>
-      <Head doc={doc} t={t} locale={locale} />
+      <Head doc={doc} t={t} e={e} locale={locale} />
       <div className="wd-parties">
         <Seller doc={doc} t={t} locale={locale} />
         <Buyer doc={doc} t={t} locale={locale} />
@@ -467,10 +501,22 @@ export function OrderDocumentView({ snapshot }: { snapshot: OrderInvoiceSnapshot
       {credit && (
         <section className="wd-block" aria-label={t.refersTo(doc.refersTo.invoiceNumber, dayText(doc.refersTo.invoiceIssuedOn, locale))}>
           <p className="wd-strong">{t.refersTo(doc.refersTo.invoiceNumber, dayText(doc.refersTo.invoiceIssuedOn, locale))}</p>
-          <p className="wd-muted">{doc.reason.kind === "return" && doc.reason.returnNumber ? t.reasonReturn(doc.reason.returnNumber) : t.reasonRefund}</p>
+          <p className="wd-muted">
+            {doc.reason.kind === "order_edit"
+              ? e.reasonOrderEdit(label ?? "")
+              : doc.reason.kind === "return" && doc.reason.returnNumber
+                ? t.reasonReturn(doc.reason.returnNumber)
+                : t.reasonRefund}
+          </p>
         </section>
       )}
-      {credit ? <CreditLines doc={doc} t={t} locale={locale} /> : <InvoiceLines doc={doc} t={t} locale={locale} />}
+      {isEditInvoice(doc) && (
+        <section className="wd-block" aria-label={e.amendsOf(doc.refersTo.invoiceNumber, dayText(doc.refersTo.invoiceIssuedOn, locale))}>
+          <p className="wd-strong">{e.amendsOf(doc.refersTo.invoiceNumber, dayText(doc.refersTo.invoiceIssuedOn, locale))}</p>
+          {label && <p className="wd-muted">{e.reasonOrderEdit(label)}</p>}
+        </section>
+      )}
+      {credit ? <CreditLines doc={doc} t={t} e={e} locale={locale} /> : <InvoiceLines doc={doc} t={t} e={e} locale={locale} />}
       <div className="wd-bottom">
         {!hidesVat(doc) && <VatByRate doc={doc} t={t} locale={locale} sign={credit ? -1 : 1} />}
         <Totals doc={doc} t={t} locale={locale} sign={credit ? -1 : 1} />
@@ -487,12 +533,12 @@ export function OrderDocumentView({ snapshot }: { snapshot: OrderInvoiceSnapshot
         </>
       ) : (
         <>
-          <Payments doc={doc} t={t} locale={locale} />
+          <Payments doc={doc} t={t} e={e} locale={locale} />
           <Discounts doc={doc} t={t} locale={locale} />
           <Deferred doc={doc} t={t} />
           <section className="wd-block wd-notes" aria-label={t.supplyDate}>
             <ul>
-              <li>{paidOnline(doc) ? t.supplyDateNote : t.supplyDateNoteVenue}</li>
+              <li>{isEditInvoice(doc) ? (paidOnline(doc) ? e.supplyDatePaid : e.supplyDateSettled) : paidOnline(doc) ? t.supplyDateNote : t.supplyDateNoteVenue}</li>
               {doc.notes.includes("unit_price_rounded") && <li>{t.unitRounded}</li>}
             </ul>
           </section>

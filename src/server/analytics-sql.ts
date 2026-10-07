@@ -39,11 +39,25 @@ export const FROM_CHECKOUT = sql`(o.source = 'checkout')`;
 export const STAFF_MADE = sql`(o.source = 'draft')`;
 
 /**
- * Backordered units a paid order still waits for (D172): the line of `ol` on an order `o` that is paid and not yet sent (status `paid`), not copied from
- * another store, with units on backorder. The one definition of "owed" (docs/analytics.md): the Inventory page of the admin, this page's analysis and the
- * control center all sum `ol.backorder_quantity` where this holds, and a test holds them equal.
+ * Backordered units a paid order still waits for (D172; per line since D174): the line of `ol` on an order `o` that is paid and not yet sent in full
+ * (status `paid`), not copied from another store, with units on backorder. The one definition of "owed" (docs/analytics.md): the Inventory page of the
+ * admin, this page's analysis and the control center all sum `OWED_UNITS` where this holds, and a test holds them equal.
  */
 export const OWED_LINE = sql`(o.status = 'paid' and o.copied_from is null and ol.backorder_quantity > 0)`;
+
+/**
+ * The units of a line `ol` that are owed (D174, docs/analytics.md "Owed"): its backordered units, but never more than it still has to send
+ * (`commerce.line_to_send()`: ordered less what is in parcels and what was withdrawn), so a backordered unit already sent in a parcel of a partly sent
+ * order, or withdrawn before sending, is not owed. Summed only where `OWED_LINE` holds.
+ */
+export const OWED_UNITS = sql`least(ol.backorder_quantity, commerce.line_to_send(ol.id))`;
+
+/**
+ * A refund `r` (a `commerce.refunds` row) that is a refund in the figures (D174, docs/analytics.md "Refunds"): not the refund of an order change's lower
+ * total (`refunds.order_edit_id`), which the change already took off the order's own total. Every refund reader of the analytics and the AI manager adds it,
+ * or the sale would be taken off twice.
+ */
+export const NOT_EDIT_REFUND = sql`(r.order_edit_id is null)`;
 
 /** Revenue of an order without VAT: goods after discounts plus shipping income. */
 export const REVENUE_EX_VAT = sql`(o.total_minor - o.tax_minor)`;

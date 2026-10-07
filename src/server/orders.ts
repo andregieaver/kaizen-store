@@ -528,13 +528,13 @@ export async function listOrders(
            o.placed_at, o.total_minor, o.currency, o.copied_from is not null as copied,
            (o.restricted_at is not null or o.anonymised_at is not null) as erased, o.credit_minor, o.bonus_earned_minor, o.bonus_available_at,
            (select coalesce(sum(quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) as items,
-           (case when o.status = 'paid' and o.copied_from is null then (select coalesce(sum(l.backorder_quantity), 0)::int from commerce.order_lines l where l.order_id = o.id) else 0 end) as owed
+           (case when o.status = 'paid' and o.copied_from is null then (select coalesce(sum(least(l.backorder_quantity, commerce.line_to_send(l.id))), 0)::int from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0) else 0 end) as owed
     from commerce.orders o
     where o.store_id = ${storeId}::uuid
       and ${
         // History copied from another store (D129) is listed with the orders, whatever its status, and is never to send or unpaid.
         waiting
-          ? sql`o.copied_from is null and o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.backorder_quantity > 0)`
+          ? sql`o.copied_from is null and o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0 and commerce.line_to_send(l.id) > 0)`
           : toSend
           ? sql`o.copied_from is null and o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')`
           : unpaid

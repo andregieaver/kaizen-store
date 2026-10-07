@@ -421,7 +421,34 @@ async function orderNotice(
   return outcome;
 }
 
-export function sendShipped(
+/**
+ * What the shipped email lists of a parcel (D174): its lines and quantities (none for a parcel recorded before parcels named their lines) and the units of the
+ * order still to send after it. Read from the database, so the email says what the parcel holds whoever recorded it.
+ */
+async function parcelContents(storeId: string, orderId: string, shipmentId: string): Promise<{ lines: { title: string; quantity: number }[]; left: number; legacy: boolean }> {
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuid.test(shipmentId) || !uuid.test(orderId)) return { lines: [], left: 0, legacy: false };
+  const [rows, [head]] = await Promise.all([
+    db().execute<Row>(sql`
+      select ol.title, sl.quantity from commerce.shipment_lines sl
+      join commerce.order_lines ol on ol.store_id = sl.store_id and ol.id = sl.order_line_id
+      join commerce.shipments sh on sh.store_id = sl.store_id and sh.id = sl.shipment_id
+      where sl.store_id = ${storeId}::uuid and sl.shipment_id = ${shipmentId}::uuid and sh.order_id = ${orderId}::uuid and not sh.legacy
+      order by ol.title, ol.sku, ol.id
+    `),
+    db().execute<Row>(sql`
+      select coalesce((select sum(commerce.line_to_send(ol.id)) from commerce.order_lines ol where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid), 0)::int as left_units,
+        coalesce((select sh.legacy from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid), false) as legacy
+    `),
+  ]);
+  return { lines: rows.map((r) => ({ title: String(r.title), quantity: Number(r.quantity) })), left: Number(head?.left_units ?? 0), legacy: Boolean(head?.legacy) };
+}
+
+/**
+ * The shipped email, one per parcel (key `order-sent:{shipment}`). A parcel that names its lines (D174) lists them, and says the rest follows when units are
+ * still to send; the withdrawal block (D153) says the 14 days count from the last parcel (CRD Art. 9(2)(b)).
+ */
+export async function sendShipped(
   storeId: string,
   orderId: string,
   shipment: { id: string; carrier: string; trackingNumber: string; trackingUrl: string | null },
@@ -429,6 +456,7 @@ export function sendShipped(
 ) {
   // Sent again on request: a key of its own, so the first sending does not stop it.
   const key = resend ? `order-sent:${shipment.id}:again:${crypto.randomUUID()}` : `order-sent:${shipment.id}`;
+  const contents = await parcelContents(storeId, orderId, shipment.id);
   return orderNotice(
     storeId,
     orderId,
@@ -436,12 +464,21 @@ export function sendShipped(
     key,
     ({ order, text, store, m }) => {
       const address = addressText(order, m);
+      const partial = contents.left > 0;
       return {
         subject: text.shippedSubject(store.name, order.number),
         heading: text.shippedHeading,
         intro: text.shippedIntro(order.number),
         withdraw: true,
         extra: [
+          ...(contents.lines.length > 0
+            ? [
+                { type: "paragraph" as const, text: text.shippedPart.inParcel },
+                { type: "lines" as const, rows: contents.lines.map((l) => ({ label: `${l.quantity} × ${l.title}`, value: "" })) },
+              ]
+            : []),
+          // The receipt sentence is about the statutory right of withdrawal, which a business buyer does not have (CRD Art. 2(1)): consumers only.
+          ...(partial ? [{ type: "paragraph" as const, text: order.company ? text.shippedPart.restFollows : `${text.shippedPart.restFollows} ${text.shippedPart.receipt}` }] : []),
           ...(shipment.trackingNumber ? [{ type: "paragraph" as const, text: text.tracking(shipment.carrier, shipment.trackingNumber) }] : []),
           ...(shipment.trackingUrl ? [{ type: "button" as const, text: text.trackParcel, url: shipment.trackingUrl }] : []),
           ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
@@ -851,7 +888,7 @@ export async function sendStoreMessage(
   });
 }
 
-export { context as emailContext, footer as emailFooter, orderUrl, orderLines as orderLinesBlock, storeById };
+export { context as emailContext, footer as emailFooter, orderNotice, orderUrl, orderLines as orderLinesBlock, storeById };
 
 // ---------------------------------------------------------------------------
 // Appointments (D65)

@@ -38,12 +38,14 @@ import {
   uniqueIndex,
   uuid,
   type AnyPgColumn,
+  type PgTableExtraConfigValue,
 } from "drizzle-orm/pg-core";
 import { CHANNEL_KEYS } from "../lib/analytics-channels";
 import { AUDIT_AREA_KEYS } from "../lib/audit";
 import { MOVEMENT_REASONS, MOVEMENT_SOURCES } from "../lib/inventory";
 import { LEGAL_ROLES } from "../lib/legal-roles";
 import { DRAFT_STATUSES } from "../lib/draft-status";
+import { ORDER_EDIT_DOCUMENTS, ORDER_EDIT_LINE_KINDS, ORDER_EDIT_REASONS, ORDER_EDIT_STATUSES } from "../lib/order-edit-status";
 import {
   DRAFT_DISCOUNT_LABEL_MAX,
   DRAFT_INTERNAL_NOTE_MAX,
@@ -2398,6 +2400,11 @@ export const orders = commerce.table(
     giftTo: text("gift_to"),
     giftFrom: text("gift_from"),
     giftMessage: text("gift_message"),
+    /**
+     * When staff last applied a change to the order's goods (wave 3 run 3, D174, `order_edits`): the list's *Edited* badge. Written only under the edit context
+     * (`kaizen.order_edit`, `applyOrderEdit()`); the money columns above change after `pending_payment` only there too (`orders_settled_guard()`).
+     */
+    editedAt: timestamp("edited_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -2597,9 +2604,19 @@ export const orderLines = commerce.table(
     custom: boolean("custom").notNull().default(false),
     /** The part of the discount that is the staff discount of a draft order (D173): the line's share, so VAT and refunds agree. */
     staffDiscountMinor: money("staff_discount_minor").default(0),
+    /** The order change that added this line (wave 3 run 3, D174); null for a line placed with the order. Frozen after insert. */
+    orderEditId: uuid("order_edit_id"),
   },
   (t) => [
     unique("order_lines_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "order_lines_order_edit_fk",
+      columns: [t.storeId, t.orderEditId],
+      foreignColumns: [orderEdits.storeId, orderEdits.id],
+    }).onDelete("restrict"),
+    index("order_lines_order_edit_idx")
+      .on(t.storeId, t.orderEditId)
+      .where(sql`${t.orderEditId} is not null`),
     check("order_lines_list_price", sql`${t.listPriceMinor} is null or ${t.listPriceMinor} >= 0`),
     check("order_lines_custom", sql`not ${t.custom} or (${t.variantId} is null and ${t.sku} = 'CUSTOM' and ${t.delivery} = 'service')`),
     check("order_lines_staff_discount", sql`${t.staffDiscountMinor} between 0 and ${t.discountMinor}`),
@@ -2859,11 +2876,25 @@ export const inventoryReservations = commerce.table(
     backorderQuantity: integer("backorder_quantity").notNull().default(0),
     cartId: uuid("cart_id"),
     orderId: uuid("order_id"),
+    /**
+     * Units held for an order change waiting for the customer's payment (wave 3 run 3, D174): the order is `order_id`, the change this. `draw_order_stock()`
+     * ignores them; `commerce.draw_edit_stock()` draws them when the change is applied.
+     */
+    orderEditId: uuid("order_edit_id"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     releasedAt: timestamp("released_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
+    foreignKey({
+      name: "inventory_reservations_order_edit_fk",
+      columns: [t.storeId, t.orderEditId],
+      foreignColumns: [orderEdits.storeId, orderEdits.id],
+    }),
+    index("inventory_reservations_order_edit_idx")
+      .on(t.storeId, t.orderEditId)
+      .where(sql`${t.orderEditId} is not null`),
+    check("inventory_reservations_order_edit", sql`${t.orderEditId} is null or ${t.orderId} is not null`),
     variantRef("inventory_reservations_variant_fk", t),
     locationRef("inventory_reservations_location_fk", t),
     cartRef("inventory_reservations_cart_fk", t).onDelete("cascade"),
@@ -2949,11 +2980,21 @@ export const payments = commerce.table(
      * The invoice's supply date, and so the VAT and OSS period (D161), is this day; without one it is the day the payment was recorded.
      */
     receivedOn: date("received_on", { mode: "string" }),
+    /** A payment of an order change's difference (wave 3 run 3, D174): `applySession()` routes by it and never calls `complete_order_payment()` for it. */
+    orderEditId: uuid("order_edit_id"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("payments_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "payments_order_edit_fk",
+      columns: [t.storeId, t.orderEditId],
+      foreignColumns: [orderEdits.storeId, orderEdits.id],
+    }),
+    index("payments_order_edit_idx")
+      .on(t.storeId, t.orderEditId)
+      .where(sql`${t.orderEditId} is not null`),
     check("payments_received_manual", sql`${t.receivedOn} is null or ${t.provider} = 'manual'`),
     index("payments_recorded_by_idx").on(t.recordedBy),
     check("payments_manual_method", sql`(${t.provider} = 'manual') = (${t.method} is not null) and (${t.method} is null or ${t.method} in ('cash', 'bank_transfer', 'other'))`),
@@ -2981,10 +3022,23 @@ export const refunds = commerce.table(
     restocked: jsonb("restocked").notNull().default([]),
     /** The staff member who refunded; null for refunds made in Stripe. */
     createdBy: uuid("created_by").references(() => accounts.id),
+    /**
+     * The refund of an order change's lower total, or of a change's payment that arrived when the change could no longer be applied (wave 3 run 3, D174). The
+     * first gets no credit note of its own (the change's covers it) and is not a refund in analytics.
+     */
+    orderEditId: uuid("order_edit_id"),
     createdAt: createdAt(),
   },
   (t) => [
     unique("refunds_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "refunds_order_edit_fk",
+      columns: [t.storeId, t.orderEditId],
+      foreignColumns: [orderEdits.storeId, orderEdits.id],
+    }),
+    index("refunds_order_edit_idx")
+      .on(t.storeId, t.orderEditId)
+      .where(sql`${t.orderEditId} is not null`),
     index("refunds_created_by_idx").on(t.createdBy),
     unique("refunds_provider_reference_key").on(t.storeId, t.providerReference),
     foreignKey({
@@ -3015,9 +3069,15 @@ export const shipments = commerce.table(
     consignmentNumber: text("consignment_number"),
     labelUrl: text("label_url"),
     createdBy: uuid("created_by").references(() => accounts.id),
+    /**
+     * Recorded before parcels named their lines (wave 3 run 3, D174): counts as every physical unit of the order sent. The rules migration set it for every row that
+     * existed; nothing sets it afterwards. A shipment that is not legacy names its lines and quantities in `shipment_lines` (`markSent()` is the only writer).
+     */
+    legacy: boolean("legacy").notNull().default(false),
     createdAt: createdAt(),
   },
   (t) => [
+    unique("shipments_store_id_key").on(t.storeId, t.id),
     orderRef("shipments_order_fk", t),
     index("shipments_order_idx").on(t.storeId, t.orderId),
     index("shipments_created_by_idx").on(t.createdBy),
@@ -3562,7 +3622,10 @@ export const invoices = commerce.table(
     totalMinor: money("total_minor"),
     taxMinor: money("tax_minor"),
     issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
-    /** `order` today: an invoice for a shop order. */
+    /**
+     * `order`: the invoice of a shop order (one per order). `order_edit`: the additional invoice of a change staff made to it (wave 3 run 3, D174), referring to
+     * the original; one per change, `order_edit_id` set exactly for it.
+     */
     kind: text("kind").notNull().default("order"),
     /** The store day it was issued (never back-dated) and the day of supply (the payment day). */
     issuedOn: date("issued_on").notNull(),
@@ -3585,18 +3648,31 @@ export const invoices = commerce.table(
     pdfPath: text("pdf_path"),
     pdfSha256: text("pdf_sha256"),
     anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
+    orderEditId: uuid("order_edit_id"),
   },
   (t) => [
     unique("invoices_store_id_key").on(t.storeId, t.id),
     unique("invoices_series_number_key").on(t.storeId, t.series, t.number),
     unique("invoices_document_number_key").on(t.storeId, t.documentNumber),
-    unique("invoices_order_key").on(t.storeId, t.orderId),
+    /** One original invoice per order; an order's additional invoices (`order_edit`) are one per change. Readers of an order's invoice pick `kind = 'order'`. */
+    uniqueIndex("invoices_original_key")
+      .on(t.storeId, t.orderId)
+      .where(sql`${t.kind} = 'order'`),
+    uniqueIndex("invoices_order_edit_key")
+      .on(t.storeId, t.orderEditId)
+      .where(sql`${t.kind} = 'order_edit'`),
+    index("invoices_order_idx").on(t.storeId, t.orderId),
+    foreignKey({
+      name: "invoices_order_edit_fk",
+      columns: [t.storeId, t.orderEditId],
+      foreignColumns: [orderEdits.storeId, orderEdits.id],
+    }),
     unique("invoices_public_token_key").on(t.publicToken),
     orderRef("invoices_order_fk", t),
     seriesRef("invoices_series_fk", t),
     index("invoices_issued_idx").on(t.storeId, t.issuedOn),
     index("invoices_supply_idx").on(t.storeId, t.supplyDate),
-    check("invoices_kind", sql`${t.kind} = 'order'`),
+    check("invoices_kind", sql`${t.kind} in ('order', 'order_edit') and (${t.kind} = 'order_edit') = (${t.orderEditId} is not null)`),
     check("invoices_series", sql`${t.series} = 'invoice'`),
     check("invoices_vat_kind", sql`${t.vatKind} in ('standard', 'reverse_charge', 'ioss')`),
     check("invoices_total", sql`${t.totalMinor} > 0 and ${t.totalMinor} = ${t.netMinor} + ${t.taxMinor}`),
@@ -3628,7 +3704,10 @@ export const creditNotes = commerce.table(
     totalMinor: money("total_minor"),
     taxMinor: money("tax_minor"),
     issuedAt: timestamp("issued_at", { withTimezone: true }).notNull().defaultNow(),
-    /** `refund` (a succeeded refund) or `return_outside` (a return refunded outside Kaizen's Stripe). */
+    /**
+     * `refund` (a succeeded refund), `return_outside` (a return refunded outside Kaizen's Stripe) or `order_edit` (what a change staff made to the order took off,
+     * wave 3 run 3, D174: `order_edit_id` set exactly for it; the change's refund gets no note of its own).
+     */
     source: text("source").notNull(),
     returnId: uuid("return_id"),
     issuedOn: date("issued_on").notNull(),
@@ -3646,8 +3725,17 @@ export const creditNotes = commerce.table(
     pdfPath: text("pdf_path"),
     pdfSha256: text("pdf_sha256"),
     anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
+    orderEditId: uuid("order_edit_id"),
   },
   (t) => [
+    foreignKey({
+      name: "credit_notes_order_edit_fk",
+      columns: [t.storeId, t.orderEditId],
+      foreignColumns: [orderEdits.storeId, orderEdits.id],
+    }),
+    uniqueIndex("credit_notes_order_edit_key")
+      .on(t.storeId, t.orderEditId)
+      .where(sql`${t.source} = 'order_edit'`),
     unique("credit_notes_series_number_key").on(t.storeId, t.series, t.number),
     unique("credit_notes_document_number_key").on(t.storeId, t.documentNumber),
     unique("credit_notes_refund_key").on(t.storeId, t.refundId),
@@ -3675,10 +3763,12 @@ export const creditNotes = commerce.table(
       .where(sql`${t.source} = 'return_outside'`),
     index("credit_notes_issued_idx").on(t.storeId, t.issuedOn),
     check("credit_notes_series", sql`${t.series} = 'credit_note'`),
-    check("credit_notes_source", sql`${t.source} in ('refund', 'return_outside')`),
+    check("credit_notes_source", sql`${t.source} in ('refund', 'return_outside', 'order_edit')`),
     check(
       "credit_notes_source_ref",
-      sql`(${t.source} = 'refund' and ${t.refundId} is not null and ${t.returnId} is null) or (${t.source} = 'return_outside' and ${t.returnId} is not null and ${t.refundId} is null)`,
+      sql`(${t.source} = 'refund' and ${t.refundId} is not null and ${t.returnId} is null and ${t.orderEditId} is null)
+        or (${t.source} = 'return_outside' and ${t.returnId} is not null and ${t.refundId} is null and ${t.orderEditId} is null)
+        or (${t.source} = 'order_edit' and ${t.orderEditId} is not null and ${t.refundId} is null and ${t.returnId} is null)`,
     ),
     check("credit_notes_total", sql`${t.totalMinor} > 0 and ${t.totalMinor} = ${t.netMinor} + ${t.taxMinor}`),
     check("credit_notes_vat_home", sql`(${t.vatHomeMinor} is null) = (${t.fxRate} is null) and (${t.vatHomeMinor} is null) = (${t.vatHomeCurrency} is null)`),
@@ -8639,3 +8729,262 @@ export const draftOrderLines = commerce.table(
 
 /** The most lines a draft holds (`src/lib/order-limits.ts`); the trigger `draft_order_lines_limit()` says the same number. */
 export const DRAFT_LINES_LIMIT = DRAFT_LINES_MAX;
+
+// ---------------------------------------------------------------------------
+// Fulfilment: parcels with their lines, order changes after purchase (wave 3, run 3, D174, docs/wave-3-fulfilment.md 3.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Which units went in which parcel (D174): one row per order line in a shipment, with how many of its units. Written only by `markSent()` with its shipment,
+ * append-only (a trigger refuses an update or a delete). The database holds that a line belongs to a physical line of the shipment's own order and that the
+ * units of a line in all its parcels never exceed its quantity (`shipment_lines_rules()`, under the order line's lock). A shipment from before this run is
+ * `legacy` and counts as everything sent; the rules migration back-filled its lines. Holds no personal data.
+ */
+export const shipmentLines = commerce.table(
+  "shipment_lines",
+  {
+    storeId: storeId(),
+    shipmentId: uuid("shipment_id").notNull(),
+    orderLineId: uuid("order_line_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.shipmentId, t.orderLineId] }),
+    foreignKey({
+      name: "shipment_lines_shipment_fk",
+      columns: [t.storeId, t.shipmentId],
+      foreignColumns: [shipments.storeId, shipments.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "shipment_lines_order_line_fk",
+      columns: [t.storeId, t.orderLineId],
+      foreignColumns: [orderLines.storeId, orderLines.id],
+    }).onDelete("restrict"),
+    index("shipment_lines_order_line_idx").on(t.storeId, t.orderLineId),
+    index("shipment_lines_shipment_idx").on(t.storeId, t.shipmentId),
+    check("shipment_lines_quantity", sql`${t.quantity} > 0`),
+  ],
+);
+
+/**
+ * A change staff made to a paid order's goods and shipping after purchase (D174, `docs/wave-3-fulfilment.md` 4.3 to 4.6), numbered per order (`E{seq}`).
+ * A change with a lower or equal total is written `applied` with the order's new lines and totals in one transaction (`applyOrderEdit()`, the only writer of
+ * the edit context); one with a higher total is `awaiting_payment` with the added units held and a pay link (only the token's SHA-256, base64url, is kept)
+ * until it is paid (`applied`), cancelled or expired. The lifecycle, the per-order number and its limit, and that an applied change is final are
+ * `order_edits_rules()`; the money it moved is held at commit by `order_edits_settled()`. Never deleted; holds no personal data (staff's note is only in the
+ * history event's `data.note`).
+ */
+export const orderEdits = commerce.table(
+  "order_edits",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    /** 1, 2, … per order, given by the trigger under the order's lock. */
+    seq: integer("seq").notNull(),
+    status: text("status").notNull(),
+    reason: text("reason").notNull(),
+    notify: boolean("notify").notNull(),
+    restock: boolean("restock").notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    /** The order as it was previewed (its money columns and every line's id and quantity), compared under the lock before the change is applied. */
+    base: jsonb("base").notNull(),
+    /** The order's figures before and after, in its currency; `difference_minor = total_after - total_before`. */
+    totalBefore: money("total_before"),
+    totalAfter: money("total_after"),
+    subtotalDelta: money("subtotal_delta"),
+    shippingBefore: money("shipping_before"),
+    shippingAfter: money("shipping_after"),
+    discountDelta: money("discount_delta"),
+    taxDelta: money("tax_delta"),
+    differenceMinor: money("difference_minor"),
+    /** The payment of the difference (a higher total), once captured. */
+    paymentId: uuid("payment_id"),
+    /** The refund of the difference (a lower total). */
+    refundId: uuid("refund_id"),
+    /** SHA-256 (base64url) of the 32-byte pay token of a change waiting for payment; kept when it ends, so the page can say what became of it. */
+    payTokenHash: text("pay_token_hash"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    madeBy: uuid("made_by")
+      .notNull()
+      .references(() => accounts.id),
+    documents: text("documents").notNull().default("none"),
+    appliedAt: timestamp("applied_at", { withTimezone: true }),
+    /** When a change waiting for payment was cancelled or expired. */
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  // Annotated: payments, refunds and the documents name a change and a change names its payment and refund, so the types would otherwise infer in a circle.
+  (t): PgTableExtraConfigValue[] => [
+    unique("order_edits_store_id_key").on(t.storeId, t.id),
+    unique("order_edits_order_seq_key").on(t.storeId, t.orderId, t.seq),
+    orderRef("order_edits_order_fk", t).onDelete("restrict"),
+    foreignKey({
+      name: "order_edits_payment_fk",
+      columns: [t.storeId, t.paymentId],
+      foreignColumns: [payments.storeId, payments.id],
+    }),
+    foreignKey({
+      name: "order_edits_refund_fk",
+      columns: [t.storeId, t.refundId],
+      foreignColumns: [refunds.storeId, refunds.id],
+    }),
+    /** One change waiting for payment per order. */
+    uniqueIndex("order_edits_awaiting_key")
+      .on(t.storeId, t.orderId)
+      .where(sql`${t.status} = 'awaiting_payment'`),
+    index("order_edits_expiry_idx")
+      .on(t.storeId, t.status, t.expiresAt)
+      .where(sql`${t.status} = 'awaiting_payment'`),
+    index("order_edits_order_idx").on(t.storeId, t.orderId),
+    index("order_edits_payment_idx").on(t.storeId, t.paymentId),
+    index("order_edits_refund_idx").on(t.storeId, t.refundId),
+    index("order_edits_made_by_idx").on(t.madeBy),
+    uniqueIndex("order_edits_token_key")
+      .on(t.payTokenHash)
+      .where(sql`${t.payTokenHash} is not null`),
+    check("order_edits_seq", sql`${t.seq} >= 1`),
+    check("order_edits_status", sql`${t.status} in (${sqlList(ORDER_EDIT_STATUSES)})`),
+    check("order_edits_reason", sql`${t.reason} in (${sqlList(ORDER_EDIT_REASONS)})`),
+    check("order_edits_documents", sql`${t.documents} in (${sqlList(ORDER_EDIT_DOCUMENTS)})`),
+    check("order_edits_base", sql`jsonb_typeof(${t.base}) = 'object'`),
+    check(
+      "order_edits_amounts",
+      sql`${t.totalBefore} >= 0 and ${t.totalAfter} >= 0 and ${t.shippingBefore} >= 0 and ${t.shippingAfter} >= 0 and ${t.differenceMinor} = ${t.totalAfter} - ${t.totalBefore}`,
+    ),
+    check("order_edits_token", sql`${t.payTokenHash} is null or ${t.payTokenHash} ~ '^[A-Za-z0-9_-]{43}$'`),
+    /**
+     * Where each status leaves the moments, the link and the money: a change waiting for payment has a higher total, a link and its end, nothing applied or
+     * ended and no payment or refund named; an applied one has its moment; a cancelled or expired one was waiting (a higher total and a link) and has ended with
+     * nothing applied. The money an applied change moved is checked at commit (`order_edits_settled()`), because its payment or refund row names the change.
+     */
+    check(
+      "order_edits_lifecycle",
+      sql`(${t.status} = 'awaiting_payment' and ${t.differenceMinor} > 0 and ${t.payTokenHash} is not null and ${t.expiresAt} is not null
+            and ${t.appliedAt} is null and ${t.endedAt} is null and ${t.paymentId} is null and ${t.refundId} is null and ${t.documents} = 'none')
+        or (${t.status} = 'applied' and ${t.appliedAt} is not null and ${t.endedAt} is null)
+        or (${t.status} in ('cancelled', 'expired') and ${t.differenceMinor} > 0 and ${t.payTokenHash} is not null and ${t.endedAt} is not null
+            and ${t.appliedAt} is null and ${t.paymentId} is null and ${t.refundId} is null and ${t.documents} = 'none')`,
+    ),
+    check(
+      "order_edits_money",
+      sql`(${t.differenceMinor} >= 0 or ${t.paymentId} is null) and (${t.differenceMinor} <= 0 or ${t.refundId} is null)`,
+    ),
+  ],
+);
+
+/**
+ * A line of an order change (D174): units added (`add`, a new order line), a line taken off (`remove`; the order line is deleted and its whole row kept in
+ * `before`) or a quantity lowered (`reduce`; the units and the money taken off, `before` the line as it was). The amounts are what the change added or took
+ * off, in the order's currency, VAT included: for `remove` and `reduce` they are the line as sold less what it keeps (`splitLine()`), so kept and removed add up
+ * to the line exactly. `order_line_id` has no foreign key (a removed line is gone); for an `add` it is written once, when the change is applied. Written with
+ * its change in one transaction and never changed after (but that one id) or deleted.
+ */
+export const orderEditLines = commerce.table(
+  "order_edit_lines",
+  {
+    storeId: storeId(),
+    orderEditId: uuid("order_edit_id").notNull(),
+    n: integer("n").notNull(),
+    kind: text("kind").notNull(),
+    orderLineId: uuid("order_line_id"),
+    variantId: uuid("variant_id"),
+    sku: text("sku").notNull(),
+    title: text("title").notNull(),
+    quantity: integer("quantity").notNull(),
+    unitPriceMinor: money("unit_price_minor"),
+    /** An added line's list price as shown in the order's view (information only; the price charged is `unit_price_minor`). */
+    listPriceMinor: bigint("list_price_minor", { mode: "number" }),
+    totalMinor: money("total_minor"),
+    discountMinor: money("discount_minor"),
+    taxMinor: money("tax_minor"),
+    taxRate: numeric("tax_rate", { precision: 6, scale: 4 }).notNull(),
+    /** The discount parts taken off with the units: `{ member, campaign, bonus, referral, staff, relief }` in minor units; all 0 for `add`. */
+    parts: jsonb("parts").notNull().default({}),
+    /** The whole order line as it was, for `remove` and `reduce`. */
+    before: jsonb("before"),
+    /** For `add`: the units sold on backorder and the delivery time stated (D172). */
+    backorderQuantity: integer("backorder_quantity").notNull().default(0),
+    backorderDays: integer("backorder_days"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.orderEditId, t.n] }),
+    foreignKey({
+      name: "order_edit_lines_edit_fk",
+      columns: [t.storeId, t.orderEditId],
+      foreignColumns: [orderEdits.storeId, orderEdits.id],
+    }).onDelete("restrict"),
+    variantRef("order_edit_lines_variant_fk", t),
+    index("order_edit_lines_variant_idx").on(t.storeId, t.variantId),
+    index("order_edit_lines_order_line_idx")
+      .on(t.storeId, t.orderLineId)
+      .where(sql`${t.orderLineId} is not null`),
+    check("order_edit_lines_n", sql`${t.n} >= 1`),
+    check("order_edit_lines_kind", sql`${t.kind} in (${sqlList(ORDER_EDIT_LINE_KINDS)})`),
+    check("order_edit_lines_quantity", sql`${t.quantity} > 0`),
+    check(
+      "order_edit_lines_amounts",
+      sql`${t.unitPriceMinor} >= 0 and ${t.discountMinor} >= 0 and ${t.totalMinor} >= 0 and ${t.taxMinor} >= 0 and ${t.taxMinor} <= ${t.totalMinor}
+        and ${t.totalMinor} = ${t.unitPriceMinor} * ${t.quantity} - ${t.discountMinor} and (${t.listPriceMinor} is null or ${t.listPriceMinor} >= 0)`,
+    ),
+    check("order_edit_lines_rate", sql`${t.taxRate} >= 0 and ${t.taxRate} < 1`),
+    check("order_edit_lines_parts", sql`jsonb_typeof(${t.parts}) = 'object'`),
+    check(
+      "order_edit_lines_shape",
+      sql`(${t.kind} = 'add' and ${t.before} is null and ${t.discountMinor} = 0 and ${t.variantId} is not null)
+        or (${t.kind} in ('remove', 'reduce') and ${t.before} is not null and jsonb_typeof(${t.before}) = 'object' and ${t.orderLineId} is not null
+            and ${t.backorderQuantity} = 0 and ${t.backorderDays} is null)`,
+    ),
+    check(
+      "order_edit_lines_backorder",
+      sql`${t.backorderQuantity} between 0 and ${t.quantity} and (${t.backorderDays} is null or ${t.backorderDays} between 1 and 90)
+        and (${t.backorderQuantity} = 0 or ${t.backorderDays} is not null)`,
+    ),
+  ],
+);
+
+/**
+ * Units of an order line that will not be sent (D174, `docs/wave-3-fulfilment.md` 3.2 and "Closing units that will not be sent"): staff refunded or put back
+ * units of a paid order that were never in a parcel and ticked *not sent*, so they come off what is still to send (`commerce.line_to_send()` subtracts
+ * `commerce.closed_quantity()`). An explicit record, never a guess from stock movements (a plain refund's restock may be a sent unit that came back). Written
+ * only by `refundOrder()` with `notSent` (one row per line, with the refund it came with when money moved); the trigger `unsent_closures_rules()` locks the
+ * order and refuses more units than are still to send, a line that is not shipped, a copied order and an order that is not `paid`; the rows are append-only.
+ * Holds no personal field (the staff account that closed them only).
+ */
+export const unsentClosures = commerce.table(
+  "unsent_closures",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    orderId: uuid("order_id").notNull(),
+    orderLineId: uuid("order_line_id").notNull(),
+    quantity: integer("quantity").notNull(),
+    /** The refund the units were closed with (its first row when it was split), or null when nothing was refunded (a restock with 0 to refund). */
+    refundId: uuid("refund_id"),
+    /** The staff member who closed them. */
+    createdBy: uuid("created_by").references(() => accounts.id),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    orderRef("unsent_closures_order_fk", t).onDelete("restrict"),
+    foreignKey({
+      name: "unsent_closures_order_line_fk",
+      columns: [t.storeId, t.orderLineId],
+      foreignColumns: [orderLines.storeId, orderLines.id],
+    }).onDelete("restrict"),
+    foreignKey({
+      name: "unsent_closures_refund_fk",
+      columns: [t.storeId, t.refundId],
+      foreignColumns: [refunds.storeId, refunds.id],
+    }).onDelete("restrict"),
+    index("unsent_closures_order_idx").on(t.storeId, t.orderId),
+    index("unsent_closures_order_line_idx").on(t.storeId, t.orderLineId),
+    index("unsent_closures_refund_idx")
+      .on(t.storeId, t.refundId)
+      .where(sql`${t.refundId} is not null`),
+    index("unsent_closures_created_by_idx").on(t.createdBy),
+    check("unsent_closures_quantity", sql`${t.quantity} > 0`),
+  ],
+);

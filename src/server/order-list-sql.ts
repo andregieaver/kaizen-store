@@ -52,7 +52,8 @@ export const CAPTURED_SQL = sql`(select coalesce(sum(p.amount_minor), 0)::bigint
 export const REFUNDED_SQL = sql`(select coalesce(sum(r.amount_minor), 0)::bigint from commerce.refunds r join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id where p.store_id = o.store_id and p.order_id = o.id and r.status = 'succeeded')`;
 const WAS_PAID = sql`exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured')`;
 export const PHYSICAL_SQL = sql`exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical')`;
-const BACKORDERED = sql`exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0)`;
+/** Units sold on backorder that are still to send (D172, D174 4.7: a backordered unit already in a parcel is not waited for). */
+const BACKORDERED = sql`exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0 and commerce.line_to_send(l.id) > 0)`;
 /** An unfinished checkout: waiting for payment, or cancelled and never paid. Never copied history. */
 const UNFINISHED = sql`(o.copied_from is null and (o.status = 'pending_payment' or (o.status = 'cancelled' and not ${WAS_PAID})))`;
 
@@ -104,6 +105,11 @@ function shipCondition(filter: OrderListParams["ship"][number]): SQL {
       return sql`(o.status = 'fulfilled')`;
     case "no_shipping":
       return sql`(not ${PHYSICAL_SQL})`;
+    // D174: a parcel is recorded and units are still to send (the order stays paid until none is left).
+    case "partly_sent":
+      return sql`(o.status = 'paid' and exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id))`;
+    case "edit_pending":
+      return sql`exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and e.status = 'awaiting_payment')`;
   }
 }
 

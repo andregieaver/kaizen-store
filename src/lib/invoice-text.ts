@@ -500,3 +500,86 @@ export function treatmentStatements(
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The documents of a change to an order (wave 3, run 3, D174, docs/wave-3-fulfilment.md 4.6 and section 8 item 5)
+// ---------------------------------------------------------------------------------------------------------------------
+
+// legal: needs review
+export type EditDocumentText = {
+  /** The heading of a change's additional invoice. */
+  additionalInvoice: string;
+  /** The line that refers to the order's own invoice (VAT Directive Art. 219): every part a fact. */
+  amends: (invoiceNumber: string) => string;
+  /** The heading of a change's credit note. */
+  creditNoteForChange: string;
+  /** The reason line of a change's credit note (`reason.kind = 'order_edit'`), with the change's label (`E2`). */
+  reasonOrderEdit: (label: string) => string;
+  /** The payment line of an additional invoice paid by what the customer had already paid (`settled_by_order`). */
+  settledByOrder: (invoiceNumber: string) => string;
+  /** The reference line with the original's date: `amends()` followed by the day it was issued (Art. 219: specifically and unambiguously). */
+  amendsOf: (invoiceNumber: string, date: string) => string;
+  /** A credit note's row for units a change took off the order (never "returned": nothing was sent). */
+  removedRow: string;
+  /** A credit note's row for a lower shipping charge set by a change (never "refunded": the refund, if any, is the change's). */
+  shippingLoweredRow: string;
+  /** The supply-date note of an additional invoice the change's own payment paid (online, or recorded outside Kaizen): its supply date is that payment's day. */
+  supplyDatePaid: string;
+  /** The supply-date note of an additional invoice settled against what was paid for the order: its supply date is the day the change was made. */
+  supplyDateSettled: string;
+};
+
+// legal: needs review: hand-written in each language; an accountant should confirm the form and the dating (spec section 8 item 5).
+const EDIT_TEXT: Record<DocumentLanguage, EditDocumentText> = {
+  nb: {
+    additionalInvoice: "Tilleggsfaktura",
+    amends: (invoiceNumber) => `Endrer faktura ${invoiceNumber}`,
+    creditNoteForChange: "Kreditnota for endring av bestillingen",
+    reasonOrderEdit: (label) => `Endring ${label} av bestillingen`,
+    settledByOrder: (invoiceNumber) => `Avregnet mot betalingen for faktura ${invoiceNumber}`,
+    amendsOf: (invoiceNumber, date) => `Endrer faktura ${invoiceNumber} av ${date}.`,
+    removedRow: "Tatt ut av bestillingen",
+    shippingLoweredRow: "Lavere frakt",
+    supplyDatePaid: "Leveringsdato er dagen endringen ble betalt.",
+    supplyDateSettled: "Leveringsdato er dagen endringen ble gjort.",
+  },
+  sv: {
+    additionalInvoice: "Tilläggsfaktura",
+    amends: (invoiceNumber) => `Ändrar faktura ${invoiceNumber}`,
+    creditNoteForChange: "Kreditnota för ändring av beställningen",
+    reasonOrderEdit: (label) => `Ändring ${label} av beställningen`,
+    settledByOrder: (invoiceNumber) => `Avräknat mot betalningen för faktura ${invoiceNumber}`,
+    amendsOf: (invoiceNumber, date) => `Ändrar faktura ${invoiceNumber} av ${date}.`,
+    removedRow: "Borttaget ur beställningen",
+    shippingLoweredRow: "Lägre frakt",
+    supplyDatePaid: "Leveransdatum är dagen då ändringen betalades.",
+    supplyDateSettled: "Leveransdatum är dagen då ändringen gjordes.",
+  },
+  da: {
+    additionalInvoice: "Tillægsfaktura",
+    amends: (invoiceNumber) => `Ændrer faktura ${invoiceNumber}`,
+    creditNoteForChange: "Kreditnota for ændring af bestillingen",
+    reasonOrderEdit: (label) => `Ændring ${label} af bestillingen`,
+    settledByOrder: (invoiceNumber) => `Modregnet i betalingen for faktura ${invoiceNumber}`,
+    amendsOf: (invoiceNumber, date) => `Ændrer faktura ${invoiceNumber} af ${date}.`,
+    removedRow: "Fjernet fra bestillingen",
+    shippingLoweredRow: "Lavere fragt",
+    supplyDatePaid: "Leveringsdatoen er den dag, ændringen blev betalt.",
+    supplyDateSettled: "Leveringsdatoen er den dag, ændringen blev foretaget.",
+  },
+  en: {
+    additionalInvoice: "Additional invoice",
+    amends: (invoiceNumber) => `Amends invoice ${invoiceNumber}`,
+    creditNoteForChange: "Credit note for changes to the order",
+    reasonOrderEdit: (label) => `Change ${label} to the order`,
+    settledByOrder: (invoiceNumber) => `Settled against the payment for invoice ${invoiceNumber}`,
+    amendsOf: (invoiceNumber, date) => `Amends invoice ${invoiceNumber} of ${date}.`,
+    removedRow: "Removed from the order",
+    shippingLoweredRow: "Lower shipping charge",
+    supplyDatePaid: "The date of supply is the day the change was paid.",
+    supplyDateSettled: "The date of supply is the day the change was made.",
+  },
+};
+
+/** The words of a change's documents in the document's language (English for any other). Never in `i18n.ts` or the AI catalogue. */
+export const editDocumentText = (lang: string): EditDocumentText => (lang in EDIT_TEXT ? EDIT_TEXT[lang as DocumentLanguage] : EDIT_TEXT.en);

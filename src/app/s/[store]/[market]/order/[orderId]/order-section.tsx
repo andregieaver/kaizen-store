@@ -11,6 +11,7 @@ import { OwnBookings } from "@/components/own-bookings";
 import { OrderReturns } from "@/components/withdraw/order-returns";
 import { PasswordReset } from "@/components/account-sign-in";
 import { LineThumbnail } from "@/components/line-thumbnail";
+import { OrderShipments } from "@/components/order-shipments";
 import { LineUnitPrice } from "@/components/price";
 import { RefreshOnce, RefreshWhile } from "@/components/refresh-while";
 import { StaffDiscountRow } from "@/components/staff-discount-row";
@@ -28,6 +29,7 @@ import { vatText } from "@/lib/vat-text";
 import { fileSize } from "@/lib/file-size";
 import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
 import { termsForOrder } from "@/server/checkout-terms";
+import { shopperFulfilment } from "@/server/fulfilment";
 import { getOrderDocuments } from "@/server/invoices";
 import { getOrderDownloads, getShopperOrder, type OrderDownload } from "@/server/orders";
 import { listOrderReturns } from "@/server/returns";
@@ -52,7 +54,7 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
   const money = (minor: number) => formatMoney(minor, order.currency, market.locale);
   const digital = order.lines.some((line) => line.delivery === "digital" && line.variantId !== null);
   const paid = order.status === "paid" || order.status === "fulfilled" || order.status === "closed";
-  const [downloads, subscription, account, returns, terms, documents] = await Promise.all([
+  const [downloads, subscription, account, returns, terms, documents, fulfilment] = await Promise.all([
     digital && paid ? getOrderDownloads(store.id, order.id) : [],
     order.subscriptionId ? getSubscriptionForOrder(store.id, order.id) : null,
     getCheckoutAccount(store.id, order.id),
@@ -62,8 +64,10 @@ async function loadOrderView(store: Store, market: Market, orderId: string, quer
     termsForOrder(store.id, order.id),
     // Its invoice and credit notes (D159): the order's own key has been checked, so its documents are the visitor's to see.
     getOrderDocuments(store.id, order.id),
+    // Its parcels and what is still to come (D174): the order's own key has been checked; nothing is read before it is paid or for an order with nothing to send.
+    order.ships && paid ? shopperFulfilment(store.id, order.id) : null,
   ]);
-  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms, documents };
+  return { store, market, order, sessionId, m, money, digital, paid, downloads, subscription, account, returns, terms, documents, fulfilment };
 }
 
 const FRAME = "rounded-lg border border-border p-4";
@@ -75,7 +79,7 @@ const FRAME = "rounded-lg border border-border p-4";
  * does a store's own page for it (D113), whole or in pieces (D117:
  * `OrderStatus`, `OrderAccount`, `OrderBookings`, `OrderLines`,
  * `OrderTotals`, `OrderDocuments`, `OrderSubscription`, `OrderDownloads`,
- * `OrderAddress`, `OrderContinue`).
+ * `OrderAddress`, `OrderContinue`, and the parcels, `OrderParcels`, D174).
  */
 export async function OrderDetails(shop: Shop) {
   const view = await orderView(shop);
@@ -86,6 +90,7 @@ export async function OrderDetails(shop: Shop) {
       {statusBlock(view)}
       {account && <div className={FRAME}>{account}</div>}
       {bookingsBlock(view)}
+      {parcelsBlock(view)}
       <section aria-label={m.cart} className={FRAME}>
         {linesList(view)}
         {giftBlock(view)}
@@ -118,6 +123,11 @@ export async function OrderAccount(shop: Shop) {
 /** The order's appointments, stays and rentals (D117). */
 export async function OrderBookings(shop: Shop) {
   return bookingsBlock(await orderView(shop));
+}
+
+/** The order's parcels, each with its lines, and what is still to come (D174); nothing before the first parcel. */
+export async function OrderParcels(shop: Shop) {
+  return parcelsBlock(await orderView(shop));
 }
 
 /** The lines the shopper bought (D117). */
@@ -218,6 +228,10 @@ function accountBlock({ store, market, order, sessionId, m, account }: OrderView
       accountUrl={marketPath(store.slug, market.slug, "/account")}
     />
   );
+}
+
+function parcelsBlock({ store, market, order, m, fulfilment }: OrderView) {
+  return <OrderShipments fulfilment={fulfilment} m={m} locale={market.locale} timeZone={store.timeZone} business={order.company !== null} />;
 }
 
 function bookingsBlock({ store, market, order, sessionId, m }: OrderView) {

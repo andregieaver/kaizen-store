@@ -18,6 +18,7 @@
  */
 import {
   SNAPSHOT_VERSION,
+  bucketsOf,
   convertWith,
   distribute,
   totalsOf,
@@ -38,7 +39,15 @@ import {
 export type BucketLeft = { rate: number; basis: BucketBasis; netLeft: number; vatLeft: number; grossLeft: number };
 export type Credited = { rate: number; basis: BucketBasis; netMinor: number; vatMinor: number; grossMinor: number };
 
-/** What each bucket of an invoice has left after its credit notes so far (never below 0). */
+/**
+ * The buckets of an order's invoices taken together (wave 3, D174): the order's own invoice and every change's additional invoice, summed per rate and basis,
+ * highest rate first. Credit notes credit this pool (`commerce.order_buckets_left()`); for an order with one invoice it is that invoice's buckets.
+ */
+export function pooledBuckets(invoices: readonly (readonly SnapshotBucket[])[]): SnapshotBucket[] {
+  return bucketsOf(invoices.flat());
+}
+
+/** What each bucket of an invoice (or the pool of an order's invoices) has left after its credit notes so far (never below 0). */
 export function bucketsLeft(invoice: readonly SnapshotBucket[], earlier: readonly (readonly SnapshotBucket[])[]): BucketLeft[] {
   return invoice.map((b) => {
     let net = 0;
@@ -229,9 +238,9 @@ export type CreditNoteSnapshot = {
   buyer: SnapshotBuyer;
   order: SnapshotOrder;
   refersTo: { invoiceId: string; invoiceNumber: string; invoiceIssuedOn: string };
-  /** A fixed phrase in the document's language is drawn from this (never the staff member's free text). */
-  reason: { kind: "refund" | "return"; returnNumber: string | null };
-  source: "refund" | "return_outside";
+  /** A fixed phrase in the document's language is drawn from this (never the staff member's free text). `order_edit`: what a change took off (D174), with its number. */
+  reason: { kind: "refund" | "return" | "order_edit"; returnNumber: string | null; editSeq?: number };
+  source: "refund" | "return_outside" | "order_edit";
   lines: CreditRow[];
   buckets: SnapshotBucket[];
   totals: SnapshotTotals;
@@ -262,7 +271,9 @@ export function creditVatConverted(
 
 export type CreditNoteInput = {
   invoice: { id: string; snapshot: OrderInvoiceSnapshot };
-  /** The buckets of the invoice's earlier credit notes. */
+  /** The order's other invoices (each change's additional invoice, D174), in the order they were issued: credited as one pool with the order's own. */
+  others?: readonly { snapshot: Pick<OrderInvoiceSnapshot, "buckets" | "lines" | "totals"> }[];
+  /** The buckets of the earlier credit notes of the order's invoices. */
   earlier: readonly (readonly SnapshotBucket[])[];
   source: "refund" | "return_outside";
   returnNumber: string | null;
@@ -276,9 +287,13 @@ export type CreditNoteResult = { snapshot: CreditNoteSnapshot | null; creditedMi
 
 export function creditNoteSnapshot(input: CreditNoteInput): CreditNoteResult {
   const inv = input.invoice.snapshot;
-  const left = bucketsLeft(inv.buckets, input.earlier);
+  const others = input.others ?? [];
+  const pool = others.length === 0 ? inv.buckets : pooledBuckets([inv.buckets, ...others.map((o) => o.snapshot.buckets)]);
+  const poolTotal = inv.totals.grossMinor + others.reduce((s, o) => s + o.snapshot.totals.grossMinor, 0);
+  const view: InvoiceView = { lines: [...inv.lines, ...others.flatMap((o) => o.snapshot.lines)], shipping: inv.shipping, buckets: pool };
+  const left = bucketsLeft(pool, input.earlier);
   const isReturn = input.working !== null || input.returnNumber !== null;
-  const credit = isReturn ? creditForReturn(inv, left, input.working, input.refundMinor) : (() => {
+  const credit = isReturn ? creditForReturn(view, left, input.working, input.refundMinor) : (() => {
     const a = creditAllocation(left, input.refundMinor);
     return { ...a, rows: refundRows(a), usedWorking: false };
   })();
@@ -313,13 +328,118 @@ export function creditNoteSnapshot(input: CreditNoteInput): CreditNoteResult {
     vatMain: main ? { ...main, vatMinor: main.fxRate === null ? totals.vatMinor : creditVatConverted(buckets, input.earlier, main.fxRate) } : null,
     treatment: inv.treatment,
     position: {
-      invoiceTotalMinor: inv.totals.grossMinor,
+      invoiceTotalMinor: poolTotal,
       creditedBeforeMinor: before,
       creditedNowMinor: totals.grossMinor,
-      leftOnInvoiceMinor: inv.totals.grossMinor - before - totals.grossMinor,
+      leftOnInvoiceMinor: poolTotal - before - totals.grossMinor,
     },
     notes,
   };
   return { snapshot, creditedMinor: totals.grossMinor, shortMinor: credit.shortMinor };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The credit note of a change (wave 3, D174, docs/wave-3-fulfilment.md 4.6; `commerce.make_edit_documents()` is the same, held by invoice-parity.test.ts)
+// ---------------------------------------------------------------------------------------------------------------------
+
+export type EditCreditInput = {
+  /** The order's own invoice (the credit note refers to it). */
+  invoice: { id: string; snapshot: OrderInvoiceSnapshot };
+  /** The order's other invoices (earlier changes' additional invoices), in the order they were issued. */
+  others?: readonly { snapshot: Pick<OrderInvoiceSnapshot, "buckets" | "lines" | "totals"> }[];
+  /** The buckets of every earlier credit note of the order's invoices. */
+  earlier: readonly (readonly SnapshotBucket[])[];
+  /** The change's lines that took something off (`remove` and `reduce`, in their order), with what they took off. */
+  removed: readonly { lineId: string; sku: string; title: string; quantity: number; totalMinor: number; taxMinor: number; taxRate: number }[];
+  /** A lower shipping charge: what it went down by and the VAT in that; null when the shipping did not go down. */
+  shipping: { grossMinor: number; vatMinor: number; rate: number; label: string | null } | null;
+  seq: number;
+  number: string;
+  issuedOn: string;
+};
+
+/**
+ * What a change took off, as a credit note: each removed unit's money at the rate and basis its invoice line had (the order's own invoice or an earlier
+ * change's), and a lower shipping charge; per bucket never above what the order's invoices left (what does not fit is an adjustment row and `credit_capped`);
+ * the VAT the units carried when it fits whole, else the VAT in what fits (`creditFromGross()`). Null when there is nothing to credit.
+ */
+export function editCreditNote(input: EditCreditInput): CreditNoteResult {
+  const inv = input.invoice.snapshot;
+  const others = input.others ?? [];
+  const pool = others.length === 0 ? inv.buckets : pooledBuckets([inv.buckets, ...others.map((o) => o.snapshot.buckets)]);
+  const poolTotal = inv.totals.grossMinor + others.reduce((s, o) => s + o.snapshot.totals.grossMinor, 0);
+  const allLines = [...inv.lines, ...others.flatMap((o) => o.snapshot.lines)];
+  const left = bucketsLeft(pool, input.earlier);
+  const wantGross = left.map(() => 0);
+  const wantVat = left.map(() => 0);
+  const rows: CreditRow[] = [];
+  let short = 0;
+  const put = (gross: number, vat: number, rate: number, basis: BucketBasis) => {
+    const i = bucketIndex(left, rate, basis);
+    if (i < 0) short += gross;
+    else {
+      wantGross[i] += gross;
+      wantVat[i] += vat;
+    }
+  };
+  for (const r of input.removed) {
+    if (r.totalMinor <= 0) continue;
+    const line = allLines.find((l) => l.lineId === r.lineId);
+    const rate = line?.vatRate ?? r.taxRate;
+    const basis: BucketBasis = line?.basis ?? "standard";
+    rows.push({ kind: "goods", lineId: r.lineId, sku: r.sku, title: r.title, quantity: r.quantity, vatRate: rate, basis, grossMinor: r.totalMinor, netMinor: null, vatMinor: null });
+    put(r.totalMinor, r.taxMinor, rate, basis);
+  }
+  if (input.shipping && input.shipping.grossMinor > 0) {
+    const rate = inv.shipping?.vatRate ?? input.shipping.rate;
+    const basis: BucketBasis = inv.shipping?.basis ?? "standard";
+    rows.push({ kind: "delivery", lineId: null, sku: null, title: input.shipping.label, quantity: null, vatRate: rate, basis, grossMinor: input.shipping.grossMinor, netMinor: null, vatMinor: null });
+    put(input.shipping.grossMinor, input.shipping.vatMinor, rate, basis);
+  }
+  const final = left.map((b, i) => Math.max(0, Math.min(wantGross[i], b.grossLeft)));
+  short += final.reduce((s, f, i) => s + wantGross[i] - f, 0);
+  const credited: Credited[] = left.map((b, i) => {
+    const g = final[i];
+    if (g === 0) return { rate: b.rate, basis: b.basis, netMinor: 0, vatMinor: 0, grossMinor: 0 };
+    if (g === wantGross[i]) {
+      const vat = Math.max(Math.min(wantVat[i], b.vatLeft, g), g - b.netLeft);
+      return { rate: b.rate, basis: b.basis, netMinor: g - vat, vatMinor: vat, grossMinor: g };
+    }
+    return creditFromGross(b, g);
+  });
+  credited.forEach((b, i) => {
+    const diff = b.grossMinor - wantGross[i];
+    if (diff !== 0) rows.push({ kind: "adjustment", lineId: null, sku: null, title: null, quantity: null, vatRate: b.rate, basis: b.basis, grossMinor: diff, netMinor: null, vatMinor: null });
+  });
+  const buckets: SnapshotBucket[] = credited.filter((b) => b.grossMinor > 0).map((b) => ({ rate: b.rate, basis: b.basis, netMinor: b.netMinor, vatMinor: b.vatMinor, grossMinor: b.grossMinor }));
+  const totals = totalsOf(buckets);
+  if (totals.grossMinor <= 0) return { snapshot: null, creditedMinor: 0, shortMinor: short };
+  const before = input.earlier.reduce((s, note) => s + note.reduce((a, b) => a + b.grossMinor, 0), 0);
+  const home = inv.vatHome;
+  const main = inv.vatMain;
+  const snapshot: CreditNoteSnapshot = {
+    version: SNAPSHOT_VERSION,
+    documentType: "credit_note",
+    number: input.number,
+    issuedOn: input.issuedOn,
+    locale: inv.locale,
+    language: inv.language,
+    currency: inv.currency,
+    seller: inv.seller,
+    buyer: inv.buyer,
+    order: inv.order,
+    refersTo: { invoiceId: input.invoice.id, invoiceNumber: inv.number, invoiceIssuedOn: inv.issuedOn },
+    reason: { kind: "order_edit", returnNumber: null, editSeq: input.seq },
+    source: "order_edit",
+    lines: rows,
+    buckets,
+    totals,
+    vatHome: home ? { ...home, vatMinor: creditVatConverted(buckets, input.earlier, home.fxRate) } : null,
+    vatMain: main ? { ...main, vatMinor: main.fxRate === null ? totals.vatMinor : creditVatConverted(buckets, input.earlier, main.fxRate) } : null,
+    treatment: inv.treatment,
+    position: { invoiceTotalMinor: poolTotal, creditedBeforeMinor: before, creditedNowMinor: totals.grossMinor, leftOnInvoiceMinor: poolTotal - before - totals.grossMinor },
+    notes: short > 0 ? ["credit_capped"] : [],
+  };
+  return { snapshot, creditedMinor: totals.grossMinor, shortMinor: short };
 }
 

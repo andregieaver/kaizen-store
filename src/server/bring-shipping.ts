@@ -9,7 +9,10 @@ import type { CarrierId, PickupPoint, ShippingAddress, ShippingOption } from "@/
 import { audit } from "./auth";
 import { adapterFor } from "./carriers";
 import { fetchBringLabel } from "./carriers/bring";
-import { markSent, type Shipment } from "./order-admin";
+import type { ParcelLine } from "@/lib/fulfilment";
+
+import { parcelPrecheck } from "./fulfilment";
+import { markSent, sendRefusalText, type Shipment } from "./order-admin";
 import { getOrder, type Address, type OrderView } from "./orders";
 import { carrierContext } from "./shipping-carriers";
 
@@ -109,7 +112,7 @@ export async function bringBook(
   accountId: string,
   storeId: string,
   orderId: string,
-  input: { serviceId: string; pickupPointId?: string; parcel: unknown },
+  input: { serviceId: string; pickupPointId?: string; parcel: unknown; /** What goes in this parcel (D174); none = everything still to send. */ lines?: readonly ParcelLine[] | null },
 ): Promise<BringBooked> {
   const parcel = parcelInput.safeParse(input.parcel);
   if (!parcel.success) return { ok: false, problem: parcel.error.issues[0].message };
@@ -123,6 +126,9 @@ export async function bringBook(
     where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and carrier_id = 'bring' and created_at > now() - interval '2 minutes'
   `);
   if (recent) return { ok: false, problem: "This order was just booked with Bring. Reload the page to see it." };
+  // What goes in the parcel is checked before the carrier is paid for it (D174); `markSent()` checks it again under the order's lock.
+  const unfit = await parcelPrecheck(storeId, orderId, input.lines);
+  if (unfit) return { ok: false, problem: unfit };
   const adapter = adapterFor("bring");
   if (!adapter?.book) return { ok: false, problem: "Bring is not available." };
   const pickupPointId = input.pickupPointId?.trim() || undefined;
@@ -137,16 +143,17 @@ export async function bringBook(
     });
     await audit(accountId, storeId, "shipping.bring_booked", { orderId, serviceId: input.serviceId, test: booked.test });
     if (booked.test) return { ok: true, test: true, trackingNumber: booked.trackingNumber };
-    const shipment = await markSent(
+    const sent = await markSent(
       storeId,
       orderId,
       { carrier: "bring", trackingNumber: booked.trackingNumber, trackingUrl: booked.trackingUrl },
       accountId,
       { carrierId: "bring", consignmentNumber: booked.consignmentNumber, labelUrl: booked.labelUrl },
+      { lines: input.lines ?? null },
     );
     // The booking exists at Bring even if the order could not be marked: say so rather than hide it.
-    if (!shipment) return { ok: false, problem: `Bring booked the shipment (${booked.trackingNumber}) but the order could not be marked as sent.` };
-    return { ok: true, test: false, shipment };
+    if (!sent.ok) return { ok: false, problem: `Bring booked the shipment (${booked.trackingNumber}) but the order could not be marked as sent. ${sendRefusalText(sent.reason)}` };
+    return { ok: true, test: false, shipment: sent.shipment };
   } catch (error) {
     return { ok: false, problem: error instanceof Error ? error.message : "Bring did not answer." };
   }

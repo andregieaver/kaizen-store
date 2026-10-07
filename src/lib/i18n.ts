@@ -384,6 +384,53 @@ const messages = {
       paymentsOff: "Butikken kan ikke ta imot betaling akkurat nå. Prøv igjen senere, eller kontakt butikken.",
       startFailed: "Betalingen kunne ikke startes. Prøv igjen, eller kontakt butikken.",
     },
+    /**
+     * Sending in parts (wave 3, run 3, D174): the order's state and its parcels on the shopper's order pages. The state words are plain interface text; `receipt` says
+     * when the right of withdrawal starts for goods sent in parts (CRD Art. 9(2)(b)) and is hand-written only (`HAND_WRITTEN_ONLY`). Needs human legal review before real use.
+     */
+    fulfilment: {
+      states: { none: "Ingenting å sende", unsent: "Ikke sendt", partly_sent: "Delvis sendt", sent: "Sendt", withdrawn: "Angret før sending", closed: "Sendes ikke" },
+      parcel: (n: number) => `Pakke ${n}`,
+      sentOn: (date: string) => `Sendt ${date}`,
+      track: "Spor pakken",
+      contents: "Innhold",
+      stillToCome: "Kommer senere",
+      // legal: needs review
+      receipt: "Angrefristen på 14 dager regnes fra den dagen du mottar den siste pakken.",
+    },
+    /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
+    slip: {
+      // legal: needs review
+      moreFollows: "Mer av denne bestillingen kommer i en annen pakke.",
+      alreadySent: "Alle varer (allerede sendt)",
+    },
+    /**
+     * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of
+     * withdrawal for the added goods, and what became of the link. The button is `pay(amount)`, the checkout's. Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    orderChange: {
+      heading: (number: string) => `Endring av bestilling ${number}`,
+      intro: "Butikken foreslår en endring av bestillingen din. Ingenting er endret ennå: Se over endringen, og betal mellomlegget hvis du vil ha den.",
+      sellerHeading: "Selger",
+      removed: "Tatt ut",
+      added: "Lagt til",
+      newTotal: "Ny sum for bestillingen",
+      alreadyPaid: "Allerede betalt",
+      toPayNow: (amount: string) => `Å betale nå: ${amount}`,
+      payBy: (amount: string, date: string) => `For å bekrefte endringen betaler du ${amount} innen ${date}. Gjør du ikke det, forblir bestillingen som den var.`,
+      withdrawal: "De nye varene er en del av bestillingen din: Du kan angre innen 14 dager etter at du har mottatt den siste pakken i bestillingen, med de unntakene loven gir.",
+      withdrawalLink: "Les butikkens informasjon om angrerett",
+      terms: "Vilkårene du godtok da du bestilte, gjelder også for endringen.",
+      termsLink: "Les butikkens vilkår",
+      stripeNote: "Du sendes til Stripes sikre betalingsside.",
+      paid: "Denne endringen er betalt, og bestillingen din er oppdatert.",
+      ended: "Denne lenken virker ikke lenger. Bestillingen din er uendret. Spør butikken hvis du fortsatt vil ha endringen.",
+      contactStore: (email: string) => `Kontakt butikken: ${email}`,
+      paymentsOff: "Butikken kan ikke ta imot betaling akkurat nå. Prøv igjen senere, eller kontakt butikken.",
+      startFailed: "Betalingen kunne ikke startes. Prøv igjen, eller kontakt butikken.",
+      tooSmall: "Beløpet er for lite til å betales med kort. Kontakt butikken.",
+    },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Ja", no: "Nei" },
     /** What a store's campaigns say on product pages and cards (D115). */
@@ -1549,6 +1596,53 @@ const messages = {
       contactStore: (email: string) => `Kontakta butiken: ${email}`,
       paymentsOff: "Butiken kan inte ta emot betalningar just nu. Försök igen senare eller kontakta butiken.",
       startFailed: "Betalningen kunde inte startas. Försök igen eller kontakta butiken.",
+    },
+    /**
+     * Sending in parts (wave 3, run 3, D174): the order's state and its parcels on the shopper's order pages. The state words are plain interface text; `receipt` says
+     * when the right of withdrawal starts for goods sent in parts (CRD Art. 9(2)(b)) and is hand-written only (`HAND_WRITTEN_ONLY`). Needs human legal review before real use.
+     */
+    fulfilment: {
+      states: { none: "Inget att skicka", unsent: "Inte skickad", partly_sent: "Delvis skickad", sent: "Skickad", withdrawn: "Ångrad före leverans", closed: "Skickas inte" },
+      parcel: (n: number) => `Paket ${n}`,
+      sentOn: (date: string) => `Skickat ${date}`,
+      track: "Spåra paketet",
+      contents: "Innehåll",
+      stillToCome: "Kommer senare",
+      // legal: needs review
+      receipt: "Ångerfristen på 14 dagar räknas från den dag du tar emot det sista paketet.",
+    },
+    /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
+    slip: {
+      // legal: needs review
+      moreFollows: "Mer av den här beställningen kommer i ett annat paket.",
+      alreadySent: "Alla varor (redan skickade)",
+    },
+    /**
+     * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of
+     * withdrawal for the added goods, and what became of the link. The button is `pay(amount)`, the checkout's. Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    orderChange: {
+      heading: (number: string) => `Ändring av beställning ${number}`,
+      intro: "Butiken föreslår en ändring av din beställning. Inget är ändrat ännu: se över ändringen och betala mellanskillnaden om du vill ha den.",
+      sellerHeading: "Säljare",
+      removed: "Borttaget",
+      added: "Tillagt",
+      newTotal: "Ny summa för beställningen",
+      alreadyPaid: "Redan betalt",
+      toPayNow: (amount: string) => `Att betala nu: ${amount}`,
+      payBy: (amount: string, date: string) => `För att bekräfta ändringen betalar du ${amount} senast ${date}. Om du inte gör det förblir beställningen som den var.`,
+      withdrawal: "De tillagda varorna ingår i din beställning: du kan ångra dig inom 14 dagar från att du tagit emot det sista paketet i beställningen, med de undantag som lagen medger.",
+      withdrawalLink: "Läs butikens information om ångerrätt",
+      terms: "Villkoren du godkände när du beställde gäller även för ändringen.",
+      termsLink: "Läs butikens villkor",
+      stripeNote: "Du skickas till Stripes säkra betalningssida.",
+      paid: "Den här ändringen är betald och din beställning är uppdaterad.",
+      ended: "Den här länken fungerar inte längre. Din beställning är oförändrad. Fråga butiken om du fortfarande vill ha ändringen.",
+      contactStore: (email: string) => `Kontakta butiken: ${email}`,
+      paymentsOff: "Butiken kan inte ta emot betalningar just nu. Försök igen senare eller kontakta butiken.",
+      startFailed: "Betalningen kunde inte startas. Försök igen eller kontakta butiken.",
+      tooSmall: "Beloppet är för litet för att betalas med kort. Kontakta butiken.",
     },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Ja", no: "Nej" },
@@ -2716,6 +2810,53 @@ const messages = {
       paymentsOff: "Butikken kan ikke modtage betalinger lige nu. Prøv igen senere, eller kontakt butikken.",
       startFailed: "Betalingen kunne ikke startes. Prøv igen, eller kontakt butikken.",
     },
+    /**
+     * Sending in parts (wave 3, run 3, D174): the order's state and its parcels on the shopper's order pages. The state words are plain interface text; `receipt` says
+     * when the right of withdrawal starts for goods sent in parts (CRD Art. 9(2)(b)) and is hand-written only (`HAND_WRITTEN_ONLY`). Needs human legal review before real use.
+     */
+    fulfilment: {
+      states: { none: "Intet at sende", unsent: "Ikke sendt", partly_sent: "Delvist sendt", sent: "Sendt", withdrawn: "Fortrudt før afsendelse", closed: "Sendes ikke" },
+      parcel: (n: number) => `Pakke ${n}`,
+      sentOn: (date: string) => `Sendt ${date}`,
+      track: "Følg pakken",
+      contents: "Indhold",
+      stillToCome: "Kommer senere",
+      // legal: needs review
+      receipt: "Fortrydelsesfristen på 14 dage regnes fra den dag, du modtager den sidste pakke.",
+    },
+    /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
+    slip: {
+      // legal: needs review
+      moreFollows: "Mere af denne bestilling kommer i en anden pakke.",
+      alreadySent: "Alle varer (allerede sendt)",
+    },
+    /**
+     * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of
+     * withdrawal for the added goods, and what became of the link. The button is `pay(amount)`, the checkout's. Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    orderChange: {
+      heading: (number: string) => `Ændring af bestilling ${number}`,
+      intro: "Butikken foreslår en ændring af din bestilling. Intet er ændret endnu: Se ændringen igennem, og betal forskellen, hvis du ønsker den.",
+      sellerHeading: "Sælger",
+      removed: "Fjernet",
+      added: "Tilføjet",
+      newTotal: "Ny sum for bestillingen",
+      alreadyPaid: "Allerede betalt",
+      toPayNow: (amount: string) => `At betale nu: ${amount}`,
+      payBy: (amount: string, date: string) => `For at bekræfte ændringen skal du betale ${amount} senest ${date}. Gør du ikke det, forbliver bestillingen, som den var.`,
+      withdrawal: "De tilføjede varer er en del af din bestilling: Du kan fortryde inden for 14 dage efter, at du har modtaget den sidste pakke i bestillingen, med de undtagelser loven giver.",
+      withdrawalLink: "Læs butikkens oplysninger om fortrydelsesret",
+      terms: "De vilkår, du accepterede, da du bestilte, gælder også for ændringen.",
+      termsLink: "Læs butikkens vilkår",
+      stripeNote: "Du sendes videre til Stripes sikre betalingsside.",
+      paid: "Denne ændring er betalt, og din bestilling er opdateret.",
+      ended: "Dette link virker ikke længere. Din bestilling er uændret. Spørg butikken, hvis du stadig ønsker ændringen.",
+      contactStore: (email: string) => `Kontakt butikken: ${email}`,
+      paymentsOff: "Butikken kan ikke tage imod betaling lige nu. Prøv igen senere, eller kontakt butikken.",
+      startFailed: "Betalingen kunne ikke startes. Prøv igen, eller kontakt butikken.",
+      tooSmall: "Beløbet er for lille til at blive betalt med kort. Kontakt butikken.",
+    },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Ja", no: "Nej" },
     campaigns: {
@@ -3879,6 +4020,53 @@ const messages = {
       contactStore: (email: string) => `Contact the store: ${email}`,
       paymentsOff: "The store cannot take payments right now. Try again later, or contact the store.",
       startFailed: "The payment could not be started. Try again, or contact the store.",
+    },
+    /**
+     * Sending in parts (wave 3, run 3, D174): the order's state and its parcels on the shopper's order pages. The state words are plain interface text; `receipt` says
+     * when the right of withdrawal starts for goods sent in parts (CRD Art. 9(2)(b)) and is hand-written only (`HAND_WRITTEN_ONLY`). Needs human legal review before real use.
+     */
+    fulfilment: {
+      states: { none: "Nothing to send", unsent: "Not sent", partly_sent: "Partly sent", sent: "Sent", withdrawn: "Withdrawn before sending", closed: "Will not be sent" },
+      parcel: (n: number) => `Parcel ${n}`,
+      sentOn: (date: string) => `Sent ${date}`,
+      track: "Track the parcel",
+      contents: "Contents",
+      stillToCome: "Still to come",
+      // legal: needs review
+      receipt: "Your 14 days to change your mind count from the day you receive the last parcel.",
+    },
+    /** The packing slip of a parcel or of what is left to send (D174). `moreFollows` is hand-written only; needs human legal review before real use. */
+    slip: {
+      // legal: needs review
+      moreFollows: "More of this order follows in another parcel.",
+      alreadySent: "All items (already sent)",
+    },
+    /**
+     * The page a customer opens from the pay link of a change to their order (wave 3, run 3, D174): what changes, what is already paid and what is to pay now, the right of
+     * withdrawal for the added goods, and what became of the link. The button is `pay(amount)`, the checkout's. Hand-written only; needs human legal review before real use.
+     */
+    // legal: needs review
+    orderChange: {
+      heading: (number: string) => `Change to order ${number}`,
+      intro: "The store proposes a change to your order. Nothing has changed yet: look over the change and pay the difference if you want it.",
+      sellerHeading: "Seller",
+      removed: "Taken off",
+      added: "Added",
+      newTotal: "New total for the order",
+      alreadyPaid: "Already paid",
+      toPayNow: (amount: string) => `To pay now: ${amount}`,
+      payBy: (amount: string, date: string) => `To confirm the change, pay ${amount} by ${date}. If you do not, your order stays as it was.`,
+      withdrawal: "The added goods are part of your order: you can withdraw within 14 days of receiving the last parcel of the order, with the exceptions the law allows.",
+      withdrawalLink: "Read the store's information on the right of withdrawal",
+      terms: "The terms you accepted when you ordered also apply to the change.",
+      termsLink: "Read the store's terms",
+      stripeNote: "You are taken to Stripe's secure payment page.",
+      paid: "This change is paid and your order is updated.",
+      ended: "This link no longer works. Your order is unchanged. Ask the store if you still want the change.",
+      contactStore: (email: string) => `Contact the store: ${email}`,
+      paymentsOff: "The store cannot take payments right now. Try again later, or contact the store.",
+      startFailed: "The payment could not be started. Try again, or contact the store.",
+      tooSmall: "The amount is too small to pay by card. Contact the store.",
     },
     /** Yes and no in a store's custom fields (D118). */
     customFields: { yes: "Yes", no: "No" },

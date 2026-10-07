@@ -11,6 +11,7 @@ import { pruneChatUsage } from "@/server/chat-agent";
 import { cronAuthorised } from "@/server/cron-auth";
 import { expireDrafts } from "@/server/draft-orders";
 import { archiveFinishedOrders } from "@/server/order-archive";
+import { expireOrderEdits } from "@/server/order-edits";
 import { runDataJobs } from "@/server/data-jobs";
 import { refreshEmbeddings } from "@/server/embeddings";
 import { runExperimentJobs } from "@/server/experiment-jobs";
@@ -58,7 +59,7 @@ import { prepareDueRecurringWork } from "@/server/work-recurring";
 async function run(request: Request) {
   await connection();
   if (!(await cronAuthorised(request))) return new Response("Unauthorized", { status: 401 });
-  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns, invoices, dataJobs, lowStock, draftExpiry, autoArchive] = await Promise.all([
+  const [carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns, invoices, dataJobs, lowStock, draftExpiry, autoArchive, editExpiry] = await Promise.all([
     sendDueCartReminders(),
     sendDuePlanReminders(),
     sendDueBookingReminders(),
@@ -92,13 +93,18 @@ async function run(request: Request) {
       console.error("[cron] automatic archiving failed", error);
       return null;
     }),
+    // Order changes whose pay link ran out (D174): sessions closed first, a change paid in the last minute applied, the held units released.
+    expireOrderEdits().catch((error) => {
+      console.error("[cron] order change expiry failed", error);
+      return null;
+    }),
   ]);
   for (const owner of altTexts.owners) {
     revalidateTag(pagesTag(owner.storeId), "max");
     if (owner.storeId) revalidateTag(catalogTag(owner.storeId), "max");
   }
   return Response.json(
-    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns, invoices, dataJobs, lowStock, draftExpiry, autoArchive },
+    { carts, plans, bookings, calendars, commissions, searches, embeddings, cache, knowledge, chat, media, altTexts: altTexts.written, forms, deliveries, recurring, storeCopies, bonus, affiliates, recommendations, experiments, replications, returns, invoices, dataJobs, lowStock, draftExpiry, autoArchive, editExpiry },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

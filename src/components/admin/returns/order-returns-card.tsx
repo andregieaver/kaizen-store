@@ -59,6 +59,7 @@ export function OrderReturnsCard({
   locale = "en-GB",
   actions,
   today,
+  partlySent = false,
 }: {
   /** `/admin/{store}` */
   base: string;
@@ -71,6 +72,11 @@ export function OrderReturnsCard({
   actions?: { markDelivered: StepAction; registerWithdrawal: StepAction };
   /** The store's today, `YYYY-MM-DD`, the latest day a form accepts. */
   today?: string;
+  /**
+   * Part of the order is sent and part is still to send (D174): goods ordered together and delivered separately are received when the last one is (CRD Art. 9(2)(b)),
+   * so there is no receipt to record yet and the form is replaced by a sentence.
+   */
+  partlySent?: boolean;
 }) {
   const open = !overview.copied && overview.window !== null;
   return (
@@ -109,7 +115,10 @@ export function OrderReturnsCard({
           ; the order emails link to it with the order filled in.
         </p>
       )}
-      {open && actions && today && overview.sent && !overview.business && (
+      {open && actions && today && overview.sent && !overview.business && partlySent && (
+        <p className="mt-4 text-sm text-muted">Record the receipt when the last parcel has arrived: part of this order is still to send.</p>
+      )}
+      {open && actions && today && overview.sent && !overview.business && !partlySent && (
         <details className="mt-4">
           <summary className="cursor-pointer text-sm underline">{overview.deliveredOn ? "Change the day the goods were received" : "Mark the goods as received by the customer"}</summary>
           <div className="mt-3">

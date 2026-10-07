@@ -82,7 +82,7 @@ export type ExportOrder = {
   vatKind: string;
   taxMinor: number;
   totalMinor: number;
-  /** Succeeded refunds only. */
+  /** Succeeded refunds only, never the refund of an order change's lower total (D174: the total is already the changed one). */
   refundedMinor: number;
   refundCount: number;
   lastRefundAt: string | null;
@@ -100,6 +100,10 @@ export type ExportOrder = {
   giftTo?: string | null;
   giftFrom?: string | null;
   giftMessage?: string | null;
+  /** Where the sending stands (D174, `commerce.order_fulfilment()`): `none`, `unsent`, `partly_sent`, `sent`, `withdrawn`, `closed` (nothing sent, the rest taken off as not to be sent); null for an order not paid. Absent in older callers. */
+  fulfilment?: string | null;
+  /** Staff changed the order after purchase (D174, `orders.edited_at`): its lines and amounts are the changed ones. */
+  edited?: boolean;
   /** The payment provider's reference of the captured payment (a Stripe `pi_...`: a reference, not a credential). */
   paymentReference: string | null;
   lines: ExportLine[];
@@ -115,8 +119,8 @@ const AMOUNTS = [
   "refunded", "refund_count", "last_refund_at", "balance_due_at_venue", "commission", "delivery_service",
   "main_currency", "main_rate", "main_converted", "subtotal_main", "tax_total_main", "total_main", "refunded_main",
 ] as const;
-/** What staff and shoppers added to an order in wave 3 (D173): in both profiles, after the amounts (so the line columns and the payment reference still end the lines layout). `gift_order` is the ORDER's gift (the line column `gift` is a free gift line). */
-const OPS = ["tags", "archived", "source", "gift_order"] as const;
+/** What staff and shoppers added to an order in wave 3 (D173; `fulfilment` and `edited` D174): in both profiles, after the amounts (so the line columns and the payment reference still end the lines layout). `gift_order` is the ORDER's gift (the line column `gift` is a free gift line). */
+const OPS = ["tags", "archived", "source", "gift_order", "fulfilment", "edited"] as const;
 /** The words of a gift: a third party's name and a message, so the Full profile only (and blanked for an erased person's order). */
 const GIFT_FULL = ["gift_to", "gift_from", "gift_message"] as const;
 const LINE = ["line_number", "sku", "title", "quantity", "unit_price", "line_discount", "line_total", "line_tax_rate", "line_net", "line_tax", "unit_cost_main", "gift", "line_delivery"] as const;
@@ -231,6 +235,8 @@ function orderCells(order: ExportOrder, profile: OrderProfile, main: MainConvers
     archived: bool(order.archived === true),
     source: order.copied ? "copied" : order.source === "draft" ? "draft" : "checkout",
     gift_order: bool(order.isGift === true),
+    fulfilment: text(order.fulfilment),
+    edited: bool(order.edited === true),
   };
   if (profile === "full") {
     cells.gift_to = personal(order, order.giftTo);

@@ -80,7 +80,9 @@ export async function loadFacts(storeId: string, orderId: string): Promise<Order
   const [lines, settings] = await Promise.all([
     db().execute<Row>(sql`
       select ol.id, ol.title, ol.sku, ol.variant_id, ol.quantity, ol.unit_price_minor, ol.total_minor, ol.delivery,
-        ol.withdrawal_exclusion, ol.gift, commerce.returned_quantity(ol.id) as taken
+        ol.withdrawal_exclusion, ol.gift,
+        -- Units staff closed as never to be sent (D174) were refunded and are not the shopper's to withdraw.
+        commerce.returned_quantity(ol.id) + commerce.closed_quantity(ol.id) as taken
       from commerce.order_lines ol
       where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid
       order by ol.title, ol.id

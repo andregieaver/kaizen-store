@@ -43,6 +43,8 @@ describe("who reads a variant's content", () => {
       "src/server/catalog.ts",
       "src/server/checkout.ts",
       "src/server/draft-orders.ts",
+      // An order change's added goods (D174) freeze the variant's content on the new line, as placeOrder() does.
+      "src/server/order-edits.ts",
       "src/server/order-insert.ts",
       "src/server/orders.ts",
       "src/server/product-audit.ts",
@@ -62,6 +64,7 @@ describe("who reads a variant's content", () => {
       "src/server/catalog.ts",
       "src/server/checkout.ts",
       "src/server/draft-orders.ts",
+      "src/server/order-edits.ts",
       "src/server/order-insert.ts",
       "src/server/orders.ts",
       "src/server/product-audit.ts",

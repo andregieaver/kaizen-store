@@ -64,8 +64,11 @@ export const DEFAULT_ADJUST_REASON: AdjustReason = "correction";
 export const MOVEMENT_REASONS = [...ADJUST_REASONS, "sale", "order_restock", "return_restock", "opening", "system"] as const;
 export type MovementReason = (typeof MOVEMENT_REASONS)[number];
 
-/** Where a change came from. `checkout` and `copy` and `system` are the system's; the rest are a person's or a job's. */
-export const MOVEMENT_SOURCES = ["inventory_page", "editor", "bulk", "file", "order", "return", "checkout", "ai_manager", "copy", "system"] as const;
+/**
+ * Where a change came from. `checkout` and `copy` and `system` are the system's; the rest are a person's or a job's. `order_edit` is a change staff made
+ * to a paid order's goods (wave 3 run 3, D174): its added units drawn as `sale`, its removed units put back as `order_restock`.
+ */
+export const MOVEMENT_SOURCES = ["inventory_page", "editor", "bulk", "file", "order", "return", "checkout", "ai_manager", "copy", "system", "order_edit"] as const;
 export type MovementSource = (typeof MOVEMENT_SOURCES)[number];
 
 export const isAdjustReason = (value: unknown): value is AdjustReason => typeof value === "string" && (ADJUST_REASONS as readonly string[]).includes(value);

@@ -95,6 +95,8 @@ export function matchingText(count: number, capped: boolean): string {
 
 /** The packing slips of ticked orders: one document, at most 100, never more than the page. */
 export const printHref = (slug: string, ids: readonly string[]): string => `/admin/${slug}/orders/packing-slips?ids=${ids.join(",")}`;
+/** The pick list of the ticked orders (D174): what is still to send of them, by product. */
+export const pickListHref = (slug: string, ids: readonly string[]): string => `/admin/${slug}/orders/pick-list?ids=${ids.join(",")}`;
 
 /** A list row with the words the screen draws: the date in the store's own time zone and the total in the order's own currency (no sum across currencies is ever made on the page). */
 export function tableRowsOf<T extends { placedAt: string; totalMinor: number; currency: string }>(

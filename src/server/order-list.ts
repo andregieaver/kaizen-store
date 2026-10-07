@@ -114,7 +114,9 @@ const selectRow = (context: Pick<OrderListContext, "totalFactors">) => sql`
   (o.restricted_at is not null or o.anonymised_at is not null) as erased, o.email,
   coalesce(nullif(o.shipping_address ->> 'name', ''), nullif(o.billing_address ->> 'name', '')) as name,
   (select coalesce(sum(l.quantity), 0)::int from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id) as items,
-  (case when o.status = 'paid' and o.copied_from is null then (select coalesce(sum(l.backorder_quantity), 0)::int from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id) else 0 end) as owed,
+  (case when o.status = 'paid' and o.copied_from is null then (select coalesce(sum(least(l.backorder_quantity, commerce.line_to_send(l.id))), 0)::int from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0) else 0 end) as owed,
+  exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id) as has_parcel, o.edited_at is not null as edited,
+  exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and e.status = 'awaiting_payment') as edit_pending,
   ${PHYSICAL_SQL} as physical, ${CAPTURED_SQL} as captured, ${REFUNDED_SQL} as refunded, o.balance_minor
 `;
 
@@ -144,8 +146,10 @@ function toItem(row: Row, tags: ReadonlyMap<string, { key: string; label: string
     owed,
     tags: tags.get(String(row.id)) ?? [],
     pay: payCellOf({ status, copied, capturedMinor: Number(row.captured), refundedMinor: Number(row.refunded), balanceMinor: Number(row.balance_minor ?? 0) }),
-    ship: shipCellOf({ status, copied, physical: Boolean(row.physical), backorderUnits: owed }),
+    ship: shipCellOf({ status, copied, physical: Boolean(row.physical), backorderUnits: owed, partlySent: Boolean(row.has_parcel) }),
     balanceMinor: Number(row.balance_minor ?? 0),
+    edited: Boolean(row.edited),
+    editPending: Boolean(row.edit_pending),
   };
 }
 

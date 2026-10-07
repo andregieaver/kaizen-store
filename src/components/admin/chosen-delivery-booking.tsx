@@ -2,13 +2,19 @@
 
 import { useState, useTransition } from "react";
 
+import { ParcelChoice } from "@/components/admin/orders/parcel-choice";
+import type { ParcelRow } from "@/components/admin/orders/send-parcel";
+import type { ParcelLine } from "@/lib/fulfilment";
+import { parcelLinesFromChoice } from "@/lib/parcel-form";
+
 export type BookState = { ok: boolean; message: string };
 
 const input = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
 
 /**
  * Books the delivery the customer chose at checkout with its carrier (Porterbuddy D137, Helthjem D138): the parcel's weight,
- * then Book. What was chosen (a window, a service point) is given as text; the booking itself is the carrier's bound action.
+ * then Book. What was chosen (a window, a service point) is given as text; the booking itself is the carrier's bound action. With `rows`
+ * (D174) the booking takes the *In this parcel* choice: the chosen units, or everything still to send when nothing is lowered.
  */
 export function ChosenDeliveryBooking({
   carrierName,
@@ -17,6 +23,7 @@ export function ChosenDeliveryBooking({
   test,
   hasEmail,
   book,
+  rows = [],
 }: {
   carrierName: string;
   /** What the customer chose, written out. */
@@ -24,17 +31,22 @@ export function ChosenDeliveryBooking({
   estimatedGrams: number;
   test: boolean;
   hasEmail: boolean;
-  book: (input: { notify: boolean; parcel: { weightGrams: number } }) => Promise<BookState>;
+  book: (input: { notify: boolean; parcel: { weightGrams: number }; lines: ParcelLine[] | null }) => Promise<BookState>;
+  /** The order's physical lines with what is still to send (D174), for the parcel's choice. */
+  rows?: ParcelRow[];
 }) {
   const [weight, setWeight] = useState(estimatedGrams > 0 ? (estimatedGrams / 1000).toString().replace(".", ",") : "");
   const [notify, setNotify] = useState(true);
+  const [typed, setTyped] = useState<Record<string, string>>({});
+  const lines = parcelLinesFromChoice(rows, typed);
   const [result, setResult] = useState<BookState | null>(null);
   const [busy, start] = useTransition();
 
   const submit = () =>
     start(async () => {
+      if (lines === "invalid") return;
       const grams = Math.round(Number(weight.replace(",", ".")) * 1000);
-      setResult(await book({ notify: hasEmail && !test && notify, parcel: { weightGrams: grams } }));
+      setResult(await book({ notify: hasEmail && !test && notify, parcel: { weightGrams: grams }, lines }));
     });
 
   return (
@@ -47,6 +59,7 @@ export function ChosenDeliveryBooking({
       <p className="text-sm">
         The customer chose <strong>{chosenText}</strong>.
       </p>
+      <ParcelChoice rows={rows} typed={typed} onChange={setTyped} />
       <label className="flex max-w-xs flex-col gap-1 text-sm font-medium">
         Weight (kg)
         <input inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} className={input} />
@@ -59,7 +72,7 @@ export function ChosenDeliveryBooking({
         </label>
       )}
       <div>
-        <button type="button" onClick={submit} disabled={busy || !weight.trim()} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">
+        <button type="button" onClick={submit} disabled={busy || !weight.trim() || lines === "invalid"} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">
           {busy ? "Booking …" : test ? "Make a test booking" : "Book and mark as sent"}
         </button>
       </div>

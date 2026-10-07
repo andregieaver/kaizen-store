@@ -153,7 +153,7 @@ export async function setStockTool(ctx: Ctx, input: OwnerToolInput<"set_stock">)
 /** Units owed on backorder for one variant, as the Inventory page counts them (paid orders not yet sent). */
 async function owedOf(store: Store, variantId: string): Promise<number> {
   const [row] = await db().execute<Row>(sql`
-    select coalesce(sum(ol.backorder_quantity), 0)::int as owed
+    select coalesce(sum(least(ol.backorder_quantity, commerce.line_to_send(ol.id))), 0)::int as owed
     from commerce.order_lines ol join commerce.orders o on o.store_id = ol.store_id and o.id = ol.order_id
     where ol.store_id = ${store.id}::uuid and ol.variant_id = ${variantId}::uuid and ol.backorder_quantity > 0 and o.status = 'paid' and o.copied_from is null
   `);

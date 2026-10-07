@@ -104,10 +104,11 @@ async function paidOrder(m: Membership, lines: { sku: string; qty: number; unit:
     insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status)
     values (${m.store.id}::uuid, ${String(order.id)}::uuid, 'stripe', ${`pi_${run}_${serial}`}, 'acct_rt', ${total}, 'NOK', 'captured'::commerce.payment_status)
   `);
-  // Sent before anyone withdraws: a withdrawal made before sending has nothing to wait for, and these scenarios wait for the goods.
+  // Sent before anyone withdraws: a withdrawal made before sending has nothing to wait for, and these scenarios wait for the goods. Written as a parcel from
+  // before parcels named their lines (D174 `legacy`: everything counts as sent), as this fixture writes the order straight into the tables.
   await db().execute(sql`
-    insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at)
-    values (${m.store.id}::uuid, ${String(order.id)}::uuid, 'Bring', ${`T-${run}-${serial}`}, now() - interval '1 day')
+    insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at, legacy)
+    values (${m.store.id}::uuid, ${String(order.id)}::uuid, 'Bring', ${`T-${run}-${serial}`}, now() - interval '1 day', true)
   `);
   return { orderId: String(order.id), number, lines: ids };
 }

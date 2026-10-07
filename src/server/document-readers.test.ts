@@ -57,6 +57,8 @@ describe("who reads invoices and credit notes", () => {
         "src/server/privacy-erasure.ts",
         // The order file's invoice number (D165): the owner's own file, the number of the order's first invoice and nothing else of it.
         "src/server/order-export.ts",
+        // An order change (D174): the original invoice's number for the editor's summary (`kind = 'order'`), nothing else of it.
+        "src/server/order-edits.ts",
       ].sort(),
     );
   });

@@ -21,11 +21,13 @@ import { tagsOf } from "@/lib/order-tags";
 
 import { audit } from "./auth";
 import { archiveOrder, unarchiveOrder } from "./order-archive";
-import { markSent, withdrawnInFull } from "./order-admin";
+import { fulfilmentOf } from "./fulfilment";
+import { markSent } from "./order-admin";
 import { loadOrderListContext, selectAllMatching } from "./order-list";
 import { type OrderActor } from "./order-actor";
 import { changeOrderTags } from "./order-tags";
 import { packingSlipData } from "./packing-slips";
+import { pickListData } from "./pick-list";
 import { sendShipped } from "./shopper-emails";
 import { uuidList } from "./sql-arrays";
 
@@ -44,19 +46,25 @@ export type BulkOutcome = { ok: true; result: BulkResult } | { ok: false; proble
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** What `markSentBlock()` needs of each order, read in one statement (the weekly box and the withdrawal are asked per order after). */
+/**
+ * What `markSentBlock()` needs of each order, read in two statements: the orders, and their lines with what is left to send (`fulfilmentOf()`, D174). A partly sent
+ * order is sendable (its remainder goes as one parcel); its backordered units count only while they are still to send; a change waiting for payment refuses it.
+ */
 async function markSentFactsFor(storeId: string, ids: readonly string[]): Promise<Map<string, MarkSentFacts & { number: string }>> {
   const out = new Map<string, MarkSentFacts & { number: string }>();
   if (ids.length === 0) return out;
-  const rows = await db().execute<Row>(sql`
-    select o.id, o.number, o.status, o.copied_from is not null as copied,
-      exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured') as paid,
-      exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical') as physical,
-      (select coalesce(sum(l.backorder_quantity), 0)::int from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id) as backorder_units,
-      exists (select 1 from commerce.standing_deliveries sd where sd.store_id = o.store_id and sd.order_id = o.id) as weekly_box
-    from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = any(${uuidList(ids)})
-  `);
+  const [rows, fulfilment] = await Promise.all([
+    db().execute<Row>(sql`
+      select o.id, o.number, o.status, o.copied_from is not null as copied,
+        exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured') as paid,
+        exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical') as physical,
+        exists (select 1 from commerce.standing_deliveries sd where sd.store_id = o.store_id and sd.order_id = o.id) as weekly_box
+      from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = any(${uuidList(ids)})
+    `),
+    fulfilmentOf(db(), storeId, ids),
+  ]);
   for (const row of rows) {
+    const state = fulfilment.get(String(row.id));
     const id = String(row.id);
     const status = row.status as MarkSentFacts["status"];
     const box = Boolean(row.weekly_box);
@@ -69,9 +77,11 @@ async function markSentFactsFor(storeId: string, ids: readonly string[]): Promis
       paid: Boolean(row.paid),
       physical,
       copied: Boolean(row.copied),
-      withdrawnInFull: physical && (status === "paid" || waitingForCharge) ? await withdrawnInFull(db(), storeId, id) : false,
-      backorderUnits: status === "paid" ? Number(row.backorder_units) : 0,
+      withdrawnInFull: physical && (status === "paid" || waitingForCharge) ? state?.state === "withdrawn" : false,
+      // Owed units still to send (D172, 4.7): a backordered unit already in a parcel is not waited for.
+      backorderUnits: status === "paid" ? (state?.lines ?? []).reduce((sum, l) => sum + Math.min(l.backordered, l.toSend), 0) : 0,
       deliveryUnpaid: waitingForCharge,
+      editPending: Boolean(state?.editPending),
     });
   }
   return out;
@@ -128,7 +138,15 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
     else refused.push(refusal(id, null, "not_found"));
   }
 
-  if (action === "print_slips") {
+  if (action === "print_pick_list") {
+    // The pick list is printed by its own page (`/orders/pick-list?ids=`); here it is counted as the slips are: the orders on it, and why any is not.
+    const list = mine.length > 0 ? await pickListData(storeId, mine) : null;
+    if (list && !list.ok) return { ok: false, problem: list.problem };
+    applied = list?.list.orderCount ?? 0;
+    for (const skip of list?.list.skipped ?? []) {
+      refused.push(refusal(skip.orderId, skip.number, skip.reason));
+    }
+  } else if (action === "print_slips") {
     // Nothing of this store's was named: the answer is the refusals (a print of nothing is not a request problem).
     const set = mine.length > 0 ? await packingSlipData(storeId, mine) : null;
     if (set && !set.ok) return { ok: false, problem: set.problem };
@@ -151,15 +169,17 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
           refused.push(refusal(id, number, block));
           continue;
         }
-        const shipment = await markSent(storeId, id, { carrier: "other", trackingNumber: "", trackingUrl: null }, actor.accountId);
-        if (!shipment) {
-          // It moved while the batch ran (cancelled, sent by someone else, withdrawn in full).
-          refused.push(refusal(id, number, "changed"));
+        // Everything still to send, as one parcel (a partly sent order's remainder).
+        const sent = await markSent(storeId, id, { carrier: "other", trackingNumber: "", trackingUrl: null }, actor.accountId);
+        if (!sent.ok) {
+          // It moved while the batch ran (cancelled, sent by someone else, withdrawn in full, a change waiting for payment).
+          const moved: Record<string, BulkReason> = { edit_pending: "edit_pending", withdrawn_in_full: "withdrawn_in_full", nothing_to_send: "nothing_to_send", copied: "copied", not_found: "not_found" };
+          refused.push(refusal(id, number, moved[sent.reason] ?? "changed"));
           continue;
         }
         applied += 1;
         if (request.notify) {
-          const outcome = await sendShipped(storeId, id, shipment).catch(() => null);
+          const outcome = await sendShipped(storeId, id, sent.shipment).catch(() => null);
           if (outcome === "sent" || outcome === "logged") emailed += 1;
         }
       } catch (error) {

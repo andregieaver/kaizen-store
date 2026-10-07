@@ -18,7 +18,8 @@ export { ORDERS_COUNT_CAP, ORDERS_PAGE_SIZE, VIEWS_MAX, VIEW_TITLE_MAX };
 export const PAY_FILTERS = ["paid", "partially_refunded", "refunded", "balance_due", "unpaid"] as const;
 export type PayFilter = (typeof PAY_FILTERS)[number];
 
-export const SHIP_FILTERS = ["to_send", "sent", "waiting", "no_shipping"] as const;
+/** `partly_sent` (D174): a parcel is recorded and units are still to send; `edit_pending`: an order change waits for the customer's payment (the spec's `edit=pending`, kept with the fulfilment filters). */
+export const SHIP_FILTERS = ["to_send", "sent", "waiting", "no_shipping", "partly_sent", "edit_pending"] as const;
 export type ShipFilter = (typeof SHIP_FILTERS)[number];
 
 /** The order's own status (`orders.status`); an unfinished checkout is `pending_payment` and is the `unpaid` payment filter's, not a status. */

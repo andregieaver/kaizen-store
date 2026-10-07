@@ -36,6 +36,8 @@ const PAY_LABELS: Record<(typeof PAY_FILTERS)[number], string> = {
 };
 const SHIP_LABELS: Record<(typeof SHIP_FILTERS)[number], string> = {
   to_send: "To send",
+  partly_sent: "Partly sent",
+  edit_pending: "Change awaiting payment",
   sent: "Sent",
   waiting: "Waiting for stock",
   no_shipping: "Nothing to ship",

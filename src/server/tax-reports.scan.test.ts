@@ -57,10 +57,11 @@ describe("how a document is opened", () => {
     }
   });
 
-  it("reads only the aggregate columns of an order and an invoice in the reconciliation: its order, supply date, VAT, currency and its order's payment status", () => {
+  it("reads only the aggregate columns of an order and an invoice in the reconciliation: its order, kind, supply date, VAT, currency and its order's payment status", () => {
     const body = text("src/server/tax-reconciliation.ts");
     const selected = [...body.matchAll(/\bi\.(\w+)/g)].map((m) => m[1]);
-    expect([...new Set(selected)].sort()).toEqual(["currency", "id", "order_id", "store_id", "supply_date", "tax_minor"]);
+    // `kind` (D174): the order's own invoice (`order`) against an order change's additional invoice (`order_edit`), so an edited order is counted once.
+    expect([...new Set(selected)].sort()).toEqual(["currency", "id", "kind", "order_id", "store_id", "supply_date", "tax_minor"]);
   });
 
   it("puts the store id on every query of a store's table in the modules that read them", () => {

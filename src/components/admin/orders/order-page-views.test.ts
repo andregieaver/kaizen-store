@@ -132,6 +132,18 @@ describe("the refund form for money taken outside Kaizen", () => {
     expect(html).not.toContain("Amount you paid back");
   });
 
+  it("offers 'These units were not sent', ticked, only when the order has units still to send and something to put back (D174)", async () => {
+    const { RefundForm } = await import("../order-actions");
+    const props = { storeSlug: "shop", orderId: "o", refundable: "1249,00", refundableLabel: "1 249,00 kr", hasEmail: true, canRefund: true, lines: [{ id: "l1", title: "Tote", left: 3 }] };
+    const html = renderToString(h(RefundForm, { ...props, unitsToSend: 2 }));
+    expect(html).toMatch(/<input type="checkbox"[^>]*name="notSent" checked=""/);
+    expect(check(html)).toContain("These units were not sent: take them off what is still to send");
+    expect(check(html)).toContain("2 units are still to send.");
+    expect(renderToString(h(RefundForm, { ...props, unitsToSend: 0 }))).not.toContain('name="notSent"');
+    expect(renderToString(h(RefundForm, props))).not.toContain('name="notSent"');
+    expect(renderToString(h(RefundForm, { ...props, lines: [], unitsToSend: 2 }))).not.toContain('name="notSent"');
+  });
+
   it("is the ordinary Stripe refund for an ordinary order", async () => {
     const { RefundForm } = await import("../order-actions");
     const html = renderToString(h(RefundForm, { storeSlug: "shop", orderId: "o", refundable: "1249,00", refundableLabel: "1 249,00 kr", lines: [], hasEmail: true, canRefund: true }));

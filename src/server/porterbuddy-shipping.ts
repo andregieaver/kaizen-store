@@ -9,7 +9,10 @@ import { audit } from "./auth";
 import { parcelInput, toParty } from "./bring-shipping";
 import { adapterFor } from "./carriers";
 import { senderOf } from "./carriers/porterbuddy";
-import { markSent, type Shipment } from "./order-admin";
+import type { ParcelLine } from "@/lib/fulfilment";
+
+import { parcelPrecheck } from "./fulfilment";
+import { markSent, sendRefusalText, type Shipment } from "./order-admin";
 import { getOrder } from "./orders";
 import { carrierContext } from "./shipping-carriers";
 
@@ -31,7 +34,7 @@ export async function porterbuddyBook(
   accountId: string,
   storeId: string,
   orderId: string,
-  input: { parcel: unknown },
+  input: { parcel: unknown; /** What goes in this parcel (D174); none = everything still to send. */ lines?: readonly ParcelLine[] | null },
 ): Promise<PorterbuddyBooked> {
   const parcel = parcelInput.safeParse(input.parcel);
   if (!parcel.success) return { ok: false, problem: parcel.error.issues[0].message };
@@ -53,6 +56,9 @@ export async function porterbuddyBook(
     where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and carrier_id = 'porterbuddy' and created_at > now() - interval '2 minutes'
   `);
   if (recent) return { ok: false, problem: "This order was just booked with Porterbuddy. Reload the page to see it." };
+  // What goes in the parcel is checked before the carrier is paid for it (D174); `markSent()` checks it again under the order's lock.
+  const unfit = await parcelPrecheck(storeId, orderId, input.lines);
+  if (unfit) return { ok: false, problem: unfit };
 
   const adapter = adapterFor("porterbuddy");
   if (!adapter?.rates || !adapter.book) return { ok: false, problem: "Porterbuddy is not available." };
@@ -86,16 +92,17 @@ export async function porterbuddyBook(
     });
     await audit(accountId, storeId, "shipping.porterbuddy_booked", { orderId, test: booked.test });
     if (booked.test) return { ok: true, test: true, trackingNumber: booked.trackingNumber };
-    const shipment = await markSent(
+    const sent = await markSent(
       storeId,
       orderId,
       { carrier: "porterbuddy", trackingNumber: booked.trackingNumber, trackingUrl: booked.trackingUrl },
       accountId,
       { carrierId: "porterbuddy", consignmentNumber: booked.consignmentNumber, labelUrl: booked.labelUrl },
+      { lines: input.lines ?? null },
     );
     // The booking exists at Porterbuddy even if the order could not be marked: say so rather than hide it.
-    if (!shipment) return { ok: false, problem: `Porterbuddy booked the delivery (${booked.trackingNumber}) but the order could not be marked as sent.` };
-    return { ok: true, test: false, shipment };
+    if (!sent.ok) return { ok: false, problem: `Porterbuddy booked the delivery (${booked.trackingNumber}) but the order could not be marked as sent. ${sendRefusalText(sent.reason)}` };
+    return { ok: true, test: false, shipment: sent.shipment };
   } catch (error) {
     return { ok: false, problem: error instanceof Error ? error.message : "Porterbuddy did not answer." };
   }

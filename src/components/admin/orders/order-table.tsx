@@ -6,7 +6,7 @@ import { useId, useMemo, useState, useTransition } from "react";
 import type { BulkActionResponse } from "@/app/admin/(gated)/[store]/orders/list-actions";
 import { field, hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
 import { bulkSummary, groupRefusals, notifyText, type BulkResult } from "@/lib/order-bulk";
-import { selectionBanner, printHref } from "@/lib/order-list-admin";
+import { pickListHref, selectionBanner, printHref } from "@/lib/order-list-admin";
 import { BULK_MAX, BULK_PRINT_MAX } from "@/lib/order-limits";
 import { COLUMN_LABELS, type OrderColumn } from "@/lib/order-list";
 import { PAY_CELL_LABELS, SHIP_CELL_LABELS, type OrderListItem } from "@/lib/order-list-row";
@@ -58,7 +58,7 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
   const allTicked = rows.length > 0 && ticked.size === rows.length;
   const selectedRows = useMemo(() => rows.filter((r) => ticked.has(r.id)), [rows, ticked]);
   // Mark as sent tells a customer only when the order is sent and has an address to tell.
-  const emails = selectedRows.filter((r) => r.ship === "to_send" && r.email !== null).length;
+  const emails = selectedRows.filter((r) => (r.ship === "to_send" || r.ship === "partly_sent") && !r.editPending && r.email !== null).length;
   const printable = !allMatching && ticked.size > 0 && ticked.size <= BULK_PRINT_MAX;
 
   const toggle = (id: string) => {
@@ -165,20 +165,25 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
               Mark as sent
             </button>
             {printable ? (
-              <Link href={printHref(slug, [...ticked])} target="_blank" className={secondary}>
-                Print packing slips
-              </Link>
+              <>
+                <Link href={printHref(slug, [...ticked])} target="_blank" className={secondary}>
+                  Print packing slips
+                </Link>
+                <Link href={pickListHref(slug, [...ticked])} target="_blank" className={secondary}>
+                  Print pick list
+                </Link>
+              </>
             ) : (
               <span className="text-xs text-muted">
-                {allMatching ? "Printing works on the orders ticked on a page." : `Tick at most ${BULK_PRINT_MAX} orders to print their packing slips.`}
+                {allMatching ? "Printing works on the orders ticked on a page." : `Tick at most ${BULK_PRINT_MAX} orders to print their packing slips or a pick list.`}
               </span>
             )}
           </div>
           {confirming === "mark_sent" && (
             <div role="group" aria-label="Confirm mark as sent" className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm">
               <p>
-                Mark {selectedCount.toLocaleString("en")} {selectedCount === 1 ? "order" : "orders"} as sent, without a tracking number. Orders that are not paid, have nothing to ship, are copied history, wait for stock or were
-                already sent are skipped and listed afterwards.
+                Mark {selectedCount.toLocaleString("en")} {selectedCount === 1 ? "order" : "orders"} as sent, without a tracking number. A partly sent order sends what is left as one parcel. Orders that are not paid, have nothing to ship, are copied history, wait for stock,
+                have a change waiting for the customer&apos;s payment or were already sent are skipped and listed afterwards.
               </p>
               <label className="flex items-center gap-2">
                 <input type="checkbox" checked={notify} onChange={(event) => setNotify(event.target.checked)} className="size-4" />
@@ -313,6 +318,8 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
         {row.gift && <span className={badge}>Gift</span>}
         {row.source === "draft" && <span className={badge}>{row.draftNumber ? `Staff-made ${row.draftNumber}` : "Staff-made"}</span>}
         {row.owed > 0 && <span className={badge}>Waiting for stock</span>}
+        {row.editPending && <span className={badge}>Change awaiting payment</span>}
+        {row.edited && <span className={badge}>Edited</span>}
         {row.copied && <span className={badge}>Copied</span>}
         {row.erased && <span className={badge}>Personal data erased</span>}
       </td>

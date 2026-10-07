@@ -1084,48 +1084,6 @@
     "history": []
   },
   {
-    "id": "checkout.order-editing-after-purchase",
-    "domain": "checkout",
-    "feature": "Order editing after purchase",
-    "shopify": {
-      "tier": "native",
-      "text": "Native. Add or remove products, change quantities, update shipping and apply discounts after purchase; collect the difference with an invoice or refund it.",
-      "url": "https://help.shopify.com/en/manual/orders/edit-orders",
-      "fetched": true,
-      "checkedOn": "2026-10-03"
-    },
-    "kaizen": {
-      "rating": "partial",
-      "rechecked": true,
-      "was": null
-    },
-    "weight": 3,
-    "gap": "Only email and address (`updateOrderContact()`), notes, and refunds and restocking (D27) can change on a placed order; no line or quantity edits, no repricing, no taking an extra payment. Orders are numbered without gaps and may not be renumbered (D141), so an edit would have to keep the number and the books.",
-    "bucket": "A",
-    "wave": 3,
-    "criteria": [
-      "Staff add, remove or change the quantity of a line on an unshipped order; stock and VAT follow, and the order keeps its number.",
-      "A higher total sends the customer a payment link for the difference; a lower one refunds it through the existing refund path.",
-      "Every edit is logged with who and when, and the customer is emailed a revised confirmation.",
-      "A shipped, copied or host order cannot be edited."
-    ],
-    "evidence": {
-      "files": [
-        "src/server/order-admin.ts",
-        "src/app/admin/(gated)/[store]/orders/actions.ts"
-      ],
-      "tests": [
-        "src/server/order-admin.int.test.ts"
-      ],
-      "untested": false
-    },
-    "decisions": [
-      "D27",
-      "D141"
-    ],
-    "history": []
-  },
-  {
     "id": "checkout.discount-codes-and-automatic-discounts",
     "domain": "checkout",
     "feature": "Discount codes and automatic discounts",

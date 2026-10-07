@@ -9,6 +9,8 @@ import { isOverdue, WAITING_WORDS, type QueueReason } from "@/lib/invoice-readin
 import type { CreditNoteSnapshot } from "@/lib/credit-allocation";
 import type { OrderInvoiceSnapshot } from "@/lib/invoice-snapshot";
 
+import { EDIT_REFUND_OWED_SQL } from "./edit-refund-owed";
+
 type Row = Record<string, unknown>;
 
 /**
@@ -270,8 +272,10 @@ export type OrderDocuments = {
   /** Why the order has no invoice, or `ok`. */
   eligibility: EligibilityReason;
   invoice: DocumentLink | null;
-  /** In the order they were issued. */
+  /** In the order they were issued (an order change's credit note among them, D174). */
   creditNotes: DocumentLink[];
+  /** The additional invoices of the order's changes (D174, `kind = 'order_edit'`), in the order they were issued; each refers to `invoice`. */
+  additionalInvoices: DocumentLink[];
   /** An eligible order with no invoice yet: why it waits. For staff; the shopper is told nothing about a waiting invoice. */
   waiting: QueueReason | null;
   /** What the shopper's page says when there is no invoice (a test order), else null. */
@@ -286,11 +290,11 @@ export type OrderDocuments = {
  */
 export async function getOrderDocuments(storeId: string, orderId: string): Promise<OrderDocuments> {
   const [order] = await db().execute<Row>(sql`select 1 as one from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid`);
-  if (!order) return { eligibility: "not_paid", invoice: null, creditNotes: [], waiting: null, shopperNote: null, staffNote: null };
-  const [[inv], notes, [elig]] = await Promise.all([
+  if (!order) return { eligibility: "not_paid", invoice: null, creditNotes: [], additionalInvoices: [], waiting: null, shopperNote: null, staffNote: null };
+  const [[inv], notes, [elig], extra] = await Promise.all([
     db().execute<Row>(sql`
       select id, document_number, issued_on, public_token, pdf_path is not null as has_pdf, total_minor, currency
-      from commerce.invoices where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid
+      from commerce.invoices where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and kind = 'order'
     `),
     db().execute<Row>(sql`
       select c.id, c.document_number, c.issued_on, c.public_token, c.pdf_path is not null as has_pdf, c.total_minor, c.currency
@@ -298,6 +302,10 @@ export async function getOrderDocuments(storeId: string, orderId: string): Promi
       where c.store_id = ${storeId}::uuid and i.order_id = ${orderId}::uuid order by c.number
     `),
     db().execute<Row>(sql`select commerce.invoice_eligibility(${orderId}::uuid) as reason`),
+    db().execute<Row>(sql`
+      select id, document_number, issued_on, public_token, pdf_path is not null as has_pdf, total_minor, currency
+      from commerce.invoices where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and kind = 'order_edit' order by number
+    `),
   ]);
   const link = (type: DocumentKind, r: Row): DocumentLink => ({
     id: String(r.id),
@@ -319,6 +327,7 @@ export async function getOrderDocuments(storeId: string, orderId: string): Promi
     eligibility: reason,
     invoice: inv ? link("invoice", inv) : null,
     creditNotes: notes.map((n) => link("credit_note", n)),
+    additionalInvoices: extra.map((n) => link("invoice", n)),
     waiting,
     shopperNote: inv ? null : ELIGIBILITY_WORDS[reason].shopper,
     staffNote: inv ? null : waiting ? WAITING_WORDS[waiting].staff : ELIGIBILITY_WORDS[reason].staff,
@@ -398,13 +407,14 @@ export async function waitingCreditNotes(storeId: string): Promise<WaitingCredit
     from (
       select rf.id as refund_id, null::uuid as return_id, p.order_id, rf.amount_minor, 'missing'::text as state, rf.created_at as at
         from commerce.refunds rf join commerce.payments p on p.store_id = rf.store_id and p.id = rf.payment_id
-        join commerce.invoices i on i.store_id = rf.store_id and i.order_id = p.order_id
+        join commerce.invoices i on i.store_id = rf.store_id and i.order_id = p.order_id and i.kind = 'order'
        where rf.store_id = ${storeId}::uuid and rf.status = 'succeeded'
          and not exists (select 1 from commerce.credit_notes c where c.store_id = rf.store_id and c.refund_id = rf.id)
-         and not exists (select 1 from commerce.order_events e where e.store_id = rf.store_id and e.order_id = p.order_id and e.type in ('credit_note.short', 'credit_note.not_invoiced') and e.data ->> 'key' = rf.id::text)
+         -- The refund of an order change's lower total is credited by the change's own credit note (D174): covered, never missing.
+         and not exists (select 1 from commerce.order_events e where e.store_id = rf.store_id and e.order_id = p.order_id and e.type in ('credit_note.short', 'credit_note.not_invoiced', 'credit_note.covered_by_edit') and e.data ->> 'key' = rf.id::text)
       union all
       select null::uuid, rt.id, rt.order_id, rt.refund_minor, 'missing', coalesce(rt.refunded_at, rt.created_at)
-        from commerce.returns rt join commerce.invoices i on i.store_id = rt.store_id and i.order_id = rt.order_id
+        from commerce.returns rt join commerce.invoices i on i.store_id = rt.store_id and i.order_id = rt.order_id and i.kind = 'order'
        where rt.store_id = ${storeId}::uuid and rt.refund_outside and rt.refund_id is null and coalesce(rt.refund_minor, 0) > 0
          and not exists (select 1 from commerce.credit_notes c where c.store_id = rt.store_id and c.return_id = rt.id and c.source = 'return_outside')
          and not exists (select 1 from commerce.order_events e where e.store_id = rt.store_id and e.order_id = rt.order_id and e.type in ('credit_note.short', 'credit_note.not_invoiced') and e.data ->> 'key' = rt.id::text)
@@ -522,7 +532,10 @@ export async function documentAudit(storeId: string): Promise<DocumentAudit[]> {
   }));
 }
 
-export type CheckupFinding = { code: "invoice_numbers_broken" | "invoices_waiting" | "credit_note_missing" | "credit_note_short" | "refund_reversed_after_success" | "pdf_failing"; message: string };
+export type CheckupFinding = {
+  code: "invoice_numbers_broken" | "invoices_waiting" | "credit_note_missing" | "credit_note_short" | "refund_reversed_after_success" | "pdf_failing" | "edit_refund_failed";
+  message: string;
+};
 
 /**
  * What the store checkup says about documents (`store_checkup`, docs 2.4): a broken number series, invoices waiting, a succeeded refund
@@ -530,12 +543,19 @@ export type CheckupFinding = { code: "invoice_numbers_broken" | "invoices_waitin
  * PDFs that could not be made. Plain sentences for the owner, never a buyer's name.
  */
 export async function invoiceCheckupFindings(storeId: string): Promise<CheckupFinding[]> {
-  const [audit, waiting, creditNotes, [reversed], counts] = await Promise.all([
+  const [audit, waiting, creditNotes, [reversed], counts, [owed]] = await Promise.all([
     documentAudit(storeId),
     waitingInvoices(storeId),
     waitingCreditNotes(storeId),
     db().execute<Row>(sql`select count(*)::int as n from commerce.order_events where store_id = ${storeId}::uuid and type = 'refund.reversed_after_success'`),
     invoiceCounts(storeId),
+    // A change applied on a refund Stripe later reported failed (D174, review fix): the customer is owed the money until staff refund it again.
+    db().execute<Row>(sql`
+      select count(*)::int as n from commerce.order_edits e
+      where e.store_id = ${storeId}::uuid and e.status = 'applied' and e.difference_minor < 0
+        and exists (select 1 from commerce.order_events ev where ev.store_id = e.store_id and ev.order_id = e.order_id and ev.type = 'order.edit_refund_failed' and ev.data ->> 'edit' = e.id::text)
+        and ${EDIT_REFUND_OWED_SQL} > 0
+    `),
   ]);
   const findings: CheckupFinding[] = [];
   for (const a of audit) {
@@ -559,6 +579,12 @@ export async function invoiceCheckupFindings(storeId: string): Promise<CheckupFi
   if (short > 0) findings.push({ code: "credit_note_short", message: `${short} refund(s) were larger than what their invoice had left, so the credit note covers only part of them.` });
   if (Number(reversed?.n ?? 0) > 0) {
     findings.push({ code: "refund_reversed_after_success", message: `Stripe reported ${reversed.n} refund(s) as failed after they had succeeded. Their credit notes stand; check the refunds in Stripe.` });
+  }
+  if (Number(owed?.n ?? 0) > 0) {
+    findings.push({
+      code: "edit_refund_failed",
+      message: `${owed.n} order change(s) lowered an order but their refund failed in Stripe: the customer has not been paid back. Open the order and refund it again.`,
+    });
   }
   if (counts.pdfFailing > 0) findings.push({ code: "pdf_failing", message: `${counts.pdfFailing} document(s) have no PDF after several tries. Open the Waiting tab and try again.` });
   return findings;

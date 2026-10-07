@@ -180,13 +180,15 @@ export type SnapshotTreatment = {
 
 /**
  * How the sale was paid: `paid_online` (Stripe), `paid_outside` (money the seller took outside Kaizen and recorded, wave 3, D173: `provider` is `manual` and `method` says
- * how) or `pay_at_venue` (the balance left for the venue). `method` is set only on `paid_outside`.
+ * how) or `pay_at_venue` (the balance left for the venue). `method` is set only on `paid_outside`. On a change's additional invoice (D174), `settled_by_order`
+ * is the part settled against what the customer had already paid for the order's own invoice (`invoiceNumber`, `provider` `order`).
  */
 export type SnapshotPayment = {
-  kind: "paid_online" | "paid_outside" | "pay_at_venue";
+  kind: "paid_online" | "paid_outside" | "pay_at_venue" | "settled_by_order";
   amountMinor: number;
   provider: string;
   method?: "cash" | "bank_transfer" | "other" | null;
+  invoiceNumber?: string;
 };
 
 export type SnapshotNote = "buyer_incomplete" | "unit_price_rounded" | "trial_deferred";
@@ -656,6 +658,149 @@ export function buildInvoiceSnapshot(facts: InvoiceFacts, ctx: InvoiceContext): 
     treatment,
     payments,
     deferred,
+    notes,
+  };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// A change's additional invoice (wave 3, D174, docs/wave-3-fulfilment.md 4.6; `commerce.make_edit_documents()` builds the same, held by invoice-parity.test.ts)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** The additional invoice of a change: an invoice that refers to the order's own (VAT Directive Art. 219) and says which change it is. */
+export type EditInvoiceSnapshot = OrderInvoiceSnapshot & {
+  invoiceKind: "order_edit";
+  refersTo: { invoiceId: string; invoiceNumber: string; invoiceIssuedOn: string };
+  edit: { seq: number };
+};
+
+export type EditInvoiceFacts = {
+  /** The order's own invoice: the seller, buyer, order and treatment are its. */
+  original: { id: string; snapshot: OrderInvoiceSnapshot };
+  seq: number;
+  /** The lines the change added (new order lines), in their order. */
+  lines: readonly Pick<InvoiceLineFacts, "id" | "sku" | "title" | "quantity" | "unitPriceMinor" | "totalMinor" | "taxMinor" | "taxRate" | "delivery" | "gift" | "vatCategory">[];
+  /** A higher shipping charge: what it went up by and the VAT in that (the order's shipping rate); null when it did not go up. */
+  shipping: { grossMinor: number; vatMinor: number; rate: number; label: string | null } | null;
+  /** The change's own payment of the difference (a higher total), or null when what the customer had paid settles it. */
+  payment: { provider: string; method: string | null; differenceMinor: number } | null;
+  currency: string;
+  sellerCountry: string | null;
+  fx: InvoiceFxFacts;
+};
+
+/**
+ * The additional invoice of a change: its added lines (each as an order's invoice states a line) and a higher shipping charge, the VAT per rate, the VAT in the
+ * seller's currency at the rates of the day it is issued (a supply of its own), and how it was paid: the change's payment, the rest settled against the order's
+ * own invoice. Throws when the VAT must be stated in the seller's currency and there is no rate (the database makes the change's documents wait then).
+ */
+export function buildEditInvoiceSnapshot(facts: EditInvoiceFacts, ctx: InvoiceContext): EditInvoiceSnapshot {
+  const orig = facts.original.snapshot;
+  let rounded = false;
+  const lines: SnapshotLine[] = facts.lines.map((l) => {
+    const net = l.totalMinor - l.taxMinor;
+    const listNet = Math.max(withoutVatExact(l.unitPriceMinor * l.quantity, l.taxRate), net);
+    const unitNet = divRound(listNet, l.quantity);
+    if (unitNet * l.quantity !== listNet) rounded = true;
+    return {
+      lineId: l.id,
+      sku: l.sku,
+      title: l.title,
+      kind: l.gift ? "gift" : l.delivery === "digital" ? "download" : l.delivery === "service" ? "service" : "goods",
+      quantity: l.quantity,
+      listNetMinor: listNet,
+      discountNetMinor: listNet - net,
+      netMinor: net,
+      vatRate: l.taxRate,
+      basis: l.vatCategory === "exempt" ? "exempt" : "standard",
+      vatMinor: l.taxMinor,
+      grossMinor: l.totalMinor,
+      unitNetMinor: unitNet,
+      serviceDate: null,
+      service: null,
+      wouldHaveRate: null,
+    };
+  });
+  const shipping: SnapshotShipping | null =
+    facts.shipping && facts.shipping.grossMinor > 0
+      ? {
+          label: text(facts.shipping.label),
+          netBeforeMinor: facts.shipping.grossMinor - facts.shipping.vatMinor,
+          discountNetMinor: 0,
+          netMinor: facts.shipping.grossMinor - facts.shipping.vatMinor,
+          vatRate: facts.shipping.rate,
+          basis: "standard",
+          vatMinor: facts.shipping.vatMinor,
+          grossMinor: facts.shipping.grossMinor,
+          wouldHaveRate: null,
+        }
+      : null;
+  const buckets = bucketsOf([
+    ...lines.map((l) => ({ rate: l.vatRate, basis: l.basis, netMinor: l.netMinor, vatMinor: l.vatMinor, grossMinor: l.grossMinor })),
+    ...(shipping ? [{ rate: shipping.vatRate, basis: shipping.basis, netMinor: shipping.netMinor, vatMinor: shipping.vatMinor, grossMinor: shipping.grossMinor }] : []),
+  ]);
+  const totals = totalsOf(buckets);
+  const was = orig.treatment.statements;
+  const statements: TreatmentStatement[] = [
+    ...(was.includes("reverse_charge") ? (["reverse_charge"] as const) : []),
+    ...(was.includes("ioss") ? (["ioss"] as const) : []),
+    ...(was.includes("not_registered") ? (["not_registered"] as const) : []),
+    ...(buckets.some((b) => b.basis === "exempt") ? (["exempt"] as const) : []),
+  ];
+
+  const { fx } = facts;
+  let vatHome: SnapshotVatHome | null = null;
+  if (totals.vatMinor > 0 && homeVatRequirement(facts.sellerCountry, facts.currency, fx.homeCurrency)) {
+    const rate = fxFactor(facts.currency, fx.homeCurrency as string, fx.rates);
+    if (rate === null) throw new Error("invoice.no_exchange_rate: the VAT of the change cannot be stated in the seller's currency without a rate");
+    vatHome = { currency: fx.homeCurrency as string, vatMinor: vatConverted(buckets, rate), fxRate: rate, asOf: fx.ratesAsOf, source: fx.ratesAuto ? "ecb_auto" : "owner" };
+  }
+  let vatMain: SnapshotVatMain | null = null;
+  if (facts.currency === fx.mainCurrency) vatMain = { currency: fx.mainCurrency, vatMinor: totals.vatMinor, fxRate: null };
+  else {
+    const rate = fxFactor(facts.currency, fx.mainCurrency, fx.rates);
+    if (rate !== null) vatMain = { currency: fx.mainCurrency, vatMinor: vatConverted(buckets, rate), fxRate: rate };
+  }
+
+  const paidNow = facts.payment ? Math.min(Math.max(facts.payment.differenceMinor, 0), totals.grossMinor) : 0;
+  const payments: SnapshotPayment[] = [
+    ...(paidNow > 0 && facts.payment
+      ? [
+          facts.payment.provider === "manual"
+            ? { kind: "paid_outside" as const, amountMinor: paidNow, provider: "manual", method: (facts.payment.method ?? null) as SnapshotPayment["method"] }
+            : { kind: "paid_online" as const, amountMinor: paidNow, provider: facts.payment.provider },
+        ]
+      : []),
+    ...(totals.grossMinor - paidNow > 0 ? [{ kind: "settled_by_order" as const, amountMinor: totals.grossMinor - paidNow, provider: "order", invoiceNumber: orig.number }] : []),
+  ];
+  const notes: SnapshotNote[] = [];
+  if (!orig.buyer.complete) notes.push("buyer_incomplete");
+  if (rounded) notes.push("unit_price_rounded");
+
+  return {
+    version: SNAPSHOT_VERSION,
+    documentType: "invoice",
+    invoiceKind: "order_edit",
+    number: ctx.number,
+    issuedOn: ctx.issuedOn,
+    supplyDate: ctx.supplyDate,
+    locale: orig.locale,
+    language: orig.language,
+    currency: orig.currency,
+    seller: orig.seller,
+    buyer: orig.buyer,
+    order: orig.order,
+    refersTo: { invoiceId: facts.original.id, invoiceNumber: orig.number, invoiceIssuedOn: orig.issuedOn },
+    edit: { seq: facts.seq },
+    lines,
+    shipping,
+    discounts: [],
+    buckets,
+    totals,
+    vatHome,
+    vatMain,
+    treatment: { ...orig.treatment, statements },
+    payments,
+    deferred: [],
     notes,
   };
 }

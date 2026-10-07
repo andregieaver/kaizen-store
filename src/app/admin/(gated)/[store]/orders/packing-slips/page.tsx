@@ -21,7 +21,8 @@ function idsOf(value: string | string[] | undefined): string[] {
 
 /**
  * Packing slips for several orders in one document (wave 3, D173, `docs/wave-3-orders.md` 2.5): at most 100, each on its own printed page and in its own order's language, without prices.
- * Orders with nothing to ship, copied history and ids that are not this store's are left out, with the reason at the top (not printed). It changes no state.
+ * Each slip holds what is still to send (D174: a partly sent order's remainder). Orders already sent or withdrawn, with nothing to ship, copied history and ids that
+ * are not this store's are left out, with the reason at the top (not printed). It changes no state.
  */
 export default async function PackingSlipsPage({ params, searchParams }: PageProps<"/admin/[store]/orders/packing-slips">) {
   const { store: slug } = await params;

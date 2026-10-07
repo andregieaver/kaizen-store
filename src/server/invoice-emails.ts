@@ -43,6 +43,8 @@ export type DocumentWant = {
   creditNoteOfReturn?: string | null;
   /** A credit note by its own id. */
   creditNoteId?: string | null;
+  /** The documents of an order change (D174): its credit note and its additional invoice, when issued. */
+  ofEdit?: string | null;
 };
 
 export type DocumentBlocks = { blocks: EmailBlock[]; attachments: Attachment[]; docs: DocRef[] };
@@ -54,7 +56,7 @@ async function find(storeId: string, orderId: string, want: DocumentWant): Promi
   if (want.invoice) {
     const [i] = await db().execute<Row>(sql`
       select id, document_number, public_token, pdf_path is not null as has_pdf from commerce.invoices
-      where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and public_token is not null and anonymised_at is null
+      where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and kind = 'order' and public_token is not null and anonymised_at is null
     `);
     if (i) found.push({ type: "invoice", id: String(i.id), documentNumber: String(i.document_number), token: String(i.public_token), hasPdf: i.has_pdf === true });
   }
@@ -70,6 +72,23 @@ async function find(storeId: string, orderId: string, want: DocumentWant): Promi
       order by c.number limit 1
     `);
     if (c) found.push({ type: "credit_note", id: String(c.id), documentNumber: String(c.document_number), token: String(c.public_token), hasPdf: c.has_pdf === true });
+  }
+  if (want.ofEdit) {
+    // A change's documents (D174): the credit note for what was taken off, then the additional invoice for what was added.
+    const rows = await db().execute<Row>(sql`
+      select 'credit_note' as type, c.id, c.document_number, c.public_token, c.pdf_path is not null as has_pdf, 1 as o
+      from commerce.credit_notes c
+      where c.store_id = ${storeId}::uuid and c.order_edit_id = ${want.ofEdit}::uuid and c.source = 'order_edit' and c.public_token is not null and c.anonymised_at is null
+      union all
+      select 'invoice', i.id, i.document_number, i.public_token, i.pdf_path is not null, 2
+      from commerce.invoices i
+      where i.store_id = ${storeId}::uuid and i.order_id = ${orderId}::uuid and i.order_edit_id = ${want.ofEdit}::uuid and i.kind = 'order_edit'
+        and i.public_token is not null and i.anonymised_at is null
+      order by o
+    `);
+    for (const r of rows) {
+      found.push({ type: r.type === "invoice" ? "invoice" : "credit_note", id: String(r.id), documentNumber: String(r.document_number), token: String(r.public_token), hasPdf: r.has_pdf === true });
+    }
   }
   return found;
 }

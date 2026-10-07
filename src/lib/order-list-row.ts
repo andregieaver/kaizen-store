@@ -10,7 +10,7 @@ export type OrderStatusValue = "pending_payment" | "paid" | "fulfilled" | "cance
 /** The payment cell: what the money did. `copied` is history from another store (no payment to speak of). */
 export type PayCell = "unpaid" | "paid" | "partially_refunded" | "refunded" | "balance_due" | "copied";
 /** The fulfilment cell. `none` is an unfinished checkout or a cancelled order, where there is nothing to send. */
-export type ShipCell = "to_send" | "waiting" | "sent" | "no_shipping" | "none" | "copied";
+export type ShipCell = "to_send" | "partly_sent" | "waiting" | "sent" | "no_shipping" | "none" | "copied";
 
 export type OrderListItem = {
   id: string;
@@ -39,6 +39,10 @@ export type OrderListItem = {
   ship: ShipCell;
   /** Part still to pay at the venue (D66), in the order's currency. */
   balanceMinor: number;
+  /** A change was applied to the order after purchase (D174: the *Edited* badge). */
+  edited?: boolean;
+  /** A change waits for the customer's payment (D174: *Change awaiting payment*). */
+  editPending?: boolean;
 };
 
 /** What the payment cell says. The captured and refunded sums are of the order's own payments (`PAY_STATE`'s two figures). */
@@ -63,12 +67,12 @@ export function payCellOf(order: {
 }
 
 /** What the fulfilment cell says. */
-export function shipCellOf(order: { status: OrderStatusValue; copied: boolean; physical: boolean; backorderUnits: number }): ShipCell {
+export function shipCellOf(order: { status: OrderStatusValue; copied: boolean; physical: boolean; backorderUnits: number; /** A parcel is recorded and units are still to send (D174). */ partlySent?: boolean }): ShipCell {
   if (order.copied) return "copied";
   if (order.status === "pending_payment") return "none";
   if (!order.physical) return "no_shipping";
   if (order.status === "fulfilled") return "sent";
-  if (order.status === "paid") return order.backorderUnits > 0 ? "waiting" : "to_send";
+  if (order.status === "paid") return order.backorderUnits > 0 ? "waiting" : order.partlySent ? "partly_sent" : "to_send";
   return "none";
 }
 
@@ -83,6 +87,7 @@ export const PAY_CELL_LABELS: Record<PayCell, string> = {
 
 export const SHIP_CELL_LABELS: Record<ShipCell, string> = {
   to_send: "To send",
+  partly_sent: "Partly sent",
   waiting: "Waiting for stock",
   sent: "Sent",
   no_shipping: "Nothing to ship",

@@ -19,6 +19,7 @@ const ALLOWED: Record<string, string> = {
   "src/server/invoice-test-fixture.ts": "test fixture",
   "src/server/analytics-insights-fixture.ts": "test fixture",
   "src/server/inventory-test-support.ts": "test fixture",
+  "src/server/fulfilment-test-fixture.ts": "test fixture",
 };
 
 function walk(dir: string, out: string[] = []): string[] {

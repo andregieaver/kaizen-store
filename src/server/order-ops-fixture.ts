@@ -80,10 +80,23 @@ export async function seedOrder(store: Pick<TestStore, "storeId" | "account">, s
     const id = String(order.id);
     const lines = seed.lines ?? [{ title: "Mug White", sku: "MUG-1", quantity: 1, physical: true }];
     for (const line of lines) {
+      // Goods are a variant of the store's (D174: a physical line is one with a variant, the only kind a parcel holds); made once per SKU.
+      let variantId: string | null = null;
+      if (line.physical !== false) {
+        const [found] = await t.execute<Row>(sql`select id from commerce.product_variants where store_id = ${storeId}::uuid and sku = ${line.sku}`);
+        if (found) variantId = String(found.id);
+        else {
+          const [product] = await t.execute<Row>(sql`
+            insert into commerce.products (store_id, handle, tax_code, vat_category) values (${storeId}::uuid, ${`fx-${line.sku.toLowerCase()}-${Math.random().toString(36).slice(2, 8)}`}, 'txcd_99999999', 'standard') returning id
+          `);
+          const [variant] = await t.execute<Row>(sql`insert into commerce.product_variants (store_id, product_id, sku) values (${storeId}::uuid, ${String(product.id)}::uuid, ${line.sku}) returning id`);
+          variantId = String(variant.id);
+        }
+      }
       await t.execute(sql`
-        insert into commerce.order_lines (store_id, order_id, sku, title, quantity, unit_price_minor, discount_minor, total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
+        insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, discount_minor, total_minor, tax_minor, tax_rate, tax_code, withdrawal_exclusion, delivery,
           backorder_quantity, backorder_days)
-        values (${storeId}::uuid, ${id}::uuid, ${line.sku}, ${line.title}, ${line.quantity ?? 1}, ${Math.floor(total / (lines.length * (line.quantity ?? 1)))}, 0,
+        values (${storeId}::uuid, ${id}::uuid, ${variantId}::uuid, ${line.sku}, ${line.title}, ${line.quantity ?? 1}, ${Math.floor(total / (lines.length * (line.quantity ?? 1)))}, 0,
           ${Math.floor(total / lines.length)}, 0, 0.25, 'txcd_99999999', 'none', ${line.physical === false ? "digital" : "physical"},
           ${line.backorder ?? 0}, ${line.backorder ? 7 : null})
       `);
@@ -102,7 +115,8 @@ export async function seedOrder(store: Pick<TestStore, "storeId" | "account">, s
       }
     }
     if (seed.tracking) {
-      await t.execute(sql`insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values (${storeId}::uuid, ${id}::uuid, 'Posten', ${seed.tracking})`);
+      // Recorded as a parcel from before parcels named their lines (D174 `legacy`): it counts as everything sent.
+      await t.execute(sql`insert into commerce.shipments (store_id, order_id, carrier, tracking_number, legacy) values (${storeId}::uuid, ${id}::uuid, 'Posten', ${seed.tracking}, true)`);
     }
     for (const label of seed.tags ?? []) {
       await t.execute(sql`insert into commerce.order_tags (store_id, order_id, key, label) values (${storeId}::uuid, ${id}::uuid, ${label.toLowerCase()}, ${label})`);

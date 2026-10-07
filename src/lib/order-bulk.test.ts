@@ -36,10 +36,10 @@ const sendable = (over: Partial<MarkSentFacts> = {}): MarkSentFacts => ({
 
 describe("the bulk actions", () => {
   it("are tag, untag, archive, unarchive, mark sent and print, each with words and a permission (printing is a read)", () => {
-    expect([...BULK_ACTIONS]).toEqual(["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips"]);
+    expect([...BULK_ACTIONS]).toEqual(["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list"]);
     for (const a of BULK_ACTIONS) {
       expect(BULK_ACTION_LABELS[a].length, a).toBeGreaterThan(3);
-      expect(BULK_ACTION_PERMISSION[a], a).toBe(a === "print_slips" ? "orders:read" : "orders:write");
+      expect(BULK_ACTION_PERMISSION[a], a).toBe(a === "print_slips" || a === "print_pick_list" ? "orders:read" : "orders:write");
     }
     expect(isBulkAction("archive")).toBe(true);
     expect(isBulkAction("cancel")).toBe(false);
@@ -142,5 +142,21 @@ describe("marking orders as sent in bulk: the pure pre-check", () => {
     expect(slipSkip({ copied: true, physical: true })).toBe("copied");
     expect(slipSkip({ copied: false, physical: false })).toBe("nothing_to_ship");
     expect(slipSkip({ copied: true, physical: false })).toBe("copied");
+  });
+
+  it("prints what is still to send (D174): a sent order is skipped as already sent, one withdrawn before sending as withdrawn", () => {
+    expect(slipSkip({ copied: false, physical: true, state: "unsent" })).toBeNull();
+    expect(slipSkip({ copied: false, physical: true, state: "partly_sent" })).toBeNull();
+    expect(slipSkip({ copied: false, physical: true, state: "sent" })).toBe("already_sent");
+    expect(slipSkip({ copied: false, physical: true, state: "withdrawn" })).toBe("withdrawn_in_full");
+    expect(slipSkip({ copied: false, physical: true, state: "closed" })).toBe("nothing_to_send");
+    expect(slipSkip({ copied: false, physical: true, state: "none" })).toBe("nothing_to_ship");
+    expect(slipSkip({ copied: true, physical: true, state: "sent" })).toBe("copied");
+  });
+
+  it("refuses an order whose change waits for payment (D174), after the withdrawal and before the backorder", () => {
+    expect(markSentBlock(sendable({ editPending: true }))).toBe("edit_pending");
+    expect(markSentBlock(sendable({ editPending: true, backorderUnits: 2 }))).toBe("edit_pending");
+    expect(markSentBlock(sendable({ editPending: true, withdrawnInFull: true }))).toBe("withdrawn_in_full");
   });
 });

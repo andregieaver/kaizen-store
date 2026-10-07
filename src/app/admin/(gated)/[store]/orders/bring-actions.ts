@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { parcelLinesInput } from "@/lib/parcel-input";
 import { requirePermission } from "@/server/permissions";
 import { bringBook, bringOptionsFor, type BringOptions } from "@/server/bring-shipping";
 import { COPIED_ORDER_MESSAGE } from "@/server/order-admin";
@@ -31,6 +32,8 @@ const bookInput = z.object({
   pickupPointId: z.string().trim().max(60).optional(),
   notify: z.boolean(),
   parcel: z.unknown(),
+  /** What goes in this parcel (D174); none = everything still to send. */
+  lines: parcelLinesInput,
 });
 
 /** Books the chosen service: a real booking marks the order as sent (and tells the customer when asked), a test one only says it worked. */
@@ -39,7 +42,7 @@ export async function bringBookAction(storeSlug: string, orderId: string, raw: u
   if (!found) return { ok: false, message: "This order no longer exists." };
   if (found.order.copied) return { ok: false, message: COPIED_ORDER_MESSAGE };
   const input = bookInput.safeParse(raw);
-  if (!input.success) return { ok: false, message: "Choose a service." };
+  if (!input.success) return { ok: false, message: input.error.issues.some((i) => i.path[0] === "lines") ? "A number in the parcel is not a whole number of 0 or more." : "Choose a service." };
   const booked = await bringBook(found.member.account.id, found.member.store.id, orderId, input.data);
   if (!booked.ok) return { ok: false, message: booked.problem };
   if (booked.test) {

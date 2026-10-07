@@ -83,7 +83,10 @@ export async function storesWithDocumentWork(limit = STORES_PER_RUN): Promise<st
       join commerce.invoices i on i.store_id = rf.store_id and i.order_id = p.order_id
       where rf.status = 'succeeded'
         and not exists (select 1 from commerce.credit_notes c where c.store_id = rf.store_id and c.refund_id = rf.id)
-        and not exists (select 1 from commerce.order_events e where e.store_id = rf.store_id and e.order_id = p.order_id and e.type in ('credit_note.short', 'credit_note.not_invoiced') and e.data ->> 'key' = rf.id::text)
+        and not exists (select 1 from commerce.order_events e where e.store_id = rf.store_id and e.order_id = p.order_id and e.type in ('credit_note.short', 'credit_note.not_invoiced', 'credit_note.covered_by_edit') and e.data ->> 'key' = rf.id::text)
+      union
+      -- An order change whose documents wait (D174): issued by issue_waiting_invoices() after the order own invoice.
+      select e.store_id from commerce.order_edits e where e.status = 'applied' and e.documents = 'waiting'
       union
       select rt.store_id from commerce.returns rt
       join commerce.invoices i on i.store_id = rt.store_id and i.order_id = rt.order_id

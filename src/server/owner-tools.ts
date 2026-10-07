@@ -5,6 +5,10 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { summarizeUsage } from "@/lib/ai-usage";
 import { formatMoney } from "@/lib/money";
+import { FULFILMENT_STATE_LABELS } from "@/lib/fulfilment";
+import { PICK_LIST_MAX } from "@/lib/fulfilment-limits";
+import { ORDER_EDIT_REASON_LABELS, ORDER_EDIT_STATUS_LABELS, type OrderEditReason } from "@/lib/order-edit-status";
+import { PICK_SKIP_WORDS, PICK_WARNING_WORDS } from "@/lib/pick-list";
 import { OWNER_TOOLS_BY_NAME, readToolInput, type OwnerToolInput, type OwnerToolName } from "@/lib/owner-tools";
 import { mayUseTool, toolRefusal } from "@/lib/owner-tool-permissions";
 import type { PermissionHolder } from "@/lib/permissions";
@@ -50,6 +54,9 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
+import { NOT_EDIT_REFUND } from "./analytics-sql";
+import { ordersToSend, pickListData } from "./pick-list";
+import { textList } from "./sql-arrays";
 import { explainImportProblemsTool, listDataJobsTool } from "./data-job-tools";
 import { addRedirectTool, preflightRedirectTool, redirectOverviewTool } from "./redirect-tools";
 import { ossReturnDataTool, vatReportTool } from "./tax-report-tools";
@@ -108,7 +115,7 @@ import { inventoryCounts, ledgerProblems } from "./inventory";
 import { preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { onHandActive } from "./stock-sql";
 import { taxCheckupFindings, taxProfileView } from "./tax-profile";
-import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder } from "./order-admin";
+import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder, sendRefusalText } from "./order-admin";
 import { archiveOrdersTool, createDraftOrderTool, listDraftOrdersTool, listOrdersTool, preflightSendDraft, sendDraftOrderTool, tagOrdersTool } from "./order-ops-tools";
 import { listPages, pagesTag, unpublishPage } from "./pages";
 import { listAdminProducts, setArchived } from "./products";
@@ -222,7 +229,7 @@ async function salesSummary({ store }: OwnerToolContext, { days }: OwnerToolInpu
       from commerce.refunds r
       join commerce.payments p on p.store_id = r.store_id and p.id = r.payment_id
       join commerce.orders o on o.store_id = p.store_id and o.id = p.order_id
-      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and r.created_at >= ${since}
+      where r.store_id = ${store.id}::uuid and r.status = 'succeeded' and ${NOT_EDIT_REFUND} and r.created_at >= ${since}
       group by o.currency
     `),
     db().execute<Row>(sql`
@@ -294,8 +301,100 @@ async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInp
     refunded: m(view.refundedMinor),
     left_to_refund: m(view.refundableMinor),
     due_at_venue: view.balanceMinor ? m(view.balanceMinor) : null,
-    shipments: view.shipments.map((s) => ({ carrier: s.carrier, tracking: s.trackingNumber, sent: s.createdAt })),
+    // Wave 3 run 3 (D174): where the sending stands, what each parcel held, what each line still has to send, and the order's changes (never staff's note).
+    sending: view.copied ? null : FULFILMENT_STATE_LABELS[view.fulfilment.state],
+    ...(view.fulfilment.unitsToSend > 0 && !view.copied
+      ? {
+          still_to_send: view.fulfilment.lines
+            .filter((l) => l.toSend > 0)
+            .map((l) => ({ title: l.title, sku: l.sku, units: l.toSend, ...(l.backordered > 0 ? { on_backorder: Math.min(l.backordered, l.toSend) } : {}) })),
+        }
+      : {}),
+    shipments: view.shipments.map((s) => ({
+      carrier: s.carrier,
+      tracking: s.trackingNumber,
+      sent: s.createdAt,
+      ...(s.legacy ? { contents: "Recorded before parcels listed their items: counts as everything sent." } : { contents: s.lines.map((l) => ({ title: l.title, sku: l.sku, units: l.quantity })) }),
+    })),
+    ...(view.edits.length > 0
+      ? {
+          changes: view.edits.map((e) => ({
+            change: e.label,
+            made: e.createdAt,
+            status: ORDER_EDIT_STATUS_LABELS[e.status] ?? e.status,
+            reason: ORDER_EDIT_REASON_LABELS[e.reason as OrderEditReason] ?? e.reason,
+            total_before: m(e.totalBeforeMinor),
+            total_after: m(e.totalAfterMinor),
+            difference: e.differenceMinor === 0 ? "none" : e.differenceMinor > 0 ? `${m(e.differenceMinor)} more` : `${m(-e.differenceMinor)} less`,
+            ...(e.status === "awaiting_payment" && e.expiresAt ? { pay_by: e.expiresAt } : {}),
+            ...(e.appliedAt ? { applied: e.appliedAt } : {}),
+          })),
+        }
+      : {}),
     admin: `/admin/${store.slug}/orders/${view.id}`,
+  };
+}
+
+/**
+ * The pick list (D174, `docs/wave-3-fulfilment.md` 2.5): the orders named (this store's only; another store's or an unknown one is "not found"), or every paid
+ * order with something still to send, handed to `pickListData()`, the Pick list page's own reader. Units are the store's sums, never the model's; no amount,
+ * name or address is read. It changes nothing.
+ */
+async function pickListTool({ store }: OwnerToolContext, input: OwnerToolInput<"pick_list">) {
+  let ids: string[];
+  const unknown: string[] = [];
+  if (input.orders && input.orders.length > 0) {
+    const refs = [...new Set(input.orders.map((r) => r.trim().replace(/^#/, "")))];
+    const byId = refs.filter((r) => /^[0-9a-f-]{36}$/i.test(r));
+    const byNumber = refs.filter((r) => !/^[0-9a-f-]{36}$/i.test(r));
+    const rows = await db().execute<Row>(sql`
+      select id, number from commerce.orders
+      where store_id = ${store.id}::uuid
+        and (number = any(${textList(byNumber)}) or id::text = any(${textList(byId.map((r) => r.toLowerCase()))}))
+    `);
+    const found = new Map<string, string>();
+    for (const r of rows) {
+      found.set(String(r.number), String(r.id));
+      found.set(String(r.id), String(r.id));
+    }
+    ids = [];
+    for (const ref of refs) {
+      const id = found.get(ref) ?? found.get(ref.toLowerCase());
+      if (id) ids.push(id);
+      else unknown.push(ref);
+    }
+  } else {
+    ids = await ordersToSend(store.id);
+  }
+  if (ids.length === 0) {
+    return {
+      ...(unknown.length > 0 ? { not_found: unknown } : {}),
+      note: input.orders ? "None of these orders is in this store." : "No paid order has anything left to send.",
+    };
+  }
+  const data = await pickListData(store.id, ids, { by: input.by, sort: input.sort });
+  if (!data.ok) return fail(data.problem === "too_many" ? `A pick list takes at most ${PICK_LIST_MAX} orders.` : "Name at least one order.");
+  const list = data.list;
+  const number = new Map(list.orders.map((o) => [o.orderId, o.number]));
+  const params = new URLSearchParams({ ids: list.orders.map((o) => o.orderId).join(","), by: list.by, sort: list.sort });
+  return {
+    by: list.by,
+    orders_to_pick: list.orderCount,
+    units_in_all: list.totalUnits,
+    ...(list.by === "product"
+      ? { products: list.products.map((r) => ({ title: r.title, sku: r.sku, units: r.units, orders: r.orders })) }
+      : { orders: list.orders.map((o) => ({ order: o.number, units: o.units, lines: o.lines.map((l) => ({ title: l.title, sku: l.sku, units: l.units })) })) }),
+    ...(list.skipped.length > 0 || unknown.length > 0
+      ? {
+          left_out: [
+            ...unknown.map((ref) => ({ order: ref, why: PICK_SKIP_WORDS.not_found })),
+            ...list.skipped.map((x) => ({ order: x.number ?? number.get(x.orderId) ?? "unknown", why: PICK_SKIP_WORDS[x.reason] })),
+          ],
+        }
+      : {}),
+    ...(list.warnings.length > 0 ? { warnings: list.warnings.map((w) => ({ order: w.number, warning: PICK_WARNING_WORDS[w.reason] })) } : {}),
+    ...(list.orderCount > 0 ? { printable: `/admin/${store.slug}/orders/pick-list?${params.toString()}` } : {}),
+    note: "Only what is still to send: downloads, services, units already in parcels, units withdrawn before sending and units taken off as not to be sent are left out. No prices, names or addresses.",
   };
 }
 
@@ -578,9 +677,9 @@ async function addOrderNoteTool({ store, account }: OwnerToolContext, input: Own
 async function markOrderSentTool({ store, account }: OwnerToolContext, input: OwnerToolInput<"mark_order_sent">) {
   const id = await findOrderId(store, input.order);
   const carrier = CARRIERS.find((c) => c.id === input.carrier.toLowerCase() || c.name.toLowerCase() === input.carrier.toLowerCase())?.id ?? "other";
-  const shipment = await markSent(store.id, id, { carrier, trackingNumber: input.tracking_number, trackingUrl: null }, account.id);
-  if (!shipment) return fail(`Order ${input.order} is not paid, or every item on it was withdrawn before sending, so it cannot be sent.`);
-  if (input.notify) await sendShipped(store.id, id, shipment);
+  const sent = await markSent(store.id, id, { carrier, trackingNumber: input.tracking_number, trackingUrl: null }, account.id);
+  if (!sent.ok) return fail(`Order ${input.order} cannot be sent: ${sendRefusalText(sent.reason)}`);
+  if (input.notify) await sendShipped(store.id, id, sent.shipment);
   return { done: input.notify ? `Order ${input.order} is marked as sent and the customer has been told.` : `Order ${input.order} is marked as sent.` };
 }
 
@@ -1754,6 +1853,7 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   sales_summary: salesSummary,
   list_orders: listOrdersTool,
   get_order: getOrderTool,
+  pick_list: pickListTool,
   list_draft_orders: listDraftOrdersTool,
   tag_orders: tagOrdersTool,
   archive_orders: archiveOrdersTool,

@@ -19,6 +19,7 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   sales_summary: "analytics:read",
   list_orders: "orders:read",
   get_order: "orders:read",
+  pick_list: "orders:read",
   // Draft orders (D173) are the Orders section's: read like the Orders page, written with the right to change orders.
   list_draft_orders: "orders:read",
   list_returns: "orders:read",

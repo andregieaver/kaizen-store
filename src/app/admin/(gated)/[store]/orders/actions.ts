@@ -14,13 +14,18 @@ import {
   cancelOrder,
   CARRIERS,
   COPIED_ORDER_MESSAGE,
+  getOrderAdmin,
   markBalancePaid,
   markSent,
   refundOrder,
   updateOrderContact,
   VENUE_METHODS,
+  sendRefusalText,
 } from "@/server/order-admin";
 import { sendCancelled, sendOrderConfirmation, sendRefunded, sendShipped } from "@/server/shopper-emails";
+import { audit } from "@/server/auth";
+import { FULFILMENT_AUDIT_ACTIONS } from "@/lib/order-ops-events";
+import { parcelLinesFromForm } from "@/lib/parcel-form";
 import { chargeDelivery, deliveryOfOrder } from "@/server/standing-orders";
 
 export type OrderActionState = { ok: boolean; message: string | null };
@@ -35,7 +40,11 @@ async function orderFor(storeSlug: string, orderId: string) {
   return order ? { member, order } : null;
 }
 
-/** Marks the order as sent, with the parcel's tracking, and tells the customer. */
+/**
+ * Records a parcel (D174, `docs/wave-3-fulfilment.md` 2.1): the lines and units chosen in the *Send* card (`qty:{lineId}` fields, sent with `parcel=lines`), or, without a
+ * choice (a weekly box, an old form), everything still to send. `seen` is the order's fulfilment as the card saw it: `markSent()` refuses `changed` when another parcel or a
+ * withdrawal came in between. The parcel's own email lists what is in it. Audit `order.sent_part` (counts only).
+ */
 export async function sendOrderAction(
   storeSlug: string,
   orderId: string,
@@ -70,21 +79,42 @@ export async function sendOrderAction(
     charged = true;
     await sendOrderConfirmation(found.member.store.id, orderId);
   }
-  const shipment = await markSent(
+  const chosen = parcelLinesFromForm(form);
+  if (chosen === "invalid") return failed("A quantity in the parcel is not a whole number of 0 or more.");
+  const seen = String(form.get("seen") ?? "").slice(0, 100) || null;
+  const sent = await markSent(
     found.member.store.id,
     orderId,
     { ...input.data, trackingUrl: input.data.trackingUrl || null },
     found.member.account.id,
+    null,
+    { lines: chosen, seen },
   );
-  if (!shipment) return failed("Only paid orders can be sent, and not one where every item was withdrawn before sending.");
-  if (input.data.notify) await sendShipped(found.member.store.id, orderId, shipment);
+  if (!sent.ok) return failed(sendRefusalText(sent.reason));
+  const units = sent.shipment.lines.reduce((sum, line) => sum + line.quantity, 0);
+  await audit(found.member.account.id, found.member.store.id, FULFILMENT_AUDIT_ACTIONS.sentPart, { shipment: sent.shipment.id, units, left: sent.left }, { target: { type: "order", id: orderId } });
+  if (input.data.notify) await sendShipped(found.member.store.id, orderId, sent.shipment);
   refresh();
   const paid = charged ? "The card was charged, and the order is " : "";
-  return done(
-    input.data.notify
-      ? `${paid ? `${paid}marked as sent` : "Marked as sent"}, and the customer has been told.`
-      : `${paid ? `${paid}marked as sent` : "Marked as sent"}.`,
-  );
+  const what = sent.left > 0 ? `${paid ? `${paid}partly sent` : "Parcel recorded"} (${sent.left} ${sent.left === 1 ? "unit is" : "units are"} still to send)` : paid ? `${paid}marked as sent` : "Marked as sent";
+  return done(input.data.notify ? `${what}, and the customer has been told.` : `${what}.`);
+}
+
+/** Emails the customer about one parcel again (its carrier, tracking and contents), e.g. when they could not find the first email (D174 2.1). */
+export async function resendShippedAction(storeSlug: string, orderId: string, shipmentId: string): Promise<OrderActionState> {
+  const member = await checkPermission(storeSlug, "orders:write");
+  if (!member) return failed(NO_ACCESS);
+  if (!z.uuid().safeParse(orderId).success || !z.uuid().safeParse(shipmentId).success) return failed("This parcel was not found.");
+  const order = await getOrderAdmin(member.store.id, orderId);
+  if (!order || order.copied) return failed("This parcel was not found.");
+  if (!order.email) return failed("The order has no email address to send to.");
+  const shipment = order.shipments.find((s) => s.id === shipmentId);
+  if (!shipment) return failed("This parcel was not found.");
+  const outcome = await sendShipped(member.store.id, orderId, shipment, { resend: true });
+  refresh();
+  if (outcome === "sent") return done(`Sent to ${order.email}.`);
+  if (outcome === "logged") return done("Recorded, but email is not set up yet, so it was not sent.");
+  return failed("The email could not be sent.");
 }
 
 /** Refunds an amount through Stripe and puts chosen items back in stock. */
@@ -105,13 +135,20 @@ export async function refundOrderAction(
     .map((line) => ({ lineId: line.id, quantity: Math.floor(Number(form.get(`restock:${line.id}`) ?? 0)) || 0, locationId: putBackChoice(form.get(`restockAt:${line.id}`)) }))
     .filter((item) => item.quantity > 0);
   const reason = String(form.get("reason") ?? "").trim().slice(0, 500) || "Refund";
-  const outcome = await refundOrder(found.member.store.id, orderId, { amountMinor, reason, restock }, found.member.account.id);
+  // "These units were not sent" (D174): the units put back come off what is still to send. Only a checkbox ticked "on" counts; the server decides how many under the order's lock.
+  const notSent = form.get("notSent") === "on";
+  const outcome = await refundOrder(found.member.store.id, orderId, { amountMinor, reason, restock, notSent }, found.member.account.id);
   if (!outcome.ok) return failed(outcome.problem);
   if (amountMinor > 0 && form.get("notify") === "on") {
     await sendRefunded(found.member.store.id, orderId, outcome.refundId, amountMinor);
   }
+  const closed = outcome.closedUnits ?? 0;
+  if (closed > 0) {
+    await audit(found.member.account.id, found.member.store.id, FULFILMENT_AUDIT_ACTIONS.unsentClosed, { units: closed, refund: outcome.refundId || null }, { target: { type: "order", id: orderId } });
+  }
   refresh();
-  return done(amountMinor > 0 ? "Refunded." : "Put back in stock.");
+  const closedWords = closed > 0 ? ` ${closed} ${closed === 1 ? "unit was" : "units were"} taken off what is still to send.` : "";
+  return done(`${amountMinor > 0 ? "Refunded." : "Put back in stock."}${closedWords}`);
 }
 
 /** Cancels an order that is paid but not sent: full refund, stock back, customer told. */

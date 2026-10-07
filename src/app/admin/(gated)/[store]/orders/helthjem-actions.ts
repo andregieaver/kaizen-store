@@ -3,13 +3,15 @@
 import { refresh } from "next/cache";
 import { z } from "zod";
 
+import { parcelLinesInput } from "@/lib/parcel-input";
+
 import { NO_ACCESS, checkPermission } from "@/server/permissions";
 import { helthjemBook } from "@/server/helthjem-shipping";
 import { COPIED_ORDER_MESSAGE } from "@/server/order-admin";
 import { getOrder } from "@/server/orders";
 import { sendShipped } from "@/server/shopper-emails";
 
-const bookInput = z.object({ notify: z.boolean(), parcel: z.unknown() });
+const bookInput = z.object({ notify: z.boolean(), parcel: z.unknown(), /** What goes in this parcel (D174); none = everything still to send. */ lines: parcelLinesInput });
 
 /**
  * Books the delivery the customer chose with Helthjem (D138): a real booking marks the order as sent (and tells the
@@ -23,7 +25,7 @@ export async function helthjemBookAction(storeSlug: string, orderId: string, raw
   if (!order) return { ok: false, message: "This order no longer exists." };
   if (order.copied) return { ok: false, message: COPIED_ORDER_MESSAGE };
   const input = bookInput.safeParse(raw);
-  if (!input.success) return { ok: false, message: "Enter the parcel's weight." };
+  if (!input.success) return { ok: false, message: input.error.issues.some((i) => i.path[0] === "lines") ? "A number in the parcel is not a whole number of 0 or more." : "Enter the parcel's weight." };
   const booked = await helthjemBook(member.account.id, member.store.id, orderId, input.data);
   if (!booked.ok) return { ok: false, message: booked.problem };
   if (booked.test) {

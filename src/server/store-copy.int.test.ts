@@ -988,7 +988,7 @@ describe("a whole copy, run to the end", () => {
     // Nothing can be changed on one: a plain reason, and the database says no as well.
     expect(
       await orderAdmin.markSent(N, paid, { carrier: "posten", trackingNumber: "1", trackingUrl: null }, null),
-    ).toBeNull();
+    ).toEqual({ ok: false, reason: "copied" });
     expect(await orderAdmin.refundOrder(N, paid, { amountMinor: 0, reason: "x", restock: [] }, null)).toEqual({
       ok: false,
       problem: orderAdmin.COPIED_ORDER_MESSAGE,
