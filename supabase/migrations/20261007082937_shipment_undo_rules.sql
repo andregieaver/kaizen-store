@@ -201,6 +201,7 @@ END
 $patch$;
 --> statement-breakpoint
 
+-- (Anchored on a statement, never a comment: production's function copies keep no comments.)
 -- Anonymising an order replaces an undo reason (staff's own words, which can hold a name) with the marker, as it does a refund's reason.
 DO $patch$
 DECLARE
@@ -211,11 +212,10 @@ BEGIN
   IF position('undo_reason' IN v_def) > 0 THEN RETURN; END IF;
   v_new := replace(
     v_def,
-    E'  -- Free text staff typed: a refund''s reason',
-    E'  -- Why a parcel was undone (D174 follow-up): staff''s own words.\n'
-    || E'  UPDATE commerce.shipments SET undo_reason = ''[removed]''\n'
+    E'  UPDATE commerce.refunds r SET reason = ''[removed]''',
+    E'  UPDATE commerce.shipments SET undo_reason = ''[removed]''\n'
     || E'   WHERE store_id = p_store AND order_id = p_order AND undo_reason IS NOT NULL AND undo_reason <> ''[removed]'';\n'
-    || E'  -- Free text staff typed: a refund''s reason'
+    || E'  UPDATE commerce.refunds r SET reason = ''[removed]'''
   );
   IF v_new = v_def THEN RAISE EXCEPTION 'anonymise_order: the free-text step was not found, so an undo reason would be kept'; END IF;
   EXECUTE v_new;
