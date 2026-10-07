@@ -1,0 +1,1 @@
+CREATE INDEX "order_edit_lines_edit_idx" ON "commerce"."order_edit_lines" USING btree ("store_id","order_edit_id");

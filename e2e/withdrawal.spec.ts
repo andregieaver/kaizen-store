@@ -48,15 +48,18 @@ async function paidOrder(
       values (${store.id}, ${order.id}, 'stripe', ${key}, ${items.length * 20000}, 'NOK', 'captured')`;
     // Sent a day ago, every unit in the one parcel (D174: a parcel names its units), so a withdrawal has goods to send back
     // (a withdrawal before sending is its own case).
-    const [shipment] = await db`
-      insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at)
-      values (${store.id}, ${order.id}, 'Bring', ${`T-${n}`}, now() - interval '1 day')
-      returning id`;
-    for (const line of lines) {
-      await db`
-        insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
-        values (${store.id}, ${shipment.id}, ${line.id}, ${line.quantity})`;
-    }
+    // The shipment and its lines in one transaction, as markSent() writes them: the database refuses a parcel with no lines at commit.
+    await db.begin(async (tx) => {
+      const [shipment] = await tx`
+        insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at)
+        values (${store.id}, ${order.id}, 'Bring', ${`T-${n}`}, now() - interval '1 day')
+        returning id`;
+      for (const line of lines) {
+        await tx`
+          insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
+          values (${store.id}, ${shipment.id}, ${line.id}, ${line.quantity})`;
+      }
+    });
     return { orderId: order.id, number, email, key };
   } finally {
     await db.end();

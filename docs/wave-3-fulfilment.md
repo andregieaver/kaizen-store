@@ -326,9 +326,11 @@ refund_id) where refund_id is not null`, `(created_by)`. Append-only; RLS on wit
 
 1. **Shipment lines.** A line belongs to a physical line of the **same order and store** as its shipment; `Σ shipment_lines.quantity` per order line ≤ the line's `quantity` (checked
    under a `FOR NO KEY UPDATE` lock of the order line); rows are **append-only** (no update, no delete); a copied order refuses them (`refuse_copied_order()`). **A non-legacy shipment
-   must have at least one line**: in this run that is held by `markSent()` (the only inserter, a scan test) and by a database check that is **not** in this run's migrations (the old code,
-   which records a shipment without lines, runs against the new schema until the deploy ends, and CLAUDE.md requires it to keep working): the lead adds the deferred constraint trigger
-   on `shipments` in a follow-up migration pushed after the deploy (9.1), with its PGlite test written now and skipped until then.
+   must have at least one line**: held by `markSent()` (the only inserter, a scan test) and by a database check that was **not** in this run's migrations (the old code,
+   which records a shipment without lines, ran against the new schema until the deploy ended, and CLAUDE.md requires it to keep working): the deferred constraint trigger
+   `shipments_have_lines` (`commerce.shipment_has_lines()`, raising `shipment.no_lines` at commit for a shipment that is still not legacy and has no `shipment_lines` row) is in the
+   follow-up migration `20261007070948_shipment_lines_required_rule.sql`, pushed after the deploy (9.1), with its PGlite tests un-skipped. That migration first marks legacy any shipment
+   the old code recorded during the deploy window (not legacy, no lines) and back-fills its order's lines as point 2 does, for orders with no parcel lines at all.
 2. **Legacy back-fill.** The rules migration sets `shipments.legacy = true` for every existing row and inserts, for every order with shipments, one `shipment_lines` row per physical line of
    the order **in its first shipment** with the line's full quantity (so "shipped units" has one reading everywhere; the later legacy parcels of such an order have no lines and are allowed
    because they are legacy). It is a single `INSERT … SELECT` in the migration, not a function.
@@ -408,7 +410,9 @@ data). An awaiting edit's token hash and `expires_at` are cleared when it ends. 
 2. `{ts}_fulfilment_rules.sql` (custom: 3.3 points 1 to 10, the back-fill, the check widenings, the patches).
 3. `{ts}_fulfilment_plan_features.sql` (the analytics-and-ai area's: three plan-comparison rows).
 
-4. **After the deploy, by the lead**: `{ts}_shipment_lines_required.sql` (the deferred "a shipment has lines" check, 3.3 point 1, 9.1).
+4. **After the deploy, by the lead**: `20261007070937_shipment_lines_required.sql` (generated: the index `order_edit_lines_edit_idx` covering the foreign key
+   `order_edit_lines_edit_fk`, which the performance advisor flagged) and `20261007070948_shipment_lines_required_rule.sql` (custom: the deferred "a shipment has lines" check,
+   3.3 point 1, 9.1).
 5. `20261007041952_unsent_closures.sql` (generated: the `unsent_closures` table of 3.2) and `20261007042008_fulfilment_unsent_closures.sql` (custom: 3.3 point 11), added by
    the review fix of 3.16, pushed with the rest of this run (they only add).
 
@@ -467,7 +471,7 @@ Deviations and additions, each changing the text above:
 8. **Pure libraries**: `priceOrderEdit()` gives the whole order to the injected tax decision (kept lines at their kept totals, added lines, the shipping after), so a change cannot turn a
    standard order into IOSS by looking at the added goods alone; `money` is `charge`/`refund`/`none` and `mustNotify` is true for a higher total or anything taken off. `editBlock()`
    reads `fulfilled` or any parcel as `sent`; `moneyBlock()` is separate (`payments_off`, `test_mode` only matter when money moves through Stripe).
-9. **Not done here**: the "a non-legacy shipment has lines" deferred trigger (the follow-up migration of 9.1; its PGlite test is written and skipped); `store_checkup`'s count of edit refunds
+9. **Not done here**: the "a non-legacy shipment has lines" deferred trigger (the follow-up migration of 9.1, since added as `20261007070948_shipment_lines_required_rule.sql`); `store_checkup`'s count of edit refunds
    (server code, `src/server/invoices.ts`); the `OrderDocumentView` words for `settled_by_order`, `reason.kind = 'order_edit'` and `invoiceKind = 'order_edit'` (the words exist in
    `editDocumentText()`; drawing them is the view's area).
 
@@ -1010,9 +1014,11 @@ advice. **The edit rows stay partial until a person has read items 1 to 6.**
 
 Three files (3.8) in this run and one follow-up after its deploy, additive, each run in one transaction by CI (`docs/ci-migrations.md`) after the checks pass; none is applied by hand first. Old code keeps working until the deploy
 ends: every new column is nullable or has a default; `markSent()` of the old code inserts a shipment without lines, so **the "a shipment has lines" check is a fourth, follow-up migration**
-(`{ts}_shipment_lines_required.sql`, the deferred constraint trigger of 3.3 point 1) that the lead pushes **after** this run's deploy has finished, together with un-skipping its PGlite test;
+(the deferred constraint trigger of 3.3 point 1) that the lead pushes **after** this run's deploy has finished, together with un-skipping its PGlite test;
 a shipment the old code recorded during the deploy window has no lines and is marked `legacy` by that follow-up migration first (`update … set legacy = true where not legacy and not exists
-(lines)`, and its back-fill as in 3.3 point 2). The settled-order guard of 3.3 point 5 is safe in the window (the old code writes no settled line; check that `updateOrderContact()` and
+(lines)`, and its back-fill as in 3.3 point 2). **Done**: the rule is in migration `20261007070948_shipment_lines_required_rule.sql` (after `20261007070937_shipment_lines_required.sql`,
+the generated index `order_edit_lines_edit_idx` the performance advisor asked for); the PGlite tests in `src/db/fulfilment.test.ts` hold it, and every fixture that writes a shipment
+writes its lines in the same transaction or marks it `legacy`. The settled-order guard of 3.3 point 5 is safe in the window (the old code writes no settled line; check that `updateOrderContact()` and
 `cancelOrder()` touch no guarded column). The `invoices_order_key` swap (drop the unique constraint, create the partial unique index) and the
 check widenings (`invoices_kind`, `credit_notes_source`, `inventory_movements_source`) are plain DDL with short locks; run in a quiet hour. Stamps sort after
 `20261006185225_orders_ops_fix_rules.sql`; rename before applying, never after.

@@ -177,7 +177,16 @@ describe("shipping an order with Posten / Bring", () => {
 
   it("only gives a label to the store's own shipments of Bring", async () => {
     const orderId = await paidOrder();
-    const other = await db().execute<Row>(sql`insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values (${storeId}::uuid, ${orderId}::uuid, 'DHL', '1') returning id`);
-    expect(await bringLabel(storeId, orderId, String(other[0].id))).toBeNull();
+    // A parcel of another carrier as markSent() writes it: the shipment and its lines in one transaction (D174).
+    const other = await db().transaction(async (t) => {
+      const [shipment] = await t.execute<Row>(sql`insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values (${storeId}::uuid, ${orderId}::uuid, 'DHL', '1') returning id`);
+      await t.execute(sql`
+        insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
+        select store_id, ${String(shipment.id)}::uuid, id, quantity from commerce.order_lines
+         where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and delivery = 'physical' and variant_id is not null
+      `);
+      return String(shipment.id);
+    });
+    expect(await bringLabel(storeId, orderId, other)).toBeNull();
   });
 });

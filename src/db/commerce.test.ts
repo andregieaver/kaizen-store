@@ -5066,7 +5066,16 @@ describe("duplicating a store (D129)", () => {
         "insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status) values ($1, $2, 'stripe', 'pi_1', 2390, 'EUR', 'captured')",
         [src, orderIds.paid],
       );
-      await db.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values ($1, $2, 'DHL', '123')", [src, orderIds.fulfilled]);
+      // A parcel as markSent() writes it: the shipment and its lines in one transaction (D174).
+      await db.transaction(async (tx) => {
+        const shipment = (
+          await tx.query<{ id: string }>("insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values ($1, $2, 'DHL', '123') returning id", [src, orderIds.fulfilled])
+        ).rows[0].id;
+        await tx.query(
+          "insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity) select store_id, $2, id, quantity from commerce.order_lines where order_id = $3 and store_id = $1",
+          [src, shipment, orderIds.fulfilled],
+        );
+      });
       await db.query("insert into commerce.order_events (store_id, order_id, type, data, actor) values ($1, $2, 'order.paid', '{}', 'system')", [src, orderIds.paid]);
       await db.query(
         "insert into commerce.field_values (store_id, entity, entity_id, locale, values) values ($1, 'order', $2, '', '{\"f_note0000001\":\"gift wrap\"}')",

@@ -357,9 +357,16 @@ beforeAll(async () => {
     insert into commerce.payments (store_id, order_id, provider, provider_reference, amount_minor, currency, status)
     values (${S}::uuid, ${ids.paid}::uuid, 'stripe', 'pi_1', 2390, 'EUR', 'captured')
   `);
-  await db().execute(
-    sql`insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values (${S}::uuid, ${ids.fulfilled}::uuid, 'DHL', '123')`,
-  );
+  // A parcel as markSent() writes it: the shipment and its lines in one transaction (D174).
+  await db().transaction(async (t) => {
+    const [shipment] = await t.execute<Row>(
+      sql`insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values (${S}::uuid, ${ids.fulfilled}::uuid, 'DHL', '123') returning id`,
+    );
+    await t.execute(sql`
+      insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
+      select store_id, ${String(shipment.id)}::uuid, id, quantity from commerce.order_lines where store_id = ${S}::uuid and order_id = ${ids.fulfilled}::uuid
+    `);
+  });
   await db().execute(sql`
     insert into commerce.subscriptions (store_id, number, market_code, currency, locale, interval, interval_count, subtotal_minor, total_minor, tax_minor, first_order_id, manage_token, customer_id)
     values (${S}::uuid, 'SUB-1', 'DE', 'EUR', 'de-DE', 'month', 1, 1000, 1000, 160, ${ids.paid}::uuid, ${`tok-${run}`}, ${ids.customerVip}::uuid)

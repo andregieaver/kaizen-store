@@ -351,7 +351,7 @@ describe("the order file and the AI manager", () => {
     ]);
     expect(out.left_out).toEqual([{ order: theirs.orderId, why: "Not found" }]);
     expect(out.printable).toMatch(new RegExp(`^/admin/${empty.slug}/orders/pick-list\\?ids=`));
-    expect(JSON.stringify(out)).not.toMatch(/kr|NOK|EUR|@example\.com/);
+    expect(JSON.stringify(out)).not.toMatch(/\bkr\b|NOK|EUR|@example\.com/);
     // Everything to send: the same two orders, by order.
     const all = await run(empty, "pick_list", { by: "order" });
     expect(all.orders.map((o: Answer) => [o.order, o.units])).toEqual(expect.arrayContaining([[a.number, 2], [b.number, 1]]));

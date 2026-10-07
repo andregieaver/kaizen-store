@@ -96,7 +96,17 @@ export async function buildSubject(fx: Fixture, label = "subject", opts: { email
   // Planted in columns the file leaves out.
   await db().execute(sql`update commerce.payments set client_secret = ${SECRETS.clientSecret}, provider_account = ${SECRETS.providerAccount} where order_id = ${signedInOrder.orderId}::uuid`);
   await db().execute(sql`update commerce.order_lines set unit_cost_minor = 777 where order_id = ${signedInOrder.orderId}::uuid`);
-  await db().execute(sql`insert into commerce.shipments (store_id, order_id, carrier, tracking_number, tracking_url) values (${s}::uuid, ${signedInOrder.orderId}::uuid, 'Bring', 'TRACK-1g', 'https://track.example/1g')`);
+  // A parcel as markSent() writes it: the shipment and its lines in one transaction (D174).
+  await db().transaction(async (t) => {
+    const [shipment] = await t.execute<Row>(
+      sql`insert into commerce.shipments (store_id, order_id, carrier, tracking_number, tracking_url) values (${s}::uuid, ${signedInOrder.orderId}::uuid, 'Bring', 'TRACK-1g', 'https://track.example/1g') returning id`,
+    );
+    await t.execute(sql`
+      insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
+      select store_id, ${String(shipment.id)}::uuid, id, quantity from commerce.order_lines
+       where store_id = ${s}::uuid and order_id = ${signedInOrder.orderId}::uuid and delivery = 'physical' and variant_id is not null
+    `);
+  });
   const [file] = await db().execute<Row>(sql`select id from commerce.product_files where store_id = ${s}::uuid limit 1`);
   if (file) await db().execute(sql`insert into commerce.order_downloads (store_id, order_id, file_id, token, expires_at) values (${s}::uuid, ${signedInOrder.orderId}::uuid, ${String(file.id)}::uuid, ${`${SECRETS.downloadToken}-${unique("d")}`}, now() + interval '30 days')`);
 

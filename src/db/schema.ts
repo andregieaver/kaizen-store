@@ -8917,6 +8917,7 @@ export const orderEditLines = commerce.table(
       foreignColumns: [orderEdits.storeId, orderEdits.id],
     }).onDelete("restrict"),
     variantRef("order_edit_lines_variant_fk", t),
+    index("order_edit_lines_edit_idx").on(t.storeId, t.orderEditId),
     index("order_edit_lines_variant_idx").on(t.storeId, t.variantId),
     index("order_edit_lines_order_line_idx")
       .on(t.storeId, t.orderLineId)

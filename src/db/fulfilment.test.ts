@@ -153,11 +153,45 @@ describe("parcels name their lines (3.3 point 1)", () => {
     expect(await scalar<number>("select sum(quantity)::int from commerce.shipment_lines where order_line_id = $1", [a])).toBe(2);
   });
 
-  it.skip("refuses, at commit, a parcel that is not legacy and names no line (the follow-up migration after the deploy, 9.1)", async () => {
+  it("refuses, at commit, a parcel that is not legacy and names no line (the follow-up migration after the deploy, 9.1)", async () => {
     const o = await paid();
     await expect(db.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values ($1, $2, 'posten', 'X')", [store, o.id])).rejects.toThrow(
       /shipment\.no_lines/,
     );
+    await expect(ship(o.id, [])).rejects.toThrow(/shipment\.no_lines/);
+    expect(await scalar<number>("select count(*)::int from commerce.shipments where order_id = $1", [o.id])).toBe(0);
+  });
+
+  it("takes a parcel and its lines written in one transaction, as markSent() writes them, and a legacy parcel with no lines", async () => {
+    const o = await paid();
+    const shipment = await ship(o.id, [[o.lineIds[0], 1], [o.lineIds[1], 1]]);
+    expect(await scalar<number>("select count(*)::int from commerce.shipment_lines where shipment_id = $1", [shipment])).toBe(2);
+    expect(await stateBoth(o.id)).toEqual(["partly_sent", "partly_sent"]);
+    const old = await paid();
+    const legacy = await ship(old.id, [], store, true);
+    expect(await scalar<boolean>("select legacy from commerce.shipments where id = $1", [legacy])).toBe(true);
+    expect(await scalar("select commerce.line_to_send($1)", [old.lineIds[0]])).toBe(0);
+  });
+
+  it("marks a parcel the old code recorded during the deploy legacy and back-fills its order's lines, by the follow-up migration's own statements", async () => {
+    const o = await paid({ lines: [{ sku: "A", quantity: 2, unit: 1000 }, { sku: "DL", unit: 500, delivery: "digital" }] });
+    const sent = await paid();
+    const file = readdirSync(path.join(process.cwd(), "supabase", "migrations")).find((f) => f.endsWith("_shipment_lines_required_rule.sql"))!;
+    const text = readFileSync(path.join(process.cwd(), "supabase", "migrations", file), "utf8");
+    const statements = text.slice(text.indexOf("UPDATE commerce.shipments"), text.indexOf("CREATE FUNCTION"));
+    // Written before the rule existed (so, here, in the transaction that runs the migration's statements, which leave it legacy before commit).
+    await db.transaction(async (tx) => {
+      await tx.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values ($1, $2, 'posten', 'WINDOW')", [store, o.id]);
+      await tx.exec(statements.replaceAll("--> statement-breakpoint", ""));
+    });
+    expect(await rows("select order_line_id, quantity from commerce.shipment_lines where order_line_id = any($1)", [o.lineIds])).toEqual([{ order_line_id: o.lineIds[0], quantity: 2 }]);
+    expect(await scalar("select bool_and(legacy) from commerce.shipments where order_id = $1", [o.id])).toBe(true);
+    expect(await scalar("select commerce.order_fulfilment($1)", [o.id])).toBe("sent");
+    // A parcel made since names its lines and is left as it is; running the statements again writes nothing more.
+    const parcel = await ship(sent.id, [[sent.lineIds[0], 1]]);
+    await db.exec(statements.replaceAll("--> statement-breakpoint", ""));
+    expect(await scalar<boolean>("select legacy from commerce.shipments where id = $1", [parcel])).toBe(false);
+    expect(await scalar<number>("select count(*)::int from commerce.shipment_lines where order_line_id = any($1)", [[...o.lineIds, ...sent.lineIds]])).toBe(2);
   });
 
   it("refuses a parcel for a copied order (D129)", async () => {
@@ -169,14 +203,17 @@ describe("parcels name their lines (3.3 point 1)", () => {
 describe("the parcels from before parcels named their lines (3.3 point 2)", () => {
   it("marks them legacy and writes the order's physical lines into its first parcel, by the migration's own statements", async () => {
     const o = await paid({ lines: [{ sku: "A", quantity: 2, unit: 1000 }, { sku: "DL", unit: 500, delivery: "digital" }, { sku: "B", unit: 700 }] });
-    // Two parcels as the old markSent() wrote them: no lines, not legacy.
-    await db.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at) values ($1, $2, 'posten', 'OLD1', now() - interval '2 days')", [store, o.id]);
-    await db.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at) values ($1, $2, 'posten', 'OLD2', now() - interval '1 day')", [store, o.id]);
     const file = readdirSync(path.join(process.cwd(), "supabase", "migrations")).find((f) => f.endsWith("_fulfilment_rules.sql"))!;
     const text = readFileSync(path.join(process.cwd(), "supabase", "migrations", file), "utf8");
     const update = text.match(/UPDATE commerce\.shipments SET legacy = true WHERE NOT legacy;/)![0];
     const insert = text.match(/INSERT INTO commerce\.shipment_lines[\s\S]*?;\n/)![0];
-    await db.exec(update + "\n" + insert);
+    // Two parcels as the old markSent() wrote them: no lines, not legacy. The migration ran before the rule that a parcel names its lines
+    // (`shipments_have_lines`, checked at commit), so they are written and back-filled in one transaction: at commit they are legacy, as the migration left them.
+    await db.transaction(async (tx) => {
+      await tx.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at) values ($1, $2, 'posten', 'OLD1', now() - interval '2 days')", [store, o.id]);
+      await tx.query("insert into commerce.shipments (store_id, order_id, carrier, tracking_number, created_at) values ($1, $2, 'posten', 'OLD2', now() - interval '1 day')", [store, o.id]);
+      await tx.exec(update + "\n" + insert);
+    });
     const lines = await rows<any>(
       "select s.tracking_number, sl.order_line_id, sl.quantity from commerce.shipment_lines sl join commerce.shipments s on s.id = sl.shipment_id where s.order_id = $1 order by sl.quantity desc",
       [o.id],

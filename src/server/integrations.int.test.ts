@@ -67,8 +67,9 @@ async function order(number: string): Promise<string> {
     returning id
   `);
   await db().execute(sql`
-    insert into commerce.order_lines (store_id, order_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code)
-    values (${storeId}::uuid, ${String(row.id)}::uuid, 'DEMO-TOTE', 'Handlenett', 2, 19900, 39800, 7960, 0.25, 'txcd_99999999')
+    insert into commerce.order_lines (store_id, order_id, variant_id, sku, title, quantity, unit_price_minor, total_minor, tax_minor, tax_rate, tax_code)
+    values (${storeId}::uuid, ${String(row.id)}::uuid, (select v.id from commerce.product_variants v where v.store_id = ${storeId}::uuid and v.sku = 'DEMO-TOTE'),
+      'DEMO-TOTE', 'Handlenett', 2, 19900, 39800, 7960, 0.25, 'txcd_99999999')
   `);
   return String(row.id);
 }
@@ -101,9 +102,16 @@ describe("events (D41)", () => {
     const orderId = await order(`I1-${run}`);
     expect(await pending()).toEqual([]); // waiting for payment is no event
     await db().execute(sql`update commerce.orders set status = 'paid' where id = ${orderId}::uuid`);
-    await db().execute(sql`
-      insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values (${storeId}::uuid, ${orderId}::uuid, 'Posten', 'TRACK1')
-    `);
+    // A parcel as markSent() writes it: the shipment and its lines in one transaction (D174).
+    await db().transaction(async (t) => {
+      const [shipment] = await t.execute<Row>(sql`
+        insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values (${storeId}::uuid, ${orderId}::uuid, 'Posten', 'TRACK1') returning id
+      `);
+      await t.execute(sql`
+        insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
+        select store_id, ${String(shipment.id)}::uuid, id, quantity from commerce.order_lines where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid
+      `);
+    });
     await db().execute(sql`insert into commerce.customers (store_id, email, name) values (${storeId}::uuid, ${`ola-${run}@example.com`}, 'Ola')`);
     // Cancelled is not asked for.
     await db().execute(sql`update commerce.orders set status = 'cancelled' where id = ${orderId}::uuid`);

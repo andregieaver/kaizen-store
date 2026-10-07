@@ -2010,6 +2010,20 @@
       "when": 1791346808939,
       "tag": "20261007042008_fulfilment_unsent_closures",
       "breakpoints": true
+    },
+    {
+      "idx": 287,
+      "version": "7",
+      "when": 1791356977964,
+      "tag": "20261007070937_shipment_lines_required",
+      "breakpoints": true
+    },
+    {
+      "idx": 288,
+      "version": "7",
+      "when": 1791356988091,
+      "tag": "20261007070948_shipment_lines_required_rule",
+      "breakpoints": true
     }
   ]
 }
