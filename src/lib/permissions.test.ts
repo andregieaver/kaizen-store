@@ -161,7 +161,9 @@ describe("the key a page needs", () => {
 
   it("is the owner key for a page marked owner-only", () => {
     const ownerOnly = ADMIN_PAGES.filter((p) => p.area === "store" && p.needs === "owner");
-    expect(ownerOnly.map((p) => p.id)).toEqual(expect.arrayContaining(["assistant", "returns.settings", "payments", "analytics.settings", "features", "billing", "staff"]));
+    expect(ownerOnly.map((p) => p.id)).toEqual(expect.arrayContaining(["assistant", "returns.settings", "payments", "analytics.settings", "billing", "staff"]));
+    // Features (D178) is read with the settings; switching is the owner's (the action asks for it).
+    expect(permissionOfPath("/settings/features")).toBe("settings:read");
     for (const page of ownerOnly) expect([page.id, permissionOfPath(page.path)]).toEqual([page.id, "owner"]);
     expect(permissionOfPath("/assistant")).toBe("owner");
     expect(permissionOfPath("/settings/payments")).toBe("owner");

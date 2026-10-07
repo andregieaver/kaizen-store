@@ -150,6 +150,8 @@ beforeAll(async () => {
     select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Test', null) as id
   `);
   storeId = String(store.id);
+  // A new store starts with the shop alone (D178): these tests book its demo appointment, stay and rental.
+  await db().execute(sql`update commerce.stores set features = features || array['appointments', 'bookings'] where id = ${storeId}::uuid`);
   await db().execute(sql`
     insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due)
     values (${storeId}::uuid, 'test', ${`acct_kinds${run}`}, 'active', false)

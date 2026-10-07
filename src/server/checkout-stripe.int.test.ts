@@ -82,6 +82,8 @@ beforeAll(async () => {
     select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Test', null) as id
   `);
   storeId = String(store.id);
+  // A new store starts with the shop alone (D178): these tests book its demo appointment, stay and rental.
+  await db().execute(sql`update commerce.stores set features = features || array['appointments', 'bookings'] where id = ${storeId}::uuid`);
   await db().execute(sql`
     update commerce.stores set legal_name = 'Test AS', organisation_number = '999999999' where id = ${storeId}::uuid
   `);

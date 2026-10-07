@@ -2080,6 +2080,20 @@
       "when": 1791378373717,
       "tag": "20261007130613_starter_design_lifecycle_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 297,
+      "version": "7",
+      "when": 1791389962055,
+      "tag": "20261007161922_store_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 298,
+      "version": "7",
+      "when": 1791389973478,
+      "tag": "20261007161933_store_features_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -4,11 +4,12 @@ import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
 import { ROLE_TEMPLATES, canOpenPath, type PermissionHolder } from "./permissions";
+import { FEATURE_IDS, type FeatureRequirement } from "./store-features";
 import { HOME_PATHS, STORE_SECTIONS, sectionOf, sectionPaths, storeAreas, storeSections, storeTabs } from "./store-nav";
 
 const ROOT = "src/app/admin/(gated)/[store]";
-const ALL = { bookingsOn: true, deliveriesOn: true };
-const NONE = { bookingsOn: false, deliveriesOn: false };
+const ALL = { features: [...FEATURE_IDS] };
+const NONE = { features: ["shop"] };
 /** Folders that are not a section's page: the layout's own, and routes with no page of their own. */
 const SKIPPED = new Set(["setup", "assistant"]);
 
@@ -72,12 +73,40 @@ describe("the store admin's sections (D147)", () => {
   it("offers bookings and subscription boxes only to stores that have them on", () => {
     const off = storeTabs("/admin/s", NONE).map((t) => t.label);
     expect(off).not.toContain("Bookings");
-    const labels = (flags: typeof ALL) => storeSections(flags).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.label)));
+    const labels = (flags: { features: string[] }) => storeSections(flags).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.label)));
     expect(labels(NONE)).not.toContain("Subscription boxes");
     expect(labels(NONE)).not.toContain("Calendar");
-    expect(labels({ ...NONE, deliveriesOn: true })).toContain("Subscription boxes");
-    expect(labels({ ...NONE, bookingsOn: true })).toContain("Calendar");
+    expect(labels({ features: ["shop", "boxes"] })).toContain("Subscription boxes");
+    expect(labels({ features: ["shop", "appointments"] })).toEqual(expect.arrayContaining(["Calendar", "Staff and hours"]));
+    expect(labels({ features: ["shop", "appointments"] })).not.toContain("Rooms and items");
+    expect(labels({ features: ["shop", "bookings"] })).toEqual(expect.arrayContaining(["Calendar", "Rooms and items", "Stays and rentals", "Hosts"]));
+    expect(labels({ features: ["shop", "bookings"] })).not.toContain("Staff and hours");
     expect(storeAreas("/admin/s", NONE)).toHaveLength(storeSections(NONE).length + 1);
+  });
+
+  it("hides what stands behind a feature that is off, its own switch kept while the shop is off (D178)", () => {
+    const labels = (features: string[]) => storeSections({ features }).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)));
+    const gated = ["/subscriptions", "/analytics/subscriptions", "/bonus", "/affiliates", "/companies", "/deliveries", "/hosts", "/bookings"];
+    for (const path of gated) expect(labels(["shop"]), path).not.toContain(path);
+    for (const path of gated) expect(labels([...FEATURE_IDS]), path).toContain(path);
+    // Kept on, but the shop is off: hidden; the referral program needs the bonus program as well.
+    expect(labels(FEATURE_IDS.filter((id) => id !== "shop"))).not.toContain("/bonus");
+    expect(labels(["shop", "referrals"])).not.toContain("/affiliates");
+    expect(labels(["shop", "bonus", "referrals"])).toContain("/affiliates");
+    // The sections themselves stay whole for the permissions and the admin map.
+    expect(sectionOf("/bonus")?.key).toBe("marketing");
+    expect(STORE_SECTIONS.find((s) => s.key === "bookings")).toBeDefined();
+  });
+
+  it("tags each page behind a feature as the admin map does", () => {
+    const key = (f: FeatureRequirement | undefined) => (f === undefined ? "" : typeof f === "string" ? f : [...f].sort().join("|"));
+    const pages = new Map(ADMIN_PAGES.filter((p) => p.area === "store").map((p) => [p.path, p]));
+    for (const section of STORE_SECTIONS) {
+      for (const item of section.groups.flatMap((g) => g.items)) {
+        const page = pages.get(item.path)!;
+        expect(key(page.feature), item.path).toBe(key(item.feature ?? section.feature));
+      }
+    }
   });
 
   it("puts returns with the orders and their rules with the selling settings (D153)", () => {
@@ -128,7 +157,9 @@ describe("what a member's navigation offers (wave 1, 1f)", () => {
 
   it("offers a default admin everything but the owner's pages: the team, the plan, legal pages, accessibility and the like", () => {
     const hidden = everything.filter((p) => !paths(admin).includes(p));
-    expect(hidden).toEqual(expect.arrayContaining(["/billing", "/staff", "/settings/legal", "/settings/accessibility", "/settings/payments", "/settings/features", "/settings/returns"]));
+    expect(hidden).toEqual(expect.arrayContaining(["/billing", "/staff", "/settings/legal", "/settings/accessibility", "/settings/payments", "/settings/returns"]));
+    // Features (D178) is read by every member who may read the settings; only owners switch.
+    expect(paths(admin)).toContain("/settings/features");
     // The activity log is every member's.
     expect(paths(admin)).toContain("/activity");
     expect(hidden).not.toContain("/orders");

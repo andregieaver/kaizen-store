@@ -18,6 +18,8 @@ import { draftApprovalDetails } from "./order-ops-tools";
 import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import type { Store } from "./stores";
 import { mayUseTool } from "@/lib/owner-tool-permissions";
+import { effectiveFeatures } from "@/lib/store-features";
+import { toolOffered } from "@/lib/owner-tool-features";
 import { can, canOpenPath, type PermissionHolder } from "@/lib/permissions";
 
 type Row = Record<string, unknown>;
@@ -215,8 +217,7 @@ export function siteFlags(p: Principal): SiteFlags {
   if (!p.store) return {};
   const holder = holderOfPrincipal(p);
   return {
-    bookings: p.store.bookingsOn,
-    deliveries: p.store.deliveriesOn,
+    features: effectiveFeatures(p.store),
     work: p.store.workOn,
     owner: holder ? can(holder, "owner") : false,
     // Only the pages their role can open are offered (a store's pages by their place in the navigation; the account's own are everyone's).
@@ -438,7 +439,8 @@ export async function runTurn(input: TurnInput): Promise<void> {
   };
   // The tools a role may use are the ones offered: the model never sees a tool its person's role could not run.
   const holder = holderOfPrincipal(p);
-  const storeTools = holder ? OWNER_TOOLS.filter((t) => mayUseTool(holder, t.name)) : OWNER_TOOLS;
+  // And only the tools of the store's features that are on (D178): a feature switched off takes its tools with it.
+  const storeTools = OWNER_TOOLS.filter((t) => (!holder || mayUseTool(holder, t.name)) && (!store || toolOffered(store, t.name)));
   const tools = [...(store ? storeTools : PLATFORM_TOOLS).map(toolDefinition), ...MANAGER_TOOLS.map(toolDefinition), ...(withLife ? [ASK_KAIZEN_LIFE] : [])];
   const messages: ToolChatMessage[] = [
     {

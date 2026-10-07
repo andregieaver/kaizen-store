@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { requirePermission } from "@/server/permissions";
 import { listResources, type BookingResource } from "@/server/bookings";
 
@@ -8,7 +9,10 @@ export const metadata: Metadata = { title: "Rooms and rental items" };
 
 /** What is booked by the night or the day (D67): rooms and homes for stays, items for rentals. */
 export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bookings/units">) {
-  const { store } = await requirePermission((await params).store, "bookings:read");
+  const current = await requirePermission((await params).store, "bookings:read");
+  const off = requireFeature(current, "bookings");
+  if (off) return off;
+  const { store } = current;
   const all = await listResources(store.id, ["unit", "item"]);
   const base = `/admin/${store.slug}/bookings/units`;
   const button = "min-h-10 rounded-md border border-border px-4 py-2 text-sm font-medium";
@@ -46,15 +50,6 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
           What shoppers book for nights or days. Choose which ones each stay or rental offers in the product.
         </p>
       </div>
-      {!store.bookingsOn && (
-        <p className="rounded-md border border-border p-3 text-sm">
-          Bookings are switched off.{" "}
-          <Link href={`/admin/${store.slug}/settings/features`} className="underline">
-            Switch them on under Features
-          </Link>{" "}
-          to take bookings.
-        </p>
-      )}
       <section aria-labelledby="units-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="units-heading" className="font-medium">

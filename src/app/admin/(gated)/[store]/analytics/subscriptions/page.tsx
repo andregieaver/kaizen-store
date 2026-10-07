@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { SubscriptionsView } from "@/components/admin/analytics/subscriptions-view";
@@ -17,6 +18,8 @@ export const metadata: Metadata = { title: "Subscription analytics" };
 export default async function AnalyticsSubscriptionsPage({ params, searchParams }: PageProps<"/admin/[store]/analytics/subscriptions">) {
   const query = await searchParams;
   const ctx = await analyticsContext((await params).store, query);
+  const off = requireFeature(ctx, "subscriptions");
+  if (off) return off;
   const { store, now } = ctx;
 
   const report = await subscriptionsReport(store, ctx.params.period, now);

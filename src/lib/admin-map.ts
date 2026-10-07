@@ -5,12 +5,13 @@
  * page goes here too.
  */
 
+import { requirementMet, type FeatureId, type FeatureRequirement } from "./store-features";
 import { sectionOf } from "./store-nav";
 
 export type AdminArea = "store" | "platform" | "account";
 
-/** What must be on for a page to be offered. */
-export type PageNeeds = "bookings" | "deliveries" | "work" | "owner";
+/** What must be on for a page to be offered besides a store feature: Work (a module), or being an owner. */
+export type PageNeeds = "work" | "owner";
 
 export type AdminPage = {
   /** Stable id the AI opens pages by: `orders`, `order`, `product.new`. */
@@ -28,6 +29,8 @@ export type AdminPage = {
   /** Other words people use for it. */
   keywords?: string[];
   needs?: PageNeeds;
+  /** The store feature (D178) it stands behind, one or several of which any is enough; its navigation item says the same (a test holds them). */
+  feature?: FeatureRequirement;
 };
 
 const store = (id: string, path: string, title: string, group: string, what: string, extra: Partial<AdminPage> = {}): AdminPage => ({
@@ -153,11 +156,9 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["invoice", "faktura", "credit note", "kreditnota", "kreditfaktura", "receipt", "pdf", "accountant", "bookkeeper", "vat invoice", "invoice number", "waiting for an invoice"],
   }),
   store("subscriptions", "/subscriptions", "Subscriptions", "Main", "Shoppers' subscriptions to products bought on a schedule.", {
-    keywords: ["recurring", "renewals"],
-  }),
+    keywords: ["recurring", "renewals"], feature: "subscriptions" }),
   store("subscription", "/subscriptions/[subscriptionId]", "Subscription", "Main", "One subscription: what it holds, its renewals, and pausing, skipping, changing or cancelling it.", {
-    tasks: ["Pause or skip", "Change contents", "Cancel now or at period end"],
-  }),
+    tasks: ["Pause or skip", "Change contents", "Cancel now or at period end"], feature: "subscriptions" }),
   store("products", "/products", "Products", "Main", "Every product with its status, price and stock, and the products that still need their content for the price per kg or litre (unit price).", {
     tasks: ["Find a product", "Add a product", "Archive products", "Find products that need content for the unit price"],
     keywords: ["catalogue", "items", "inventory", "stock", "unit price", "price per kg", "price per litre", "enhetspris"],
@@ -331,22 +332,22 @@ const PAGES: readonly AdminPage[] = [
 
   // Store: bookings ----------------------------------------------------------------------
   store("bookings", "/bookings", "Calendar", "Bookings", "The week's appointments, and cancelling or marking no-shows.", {
-    needs: "bookings",
+    feature: ["appointments", "bookings"],
     keywords: ["appointments", "calendar", "schedule"],
   }),
-  store("bookings.staff", "/bookings/staff", "Staff and hours", "Bookings", "The people shoppers book, with their opening hours.", { needs: "bookings" }),
-  store("bookings.staff.new", "/bookings/staff/new", "New staff member", "Bookings", "Adds a person who can be booked.", { needs: "bookings" }),
-  store("bookings.staff.one", "/bookings/staff/[staffId]", "Staff member", "Bookings", "One bookable person: hours, services and blocks.", { needs: "bookings" }),
+  store("bookings.staff", "/bookings/staff", "Staff and hours", "Bookings", "The people shoppers book, with their opening hours.", { feature: "appointments" }),
+  store("bookings.staff.new", "/bookings/staff/new", "New staff member", "Bookings", "Adds a person who can be booked.", { feature: "appointments" }),
+  store("bookings.staff.one", "/bookings/staff/[staffId]", "Staff member", "Bookings", "One bookable person: hours, services and blocks.", { feature: "appointments" }),
   store("bookings.stays", "/bookings/stays", "Stays and rentals", "Bookings", "Two weeks of rooms and items booked, and cancelling stays or rentals.", {
-    needs: "bookings",
+    feature: "bookings",
     keywords: ["rooms", "rentals", "occupancy"],
   }),
-  store("bookings.units", "/bookings/units", "Rooms and items", "Bookings", "Rooms, homes and items for stays and rentals, with their calendars.", { needs: "bookings" }),
-  store("bookings.units.new", "/bookings/units/new", "New room or item", "Bookings", "Adds a room, home or item.", { needs: "bookings" }),
-  store("bookings.unit", "/bookings/units/[unitId]", "Room or item", "Bookings", "One room or item: capacity, blocks, calendar sync.", { needs: "bookings" }),
-  store("hosts", "/hosts", "Hosts", "Bookings", "Outside hosts whose stays and rentals the store lists, with their commission.", { needs: "bookings" }),
-  store("host", "/hosts/[hostId]", "Host", "Bookings", "One host: listings, payouts and commission.", { needs: "bookings" }),
-  store("hosts.dac7", "/hosts/dac7", "DAC7 report", "Bookings", "The yearly DAC7 tax report on hosts' income.", { needs: "bookings", keywords: ["tax", "dac7"] }),
+  store("bookings.units", "/bookings/units", "Rooms and items", "Bookings", "Rooms, homes and items for stays and rentals, with their calendars.", { feature: "bookings" }),
+  store("bookings.units.new", "/bookings/units/new", "New room or item", "Bookings", "Adds a room, home or item.", { feature: "bookings" }),
+  store("bookings.unit", "/bookings/units/[unitId]", "Room or item", "Bookings", "One room or item: capacity, blocks, calendar sync.", { feature: "bookings" }),
+  store("hosts", "/hosts", "Hosts", "Bookings", "Outside hosts whose stays and rentals the store lists, with their commission.", { feature: "bookings" }),
+  store("host", "/hosts/[hostId]", "Host", "Bookings", "One host: listings, payouts and commission.", { feature: "bookings" }),
+  store("hosts.dac7", "/hosts/dac7", "DAC7 report", "Bookings", "The yearly DAC7 tax report on hosts' income.", { feature: "bookings", keywords: ["tax", "dac7"] }),
 
   // Store: sales ---------------------------------------------------------------------------
   store("campaigns", "/campaigns", "Campaigns", "Sales", "Offers without a code, for a time: a percentage off, buy more and pay for fewer (3 for 2), or a free product above a basket amount, for the whole store, chosen products, categories or tags.", {
@@ -370,12 +371,10 @@ const PAGES: readonly AdminPage[] = [
   store("campaign", "/campaigns/[campaignId]", "Campaign", "Sales", "One campaign: what it gives, what it applies to, when it runs, and switching it off or deleting it."),
   store("bonus", "/bonus", "Bonus credits", "Sales", "The bonus program: signed-in customers earn credits on what they pay and use them as a price reduction on a later order. Set the percentage back, the wait before credits can be used, the most of an order they can pay, the minimum and whether credits expire, and see what the store owes in credits.", {
     tasks: ["Turn the bonus program on or off", "Change how much customers earn back", "Set when credits expire", "See the credits the store owes"],
-    keywords: ["bonus", "credits", "loyalty", "points", "rewards", "reward customers", "returning customers", "repeat customers", "cashback", "store credit", "earn", "redeem", "reward program"],
-  }),
+    keywords: ["bonus", "credits", "loyalty", "points", "rewards", "reward customers", "returning customers", "repeat customers", "cashback", "store credit", "earn", "redeem", "reward program"], feature: "bonus" }),
   store("affiliates", "/affiliates", "Referral program", "Sales", "The referral program: signed-in customers share a link, a friend's first order gets a welcome discount and the customer who shared it earns bonus credits. Set the friend's discount, the reward, how many orders earn it, a monthly limit and how long a link is remembered; needs the bonus program. See the referrers and the orders that came through links, and block a referrer with a reason.", {
     tasks: ["Turn the referral program on or off", "Change the friend's welcome discount", "Change how much a referrer earns", "Block a referrer who abuses it", "See who referred whom"],
-    keywords: ["referral", "refer a friend", "affiliate", "affiliates", "tip a friend", "friend discount", "welcome discount", "invite friends", "referral link", "word of mouth", "ambassador"],
-  }),
+    keywords: ["referral", "refer a friend", "affiliate", "affiliates", "tip a friend", "friend discount", "welcome discount", "invite friends", "referral link", "word of mouth", "ambassador"], feature: "referrals" }),
   store("customers", "/customers", "Customers", "Sales", "The store's customers, with search, recent first.", { keywords: ["clients", "buyers", "people"] }),
   store("customers.export", "/customers/export", "Export customers", "Sales", "Downloads the store's customers as a CSV file: name, email, phone, address, company, customer group, language, when they joined, their paid orders, whether their address unsubscribed from emails, and the custom fields staff entered about them. The owner's only. Kaizen does not record marketing consent yet, so the file must not be used as a mailing list.", {
     needs: "owner",
@@ -406,11 +405,10 @@ const PAGES: readonly AdminPage[] = [
   store("customer-group", "/customer-groups/[groupId]", "Customer group", "Sales", "One discount group: its percentage, its customers and the companies using it."),
   store("b2b-companies", "/companies", "Companies", "Sales", "Companies that buy from the store: a discount group, a main account that invites employees, and the share of the discount employees get.", {
     keywords: ["b2b", "business customers", "employees", "company account", "invite", "wholesale"],
-    tasks: ["Make a company with a main account", "Invite or remove a company's employees"],
-  }),
-  store("b2b-company", "/companies/[companyId]", "Company", "Sales", "One company: settings, its accounts, invitations, and inviting or removing employees."),
+    tasks: ["Make a company with a main account", "Invite or remove a company's employees"], feature: "business" }),
+  store("b2b-company", "/companies/[companyId]", "Company", "Sales", "One company: settings, its accounts, invitations, and inviting or removing employees.", { feature: "business" }),
   store("deliveries", "/deliveries", "Subscription boxes", "Sales", "Delivery days, the round being packed and shoppers' subscription box lists.", {
-    needs: "deliveries",
+    feature: "boxes",
     tasks: ["Add a delivery day", "Send and charge this round's orders"],
     keywords: ["subscription box", "standing order", "weekly delivery", "grocery"],
   }),
@@ -469,8 +467,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Enter this month's ad spend", "See which channel earns the most"],
   }),
   store("analytics.subscriptions", "/analytics/subscriptions", "Subscription analytics", "Analytics", "Monthly recurring revenue and how it moves, churn, failed renewals and subscribers.", {
-    keywords: ["mrr", "arr", "churn", "recurring"],
-  }),
+    keywords: ["mrr", "arr", "churn", "recurring"], feature: "subscriptions" }),
   store("analytics.traffic", "/analytics/traffic", "Traffic analytics", "Analytics", "Visits, the funnel from visit to purchase, devices, countries and cities, searches that found nothing, sales by weekday and hour, and at the bottom refunds and returns (return rate, reasons, most returned products, how fast refunds are made).", {
     keywords: ["visitors", "sessions", "funnel", "device", "mobile", "geography", "search", "heatmap", "refunds", "return rate", "returns analytics", "return reasons"],
   }),
@@ -559,9 +556,9 @@ const PAGES: readonly AdminPage[] = [
   }),
   store("integrations.google-reviews", "/integrations/google-reviews", "Google reviews", "Store", "Shows the store's Google rating and reviews on its pages."),
   store("ai", "/settings/ai", "AI", "Store", "The store's own AI provider and models, or Kaizen's.", { keywords: ["model", "provider", "openai"] }),
-  store("features", "/settings/features", "Features", "Store", "Switches on bookings and subscription boxes, and sets the store's time zone. (Work is switched on under Work, at the owner's level.)", {
-    needs: "owner",
-    keywords: ["modules", "bookings", "subscription boxes", "time zone"],
+  store("features", "/settings/features", "Features", "Store", "Switches the online shop and the store's features on or off (D178): subscriptions, subscription boxes, appointments, stays and rentals, several countries, languages and currencies, selling to businesses, the bonus and referral programs; what is in use, what blocks switching it off, and the store's time zone and appointment reminder. Every member sees it; only owners switch. (Work is switched on under Work, at the owner's level.)", {
+    tasks: ["Switch the online shop off to run a website only", "Switch a feature on or off", "Set the store's time zone"],
+    keywords: ["modules", "features", "switch on", "switch off", "online shop", "website only", "bookings", "subscription boxes", "time zone", "loyalty", "bonus program", "referral program", "sell to businesses", "b2b", "several languages", "several currencies", "several countries"],
   }),
   store("cookies", "/settings/cookies", "Cookies and tracking", "Store", "The cookie scan, tracking tools, the consent banner and the store's own code.", {
     keywords: ["gdpr", "consent", "pixel", "analytics"],
@@ -784,8 +781,8 @@ export function pageHref(page: AdminPage, params: Record<string, string>, storeS
 }
 
 export type SiteFlags = {
-  bookings?: boolean;
-  deliveries?: boolean;
+  /** The store's features that are on (D178, `effectiveFeatures()`); a page behind a feature is offered only while it is. */
+  features?: readonly FeatureId[];
   work?: boolean;
   owner?: boolean;
   /** Whether the person can open the page (wave 1, 1f: their role's keys); where it is not given every page is open to them. Built from `canOpenPath()` in `permissions.ts`. */
@@ -795,8 +792,7 @@ export type SiteFlags = {
 /** Whether a page is offered to this person in this store. */
 export function pageOffered(page: AdminPage, flags: SiteFlags): boolean {
   if (flags.canOpen && !flags.canOpen(page)) return false;
-  if (page.needs === "bookings") return Boolean(flags.bookings);
-  if (page.needs === "deliveries") return Boolean(flags.deliveries);
+  if (page.feature !== undefined && !requirementMet(flags.features ?? [], page.feature)) return false;
   if (page.needs === "work") return Boolean(flags.work);
   if (page.needs === "owner") return Boolean(flags.owner);
   return true;

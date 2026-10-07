@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { AffiliateOverviewCard } from "@/components/admin/affiliate-overview";
 import { AffiliateSettingsForm } from "@/components/admin/affiliate-settings-form";
 import { AttributionsTable, ReferrersTable } from "@/components/admin/affiliate-tables";
@@ -18,6 +19,8 @@ export const metadata: Metadata = { title: "Referral program" };
  */
 export default async function AffiliatesPage({ params }: PageProps<"/admin/[store]/affiliates">) {
   const current = await requirePermission((await params).store, "marketing:read");
+  const off = requireFeature(current, "referrals");
+  if (off) return off;
   const { store } = current;
   const [settings, overview, referrers, attributions, bonus] = await Promise.all([
     getAffiliateSettings(store.id),

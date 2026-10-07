@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { formatMoney } from "@/lib/money";
 import { planSummary, renewalState, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requirePermission } from "@/server/permissions";
@@ -12,7 +13,10 @@ export const metadata: Metadata = { title: "Subscriptions" };
 type Props = PageProps<"/admin/[store]/subscriptions">;
 
 export default async function SubscriptionsPage({ params }: Props) {
-  const { store } = await requirePermission((await params).store, "orders:read");
+  const current = await requirePermission((await params).store, "orders:read");
+  const off = requireFeature(current, "subscriptions");
+  if (off) return off;
+  const { store } = current;
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-semibold">Subscriptions</h1>

@@ -31,7 +31,10 @@ export const bookingsModuleInput = z.object({
 /** When the reminder before an appointment can go, in hours (0: none). */
 export const REMINDER_HOURS = [0, 2, 12, 24, 48, 72] as const;
 
-/** Switches appointments on or off, and says where the store's times are. Owners only. */
+/**
+ * Switches appointments on or off, and says where the store's times are. Owners only. From before D178: the module it writes moves the
+ * features `appointments` and `bookings` together (the database's `stores_features_sync()`); the Features page uses `setFeature()`.
+ */
 export async function setBookingsModule(
   { account, store }: Membership,
   input: z.infer<typeof bookingsModuleInput>,
@@ -49,6 +52,18 @@ export async function setBookingsModule(
     timeZone: input.timeZone,
     reminderHours: input.reminderHours,
   });
+}
+
+/** Where the store's times are and when reminders go (D65), without the switch: the features are switched on the Features page (D178). */
+export const bookingSettingsInput = bookingsModuleInput.omit({ enabled: true });
+
+/** Saves the store's time zone and the appointment reminder. Owners only (the caller asks). */
+export async function saveBookingSettings({ account, store }: Membership, input: z.infer<typeof bookingSettingsInput>): Promise<void> {
+  await db().execute(sql`
+    update commerce.stores set time_zone = ${input.timeZone}, booking_reminder_hours = ${input.reminderHours}
+    where id = ${store.id}::uuid
+  `);
+  await audit(account.id, store.id, "bookings.settings", { timeZone: input.timeZone, reminderHours: input.reminderHours });
 }
 
 // ---------------------------------------------------------------------------

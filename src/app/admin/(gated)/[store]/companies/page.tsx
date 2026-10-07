@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CompanyFields } from "@/components/admin/company-fields";
 import { requirePermission } from "@/server/permissions";
@@ -17,7 +18,10 @@ export const metadata: Metadata = { title: "Companies" };
  * discount that employees get.
  */
 export default async function CompaniesPage({ params }: PageProps<"/admin/[store]/companies">) {
-  const { store } = await requirePermission((await params).store, "customers:read");
+  const current = await requirePermission((await params).store, "customers:read");
+  const off = requireFeature(current, "business");
+  if (off) return off;
+  const { store } = current;
   const [companies, groups] = await Promise.all([listCompanies(store.id), listTiers(store.id)]);
   const base = `/admin/${store.slug}`;
 

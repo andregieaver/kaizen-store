@@ -6,12 +6,19 @@
 
 import type { NavIconName } from "@/components/admin/nav-icons";
 
-/** What a store must have switched on for a page or a section to be offered. */
-export type StoreNeeds = "bookings" | "deliveries";
-export type StoreFlags = { bookingsOn: boolean; deliveriesOn: boolean };
+import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
 
-/** A page in a sidebar: its address after the store's, its label, and a line on what it is for (the hub's card). */
-export type StoreItem = { path: string; label: string; description: string; exact?: boolean; needs?: StoreNeeds };
+/**
+ * What the navigation is filtered by: the store's features (D178), as kept (`store.features`); a page or section behind a feature is offered
+ * only while it is on (`requirementMet()`: kept on with everything it needs).
+ */
+export type StoreFlags = FeatureSource;
+
+/**
+ * A page in a sidebar: its address after the store's, its label, and a line on what it is for (the hub's card). `feature` is the store
+ * feature (D178) it stands behind: one, or several of which any is enough; the same as its `ADMIN_PAGES` entry's (a test holds them).
+ */
+export type StoreItem = { path: string; label: string; description: string; exact?: boolean; feature?: FeatureRequirement };
 export type StoreGroup = { heading: string; items: StoreItem[] };
 
 export type StoreSection = {
@@ -23,7 +30,7 @@ export type StoreSection = {
   /** A page of cards instead of a main page; the section's sidebar leads to the same pages. */
   hub: boolean;
   intro: string;
-  needs?: StoreNeeds;
+  feature?: FeatureRequirement;
   groups: StoreGroup[];
 };
 
@@ -45,8 +52,8 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/orders/drafts", "Draft orders", "Orders you make for a customer: products, custom items and prices, a discount and shipping, sent as a pay link or recorded as paid outside Kaizen."),
           item("/returns", "Returns", "Customers' withdrawals and return requests: approve, receive, inspect and refund them in time."),
           item("/invoices", "Invoices", "Invoices and credit notes for orders, the orders waiting for one, and a CSV for the accountant."),
-          item("/subscriptions", "Subscriptions", "Customers' recurring subscriptions and their payments."),
-          item("/deliveries", "Subscription boxes", "Weekly delivery days, cutoffs, and the lists customers have set up.", { needs: "deliveries" }),
+          item("/subscriptions", "Subscriptions", "Customers' recurring subscriptions and their payments.", { feature: "subscriptions" }),
+          item("/deliveries", "Subscription boxes", "Weekly delivery days, cutoffs, and the lists customers have set up.", { feature: "boxes" }),
           item("/emails", "Emails", "Every email the store sent to customers and staff, and whether it arrived."),
         ],
       },
@@ -84,7 +91,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/customers", "Customers", "Everyone with an account, their orders and details."),
           item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers."),
-          item("/companies", "Companies", "Company accounts with their employees and a group's discount."),
+          item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business" }),
           item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it."),
           item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock."),
         ],
@@ -107,8 +114,8 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works."),
           item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better."),
           item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart."),
-          item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction."),
-          item("/affiliates", "Referral program", "Customers who refer their friends, and what both get."),
+          item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction.", { feature: "bonus" }),
+          item("/affiliates", "Referral program", "Customers who refer their friends, and what both get.", { feature: "referrals" }),
         ],
       },
     ],
@@ -131,7 +138,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/analytics/products", "Products", "What sells, what earns, what is refunded, and how fast each product moves."),
           item("/analytics/inventory", "Inventory", "Stock, its value, how many days it lasts, what is about to run out and what does not sell."),
           item("/analytics/marketing", "Marketing", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons."),
-          item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals."),
+          item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals.", { feature: "subscriptions" }),
           item("/analytics/traffic", "Traffic", "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours."),
           item("/analytics/settings", "Analytics settings", "Costs, fees and targets that turn sales into profit, and whether visits are counted."),
         ],
@@ -168,17 +175,17 @@ export const STORE_SECTIONS: StoreSection[] = [
     icon: "calendar",
     start: "/bookings",
     hub: false,
-    needs: "bookings",
+    feature: ["appointments", "bookings"],
     intro: "Appointments, stays and rentals: the calendar, who does them, and the rooms and items.",
     groups: [
       {
         heading: "Bookings",
         items: [
-          item("/bookings", "Calendar", "Every booking by week, with what can be done about it.", { exact: true }),
-          item("/bookings/staff", "Staff and hours", "The people who do appointments, their opening hours and capacity."),
-          item("/bookings/stays", "Stays and rentals", "Products booked by night or day, with seasons and fees."),
-          item("/bookings/units", "Rooms and items", "The rooms and items stays and rentals are booked on, and their calendars."),
-          item("/hosts", "Hosts", "Outside hosts who list stays and rentals in the store, and the DAC7 report."),
+          item("/bookings", "Calendar", "Every booking by week, with what can be done about it.", { exact: true, feature: ["appointments", "bookings"] }),
+          item("/bookings/staff", "Staff and hours", "The people who do appointments, their opening hours and capacity.", { feature: "appointments" }),
+          item("/bookings/stays", "Stays and rentals", "Products booked by night or day, with seasons and fees.", { feature: "bookings" }),
+          item("/bookings/units", "Rooms and items", "The rooms and items stays and rentals are booked on, and their calendars.", { feature: "bookings" }),
+          item("/hosts", "Hosts", "Outside hosts who list stays and rentals in the store, and the DAC7 report.", { feature: "bookings" }),
         ],
       },
     ],
@@ -197,7 +204,7 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/settings/company", "Company", "The business details, places and contact information shoppers and invoices show."),
           item("/settings/domains", "Domains", "The addresses the store is reached at."),
           item("/settings/localization", "Languages and currencies", "The languages and currencies the store offers, and the exchange rates."),
-          item("/settings/features", "Features", "Switch the store's optional modules on or off: bookings, subscription boxes and more."),
+          item("/settings/features", "Features", "Switch the online shop and the store's features on or off: subscriptions, bookings, countries, languages, selling to businesses and more."),
           item("/settings/close", "Close store", "Stop sales and take the shop off the web. Nothing is deleted, and you can reopen it for thirty days."),
         ],
       },
@@ -251,16 +258,16 @@ export const STORE_SECTIONS: StoreSection[] = [
 export type CanOpen = (path: string) => boolean;
 
 /**
- * The pages of the sections offered to a store with these modules on, and, with `canOpen`, only those the member can open: a group,
- * a section and a hub's card with none left are not drawn.
+ * The pages of the sections offered to a store with these features on (D178), and, with `canOpen`, only those the member can open: a group,
+ * a section and a hub's card with none left are not drawn. `STORE_SECTIONS` itself stays whole: `sectionOf()` and the permissions read it.
  */
 export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSection[] {
-  const on = (needs?: StoreNeeds) => !needs || (needs === "bookings" ? flags.bookingsOn : flags.deliveriesOn);
+  const on = (feature?: FeatureRequirement) => requirementMet(flags, feature);
   const open = (path: string) => !canOpen || canOpen(path);
-  return STORE_SECTIONS.filter((s) => on(s.needs))
+  return STORE_SECTIONS.filter((s) => on(s.feature))
     .map((s) => ({
       ...s,
-      groups: s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.needs) && open(i.path)) })).filter((g) => g.items.length > 0),
+      groups: s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.feature) && open(i.path)) })).filter((g) => g.items.length > 0),
     }))
     .filter((s) => !canOpen || s.groups.length > 0);
 }

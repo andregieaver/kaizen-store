@@ -118,7 +118,7 @@ describe("the bonus program in the assistant's map and playbooks", () => {
     expect(pageHref(page!, {}, "kaffe")).toBe("/admin/kaffe/bonus");
     expect(matchPath("/admin/kaffe/bonus")?.page.id).toBe("bonus");
     for (const ask of ["loyalty credits", "reward returning customers", "cashback", "store credit"])
-      expect(findPages("store", ask)[0]?.id, ask).toBe("bonus");
+      expect(findPages("store", ask, { features: ["shop", "bonus"] })[0]?.id, ask).toBe("bonus");
   });
 
   it("mentions credits on the customer page", () => {

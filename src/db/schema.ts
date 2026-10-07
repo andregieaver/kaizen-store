@@ -532,6 +532,11 @@ export const stores = commerce.table(
     visitCounting: boolean("visit_counting").notNull().default(false),
     /** Modules the store has switched on (D65): `bookings` for appointments, `deliveries` (D102), `work` (D122). */
     modules: text("modules").array().notNull().default(sql`'{}'::text[]`),
+    /**
+     * The features the owner keeps switched on (D178, `src/lib/store-features.ts`, `docs/store-features.md`): `shop` is the master switch, and a
+     * feature is on only with everything it needs (`commerce.feature_on()`). `modules`' `bookings` and `deliveries` follow it (a trigger).
+     */
+    features: text("features").array().notNull().default(sql`'{shop}'::text[]`),
     /** Where the store's times are, e.g. appointments' (D65): an IANA time zone. */
     timeZone: text("time_zone").notNull().default("Europe/Oslo"),
     /** Hours before an appointment its reminder goes to the shopper (D65); 0 sends none. */
@@ -586,6 +591,10 @@ export const stores = commerce.table(
     check("stores_audience", sql`${t.audience} in ('consumers', 'businesses', 'both')`),
     check("stores_terms_at_checkout", sql`${t.termsAtCheckout} in ('link', 'checkbox', 'off')`),
     check("stores_modules", sql`${t.modules} <@ array['bookings', 'deliveries', 'work']::text[]`),
+    check(
+      "stores_features",
+      sql`${t.features} <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals']::text[]`,
+    ),
     check("stores_booking_reminder_hours", sql`${t.bookingReminderHours} between 0 and 168`),
     check("stores_custom_css", sql`length(${t.customCss}) <= 50000`),
     check(

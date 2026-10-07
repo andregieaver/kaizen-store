@@ -10,6 +10,7 @@ import { PICK_LIST_MAX } from "@/lib/fulfilment-limits";
 import { ORDER_EDIT_REASON_LABELS, ORDER_EDIT_STATUS_LABELS, type OrderEditReason } from "@/lib/order-edit-status";
 import { PICK_SKIP_WORDS, PICK_WARNING_WORDS } from "@/lib/pick-list";
 import { OWNER_TOOLS_BY_NAME, readToolInput, type OwnerToolInput, type OwnerToolName } from "@/lib/owner-tools";
+import { toolFeatureRefusal, toolOffered } from "@/lib/owner-tool-features";
 import { mayUseTool, toolRefusal } from "@/lib/owner-tool-permissions";
 import type { PermissionHolder } from "@/lib/permissions";
 import { auditProblems } from "@/lib/order-numbers";
@@ -146,6 +147,8 @@ export type OwnerToolContext = {
 /** Refuses, in the assistant's words, a tool the member's role does not hold the permission for. */
 function requireToolPermission(ctx: OwnerToolContext, name: string): void {
   if (!mayUseTool(ctx.holder ?? { role: "owner" }, name)) fail(toolRefusal(name));
+  // A tool of a feature that is off is refused (D178), whoever asks: the assistant does not offer it, the store's MCP server lists it for every store.
+  if (!toolOffered(ctx.store, name)) fail(toolFeatureRefusal(name));
 }
 
 export { OwnerToolError };

@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."stores" ADD COLUMN "features" text[] DEFAULT '{shop}'::text[] NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."stores" ADD CONSTRAINT "stores_features" CHECK ("commerce"."stores"."features" <@ array['shop', 'subscriptions', 'boxes', 'appointments', 'bookings', 'countries', 'languages', 'currencies', 'business', 'bonus', 'referrals']::text[]);

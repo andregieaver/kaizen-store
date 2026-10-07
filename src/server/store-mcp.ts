@@ -6,13 +6,14 @@ import { z } from "zod";
 
 import { db } from "@/db/client";
 import { publicEnv } from "@/lib/env";
+import { toolFeature, toolOffered } from "@/lib/owner-tool-features";
 import { OWNER_TOOLS, OWNER_TOOLS_BY_NAME, readToolInput, toolDefinition, type OwnerTool } from "@/lib/owner-tools";
 import { siteUrl } from "@/lib/site";
 
 import { holderOf, type Account, type Membership } from "./auth";
 import { keepForApproval, kaizenLifeConversation, runTurn, type AssistantEvent } from "./owner-assistant";
 import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
-import { getStore } from "./stores";
+import { getStore, type Store } from "./stores";
 
 type Row = Record<string, unknown>;
 
@@ -116,6 +117,15 @@ export const MCP_TOOLS: McpToolInfo[] = [
   },
   ...OWNER_TOOLS.map(withStore),
 ];
+
+/**
+ * The tools listed to a caller (D178): a tool behind a store feature only when one of the owner's stores has it on. A call still names its store,
+ * and a tool whose feature is off there is refused (`runOwnerTool()`, `preflightOwnerTool()`).
+ */
+export async function mcpToolsFor(caller: McpCaller): Promise<McpToolInfo[]> {
+  const stores = (await Promise.all(caller.stores.map((s) => getStore(s.slug)))).filter((s): s is Store => s !== null);
+  return MCP_TOOLS.filter((tool) => toolFeature(tool.name) === undefined || stores.some((store) => toolOffered(store, tool.name)));
+}
 
 export type McpToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 

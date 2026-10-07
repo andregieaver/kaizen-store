@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { SubscriptionActions, type StaffChange } from "@/components/admin/subscription-actions";
 import { SubscriptionContentsForm } from "@/components/subscription-contents-form";
@@ -23,7 +24,10 @@ export default async function SubscriptionPage({
   params,
 }: PageProps<"/admin/[store]/subscriptions/[subscriptionId]">) {
   const { store: slug, subscriptionId } = await params;
-  const { store } = await requirePermission(slug, "orders:read");
+  const current = await requirePermission(slug, "orders:read");
+  const off = requireFeature(current, "subscriptions");
+  if (off) return off;
+  const { store } = current;
   if (!z.uuid().safeParse(subscriptionId).success) notFound();
   const [subscription, customer] = await Promise.all([
     getSubscription(store.id, subscriptionId),

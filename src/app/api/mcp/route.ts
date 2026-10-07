@@ -2,7 +2,7 @@ import { revalidateTag } from "next/cache";
 import { connection } from "next/server";
 
 import { siteUrl } from "@/lib/site";
-import { callMcpTool, MCP_TOOLS, mcpCaller } from "@/server/store-mcp";
+import { callMcpTool, mcpCaller, mcpToolsFor } from "@/server/store-mcp";
 
 /** A question to the store's assistant can take a few tool rounds. */
 export const maxDuration = 300;
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       case "ping":
         return result(rpc.id, {});
       case "tools/list":
-        return result(rpc.id, { tools: MCP_TOOLS });
+        return result(rpc.id, { tools: await mcpToolsFor(caller) });
       case "tools/call": {
         const name = typeof rpc.params?.name === "string" ? rpc.params.name : "";
         const args = rpc.params?.arguments;

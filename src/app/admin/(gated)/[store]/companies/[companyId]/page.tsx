@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CompanyFields } from "@/components/admin/company-fields";
 import { requirePermission } from "@/server/permissions";
@@ -27,7 +28,10 @@ const card = "flex flex-col gap-3 rounded-lg border border-border bg-background 
 
 export default async function CompanyPage({ params }: PageProps<"/admin/[store]/companies/[companyId]">) {
   const { store: slug, companyId } = await params;
-  const { store } = await requirePermission(slug, "customers:read");
+  const current = await requirePermission(slug, "customers:read");
+  const off = requireFeature(current, "business");
+  if (off) return off;
+  const { store } = current;
   if (!z.uuid().safeParse(companyId).success) notFound();
   const company = await getCompany(store.id, companyId);
   if (!company) notFound();

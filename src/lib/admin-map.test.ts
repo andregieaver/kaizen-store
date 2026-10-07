@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES, adminMapText, findPages, matchPath, pageHref, pagesFor, type AdminArea } from "./admin-map";
-import { MODULES } from "./store-modules";
+import { FEATURE_IDS, featureOn, requirementMet } from "./store-features";
 
 /** Every page.tsx under a folder, as the route after it (`/orders/[orderId]`). */
 function routes(root: string, prefix = ""): string[] {
@@ -57,7 +57,7 @@ describe("the admin map (D103)", () => {
     expect(findPages("platform", "approve sign-ups")[0]?.id).toBe("requests");
     // Pages behind a switch are only offered when it is on.
     expect(findPages("store", "subscription box").map((p) => p.id)).not.toContain("deliveries");
-    expect(findPages("store", "subscription box", { deliveries: true })[0]?.id).toBe("deliveries");
+    expect(findPages("store", "subscription box", { features: ["shop", "boxes"] })[0]?.id).toBe("deliveries");
   });
 
   it("knows where withdrawals and returns are worked, and their rules (D153)", () => {
@@ -126,16 +126,22 @@ describe("the admin map (D103)", () => {
     expect(text).toContain("Orders [orders]");
     expect(text).not.toContain("[order]");
     expect(text).not.toContain("Calendar [bookings]");
-    expect(adminMapText("store", { owner: true, bookings: true })).toContain("Calendar [bookings]");
+    expect(adminMapText("store", { owner: true, features: ["shop", "appointments"] })).toContain("Calendar [bookings]");
     expect(pagesFor("platform").some((p) => p.area === "store")).toBe(false);
   });
 
-  it("has pages behind every module a store can switch on, offered only when it is on", () => {
-    for (const name of MODULES) {
-      const pages = ADMIN_PAGES.filter((p) => p.needs === name);
-      expect(pages.length, `pages that need ${name}`).toBeGreaterThan(0);
-      expect(pagesFor("store").filter((p) => p.needs === name)).toEqual([]);
-      expect(pagesFor("store", { [name]: true })).toEqual(expect.arrayContaining(pages.filter((p) => p.area === "store")));
+  it("has pages behind store features (D178) and Work, offered only when they are on", () => {
+    const work = ADMIN_PAGES.filter((p) => p.needs === "work");
+    expect(work.length).toBeGreaterThan(0);
+    expect(pagesFor("store").filter((p) => p.needs === "work")).toEqual([]);
+    expect(pagesFor("store", { work: true })).toEqual(expect.arrayContaining(work.filter((p) => p.area === "store")));
+    const gated = ADMIN_PAGES.filter((p) => p.feature !== undefined);
+    expect(gated.every((p) => p.area === "store")).toBe(true);
+    expect(pagesFor("store", { features: ["shop"] }).filter((p) => p.feature !== undefined)).toEqual([]);
+    expect(pagesFor("store", { features: FEATURE_IDS.filter((id) => featureOn([...FEATURE_IDS], id)) })).toEqual(expect.arrayContaining(gated));
+    for (const id of ["subscriptions", "boxes", "appointments", "bookings", "business", "bonus", "referrals"] as const) {
+      const base = id === "referrals" ? ["shop", "bonus"] : ["shop"];
+      expect(gated.some((p) => requirementMet([...base, id], p.feature) && !requirementMet(base, p.feature)), id).toBe(true);
     }
     // Work (D122, D123): at the owner's level, the combined pages and one store's own screens.
     expect(matchPath("/admin/account/work")?.page.id).toBe("work");

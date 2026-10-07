@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { requirePermission } from "@/server/permissions";
 import { hostChoices } from "@/server/hosts";
 
@@ -10,7 +11,10 @@ import { UnitForm } from "../unit-form";
 export const metadata: Metadata = { title: "Add a room or item" };
 
 export default async function NewUnitPage({ params, searchParams }: PageProps<"/admin/[store]/bookings/units/new">) {
-  const { store } = await requirePermission((await params).store, "bookings:read");
+  const current = await requirePermission((await params).store, "bookings:read");
+  const off = requireFeature(current, "bookings");
+  if (off) return off;
+  const { store } = current;
   const kind = (await searchParams).kind === "item" ? "item" : "unit";
   return (
     <div className="flex flex-col gap-6">

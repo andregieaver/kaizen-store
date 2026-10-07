@@ -38,6 +38,8 @@ beforeAll(async () => {
     select commerce.approve_access_request(${String(request.id)}::uuid, ${`hours-${run}`}, 'Test', null) as id
   `);
   storeId = String(store.id);
+  // A new store starts with the shop alone (D178): these tests book its demo appointment, stay and rental.
+  await db().execute(sql`update commerce.stores set features = features || array['appointments', 'bookings'] where id = ${storeId}::uuid`);
   // The demo e-bike rental every new store is copied with: three bikes, by the day, half day or hour (D69).
   const rows = await db().execute<Row>(sql`
     select p.id as product_id, v.id as variant_id, v.rental_period, pr.resource_id, s.time_zone

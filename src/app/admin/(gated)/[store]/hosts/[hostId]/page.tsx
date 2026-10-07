@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { formatMoney } from "@/lib/money";
 import { accountStage } from "@/lib/stripe-account";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -18,6 +19,8 @@ export const metadata: Metadata = { title: "Host" };
 export default async function HostPage({ params }: PageProps<"/admin/[store]/hosts/[hostId]">) {
   const { store: slug, hostId } = await params;
   const current = await requirePermission(slug, "bookings:read");
+  const off = requireFeature(current, "bookings");
+  if (off) return off;
   const { store } = current;
   if (!z.uuid().safeParse(hostId).success) notFound();
   const host = await getHost(store.id, hostId);

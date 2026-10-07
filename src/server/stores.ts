@@ -18,6 +18,7 @@ import type { SiteFonts } from "@/lib/fonts";
 import { parseMenuItems, parseNavigation, type Menu, type StoreNavigation } from "@/lib/navigation";
 import { parseStoreSeo, type StoreSeo } from "@/lib/seo";
 import { returnPolicyOf, type ReturnPolicyFacts } from "@/lib/structured-data";
+import { featureOn, normaliseFeatures, type FeatureId } from "@/lib/store-features";
 import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
 
 export type StoreStatus = "active" | "suspended" | "closed";
@@ -49,9 +50,14 @@ export type Store = {
   returnPolicy: ReturnPolicyFacts;
   /** Cookieless visit counting for the analytics is on (D152); off until the owner switches it on. */
   visitCounting: boolean;
-  /** Appointments and bookings are switched on (D65). */
+  /**
+   * The features the owner keeps switched on (D178, `src/lib/store-features.ts`): read what is *on* with `featureOn(store, id)`, which also asks
+   * for what the feature needs (the shop above all).
+   */
+  features: FeatureId[];
+  /** Appointments or stays and rentals are on (D65, D178: the feature `appointments` or `bookings`, with the shop). */
   bookingsOn: boolean;
-  /** Weekly deliveries of shoppers' standing lists (D102). */
+  /** Subscription boxes are on (D102, D178: the feature `boxes`, with the shop). */
   deliveriesOn: boolean;
   /** Work: clients, assignments, time and invoices for consultants (D122). */
   workOn: boolean;
@@ -138,7 +144,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     select
       s.id, s.slug, s.name, s.status, s.closed_at, s.is_template, s.starter, s.setup_completed_at,
       s.legal_name, s.organisation_number, s.contact_email, s.postal_address, s.country, s.seo, s.navigation, s.header_menu_id, s.footer_menu_id, s.front_page_id, s.products_page_id, s.tracking, s.custom_code, s.custom_css, s.theme,
-      s.terms_at_checkout, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.modules, s.time_zone, s.booking_reminder_hours,
+      s.terms_at_checkout, s.audience, s.business_popup, s.open_cart_on_add, s.visit_counting, s.modules, s.features, s.time_zone, s.booking_reminder_hours,
       s.locales, s.rates_auto, s.rates_updated_at,
       (
         select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
@@ -206,8 +212,7 @@ async function loadStore(slug: string): Promise<Store | null> {
     openCartOnAdd: Boolean(row.open_cart_on_add),
     returnPolicy: returnPolicyOf(row.return_policy),
     visitCounting: Boolean(row.visit_counting),
-    bookingsOn: ((row.modules ?? []) as string[]).includes("bookings"),
-    deliveriesOn: ((row.modules ?? []) as string[]).includes("deliveries"),
+    ...featured(row.features),
     workOn: ((row.modules ?? []) as string[]).includes("work"),
     timeZone: String(row.time_zone ?? "Europe/Oslo"),
     bookingReminderHours: Number(row.booking_reminder_hours ?? 24),
@@ -245,6 +250,15 @@ function localized(row: Row): Pick<Store, "markets" | "localization" | "ratesAut
     ratesUpdatedAt: row.rates_updated_at ? new Date(String(row.rates_updated_at)).toISOString() : null,
     chosenLocales,
     chosenCurrencies,
+  };
+}
+
+function featured(value: unknown): Pick<Store, "features" | "bookingsOn" | "deliveriesOn"> {
+  const features = normaliseFeatures(Array.isArray(value) ? value.map(String) : []);
+  return {
+    features,
+    bookingsOn: featureOn(features, "appointments") || featureOn(features, "bookings"),
+    deliveriesOn: featureOn(features, "boxes"),
   };
 }
 

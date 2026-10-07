@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatMoney } from "@/lib/money";
 import { cutoffWeekday, formatCutoff, formatDeliveryDate, WEEKDAYS, weekdayName, type DeliverySchedule } from "@/lib/standing-orders";
@@ -29,6 +30,8 @@ const ORDER_STATUS: Record<string, string> = {
  */
 export default async function DeliveriesPage({ params }: PageProps<"/admin/[store]/deliveries">) {
   const current = await requirePermission((await params).store, "orders:read");
+  const off = requireFeature(current, "boxes");
+  if (off) return off;
   const { store } = current;
   const owner = memberCan(current, "owner");
   const [rounds, lists] = await Promise.all([deliveryRounds(store.id), listStandingOrders(store.id)]);
@@ -45,15 +48,6 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
           At each cutoff, shoppers&apos; lists become that delivery&apos;s orders at the day&apos;s prices, with their stock held. Send each
           order from its page: the customer&apos;s card is charged as you mark it sent. Times are in {store.timeZone.replace("_", " ")}.
         </p>
-        {!store.deliveriesOn && (
-          <p className="mt-2 text-sm">
-            Subscription boxes are off.{" "}
-            <Link href={`/admin/${store.slug}/settings/features`} className="underline">
-              Switch them on under Features
-            </Link>
-            .
-          </p>
-        )}
       </div>
 
       {rounds.map(({ schedule, current, next }) => (

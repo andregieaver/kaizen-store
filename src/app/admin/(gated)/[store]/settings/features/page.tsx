@@ -1,70 +1,63 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
-import { memberCan, requireOwnerRole } from "@/server/permissions";
+import { FeaturesView } from "@/components/admin/features-view";
+import { formatMoney } from "@/lib/money";
+import { FEATURE_GROUPS, featureCount, featureRows, featuresIn } from "@/lib/store-features";
 import { REMINDER_HOURS, storeTimeZones } from "@/server/bookings";
+import { memberCan, requirePermission } from "@/server/permissions";
+import { featureFacts } from "@/server/store-features";
 
-import { saveBookingsModuleAction, saveDeliveriesModuleAction } from "./actions";
+import { saveBookingSettingsAction, switchFeatureAction } from "./actions";
 
 export const metadata: Metadata = { title: "Features" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const control = "min-h-11 rounded-md border border-border bg-background px-3 font-normal";
 
-/** What the store does besides selling goods (D65): switched on here. */
+/**
+ * The store's features (D178, docs/store-features.md): the online shop's master switch and the features in their groups. Every member who
+ * may read the settings sees it; only owners switch. The time zone and the appointment reminder live here, under the switches they serve.
+ */
 export default async function FeaturesPage({ params }: PageProps<"/admin/[store]/settings/features">) {
-  const current = await requireOwnerRole((await params).store);
+  const current = await requirePermission((await params).store, "settings:read");
   const { store } = current;
   const owner = memberCan(current, "owner");
+  const locale = store.markets[0]?.locale ?? "en";
+  const facts = await featureFacts(store.id);
+  const rows = featureRows(store, facts, (minor, currency) => formatMoney(minor, currency, locale));
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Features</h1>
-        <p className="text-sm text-muted">What your store does besides selling goods.</p>
-      </div>
+      <FeaturesView
+        base={`/admin/${store.slug}`}
+        owner={owner}
+        shop={rows.shop}
+        groups={FEATURE_GROUPS.map((g) => ({ id: g.id, label: g.label, rows: featuresIn(g.id).map((f) => rows[f.id]) }))}
+        count={featureCount(store)}
+        onSwitch={switchFeatureAction.bind(null, store.slug)}
+      />
 
-      <section aria-labelledby="bookings-heading" className={card}>
-        <h2 id="bookings-heading" className="mb-1 font-medium">
-          Appointments
+      <section aria-labelledby="times-heading" className="rounded-lg border border-border bg-surface p-4">
+        <h2 id="times-heading" className="mb-1 font-medium">
+          Time zone and reminders
         </h2>
         <p className="mb-4 text-sm text-muted">
-          Sell time with your staff, such as treatments, consultations or lessons. Shoppers choose a day and a time on
-          the product page and pay at checkout; you see every booking in a calendar.
+          Where the store&apos;s times are: appointments, stays and rentals, and subscription boxes&apos; cutoffs are shown in it.
         </p>
-        <ActionForm action={saveBookingsModuleAction.bind(null, store.slug)} className="flex flex-col gap-4">
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="bookings" defaultChecked={store.bookingsOn} disabled={!owner} className="mt-0.5 size-4" />
-            <span>
-              Take bookings
-              <span className="block text-muted">
-                Adds Bookings to the menu (staff and their hours, the calendar) and lets products be appointments.
-              </span>
-            </span>
-          </label>
-          <label className="flex max-w-sm flex-col gap-1 text-sm font-medium">
+        <ActionForm action={saveBookingSettingsAction.bind(null, store.slug)} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1 text-sm font-medium">
             Time zone
-            <select
-              name="timeZone"
-              defaultValue={store.timeZone}
-              disabled={!owner}
-              className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
-            >
+            <select name="timeZone" defaultValue={store.timeZone} disabled={!owner} className={control}>
               {storeTimeZones().map((zone) => (
                 <option key={zone} value={zone}>
                   {zone.replace("_", " ")}
                 </option>
               ))}
             </select>
-            <span className="font-normal text-muted">Where the appointments take place: times are shown in it.</span>
           </label>
-          <label className="flex max-w-sm flex-col gap-1 text-sm font-medium">
-            Reminder email
-            <select
-              name="reminderHours"
-              defaultValue={store.bookingReminderHours}
-              disabled={!owner}
-              className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
-            >
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Appointment reminder email
+            <select name="reminderHours" defaultValue={store.bookingReminderHours} disabled={!owner} className={control}>
               {REMINDER_HOURS.map((hours) => (
                 <option key={hours} value={hours}>
                   {hours === 0 ? "Send none" : hours < 48 ? `${hours} hours before` : `${hours / 24} days before`}
@@ -72,8 +65,8 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
               ))}
             </select>
             <span className="font-normal text-muted">
-              Shoppers get a reminder with the time, place and a calendar file. Those who book closer to the time than
-              this get only their confirmation.
+              Shoppers get a reminder with the time, place and a calendar file. Those who book closer to the time than this get only their
+              confirmation.
             </span>
           </label>
           {owner ? (
@@ -81,35 +74,7 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
               <SubmitButton>Save</SubmitButton>
             </div>
           ) : (
-            <p className="text-sm text-muted">Only an owner can switch features on or off.</p>
-          )}
-        </ActionForm>
-      </section>
-
-      <section aria-labelledby="deliveries-heading" className={card}>
-        <h2 id="deliveries-heading" className="mb-1 font-medium">
-          Subscription boxes
-        </h2>
-        <p className="mb-4 text-sm text-muted">
-          Shoppers keep a list of what they want in their box, delivered on your delivery days. At each cutoff the list
-          becomes that delivery&apos;s order at the day&apos;s prices, with its stock held; the card they saved is charged when you
-          send it. A list nobody changes repeats.
-        </p>
-        <ActionForm action={saveDeliveriesModuleAction.bind(null, store.slug)} className="flex flex-col gap-4">
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" name="deliveries" defaultChecked={store.deliveriesOn} disabled={!owner} className="mt-0.5 size-4" />
-            <span>
-              Offer subscription boxes
-              <span className="block text-muted">
-                Adds Subscription boxes to the menu (delivery days, lists and each delivery&apos;s orders), a Subscription box page to My
-                account, and a button to add products to it on their pages. Uses the time zone above.
-              </span>
-            </span>
-          </label>
-          {owner && (
-            <div>
-              <SubmitButton>Save</SubmitButton>
-            </div>
+            <p className="text-sm text-muted">Only an owner can change these.</p>
           )}
         </ActionForm>
       </section>

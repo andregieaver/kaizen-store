@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { hostTaxStatus } from "@/server/dac7";
 import { listHosts } from "@/server/hosts";
@@ -16,6 +17,8 @@ export const metadata: Metadata = { title: "Hosts" };
  */
 export default async function HostsPage({ params }: PageProps<"/admin/[store]/hosts">) {
   const current = await requirePermission((await params).store, "bookings:read");
+  const off = requireFeature(current, "bookings");
+  if (off) return off;
   const { store } = current;
   const [hosts, taxes] = await Promise.all([listHosts(store.id), hostTaxStatus(store.id)]);
   const base = `/admin/${store.slug}/hosts`;

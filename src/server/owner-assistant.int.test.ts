@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
+import { FEATURE_IDS } from "@/lib/store-features";
 import { approvalSummary, OWNER_TOOLS, toolDefinition } from "@/lib/owner-tools";
 
 import type { AiConnection } from "./ai";
@@ -99,7 +100,11 @@ describe("the owner assistant (D94)", () => {
   });
 
   it("runs every tool that reads against the store's own data", async () => {
-    const ctx = { account: member.account, store: member.store, invalidate: () => {} };
+    // Every feature on (D178), so the tools behind one are offered; with the shop alone they are refused.
+    const ctx = { account: member.account, store: { ...member.store, features: [...FEATURE_IDS] }, invalidate: () => {} };
+    await expect(ownerTools.runOwnerTool({ ...ctx, store: { ...member.store, features: ["shop" as const] } }, "get_bonus_program", {})).rejects.toThrow(
+      "Bonus program is switched off in this store.",
+    );
     const args: Record<string, unknown> = {
       get_product: { product: productHandle },
       get_fields: { entity: "product", item: productHandle },

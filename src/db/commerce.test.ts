@@ -1362,7 +1362,7 @@ describe("new stores from the template", () => {
     expect(after).toEqual({ status: "pending", accounts: 0 });
   });
 
-  it("has a demo of every kind of product, and new stores get it ready to book (D65)", async () => {
+  it("has a demo of every kind of product, and new stores get it ready to book once switched on (D65, D178)", async () => {
     const { id: demo } = await one<{ id: string }>("select commerce.add_demo_appointment($1) as id", [template]);
     // Once only.
     expect(await one("select commerce.add_demo_appointment($1) as id", [template])).toEqual({ id: demo });
@@ -1374,8 +1374,10 @@ describe("new stores from the template", () => {
     expect(kinds.rows.map((r) => r.kind)).toEqual(["appointment", "goods"]);
 
     const { store_id: store } = await approve(await request("mia@example.com"), "mias-massasje");
-    expect(await one("select modules, time_zone, booking_reminder_hours from commerce.stores where id = $1", [store])).toEqual({
-      modules: ["bookings"],
+    // A new store starts with the shop alone (D178): its demo appointment is there, booked once the owner switches appointments on.
+    expect(await one("select modules, features, time_zone, booking_reminder_hours from commerce.stores where id = $1", [store])).toEqual({
+      modules: [],
+      features: ["shop"],
       time_zone: "Europe/Oslo",
       booking_reminder_hours: 24,
     });

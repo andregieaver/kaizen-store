@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { layoutDay, minuteOfDay, weekStart } from "@/lib/booking-calendar";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
 import { formatMoney } from "@/lib/money";
@@ -29,7 +30,10 @@ const todayIn = (timeZone: string) => zonedDate(Date.now(), timeZone);
  * where one can be cancelled.
  */
 export default async function BookingsPage({ params, searchParams }: PageProps<"/admin/[store]/bookings">) {
-  const { store } = await requirePermission((await params).store, "bookings:read");
+  const current = await requirePermission((await params).store, "bookings:read");
+  const off = requireFeature(current, ["appointments", "bookings"]);
+  if (off) return off;
+  const { store } = current;
   const query = await searchParams;
   const tz = store.timeZone;
   const today = todayIn(tz);
@@ -97,16 +101,6 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
           </Link>
         </nav>
       </div>
-
-      {!store.bookingsOn && (
-        <p className="rounded-md border border-border p-3 text-sm">
-          Appointments are switched off.{" "}
-          <Link href={`/admin/${store.slug}/settings/features`} className="underline">
-            Switch them on under Features
-          </Link>
-          .
-        </p>
-      )}
 
       {staff.length > 1 && (
         <nav aria-label="Staff" className="flex flex-wrap gap-2">

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { weekSummary } from "@/lib/opening-hours";
 import { requirePermission } from "@/server/permissions";
 import { listResources } from "@/server/bookings";
@@ -9,7 +10,10 @@ export const metadata: Metadata = { title: "Staff and hours" };
 
 /** Who takes appointments, and when (D65). */
 export default async function StaffPage({ params }: PageProps<"/admin/[store]/bookings/staff">) {
-  const { store } = await requirePermission((await params).store, "bookings:read");
+  const current = await requirePermission((await params).store, "bookings:read");
+  const off = requireFeature(current, "appointments");
+  if (off) return off;
+  const { store } = current;
   const staff = await listResources(store.id);
   const base = `/admin/${store.slug}/bookings/staff`;
 
@@ -24,15 +28,6 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/bo
           Add staff
         </Link>
       </div>
-      {!store.bookingsOn && (
-        <p className="rounded-md border border-border p-3 text-sm">
-          Appointments are switched off.{" "}
-          <Link href={`/admin/${store.slug}/settings/features`} className="underline">
-            Switch them on under Features
-          </Link>{" "}
-          to take bookings.
-        </p>
-      )}
       {staff.length === 0 ? (
         <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">
           No one yet. Add the people who take appointments, with their working hours.

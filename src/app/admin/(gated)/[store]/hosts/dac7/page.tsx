@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { decimalAmount } from "@/lib/dac7";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { dac7Report } from "@/server/dac7";
@@ -20,6 +21,8 @@ const sum = (values: number[]) => values.reduce((a, b) => a + b, 0);
  */
 export default async function Dac7Page({ params, searchParams }: PageProps<"/admin/[store]/hosts/dac7">) {
   const staffer = await requirePermission((await params).store, "bookings:read");
+  const off = requireFeature(staffer, "bookings");
+  if (off) return off;
   const { store } = staffer;
   const current = thisYear();
   const asked = Number((await searchParams).year);

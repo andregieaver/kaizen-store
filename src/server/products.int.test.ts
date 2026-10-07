@@ -54,6 +54,7 @@ async function createStore(slug: string): Promise<Store> {
     openCartOnAdd: false,
     returnPolicy: DEFAULT_RETURN_POLICY,
     visitCounting: false,
+    features: ["shop"],
     bookingsOn: false,
     deliveriesOn: false,
     workOn: false,

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { requirePermission } from "@/server/permissions";
 import { hostChoices } from "@/server/hosts";
@@ -17,7 +18,10 @@ export const metadata: Metadata = { title: "Room or item" };
 
 export default async function UnitPage({ params }: PageProps<"/admin/[store]/bookings/units/[unitId]">) {
   const { store: slug, unitId } = await params;
-  const { store } = await requirePermission(slug, "bookings:read");
+  const current = await requirePermission(slug, "bookings:read");
+  const off = requireFeature(current, "bookings");
+  if (off) return off;
+  const { store } = current;
   if (!z.uuid().safeParse(unitId).success) notFound();
   const unit = await getResource(store.id, unitId);
   if (!unit || unit.kind === "staff") notFound();
