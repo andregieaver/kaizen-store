@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { closeDb } from "@/db/client";
+import { sql } from "drizzle-orm";
+
+import { closeDb, db } from "@/db/client";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
@@ -86,11 +88,13 @@ describe("an order's personal-data state", () => {
     const done = await admin.staffErase(actor(), subject.customerId, subject.email);
     expect(done).toMatchObject({ ok: true, outcome: "erased" });
     const sale = await pages.orderPrivacy(store.storeId, subject.ids.signedInOrder.orderId);
-    expect(sale).toMatchObject({ restrictedOn: today(), anonymisedOn: null });
+    // The store's own day, not UTC's: late in the evening they differ.
+    const [{ day }] = await db().execute<{ day: string }>(sql`select commerce.store_day(${store.storeId}::uuid, now())::text as day`);
+    expect(sale).toMatchObject({ restrictedOn: day, anonymisedOn: null });
     // The first of January, at least five years on: never the day of the erasure.
     expect(sale!.keptUntil).toMatch(/^\d{4}-01-01$/);
     expect(Number(sale!.keptUntil!.slice(0, 4))).toBeGreaterThanOrEqual(new Date().getUTCFullYear() + 5);
     const unpaid = await pages.orderPrivacy(store.storeId, subject.ids.unpaidOrder.orderId);
-    expect(unpaid).toMatchObject({ anonymisedOn: today(), keptUntil: null });
+    expect(unpaid).toMatchObject({ anonymisedOn: day, keptUntil: null });
   }, 120_000);
 });
