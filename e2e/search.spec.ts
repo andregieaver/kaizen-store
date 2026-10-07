@@ -76,6 +76,9 @@ test("opening a result goes to the product and is recorded against the search, w
   await page.goto(`/s/${slug}/no/search?q=kopp`);
   const result = page.getByRole("link", { name: /Keramikkopp/ }).first();
   await expect(result).toHaveAttribute("rel", "nofollow");
+  // Its place in the results as shown (other demo products match "kopp" too and can rank first): the click must be recorded at that place.
+  const shownAt = new URL((await result.getAttribute("href")) ?? "", "http://x").searchParams.get("r");
+  expect(Number(shownAt)).toBeGreaterThan(0);
   await result.click();
   await expect(page).toHaveURL(new RegExp(`/s/${slug}/no/p/demo-keramikkopp$`));
   expect((await context.cookies()).filter((c) => /search|arm|experiment/i.test(c.name))).toEqual([]);
@@ -90,7 +93,7 @@ test("opening a result goes to the product and is recorded against the search, w
           where s.slug = ${slug}`;
         return row ? `${row.query}@${row.position}` : null;
       })
-      .toBe("kopp@1");
+      .toBe(`kopp@${shownAt}`);
   } finally {
     await sql.end();
   }
