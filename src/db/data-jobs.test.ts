@@ -518,7 +518,8 @@ describe("the bulk editor's record", () => {
     const undo = await batch("undo", { undoOf: id });
     await rejects("insert into commerce.bulk_edit_batches (store_id, requested_by, action, undo_of) values ($1, $2, 'undo', $3)", [shop, owner, id], /bulk_edit_batches_one_undo_idx/);
     await db.query("update commerce.bulk_edit_batches set undone_at = now() where id = $1", [id]);
-    await rejects("update commerce.bulk_edit_batches set undone_at = now() where id = $1", [id], /bulk_edit\.append_only/);
+    // A later time, never now() again: in the same clock tick the value would not change and there would be nothing to refuse.
+    await rejects("update commerce.bulk_edit_batches set undone_at = undone_at + interval '1 second' where id = $1", [id], /bulk_edit\.append_only/);
     await rejects("update commerce.bulk_edit_batches set undone_at = null where id = $1", [id], /bulk_edit\.append_only/);
     // The one change an item may have: a changed cell marked undone.
     await db.query("update commerce.bulk_edit_items set outcome = 'undone' where batch_id = $1 and outcome = 'changed'", [id]);
