@@ -92,6 +92,12 @@ export const FULFILMENT_EVENTS = {
    * (`commerce.unsent_closures`): `data.units`, `data.lines` (`{ lineId, sku, title, quantity }`, as sold) and `data.refundId` when money went back with them.
    */
   unsentClosed: "order.unsent_closed",
+  /**
+   * Staff took "sent" back for a parcel (D174 follow-up, `commerce.undo_shipment()`): `data.shipment`, `carrier`, `tracking`, `carrierId` (booked through a
+   * connection), `legacy`, `units`, `lines` (`{ lineId, sku, title, quantity }`, as sold), `left` (units to send now), `reopened` (the order is to send again) and
+   * `data.note` (staff's reason, when given, which anonymising removes). Never personal data.
+   */
+  shipmentUndone: "order.shipment_undone",
 } as const;
 export type FulfilmentEvent = (typeof FULFILMENT_EVENTS)[keyof typeof FULFILMENT_EVENTS];
 
@@ -105,6 +111,7 @@ export const FULFILMENT_EVENT_LABELS: Record<FulfilmentEvent, string> = {
   "credit_note.covered_by_edit": "Refund covered by the change's credit note",
   "order.edit_refund_failed": "Refund of a change failed",
   "order.unsent_closed": "Taken off what is still to send",
+  "order.shipment_undone": "Parcel undone: not sent after all",
 };
 
 /** The audit actions of parcels and changes (amounts and counts only, never staff's note). Every one is in the activity log's `orders` area. */
@@ -116,6 +123,8 @@ export const FULFILMENT_AUDIT_ACTIONS = {
   editPaidOutside: "order.edit_paid_outside",
   /** Units taken off what is still to send with a refund or restock (`notSent`): the units and the refund's id, never staff's words. */
   unsentClosed: "order.unsent_closed",
+  /** A parcel undone (D174 follow-up): the parcel's id, its units, the units left to send, whether the order was reopened, the carrier it was booked with. */
+  shipmentUndone: "order.shipment_undone",
 } as const;
 export type FulfilmentAuditAction = (typeof FULFILMENT_AUDIT_ACTIONS)[keyof typeof FULFILMENT_AUDIT_ACTIONS];
 export const FULFILMENT_AUDIT_ALL: readonly FulfilmentAuditAction[] = Object.values(FULFILMENT_AUDIT_ACTIONS);

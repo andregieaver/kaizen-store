@@ -170,7 +170,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, count(*)::int as n, min(fs.first_at) as oldest
       from commerce.orders o
-      cross join lateral (select min(s.created_at) as first_at from commerce.shipments s where s.store_id = o.store_id and s.order_id = o.id) fs
+      cross join lateral (select min(s.created_at) as first_at from commerce.shipments s where s.store_id = o.store_id and s.order_id = o.id and s.undone_at is null) fs
       where o.store_id in (${idList(orderIds)}) and o.status = 'paid' and o.copied_from is null and fs.first_at is not null
         and commerce.order_fulfilment(o.id) = 'partly_sent'
       group by o.store_id

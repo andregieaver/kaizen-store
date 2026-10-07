@@ -494,6 +494,22 @@ describe("anonymising and restricting orders", () => {
     await rejects("delete from commerce.order_events where order_id = $1", [o.id], /append-only/);
   });
 
+  it("replaces the reason staff gave for undoing a parcel (D174 follow-up) with the marker, and the parcel stays undone", async () => {
+    const o = await sale(shops.NO, YEAR - 9, { email: "kari@example.com" });
+    const line = await scalar<string>("select id from commerce.order_lines where order_id = $1", [o.id]);
+    let parcel = "";
+    await db.transaction(async (tx) => {
+      parcel = (await tx.query<{ id: string }>("insert into commerce.shipments (store_id, order_id, carrier, tracking_number) values ($1, $2, 'posten', 'T-GDPR') returning id", [shops.NO, o.id])).rows[0].id;
+      await tx.query("insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity) values ($1, $2, $3, 1)", [shops.NO, parcel, line]);
+    });
+    await db.query("select commerce.undo_shipment($1, $2, null, 'Kari Hansen phoned: wrong address')", [shops.NO, parcel]);
+    await age(o.id, YEAR - 9);
+    expect(await retire(shops.NO, o.id)).toBe("anonymised");
+    expect(await one("select undone_at is not null as undone, undo_reason from commerce.shipments where id = $1", [parcel])).toEqual({ undone: true, undo_reason: "[removed]" });
+    const event = await one<{ data: Record<string, unknown> }>("select data from commerce.order_events where order_id = $1 and type = 'order.shipment_undone'", [o.id]);
+    expect(JSON.stringify(event.data)).not.toContain("Kari");
+  });
+
   it("anonymises a restricted order's withdrawal, return notes and VAT check with it, and records that it was restricted", async () => {
     const o = await sale(shops.DK, YEAR - 7);
     const lineId = (await one<{ id: string }>("select id from commerce.order_lines where order_id = $1", [o.id])).id;

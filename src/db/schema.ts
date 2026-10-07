@@ -3074,6 +3074,14 @@ export const shipments = commerce.table(
      * existed; nothing sets it afterwards. A shipment that is not legacy names its lines and quantities in `shipment_lines` (`markSent()` is the only writer).
      */
     legacy: boolean("legacy").notNull().default(false),
+    /**
+     * Undone (D174 follow-up, `undoShipment()` / `commerce.undo_shipment()`): staff took "sent" back. The parcel is kept for the history and the audit, but counts
+     * nowhere (what is sent, the order's state, slips, labels, emails, the list, the AI tools). Set once, never cleared; `undo_reason` is staff's own words (optional,
+     * at most 200 characters, replaced by a marker when the order is anonymised, D162).
+     */
+    undoneAt: timestamp("undone_at", { withTimezone: true }),
+    undoneBy: uuid("undone_by").references(() => accounts.id),
+    undoReason: text("undo_reason"),
     createdAt: createdAt(),
   },
   (t) => [
@@ -3081,8 +3089,11 @@ export const shipments = commerce.table(
     orderRef("shipments_order_fk", t),
     index("shipments_order_idx").on(t.storeId, t.orderId),
     index("shipments_created_by_idx").on(t.createdBy),
+    index("shipments_undone_by_idx").on(t.undoneBy),
     check("shipments_tracking_url", sql`${t.trackingUrl} ~ '^https://'`),
     check("shipments_label_url", sql`${t.labelUrl} is null or ${t.labelUrl} ~ '^https://'`),
+    check("shipments_undo_reason", sql`${t.undoReason} is null or (${t.undoneAt} is not null and char_length(${t.undoReason}) <= 200)`),
+    check("shipments_undone_by", sql`${t.undoneBy} is null or ${t.undoneAt} is not null`),
   ],
 );
 

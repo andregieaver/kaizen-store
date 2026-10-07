@@ -97,8 +97,18 @@ export type OrderRow = {
   lines: OrderLineRow[];
   payments: { provider: string; amountMinor: number; currency: string; status: string; createdAt: Ts; providerReference: string | null }[];
   refunds: { amountMinor: number; currency: string; status: string; createdAt: Ts; reason: string | null }[];
-  /** Each parcel with what was in it (D174; none for a parcel recorded before parcels named their lines). */
-  shipments: { carrier: string | null; trackingNumber: string | null; createdAt: Ts; lines?: { sku: string | null; title: string; quantity: number }[] }[];
+  /**
+   * Each parcel with what was in it (D174; none for a parcel recorded before parcels named their lines). A parcel staff undid (D174 follow-up: it was not sent
+   * after all) is kept in the record and marked with when, and staff's reason when one was given.
+   */
+  shipments: {
+    carrier: string | null;
+    trackingNumber: string | null;
+    createdAt: Ts;
+    lines?: { sku: string | null; title: string; quantity: number }[];
+    undoneAt?: Ts;
+    undoReason?: string | null;
+  }[];
   /** The order's changes after purchase (D174): number, date, difference and state; never staff's note. */
   changes?: { label: string; status: string; createdAt: Ts; appliedAt: Ts; differenceMinor: number; currency: string }[];
   downloads: { fileName: string | null; downloads: number }[];
@@ -470,6 +480,7 @@ const shapeOrder = (o: OrderRow): Json => {
       trackingNumber: text(s.trackingNumber),
       createdAt: iso(s.createdAt),
       lines: (s.lines ?? []).map((l) => ({ sku: text(l.sku), title: l.title, quantity: int(l.quantity) })),
+      ...(s.undoneAt ? { undone: { at: iso(s.undoneAt), reason: text(s.undoReason ?? null) } } : {}),
     })),
     changes: (o.changes ?? []).map((c) => ({ change: c.label, status: c.status, createdAt: iso(c.createdAt), appliedAt: iso(c.appliedAt), difference: money(c.differenceMinor, c.currency) })),
     downloads: o.downloads.map((d) => ({ fileName: text(d.fileName), count: int(d.downloads) })),

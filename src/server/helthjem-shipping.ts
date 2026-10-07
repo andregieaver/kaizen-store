@@ -52,7 +52,7 @@ export async function helthjemBook(
   // A second click (or tab) must not book the same parcel twice.
   const [recent] = await db().execute<Row>(sql`
     select 1 from commerce.shipments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and carrier_id = 'helthjem' and created_at > now() - interval '2 minutes'
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and carrier_id = 'helthjem' and created_at > now() - interval '2 minutes' and undone_at is null
   `);
   if (recent) return { ok: false, problem: "This order was just booked with Helthjem. Reload the page to see it." };
   // What goes in the parcel is checked before the carrier is paid for it (D174); `markSent()` checks it again under the order's lock.

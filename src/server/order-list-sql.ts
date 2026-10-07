@@ -72,7 +72,7 @@ function wordMatches(word: SearchWord): SQL {
       and (lower(l.title) like lower(${contains}) or lower(l.sku) like lower(${contains})))`);
   arms.push(sql`exists (select 1 from commerce.order_tags t where t.store_id = o.store_id and t.order_id = o.id
       and (t.key = ${word.key} or t.key like ${`${escapeLike(word.key)}%`}))`);
-  arms.push(sql`exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and lower(sh.tracking_number) = ${word.key})`);
+  arms.push(sql`exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null and lower(sh.tracking_number) = ${word.key})`);
   return sql`(${sql.join(arms, sql` or `)})`;
 }
 
@@ -107,7 +107,7 @@ function shipCondition(filter: OrderListParams["ship"][number]): SQL {
       return sql`(not ${PHYSICAL_SQL})`;
     // D174: a parcel is recorded and units are still to send (the order stays paid until none is left).
     case "partly_sent":
-      return sql`(o.status = 'paid' and exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id))`;
+      return sql`(o.status = 'paid' and exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null))`;
     case "edit_pending":
       return sql`exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and e.status = 'awaiting_payment')`;
   }

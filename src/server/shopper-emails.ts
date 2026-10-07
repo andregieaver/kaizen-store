@@ -425,9 +425,13 @@ async function orderNotice(
  * What the shipped email lists of a parcel (D174): its lines and quantities (none for a parcel recorded before parcels named their lines) and the units of the
  * order still to send after it. Read from the database, so the email says what the parcel holds whoever recorded it.
  */
-async function parcelContents(storeId: string, orderId: string, shipmentId: string): Promise<{ lines: { title: string; quantity: number }[]; left: number; legacy: boolean }> {
+async function parcelContents(
+  storeId: string,
+  orderId: string,
+  shipmentId: string,
+): Promise<{ lines: { title: string; quantity: number }[]; left: number; legacy: boolean; undone: boolean }> {
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuid.test(shipmentId) || !uuid.test(orderId)) return { lines: [], left: 0, legacy: false };
+  if (!uuid.test(shipmentId) || !uuid.test(orderId)) return { lines: [], left: 0, legacy: false, undone: false };
   const [rows, [head]] = await Promise.all([
     db().execute<Row>(sql`
       select ol.title, sl.quantity from commerce.shipment_lines sl
@@ -438,15 +442,22 @@ async function parcelContents(storeId: string, orderId: string, shipmentId: stri
     `),
     db().execute<Row>(sql`
       select coalesce((select sum(commerce.line_to_send(ol.id)) from commerce.order_lines ol where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid), 0)::int as left_units,
-        coalesce((select sh.legacy from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid), false) as legacy
+        coalesce((select sh.legacy from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid), false) as legacy,
+        exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid and sh.undone_at is not null) as undone
     `),
   ]);
-  return { lines: rows.map((r) => ({ title: String(r.title), quantity: Number(r.quantity) })), left: Number(head?.left_units ?? 0), legacy: Boolean(head?.legacy) };
+  return {
+    lines: rows.map((r) => ({ title: String(r.title), quantity: Number(r.quantity) })),
+    left: Number(head?.left_units ?? 0),
+    legacy: Boolean(head?.legacy),
+    undone: Boolean(head?.undone),
+  };
 }
 
 /**
  * The shipped email, one per parcel (key `order-sent:{shipment}`). A parcel that names its lines (D174) lists them, and says the rest follows when units are
- * still to send; the withdrawal block (D153) says the 14 days count from the last parcel (CRD Art. 9(2)(b)).
+ * still to send; the withdrawal block (D153) says the 14 days count from the last parcel (CRD Art. 9(2)(b)). A parcel staff undid (D174 follow-up) is never
+ * emailed: null, as for an order with no email.
  */
 export async function sendShipped(
   storeId: string,
@@ -457,6 +468,7 @@ export async function sendShipped(
   // Sent again on request: a key of its own, so the first sending does not stop it.
   const key = resend ? `order-sent:${shipment.id}:again:${crypto.randomUUID()}` : `order-sent:${shipment.id}`;
   const contents = await parcelContents(storeId, orderId, shipment.id);
+  if (contents.undone) return null;
   return orderNotice(
     storeId,
     orderId,

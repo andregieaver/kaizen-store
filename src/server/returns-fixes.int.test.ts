@@ -150,6 +150,12 @@ async function withdraw(o: Placed, lines = allOf(o)) {
 }
 
 const ago = (days: number) => sql`now() - ${`${days} days`}::interval`;
+/** Dates an order's parcels back (a parcel's details are a record the database freezes, D174 follow-up: a test may move its date around the rules). */
+const backdateParcels = (orderId: string, days: number) =>
+  db().transaction(async (tx) => {
+    await tx.execute(sql`set local session_replication_role = replica`);
+    await tx.execute(sql`update commerce.shipments set created_at = ${ago(days)} where order_id = ${orderId}::uuid`);
+  });
 const mails = async (orderId: string, kind?: string) =>
   (await db().execute<Row>(sql`select kind, to_address, status, text from commerce.email_messages where order_id = ${orderId}::uuid order by created_at`)).filter((m) => !kind || m.kind === kind);
 
@@ -158,7 +164,7 @@ describe("the 14 days start when the goods are received, never from an estimate"
     // Sent 19 days ago, received 9 days ago: by the estimate (sent + 3 days) the right would be over, but it runs to 5 days from now.
     const order = await paid([["DEMO-TOTE", 1]]);
     await db().execute(sql`update commerce.orders set placed_at = ${ago(25)} where id = ${order.orderId}::uuid`);
-    await db().execute(sql`update commerce.shipments set created_at = ${ago(19)} where order_id = ${order.orderId}::uuid`);
+    await backdateParcels(order.orderId, 19);
     const unknown = await orderReturnsOverview(storeId, order.orderId);
     expect(unknown!.window).toMatchObject({ state: "statutory", basis: "sent", startDay: null, statutoryEndDay: null });
     expect(unknown!.window!.estimatedEndDay).toBeTruthy();
@@ -183,7 +189,7 @@ describe("the 14 days start when the goods are received, never from an estimate"
     await db().execute(sql`update commerce.orders set placed_at = ${ago(35)} where id = ${order.orderId}::uuid`);
     // The first part is sent: the order is partly sent, still paid, and no receipt can be recorded yet.
     expect(await markSent(storeId, order.orderId, { carrier: "other", trackingNumber: "PART-1", trackingUrl: null }, null, null, { lines: [{ lineId: line.id, quantity: 1 }] })).toMatchObject({ ok: true, left: 1 });
-    await db().execute(sql`update commerce.shipments set created_at = ${ago(30)} where order_id = ${order.orderId}::uuid`);
+    await backdateParcels(order.orderId, 30);
     const day = new Date(Date.now() - 20 * 86_400_000).toISOString().slice(0, 10);
     expect(await markDelivered(storeId, { orderId: order.orderId, on: day }, null)).toMatchObject({ ok: false });
     const partly = await orderReturnsOverview(storeId, order.orderId);

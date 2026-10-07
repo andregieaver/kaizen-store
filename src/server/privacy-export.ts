@@ -175,7 +175,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       where r.store_id = ${store}::uuid and p.order_id = any(${ids}) order by r.created_at, r.id
     `),
     db().execute<Row>(sql`
-      select id, order_id, carrier, tracking_number, created_at, legacy from commerce.shipments
+      select id, order_id, carrier, tracking_number, created_at, legacy, undone_at, undo_reason from commerce.shipments
       where store_id = ${store}::uuid and order_id = any(${ids}) order by created_at, id
     `),
     db().execute<Row>(sql`
@@ -293,6 +293,8 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
         trackingNumber: str(x.tracking_number),
         createdAt: iso(x.created_at),
         lines: (byOrder.parcelLines.get(strs(x.id)) ?? []).map((l) => ({ sku: str(l.sku), title: strs(l.title), quantity: num(l.quantity) })),
+        // Undone (D174 follow-up): kept in the record, marked, with staff's reason (it is about this order).
+        ...(x.undone_at ? { undoneAt: iso(x.undone_at), undoReason: str(x.undo_reason) } : {}),
       })),
       changes: (byOrder.changes.get(id) ?? []).map((c) => ({ label: `E${num(c.seq)}`, status: strs(c.status), createdAt: iso(c.created_at), appliedAt: iso(c.applied_at), differenceMinor: num(c.difference_minor), currency: strs(c.currency) })),
       downloads: (byOrder.downloads.get(id) ?? []).map((d) => ({ fileName: str(d.file_name), downloads: num(d.downloads) })),

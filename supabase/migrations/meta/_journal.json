@@ -2024,6 +2024,20 @@
       "when": 1791356988091,
       "tag": "20261007070948_shipment_lines_required_rule",
       "breakpoints": true
+    },
+    {
+      "idx": 289,
+      "version": "7",
+      "when": 1791361767509,
+      "tag": "20261007082927_shipment_undo",
+      "breakpoints": true
+    },
+    {
+      "idx": 290,
+      "version": "7",
+      "when": 1791361777886,
+      "tag": "20261007082937_shipment_undo_rules",
+      "breakpoints": true
     }
   ]
 }

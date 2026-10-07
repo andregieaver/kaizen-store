@@ -14,7 +14,7 @@ export const OVERDUE_SQL = sql`r.refund_deadline is not null and r.refund_deadli
  * this one are at most the line's quantity less its units in parcels made before this withdrawal was confirmed (a legacy parcel counts as every unit). Then the
  * consumer has nothing to send back and the store has nothing to hold a refund against (CRD Art. 13(3)). "Withdrew 1 of 3, 1 sent" has nothing to send back;
  * "withdrew 2 of 3, 2 sent" has one unit. A parcel recorded after the declaration does not change that: the consumer withdrew from goods that had not been sent.
- * Units staff closed as not to be sent before it was confirmed (D174 3.16, `commerce.unsent_closures`) are not units the withdrawal can take: they were put back
+ * An undone parcel (D174 follow-up) was not sent and never counts. Units staff closed as not to be sent before it was confirmed (D174 3.16, `commerce.unsent_closures`) are not units the withdrawal can take: they were put back
  * and never delivered, so "1 of 3 sent, 2 closed, withdrew 1" asks the sent unit back. Only a withdrawal can be one. `src/lib/fulfilment.ts` (`unitsToSendBack()`) says the same in code.
  */
 export const NOTHING_SENT_SQL = sql`(r.kind = 'withdrawal' and not exists (
@@ -38,12 +38,12 @@ export const NOTHING_SENT_SQL = sql`(r.kind = 'withdrawal' and not exists (
       case
         when exists (
           select 1 from commerce.shipments sh
-          where sh.store_id = r.store_id and sh.order_id = r.order_id and sh.legacy and sh.created_at <= conf.at
+          where sh.store_id = r.store_id and sh.order_id = r.order_id and sh.legacy and sh.created_at <= conf.at and sh.undone_at is null
         ) then ol.quantity
         else least(ol.quantity, coalesce((
           select sum(sl.quantity) from commerce.shipment_lines sl
           join commerce.shipments sh on sh.store_id = sl.store_id and sh.id = sl.shipment_id
-          where sl.store_id = rl.store_id and sl.order_line_id = rl.order_line_id and sh.created_at <= conf.at
+          where sl.store_id = rl.store_id and sl.order_line_id = rl.order_line_id and sh.created_at <= conf.at and sh.undone_at is null
         ), 0))
       end
     ) - coalesce((

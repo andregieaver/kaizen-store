@@ -59,7 +59,7 @@ import { carrierTracking, trackedCarrier } from "@/server/carrier-tracking";
 import { customerSummary } from "@/server/customer-admin";
 import { listEmails } from "@/server/email";
 import { getOrderDocuments } from "@/server/invoices";
-import { CARRIERS, getOrderAdmin } from "@/server/order-admin";
+import { CARRIERS, getOrderAdmin, liveShipments } from "@/server/order-admin";
 import { orderReturnsOverview } from "@/server/order-returns";
 import { orderPrivacy } from "@/server/privacy-pages";
 import { getCarrier } from "@/server/shipping-carriers";
@@ -72,7 +72,7 @@ import { listCartAdds } from "@/server/wishlist-admin";
 
 import { orderEditability } from "@/server/order-edits";
 
-import { resendShippedAction, saveOrderFieldsAction, sendOrderAction } from "../actions";
+import { resendShippedAction, saveOrderFieldsAction, sendOrderAction, undoShipmentAction } from "../actions";
 import { cancelOrderEditAction, recordWaitingEditPaidOutsideAction, resendOrderEditAction } from "./edit/actions";
 import { archiveOrderAction, changeTagsAction, unarchiveOrderAction } from "../ops-actions";
 import { markDeliveredAction, registerWithdrawalAction } from "../../returns/actions";
@@ -92,6 +92,7 @@ const EVENT_LABELS: Record<string, string> = {
   "order.restocked": "Put back in stock",
   "order.cancelled_by_staff": "Cancelled and refunded",
   "order.edited": "Customer details changed",
+  "order.delivery_reopened": "Receipt date cleared",
   "note.added": "Note",
   "subscription.renewed": "Subscription renewed",
   "subscription.cancel": "Subscription set to end with the period",
@@ -148,6 +149,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   // Recording money taken outside Kaizen for a change (D174, D173's rule): the owner, or staff when the owner allows it.
   const mayRecordOutside = canWrite ? await mayRecordOutsidePayment(member) : false;
   const fulfilment = order.fulfilment;
+  // The parcels that stand: an undone one (D174 follow-up) stays listed for the history and counts nowhere.
+  const sentParcels = liveShipments(order.shipments).length;
   const awaitingEdit = order.edits.find((e) => e.status === "awaiting_payment") ?? null;
   const parcelRows = fulfilment.lines
     .filter((l) => l.physical)
@@ -474,7 +477,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           {(paid || toCharge) && order.ships && (
             <section aria-labelledby="sending" className={card}>
               <h2 id="sending" className="mb-3 font-medium">
-                {fulfilment.state === "partly_sent" ? "Partly sent" : order.shipments.length > 0 ? "Sent" : toCharge ? "Send and charge" : "Send the order"}
+                {fulfilment.state === "partly_sent" ? "Partly sent" : sentParcels > 0 ? "Sent" : toCharge ? "Send and charge" : "Send the order"}
               </h2>
               {weekly && toCharge && (
                 <div className="mb-4 flex flex-col gap-1 text-sm">
@@ -491,6 +494,8 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 base={`/admin/${store.slug}/orders/${order.id}`}
                 when={when}
                 emailAgain={canWrite && order.email ? (shipmentId) => resendShippedAction.bind(null, store.slug, order.id, shipmentId) : null}
+                undo={canWrite && !order.copied && (order.status === "paid" || order.status === "fulfilled") ? (shipmentId) => undoShipmentAction.bind(null, store.slug, order.id, shipmentId) : null}
+                receiptRecorded={Boolean(returns?.deliveredOn)}
                 status={(s) =>
                   trackedCarrier(s) && s.trackingNumber ? (
                     <Suspense fallback={null}>
@@ -500,7 +505,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 }
               />
               {bring?.complete && order.status !== "pending_payment" && !order.copied && bookable && (
-                <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
+                <details open={sentParcels === 0} className="mb-4 rounded-md border border-border p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Posten / Bring</summary>
                   <div className="mt-3">
                     <BringBooking
@@ -516,7 +521,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 </details>
               )}
               {porterbuddy?.complete && order.delivery?.carrier === "porterbuddy" && order.delivery.window && order.status !== "pending_payment" && !order.copied && bookable && (
-                <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
+                <details open={sentParcels === 0} className="mb-4 rounded-md border border-border p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Porterbuddy</summary>
                   <div className="mt-3">
                     <ChosenDeliveryBooking
@@ -532,7 +537,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 </details>
               )}
               {helthjem?.complete && order.delivery?.carrier === "helthjem" && order.status !== "pending_payment" && !order.copied && bookable && (
-                <details open={order.shipments.length === 0} className="mb-4 rounded-md border border-border p-4">
+                <details open={sentParcels === 0} className="mb-4 rounded-md border border-border p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Helthjem</summary>
                   <div className="mt-3">
                     <ChosenDeliveryBooking
@@ -564,7 +569,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   carriers={CARRIERS.map(({ id, name }) => ({ id, name }))}
                   hasEmail={Boolean(order.email)}
                   whole={weekly !== null}
-                  submitLabel={toCharge ? "Charge and send" : order.shipments.length > 0 ? "Send another parcel" : "Send this parcel"}
+                  submitLabel={toCharge ? "Charge and send" : sentParcels > 0 ? "Send another parcel" : "Send this parcel"}
                   send={sendOrderAction.bind(null, store.slug, order.id)}
                 />
               )}
@@ -612,7 +617,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
-          {((order.status === "paid" && order.shipments.length === 0) || toCharge) && (
+          {((order.status === "paid" && sentParcels === 0) || toCharge) && (
             <section aria-labelledby="cancel" className={card}>
               <h2 id="cancel" className="mb-1 font-medium">Cancel the order</h2>
               {order.subscriptionId && (

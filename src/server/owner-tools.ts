@@ -115,7 +115,7 @@ import { inventoryCounts, ledgerProblems } from "./inventory";
 import { preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
 import { onHandActive } from "./stock-sql";
 import { taxCheckupFindings, taxProfileView } from "./tax-profile";
-import { addOrderNote, CARRIERS, getOrderAdmin, markSent, refundOrder, sendRefusalText } from "./order-admin";
+import { addOrderNote, CARRIERS, getOrderAdmin, liveShipments, markSent, refundOrder, sendRefusalText } from "./order-admin";
 import { archiveOrdersTool, createDraftOrderTool, listDraftOrdersTool, listOrdersTool, preflightSendDraft, sendDraftOrderTool, tagOrdersTool } from "./order-ops-tools";
 import { listPages, pagesTag, unpublishPage } from "./pages";
 import { listAdminProducts, setArchived } from "./products";
@@ -310,7 +310,8 @@ async function getOrderTool({ store }: OwnerToolContext, { order }: OwnerToolInp
             .map((l) => ({ title: l.title, sku: l.sku, units: l.toSend, ...(l.backordered > 0 ? { on_backorder: Math.min(l.backordered, l.toSend) } : {}) })),
         }
       : {}),
-    shipments: view.shipments.map((s) => ({
+    // A parcel staff undid (D174 follow-up) was not sent: it is not one of the order's shipments here.
+    shipments: liveShipments(view.shipments).map((s) => ({
       carrier: s.carrier,
       tracking: s.trackingNumber,
       sent: s.createdAt,
@@ -1553,7 +1554,7 @@ async function resendOrderEmailTool({ store }: OwnerToolContext, { order, which 
   }
   const [shipment] = await db().execute<Row>(sql`
     select id, carrier, tracking_number, tracking_url from commerce.shipments
-    where store_id = ${store.id}::uuid and order_id = ${orderId}::uuid order by created_at desc limit 1
+    where store_id = ${store.id}::uuid and order_id = ${orderId}::uuid and undone_at is null order by created_at desc limit 1
   `);
   if (!shipment) return fail(`Order ${order} has not been sent yet.`);
   const outcome = await sendShipped(

@@ -11,13 +11,13 @@ import { carrierContext } from "./shipping-carriers";
 
 /**
  * The PDF label of a shipment booked through a carrier's connection (Posten / Bring, Porterbuddy, Helthjem), fetched when it is
- * printed with the store's own agreement and never kept, for the store's staff only; null when there is none or the
- * carrier will not give it.
+ * printed with the store's own agreement and never kept, for the store's staff only; null when there is none, the parcel was
+ * undone (D174 follow-up) or the carrier will not give it.
  */
 export async function carrierLabel(storeId: string, orderId: string, shipmentId: string): Promise<Uint8Array | null> {
   const [row] = await db().execute<Record<string, unknown>>(sql`
     select carrier_id, label_url from commerce.shipments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and id = ${shipmentId}::uuid and label_url is not null
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and id = ${shipmentId}::uuid and label_url is not null and undone_at is null
   `);
   if (!row) return null;
   const carrier = String(row.carrier_id);

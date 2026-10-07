@@ -39,14 +39,14 @@ export type OrderFulfilment = {
   orderId: string;
   lines: ToSendLine[];
   hasShipment: boolean;
-  /** A parcel from before parcels named their lines: everything counts as sent. */
+  /** A parcel from before parcels named their lines (and not undone): everything counts as sent. */
   legacy: boolean;
   state: FulfilmentState;
   unitsToSend: number;
   /** A change waits for the customer's payment (D174): nothing is sent meanwhile. */
   editPending: boolean;
   /**
-   * What the screen saw: the order's parcels, withdrawn units and closed units, as one string. `markSent()` compares it under the order's lock and answers `changed`
+   * What the screen saw: the order's parcels (standing and undone), withdrawn units and closed units, as one string. `markSent()` compares it under the order's lock and answers `changed`
    * when another parcel, a withdrawal or a closure came in between (two staff sending at once).
    */
   basis: string;
@@ -100,8 +100,9 @@ export async function fulfilmentOf(runner: Runner, storeId: string, orderIds: re
     toSend(runner, storeId, ids),
     runner.execute<Row>(sql`
       select o.id,
-        (select count(*)::int from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id) as shipments,
-        exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.legacy) as legacy,
+        (select count(*)::int from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as shipments,
+        (select count(*)::int from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is not null) as undone,
+        exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.legacy and sh.undone_at is null) as legacy,
         exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and e.status = 'awaiting_payment') as edit_pending
       from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = any(${uuidList(ids)})
     `),
@@ -120,7 +121,7 @@ export async function fulfilmentOf(runner: Runner, storeId: string, orderIds: re
       state: fulfilmentState(own, hasShipment),
       unitsToSend: own.reduce((s, l) => s + l.toSend, 0),
       editPending: Boolean(head.edit_pending),
-      basis: `${Number(head.shipments)}:${withdrawn}:${closed}`,
+      basis: `${Number(head.shipments)}:${Number(head.undone)}:${withdrawn}:${closed}`,
     });
   }
   return out;
@@ -143,7 +144,7 @@ export async function refreshFulfilment(runner: Runner, storeId: string, orderId
 /** A parcel's lines: which order line and how many of its units, with the line's title and SKU as sold (a line taken off later keeps none: it cannot be, it was sent). */
 export type ShipmentLineView = { lineId: string; sku: string; title: string; quantity: number };
 
-/** The lines of each parcel of an order (empty for a legacy parcel that was not the order's first). */
+/** The lines of each parcel of an order (empty for a legacy parcel that was not the order's first), undone parcels included: callers that show parcels choose which. */
 export async function shipmentLinesFor(runner: Runner, storeId: string, orderId: string): Promise<Map<string, ShipmentLineView[]>> {
   const rows = await runner.execute<Row>(sql`
     select sl.shipment_id, sl.order_line_id, sl.quantity, ol.sku, ol.title
@@ -181,14 +182,14 @@ export type ShopperFulfilment = {
   stillToCome: { lineId: string; sku: string; title: string; quantity: number; backordered: number; backorderDays: number | null }[];
 };
 
-/** What the order pages show of the parcels: each with its lines, and what is still to come. Null for an order that is not this store's. */
+/** What the order pages show of the parcels: each with its lines, and what is still to come. An undone parcel (D174 follow-up) is never shown. Null for an order that is not this store's. */
 export async function shopperFulfilment(storeId: string, orderId: string, runner: Runner = db()): Promise<ShopperFulfilment | null> {
   const found = await orderFulfilment(runner, storeId, orderId);
   if (!found) return null;
   const [parcels, linesOf] = await Promise.all([
     runner.execute<Row>(sql`
       select id, carrier, tracking_number, tracking_url, created_at, legacy from commerce.shipments
-      where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid order by created_at, id
+      where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and undone_at is null order by created_at, id
     `),
     shipmentLinesFor(runner, storeId, orderId),
   ]);

@@ -111,7 +111,7 @@ async function stateBoth(orderId: string): Promise<[string, string]> {
        from commerce.order_lines ol where ol.order_id = $1`,
     [orderId],
   );
-  const has = await scalar<boolean>("select exists (select 1 from commerce.shipments where order_id = $1)", [orderId]);
+  const has = await scalar<boolean>("select exists (select 1 from commerce.shipments where order_id = $1 and undone_at is null)", [orderId]);
   const ts: FulfilmentLine[] = lines.map((l) => ({ lineId: l.id, quantity: l.quantity, physical: l.physical, shipped: l.shipped, withdrawn: l.withdrawn, closed: l.closed }));
   for (const [i, l] of lines.entries()) expect(unitsToSend(ts[i]), l.id).toBe(l.to_send);
   return [await scalar<string>("select commerce.order_fulfilment($1)", [orderId]), fulfilmentState(ts, has)];
@@ -870,6 +870,200 @@ describe("registers (3.7)", () => {
   });
 });
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Undoing a parcel (D174 follow-up)
+// ---------------------------------------------------------------------------------------------------------------------
+
+describe("undoing a parcel (D174 follow-up)", () => {
+  const undo = (shipmentId: string, s = store, reason: string | null = null) =>
+    one<{ r: any }>("select commerce.undo_shipment($1, $2, $3, $4) as r", [s, shipmentId, account, reason]).then((x) => x.r);
+  const refresh = (orderId: string, s = store) => db.query("select commerce.refresh_fulfilment($1, $2)", [s, orderId]);
+  const statusOf = (orderId: string) => scalar<string>("select status::text from commerce.orders where id = $1", [orderId]);
+
+  it("marks the parcel undone once, keeps it, and its units are to send again: Partly sent, back to paid", async () => {
+    const o = await paid();
+    const [a, b] = o.lineIds;
+    const first = await ship(o.id, [[a, 2]]);
+    const second = await ship(o.id, [[a, 1], [b, 1]]);
+    await refresh(o.id);
+    expect(await statusOf(o.id)).toBe("fulfilled");
+    expect(await stateBoth(o.id)).toEqual(["sent", "sent"]);
+    const result = await undo(second, store, "  Wrong box  ");
+    expect(result).toMatchObject({ orderId: o.id, units: 2, left: 2, reopened: true, deliveredWas: null, legacy: false });
+    const row = await one<any>("select undone_at is not null as undone, undone_by, undo_reason from commerce.shipments where id = $1", [second]);
+    expect(row).toEqual({ undone: true, undone_by: account, undo_reason: "Wrong box" });
+    expect(await statusOf(o.id)).toBe("paid");
+    expect(await stateBoth(o.id)).toEqual(["partly_sent", "partly_sent"]);
+    expect(await scalar("select commerce.line_shipped($1)", [a])).toBe(2);
+    expect(await scalar("select commerce.line_to_send($1)", [a])).toBe(1);
+    expect(await scalar("select commerce.line_to_send($1)", [b])).toBe(1);
+    // The record stays: the parcel and its lines.
+    expect(await scalar<number>("select count(*)::int from commerce.shipment_lines where shipment_id = $1", [second])).toBe(2);
+    const event = await one<any>("select data, actor from commerce.order_events where order_id = $1 and type = 'order.shipment_undone'", [o.id]);
+    expect(event.actor).toBe("staff");
+    expect(event.data).toMatchObject({ shipment: second, units: 2, left: 2, reopened: true, note: "Wrong box", carrier: "posten" });
+    expect(event.data.lines).toHaveLength(2);
+    // The units can be sent again, and the order is sent once more.
+    await ship(o.id, [[a, 1], [b, 1]]);
+    await refresh(o.id);
+    expect(await statusOf(o.id)).toBe("fulfilled");
+    // Undoing the first one too leaves it partly sent with the units of the first parcel to send.
+    await undo(first);
+    expect(await stateBoth(o.id)).toEqual(["partly_sent", "partly_sent"]);
+    expect(await scalar("select commerce.line_to_send($1)", [a])).toBe(2);
+  });
+
+  it("never undoes twice, never un-undoes, never deletes, and refuses every other change to a parcel", async () => {
+    const o = await paid();
+    const id = await ship(o.id, [[o.lineIds[0], 1]]);
+    await expect(db.query("update commerce.shipments set undone_at = now() where id = $1", [id])).rejects.toThrow(/shipment\.undo_function/);
+    await expect(db.query("update commerce.shipments set tracking_number = 'X' where id = $1", [id])).rejects.toThrow(/shipment\.frozen/);
+    await expect(db.query("update commerce.shipments set label_url = 'https://x.example/l.pdf' where id = $1", [id])).rejects.toThrow(/shipment\.frozen/);
+    await expect(db.query("delete from commerce.shipments where id = $1", [id])).rejects.toThrow(/shipment\.append_only/);
+    await undo(id, store, "first");
+    await expect(undo(id)).rejects.toThrow(/shipment_undo\.already_undone/);
+    await expect(db.query("update commerce.shipments set undone_at = null, undone_by = null, undo_reason = null where id = $1", [id])).rejects.toThrow(/shipment\.undone_final/);
+    await expect(db.query("update commerce.shipments set undo_reason = 'changed' where id = $1", [id])).rejects.toThrow(/shipment\.undone_final/);
+    await expect(db.query("update commerce.shipments set undo_reason = '[removed]' where id = $1", [id])).rejects.toThrow(/shipment\.undone_final/);
+    await expect(db.query("delete from commerce.shipments where id = $1", [id])).rejects.toThrow(/shipment\.append_only/);
+    // Only anonymising may put the marker in place of the reason.
+    await db.transaction(async (tx) => {
+      await tx.query("select set_config('commerce.anonymising', 'on', true)");
+      await tx.query("update commerce.shipments set undo_reason = '[removed]' where id = $1", [id]);
+    });
+    expect(await scalar("select undo_reason from commerce.shipments where id = $1", [id])).toBe("[removed]");
+    // A line is never added to an undone parcel.
+    await expect(db.query("insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity) values ($1, $2, $3, 1)", [store, id, o.lineIds[1]])).rejects.toThrow(
+      /shipment_line\.undone/,
+    );
+    // The back-fill's legacy flag may still go from false to true, never back.
+    const other1 = await ship(o.id, [[o.lineIds[1], 1]]);
+    await db.query("update commerce.shipments set legacy = true where id = $1", [other1]);
+    await expect(db.query("update commerce.shipments set legacy = false where id = $1", [other1])).rejects.toThrow(/shipment\.legacy/);
+    expect(await scalar<string>("select pg_get_functiondef('commerce.anonymise_order(uuid, uuid, text)'::regprocedure)")).toContain("undo_reason = '[removed]'");
+  });
+
+  it("refuses a reason over 200 characters, and keeps an empty one as none", async () => {
+    const o = await paid();
+    const id = await ship(o.id, [[o.lineIds[0], 1]]);
+    await expect(undo(id, store, "x".repeat(201))).rejects.toThrow(/shipment_undo\.reason_too_long/);
+    await undo(id, store, "   ");
+    expect(await scalar("select undo_reason from commerce.shipments where id = $1", [id])).toBeNull();
+    expect((await one<any>("select data from commerce.order_events where order_id = $1 and type = 'order.shipment_undone'", [o.id])).data).not.toHaveProperty("note");
+  });
+
+  it("clears a recorded receipt (goods that were not sent were not received)", async () => {
+    const o = await paid();
+    const id = await ship(o.id, o.lineIds.map((l, i) => [l, i === 0 ? 3 : 1] as [string, number]));
+    await refresh(o.id);
+    await db.query("update commerce.orders set delivered_at = now() - interval '1 day' where id = $1", [o.id]);
+    const result = await undo(id);
+    expect(result.reopened).toBe(true);
+    expect(result.deliveredWas).not.toBeNull();
+    expect(await scalar("select delivered_at from commerce.orders where id = $1", [o.id])).toBeNull();
+    expect(await stateBoth(o.id)).toEqual(["unsent", "unsent"]);
+    expect(await scalar<number>("select count(*)::int from commerce.order_events where order_id = $1 and type = 'order.delivery_reopened'", [o.id])).toBe(1);
+  });
+
+  it("refuses when a return or withdrawal was made after the parcel, and not for one made before it", async () => {
+    const o = await paid();
+    const [a] = o.lineIds;
+    const parcel = await ship(o.id, [[a, 2]]);
+    await withdraw(o.id, a, 1);
+    await expect(undo(parcel)).rejects.toThrow(/shipment_undo\.return/);
+    // A withdrawal before the parcel was recorded (of units that were never sent) does not stop it.
+    const p = await paid();
+    await withdraw(p.id, p.lineIds[0], 1);
+    await db.query("select pg_sleep(0.01)");
+    const later = await ship(p.id, [[p.lineIds[0], 2]]);
+    await undo(later);
+    expect(await scalar("select commerce.line_to_send($1)", [p.lineIds[0]])).toBe(2);
+    // A declined or cancelled return does not stop it either.
+    const q = await paid();
+    const qp = await ship(q.id, [[q.lineIds[0], 1]]);
+    const ret = await one<{ id: string }>("insert into commerce.returns (store_id, order_id, kind, status) values ($1, $2, 'return', 'requested') returning id", [store, q.id]);
+    await expect(undo(qp)).rejects.toThrow(/shipment_undo\.return/);
+    await db.query("update commerce.returns set status = 'cancelled' where id = $1", [ret.id]);
+    await undo(qp);
+  });
+
+  it("refuses another store's parcel, a cancelled order's and one while a change waits for payment", async () => {
+    const o = await paid();
+    const id = await ship(o.id, [[o.lineIds[0], 1]]);
+    await expect(undo(id, other)).rejects.toThrow(/shipment_undo\.not_found/);
+    await expect(undo("00000000-0000-4000-8000-000000000000")).rejects.toThrow(/shipment_undo\.not_found/);
+    const c = await paid();
+    const cid = await ship(c.id, [[c.lineIds[0], 1]]);
+    await db.query("update commerce.orders set status = 'cancelled' where id = $1", [c.id]);
+    await expect(undo(cid)).rejects.toThrow(/shipment_undo\.status/);
+    // A change waits for payment (written after the only parcel was undone, so the database let it in), and a parcel recorded around the rules: refused.
+    const e = await paid();
+    const gone = await ship(e.id, [[e.lineIds[0], 1]]);
+    await undo(gone);
+    const v = await newVariant();
+    await edit(e.id, { added: [{ variantId: v, unitPriceMinor: 2000, quantity: 1 }], awaiting: {} });
+    await expect(ship(e.id, [[e.lineIds[0], 1]])).rejects.toThrow(/shipment\.edit_pending/);
+    let forced = "";
+    await db.exec("set session_replication_role = replica");
+    try {
+      forced = await ship(e.id, [[e.lineIds[0], 1]]);
+    } finally {
+      await db.exec("set session_replication_role = origin");
+    }
+    await expect(undo(forced)).rejects.toThrow(/shipment_undo\.edit_pending/);
+  });
+
+  it("refuses a copied order's parcel (one written around the rules: a copy never gets one)", async () => {
+    const copy = await placeOrder(db, store, { lines: [{ sku: "A", unit: 1000 }], copied: true });
+    let id = "";
+    await db.exec("set session_replication_role = replica");
+    try {
+      id = await ship(copy.id, [[copy.lineIds[0], 1]]);
+    } finally {
+      await db.exec("set session_replication_role = origin");
+    }
+    await expect(undo(id)).rejects.toThrow(/shipment_undo\.copied/);
+  });
+
+  it("lets a change in once the only parcel is undone (an undone parcel is not a sent one)", async () => {
+    const o = await paid();
+    const id = await ship(o.id, [[o.lineIds[0], 1]]);
+    await expect(edit(o.id, { quantities: { [o.lineIds[1]]: 0 } })).rejects.toThrow(/order_edit\.sent/);
+    await undo(id);
+    await edit(o.id, { quantities: { [o.lineIds[1]]: 0 } });
+    expect(await scalar<number>("select count(*)::int from commerce.order_edits where order_id = $1 and status = 'applied'", [o.id])).toBe(1);
+  });
+
+  it("counts an undone legacy parcel as nothing sent, while another legacy parcel still counts as everything", async () => {
+    const o = await paid();
+    const only = await ship(o.id, [], store, true);
+    expect(await stateBoth(o.id)).toEqual(["sent", "sent"]);
+    await undo(only);
+    expect(await stateBoth(o.id)).toEqual(["unsent", "unsent"]);
+    const p = await paid();
+    const one1 = await ship(p.id, [], store, true);
+    await ship(p.id, [], store, true);
+    await undo(one1);
+    expect(await stateBoth(p.id)).toEqual(["sent", "sent"]);
+  });
+
+  it("does not confirm a cancelled booking again when an order goes back from fulfilled to paid", async () => {
+    const def = await scalar<string>("select pg_get_functiondef('commerce.order_bookings_follow()'::regprocedure)");
+    expect(def).toContain("IF NEW.status = 'paid' AND OLD.status IS DISTINCT FROM 'fulfilled' THEN");
+  });
+
+  it("keeps search_path empty on the new functions and no statement that removes rows in them", async () => {
+    const fns = await rows<{ proname: string; proconfig: string[]; src: string }>(
+      `select proname, proconfig, prosrc as src from pg_proc where pronamespace = 'commerce'::regnamespace and proname in ('shipments_guard', 'undo_shipment', 'line_shipped', 'order_fulfilment', 'shipment_lines_rules')`,
+    );
+    expect(fns).toHaveLength(5);
+    for (const f of fns) {
+      expect(f.proconfig).toEqual(['search_path=""']);
+      expect(f.src).not.toMatch(/\bdelete\s+from\b|\bdrop\b|\btruncate\b/i);
+    }
+  });
+});
+
 it("never lets a store's change touch another store (composite keys)", async () => {
   const o = await paid();
   await expect(
@@ -893,7 +1087,8 @@ describe("a property: random changes, parcels and withdrawals keep every rule (6
     return rows<any>(
       `select ol.id, ol.quantity, (ol.delivery = 'physical' and ol.variant_id is not null) as physical, commerce.line_shipped(ol.id) as shipped,
               commerce.withdrawn_quantity(ol.id) as withdrawn, commerce.closed_quantity(ol.id) as closed, commerce.line_to_send(ol.id) as to_send,
-              coalesce((select sum(sl.quantity) from commerce.shipment_lines sl where sl.order_line_id = ol.id), 0)::int as in_parcels
+              coalesce((select sum(sl.quantity) from commerce.shipment_lines sl join commerce.shipments sh on sh.id = sl.shipment_id
+                         where sl.order_line_id = ol.id and sh.undone_at is null), 0)::int as in_parcels
          from commerce.order_lines ol where ol.order_id = $1 order by ol.ctid`,
       [orderId],
     );
@@ -901,7 +1096,7 @@ describe("a property: random changes, parcels and withdrawals keep every rule (6
 
   async function holds(orderId: string) {
     const lines = await lineState(orderId);
-    const has = await scalar<boolean>("select exists (select 1 from commerce.shipments where order_id = $1)", [orderId]);
+    const has = await scalar<boolean>("select exists (select 1 from commerce.shipments where order_id = $1 and undone_at is null)", [orderId]);
     for (const l of lines) {
       expect(l.in_parcels).toBeLessThanOrEqual(l.quantity);
       expect(l.to_send).toBeGreaterThanOrEqual(0);
@@ -957,7 +1152,17 @@ describe("a property: random changes, parcels and withdrawals keep every rule (6
         await ship(o.id, [[l.id, units]], s);
         // One unit more than the line holds, with what its parcels hold now, is always refused by the database.
         await expect(ship(o.id, [[l.id, l.quantity - l.in_parcels - units + 1]], s)).rejects.toThrow(/too_many/);
-      } else if (roll < 0.8) {
+      } else if (roll < 0.7) {
+        // Undo a parcel that stands (D174 follow-up): its units are to send again, unless a withdrawal came after it (refused, nothing changes).
+        const live = await rows<{ id: string }>("select id from commerce.shipments where order_id = $1 and undone_at is null order by created_at, id", [o.id]);
+        if (live.length > 0) {
+          try {
+            await db.query("select commerce.undo_shipment($1, $2, $3, null)", [s, pick(live).id, account]);
+          } catch (error) {
+            expect(String(error)).toMatch(/shipment_undo\.return/);
+          }
+        }
+      } else if (roll < 0.85) {
         const units = 1 + Math.floor(next() * l.to_send);
         // One unit more than is still to send is refused; then what is left of it is closed.
         await expect(close(o.id, l.id, l.to_send + 1, s)).rejects.toThrow(/unsent_closure\.too_many/);

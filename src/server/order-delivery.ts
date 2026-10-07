@@ -39,7 +39,7 @@ export async function markDelivered(storeId: string, input: unknown, accountId: 
     db().transaction(async (tx): Promise<DeliveredDone> => {
       const [order] = await tx.execute<Row>(sql`
         select o.status, o.copied_from is not null as copied, o.placed_at, s.time_zone,
-          (select min(sh.created_at) from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id) as first_sent
+          (select min(sh.created_at) from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as first_sent
         from commerce.orders o join commerce.stores s on s.id = o.store_id
         where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid for update of o
       `);

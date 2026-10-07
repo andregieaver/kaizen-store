@@ -661,6 +661,73 @@ record**, `commerce.unsent_closures` (3.2, 3.3 point 11), never a guess from sto
   total at what was paid, but the withdrawal refund of such a unit is for the legal review and the lead. An unsent order closed in full stays in the *To send* list filter, which reads
   `status = 'paid'` (as an order withdrawn in full already did).
 
+### 3.17 Undoing a parcel (D174 follow-up)
+
+Asked by a store owner: staff recorded a parcel by mistake (the wrong order, a box that never left, a carrier booked twice) and nothing could take "sent" back. A parcel is part
+of the order's record (what the customer was told, the history, the audit), so it is **undone, never deleted**:
+
+- **Data.** `commerce.shipments` gains `undone_at timestamptz`, `undone_by uuid` (fk `accounts`, indexed, like `created_by`) and `undo_reason text` (optional; check: at most
+  200 characters, only with `undone_at`; `undone_by` only with `undone_at`). Migrations `20261007082927_shipment_undo.sql` (generated) and
+  `20261007082937_shipment_undo_rules.sql` (custom). They only add, so the code still running during the deploy keeps working (it never updates a shipment).
+- **What the database holds** (`shipments_guard()`, before update or delete): a parcel is never deleted (`shipment.append_only`; there was no delete guard before); its carrier,
+  tracking, label, order and dates never change (`shipment.frozen`, every column but the four below compared as JSON, so a column added later is frozen too); `legacy` only
+  goes from false to true (the back-fills of 3.3 point 2 and 20261007070948, which `fulfilment.test.ts` runs again); the undo columns are set once, from null, only by
+  `commerce.undo_shipment()` (it names the parcel in the transaction-local setting `kaizen.shipment_undo`; anything else is `shipment.undo_function`); an undone parcel is never
+  un-undone (`shipment.undone_final`), except that anonymising (`commerce.anonymising = 'on'`) replaces the reason with `[removed]`. The grep of writers found no
+  `update commerce.shipments` in `src/` and only the two legacy back-fills in the migrations.
+- **An undone parcel counts nowhere.** Replaced with the same signatures: `line_shipped()` (a legacy parcel counts as everything sent only while it is not undone; the sum of
+  parcel lines reads only parcels that are not undone), `order_fulfilment()` ("has a parcel" = a parcel that is not undone, so an order whose only parcel was undone is `unsent`
+  again), `shipment_lines_rules()` (the units already in parcels are counted from live parcels, so the undone units can be sent again; a line is never added to an undone parcel,
+  `shipment_line.undone`). `line_to_send()`, `refresh_fulfilment()` and everything on them follow. Patched by anchors: `order_edits_rules()` (a change is refused only for an order
+  with a parcel that is not undone), `order_bookings_follow()` (an order moving from `fulfilled` back to `paid` is not a payment: its bookings are not confirmed again, a booking
+  staff cancelled stays cancelled) and `anonymise_order()` (the undo reason is staff's own words: replaced by the marker, as a refund's reason). `shipments_have_lines` needed no
+  change (an undone parcel keeps its lines). In code, every reader of `commerce.shipments` filters `undone_at is null`: `NOTHING_SENT_SQL`, `last_shipped_at`
+  (`return-facts.ts`), `withdrawnInFull()`, `fulfilmentOf()` (count, legacy, and the `basis` now `{live}:{undone}:{withdrawn}:{closed}`, so a form that saw the order before an undo
+  is refused as `changed`), `shopperFulfilment()` (the shopper's order page and My account never list an undone parcel), `parcelSlipData()` (an undone parcel's slip is a 404),
+  `carrierLabel()` and `bringLabel()` (no label for an undone parcel), the carriers' two-minute double-booking checks (an undone booking does not block booking again), the
+  shipped email (`sendShipped()` answers null for an undone parcel; *Email again* refuses it), the order list (`has_parcel`, the `partly_sent` filter, the tracking-number search),
+  the control center's first parcel, `markDelivered()`'s "was it sent", `orderEditability()`, the integrations' order payload, the AI manager's `get_order` (lists only parcels
+  that stand) and `resend_order_email` (the latest parcel that stands). The privacy export keeps an undone parcel, marked `undone: { at, reason }`; `PERSONAL_DATA` lists
+  `undo_reason`. Carrier tracking is drawn only for a parcel that stands (the order page passes `status` to standing parcels only).
+- **`commerce.undo_shipment(store, shipment, account, reason)`** (the only way to undo; `undoShipment()` its only caller, `order-edit-writers.scan.test.ts`): reads the parcel's
+  order, locks the order row (`FOR UPDATE`, the lock `markSent()` takes) and then the parcel, and refuses with `shipment_undo.<code>`: `not_found` (no such parcel in the store),
+  `copied` (D129), `already_undone`, `status` (the order is not `paid` or `fulfilled`: cancelled, closed, waiting for payment), `edit_pending` (a change waits for the
+  customer's payment), `return` (a `returns` row that is not declined or cancelled, or a confirmed withdrawal request, made at or after the parcel's `created_at`: its units
+  may be these goods, and undoing would break the return; staff settle it first), `reason_too_long`. Then it sets the three columns, moves a `fulfilled` order back to `paid`
+  when `order_fulfilment()` is no longer `sent`, clears `orders.delivered_at` when set (writing `order.delivery_reopened` with `was` and `undone`: goods that were not sent were
+  not received, D153 / CRD Art. 9(2)(b), so the 14 days start again when they are), and writes `order.shipment_undone` (`shipment`, `carrier`, `tracking`, `carrierId`,
+  `legacy`, `units`, `lines` with SKU and title as sold, `left`, `reopened`, and the reason only as `data.note`, which anonymising removes). No stock moves (a parcel never moved
+  stock: stock is drawn at payment). It returns what the caller tells staff.
+- **Server** (`src/server/order-admin.ts`): `undoShipment(storeId, orderId, shipmentId, accountId, reason)` checks the ids, that the parcel is the order's and the reason's
+  length, calls the function, maps each `shipment_undo.<code>` to `UNDO_REFUSALS` (plain sentences, `undoRefusalText()`), and writes the audit entry
+  `order.shipment_undone` (area `orders`; ids and counts only: shipment, units, left, reopened, the carrier it was booked with, whether a receipt was cleared; never the
+  reason). `liveShipments()` filters an order's parcels. `cancelOrder()` counts only parcels that stand (an order whose only parcel was undone was never sent and can be
+  cancelled). **A parcel booked through a carrier's connection is not cancelled at the carrier**: the outcome names the carrier (`bookedWith`, from the registry) and the answer
+  says "cancel it with {carrier} yourself". **Nobody is emailed**: the answer says so too. No integration event is queued (D41's events have no "unsent" kind; see below).
+- **Admin.** `undoShipmentAction` (`orders/actions.ts`): `checkPermission(slug, 'orders:write')`, the store from the membership, both ids checked as uuids, the reason trimmed
+  to at most 200 characters, `refresh()` as the send action; it answers in `ActionForm`'s shape. `ShipmentList` gives each parcel that stands an *Undo "sent"* disclosure
+  (`UndoParcel` in `parcel-buttons.tsx`, an `ActionForm`) with the warnings first (`undoWarnings()`, `src/lib/shipment-undo.ts`: the parcel stays in the history and its units
+  go back to what is to send; the booking with the carrier is not cancelled; the customer is not emailed; the recorded receipt date is cleared) and the optional reason; it is
+  offered to people who may change orders on a paid or sent order that is not a copy. An undone parcel stays listed with a dashed border, muted and struck through, "not sent
+  after all", with "Undone {date} by {email}: {reason}" (`undoneLine()`), and offers no slip, label, *Email again*, tracking or undo. The *Send* card's heading, the carrier
+  forms' open state, *Send another parcel* and the *Cancel* card count only parcels that stand; the Send form reflects the units to send again (it reads `line_to_send()`). The
+  history says "Parcel with {carrier} ({tracking}) undone, not sent after all: N units to send again" (`fulfilmentEventText()`) and "Receipt date cleared".
+- **The AI manager** reads only parcels that stand; **no tool undoes a parcel** (it is done on the order's page).
+- **Tests.** `src/db/fulfilment.test.ts` ("undoing a parcel": undone once, the record kept, Partly sent and back to `paid`, sent again and Sent, never twice, never un-undone,
+  never deleted, no other change, the marker only while anonymising, no line added to an undone parcel, legacy only false to true, the reason's length, the receipt cleared,
+  refusals for a return or withdrawal after the parcel (not one before, not a declined or cancelled one), another store, a cancelled order, a change waiting for payment and a
+  copy (both written around the rules: neither can coexist with a parcel otherwise), a change let in once the only parcel is undone, an undone legacy parcel, the bookings
+  patch, `search_path` and no removing statement; and the property test now undoes parcels at random); `src/db/privacy.test.ts` (anonymising replaces the reason, the
+  event's note goes); `src/server/shipment-undo.int.test.ts` (3 sent in two parcels, the second undone: Partly sent, 1 unit to send in the order page's read, the slip and the
+  pick list, the parcel's slip a 404, the shopper sees one parcel, no email for the undone one, the list's filter and search, the audit and the event, bulk *Mark as sent*
+  sends it again; the receipt cleared and recorded again only when everything is sent; an order whose only parcel was undone can be cancelled; a Bring booking undone with
+  "cancel it with Posten / Bring yourself" and no label; every refusal as a code and a sentence, another store's ids included); `fulfilment-views.test.ts` (the control, the
+  warnings, an undone parcel's line); `order-edit-writers.scan.test.ts` (only `undoShipment()` calls the function; no app code updates or deletes a shipment).
+- **Not done.** No integration event or Slack message for an undone parcel (an `order.sent` already delivered to a webhook or Slack stays delivered; a new event kind would
+  need D41's list, the Slack words and the integrations' settings). The carriers' own APIs are not asked to cancel a booking (no adapter has a cancel call today). The
+  shopper is never told by Kaizen; a parcel email already sent stays in their inbox.
+
+
 ## 4. Rules and law
 
 ### 4.1 Limits and constants (`src/lib/fulfilment-limits.ts`; a unit test pins every number)

@@ -63,6 +63,15 @@ export function fulfilmentEventText(type: string, data: Record<string, unknown>,
       const total = count(data.units);
       return `${FULFILMENT_EVENT_LABELS[event]}: ${listed.length > 0 ? listed.join(", ") : total !== null ? units(total) : "units"} will not be sent`;
     }
+    case FULFILMENT_EVENTS.shipmentUndone: {
+      const carrier = typeof data.carrier === "string" && data.carrier ? ` with ${data.carrier}` : "";
+      const tracking = typeof data.tracking === "string" && data.tracking ? ` (${data.tracking})` : "";
+      const held = count(data.units);
+      const left = count(data.left);
+      const what = held !== null && held > 0 ? `: ${units(held)} to send again` : "";
+      const rest = left !== null && left > 0 ? `, ${units(left)} to send in all` : "";
+      return withNote(`Parcel${carrier}${tracking} undone, not sent after all${what}${rest}`);
+    }
     default:
       return `${FULFILMENT_EVENT_LABELS[event]}${name ? ` (${name})` : ""}`;
   }

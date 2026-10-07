@@ -72,7 +72,7 @@ export async function loadFacts(storeId: string, orderId: string): Promise<Order
       o.return_cost_payer, o.standard_shipping_minor,
       (select c.email from commerce.customers c where c.store_id = o.store_id and c.id = o.customer_id) as customer_email,
       o.copied_from is not null as copied, s.time_zone, s.name as store_name, s.contact_email,
-      (select max(sh.created_at) from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id) as last_shipped_at
+      (select max(sh.created_at) from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as last_shipped_at
     from commerce.orders o join commerce.stores s on s.id = o.store_id
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
   `);

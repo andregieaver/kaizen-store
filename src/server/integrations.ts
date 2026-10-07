@@ -204,7 +204,7 @@ async function orderData(storeId: string, storeSlug: string, orderId: string) {
   const [extra] = await db().execute<Row>(sql`
     select
       (select json_build_object('carrier', s.carrier, 'tracking_number', s.tracking_number, 'tracking_url', s.tracking_url)
-         from commerce.shipments s where s.store_id = ${storeId}::uuid and s.order_id = ${orderId}::uuid
+         from commerce.shipments s where s.store_id = ${storeId}::uuid and s.order_id = ${orderId}::uuid and s.undone_at is null
          order by s.created_at desc limit 1) as shipment,
       (select coalesce(sum(r.amount_minor), 0)::bigint from commerce.refunds r
          join commerce.payments p on p.id = r.payment_id

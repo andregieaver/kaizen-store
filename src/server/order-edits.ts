@@ -123,7 +123,7 @@ async function loadOrder(runner: Runner, storeId: string, orderId: string, optio
     `),
     runner.execute<Row>(sql`
       select
-        exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.order_id = ${orderId}::uuid) as shipped,
+        exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.order_id = ${orderId}::uuid and sh.undone_at is null) as shipped,
         exists (select 1 from commerce.standing_deliveries sd where sd.store_id = ${storeId}::uuid and sd.order_id = ${orderId}::uuid) as weekly_box,
         exists (select 1 from commerce.bookings b where b.store_id = ${storeId}::uuid and b.order_id = ${orderId}::uuid) as booking,
         -- Any withdrawal request (even one never confirmed names the order's lines) or a return that is not cancelled.

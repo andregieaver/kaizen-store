@@ -7,7 +7,8 @@ import { describe, expect, it } from "vitest";
  * The writers of a paid order's lines and money, and of parcels (wave 3, run 3, D174, `docs/wave-3-fulfilment.md` 6.4 (a) and (b)), read from the source:
  * - only `src/server/order-edits.ts` sets the edit context (`kaizen.order_edit`), without which the database refuses any change to a paid order's lines and
  *   amounts (`order_lines_settled_guard()`, `orders_settled_guard()`), so every change of a sold order goes through `applyOrderEdit()`'s writer;
- * - only `markSent()` (`src/server/order-admin.ts`) inserts a shipment, and it writes the parcel's lines in the same transaction.
+ * - only `markSent()` (`src/server/order-admin.ts`) inserts a shipment, and it writes the parcel's lines in the same transaction;
+ * - only `undoShipment()` (the same file) undoes one, through `commerce.undo_shipment()`; nothing updates or deletes a shipment otherwise (the database refuses it too).
  * Tests and fixtures are exempt (they are never imported by the app); the migrations are SQL, not read here.
  */
 const ROOT = process.cwd();
@@ -48,6 +49,19 @@ describe("who writes a paid order's lines and money, and parcels", () => {
     expect(body).toMatch(/insert\s+into\s+commerce\.shipments\b/);
     expect(body).toMatch(/insert\s+into\s+commerce\.shipment_lines\b/);
     expect(admin.slice(0, start) + admin.slice(end)).not.toMatch(/insert\s+into\s+commerce\.shipments\b/);
+  });
+
+  it("undoes a parcel only in undoShipment() (D174 follow-up), and no app code updates or deletes a shipment", () => {
+    const callers = files.filter((f) => /commerce\.undo_shipment\s*\(/.test(code(f))).map((f) => path.relative(ROOT, f));
+    expect(callers).toEqual(["src/server/order-admin.ts"]);
+    const admin = code(path.join(ROOT, "src/server/order-admin.ts"));
+    const start = admin.indexOf("export async function undoShipment(");
+    expect(start).toBeGreaterThan(0);
+    const end = admin.indexOf("\nexport ", start + 10);
+    expect(admin.slice(start, end)).toMatch(/commerce\.undo_shipment\s*\(/);
+    expect(admin.slice(0, start) + admin.slice(end)).not.toMatch(/commerce\.undo_shipment\s*\(/);
+    const writers = files.filter((f) => /(update|delete\s+from)\s+commerce\.shipments\b/i.test(code(f))).map((f) => path.relative(ROOT, f));
+    expect(writers).toEqual([]);
   });
 
   it("writes order_edits and order_edit_lines only in order-edits.ts", () => {

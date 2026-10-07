@@ -9,13 +9,15 @@ import { db } from "@/db/client";
 import { shipmentProblems, shipmentProblemText, type ParcelLine, type ShipmentProblemCode } from "@/lib/fulfilment";
 import { editLabel } from "@/lib/order-edit-status";
 import { formatMoney } from "@/lib/money";
-import { FULFILMENT_EVENTS, ORDER_OPS_EVENTS } from "@/lib/order-ops-events";
+import { FULFILMENT_AUDIT_ACTIONS, FULFILMENT_EVENTS, ORDER_OPS_EVENTS } from "@/lib/order-ops-events";
 import type { Tag } from "@/lib/order-tags";
 import { isAdoptedRefund } from "@/lib/refund-adopted";
 import { splitRefund, type RefundPart } from "@/lib/refund-split";
+import { bookedCarrierName } from "@/lib/shipment-undo";
 import { restockRoom } from "@/lib/stock-restock";
 import type { PaymentModeName } from "@/lib/stripe-account";
 
+import { audit } from "./auth";
 import { cancelUnpaidOrder } from "./checkout";
 import { EDIT_REFUND_OWED_SQL } from "./edit-refund-owed";
 import { reverseHostCommission } from "./host-payments";
@@ -61,7 +63,15 @@ export type Shipment = {
   legacy: boolean;
   /** What is in it (D174): empty for a legacy parcel that was not the order's first. */
   lines: ShipmentLineView[];
+  /**
+   * Staff took "sent" back (D174 follow-up, `undoShipment()`): when, by whom (their email) and why. An undone parcel stays listed for the history and counts nowhere
+   * (`liveShipments()`). Null for a parcel that stands.
+   */
+  undone: { at: string; by: string | null; reason: string | null } | null;
 };
+
+/** The parcels that stand: an undone one (D174 follow-up) is listed for the history and counts nowhere. */
+export const liveShipments = <T extends { undone: unknown }>(shipments: readonly T[]): T[] => shipments.filter((s) => !s.undone);
 
 export type RefundRow = {
   id: string;
@@ -140,8 +150,10 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       group by 1
     `),
     db().execute<Row>(sql`
-      select id, carrier, tracking_number, tracking_url, created_at, carrier_id, label_url is not null as has_label, legacy from commerce.shipments
-      where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid order by created_at, id
+      select s.id, s.carrier, s.tracking_number, s.tracking_url, s.created_at, s.carrier_id, s.label_url is not null as has_label, s.legacy,
+        s.undone_at, s.undo_reason, a.email as undone_by
+      from commerce.shipments s left join commerce.accounts a on a.id = s.undone_by
+      where s.store_id = ${storeId}::uuid and s.order_id = ${orderId}::uuid order by s.created_at, s.id
     `),
     db().execute<Row>(sql`
       select r.id, r.amount_minor, r.reason, r.status, r.restocked, r.created_at, a.email as by
@@ -220,6 +232,9 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       hasLabel: Boolean(s.has_label),
       legacy: Boolean(s.legacy),
       lines: shipmentLines.get(String(s.id)) ?? [],
+      undone: s.undone_at
+        ? { at: new Date(String(s.undone_at)).toISOString(), by: s.undone_by ? String(s.undone_by) : null, reason: s.undo_reason ? String(s.undo_reason) : null }
+        : null,
     })),
     refunds: refundRows,
     paidMinor,
@@ -300,7 +315,7 @@ export async function withdrawnInFull(tx: SentTx | ReturnType<typeof db>, storeI
        and not exists (select 1 from commerce.order_lines ol
                        where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid and ol.delivery = 'physical'
                          and commerce.withdrawn_quantity(ol.id) < ol.quantity)
-       and not exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.order_id = ${orderId}::uuid) as whole
+       and not exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.order_id = ${orderId}::uuid and sh.undone_at is null) as whole
   `);
   return Boolean(row?.whole);
 }
@@ -414,6 +429,7 @@ export async function markSent(
           const line = found.lines.find((l) => l.lineId === p.lineId);
           return { lineId: p.lineId, sku: line?.sku ?? "", title: line?.title ?? "", quantity: p.quantity };
         }),
+        undone: null,
       },
     };
   });
@@ -421,6 +437,97 @@ export async function markSent(
 
 /** The sentence staff read for a refused parcel. */
 export const sendRefusalText = (reason: SendRefusal): string => shipmentProblemText(reason);
+
+// ---------------------------------------------------------------------------
+// Undoing a parcel (D174 follow-up)
+// ---------------------------------------------------------------------------
+
+/** Why a parcel was not undone (`commerce.undo_shipment()`'s `shipment_undo.<code>`, plus `invalid` for input the server refused before asking). */
+export const UNDO_REFUSALS = {
+  not_found: "This parcel was not found.",
+  copied: COPIED_ORDER_MESSAGE,
+  already_undone: "This parcel was undone already.",
+  status: "Only a parcel of a paid or sent order can be undone: this order is cancelled, closed or not paid.",
+  edit_pending: "A change to this order waits for the customer's payment. Cancel the change, or wait for it, before undoing a parcel.",
+  return: "A return or withdrawal was made on this order after this parcel was recorded, and its items may be these. Settle the return first; the parcel stays sent.",
+  reason_too_long: "The reason is at most 200 characters.",
+  invalid: "This parcel was not found.",
+} as const;
+export type UndoRefusal = keyof typeof UNDO_REFUSALS;
+
+export type UndoOutcome =
+  | {
+      ok: true;
+      /** Units the parcel held (0 for a legacy parcel without lines), and the units of the order to send now. */
+      units: number;
+      left: number;
+      /** The order was `fulfilled` and is `paid` (to send) again. */
+      reopened: boolean;
+      /** A recorded receipt that was cleared (the goods were not sent, so not received). */
+      deliveredWas: string | null;
+      /** The carrier the parcel was booked with through its connection (D134): the booking is NOT cancelled there. */
+      bookedWith: string | null;
+    }
+  | { ok: false; reason: UndoRefusal };
+
+/**
+ * Takes "sent" back for one parcel (D174 follow-up, `docs/wave-3-fulfilment.md` "Undoing a parcel"): the parcel is marked undone (never deleted), its units are to
+ * send again, a `fulfilled` order is `paid` again, and a recorded receipt is cleared (goods that were not sent were not received; the 14 days start when they are,
+ * CRD Art. 9(2)(b)). All of it is `commerce.undo_shipment()`, in one transaction under the order's lock; this maps its refusals to codes and writes the audit entry
+ * (ids and counts only). A carrier booking is not cancelled at the carrier and nobody is emailed: the caller tells staff. The only code that undoes a parcel (a scan test).
+ */
+export async function undoShipment(storeId: string, orderId: string, shipmentId: string, accountId: string | null, reason: string | null): Promise<UndoOutcome> {
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuid.test(storeId) || !uuid.test(orderId) || !uuid.test(shipmentId)) return { ok: false, reason: "invalid" };
+  const why = (reason ?? "").trim();
+  if ([...why].length > 200) return { ok: false, reason: "reason_too_long" };
+  // The parcel must be this order's: the SQL function knows only the store and the parcel.
+  const [own] = await db().execute<Row>(sql`select 1 from commerce.shipments where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and id = ${shipmentId}::uuid`);
+  if (!own) return { ok: false, reason: "not_found" };
+  let done: Row;
+  try {
+    [done] = await db().execute<Row>(sql`
+      select commerce.undo_shipment(${storeId}::uuid, ${shipmentId}::uuid, ${accountId}::uuid, ${why || null}) as result
+    `);
+  } catch (error) {
+    const code = undoRefusalOf(error);
+    if (code) return { ok: false, reason: code };
+    throw error;
+  }
+  const result = (done?.result ?? {}) as Record<string, unknown>;
+  const carrierId = typeof result.carrierId === "string" && result.carrierId ? result.carrierId : null;
+  const units = Number(result.units ?? 0);
+  const left = Number(result.left ?? 0);
+  const reopened = result.reopened === true;
+  await audit(
+    accountId,
+    storeId,
+    FULFILMENT_AUDIT_ACTIONS.shipmentUndone,
+    { shipment: shipmentId, units, left, reopened, booked: carrierId, receiptCleared: Boolean(result.deliveredWas) },
+    { target: { type: "order", id: orderId } },
+  );
+  return {
+    ok: true,
+    units,
+    left,
+    reopened,
+    deliveredWas: result.deliveredWas ? new Date(String(result.deliveredWas)).toISOString() : null,
+    bookedWith: bookedCarrierName(carrierId),
+  };
+}
+
+/** The refusal code of `commerce.undo_shipment()`'s error, or null for any other error (which is thrown on). */
+function undoRefusalOf(error: unknown): UndoRefusal | null {
+  for (let e: unknown = error, depth = 0; e && depth < 4; e = (e as { cause?: unknown }).cause, depth++) {
+    const message = String((e as { message?: unknown }).message ?? "");
+    const match = /shipment_undo\.([a-z_]+)/.exec(message);
+    if (match && match[1] in UNDO_REFUSALS) return match[1] as UndoRefusal;
+  }
+  return null;
+}
+
+/** The sentence staff read for a refused undo. */
+export const undoRefusalText = (reason: UndoRefusal): string => UNDO_REFUSALS[reason];
 
 // ---------------------------------------------------------------------------
 // Refunds
@@ -863,7 +970,7 @@ export async function cancelOrder(
   }
   // Partly sent (D174): some goods are on their way, so the order is not cancelled; what is not sent is refunded instead, put back in stock with "not sent"
   // ticked, which takes it off what is still to send (`RefundInput.notSent`).
-  if (order.shipments.length > 0) return { ok: false, problem: PARTLY_SENT_CANCEL };
+  if (liveShipments(order.shipments).length > 0) return { ok: false, problem: PARTLY_SENT_CANCEL };
   // A change waiting for the customer's payment (D174) is cancelled first, so no payment can arrive for an order that is gone.
   if (order.fulfilment.editPending) return { ok: false, problem: "A change to this order waits for the customer's payment: cancel the change first." };
   const restock = order.lines

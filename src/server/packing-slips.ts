@@ -105,7 +105,7 @@ function slipHead(order: Row): Omit<PackingSlip, "lines"> {
 
 /**
  * One parcel's slip (D174, `?shipment={id}` on the order's slip page): that shipment's lines and quantities, with "more follows" when units of the order are still to
- * send. Null when the order is not this store's or the shipment is not the order's (the page answers 404), or the order is a copy. A legacy parcel prints what the
+ * send. Null when the order is not this store's or the shipment is not the order's or was undone (D174 follow-up; the page answers 404), or the order is a copy. A legacy parcel prints what the
  * database back-filled for it (the order's first parcel: every physical unit; a later one: nothing, so null).
  */
 export async function parcelSlipData(storeId: string, orderId: string, shipmentId: string): Promise<PackingSlip | null> {
@@ -115,7 +115,7 @@ export async function parcelSlipData(storeId: string, orderId: string, shipmentI
     select o.id, o.number, o.placed_at, o.locale, o.shipping_address, o.copied_from is not null as copied, o.is_gift, o.gift_to, o.gift_from, o.gift_message
     from commerce.orders o
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
-      and exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.id = ${shipmentId}::uuid)
+      and exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.id = ${shipmentId}::uuid and sh.undone_at is null)
   `);
   if (!order || order.copied) return null;
   const rows = await db().execute<Row>(sql`

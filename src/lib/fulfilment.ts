@@ -5,7 +5,8 @@
  * with `shipmentProblems()` under the order's lock before it writes anything.
  *
  * - A **physical line** is goods with a variant (`delivery = 'physical'`); downloads, services and sign-up fees are never sent.
- * - **Shipped** units are the line's units in parcels (all of them when the order has a parcel from before parcels named their lines: `legacy`).
+ * - **Shipped** units are the line's units in parcels (all of them when the order has a parcel from before parcels named their lines: `legacy`). A parcel staff
+ *   undid (D174 follow-up, `commerce.undo_shipment()`) was not sent: it counts nowhere, and its units are to send again.
  * - **Withdrawn** units are the line's units on returns that count (D153, `commerce.withdrawn_quantity()`: withdrawal returns only; a return of goods received does not cancel a unit to send).
  * - **Closed** units are units staff took off what is still to send because they will not be sent (`commerce.unsent_closures`, `commerce.closed_quantity()`:
  *   a refund or restock of units never sent, with *not sent* ticked).
@@ -120,7 +121,7 @@ export const SHIPMENT_PROBLEMS = {
   unpaid: "The order is not paid yet, so it is not sent.",
   edit_pending: "A change to this order waits for the customer's payment. Nothing is sent until it is paid, cancelled or expired.",
   delivery_box_whole: "A subscription box delivery is sent whole, not in parts.",
-  changed: "The order changed while you were choosing (another parcel, a withdrawal or units that will not be sent were recorded). Look again and send what is left.",
+  changed: "The order changed while you were choosing (another parcel, an undone parcel, a withdrawal or units that will not be sent were recorded). Look again and send what is left.",
 } as const;
 export type ShipmentProblemCode = keyof typeof SHIPMENT_PROBLEMS;
 export const shipmentProblemText = (code: ShipmentProblemCode): string => SHIPMENT_PROBLEMS[code];

@@ -145,6 +145,7 @@ describe("the parcels (D174 2.1)", () => {
     hasLabel: false,
     legacy: false,
     lines: [{ lineId: L1, sku: "SKU-1", title: "Mug (White)", quantity: 2 }],
+    undone: null,
     ...over,
   });
 
@@ -179,6 +180,82 @@ describe("the parcels (D174 2.1)", () => {
 
   it("draws nothing without parcels", () => {
     expect(renderToString(h(ShipmentList, { shipments: [], base: "/x", when, emailAgain: null }))).toBe("");
+  });
+});
+
+describe("undoing a parcel (D174 follow-up)", () => {
+  const shipment = (over: Partial<ShipmentItem> = {}): ShipmentItem => ({
+    id: "44444444-4444-4444-8444-444444444444",
+    createdAt: "2026-10-06T10:00:00Z",
+    carrier: "Posten / Bring",
+    carrierId: null,
+    trackingNumber: "TRACK123",
+    trackingUrl: "https://tracking.example/TRACK123",
+    hasLabel: false,
+    legacy: false,
+    lines: [{ lineId: L1, sku: "SKU-1", title: "Mug (White)", quantity: 2 }],
+    undone: null,
+    ...over,
+  });
+  const undoAnswer = async () => ({ status: "ok" as const, messages: ["done"] });
+
+  it("offers Undo \"sent\" for a parcel that stands, with the warnings and an optional reason, and says the customer is not emailed", () => {
+    const html = renderToString(h(ShipmentList, { shipments: [shipment()], base: "/admin/shop/orders/o1", when, emailAgain: null, undo: () => undoAnswer }));
+    const text = check(html);
+    expect(text).toContain("Undo “sent”");
+    expect(text).toContain("Undo “sent” for parcel 1?");
+    expect(text).toContain("its 2 units go back to what is still to send");
+    expect(text).toContain("The customer is not emailed. Tell them yourself if they were told it was on its way.");
+    expect(text).not.toContain("is not cancelled");
+    expect(text).not.toContain("receipt date is cleared");
+    expect(html).toMatch(/<details[^>]*>/);
+    expect(html).toMatch(/<input[^>]*name="reason"[^>]*maxLength="200"|<input[^>]*maxLength="200"[^>]*name="reason"/);
+    expect(html).not.toMatch(/<input[^>]*name="reason"[^>]*required/);
+  });
+
+  it("warns that a carrier's booking is not cancelled and that a recorded receipt is cleared", () => {
+    const text = check(
+      renderToString(h(ShipmentList, { shipments: [shipment({ carrierId: "bring", hasLabel: true })], base: "/x", when, emailAgain: null, undo: () => undoAnswer, receiptRecorded: true })),
+    );
+    expect(text).toContain("The booking with Posten / Bring is not cancelled: cancel it with Posten / Bring yourself.");
+    expect(text).toContain("The recorded receipt date is cleared");
+  });
+
+  it("offers no undo to someone who may not change orders", () => {
+    expect(check(renderToString(h(ShipmentList, { shipments: [shipment()], base: "/x", when, emailAgain: null })))).not.toContain("Undo");
+  });
+
+  it("keeps an undone parcel listed, struck through and muted, with when, by whom and why, and offers nothing on it", () => {
+    const html = renderToString(
+      h(ShipmentList, {
+        shipments: [
+          shipment({ hasLabel: true, carrierId: "bring", undone: { at: "2026-10-07T09:00:00Z", by: "kari@example.com", reason: "Wrong box" } }),
+          shipment({ id: "55555555-5555-4555-8555-555555555555", createdAt: "2026-10-07T10:00:00Z" }),
+        ],
+        base: "/admin/shop/orders/o1",
+        when,
+        emailAgain: () => answer,
+        undo: () => undoAnswer,
+      }),
+    );
+    const text = check(html);
+    expect(text).toContain("Parcel 1 · 2026-10-06 · not sent after all");
+    expect(text).toContain("Undone 2026-10-07 by kari@example.com: Wrong box");
+    expect(html).toMatch(/<s>Parcel (<!-- -->)?1<\/s>/);
+    expect(html).toContain("data-undone");
+    // The undone parcel has no packing slip, label, Email again or undo; the one that stands keeps all of them.
+    expect(html).not.toContain("packing-slip?shipment=44444444-4444-4444-8444-444444444444");
+    expect(html).not.toContain("/label/44444444-4444-4444-8444-444444444444");
+    expect(html).toContain("packing-slip?shipment=55555555-5555-4555-8555-555555555555");
+    expect(text.match(/Email again/g)).toHaveLength(1);
+    expect(text.match(/Undo “sent” for parcel/g)).toHaveLength(1);
+    expect(text).toContain("Undo “sent” for parcel 2?");
+  });
+
+  it("writes an undone parcel without a reason or a person plainly", () => {
+    const text = check(renderToString(h(ShipmentList, { shipments: [shipment({ undone: { at: "2026-10-07T09:00:00Z", by: null, reason: null } })], base: "/x", when, emailAgain: null })));
+    expect(text).toContain("Undone 2026-10-07");
+    expect(text).not.toMatch(/Undone 2026-10-07 by|Undone 2026-10-07:/);
   });
 });
 

@@ -21,10 +21,14 @@ import {
   updateOrderContact,
   VENUE_METHODS,
   sendRefusalText,
+  undoRefusalText,
+  undoShipment,
 } from "@/server/order-admin";
 import { sendCancelled, sendOrderConfirmation, sendRefunded, sendShipped } from "@/server/shopper-emails";
 import { audit } from "@/server/auth";
 import { FULFILMENT_AUDIT_ACTIONS } from "@/lib/order-ops-events";
+import { undoneMessage } from "@/lib/shipment-undo";
+import type { FormState } from "@/components/admin/action-form";
 import { parcelLinesFromForm } from "@/lib/parcel-form";
 import { chargeDelivery, deliveryOfOrder } from "@/server/standing-orders";
 
@@ -110,11 +114,37 @@ export async function resendShippedAction(storeSlug: string, orderId: string, sh
   if (!order.email) return failed("The order has no email address to send to.");
   const shipment = order.shipments.find((s) => s.id === shipmentId);
   if (!shipment) return failed("This parcel was not found.");
+  // An undone parcel (D174 follow-up) was not sent: its email is never sent again.
+  if (shipment.undone) return failed("This parcel was undone, so it is not emailed.");
   const outcome = await sendShipped(member.store.id, orderId, shipment, { resend: true });
   refresh();
   if (outcome === "sent") return done(`Sent to ${order.email}.`);
   if (outcome === "logged") return done("Recorded, but email is not set up yet, so it was not sent.");
   return failed("The email could not be sent.");
+}
+
+/**
+ * Takes "sent" back for one parcel (D174 follow-up, `docs/wave-3-fulfilment.md` "Undoing a parcel"): `undoShipment()` marks it undone (never deleted), puts its units back
+ * to send, moves a sent order back to *Partly sent* or *Not sent* and clears a recorded receipt. A carrier booking is not cancelled at the carrier and the customer is not
+ * emailed: the answer says so. `reason` is optional, at most 200 characters. The audit entry is `undoShipment()`'s.
+ */
+export async function undoShipmentAction(
+  storeSlug: string,
+  orderId: string,
+  shipmentId: string,
+  _previous: FormState,
+  form: FormData,
+): Promise<FormState> {
+  const refused = (message: string): FormState => ({ status: "error", messages: [message] });
+  const member = await checkPermission(storeSlug, "orders:write");
+  if (!member) return refused(NO_ACCESS);
+  if (!z.uuid().safeParse(orderId).success || !z.uuid().safeParse(shipmentId).success) return refused(undoRefusalText("not_found"));
+  const reason = z.string().trim().max(200).safeParse(String(form.get("reason") ?? ""));
+  if (!reason.success) return refused(undoRefusalText("reason_too_long"));
+  const undone = await undoShipment(member.store.id, orderId, shipmentId, member.account.id, reason.data || null);
+  if (!undone.ok) return refused(undoRefusalText(undone.reason));
+  refresh();
+  return { status: "ok", messages: [undoneMessage(undone)] };
 }
 
 /** Refunds an amount through Stripe and puts chosen items back in stock. */

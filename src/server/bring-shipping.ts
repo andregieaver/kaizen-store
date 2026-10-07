@@ -123,7 +123,7 @@ export async function bringBook(
   // A second click (or a second tab) must not pay Bring for the same parcel twice: one booking per order every two minutes.
   const [recent] = await db().execute<Row>(sql`
     select 1 from commerce.shipments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and carrier_id = 'bring' and created_at > now() - interval '2 minutes'
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and carrier_id = 'bring' and created_at > now() - interval '2 minutes' and undone_at is null
   `);
   if (recent) return { ok: false, problem: "This order was just booked with Bring. Reload the page to see it." };
   // What goes in the parcel is checked before the carrier is paid for it (D174); `markSent()` checks it again under the order's lock.
@@ -163,7 +163,7 @@ export async function bringBook(
 export async function bringLabel(storeId: string, orderId: string, shipmentId: string): Promise<Uint8Array | null> {
   const [row] = await db().execute<Row>(sql`
     select label_url from commerce.shipments
-    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and id = ${shipmentId}::uuid and carrier_id = 'bring'
+    where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid and id = ${shipmentId}::uuid and carrier_id = 'bring' and undone_at is null
   `);
   const context = await carrierContext(storeId, "bring");
   if (!row?.label_url || !context) return null;
