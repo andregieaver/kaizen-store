@@ -356,6 +356,13 @@ async function closeOpenCheckouts(subject: PrivacySubject): Promise<void> {
  * Subscriptions end now (no refund, no proration), saved cards are detached. Idempotent: a subscription already cancelled is not live, a card
  * already gone is not an error. A failure throws `ExternalFailure` before anything in the database has changed.
  */
+async function subscriptionEnded(storeId: string, id: string): Promise<boolean> {
+  const [row] = await db().execute<Row>(sql`
+    select status from commerce.subscriptions where store_id = ${storeId}::uuid and id = ${id}::uuid
+  `);
+  return row !== undefined && (row.status === "cancelled" || row.status === "expired");
+}
+
 async function endExternal(subject: PrivacySubject): Promise<{ subscriptions: number; cards: number }> {
   const subs = await db().execute<Row>(sql`
     select id, provider_reference from commerce.subscriptions
@@ -372,7 +379,11 @@ async function endExternal(subject: PrivacySubject): Promise<{ subscriptions: nu
       continue;
     }
     const result = await changeSubscription(subject.storeId, String(sub.id), "cancel_now", { actor: "privacy" });
-    if (!result.ok) throw new ExternalFailure(`subscription ${String(sub.id)}: ${result.problem}`);
+    if (!result.ok) {
+      // Two runs at once: the other one ended it between this run's read and its cancel. That is the outcome wanted, not a failure.
+      if (result.problem === "not_found" && (await subscriptionEnded(subject.storeId, String(sub.id)))) continue;
+      throw new ExternalFailure(`subscription ${String(sub.id)}: ${result.problem}`);
+    }
     cancelled++;
   }
   await closeOpenCheckouts(subject);
