@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 
 import { PackingSlipView } from "@/components/admin/orders/packing-slip-view";
+import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
 import { BULK_REASON_TEXT } from "@/lib/order-bulk";
 import { packingSlipData, parcelSlipData, type PackingSlip } from "@/server/packing-slips";
@@ -50,13 +51,11 @@ export default async function PackingSlipPage({ params, searchParams }: PageProp
 
 function SlipPage({ slip, storeName, seller }: { slip: PackingSlip; storeName: string; seller: Parameters<typeof PackingSlipView>[0]["seller"] }) {
   return (
-    <div className="flex flex-col gap-4">
-      {/* Only the slip itself is printed. */}
-      <style>{"@media print { body > *:not(main), header, nav { display: none !important } main { padding: 0 !important } }"}</style>
+    <PrintArea className="flex flex-col gap-4">
       <div className="mx-auto flex w-full max-w-2xl justify-end print:hidden">
         <PrintButton label="Print" />
       </div>
       <PackingSlipView slip={slip} storeName={storeName} seller={seller} />
-    </div>
+    </PrintArea>
   );
 }

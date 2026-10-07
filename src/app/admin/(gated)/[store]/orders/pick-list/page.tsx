@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PickListView } from "@/components/admin/orders/pick-list-view";
+import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
 import { PICK_LIST_MAX } from "@/lib/fulfilment-limits";
 import { parsePickParams, PICK_BY, PICK_SORTS, type PickBy, type PickSort } from "@/lib/pick-list";
@@ -58,9 +59,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
   };
   const choice = (active: boolean) => `rounded-md border px-3 py-1.5 text-sm ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`;
   return (
-    <div className="flex flex-col gap-4">
-      {/* Only the list itself is printed. */}
-      <style>{"@media print { body > *:not(main), header, nav { display: none !important } main { padding: 0 !important } }"}</style>
+    <PrintArea className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">Pick list</h1>
@@ -83,6 +82,6 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
         {back}
       </div>
       <PickListView list={data.list} />
-    </div>
+    </PrintArea>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PackingSlipView } from "@/components/admin/orders/packing-slip-view";
+import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
 import { BULK_PRINT_MAX, BULK_REASON_TEXT, BULK_REQUEST_TEXT } from "@/lib/order-bulk";
 import { packingSlipData } from "@/server/packing-slips";
@@ -43,8 +44,7 @@ export default async function PackingSlipsPage({ params, searchParams }: PagePro
     );
   }
   return (
-    <div className="flex flex-col gap-4">
-      <style>{"@media print { body > *:not(main), header, nav { display: none !important } main { padding: 0 !important } }"}</style>
+    <PrintArea className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">Packing slips</h1>
@@ -74,6 +74,6 @@ export default async function PackingSlipsPage({ params, searchParams }: PagePro
       {set.slips.map((slip, index) => (
         <PackingSlipView key={slip.orderId} slip={slip} storeName={store.name} seller={store.details} breakAfter={index < set.slips.length - 1} />
       ))}
-    </div>
+    </PrintArea>
   );
 }
