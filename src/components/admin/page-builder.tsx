@@ -1,5 +1,20 @@
 "use client";
 
+import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, type Breakpoints } from "@/lib/breakpoints";
+import { partCss } from "@/lib/part-css";
+import {
+  carouselAnywhere,
+  carouselOnPhonesOnly,
+  columnsPatch,
+  columnsView,
+  displayPatch,
+  hiddenOnPhones,
+  hideOnPhonesPatch,
+  reversePatch,
+  rowReversedOnPhones,
+  rowSideBySide,
+  sideBySidePatch,
+} from "@/lib/responsive";
 import {
   DndContext,
   DragOverlay,
@@ -29,6 +44,7 @@ import {
   useEffect,
   useEffectEvent,
   useId,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -456,7 +472,7 @@ export type BuilderFonts = {
   style: CSSProperties | undefined;
   install: InstallFont;
   /** A store's theme (D60), so the canvas shows its colours and shapes. */
-  theme: { css: string; attributes: Record<string, string> } | null;
+  theme: { css: string; attributes: Record<string, string>; /** Where its screen sizes start (D179), for the canvas's part rules. */ breakpoints?: Breakpoints } | null;
 };
 
 export function PageBuilder({
@@ -876,6 +892,8 @@ export function PageBuilder({
           >
             <FontLinks families={siteFontFamilies(fonts.site)} />
             {fonts.theme && <style>{fonts.theme.css}</style>}
+            {/* What the parts' settings say at each screen size (D179), measured against the canvas (`kz-page`), not the window. */}
+            <CanvasPartStyles rows={rows} breakpoints={fonts.theme?.breakpoints ?? DEFAULT_BREAKPOINTS} />
             {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin. */}
             <ScopedCss css={css} root="[data-custom-css]" />
             <Canvas
@@ -1819,7 +1837,8 @@ function Canvas({
       <h2 id="content-heading" className="sr-only">
         Content
       </h2>
-      <div className="flex flex-col gap-8">
+      {/* The page's container (D179): the part rules' sizes are its width. */}
+      <div className={`${PAGE_CONTAINER} flex flex-col gap-8`} style={{ containerType: "inline-size", containerName: PAGE_CONTAINER }}>
         <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
           <ol className="flex flex-col gap-8">
             {rows.map((row, index) => (
@@ -1844,6 +1863,12 @@ function Canvas({
 }
 
 /** Below the last row: where a row dropped goes last, and what an empty page says. */
+/** The canvas's part stylesheet (D179): container queries against the canvas, worked out again only when the rows change. */
+function CanvasPartStyles({ rows, breakpoints }: { rows: PageRow[]; breakpoints: Breakpoints }) {
+  const css = useMemo(() => partCss(rows, "canvas", breakpoints), [rows, breakpoints]);
+  return css ? <style>{css}</style> : null;
+}
+
 function CanvasEnd({
   empty,
   active,
@@ -2556,8 +2581,8 @@ function Dialogs({
                   onRows((current) => patchBlock<RichTextBlock>(current, block.id, { font })),
                 )}
                 <TextAlignFields
-                  value={block.align}
-                  onChange={(align) => onRows((current) => patchBlock<RichTextBlock>(current, block.id, { align }))}
+                  value={block}
+                  onChange={(patch) => onRows((current) => patchBlock<RichTextBlock>(current, block.id, patch))}
                 />
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -2781,7 +2806,7 @@ function Dialogs({
                   onRows((current) => patchBlock<ProductBlock>(current, block.id, { font })),
                 )}
                 {ALIGNED_PARTS.includes(block.part) && (
-                  <TextAlignFields value={block.align} onChange={(align) => onRows((current) => patchBlock<ProductBlock>(current, block.id, { align }))} />
+                  <TextAlignFields value={block} onChange={(patch) => onRows((current) => patchBlock<ProductBlock>(current, block.id, patch))} />
                 )}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -2855,8 +2880,8 @@ function Dialogs({
               <>
                 <TextAlignFields
                   what="Position"
-                  value={block.align}
-                  onChange={(align) => onRows((current) => patchBlock<MenuBlock>(current, block.id, { align }))}
+                  value={block}
+                  onChange={(patch) => onRows((current) => patchBlock<MenuBlock>(current, block.id, patch))}
                 />
                 {fontField("Font", block.font, "The site's fonts", (font) =>
                   onRows((current) => patchBlock<MenuBlock>(current, block.id, { font })),
@@ -3968,15 +3993,15 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
       <Check
         label="Side by side on phones"
         hint="The columns stay side by side on phones instead of stacking, as in a header."
-        checked={Boolean(row.sideBySide)}
-        onChange={(sideBySide) => onChange({ sideBySide: sideBySide || undefined })}
+        checked={rowSideBySide(row)}
+        onChange={(on) => onChange(sideBySidePatch(row, on))}
       />
       <Check
         label="Reverse the columns on phones"
         hint="On phones the columns stack; this puts the last one first."
-        checked={Boolean(row.reverseOnMobile)}
-        disabled={Boolean(row.sideBySide)}
-        onChange={(reverseOnMobile) => onChange({ reverseOnMobile })}
+        checked={rowReversedOnPhones(row)}
+        disabled={rowSideBySide(row)}
+        onChange={(on) => onChange(reversePatch(row, on))}
       />
       <Check
         label="Equal column height"
@@ -4365,7 +4390,7 @@ function HeadingStyleFields({ block, onChange }: { block: HeadingBlock; onChange
         value={block.weight ?? "theme"}
         onChange={(weight) => onChange({ weight: weight === "theme" ? undefined : weight })}
       />
-      <TextAlignFields value={block.align} onChange={(align) => onChange({ align })} />
+      <TextAlignFields value={block} onChange={onChange} />
       <OptionalColor
         label="Text colour"
         hint="Otherwise the site's text colour."
@@ -4452,7 +4477,7 @@ function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: 
         checked={Boolean(block.fullWidth)}
         onChange={(fullWidth) => onChange({ fullWidth })}
       />
-      <TextAlignFields what="Position" value={block.align} onChange={(align) => onChange({ align })} />
+      <TextAlignFields what="Position" value={block} onChange={onChange} />
     </div>
   );
 }
@@ -4805,20 +4830,20 @@ function ContentGridFields({
             { value: "grid", label: "Grid" },
             { value: "carousel", label: "Carousel" },
           ]}
-          value={block.display ?? "grid"}
-          onChange={(display) => onChange({ display: display === "carousel" ? "carousel" : undefined, ...(display === "grid" && { peek: undefined, carouselOn: undefined }) })}
+          value={carouselAnywhere(block) ? "carousel" : "grid"}
+          onChange={(display) => onChange({ ...displayPatch(block, display === "carousel" ? "carousel" : "grid"), ...(display === "grid" && { peek: undefined }) })}
         />
-        {block.display === "carousel" && (
+        {carouselAnywhere(block) && (
           <>
             <p className="text-xs text-muted">
               The tiles in one row that scrolls sideways; as many to a screen as the columns below. Nothing moves by itself unless you turn that on.
             </p>
-            <Check label="Only on phones (a grid on larger screens)" checked={block.carouselOn === "phones"} onChange={(on) => onChange({ carouselOn: on ? "phones" : undefined })} />
+            <Check label="Only on phones (a grid on larger screens)" checked={carouselOnPhonesOnly(block)} onChange={(on) => onChange(displayPatch(block, on ? "phones" : "carousel"))} />
             <Check label="Show part of the next tile" checked={block.peek === true} onChange={(peek) => onChange({ peek: peek || undefined })} />
             <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />
           </>
         )}
-        <ColumnsFields value={block.columns} onChange={(columns) => onChange({ columns })} />
+        <ColumnsFields value={columnsView(block, { mobile: 1, tablet: 2, desktop: 3 })} onChange={(columns) => onChange(columnsPatch(block, columns))} />
       </div>
       <fieldset className="flex flex-col gap-2 border-t border-border pt-4">
         <legend className="float-left mb-2 w-full text-sm font-medium">In each tile</legend>
@@ -5600,8 +5625,8 @@ function MenuFields({
       <Check
         label="Hide on phones"
         hint="Phones have the menu button and the slide-out menu, with the main menu."
-        checked={Boolean(block.hideOnPhones)}
-        onChange={(hideOnPhones) => onChange({ hideOnPhones: hideOnPhones || undefined })}
+        checked={hiddenOnPhones(block)}
+        onChange={(on) => onChange(hideOnPhonesPatch(block, on))}
       />
     </div>
   );
@@ -5720,7 +5745,7 @@ function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] 
           </li>
         ))}
       </ul>
-      {block.hideOnPhones && <span className="block text-[10px] text-muted">Not on phones</span>}
+      {hiddenOnPhones(block) && <span className="block text-[10px] text-muted">Not on phones</span>}
     </div>
   );
 }
@@ -5799,8 +5824,8 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
         <Check
           label="Hide on phones"
           hint="Phones have the menu button and the slide-out menu, with the menu, account and countries."
-          checked={Boolean(block.hideOnPhones)}
-          onChange={(hideOnPhones) => onChange({ hideOnPhones: hideOnPhones || undefined })}
+          checked={hiddenOnPhones(block)}
+          onChange={(on) => onChange(hideOnPhonesPatch(block, on))}
         />
       )}
     </div>
@@ -5826,7 +5851,7 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
       ))}
     </span>
   );
-  const phones = block.hideOnPhones ? <span className="block text-[10px] text-muted">Not on phones</span> : null;
+  const phones = hiddenOnPhones(block) ? <span className="block text-[10px] text-muted">Not on phones</span> : null;
   const body = (() => {
     switch (block.part) {
       case "logo":
@@ -5982,7 +6007,7 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
             max={RELATED_MAX}
             onChange={(limit) => onChange({ limit: Math.max(1, limit) })}
           />
-          <ColumnsFields value={block.columns ?? { mobile: 2, tablet: 4, desktop: 4 }} onChange={(columns) => onChange({ columns })} />
+          <ColumnsFields value={columnsView(block, { mobile: 2, tablet: 4, desktop: 4 })} onChange={(columns) => onChange(columnsPatch(block, columns))} />
         </>
       )}
     </div>
@@ -6091,7 +6116,7 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
       case "loop":
         return <LoopStandIn value={productLoopConfig(block)} entities={["product"]} />;
       case "related": {
-        const columns = block.columns?.desktop ?? 4;
+        const columns = block.columns ?? 4;
         return (
           <span className="flex flex-col gap-3">
             {heading("You may also like")}

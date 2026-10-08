@@ -422,9 +422,10 @@ describe("bindings in a page's life", () => {
 });
 
 describe("a bound picture's own size (D151)", () => {
-  const align = { mobile: "center", desktop: "right" } as const;
+  // Right from computers, centred below (D179: a base value and the overrides of the sizes that differ).
+  const placed = { align: "right", at: { md: { align: "center" } } } as const;
   const own = { url: "https://cdn.example.com/own.webp", width: 640, height: 480, alt: "Own" };
-  const sized = (over: Partial<ImageBlock> = {}) => image({ maxWidth: 300, align: { ...align }, bind: { fieldId: "f_pict000" }, ...over });
+  const sized = (over: Partial<ImageBlock> = {}) => image({ maxWidth: 300, align: placed.align, at: { md: { ...placed.at.md } }, bind: { fieldId: "f_pict000" }, ...over });
 
   it("is drawn at the stand-in's size, which the editor shares, since the field's real size is not known here", () => {
     expect(BOUND_PICTURE_SIZE).toEqual({ width: 1600, height: 1200 });
@@ -437,7 +438,7 @@ describe("a bound picture's own size (D151)", () => {
     const [block] = blocksOf(bindPage(pageOf(sized()), groups)) as ImageBlock[];
     expect(block).toMatchObject({
       maxWidth: 300,
-      align: { mobile: "center", desktop: "right" },
+      align: "right", at: { md: { align: "center" } },
       caption: "Caption",
       image: { url: "https://cdn.example.com/a.webp", width: 1600, height: 1200, alt: "An oak table" },
     });
@@ -451,14 +452,14 @@ describe("a bound picture's own size (D151)", () => {
   it("keeps them on the block's own picture when the field gives nothing and the block asks for its own content", () => {
     const result = bindPage(pageOf(sized({ image: own, bind: { fieldId: "f_gone000", fallback: true } })), groups);
     const [block] = blocksOf(result) as ImageBlock[];
-    expect(block).toMatchObject({ image: own, maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+    expect(block).toMatchObject({ image: own, maxWidth: 300, align: "right", at: { md: { align: "center" } } });
     expect(block).not.toHaveProperty("bind");
     expect(imageDisplaySize(block)).toEqual({ width: 300, height: 225 });
   });
 
   it("keeps them when the bindings are taken off for the builder's canvas", () => {
     const [block] = blocksOf(withoutBindings(pageOf(sized()))) as ImageBlock[];
-    expect(block).toMatchObject({ image: null, maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+    expect(block).toMatchObject({ image: null, maxWidth: 300, align: "right", at: { md: { align: "center" } } });
     expect(block).not.toHaveProperty("bind");
   });
 
@@ -473,10 +474,10 @@ describe("a bound picture's own size (D151)", () => {
       slug: "t",
       rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [sized({ id: "i1" })] }] }],
     }) as PageContent;
-    expect(blocksOf(saved)[0]).toMatchObject({ bind: { fieldId: "f_pict000" }, maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+    expect(blocksOf(saved)[0]).toMatchObject({ bind: { fieldId: "f_pict000" }, maxWidth: 300, align: "right", at: { md: { align: "center" } } });
     let n = 0;
     const copy = copyRow(saved.rows[0], () => `n${++n}`);
-    expect(copy.columns[0].blocks[0]).toMatchObject({ bind: { fieldId: "f_pict000" }, maxWidth: 300, align: { mobile: "center", desktop: "right" } });
+    expect(copy.columns[0].blocks[0]).toMatchObject({ bind: { fieldId: "f_pict000" }, maxWidth: 300, align: "right", at: { md: { align: "center" } } });
     expect(copy.columns[0].blocks[0].id).not.toBe("i1");
   });
 });

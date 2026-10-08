@@ -1,5 +1,7 @@
 import "server-only";
 
+import { breakpointsOf } from "@/lib/breakpoints";
+
 import type { PageOwnerContext } from "@/components/admin/page-context";
 import { designPreviewPath } from "@/lib/design-presets";
 import { themeSetsOf } from "@/lib/page-a11y";
@@ -61,7 +63,7 @@ export async function workspacePageContext(store: Store, workspace: DesignWorksp
     standardMenus: { header: store.headerMenuId, footer: store.footerMenuId },
     menusHref: adminBase,
     plans: null,
-    theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings) },
+    theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings), breakpoints: breakpointsOf(store.theme.settings) },
     templates: null,
     check: { theme: themeSetsOf(store.theme.settings), checkoutPageId: null },
     variantOf: null,

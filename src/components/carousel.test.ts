@@ -3,7 +3,10 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import type { GridData } from "@/lib/content-grid";
+import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
 import { newBlock } from "@/lib/page-rows";
+import { gridListStyle, partCss } from "@/lib/part-css";
+import { upgradeBlock } from "@/lib/responsive";
 import type { ContentGridBlock } from "@/lib/page-content";
 
 import { Carousel } from "./carousel";
@@ -112,17 +115,26 @@ describe("a content grid shown as a carousel", () => {
     expect(buttons(markup)).toEqual([]);
   });
 
-  it("marks a carousel that is only on phones, for the style sheet, and hides its arrows from tablets' width", () => {
-    const markup = html(createElement(ContentGridView, { block: block({ carouselOn: "phones" }), data }));
-    expect(markup).toContain("data-carousel-phones");
-    expect(markup).toMatch(/<div class="mt-4 flex items-center gap-3 md:hidden">/);
+  it("is a carousel on phones only by its list's rules: a grid of the same columns, its arrows hidden, from Medium up (D179)", () => {
+    // Saved before D179 as `carouselOn: "phones"`: a carousel at Small.
+    const phones = upgradeBlock({ ...block(), carouselOn: "phones" }) as ContentGridBlock;
+    expect(phones).toMatchObject({ at: { sm: { display: "carousel" } } });
+    expect(phones).not.toHaveProperty("display");
+    const markup = html(createElement(ContentGridView, { block: phones, data }));
+    expect(markup).toContain("data-carousel-track");
+    expect(markup).toMatch(/<div data-carousel-controls="" class="mt-4 flex items-center gap-3">/);
     for (const n of [1, 2, 3, 4]) expect(markup).toContain(`href="/s/kaizen/no/page-${n}"`);
-    expect(html(createElement(ContentGridView, { block: block(), data }))).not.toContain("data-carousel-phones");
+    const list = gridListStyle(phones).className;
+    expect(markup).toContain(`class="${list}"`);
+    const css = partCss([], "site", DEFAULT_BREAKPOINTS, "media", [phones]);
+    expect(css).toContain(`@media (width >= 768px){\n.${list}[data-carousel-track]{display:grid;`);
+    expect(css).toContain(`.${list} ~ [data-carousel-controls]{display:none}`);
+    // A carousel everywhere has no such rules.
+    expect(partCss([], "site", DEFAULT_BREAKPOINTS, "media", [block()])).not.toContain("[data-carousel-track]{display:grid");
   });
 
   it("is a plain grid when it is not a carousel, whatever its settings", () => {
-    const markup = html(createElement(ContentGridView, { block: block({ display: undefined, carousel: { dots: true }, carouselOn: "phones" }), data }));
-    expect(markup).not.toContain("data-carousel-phones");
+    const markup = html(createElement(ContentGridView, { block: block({ display: undefined, carousel: { dots: true } }), data }));
     expect(markup).not.toContain("data-carousel-track");
     expect(markup).not.toContain("<button");
   });

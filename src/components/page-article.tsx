@@ -21,7 +21,8 @@ import { GoogleReviewsSection } from "./google-reviews-section";
 import { PageBlockView } from "./page-block";
 import { PageModal } from "./page-modal";
 import { PlansSection } from "./plans-section";
-import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelStyle, rowBox, rowGrid, rowInnerClass } from "./page-parts";
+import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelClass, rowBox, rowGrid, rowInnerClass } from "./page-parts";
+import { PartStyles } from "./part-styles";
 import { StorePartSection } from "./store-part-section";
 import { SearchSection } from "./search-section";
 
@@ -112,8 +113,17 @@ export function PageRowView({
   /** The first row in the flow of what is drawn (D128): its entrances play by CSS at once, without waiting for scripts. */
   first?: boolean;
 }) {
-  if (row.modal) return <ModalRow row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />;
-  return <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} />;
+  return (
+    <>
+      {/* What the row's settings say at each screen size (D179). */}
+      <PartStyles rows={[row]} owner={place.owner} />
+      {row.modal ? (
+        <ModalRow row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />
+      ) : (
+        <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} />
+      )}
+    </>
+  );
 }
 
 /**
@@ -141,7 +151,7 @@ export async function ModalRow({
       storeId={place.owner}
       auto={!inAdmin && !place.route}
       labels={{ close: m.close, dialog: m.dialog }}
-      panelStyle={modalPanelStyle(row)}
+      panelClassName={modalPanelClass(row)}
     >
       <RowMarkup row={panelRow} place={place} renderBlock={renderBlock} inPanel />
     </PageModal>

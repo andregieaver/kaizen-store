@@ -206,7 +206,7 @@ describe("a track of cards that scroll sideways", () => {
     const css = renderStyles(built.model, built.shared).css;
     expect(css).toMatch(/> :last-child > :first-child\{[^}]*grid-template-columns:260px 260px 260px 260px/);
     expect(css).toMatch(/> :last-child > :first-child\{[^}]*overflow-x:auto/);
-    expect(built.rows[0].sideBySide).toBe(true);
+    expect(built.rows[0].stack).toBe(false);
   });
 });
 

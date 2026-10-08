@@ -10,6 +10,8 @@ import { t } from "@/lib/i18n";
 import { inlinePlain } from "@/lib/inline-text";
 import { sourceTraits } from "@/lib/grid-source";
 import { frameStyle, gridImageShape, type ContentGridBlock } from "@/lib/page-content";
+import { gridListStyle } from "@/lib/part-css";
+import { carouselAnywhere } from "@/lib/responsive";
 
 import { Carousel } from "./carousel";
 import { Inline } from "./inline-text";
@@ -20,7 +22,7 @@ import { Price } from "./price";
 /**
  * A content grid's tiles (D51), from items looked up on the server: on the
  * site (`ContentGridSection`) and in the page builder's canvas. Columns
- * follow the screen: phones, from tablets (768 px) and computers (1024 px).
+ * follow the screen sizes (D179): the grid's own at Extra large, overrides below.
  */
 export function ContentGridView({ block, data, notices }: { block: ContentGridBlock; data: GridData; /** The store's campaigns (D115), for a badge on the products they reach. */ notices?: CampaignNotices }) {
   if (data.items.length === 0) {
@@ -51,25 +53,20 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
     ...(tile?.background && { backgroundColor: tile.background }),
     ...(tile?.padding && { padding: `${tile.padding}px` }),
   };
-  const carousel = block.display === "carousel";
+  // A carousel at some sizes is drawn as one, and laid out as a grid where it is not (D179, the part stylesheet).
+  const carousel = carouselAnywhere(block);
+  // Its columns and gap by screen size are custom properties its rules set (`gridListStyle()`, drawn with the row's or the listing's).
+  const listStyle = gridListStyle(block);
   const list = (
     <ul
       data-carousel-track={carousel ? "" : undefined}
-      data-carousel-phones={carousel && block.carouselOn === "phones" ? "" : undefined}
       data-snap={carousel ? snapAttribute(block.carousel) : undefined}
-      className={
-        carousel
-          ? undefined
-          : "grid grid-cols-[repeat(var(--grid-mobile),minmax(0,1fr))] md:grid-cols-[repeat(var(--grid-tablet),minmax(0,1fr))] lg:grid-cols-[repeat(var(--grid-desktop),minmax(0,1fr))]"
-      }
+      className={[listStyle.className, carousel ? "" : "grid grid-cols-[repeat(var(--grid-cols),minmax(0,1fr))]"].filter(Boolean).join(" ") || undefined}
       style={
         {
-          "--grid-mobile": block.columns.mobile,
-          "--grid-tablet": block.columns.tablet,
-          "--grid-desktop": block.columns.desktop,
-          "--gap": `${block.gap}px`,
+          "--gap": "var(--grid-gap)",
           ...(carousel && block.peek && { "--peek": 0.25 }),
-          gap: `${block.gap}px`,
+          gap: "var(--grid-gap)",
         } as CSSProperties
       }
     >
@@ -169,7 +166,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
       ))}
     </ul>
   );
-  return carousel ? <Carousel settings={block.carousel} phonesOnly={block.carouselOn === "phones"}>{list}</Carousel> : list;
+  return carousel ? <Carousel settings={block.carousel}>{list}</Carousel> : list;
 }
 
 /** What names an item for a screen reader: its title, else the description of the picture the tile shows. */

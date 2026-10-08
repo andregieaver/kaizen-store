@@ -11,7 +11,6 @@ import {
   type FaqBlock,
   type PanelItem,
   buttonShows,
-  frameStyle,
   imageDisplaySize,
   type ButtonBlock,
   type ButtonShape,
@@ -216,8 +215,9 @@ function Button({ block }: { block: ButtonBlock }) {
       // An A/B test counts clicks on a button by its block (D148).
       data-block-id={block.id}
       {...(block.newTab && { target: "_blank", rel: "noopener noreferrer" })}
-      // A border, corners and shadow chosen for the button win over its style's own.
-      style={{ ...look.style, ...frameStyle(block) }}
+      // A border, corners and shadow chosen for the button win over its style's own (by size, the block's rules, D179).
+      data-button-frame=""
+      style={look.style}
       className={look.className}
     >
       <Inline text={block.label} />
@@ -257,7 +257,9 @@ function DualButton({ block }: { block: DualButtonBlock }) {
   const sides = [block.first, block.second].filter(buttonShows);
   return (
     <div
-      className={`inline-flex flex-wrap items-center ${block.stackOnPhones ? "max-md:flex max-md:flex-col max-md:items-stretch" : ""}`}
+      // One under another where it stacks (D179: the block's rules, `blockStyle()`).
+      data-dual-buttons=""
+      className="inline-flex flex-wrap items-center"
       style={{ gap: `${block.gap ?? 12}px` }}
     >
       {sides.map((side, index) => (

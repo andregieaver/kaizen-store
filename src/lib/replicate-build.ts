@@ -1,4 +1,5 @@
 import { findClaims } from "./claims";
+import { SIDE_BY_SIDE_GAP } from "./responsive";
 import { allowedCssUrl } from "./custom-css";
 import { isCustomPicture } from "./custom-picture";
 import {
@@ -1655,7 +1656,8 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       htmlId: rowId,
       className: "rp",
       ...(native.background ? { background: native.background } : {}),
-      ...(sideBySide ? { sideBySide: true } : {}),
+      // Side by side on phones too (D80): never stacked, as close on Small as such rows always were (D179).
+      ...(sideBySide ? { stack: false, at: { sm: { gap: SIDE_BY_SIDE_GAP } } } : {}),
       ...(equal ? { equalHeight: true } : {}),
       ...(align ? { align } : {}),
     });

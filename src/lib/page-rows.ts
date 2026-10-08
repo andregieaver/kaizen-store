@@ -119,7 +119,9 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
         tags: [],
         sort: "newest",
         limit: 6,
-        columns: { mobile: 1, tablet: 2, desktop: 3 },
+        // Three columns on computers, two on tablets and one on phones (D179: Extra large and the smaller sizes' overrides).
+        columns: 3,
+        at: { md: { columns: 2 }, sm: { columns: 1 } },
         show: { image: true, heading: true, excerpt: true, price: true, button: true },
         buttonLabel: "",
         emptyText: "",

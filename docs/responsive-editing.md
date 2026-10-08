@@ -1,7 +1,8 @@
 # Responsive editing and visibility in the page builder (proposed D179)
 
-Status: **planned, not started.** Agreed with the owner on 8 October 2026; built after D178 step 6 ships, and
-before text colour and opacity (`docs/text-colour.md`, proposed D180). The model is Beaver Builder's: a value per
+Status: **phase 1 built** (the model, the upgrade of saved pages, screen sizes in the theme and the part stylesheet;
+section 9 says what was learned). Phases 2–6 are not started. Agreed with the owner on 8 October 2026; built after D178
+step 6, and before text colour and opacity (`docs/text-colour.md`, proposed D180). The model is Beaver Builder's: a value per
 screen size on the settings of every row, column and component, a responsive editing mode in the builder, and
 visibility by screen size, sign-in or conditions in each part's Advanced tab.
 
@@ -31,7 +32,7 @@ References: [Beaver Builder, Visibility](https://docs.wpbeaverbuilder.com/beaver
   **Small < 768, Medium 768–1023, Large 1024–1279, Extra large ≥ 1280.** (Beaver's own defaults are 768/992/1200;
   ours differ so nothing moves.)
 - A store sets its own in Design settings (`ThemeSettings.breakpoints`, part of the theme, so design profiles and
-  store templates carry them); Kaizen's in its own design settings. Checked: rising, at least 320 px apart, 480–2560.
+  store templates carry them); Kaizen's in its own design settings. Checked: rising, at least 160 px apart (`BREAKPOINT_GAP`; 320 could not hold the defaults, 256 apart), 480–2560.
 - One function gives the queries: `breakpointQueries(theme)` → `@media (max-width: …)` for the site and
   `@container kz-page (max-width: …)` for the builder's canvas (section 5).
 
@@ -117,3 +118,61 @@ Page content is JSON in `pages.draft`/`published` and the theme in `stores.theme
 Each push touching code runs CI: without a migration it deploys at once and the checks report beside it, so every
 phase is verified locally first (lint, typecheck, unit, integration on a fresh database, build, e2e). This file alone
 runs nothing.
+
+## 9. Phase 1, as built
+
+- **Screen sizes** (`src/lib/breakpoints.ts`): `SIZES`, `DEFAULT_BREAKPOINTS` (`md` 768, `lg` 1024, `xl` 1280: where
+  Medium, Large and Extra large start), `breakpointsProblem()`/`breakpointsSchema`, `breakpointsOf()` and
+  `breakpointQueries(theme, "media" | "container")` (`upTo` per smaller size, `only` per size; range syntax, `(width <
+  768px)`). `ThemeSettings.breakpoints` is optional, every theme template carries the defaults, and `parseStoreTheme()`
+  drops unusable widths alone (the rest of the theme is kept). The server reads a page owner's with `breakpointsFor()`
+  (`src/server/breakpoints.ts`; Kaizen's pages take the defaults). There is no field to change them yet (phase 2); the
+  rule of at least 320 px apart became 160 px, as the defaults that keep saved pages are 256 px apart.
+- **The model** (`src/lib/responsive.ts`, `PartBase.at`, `PartSizeSettings`, `PartBase.visibility.hideAt`):
+  `valueAt()`, `spacingAt()` (margin and padding walk on their own), `stackAt()` (a row stacks on Small unless set),
+  `withAt()`, and the editor's present switches written in the new shape (`sideBySidePatch()`, `reversePatch()`,
+  `hideOnPhonesPatch()`, `alignView()`/`alignPatch()`, `columnsView()`/`columnsPatch()`, `displayPatch()`), until the
+  per-size editor of phase 2. `pageInput`'s schemas take `at` as the same rules made optional, and drop empty sizes.
+- **The upgrade** runs as a `z.preprocess` on `pageRowSchema`, `pageColumnSchema` and `pageBlockSchema`
+  (`upgradeRow()`/`upgradeColumn()`/`upgradeBlock()`; `upgradeResponsive()` does a whole page at once), so every reader
+  that parses (pages, saved parts, globals, templates, page layouts, A/B versions, design profiles, the AI studio and
+  the replicator's output) sees the new shape, and the stored JSON changes only on the next save. Folded:
+  `sideBySide` → `stack: false` and `at.sm.gap: 8` (rows kept side by side were `gap-2 md:gap-8`); `reverseOnMobile` →
+  `at.sm.reverse`; `hideOnPhones` → `visibility.hideAt: ["sm"]`; `stackOnPhones` → `at.sm.stack`; `carouselOn: "phones"`
+  → `at.sm.display: "carousel"` with no base display; `GridColumns` → `columns` plus `at.md`/`at.sm` where they differ;
+  `TextAlignments` → `align` plus `at.md`/`at.sm`, a screen with nothing set under a larger one set reading `left`.
+  A value the old shape could not hold is left for the schema to refuse, as before. `responsive.test.ts` holds, for
+  every alignment (64), every grid's columns, every row layout with every switch, and the phone switches, that the
+  value at 375, 800, 1100 and 1400 px is the same read the old way and from the upgraded settings.
+- **The part stylesheet** (`src/lib/part-css.ts`, drawn by `PartStyles` in `src/components/part-styles.tsx` beside every
+  row `PageRowView` draws — pages, articles, headers, footers, product layouts, modals, working pages and Kaizen's pages —
+  and by `CanvasPartStyles` in the builder): `rowStyle()`, `rowGridStyle()`, `columnStyle()`, `blockStyle()`,
+  `gridListStyle()`, `partRules()`, `renderPartCss()`. Each element keeps `kz-{id}` (the stable hook for owners) and
+  gets a class named by a hash of what its rules say (`kzr-…`), so the same id on two pages (a copy, an A/B version, a
+  page kept hidden after client navigation) never takes the other's rules. To keep the cascade exactly as it was, what
+  was an inline style is written `:where(.kzr-…){…!important}` (beats every normal rule, loses to every important one,
+  as an inline style does), and what was a Tailwind class is `:where(.kzr-…){…}` unlayered (gives way to any page rule
+  with a selector, beats the utilities). A property a larger size sets and a smaller one does not is given back with
+  `revert-layer`. The stylesheet is a `<style href precedence>` (React hoists it and writes each once). The canvas is a
+  `kz-page` inline-size container and its rules are container queries; hidden parts and the phone's menu button are
+  hidden on the site only.
+- **Moved off inline styles and fixed breakpoints**: rows' spacing, frame, colour and backdrop blur; rows' columns
+  (stacking, reversing, gap, widths, order, alignment); columns' spacing, frame and colour; blocks' spacing and frame
+  (a button's on `[data-button-frame]`), a picture's `--picture-width` and place, alignment (and a menu's links,
+  `kz-menu-justify`), hidden at a size, a dual button's stacking, related products' and testimonials' columns, a
+  content grid's columns and gap (`--grid-cols`, `--grid-gap`) and its carousel at some sizes only (laid out as a grid
+  elsewhere, its controls hidden), and a modal panel's frame.
+- **Left on the window's fixed breakpoints** (equal to the defaults, so only a store with its own sizes or the canvas
+  sees them differ): heading and article title sizes (`md:text-*`, typography is phase 3), Tailwind's `sm:` (640 px) in
+  field loops, custom fields and Kaizen's plans, the product listing's own grid, the product gallery's arrows, the
+  standard header's menu button and `globals.css`'s carousel fallbacks (`--grid-mobile`…). The canvas's own window
+  classes are phase 2.
+- **Parity** (`e2e/responsive-parity.spec.ts`): a store's front page, an "about" page, a page of every old switch (rows
+  of five layouts, reversed, side by side, equal height, columns with frames and colours, alignments by screen,
+  pictures placed by screen, content grids and a carousel on phones only, a dual button, testimonials in a grid and a
+  carousel), a header and a footer of site parts and menus hidden on phones, a product layout with related products,
+  and Kaizen's front page, each at 375, 800, 1100 and 1400 px: every element's box and 31 computed properties
+  (display, position, paddings, margins, borders, radius, shadow, background, backdrop filter, text-align,
+  flex-direction and wrap, order, grid-template-columns, align-items, justify-content, gaps, max-width), captured from a
+  build of `origin/main` before the change and compared with the build after: 3,512 elements, 108,872 values, no
+  difference. The same spec holds a store with the pages in the old shape against one with them upgraded.

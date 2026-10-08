@@ -18,6 +18,10 @@ import { renderStyles } from "../src/lib/replicate-styles";
 import { signFrame } from "../src/lib/replicate-token";
 
 import { testDb } from "./db";
+import { columnsView } from "../src/lib/responsive";
+
+/** A grid's columns by screen, as the builder shows them (D179: computers' at Extra large, the smaller sizes' overrides). */
+const screens = (grid: { columns: number; at?: ContentGridBlock["at"] }) => columnsView(grid, { mobile: 0, tablet: 0, desktop: 0 });
 
 /**
  * Repeated cards copied end to end as grids of custom items (D155, C): a local page with a grid of four cards, a native scroller of six
@@ -107,8 +111,8 @@ test("repeated cards become grids of custom items that look like the original, w
 
     const [statics, carousel, slider] = grids;
     expect(statics.display).toBeUndefined();
-    expect(statics.columns.desktop).toBe(4);
-    expect(statics.columns.mobile).toBe(1);
+    expect(screens(statics).desktop).toBe(4);
+    expect(screens(statics).mobile).toBe(1);
     expect(statics.items!.map((i) => i.title)).toEqual(["Håndlaget krus", "Lampe i eik", "Notatbok", "Bærepose"]);
     expect(statics.items![1]).toMatchObject({ text: "Varmt lys til stuen din.", priceText: "1 290 kr", buttonLabel: "Les mer", picture: { alt: "Lampe" } });
     expect(statics.items![1].link).toMatchObject({ kind: "url" });
@@ -116,7 +120,7 @@ test("repeated cards become grids of custom items that look like the original, w
     // The scroller is a carousel with the arrows and dots it had, three tiles in view; its snapping is the default (start).
     expect(carousel.display).toBe("carousel");
     expect(carousel.items!.map((i) => i.title)).toEqual(["Sykkel", "Kopp", "Bok", "Hytte", "Tre", "Garn"]);
-    expect(carousel.columns.desktop).toBe(3);
+    expect(screens(carousel).desktop).toBe(3);
     expect(carousel.carousel).toEqual({ dots: true });
     expect(built.grids.built[1].carousel).toMatchObject({ arrows: true, dots: true, snap: "start", autoplay: "not observed" });
     expect(built.grids.built[1].carousel!.watched).toMatchObject({ moves: 0 });
@@ -127,8 +131,8 @@ test("repeated cards become grids of custom items that look like the original, w
     expect(slider.items![3]).toMatchObject({ text: "Holder kaffen varm i åtte timer.", buttonLabel: "Se termos", picture: { alt: "Termos" } });
     expect(slider.items![3].link).toMatchObject({ kind: "url" });
     expect(slider.display).toBe("carousel");
-    expect(slider.columns.desktop).toBe(3);
-    expect(slider.columns.mobile).toBe(1);
+    expect(screens(slider).desktop).toBe(3);
+    expect(screens(slider).mobile).toBe(1);
     expect(slider.carousel).toEqual({ dots: true, rewind: true, autoplay: { seconds: watchedSeconds } });
     expect(built.grids.built[2].carousel).toMatchObject({ arrows: true, dots: true, rewind: true, perScreen: { desktop: 3, phone: 1 }, clones: 6, script: { kind: "transform", clonesBy: { markers: 6, keys: 0, hashes: 0 } } });
     expect(built.grids.built[2].carousel!.autoplay).toBe(`observed, ${watchedSeconds} s`);

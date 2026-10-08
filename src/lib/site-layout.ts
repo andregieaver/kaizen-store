@@ -12,7 +12,9 @@ import {
   type SiteBlock,
   type SitePart,
 } from "./page-content";
+import { SIZES } from "./breakpoints";
 import { flowRows } from "./page-modal";
+import { SIDE_BY_SIDE_GAP, hiddenAt } from "./responsive";
 
 /**
  * Headers and footers (D80): a site's top and bottom built in the page
@@ -34,15 +36,18 @@ const sides = (vertical: number, horizontal: number) => ({ top: vertical, right:
 /** The menus a site's standard header and footer show (D85), which a new header or footer starts with. */
 export type StandardMenus = { header: string | null; footer: string | null };
 
+/** Left out on phones, where the phone's menu has it (D179: hidden at Small). */
+const PHONES_HIDDEN = { visibility: { hideAt: ["sm" as const] } };
+
 /** A header: the logo (after the phone's menu button), the menu, then the site's tools, on one line on phones too. */
 export function defaultHeader(storeId: string | null, menus: StandardMenus = { header: null, footer: null }): PageContent {
   const tools: SiteBlock[] =
     storeId === null
-      ? [part("header-account", "account"), part("header-sign-up", "signUp", { hideOnPhones: true })]
+      ? [part("header-account", "account"), part("header-sign-up", "signUp", PHONES_HIDDEN)]
       : [
-          part("header-markets", "markets", { hideOnPhones: true }),
+          part("header-markets", "markets", PHONES_HIDDEN),
           part("header-search", "search"),
-          part("header-account", "account", { hideOnPhones: true }),
+          part("header-account", "account", PHONES_HIDDEN),
           part("header-wishlist", "wishlist"),
           part("header-cart", "cart"),
         ];
@@ -50,12 +55,14 @@ export function defaultHeader(storeId: string | null, menus: StandardMenus = { h
     id: "header-row",
     type: "row",
     layout: "fit-sides",
-    sideBySide: true,
+    // On one line at every size (D80), closer together on phones (D179).
+    stack: false,
+    at: { sm: { gap: SIDE_BY_SIDE_GAP } },
     align: "middle",
     style: { padding: sides(10, 16) },
     columns: [
       { id: "header-brand", inline: true, blocks: [part("header-menu-button", "menuButton"), part("header-logo", "logo")] },
-      { id: "header-nav", blocks: [menu("header-menu", menus.header, { hideOnPhones: true })] },
+      { id: "header-nav", blocks: [menu("header-menu", menus.header, PHONES_HIDDEN)] },
       { id: "header-tools", inline: true, justify: "end", blocks: tools },
     ],
   };
@@ -110,7 +117,7 @@ export const footerRequired = (storeId: string | null): readonly SitePart[] => (
  * the function is reachable in every footer layout, including ones saved before it existed.
  */
 export const footerHasWithdrawal = (content: Pick<PageContent, "rows">): boolean =>
-  siteBlocks({ rows: flowRows(content.rows) }).some((block) => block.part === "withdrawal" && !block.hideOnPhones);
+  siteBlocks({ rows: flowRows(content.rows) }).some((block) => block.part === "withdrawal" && SIZES.every((size) => !hiddenAt(block, size)));
 
 /**
  * Why a page of a type cannot be saved with its site components (D80), or

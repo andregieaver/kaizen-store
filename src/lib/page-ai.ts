@@ -27,7 +27,7 @@ import {
   type RichTextBlock,
   type RowLayout,
   type Sides,
-  type TextAlignments,
+  type TextAlign,
 } from "./page-content";
 import { DESCRIPTION_MAX } from "./seo";
 import { textToRichText } from "./simple-rich-text";
@@ -717,7 +717,7 @@ export type BuiltPage = { content: PageContent; pictures: PictureJob[] };
 
 type NewId = () => string;
 
-const CENTER: TextAlignments = { mobile: "center" };
+const CENTER: TextAlign = "center";
 const sides = (top: number, bottom: number, x = 20): Sides => ({ top, right: x, bottom, left: x });
 
 type Ctx = { id: NewId; facts: SiteFacts; allowLink: (href: string) => boolean; pictures: PictureJob[] };
@@ -745,13 +745,13 @@ function heading(ctx: Ctx, text: string, level: HeadingLevel, size: HeadingSize,
   return words ? [{ id: ctx.id(), type: "heading", text: words, level, size, ...extra }] : [];
 }
 
-function text(ctx: Ctx, words: string, align?: TextAlignments): RichTextBlock[] {
+function text(ctx: Ctx, words: string, align?: TextAlign): RichTextBlock[] {
   if (!words.trim()) return [];
   return [{ id: ctx.id(), type: "richText", doc: textToRichText(words, ctx.allowLink), ...(align && { align }) }];
 }
 
 /** The section's buttons that go to an address on the site: one, two side by side, or none. */
-function buttons(ctx: Ctx, copy: SectionCopy, section: PlanSection, align?: TextAlignments, look: Partial<ButtonBlock> = {}): PageBlock[] {
+function buttons(ctx: Ctx, copy: SectionCopy, section: PlanSection, align?: TextAlign, look: Partial<ButtonBlock> = {}): PageBlock[] {
   const links = section.links ?? [];
   const usable = copy.buttons
     .map((button, index) => ({ label: button.label.trim(), href: ctx.allowLink(button.href) ? button.href : (links[index] ?? "") }))
@@ -768,7 +768,8 @@ function buttons(ctx: Ctx, copy: SectionCopy, section: PlanSection, align?: Text
     first: { label: usable[0].label, href: usable[0].href, ...(look.fill && { fill: look.fill }), ...(look.textColor && { textColor: look.textColor }) },
     second: { label: usable[1].label, href: usable[1].href, variant: "outline", ...(look.fill && { fill: look.fill }) },
     size,
-    stackOnPhones: true,
+    // One under another on phones (D179: stacked at Small).
+    at: { sm: { stack: true } },
     ...(align && { align }),
   };
   return [dual];
@@ -786,7 +787,7 @@ function picture(ctx: Ctx, planned: PlanPicture | undefined, shape: PictureJob["
 function sectionRows(ctx: Ctx, section: PlanSection, copy: SectionCopy, first: boolean): PageRow[] {
   const tint = section.tinted && ctx.facts.tint ? { background: { type: "color" as const, color: ctx.facts.tint } } : {};
   const space = (top: number, bottom: number) => ({ style: { padding: sides(top, bottom) } });
-  const titled = (align?: TextAlignments, size: HeadingSize = "lg") => [
+  const titled = (align?: TextAlign, size: HeadingSize = "lg") => [
     ...heading(ctx, copy.heading, 2, size, align ? { align } : {}),
     ...text(ctx, copy.text, align),
   ];
@@ -832,7 +833,7 @@ function sectionRows(ctx: Ctx, section: PlanSection, copy: SectionCopy, first: b
         row(ctx, "2", variant === "split-left" ? [image, words] : [words, image], {
           ...space(first ? 56 : 48, 48),
           align: "middle",
-          ...(variant === "split-left" ? { reverseOnMobile: true } : {}),
+          ...(variant === "split-left" ? { at: { sm: { reverse: true } } } : {}),
           ...tint,
         }),
       ];
@@ -876,7 +877,7 @@ function sectionRows(ctx: Ctx, section: PlanSection, copy: SectionCopy, first: b
         row(ctx, "2", section.variant === "left" ? [image, words] : [words, image], {
           ...space(48, 48),
           align: "middle",
-          ...(section.variant === "left" ? { reverseOnMobile: true } : {}),
+          ...(section.variant === "left" ? { at: { sm: { reverse: true } } } : {}),
           ...tint,
         }),
       ];
@@ -905,7 +906,9 @@ function sectionRows(ctx: Ctx, section: PlanSection, copy: SectionCopy, first: b
         tags: [],
         sort: "newest",
         limit: section.limit ?? (section.pattern === "products" ? 8 : 3),
-        columns: section.pattern === "products" ? { mobile: 2, tablet: 3, desktop: 4 } : { mobile: 1, tablet: 2, desktop: 3 },
+        // Four (three) on computers, three (two) on tablets, two (one) on phones (D179: Extra large, and the smaller sizes' overrides).
+        columns: section.pattern === "products" ? 4 : 3,
+        at: section.pattern === "products" ? { md: { columns: 3 }, sm: { columns: 2 } } : { md: { columns: 2 }, sm: { columns: 1 } },
         show: { image: true, heading: true, excerpt: section.pattern === "articles", price: section.pattern === "products", button: false },
         buttonLabel: "",
         emptyText: "",

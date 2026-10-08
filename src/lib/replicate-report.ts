@@ -1,5 +1,5 @@
 import { CSS_MAX } from "./custom-css";
-import { BLOCKS_MAX, CUSTOM_ITEMS_MAX, ROWS_MAX, pageBlockSchema } from "./page-content";
+import { BLOCKS_MAX, CUSTOM_ITEMS_MAX, ROWS_MAX, pageBlockUnion } from "./page-content";
 import type { ReplicaLogEntry, ReplicaNote, ReplicaPass, ReplicaSummary } from "./replicate";
 import type { Dropped, PartInfo } from "./replicate-build";
 import { indexByPath, walk, walkLive, type Box, type CaptureHit, type CaptureNode, type PageCapture } from "./replicate-capture";
@@ -113,7 +113,7 @@ export type ReplicaReport = {
 
 /** Blocks for any page, from the builder's own schema; the shop's and the site's own parts are not for a copied page. */
 const SPECIAL_BLOCKS = new Set(["product", "site", "storePart", "plans", "search", "customField", "fieldLoop"]);
-export const BUILDER_BLOCKS: readonly string[] = pageBlockSchema.options.map((option) => String(option.shape.type.value)).filter((type) => !SPECIAL_BLOCKS.has(type));
+export const BUILDER_BLOCKS: readonly string[] = pageBlockUnion.options.map((option) => String(option.shape.type.value)).filter((type) => !SPECIAL_BLOCKS.has(type));
 /** What `buildReplica()` makes. A block the builder has and this list lacks is one the converter could use but does not. */
 export const CONVERTER_BLOCKS: readonly string[] = ["heading", "richText", "button", "image", "video", "separator", "contentGrid"];
 

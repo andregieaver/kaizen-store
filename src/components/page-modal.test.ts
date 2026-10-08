@@ -1,4 +1,7 @@
 import { createElement, type ComponentProps } from "react";
+import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
+import { partCss } from "@/lib/part-css";
+import { modalPanelClass } from "./page-parts";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -47,11 +50,11 @@ const row = (id: string, text: string, extra: Partial<PageRow> = {}): PageRow =>
 });
 
 const labels = { close: "Lukk", dialog: "Dialogvindu" };
-const html = (config: RowModal, props: { panelStyle?: object; children?: string } = {}) =>
+const html = (config: RowModal, props: { panelClassName?: string; children?: string } = {}) =>
   renderToString(
     createElement(
       PageModal,
-      { config, storeId: null, auto: true, labels, panelStyle: props.panelStyle } as ComponentProps<typeof PageModal>,
+      { config, storeId: null, auto: true, labels, panelClassName: props.panelClassName } as ComponentProps<typeof PageModal>,
       createElement("p", null, props.children ?? "Sign up for the newsletter"),
     ),
   ).replace(/<!-- -->/g, "");
@@ -92,10 +95,12 @@ describe("a modal on the server", () => {
     expect(out).not.toMatch(/rgba?\(/);
   });
 
-  it("gives the panel the row's border, corners and shadow", () => {
-    const out = html(modal(), { panelStyle: { borderRadius: "12px", boxShadow: "0 1px 2px black" } });
-    expect(out).toContain("border-radius:12px");
-    expect(out).toContain("box-shadow");
+  it("gives the panel the row's border, corners and shadow, by the class the part stylesheet draws them with (D179)", () => {
+    const framed = row("m", "Hello", { modal: modal(), radius: 12, shadow: "sm" });
+    const panel = modalPanelClass(framed);
+    expect(html(modal(), { panelClassName: panel })).toContain(`class="page-modal-panel bg-background text-foreground ${panel}"`);
+    const css = partCss([framed], "site", DEFAULT_BREAKPOINTS);
+    expect(css).toContain(`:where(.${panel}){border-radius:12px!important;box-shadow:`);
   });
 });
 
@@ -119,10 +124,18 @@ describe("a modal row on a page", () => {
     expect(out).toContain('aria-label="Lukk"');
     expect(out).toContain("Twenty per cent off");
     expect(out).toContain("Heading m");
-    // The frame is the panel's; inside it the row has its padding, and no margin of its own.
-    expect(out).toMatch(/class="page-modal-panel[^"]*"[^>]*style="[^"]*border-radius:16px/);
-    expect(out).toContain("padding-top:24px");
-    expect(out).not.toContain("margin-top:50px");
+    // The frame is the panel's; inside it the row has its padding, and no margin of its own (D179: the part stylesheet's rules).
+    const drawn = row("m", "Twenty per cent off", {
+      modal: modal(),
+      style: { padding: { top: 24, right: 24, bottom: 24, left: 24 }, margin: { top: 50, right: 0, bottom: 50, left: 0 } },
+      radius: 16,
+      shadow: "lg",
+    });
+    expect(out).toContain(`class="page-modal-panel bg-background text-foreground ${modalPanelClass(drawn)}"`);
+    const css = partCss([drawn], "site", DEFAULT_BREAKPOINTS);
+    expect(css).toContain(`:where(.${modalPanelClass(drawn)}){border-radius:16px!important`);
+    expect(css).toContain("padding-top:24px!important");
+    expect(css).not.toContain("margin-top:50px");
   });
 
   it("is not in the page's flow: it does not take the place of the first or last row", () => {

@@ -1,5 +1,7 @@
 import "server-only";
 
+import { breakpointsOf } from "@/lib/breakpoints";
+
 import type { PageOwnerContext } from "@/components/admin/page-context";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { t } from "@/lib/i18n";
@@ -83,7 +85,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     standardMenus: { header: store.headerMenuId, footer: store.footerMenuId },
     menusHref: `/admin/${store.slug}/menus`,
     plans: null,
-    theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings) },
+    theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings), breakpoints: breakpointsOf(store.theme.settings) },
     // Templates shared between stores and the marketplace (D125), bound to the store.
     // What the page checker needs (wave 1, 1e): the theme's colours, and the page chosen for the checkout.
     check: { theme: themeSetsOf(store.theme.settings), checkoutPageId: store.pageRoles.checkout ?? null },

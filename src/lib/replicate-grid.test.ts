@@ -10,6 +10,10 @@ import type { Box, CaptureNode, PageCapture, Run } from "./replicate-capture";
 import { COLUMNS_MARGIN, columnsBeatGrid, cutOnWord, gridLines, isPriceText, loopedEnds, parseDate, stretchesOf, tokensOf, weakGrids } from "./replicate-grid";
 import { renderStyles, suffixOk } from "./replicate-styles";
 import { runsText } from "./replicate-capture";
+import { columnsView } from "./responsive";
+
+/** A grid's columns by screen, as the builder shows them (D179: computers' at Extra large, the smaller sizes' overrides). */
+const screens = (grid: { columns: number; at?: ContentGridBlock["at"] }) => columnsView(grid, { mobile: 0, tablet: 0, desktop: 0 });
 
 /**
  * Repeated cards become one grid of custom items (D155, C), from captured trees and no browser: a static grid, a native scroller with
@@ -169,9 +173,9 @@ describe("a static grid of four cards", () => {
 
   it("reads columns and the gap from what was measured, and the tile from the card's painted box", () => {
     const [grid] = gridsOf(build().rows);
-    expect(grid.columns.desktop).toBe(4);
-    expect(grid.columns.mobile).toBe(1);
-    expect(grid.columns.tablet).toBeGreaterThanOrEqual(grid.columns.mobile);
+    expect(screens(grid).desktop).toBe(4);
+    expect(screens(grid).mobile).toBe(1);
+    expect(screens(grid).tablet).toBeGreaterThanOrEqual(screens(grid).mobile);
     expect(grid.gap).toBe(20);
     expect(grid.tile).toMatchObject({ background: "#ffffff", radius: 12, shadow: "md", border: { width: { top: 1, right: 1, bottom: 1, left: 1 }, color: "#dcdce1", style: "solid" } });
     expect(grid.headingLevel).toBe(3);
@@ -234,7 +238,7 @@ describe("a wrapped grid", () => {
   it("counts the cards in a row, and keeps the order of the cards as the page has them", () => {
     const built = buildReplica(input(capture(page(shop(6, 3)))), newId);
     const [grid] = gridsOf(built.rows);
-    expect(grid.columns.desktop).toBe(3);
+    expect(screens(grid).desktop).toBe(3);
     expect(grid.items!.map((i) => i.title)).toEqual(["Title 0", "Title 1", "Title 2", "Title 3", "Title 4", "Title 5"]);
     // Rows' gap is read too: 20px between the rows of cards.
     expect(grid.gap).toBe(20);
@@ -254,10 +258,11 @@ describe("a grid at computers' width that scrolls sideways on phones only", () =
   it("is a carousel on phones only, with the columns each width showed and no arrows the phone did not have", () => {
     const built = buildReplica(input(capture(page(shop(8, 4))), capture(phonePage(phoneTrack(3)), 390)), newId);
     const [grid] = gridsOf(built.rows);
-    expect(grid.display).toBe("carousel");
-    expect(grid.carouselOn).toBe("phones");
+    // A carousel on phones only (D179: at Small), a grid from Medium up.
+    expect(grid.display).toBeUndefined();
+    expect(grid.at?.sm?.display).toBe("carousel");
     expect(grid.items).toHaveLength(8);
-    expect(grid.columns).toMatchObject({ desktop: 4, mobile: 2 });
+    expect(screens(grid)).toMatchObject({ desktop: 4, mobile: 2 });
     expect(grid.carousel).toMatchObject({ arrows: false });
     expect(built.grids.built[0].carousel).toMatchObject({ phonesOnly: true, perScreen: { desktop: 4, phone: 2 } });
     expect(pageInput.safeParse({ ...newPageContent(), title: "Copy", slug: "copy", rows: built.rows }).success).toBe(true);
@@ -302,7 +307,7 @@ describe("a native scroller of six cards with arrows", () => {
     expect(grid.items).toHaveLength(6);
     // Arrows are the default: they are said only when absent. Snap "start" is the default too.
     expect(grid.carousel).toBeUndefined();
-    expect(grid.columns.desktop).toBe(3);
+    expect(screens(grid).desktop).toBe(3);
     expect(built.grids.built[0].carousel).toMatchObject({ arrows: true, dots: false, snap: "start", autoplay: "not observed", clones: 0 });
     expect(blocksOf(built.rows).map((b) => b.type)).toEqual(["heading", "contentGrid"]);
   });
@@ -525,7 +530,7 @@ describe("pictures that do not fill their card", () => {
     expect(grid.items).toHaveLength(6);
     expect(grid.items![3]).toMatchObject({ title: "", text: "", buttonLabel: "", link: { kind: "url", url: "https://partner.test/3" }, picture: { alt: "Partner 3" } });
     expect(grid.show).toMatchObject({ image: true, heading: false, excerpt: false, button: false });
-    expect(grid.columns.desktop).toBe(6);
+    expect(screens(grid).desktop).toBe(6);
     expect(blocksOf(built.rows)).toHaveLength(1);
   });
 });

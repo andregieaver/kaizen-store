@@ -19,12 +19,15 @@ export type TestimonialEntry = {
   nameHref?: string;
 };
 
-// Written out whole so Tailwind finds every class.
+/**
+ * The columns at each screen size (D179): one on Small, at most two on Medium, all from Large. A testimonials component's
+ * own rules set `--grid-cols` by the store's screen sizes (`blockStyle()`), over these classes (the window's default sizes).
+ */
 const COLUMNS: Record<TestimonialColumns, string> = {
   1: "",
-  2: "md:grid-cols-2",
-  3: "md:grid-cols-2 lg:grid-cols-3",
-  4: "md:grid-cols-2 lg:grid-cols-4",
+  2: "md:[--grid-cols:2]",
+  3: "md:[--grid-cols:2] lg:[--grid-cols:3]",
+  4: "md:[--grid-cols:2] lg:[--grid-cols:4]",
 };
 const LOOKS: Record<TestimonialLook, string> = {
   cards: "rounded-lg border border-border bg-background p-5 shadow-sm",
@@ -58,7 +61,8 @@ export function TestimonialCards({
     <div
       data-carousel-track={carousel ? "" : undefined}
       data-snap={carousel ? snapAttribute(carouselSettings) : undefined}
-      className={carousel ? undefined : `grid grid-cols-1 gap-6 ${COLUMNS[columns]}`}
+      data-testimonial-list=""
+      className={carousel ? undefined : `grid grid-cols-[repeat(var(--grid-cols,1),minmax(0,1fr))] gap-6 ${COLUMNS[columns]}`}
       style={
         carousel
           ? ({ "--grid-mobile": 1, "--grid-tablet": Math.min(2, columns), "--grid-desktop": columns, "--gap": "24px", "--peek": 0.15, gap: "24px" } as CSSProperties)

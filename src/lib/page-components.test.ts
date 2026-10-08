@@ -41,7 +41,7 @@ describe("dual buttons", () => {
     const pair = newBlock("dualButton", () => "d");
     expect(pair).toMatchObject({ first: { label: "", href: "" }, second: { variant: "outline" } });
     expect(blockHasContent(pair)).toBe(false);
-    const ready = { ...pair, first: { label: "Handle nå", href: "/products" }, gap: 24, stackOnPhones: true, size: "lg" as const };
+    const ready = { ...pair, first: { label: "Handle nå", href: "/products" }, gap: 24, at: { sm: { stack: true } }, size: "lg" as const };
     expect(blockHasContent(ready)).toBe(true);
     expect(parse(ready)).toEqual(ready);
     expect(blockTextFields(ready as never).map((field) => [field.key, field.label])).toEqual([

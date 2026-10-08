@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { DEFAULT_BREAKPOINTS, breakpointsSchema, type Breakpoints } from "./breakpoints";
 import { fontFamily, type SiteFonts } from "./fonts";
 
 /**
@@ -79,6 +80,11 @@ export type ThemeSettings = {
   corners: { cards: CardCorners; fields: FieldCorners };
   layout: { width: ContentWidth; headerAlign: HeaderAlign; headerBackground: HeaderBackground };
   productCards: { image: CardImage; style: CardStyle; align: CardAlign };
+  /**
+   * Where the screen sizes start (D179, `src/lib/breakpoints.ts`): the part rules of every page, header, footer and
+   * layout are written for them. The defaults keep pages saved before as they were.
+   */
+  breakpoints?: Breakpoints;
 };
 
 const keys = <T extends Record<string, unknown>>(record: T) => Object.keys(record) as [keyof T & string, ...(keyof T & string)[]];
@@ -105,6 +111,7 @@ export const themeSettingsSchema = z.object({
     style: z.enum(keys(CARD_STYLES)),
     align: z.enum(keys(CARD_ALIGNS)),
   }),
+  breakpoints: breakpointsSchema.optional(),
 }) satisfies z.ZodType<ThemeSettings, unknown>;
 
 // ---------------------------------------------------------------------------
@@ -147,6 +154,7 @@ export const THEME_TEMPLATES = {
       corners: { cards: "medium", fields: "small" },
       layout: { width: "normal", headerAlign: "left", headerBackground: "page" },
       productCards: { image: "square", style: "plain", align: "left" },
+      breakpoints: DEFAULT_BREAKPOINTS,
     },
   },
   warm: {
@@ -179,6 +187,7 @@ export const THEME_TEMPLATES = {
       corners: { cards: "small", fields: "small" },
       layout: { width: "normal", headerAlign: "center", headerBackground: "page" },
       productCards: { image: "portrait", style: "bordered", align: "center" },
+      breakpoints: DEFAULT_BREAKPOINTS,
     },
   },
   bold: {
@@ -211,6 +220,7 @@ export const THEME_TEMPLATES = {
       corners: { cards: "none", fields: "none" },
       layout: { width: "wide", headerAlign: "left", headerBackground: "inverse" },
       productCards: { image: "portrait", style: "plain", align: "left" },
+      breakpoints: DEFAULT_BREAKPOINTS,
     },
   },
 } as const satisfies Record<string, { name: string; description: string; settings: ThemeSettings }>;
@@ -253,7 +263,14 @@ function overlay(under: unknown, over: unknown): unknown {
  * back to the template (the store keeps working), and none is Minimal.
  */
 export function parseStoreTheme(value: unknown): StoreTheme {
-  const stored = isPlain(value) ? value : {};
+  const stored: Record<string, unknown> = isPlain(value) ? { ...value } : {};
+  // Widths that cannot be used fall back to the template's alone (D179), never the whole theme.
+  const given = isPlain(stored.settings) ? stored.settings : undefined;
+  if (given && given.breakpoints !== undefined && !breakpointsSchema.safeParse(given.breakpoints).success) {
+    const { breakpoints, ...rest } = given;
+    void breakpoints;
+    stored.settings = rest;
+  }
   const base = THEME_TEMPLATE_KEYS.includes(stored.base as ThemeTemplate) ? (stored.base as ThemeTemplate) : "minimal";
   const savedId = typeof stored.savedId === "string" && z.uuid().safeParse(stored.savedId).success ? stored.savedId : null;
   const parsed = themeSettingsSchema.safeParse(overlay(templateSettings(base), stored.settings));

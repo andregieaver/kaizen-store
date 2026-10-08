@@ -351,7 +351,7 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   overscroll-behavior-x: contain;
-  --cols: var(--grid-mobile, 1);
+  --cols: var(--grid-cols, var(--grid-mobile, 1));
 }
 [data-carousel-track]::-webkit-scrollbar {
   display: none;
@@ -374,26 +374,18 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
 }
 @media (width >= 48rem) {
   [data-carousel-track] {
-    --cols: var(--grid-tablet, 2);
+    --cols: var(--grid-cols, var(--grid-tablet, 2));
   }
 }
 @media (width >= 64rem) {
   [data-carousel-track] {
-    --cols: var(--grid-desktop, 3);
+    --cols: var(--grid-cols, var(--grid-desktop, 3));
   }
 }
-/* A carousel only on phones (`ContentGridBlock.carouselOn`): from tablets' width its tiles lie in a grid of the same columns. */
-@media (width >= 48rem) {
-  [data-carousel-track][data-carousel-phones] {
-    display: grid;
-    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-    overflow-x: visible;
-    scroll-snap-type: none;
-  }
-  [data-carousel-track][data-carousel-phones] > * {
-    flex: none;
-  }
-}
+/*
+ * A content grid's carousel takes its columns from its list's rules by the store's screen sizes (D179, `gridListStyle()`), which also
+ * lay it out as a grid of the same columns at the sizes where it is not a carousel (`carouselOn: "phones"` before D179).
+ */
 
 /*
  * Modals in a page (D121, `PageModal`): a row in a native dialog, closed

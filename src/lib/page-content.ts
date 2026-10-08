@@ -21,6 +21,8 @@ import { inlinePlain } from "./inline-text";
 import { sourceTraits } from "./grid-source";
 import { menuLinkSchema, type MenuLink } from "./navigation";
 import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
+import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
+import { SIZES, type Size, type SmallerSize } from "./breakpoints";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
 import { SHOP_PART_KEYS, type ShopPart } from "./store-parts";
@@ -349,7 +351,51 @@ export type PartBase = {
   global?: string;
   /** Inside a global's use: this part is the page's own, not shared with the global's other uses (D98). */
   local?: true;
+  /**
+   * The settings that differ at the smaller screen sizes (D179, `src/lib/responsive.ts`): the part's own are its Extra large
+   * values, and each size holds only what it changes, read with `valueAt()` from smaller to larger.
+   */
+  at?: SizeOverrides;
+  /** Where the part shows (D179): `hideAt` leaves it out at those sizes (CSS). Sign-in and conditions come in phase 4. */
+  visibility?: Visibility;
 };
+
+/** The one kind of background a part can take per screen size (D179): a colour; a picture, video or gradient is the part's own. */
+export type ColorBackground = { type: "color"; color: Color; opacity?: number };
+
+/**
+ * What a part can set per screen size (D179, `docs/responsive-editing.md` 3): its spacing, frame and colour; a row's
+ * stacking, order and gap; a column's share of the row and its place; a block's alignment, a picture's width, a grid's
+ * columns, gap and carousel, a dual button's stacking. Each kind of part reads the keys that concern it.
+ */
+export type PartSizeSettings = {
+  style?: Spacing;
+  border?: Border;
+  radius?: number;
+  shadow?: Shadow;
+  background?: ColorBackground;
+  backdropBlur?: number;
+  /** A row's columns (or a dual button's two) one under another. */
+  stack?: boolean;
+  /** A row's stacked columns, last first. */
+  reverse?: boolean;
+  /** Pixels between a row's columns, or a grid's tiles. */
+  gap?: number;
+  /** A column's share of its row (as a layout's widths: 0 is as wide as what it holds); the row's layout unless set. */
+  width?: number;
+  /** A column's place in its row. */
+  order?: number;
+  align?: TextAlign;
+  maxWidth?: number;
+  /** A grid's columns. */
+  columns?: number;
+  /** A grid shown as a grid or as a carousel. */
+  display?: "grid" | "carousel";
+};
+/** Per smaller size, what differs from the size above (D179). */
+export type SizeOverrides = Partial<Record<SmallerSize, PartSizeSettings>>;
+/** Where a part shows (D179 6): by screen size for now. */
+export type Visibility = { hideAt?: Size[] };
 /**
  * A row's or column's background (D48): a colour, or a picture with an
  * optional colour over it. A colour can be see-through (`opacity` 0–99; solid
@@ -398,7 +444,11 @@ export type VideoBackground = {
 export type RowBackground = Background | VideoBackground;
 
 export type TextAlign = "left" | "center" | "right";
-/** Text alignment by screen (D48): phones, from tablets (768 px) and from computers (1024 px) up; each unset follows the smaller. */
+/**
+ * Text alignment by screen as pages had it before D179 (D48): phones, from tablets (768 px) and from computers (1024 px) up;
+ * each unset follows the smaller. Read on load into a part's `align` and its overrides (`upgradeBlock()`); the editor's
+ * three screens still show it so (`alignView()`) until the per-size editor.
+ */
 export type TextAlignments = { mobile?: TextAlign; tablet?: TextAlign; desktop?: TextAlign };
 
 /** How a picture is cropped (D48); none keeps its own shape. */
@@ -443,7 +493,7 @@ export type Bindable = { bind?: FieldBinding };
 /** Whose custom fields a component shows (D120): the thing it is on, or the store itself. */
 export type FieldSource = "store";
 
-export type RichTextBlock = PartBase & BlockFont & Bindable & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlignments };
+export type RichTextBlock = PartBase & BlockFont & Bindable & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlign };
 /**
  * A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. It is drawn at its own size and
  * never larger (D151), shrinking only to fit a narrower column or a phone; `maxWidth` makes it narrower and `align` places it.
@@ -458,8 +508,8 @@ export type ImageBlock = PartBase & Bindable & {
   shape?: ImageShape;
   /** The widest it is drawn, in pixels. Left out: the picture's own width (for a crop, the crop's own width). Never enlarges. */
   maxWidth?: number;
-  /** Where it sits when narrower than its column, by screen, as text is aligned; left unless set. The caption follows. */
-  align?: TextAlignments;
+  /** Where it sits when narrower than its column, as text is aligned; left unless set. The caption follows. */
+  align?: TextAlign;
 };
 
 /**
@@ -494,7 +544,7 @@ export type HeadingBlock = PartBase & BlockFont & Bindable & {
   size?: HeadingSize;
   /** The theme's heading weight unless chosen (D60). */
   weight?: FontWeight;
-  align?: TextAlignments;
+  align?: TextAlign;
   textColor?: Color;
 };
 
@@ -522,8 +572,8 @@ export type ButtonBlock = PartBase & BlockFont & Bindable & {
   size?: ButtonSize;
   shape?: ButtonShape;
   fullWidth?: boolean;
-  /** Where the button sits, by screen, as text is aligned. */
-  align?: TextAlignments;
+  /** Where the button sits, as text is aligned. */
+  align?: TextAlign;
   /** The fill (or an outline's line and text); the site's text colour unless chosen. */
   fill?: Color;
   textColor?: Color;
@@ -568,6 +618,7 @@ export const GRID_LIMIT_MAX = 48;
 export const TILE_FIELDS_MAX = 3;
 export const GRID_GAP_MAX = 96;
 export const GRID_COLUMNS_MAX = { mobile: 2, tablet: 4, desktop: 8 } as const;
+/** A grid's columns by screen as pages had them before D179: now its `columns` (Extra large) and overrides (`upgradeBlock()`). */
 export type GridColumns = { mobile: number; tablet: number; desktop: number };
 /** A tile's parts, each on or off per grid. */
 export const GRID_ELEMENTS = { image: "Picture", heading: "Heading", excerpt: "Excerpt", price: "Price", button: "Button" } as const;
@@ -639,7 +690,8 @@ export type ContentGridBlock = PartBase & {
   tags: string[];
   sort: GridSort;
   limit: number;
-  columns: GridColumns;
+  /** Columns at Extra large; the smaller sizes' in `at` (D179). */
+  columns: number;
   show: Record<GridElement, boolean>;
   /** The button's text; empty uses "Read more" or "View product" in the content's language. */
   buttonLabel: string;
@@ -671,10 +723,12 @@ export type ContentGridBlock = PartBase & {
   tile?: GridTile;
   /** Space between tiles, in pixels. */
   gap: number;
-  /** Tiles in a row that scrolls sideways (`Carousel`), the columns as many to a screen; a grid unless set. */
+  /**
+   * Tiles in a row that scrolls sideways (`Carousel`), the columns as many to a screen; a grid unless set. Per size in `at`
+   * (D179): a carousel on Small only is a grid from Medium up (the replicator's copy of a page whose product rows scroll on
+   * a phone only).
+   */
   display?: "carousel";
-  /** A carousel only on phones: from tablets' width the tiles lie in a grid of the columns below (the replicator's copy of a page whose product rows scroll on a phone only). */
-  carouselOn?: "phones";
   /** A carousel shows part of the next tile, so it is seen to scroll. */
   peek?: boolean;
   /** What a carousel does besides scrolling (D155, B): arrows, dots, where a tile rests, going round, autoplay. The default is arrows only. */
@@ -762,7 +816,7 @@ export type ProductBlock = PartBase & BlockFont & {
   id: string;
   type: "product";
   part: ProductPart;
-  align?: TextAlignments;
+  align?: TextAlign;
   /** The title's size. */
   size?: HeadingSize;
   /** The title: the wishlist heart beside it; on unless off. */
@@ -775,9 +829,9 @@ export type ProductBlock = PartBase & BlockFont & {
   showHeading?: boolean;
   /** That heading's own text; empty uses the built-in one in the shopper's language. */
   heading?: string;
-  /** Related products: how many at most, and columns by screen. */
+  /** Related products: how many at most, and columns (Extra large; the smaller sizes' in `at`, two on Small and four above unless set). */
   limit?: number;
-  columns?: GridColumns;
+  columns?: number;
   /** Custom fields (D118): the group (none: all the product's groups in order); a single `field` names its group too. */
   groupId?: string;
   /** A single custom field: its id (`f_…`). */
@@ -843,15 +897,13 @@ export type SiteBlock = PartBase & BlockFont & {
   id: string;
   type: "site";
   part: SitePart;
-  align?: TextAlignments;
+  align?: TextAlign;
   /** The logo's height in pixels; the header's or footer's usual one unless set. */
   height?: number;
   /** The countries as links: side by side (the default) or one under another. */
   direction?: "row" | "column";
   /** The countries: a drop-down list (the default) or links to each. */
   display?: "dropdown" | "list";
-  /** Left out on phones, where the phone menu has it (a header's menu, say). */
-  hideOnPhones?: boolean;
 };
 
 /**
@@ -866,8 +918,7 @@ export type MenuBlock = PartBase & BlockFont & {
   /** The menu; none chosen yet shows nothing. */
   menuId?: string;
   direction?: "row" | "column";
-  align?: TextAlignments;
-  hideOnPhones?: boolean;
+  align?: TextAlign;
 };
 
 /**
@@ -1002,9 +1053,9 @@ export type DualButtonBlock = PartBase & BlockFont & {
   weight?: FontWeight;
   /** Pixels between them; 12 unless set. */
   gap?: number;
-  /** One under another, each the column's width, on phones. */
-  stackOnPhones?: boolean;
-  align?: TextAlignments;
+  /** One under another, each the column's width (per size in `at`, D179). */
+  stack?: boolean;
+  align?: TextAlign;
 };
 export const DUAL_GAP_MAX = 64;
 
@@ -1406,10 +1457,15 @@ export type PageRow = PartBase & {
   contentWidth?: "content" | "full";
   /** At least as tall as the screen. */
   fullHeight?: boolean;
-  /** On phones, where columns stack, the last comes first. */
-  reverseOnMobile?: boolean;
-  /** On phones too, columns side by side rather than stacked (D80, such as a header's). */
-  sideBySide?: boolean;
+  /**
+   * Columns one under another rather than side by side (D179, per size in `at`): unless set, they stack on Small only. A
+   * row kept side by side everywhere (D80, a header's) is `false`.
+   */
+  stack?: boolean;
+  /** Where columns stack, the last comes first (per size in `at`). */
+  reverse?: boolean;
+  /** Pixels between the columns (per size in `at`); 32 unless set. */
+  gap?: number;
   /** Columns as tall as the tallest; what is in them sits at `align`. */
   equalHeight?: boolean;
   /** Where columns' content sits, top (the default), middle or bottom. */
@@ -1828,23 +1884,82 @@ const borderWidth = z
   .min(0, "A border cannot be below 0.")
   .max(BORDER_MAX, `Keep a border at ${BORDER_MAX} pixels or less.`);
 
+const borderSchema = z
+  .object({
+    width: z.object({ top: borderWidth, right: borderWidth, bottom: borderWidth, left: borderWidth }),
+    color,
+    style: z.enum(Object.keys(BORDER_STYLES) as [BorderStyle, ...BorderStyle[]]),
+  })
+  .optional();
+const radiusSchema = z
+  .number()
+  .int("Rounded corners are whole pixels.")
+  .min(0)
+  .max(RADIUS_MAX, `Keep rounded corners at ${RADIUS_MAX} pixels or less.`)
+  .optional();
+const shadowSchema = z.enum(Object.keys(SHADOWS) as [Shadow, ...Shadow[]]).optional();
+const colorBackground = z.object({ type: z.literal("color"), color, opacity: z.number().int().min(0).max(99).optional() });
+/** How much what is behind a part is blurred (D86), with no background or a colour. */
+const backdropBlur = z.number().int().min(1).max(BACKDROP_BLUR_MAX).optional();
+const textAlign = z.enum(["left", "center", "right"]).optional();
+const pictureWidth = z
+  .number()
+  .int("A picture's width is whole pixels.")
+  .min(IMAGE_WIDTH_MIN, `Make a picture at least ${IMAGE_WIDTH_MIN} pixels wide.`)
+  .max(IMAGE_WIDTH_MAX, `Keep a picture at most ${IMAGE_WIDTH_MAX} pixels wide.`)
+  .optional();
+const gridColumnCount = z.number().int().min(1, "A grid has at least one column.").max(GRID_COLUMNS_MAX.desktop, `A grid has at most ${GRID_COLUMNS_MAX.desktop} columns.`);
+/** Pixels between a row's columns or a grid's tiles. */
+const partGap = z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space at ${GRID_GAP_MAX} pixels or less.`).optional();
+
+/** What a part may set at a smaller size (D179): the same rules as its own settings, each optional. */
+const sizeSettings = z.object({
+  style: spacing,
+  border: borderSchema,
+  radius: radiusSchema,
+  shadow: shadowSchema,
+  background: colorBackground.optional(),
+  backdropBlur,
+  stack: z.boolean().optional(),
+  reverse: z.boolean().optional(),
+  gap: partGap,
+  width: z.number().int().min(0).max(12, "A column's share is 0 to 12.").optional(),
+  order: z.number().int().min(-12).max(12, "A column's place is -12 to 12.").optional(),
+  align: textAlign,
+  maxWidth: pictureWidth,
+  columns: gridColumnCount.optional(),
+  display: z.enum(["grid", "carousel"]).optional(),
+});
+/** A part's overrides by size, with sizes that set nothing left out. */
+const sizeOverrides = z
+  .object({ lg: sizeSettings.optional(), md: sizeSettings.optional(), sm: sizeSettings.optional() })
+  .optional()
+  .transform((at) => {
+    if (!at) return undefined;
+    const kept = Object.fromEntries(
+      Object.entries(at).flatMap(([size, settings]) => {
+        const own = settings ? Object.fromEntries(Object.entries(settings).filter(([, v]) => v !== undefined)) : {};
+        return Object.keys(own).length > 0 ? [[size, own]] : [];
+      }),
+    ) as SizeOverrides;
+    return Object.keys(kept).length > 0 ? kept : undefined;
+  });
+const visibility = z
+  .object({ hideAt: z.array(z.enum(SIZES)).max(SIZES.length).optional() })
+  .optional()
+  .transform((value) => {
+    const hideAt = SIZES.filter((size) => value?.hideAt?.includes(size));
+    return hideAt.length > 0 ? { hideAt } : undefined;
+  });
+
 const partBase = {
   motion: partMotionSchema,
   style: spacing,
-  border: z
-    .object({
-      width: z.object({ top: borderWidth, right: borderWidth, bottom: borderWidth, left: borderWidth }),
-      color,
-      style: z.enum(Object.keys(BORDER_STYLES) as [BorderStyle, ...BorderStyle[]]),
-    })
-    .optional(),
-  radius: z
-    .number()
-    .int("Rounded corners are whole pixels.")
-    .min(0)
-    .max(RADIUS_MAX, `Keep rounded corners at ${RADIUS_MAX} pixels or less.`)
-    .optional(),
-  shadow: z.enum(Object.keys(SHADOWS) as [Shadow, ...Shadow[]]).optional(),
+  border: borderSchema,
+  radius: radiusSchema,
+  shadow: shadowSchema,
+  at: sizeOverrides,
+  visibility,
   global: z.uuid().optional(),
   local: z.literal(true).optional(),
   htmlId: optionalText(
@@ -1874,9 +1989,6 @@ const picture = z.object({
 });
 const overlay = z.object({ color, opacity: z.number().int().min(0).max(100) }).nullable();
 const blur = z.number().int().min(1).max(BLUR_MAX).optional();
-const colorBackground = z.object({ type: z.literal("color"), color, opacity: z.number().int().min(0).max(99).optional() });
-/** How much what is behind a part is blurred (D86), with no background or a colour. */
-const backdropBlur = z.number().int().min(1).max(BACKDROP_BLUR_MAX).optional();
 const imageBackground = z.object({ type: z.literal("image"), image: picture, overlay, blur });
 const gradientBackground = z.object({
   type: z.literal("gradient"),
@@ -1906,8 +2018,6 @@ const rowBackground = z.discriminatedUnion("type", [colorBackground, imageBackgr
 /** A block's own font (D59): a Google Fonts family, or none for the site's. */
 const blockFont = optionalText(fontFamily);
 
-const textAlign = z.enum(["left", "center", "right"]).optional();
-const textAlignments = z.object({ mobile: textAlign, tablet: textAlign, desktop: textAlign }).optional();
 
 /** A custom field's id, as the store's field groups make them (`newFieldId()`). */
 const FIELD_ID = /^f_[a-z0-9]{6,24}$/;
@@ -1931,7 +2041,7 @@ const richTextBlock = z.object({
     ctx.addIssue({ code: "custom", message: cleaned.problem });
     return z.NEVER;
   }),
-  align: textAlignments,
+  align: textAlign,
   font: blockFont,
   bind: bindRule,
   ...partBase,
@@ -1950,13 +2060,8 @@ const imageBlock = z.object({
     .nullable(),
   caption: z.string().trim().max(ALT_MAX, `Keep a caption under ${ALT_MAX} characters.`).default(""),
   shape: z.enum(Object.keys(IMAGE_SHAPES) as [ImageShape, ...ImageShape[]]).optional(),
-  maxWidth: z
-    .number()
-    .int("A picture's width is whole pixels.")
-    .min(IMAGE_WIDTH_MIN, `Make a picture at least ${IMAGE_WIDTH_MIN} pixels wide.`)
-    .max(IMAGE_WIDTH_MAX, `Keep a picture at most ${IMAGE_WIDTH_MAX} pixels wide.`)
-    .optional(),
-  align: textAlignments,
+  maxWidth: pictureWidth,
+  align: textAlign,
   font: blockFont,
   bind: bindRule,
   ...partBase,
@@ -1969,7 +2074,7 @@ const headingBlock = z.object({
   level: z.literal([1, 2, 3, 4, 5, 6], "A heading has an unknown level."),
   size: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
   weight: z.enum(Object.keys(FONT_WEIGHTS) as [FontWeight, ...FontWeight[]]).optional(),
-  align: textAlignments,
+  align: textAlign,
   textColor: color.optional(),
   font: blockFont,
   bind: bindRule,
@@ -1989,7 +2094,7 @@ const buttonBlock = z.object({
   size: z.enum(Object.keys(BUTTON_SIZES) as [ButtonSize, ...ButtonSize[]]).optional(),
   shape: z.enum(Object.keys(BUTTON_SHAPES) as [ButtonShape, ...ButtonShape[]]).optional(),
   fullWidth: z.boolean().optional(),
-  align: textAlignments,
+  align: textAlign,
   fill: color.optional(),
   textColor: color.optional(),
   weight: z.enum(Object.keys(FONT_WEIGHTS) as [FontWeight, ...FontWeight[]]).optional(),
@@ -1997,8 +2102,6 @@ const buttonBlock = z.object({
   bind: bindRule,
   ...partBase,
 });
-
-const count = (max: number) => z.number().int().min(1).max(max);
 
 /** A custom item's text: trimmed, at most `max` characters. */
 const customText = (what: string, max: number) => z.string().trim().max(max, `Keep ${what} under ${max} characters.`).default("");
@@ -2078,11 +2181,7 @@ const contentGridBlock = z
   sort: z.enum(Object.keys(GRID_SORTS) as [GridSort, ...GridSort[]]).default("newest"),
   // A grid of custom items may show as many as it can hold; one that looks its items up, `GRID_LIMIT_MAX` (checked below).
   limit: z.number().int().min(1, "A grid shows at least one item.").max(CUSTOM_ITEMS_MAX, `A grid shows at most ${GRID_LIMIT_MAX} items.`),
-  columns: z.object({
-    mobile: count(GRID_COLUMNS_MAX.mobile),
-    tablet: count(GRID_COLUMNS_MAX.tablet),
-    desktop: count(GRID_COLUMNS_MAX.desktop),
-  }),
+  columns: gridColumnCount,
   show: z.object({
     image: z.boolean(),
     heading: z.boolean(),
@@ -2094,7 +2193,6 @@ const contentGridBlock = z
   emptyText: z.string().trim().max(300, "Keep the text for an empty grid under 300 characters.").default(""),
   filters: z.boolean().optional(),
   display: z.literal("carousel", "A content grid is shown in an unknown way.").optional(),
-  carouselOn: z.literal("phones", "A carousel is on an unknown kind of screen.").optional(),
   peek: z.boolean().optional(),
   carousel: carouselSettingsSchema.optional(),
   imageShape: z.enum(["original", "theme", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])]).optional(),
@@ -2168,7 +2266,7 @@ const productBlock = z.object({
   id: itemId,
   type: z.literal("product"),
   part: z.enum(Object.keys(PRODUCT_PARTS) as [ProductPart, ...ProductPart[]], "A product component shows an unknown part."),
-  align: textAlignments,
+  align: textAlign,
   size: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
   wishlist: z.boolean().optional(),
   large: z.boolean().optional(),
@@ -2176,7 +2274,7 @@ const productBlock = z.object({
   showHeading: z.boolean().optional(),
   heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
   limit: z.number().int().min(1, "Show at least one related product.").max(RELATED_MAX, `Show at most ${RELATED_MAX} related products.`).optional(),
-  columns: contentGridBlock.shape.columns.optional(),
+  columns: gridColumnCount.optional(),
   groupId: z.uuid().optional(),
   fieldId: fieldIdRule.optional(),
   display: fieldDisplay.optional(),
@@ -2191,7 +2289,7 @@ const siteBlock = z.object({
   id: itemId,
   type: z.literal("site"),
   part: z.enum(Object.keys(SITE_PARTS) as [SitePart, ...SitePart[]], "A site component shows an unknown part."),
-  align: textAlignments,
+  align: textAlign,
   height: z
     .number()
     .int()
@@ -2200,7 +2298,6 @@ const siteBlock = z.object({
     .optional(),
   direction: z.enum(["row", "column"]).optional(),
   display: z.enum(["dropdown", "list"]).optional(),
-  hideOnPhones: z.boolean().optional(),
   font: blockFont,
   ...partBase,
 });
@@ -2210,8 +2307,7 @@ const menuBlock = z.object({
   type: z.literal("menu"),
   menuId: z.uuid("Choose a menu for each menu component.").optional(),
   direction: z.enum(["row", "column"]).optional(),
-  align: textAlignments,
-  hideOnPhones: z.boolean().optional(),
+  align: textAlign,
   font: blockFont,
   ...partBase,
 });
@@ -2309,8 +2405,8 @@ const dualButtonBlock = z.object({
   shape: buttonBlock.shape.shape,
   weight: buttonBlock.shape.weight,
   gap: z.number().int().min(0).max(DUAL_GAP_MAX, `Keep the space between the buttons at ${DUAL_GAP_MAX} pixels or less.`).optional(),
-  stackOnPhones: z.boolean().optional(),
-  align: textAlignments,
+  stack: z.boolean().optional(),
+  align: textAlign,
   font: blockFont,
   ...partBase,
 });
@@ -2565,8 +2661,8 @@ const newsletterBlock = z.object({
   ...partBase,
 });
 
-/** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer. */
-export const pageBlockSchema = z.discriminatedUnion("type", [
+/** The kinds of block, each as stored now (D179: `pageBlockSchema` reads older shapes into these). */
+export const pageBlockUnion = z.discriminatedUnion("type", [
   richTextBlock,
   imageBlock,
   headingBlock,
@@ -2594,6 +2690,9 @@ export const pageBlockSchema = z.discriminatedUnion("type", [
   newsletterBlock,
 ]);
 
+/** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer; one saved before D179 is read into the per-size shape. */
+export const pageBlockSchema = z.preprocess(upgradeBlock, pageBlockUnion);
+
 /**
  * A grid that no longer shows custom items (the owner chose Pages, Articles or Products after writing some) keeps them in the
  * editor while the page is open, so choosing Custom items again brings them back; saving drops them, as nothing shows them
@@ -2610,7 +2709,7 @@ export function withoutStrandedItems(block: unknown): unknown {
 
 const dropStrandedItems = (blocks: unknown): unknown => (Array.isArray(blocks) ? blocks.map(withoutStrandedItems) : blocks);
 
-export const pageColumnSchema = z.object({
+export const pageColumnSchema = z.preprocess(upgradeColumn, z.object({
   id: itemId,
   blocks: z.preprocess(dropStrandedItems, z.array(pageBlockSchema)),
   background,
@@ -2628,9 +2727,10 @@ export const pageColumnSchema = z.object({
   inline: z.boolean().optional(),
   justify: z.enum(Object.keys(COLUMN_JUSTIFY) as [ColumnJustify, ...ColumnJustify[]]).optional(),
   ...partBase,
-});
+}));
 
-export const pageRowSchema = z
+/** A row as stored; one saved before D179 is read into the per-size shape (`upgradeRow()`). */
+export const pageRowSchema = z.preprocess(upgradeRow, z
   .object({
     id: itemId,
     type: z.literal("row"),
@@ -2639,8 +2739,9 @@ export const pageRowSchema = z
     width: z.enum(["content", "full"]).optional(),
     contentWidth: z.enum(["content", "full"]).optional(),
     fullHeight: z.boolean().optional(),
-    reverseOnMobile: z.boolean().optional(),
-    sideBySide: z.boolean().optional(),
+    stack: z.boolean().optional(),
+    reverse: z.boolean().optional(),
+    gap: partGap,
     equalHeight: z.boolean().optional(),
     align: z.enum(["top", "middle", "bottom"]).optional(),
     background: rowBackground,
@@ -2651,7 +2752,7 @@ export const pageRowSchema = z
   })
   .refine((r) => r.columns.length === ROW_LAYOUTS[r.layout].widths.length, {
     message: "A row has the wrong number of columns for its layout. Reload the page and try again.",
-  });
+  }));
 
 /**
  * Pages saved before rows (a plain list of blocks) read as one row with

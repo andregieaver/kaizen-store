@@ -400,7 +400,7 @@ async function Related({ block, ctx }: { block: ProductBlock; ctx: ProductPageCo
         m={m}
         store={store.slug}
         base={marketPath(store.slug, market.slug)}
-        columns={block.columns ?? { mobile: 2, tablet: 4, desktop: 4 }}
+        sizedColumns
         notices={ctx.campaigns}
       />
     </section>

@@ -13,7 +13,13 @@ import {
   type PageBlock,
   type PageContent,
   type PageRow,
+  type TextAlignments,
 } from "@/lib/page-content";
+import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
+import { partCss } from "@/lib/part-css";
+import { upgradeBlock } from "@/lib/responsive";
+
+import { cssOfMarkup, partStyleAt, WIDTHS } from "@/lib/part-css.testing";
 
 import { PageArticle } from "./page-article";
 import { SHAPES } from "./page-block";
@@ -25,11 +31,15 @@ vi.mock("server-only", () => ({}));
 /**
  * A picture block keeps its own size (D151), read from the markup the site really draws (`PageArticle`):
  * `blockBox()`'s wrapper is the picture-sized box (it holds the frame, the effects and the placement), the figure is its
- * only child, and the picture inside takes its size from its width and height attributes, never from the column.
+ * only child, and the picture inside takes its size from its width and height attributes, never from the column. Since
+ * D179 what can differ by screen size is the part stylesheet's (`<style>` beside the rows): a wrapper's `style` here is
+ * its inline style with what the stylesheet gives it at a window width.
  */
 
 const PICTURE = { url: "https://cdn.example.com/oak.webp", width: 800, height: 600, alt: "An oak table" };
-const image = (over: Partial<ImageBlock> = {}): ImageBlock => ({ id: "i1", type: "image", image: PICTURE, caption: "", ...over });
+/** A picture block; a position by screen as saved before D179 (`{ mobile, tablet, desktop }`) is read as the site reads it (`upgradeBlock()`). */
+const image = (over: Omit<Partial<ImageBlock>, "align"> & { align?: ImageBlock["align"] | TextAlignments } = {}): ImageBlock =>
+  upgradeBlock({ id: "i1", type: "image", image: PICTURE, caption: "", ...over }) as ImageBlock;
 
 const rowOf = (id: string, ...blocks: PageBlock[]): PageRow => ({
   id,
@@ -66,15 +76,17 @@ type Drawn = { wrapper: Tag; figure: Tag; img: Tag; caption: Tag | null; caption
  * The picture as drawn: the block's wrapper `<div>`, the `<figure>` that must be its direct and only child, the `<img>` and
  * the caption that must be inside the figure. Throws when the markup is any other shape, which is itself the failure.
  */
-function drawnPicture(html: string): Drawn {
+function drawnPicture(html: string, width: number = WIDTHS.xl): Drawn {
   const found = /<div((?: [^>]*)?)><figure([^>]*)>([\s\S]*?)<\/figure><\/div>/.exec(html);
   if (!found) throw new Error(`No <figure> that is the only child of its block wrapper in:\n${html}`);
-  const [, wrapper, figure, inner] = found;
+  const [, wrapperAttributes, figure, inner] = found;
+  const wrapper = tag(wrapperAttributes);
+  wrapper.style = { ...partStyleAt(cssOfMarkup(html), wrapper.classes, width), ...wrapper.style };
   const img = /<img ([^>]*?)\/?>/.exec(inner);
   if (!img) throw new Error(`No <img> inside the figure: ${inner}`);
   const caption = /<figcaption([^>]*)>([\s\S]*?)<\/figcaption>/.exec(inner);
   return {
-    wrapper: tag(wrapper),
+    wrapper,
     figure: tag(figure),
     img: tag(img[1]),
     caption: caption ? tag(caption[1]) : null,
@@ -249,53 +261,66 @@ describe("the crops' ratios", () => {
 // ---------------------------------------------------------------------------
 
 describe("a picture placed by screen", () => {
+  /** The wrapper's margins and text alignment at each window width (phones, tablets, Large, Extra large). */
+  const placed = (block: ImageBlock) => {
+    const html = drawOne(block);
+    return Object.fromEntries(
+      (Object.keys(WIDTHS) as (keyof typeof WIDTHS)[]).map((size) => {
+        const style = drawnPicture(html, WIDTHS[size]).wrapper.style;
+        return [size, { left: style["margin-left"] ?? "", right: style["margin-right"] ?? "", text: style["text-align"] ?? "" }];
+      }),
+    );
+  };
+
   it("is centred on phones and right on computers by auto margins, and its caption follows by text alignment", () => {
-    const out = drawnPicture(drawOne(image({ maxWidth: 300, align: { mobile: "center", desktop: "right" } })));
-    expect(out.wrapper.classes).toEqual(expect.arrayContaining(["mx-auto", "lg:ml-auto", "lg:mr-0"]));
-    expect(out.wrapper.classes).toEqual(expect.arrayContaining(["text-center", "lg:text-right"]));
-    expect(marginClasses(out.wrapper.classes).sort()).toEqual(["lg:ml-auto", "lg:mr-0", "mx-auto"]);
+    const at = placed(image({ maxWidth: 300, align: { mobile: "center", desktop: "right" } }));
+    expect(at.sm).toEqual({ left: "auto", right: "auto", text: "center" });
+    expect(at.md).toEqual({ left: "auto", right: "auto", text: "center" });
+    expect(at.lg).toEqual({ left: "auto", right: "", text: "right" });
+    expect(at.xl).toEqual({ left: "auto", right: "", text: "right" });
     // The caption sits in the figure, which sits in the placed box.
-    expect(out.wrapper.style["--picture-width"]).toBe("300px");
+    expect(drawnPicture(drawOne(image({ maxWidth: 300, align: { mobile: "center", desktop: "right" } }))).wrapper.style["--picture-width"]).toBe("300px");
   });
 
   it("takes the left again on tablets after the middle on phones", () => {
-    const out = drawnPicture(drawOne(image({ align: { mobile: "center", tablet: "left" } })));
-    expect(marginClasses(out.wrapper.classes).sort()).toEqual(["md:ml-0", "md:mr-0", "mx-auto"]);
-    expect(out.wrapper.classes).toEqual(expect.arrayContaining(["text-center", "md:text-left"]));
+    const at = placed(image({ align: { mobile: "center", tablet: "left" } }));
+    expect(at.sm).toEqual({ left: "auto", right: "auto", text: "center" });
+    expect(at.md).toEqual({ left: "", right: "", text: "left" });
+    expect(at.xl).toEqual({ left: "", right: "", text: "left" });
   });
 
-  it("writes every screen's every side as whole classes", () => {
-    const expected = {
-      mobile: { left: [], center: ["mx-auto"], right: ["ml-auto"] },
-      tablet: { left: ["md:ml-0", "md:mr-0"], center: ["md:mx-auto"], right: ["md:ml-auto", "md:mr-0"] },
-      desktop: { left: ["lg:ml-0", "lg:mr-0"], center: ["lg:mx-auto"], right: ["lg:ml-auto", "lg:mr-0"] },
-    } as const;
+  it("places each screen's choice on every side, the larger screens following the smaller as they always did", () => {
+    const sides = { left: { left: "", right: "" }, center: { left: "auto", right: "auto" }, right: { left: "auto", right: "" } } as const;
+    const from = { mobile: ["sm", "md", "lg", "xl"], tablet: ["md", "lg", "xl"], desktop: ["lg", "xl"] } as const;
     for (const screen of ["mobile", "tablet", "desktop"] as const) {
       for (const side of ["left", "center", "right"] as const) {
-        const out = drawnPicture(drawOne(image({ align: { [screen]: side } })));
-        expect([screen, side, marginClasses(out.wrapper.classes).sort()]).toEqual([screen, side, [...expected[screen][side]].sort()]);
+        const at = placed(image({ align: { [screen]: side } }));
+        for (const size of Object.keys(WIDTHS) as (keyof typeof WIDTHS)[]) {
+          const set = (from[screen] as readonly string[]).includes(size);
+          const want = set ? sides[side] : sides.left;
+          expect([screen, side, size, at[size].left, at[size].right]).toEqual([screen, side, size, want.left, want.right]);
+        }
       }
     }
   });
 
   it("leaves a picture placed left on phones with no auto margin", () => {
-    const out = drawnPicture(drawOne(image({ align: { mobile: "left" } })));
-    expect(marginClasses(out.wrapper.classes)).toEqual([]);
-    expect(out.wrapper.classes).toContain("text-left");
+    const at = placed(image({ align: { mobile: "left" } }));
+    expect(at.sm).toEqual({ left: "", right: "", text: "left" });
   });
 
-  it("puts no margin class on a picture with no placement, even when it is narrower", () => {
-    const out = drawnPicture(drawOne(image({ maxWidth: 200 })));
-    expect(marginClasses(out.wrapper.classes)).toEqual([]);
-    expect(out.wrapper.classes.filter((c) => /(^|:)m[xlr]-/.test(c))).toEqual([]);
+  it("puts no margin on a picture with no placement, even when it is narrower", () => {
+    const at = placed(image({ maxWidth: 200 }));
+    for (const size of Object.keys(WIDTHS) as (keyof typeof WIDTHS)[]) expect(at[size]).toEqual({ left: "", right: "", text: "" });
   });
 
   it("is placed by a margin that is not !important, so the owner's own margin and CSS can still win", () => {
-    const out = drawnPicture(drawOne(image({ align: { mobile: "center", tablet: "right", desktop: "left" } })));
-    expect(out.wrapper.classes.filter((c) => c.includes("!"))).toEqual([]);
+    const html = drawOne(image({ align: { mobile: "center", tablet: "right", desktop: "left" } }));
+    expect(cssOfMarkup(html)).not.toMatch(/margin-(left|right):auto!important/);
+    expect(cssOfMarkup(html)).toMatch(/margin-left:auto/);
   });
 
-  it("keeps an inline margin from the block's spacing beside the placement classes (the inline margin wins)", () => {
+  it("lets the block's own margin from its spacing win over the placement (important, as an inline style was)", () => {
     const out = drawnPicture(
       drawOne(
         image({
@@ -305,12 +330,11 @@ describe("a picture placed by screen", () => {
         }),
       ),
     );
-    // A style attribute beats `mx-auto`: a left margin set under Spacing takes the place of Position on that side.
+    // A left margin set under Spacing takes the place of Position on that side; the right is still the placement's.
     expect(out.wrapper.style["margin-left"]).toBe("12px");
     expect(out.wrapper.style["margin-top"]).toBe("4px");
     expect(out.wrapper.style["margin-bottom"]).toBe("4px");
-    expect(out.wrapper.style).not.toHaveProperty("margin-right");
-    expect(out.wrapper.classes).toContain("mx-auto");
+    expect(out.wrapper.style["margin-right"]).toBe("auto");
     expect(out.wrapper.style["padding-top"]).toBe("8px");
     expect(out.wrapper.style["--picture-width"]).toBe("300px");
     // The padding is outside the picture's width, so the picture still gets all of it.
@@ -319,20 +343,17 @@ describe("a picture placed by screen", () => {
 
   it("never gives a heading or a button the picture's auto margins, though they align by text", () => {
     const blocks: PageBlock[] = [
-      { id: "h", type: "heading", text: "Hello", level: 2, align: { mobile: "center", desktop: "right" } },
-      { id: "t", type: "button", label: "Go", href: "/go", align: { mobile: "center" } },
+      { id: "h", type: "heading", text: "Hello", level: 2, align: "right", at: { md: { align: "center" } } },
+      { id: "t", type: "button", label: "Go", href: "/go", align: "center" },
     ];
+    const html = draw(page(rowOf("r1", ...blocks)));
     for (const block of blocks) {
-      const classes = (blockBox(block, "site").className ?? "").split(/\s+/);
-      expect(classes, block.type).toContain("text-center");
-      expect(marginClasses(classes), block.type).toEqual([]);
+      const classes = blockBox(block, "site").className.split(/\s+/);
+      const style = partStyleAt(cssOfMarkup(html), classes, WIDTHS.sm);
+      expect(style["text-align"], block.type).toBe("center");
+      expect(style["margin-left"], block.type).toBeUndefined();
+      expect(style["margin-right"], block.type).toBeUndefined();
     }
-    // And a picture with the very same alignment does get them.
-    expect(marginClasses((blockBox(image({ align: { mobile: "center", desktop: "right" } }), "site").className ?? "").split(/\s+/)).sort()).toEqual([
-      "lg:ml-auto",
-      "lg:mr-0",
-      "mx-auto",
-    ]);
   });
 });
 
@@ -390,9 +411,12 @@ describe("blocks that are not a drawn picture", () => {
 
   it("gives a picture block with a picture the limit in both modes", () => {
     for (const mode of ["site", "canvas"] as const) {
-      const box = blockBox(image({ maxWidth: 300 }), mode);
+      const block = image({ maxWidth: 300 });
+      const box = blockBox(block, mode);
       expect(box.className).toContain("max-w-(--picture-width)");
-      expect((box.style as Record<string, string>)["--picture-width"]).toBe("300px");
+      // The width is the part stylesheet's (D179), by the box's own class, on the canvas as on the site.
+      const css = partCss([rowOf("r1", block)], mode, DEFAULT_BREAKPOINTS);
+      expect(partStyleAt(css, box.className.split(/\s+/), WIDTHS.xl)["--picture-width"]).toBe("300px");
     }
   });
 
@@ -477,7 +501,7 @@ describe("a picture bound to a custom field", () => {
       ],
     },
   ];
-  const bound = (over: Partial<ImageBlock> = {}): ImageBlock =>
+  const bound = (over: Parameters<typeof image>[0] = {}): ImageBlock =>
     image({ image: null, caption: "From a field", bind: { fieldId: "f_pict000" }, ...over });
   const drawBound = (block: ImageBlock) => drawnPicture(draw(bindPage(page(rowOf("r1", block)), groups)));
 
@@ -504,7 +528,8 @@ describe("a picture bound to a custom field", () => {
     expect(out.wrapper.style["--picture-width"]).toBe("400px");
     expect(numberOf(out.img.attrs.width)).toBe(400);
     expect(numberOf(out.img.attrs.height)).toBe(300);
-    expect(out.wrapper.classes).toContain("lg:mx-auto");
+    expect(out.wrapper.style["margin-left"]).toBe("auto");
+    expect(out.wrapper.style["margin-right"]).toBe("auto");
     expect(out.wrapper.classes).toContain("overflow-hidden");
     expect(out.wrapper.style["margin-top"]).toBe("10px");
     expect(out.wrapper.style["padding-left"]).toBe("5px");

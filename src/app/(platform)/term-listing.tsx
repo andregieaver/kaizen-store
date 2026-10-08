@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ContentGridView } from "@/components/content-grid";
+import { PartStyles } from "@/components/part-styles";
 import { termContentOf, type ContentGridBlock, type PageType } from "@/lib/page-content";
 import { newBlock } from "@/lib/page-rows";
 import { byName, type Term, type TermKind } from "@/lib/taxonomy";
@@ -91,6 +92,7 @@ export async function TermPages({ kind, params, type = "page" }: { kind: TermKin
       )}
       <h1 className="text-3xl font-semibold tracking-tight">{term.name}</h1>
       <CategoryLinks label={term.name} terms={subcategories} type={type} />
+      <PartStyles blocks={[grid]} owner={null} />
       <ContentGridView block={grid} data={data} />
     </main>
   );
@@ -105,6 +107,7 @@ export async function BlogIndex() {
     <main id="main" className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-10">
       <h1 className="text-3xl font-semibold tracking-tight">Blog</h1>
       <CategoryLinks label="Categories" terms={top} type="article" />
+      <PartStyles blocks={[grid]} owner={null} />
       <ContentGridView block={{ ...grid, emptyText: "No articles yet." }} data={data} />
     </main>
   );

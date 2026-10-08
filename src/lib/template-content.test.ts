@@ -346,7 +346,7 @@ describe("page layouts (D127)", () => {
 });
 
 describe("a picture's own size in a template (D151)", () => {
-  const align = { mobile: "center", desktop: "right" } as const;
+  // Right from computers, centred below (D179: the base value and an override).
   const sized = (): PageBlock =>
     ({
       id: "sz1",
@@ -355,11 +355,12 @@ describe("a picture's own size in a template (D151)", () => {
       caption: "Our cup",
       shape: "square",
       maxWidth: 300,
-      align: { ...align },
+      align: "right",
+      at: { md: { align: "center" } },
       bind: { fieldId: "f_abcdef" },
     }) as PageBlock;
   const inRow = (block: PageBlock): PageRow => ({ id: "rowSz", type: "row", layout: "1", columns: [{ id: "colSz", blocks: [block] }] });
-  const kept = { maxWidth: 300, align, shape: "square", caption: "Our cup" };
+  const kept = { maxWidth: 300, align: "right", at: { md: { align: "center" } }, shape: "square", caption: "Our cup" };
 
   it("is kept when a part is made ready for another store, which only loses the binding", () => {
     for (const [kind, content] of [
@@ -400,7 +401,7 @@ describe("a picture's own size in a template (D151)", () => {
     expect(column.data?.blocks[0]).toMatchObject(kept);
     // Also when the picture is gone: the empty block with its width is a valid block.
     const empty = mapTemplateMedia("row", clean, () => null) as PageRow;
-    expect(pageRowSchema.safeParse(empty).data?.columns[0].blocks[0]).toMatchObject({ image: null, maxWidth: 300, align });
+    expect(pageRowSchema.safeParse(empty).data?.columns[0].blocks[0]).toMatchObject({ image: null, maxWidth: 300, align: "right" });
     const layout = pageLayoutSchema.safeParse({ pageType: "page", rows: [clean], css: "" });
     expect(layout.error?.issues).toBeUndefined();
     expect(layout.data?.rows[0].columns[0].blocks[0]).toMatchObject(kept);

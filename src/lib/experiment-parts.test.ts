@@ -275,8 +275,8 @@ describe("tests of a picture's size and position (D151)", () => {
   it("lets a version differ in the picture's width only, or in its position only, or in both", () => {
     const p = pageWithPicture();
     const narrower = editPhoto(p.content, p.photo.id, { maxWidth: 200 });
-    const placed = editPhoto(p.content, p.photo.id, { align: { mobile: "center", desktop: "right" } });
-    const both = editPhoto(narrower, p.photo.id, { align: { desktop: "center" } });
+    const placed = editPhoto(p.content, p.photo.id, { align: "right", at: { md: { align: "center" } } });
+    const both = editPhoto(narrower, p.photo.id, { align: "center", at: { md: { align: "left" } } });
     for (const version of [narrower, placed, both]) {
       expect(partChanges(p.content, version, target(p.photo.id))).toBe("ok");
       // The picture is inside its row, so a test of the row takes the same change.
@@ -288,7 +288,7 @@ describe("tests of a picture's size and position (D151)", () => {
   it("counts the same change as outside a test of any other part", () => {
     const p = pageWithPicture();
     const narrower = editPhoto(p.content, p.photo.id, { maxWidth: 200 });
-    const placed = editPhoto(p.content, p.photo.id, { align: { mobile: "center" } });
+    const placed = editPhoto(p.content, p.photo.id, { align: "center" });
     for (const version of [narrower, placed]) {
       expect(partChanges(p.content, version, target(p.h1.id))).toBe("outside");
       expect(partChanges(p.content, version, target(p.b1.id))).toBe("outside");
@@ -323,16 +323,16 @@ describe("tests of a picture's size and position (D151)", () => {
 
   it("applies the winning width and position to the page as it is now, with the picture's other settings and the page's other edits kept", () => {
     const p = pageWithPicture();
-    const version = editPhoto(p.content, p.photo.id, { maxWidth: 200, align: { mobile: "center", desktop: "right" } });
+    const version = editPhoto(p.content, p.photo.id, { maxWidth: 200, align: "right", at: { md: { align: "center" } } });
     // The page changed elsewhere after the test began.
     const now = edit(p.content, p.h2.id, (b) => ({ ...(b as HeadingBlock), text: "Our new story" }));
     const applied = applyPart(now, version, target(p.photo.id))!;
-    expect(findPart(applied.rows, p.photo.id)!.node).toMatchObject({ type: "image", maxWidth: 200, align: { mobile: "center", desktop: "right" }, image: picture });
+    expect(findPart(applied.rows, p.photo.id)!.node).toMatchObject({ type: "image", maxWidth: 200, align: "right", at: { md: { align: "center" } }, image: picture });
     expect((findPart(applied.rows, p.h2.id)!.node as HeadingBlock).text).toBe("Our new story");
     // The result is still a page that can be saved, and keeps the width and position when it is.
     const saved = pageInput.safeParse(applied);
     expect(saved.error?.issues).toBeUndefined();
-    expect(findPart(saved.data!.rows as PageRow[], p.photo.id)!.node).toMatchObject({ maxWidth: 200, align: { mobile: "center", desktop: "right" } });
+    expect(findPart(saved.data!.rows as PageRow[], p.photo.id)!.node).toMatchObject({ maxWidth: 200, align: "right", at: { md: { align: "center" } } });
 
     // A winner that went back to the picture's own size takes the width out of the page.
     const reset = editPhoto(p.content, p.photo.id, { maxWidth: undefined });

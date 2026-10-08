@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ContentGridView } from "@/components/content-grid";
+import { PartStyles } from "@/components/part-styles";
 import { PageEditLink } from "@/components/page-edit-link";
 import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
@@ -107,6 +108,7 @@ export async function StoreBlog({ params }: { params: ShopParams }) {
     <div className="flex flex-col gap-6">
       <h1 className="text-3xl font-heading tracking-tight">{m.blog}</h1>
       <CategoryLinks label={m.blog} terms={top} href={(slug) => blogPath(store, market.slug, `/category/${slug}`)} />
+      <PartStyles blocks={[grid]} owner={store.id} />
       <ContentGridView block={{ ...grid, emptyText: m.noArticles }} data={data} />
     </div>
   );
@@ -156,6 +158,7 @@ export async function StoreBlogTerm({ kind, params }: { kind: TermKind; params: 
       </Link>
       <h1 className="text-3xl font-heading tracking-tight">{term.name}</h1>
       <CategoryLinks label={term.name} terms={subcategories} href={(slug) => blogPath(store, market.slug, `/category/${slug}`)} />
+      <PartStyles blocks={[grid]} owner={store.id} />
       <ContentGridView block={{ ...grid, emptyText: m.noArticles }} data={data} />
     </div>
   );

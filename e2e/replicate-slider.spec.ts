@@ -12,6 +12,7 @@ import { extractPage } from "../src/lib/replicate-extract";
 import { gridLines } from "../src/lib/replicate-grid";
 import { openOriginal } from "../src/lib/replicate-open";
 import { WATCH } from "../src/lib/replicate-watch";
+import { columnsView } from "../src/lib/responsive";
 
 /**
  * Sliders that are not Swiper's (D155, C2), read in a real browser: a fade slider (slides on top of each other, one with opacity, moved by a timer),
@@ -96,7 +97,8 @@ test("fade, display none and hero sliders are read as they are, and the page is 
     expect(fade.items![1].text).toBe("Ola fra Tromsø");
     expect(fade.items![1].picture).toMatchObject({ alt: "Ola" });
     expect(fade.display).toBe("carousel");
-    expect(fade.columns).toMatchObject({ desktop: 1, mobile: 1 });
+    // Columns by size (D179): Extra large, and the smaller sizes' overrides.
+    expect(columnsView(fade, { mobile: 0, tablet: 0, desktop: 0 })).toMatchObject({ desktop: 1, mobile: 1 });
     expect(fade.carousel).toMatchObject({ dots: true });
     expect(fade.carousel?.autoplay).toBeUndefined();
     expect(built.grids.built[0].carousel).toMatchObject({ arrows: true, script: { kind: "stack", hidden: 3 } });

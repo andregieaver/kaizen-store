@@ -53,7 +53,9 @@ const grid = (id: string, over: Partial<ContentGridBlock> = {}): ContentGridBloc
   ...(newBlock("contentGrid", () => id) as ContentGridBlock),
   source: { type: "custom" },
   limit: 60,
-  columns: { mobile: 1, tablet: 2, desktop: 3 },
+  // Three on computers, two on tablets, one on phones (D179: Extra large and the smaller sizes' overrides).
+  columns: 3,
+  at: { md: { columns: 2 }, sm: { columns: 1 } },
   items,
   ...over,
 });
@@ -94,8 +96,8 @@ test.beforeAll(async () => {
     };
     const pages: [string, postgres.JSONValue][] = [
       ["turer", content([grid("grid")], { translations: swedish })],
-      ["karusell", content([grid("grid", { display: "carousel", columns: { mobile: 1, tablet: 2, desktop: 2 } })])],
-      ["logoer", content([grid("logos", { items: logos, columns: { mobile: 2, tablet: 3, desktop: 3 }, show: { image: true, heading: false, excerpt: false, price: false, button: false } })])],
+      ["karusell", content([grid("grid", { display: "carousel", columns: 2, at: { sm: { columns: 1 } } })])],
+      ["logoer", content([grid("logos", { items: logos, columns: 3, at: { sm: { columns: 2 } }, show: { image: true, heading: false, excerpt: false, price: false, button: false } })])],
     ];
     for (const [page, body] of pages) {
       await sql`

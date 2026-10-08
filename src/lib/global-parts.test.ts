@@ -216,7 +216,7 @@ describe("a picture's own size in a global (D151)", () => {
     image: { url: `https://cdn.example.com/${id}.webp`, width: 800, height: 600, alt: id },
     caption: "",
     ...(maxWidth !== undefined && { maxWidth }),
-    align: { mobile: "center", desktop: "right" },
+    align: "right", at: { md: { align: "center" } },
   });
   const sizes = (rows: PageRow[]) => rows.flatMap((r) => r.columns.flatMap((c) => c.blocks.map((b) => (b as ImageBlock).maxWidth)));
   /** The page as the server writes it after a global changed: through `refreshUses`, then checked again by `pageInput`. */
@@ -234,14 +234,14 @@ describe("a picture's own size in a global (D151)", () => {
     const pageB: PartsDoc = { rows: [row(column(newUse(block, uuid()) as PageBlock))] };
     expect(sizes([...pageA.rows, ...pageB.rows])).toEqual([300, 300, 300]);
 
-    const changed: GlobalPart = { ...block, content: { ...(block.content as ImageBlock), maxWidth: 120, align: { mobile: "left" } } };
+    const changed: GlobalPart = { ...block, content: { ...(block.content as ImageBlock), maxWidth: 120, align: "left", at: undefined } };
     for (const doc of [pageA, pageB]) {
       const refreshed = refreshUses(doc, new Map([[block.id, changed]]));
       expect(sizes(refreshed.rows).every((width) => width === 120)).toBe(true);
       const kept = saved(refreshed.rows);
       for (const use of kept.rows.flatMap((r) => r.columns.flatMap((c) => c.blocks))) {
-        expect(use).toMatchObject({ type: "image", global: block.id, maxWidth: 120, align: { mobile: "left" } });
-        expect(use).not.toHaveProperty("align.desktop");
+        expect(use).toMatchObject({ type: "image", global: block.id, maxWidth: 120, align: "left" });
+        expect((use as ImageBlock).at).toBeUndefined();
       }
     }
 
@@ -267,13 +267,16 @@ describe("a picture's own size in a global (D151)", () => {
     expect(editedGlobals(next, known)).toEqual([block.id]);
     const settled = settleUses(prev, next, known);
     expect(sizes(settled.rows)).toEqual([200, 200]);
-    expect(currentGlobal(settled, block).content).toMatchObject({ maxWidth: 200, align: { mobile: "center", desktop: "right" } });
+    expect(currentGlobal(settled, block).content).toMatchObject({ maxWidth: 200, align: "right", at: { md: { align: "center" } } });
     // A position changed in the second use reaches the first.
     const placed: PartsDoc = {
-      rows: settled.rows.map((r, i) => (i === 1 ? { ...r, columns: [{ ...r.columns[0], blocks: [{ ...(r.columns[0].blocks[0] as ImageBlock), align: { desktop: "center" as const } }] }] } : r)),
+      rows: settled.rows.map((r, i) => (i === 1 ? { ...r, columns: [{ ...r.columns[0], blocks: [{ ...(r.columns[0].blocks[0] as ImageBlock), align: "center" as const, at: { md: { align: "left" as const } } }] }] } : r)),
     };
     const again = settleUses(settled, placed, known);
-    expect(again.rows.map((r) => (r.columns[0].blocks[0] as ImageBlock).align)).toEqual([{ desktop: "center" }, { desktop: "center" }]);
+    expect(again.rows.map((r) => [(r.columns[0].blocks[0] as ImageBlock).align, (r.columns[0].blocks[0] as ImageBlock).at])).toEqual([
+      ["center", { md: { align: "left" } }],
+      ["center", { md: { align: "left" } }],
+    ]);
   });
 
   it("is each page's own on a picture the page made its own inside a global row, while the rest follows", () => {

@@ -32,10 +32,10 @@ describe("headers and footers (D80)", () => {
   it("starts headers and footers with the menus of the standard ones (D85)", () => {
     const menus = { header: "00000000-0000-4000-8000-000000000001", footer: "00000000-0000-4000-8000-000000000002" };
     const menuOf = (content: PageContent) => content.rows.flatMap((r) => r.columns.flatMap((c) => c.blocks)).find((b) => b.type === "menu");
-    expect(menuOf(defaultHeader("store", menus))).toMatchObject({ type: "menu", menuId: menus.header, hideOnPhones: true });
+    expect(menuOf(defaultHeader("store", menus))).toMatchObject({ type: "menu", menuId: menus.header, visibility: { hideAt: ["sm"] } });
     expect(menuOf(defaultFooter(null, menus))).toMatchObject({ type: "menu", menuId: menus.footer, direction: "column" });
     // Without a menu chosen, the component waits for one.
-    expect(menuOf(defaultHeader("store"))).toEqual({ id: "header-menu", type: "menu", hideOnPhones: true });
+    expect(menuOf(defaultHeader("store"))).toEqual({ id: "header-menu", type: "menu", visibility: { hideAt: ["sm"] } });
     expect(pageInput.safeParse(defaultHeader("store", menus)).success).toBe(true);
   });
 
@@ -87,7 +87,7 @@ describe("headers and footers (D80)", () => {
     expect(footerHasWithdrawal(without)).toBe(false);
 
     // With it, it counts only if every visitor gets it: not hidden on phones.
-    const hidden = withBlocks(defaultFooter("store"), [...base, { id: "w", type: "site", part: "withdrawal", hideOnPhones: true }]);
+    const hidden = withBlocks(defaultFooter("store"), [...base, { id: "w", type: "site", part: "withdrawal", visibility: { hideAt: ["sm"] } }]);
     expect(siteLayoutProblem("store", "footer", hidden)).toMatch(/shown on phones too/);
     expect(footerHasWithdrawal(hidden)).toBe(false);
     const shown = withBlocks(defaultFooter("store"), [...base, { id: "w", type: "site", part: "withdrawal" }]);

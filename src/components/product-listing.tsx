@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { CSSProperties } from "react";
 
 import { FilterDialog, type FilterFacets } from "@/components/filter-dialog";
 import { ProductCard } from "@/components/product-card";
@@ -190,7 +189,7 @@ export function ProductGrid({
   base,
   hrefFor,
   tracked = false,
-  columns,
+  sizedColumns = false,
   notices,
 }: {
   products: GridProduct[];
@@ -200,23 +199,16 @@ export function ProductGrid({
   base: string;
   hrefFor?: (product: GridProduct, index: number) => string;
   tracked?: boolean;
-  /** Columns by screen; two on phones and four from tablets unless given. */
-  columns?: { mobile: number; tablet: number; desktop: number };
+  /**
+   * Columns by the block's screen sizes (D179): a product layout's related products, whose block's rules set `--grid-cols`
+   * at each size; else two on phones and four from tablets.
+   */
+  sizedColumns?: boolean;
   /** The store's campaigns (D115), for the badge on each product's card. */
   notices?: CampaignNotices;
 }) {
-  const style = columns
-    ? ({
-        "--cols-m": `repeat(${columns.mobile}, minmax(0, 1fr))`,
-        "--cols-t": `repeat(${columns.tablet}, minmax(0, 1fr))`,
-        "--cols-d": `repeat(${columns.desktop}, minmax(0, 1fr))`,
-      } as CSSProperties)
-    : undefined;
   return (
-    <ul
-      className={columns ? "grid grid-cols-(--cols-m) gap-6 md:grid-cols-(--cols-t) lg:grid-cols-(--cols-d)" : "grid grid-cols-2 gap-6 md:grid-cols-4"}
-      style={style}
-    >
+    <ul className={sizedColumns ? "grid grid-cols-[repeat(var(--grid-cols),minmax(0,1fr))] gap-6" : "grid grid-cols-2 gap-6 md:grid-cols-4"}>
       {products.map((product, index) => (
         <ProductCard
           key={product.handle}

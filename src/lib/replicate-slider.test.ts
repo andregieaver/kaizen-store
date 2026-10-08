@@ -5,6 +5,10 @@ import { buildReplica, type BuildInput } from "./replicate-build";
 import { isExtraTile, runsText, walk, walkLive, type Box, type CaptureNode, type PageCapture, type Run, type SlideHide, type SlideMark, type SliderControl } from "./replicate-capture";
 import { autoplayWords, gridLines, mobileTiles, readSlider, sameSig, tokensOf } from "./replicate-grid";
 import { renderStyles } from "./replicate-styles";
+import { columnsView } from "./responsive";
+
+/** A grid's columns by screen, as the builder shows them (D179: computers' at Extra large, the smaller sizes' overrides). */
+const screens = (grid: { columns: number; at?: ContentGridBlock["at"] }) => columnsView(grid, { mobile: 0, tablet: 0, desktop: 0 });
 
 /**
  * Script sliders (D155, C2), from captured trees and no browser: a Swiper-shaped track with copies made to loop, a Slick-shaped track with
@@ -218,8 +222,8 @@ describe("a Swiper-shaped track with copies made to loop", () => {
   it("reads the slides in view at each width: three on computers, one on phones, wherever the copies are", () => {
     const built = build();
     const [grid] = gridsOf(built.rows);
-    expect(grid.columns.desktop).toBe(3);
-    expect(grid.columns.mobile).toBe(1);
+    expect(screens(grid).desktop).toBe(3);
+    expect(screens(grid).mobile).toBe(1);
     expect(built.grids.built[0].carousel).toMatchObject({ arrows: true, dots: true, rewind: true, perScreen: { desktop: 3, phone: 1 }, clones: 6 });
   });
 
@@ -276,7 +280,7 @@ describe("a Swiper-shaped track with copies made to loop", () => {
     };
     const a = once();
     const b = once();
-    expect(gridsOf(a.rows)[0].columns.mobile).toBe(1);
+    expect(screens(gridsOf(a.rows)[0]).mobile).toBe(1);
     expect(JSON.stringify(a.rows)).toBe(JSON.stringify(b.rows));
     expect(JSON.stringify(a.grids)).toBe(JSON.stringify(b.grids));
   });
@@ -551,7 +555,7 @@ describe("a fade slider: slides on top of each other, one showing", () => {
     expect(grid.items!.map((i) => i.text)).toEqual(["Customer 0", "Customer 1", "Customer 2", "Customer 3"]);
     expect(grid.items![3].picture).toMatchObject({ alt: "Face 3" });
     expect(grid.display).toBe("carousel");
-    expect(grid.columns).toMatchObject({ desktop: 1, mobile: 1, tablet: 1 });
+    expect(screens(grid)).toMatchObject({ desktop: 1, mobile: 1, tablet: 1 });
     expect(grid.gap).toBe(0);
     // No arrows beside this one, and as many dots as slides.
     expect(grid.carousel).toEqual({ arrows: false, dots: true });

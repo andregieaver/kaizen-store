@@ -8,7 +8,7 @@ import {
   PartBackground,
   blockBox,
   columnBox,
-  modalPanelStyle,
+  modalPanelClass,
   rowBox,
   rowGrid,
   rowInnerClass,
@@ -47,7 +47,7 @@ export function ModalBar({ row, lang }: { row: PageRow; lang: string | undefined
         storeId={null}
         auto={false}
         labels={{ close: m.close, dialog: m.dialog }}
-        panelStyle={modalPanelStyle(row)}
+        panelClassName={modalPanelClass(row)}
         preview={{ open, onClose: () => setOpen(false) }}
       >
         <PreviewRow row={{ ...row, width: undefined, contentWidth: undefined, fullHeight: undefined }} lang={lang} />

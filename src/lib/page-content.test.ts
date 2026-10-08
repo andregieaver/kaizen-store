@@ -299,17 +299,19 @@ describe("pictures and spacing (D47)", () => {
     const image = (extra: Record<string, unknown> = {}) => ({ id: "i1", type: "image", image: picture, caption: "", ...extra });
     const firstBlock = (value: unknown) => pageInput.parse(value).rows[0].columns[0].blocks[0] as unknown as Record<string, unknown>;
 
-    it("keeps how wide a picture is drawn and where it sits, by screen", () => {
+    it("keeps how wide a picture is drawn and where it sits, by screen size (D179: read from the screens it was saved by)", () => {
       const block = firstBlock(page([image({ maxWidth: 300, align: { mobile: "center", desktop: "right" } })]));
-      expect(block).toMatchObject({ type: "image", maxWidth: 300, align: { mobile: "center", desktop: "right" } });
-      // Nothing is added to the screens that were not given.
-      expect(block.align).toEqual({ mobile: "center", desktop: "right" });
+      // Right from computers (Large and Extra large), centred on tablets and phones, which hold only what differs.
+      expect(block).toMatchObject({ type: "image", maxWidth: 300, align: "right", at: { md: { align: "center" } } });
+      expect(block.at).toEqual({ md: { align: "center" } });
       // On a picture not set yet too: the width is the owner's choice, not the picture's.
       expect(firstBlock(page([image({ image: null, maxWidth: 120, align: { tablet: "left" } })]))).toMatchObject({
         image: null,
         maxWidth: 120,
-        align: { tablet: "left" },
+        align: "left",
       });
+      // The new shape is kept as it is.
+      expect(firstBlock(page([image({ align: "center", at: { sm: { align: "left", maxWidth: 80 } } })]))).toMatchObject({ align: "center", at: { sm: { align: "left", maxWidth: 80 } } });
     });
 
     it("takes a picture from the least to the most a picture can be wide", () => {
@@ -351,8 +353,10 @@ describe("pictures and spacing (D47)", () => {
         expect(problems(page([image({ align: { [screen]: "middle" } })])), screen).not.toEqual([]);
         for (const ok of ["left", "center", "right"]) expect(problems(page([image({ align: { [screen]: ok } })])), `${screen} ${ok}`).toEqual([]);
       }
-      // One place for the whole picture is not the way: it is by screen.
-      expect(problems(page([image({ align: "center" })]))).not.toEqual([]);
+      // One place for the whole picture, with overrides by size (D179), and nothing else.
+      expect(problems(page([image({ align: "center" })]))).toEqual([]);
+      expect(problems(page([image({ align: "middle" })]))).not.toEqual([]);
+      expect(problems(page([image({ align: "left", at: { sm: { align: "justify" } } })]))).not.toEqual([]);
     });
 
     it("leaves both out of a picture that has neither, so saved pages are unchanged", () => {
@@ -377,7 +381,8 @@ describe("pictures and spacing (D47)", () => {
         type: "image",
         maxWidth: 300,
         shape: "circle",
-        align: { mobile: "center", tablet: "left", desktop: "right" },
+        align: "right",
+        at: { md: { align: "left" }, sm: { align: "center" } },
       });
       // Reading changes nothing: saved and read again, it is the same page.
       expect(samePageContent(read!, content)).toBe(true);
@@ -454,12 +459,15 @@ describe("row, column and component settings (D48)", () => {
       width: "full",
       contentWidth: "content",
       fullHeight: true,
-      reverseOnMobile: true,
       equalHeight: true,
       align: "middle",
       background: { type: "image", image: { url: "https://example.com/b.webp", width: 1600, height: 900 }, overlay: { color: "#000000", opacity: 40 } },
     };
     expect(pageInput.parse(page(settings)).rows[0]).toMatchObject(settings);
+    // Reversed on phones, as saved before D179: the stacked columns' order at Small.
+    const reversed = pageInput.parse(page({ ...settings, reverseOnMobile: true })).rows[0];
+    expect(reversed).toMatchObject({ ...settings, at: { sm: { reverse: true } } });
+    expect(reversed).not.toHaveProperty("reverseOnMobile");
     expect(problems(page({ width: "wide" }))).not.toEqual([]);
     expect(problems(page({ background: { type: "color", color: "red" } }))).toEqual([
       "A colour is written as # and six hex digits, like #1f2937.",
@@ -509,7 +517,7 @@ describe("row, column and component settings (D48)", () => {
     const aligned = { ...block, align: { mobile: "center", desktop: "right" } };
     const picture = { id: "i1", type: "image", image: null, caption: "", shape: "circle" };
     const blocks = pageInput.parse(page({}, {}, [aligned, picture])).rows[0].columns[0].blocks;
-    expect(blocks[0]).toMatchObject({ align: { mobile: "center", desktop: "right" } });
+    expect(blocks[0]).toMatchObject({ align: "right", at: { md: { align: "center" } } });
     expect(blocks[1]).toMatchObject({ shape: "circle" });
     expect(problems(page({}, {}, [{ ...block, align: { tablet: "justify" } }]))).not.toEqual([]);
     expect(problems(page({}, {}, [{ ...picture, shape: "oval" }]))).not.toEqual([]);
@@ -641,7 +649,8 @@ describe("content grids (D51)", () => {
   it("starts as a grid of pages that passes the checks, shown whatever it finds", () => {
     const parsed = pageInput.parse(page({}));
     const grid = parsed.rows[0].columns[0].blocks[0];
-    expect(grid).toMatchObject({ type: "contentGrid", source: { type: "pages" }, limit: 6, columns: { mobile: 1, tablet: 2, desktop: 3 } });
+    // Three on computers, two on tablets, one on phones (D179: Extra large, and the smaller sizes' overrides).
+    expect(grid).toMatchObject({ type: "contentGrid", source: { type: "pages" }, limit: 6, columns: 3, at: { md: { columns: 2 }, sm: { columns: 1 } } });
     expect(blockHasContent(grid)).toBe(true);
     expect(pageExcerpt(parsed)).toBe("");
   });
@@ -657,7 +666,12 @@ describe("content grids (D51)", () => {
       button: { variant: "outline" },
       tile: { background: "#ffffff", padding: 16, radius: 8, shadow: "sm" },
     };
-    expect(pageInput.parse(page(grid)).rows[0].columns[0].blocks[0]).toMatchObject(grid);
+    const { columns, ...rest } = grid;
+    void columns;
+    // Columns by screen as saved before D179 are read as computers' columns and the overrides of the sizes that differ.
+    const parsed = pageInput.parse(page(grid)).rows[0].columns[0].blocks[0];
+    expect(parsed).toMatchObject({ ...rest, columns: 6, at: { md: { columns: 3 }, sm: { columns: 2 } } });
+    expect(pageInput.parse(page({ ...rest, columns: 5, at: { sm: { columns: 2 } } })).rows[0].columns[0].blocks[0]).toMatchObject({ columns: 5, at: { sm: { columns: 2 } } });
   });
 
   it("refuses an unknown source, too many items or columns, and a tile heading at H1", () => {
@@ -669,6 +683,8 @@ describe("content grids (D51)", () => {
     expect(problems(page({ limit: 0 }))).toEqual(["A grid shows at least one item."]);
     expect(problems(page({ columns: { mobile: 3, tablet: 2, desktop: 3 } }))).not.toEqual([]);
     expect(problems(page({ columns: { mobile: 1, tablet: 2, desktop: 9 } }))).not.toEqual([]);
+    expect(problems(page({ columns: 9 }))).not.toEqual([]);
+    expect(problems(page({ columns: 0 }))).not.toEqual([]);
     expect(problems(page({ headingLevel: 1 }))).toEqual(["A tile's heading has an unknown level."]);
     expect(problems(page({ gap: 97 }))).toEqual(["Keep the space between tiles at 96 pixels or less."]);
   });

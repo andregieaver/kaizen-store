@@ -11,6 +11,7 @@ import { type FieldDef, type FieldEntity, type FieldGroup } from "@/lib/custom-f
 import { bindable, canBind } from "@/lib/field-binding";
 import { LOOP_SLOT_KEYS, isLoopable, slotChoices, suggestSlots, validSlots } from "@/lib/field-loop";
 import { AUTOPLAY_SECONDS, CAROUSEL_SNAPS, cleanCarousel, normalizeSeconds, resolveCarousel, type CarouselSettings, type CarouselSnap } from "@/lib/carousel-settings";
+import { alignPatch, alignView, stackPatch, stackedOnPhones } from "@/lib/responsive";
 import { tileFieldOptions } from "@/lib/tile-fields";
 import { isEmail } from "@/lib/forms";
 import { t } from "@/lib/i18n";
@@ -104,6 +105,7 @@ import {
   type SeparatorBlock,
   type TextAlign,
   type TextAlignments,
+  type SizeOverrides,
 } from "@/lib/page-content";
 
 import { ImageUploadButton, type Upload } from "./image-upload";
@@ -463,21 +465,26 @@ const ALIGN_OPTIONS = [
 ] as const;
 
 
-/** A rich text's alignment on phones, tablets and computers (D48); each larger screen follows the smaller unless set. */
+/**
+ * A part's alignment on phones, tablets and computers (D48); each larger screen follows the smaller unless set. Since
+ * D179 the part keeps it as its base value and overrides by size: the three screens are read from Small, Medium and
+ * Large (`alignView()`), and a choice is written back as such (`alignPatch()`), keeping the part's other overrides.
+ */
 export function TextAlignFields({
   what = "Text alignment",
-  value,
+  value: part,
   onChange,
 }: {
   what?: string;
-  value: TextAlignments | undefined;
-  onChange: (value: TextAlignments | undefined) => void;
+  value: { align?: TextAlign; at?: SizeOverrides };
+  onChange: (patch: { align: TextAlign | undefined; at: SizeOverrides | undefined }) => void;
 }) {
+  const value = alignView(part);
   const set = (screen: keyof TextAlignments, align: TextAlign | "same") => {
     const next: TextAlignments = { ...value };
     if (align === "same" || (screen === "mobile" && align === "left")) delete next[screen];
     else next[screen] = align;
-    onChange(Object.keys(next).length > 0 ? next : undefined);
+    onChange(alignPatch(part, Object.keys(next).length > 0 ? next : undefined));
   };
   return (
     <div className="flex flex-col gap-4">
@@ -845,10 +852,10 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
       <Check
         label="One under another on phones"
         hint="Each as wide as the column on screens under 768 pixels."
-        checked={Boolean(block.stackOnPhones)}
-        onChange={(stackOnPhones) => onChange({ stackOnPhones: stackOnPhones || undefined })}
+        checked={stackedOnPhones(block)}
+        onChange={(on) => onChange(stackPatch(block, on))}
       />
-      <TextAlignFields what="Position" value={block.align} onChange={(align) => onChange({ align })} />
+      <TextAlignFields what="Position" value={block} onChange={onChange} />
     </>
   );
 }

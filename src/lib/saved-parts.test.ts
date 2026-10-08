@@ -8,11 +8,11 @@ import { parseSavedPart, savedPartInput } from "./saved-parts";
  * know is dropped without a word. These hold that a width and a position survive being saved and read back, of every kind.
  */
 
-const align = { mobile: "center", desktop: "right" } as const;
 const picture = { url: "https://cdn.example.com/cup.webp", width: 800, height: 600, alt: "A cup" };
-const kept = { maxWidth: 300, align: { mobile: "center", desktop: "right" }, shape: "circle", caption: "Our cup" };
+// Right from computers, centred below (D179: the base value and the overrides of the sizes that differ).
+const kept = { maxWidth: 300, align: "right", at: { md: { align: "center" } }, shape: "circle", caption: "Our cup" };
 
-const block = (): PageBlock => ({ id: "img1", type: "image", image: picture, caption: "Our cup", shape: "circle", maxWidth: 300, align: { ...align } });
+const block = (): PageBlock => ({ id: "img1", type: "image", image: picture, caption: "Our cup", shape: "circle", maxWidth: 300, align: "right", at: { md: { align: "center" } } });
 const column = (): PageColumn => ({ id: "col1", blocks: [block()] });
 const row = (): PageRow => ({ id: "row1", type: "row", layout: "1", columns: [column()] });
 
@@ -39,6 +39,11 @@ describe("saving a part with a sized picture (D151)", () => {
     expect(part.kind).toBe(kind);
     const found = kind === "page" ? imageIn((part.content as { rows: PageRow[] }).rows[0]) : imageIn(part.content);
     expect(found).toMatchObject(kept);
+  });
+
+  it("reads a picture's position saved by screen before D179 as the base value and overrides", () => {
+    const old = { ...block(), at: undefined, align: { mobile: "center", desktop: "right" } };
+    expect(savedPartInput.parse({ kind: "block", name: "A cup", content: old }).content).toMatchObject(kept);
   });
 
   it("keeps a picture with no width and no position as it was, with neither key added", () => {

@@ -2,7 +2,8 @@ import { createElement, isValidElement, type ReactElement, type ReactNode } from
 import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-import { BOUND_PICTURE_SIZE, IMAGE_WIDTH_MIN, type ImageBlock, type PageRow } from "@/lib/page-content";
+import { BOUND_PICTURE_SIZE, IMAGE_WIDTH_MIN, type ImageBlock, type PageRow, type TextAlignments } from "@/lib/page-content";
+import { alignView, upgradeBlock } from "@/lib/responsive";
 import { patchBlock, type BlockPatch } from "@/lib/page-rows";
 
 import { TextAlignFields } from "./block-fields";
@@ -37,7 +38,9 @@ vi.mock("react", async (importOriginal) => {
 });
 
 const picture = (width: number, height: number) => ({ url: "https://cdn.example/p.webp", width, height, alt: "" });
-const image = (over: Partial<ImageBlock> = {}): ImageBlock => ({ id: "img", type: "image", image: picture(800, 600), caption: "", ...over });
+/** A picture block; a position by screen as saved before D179 is read as the builder gets it (`upgradeBlock()`). */
+const image = (over: Omit<Partial<ImageBlock>, "align"> & { align?: ImageBlock["align"] | TextAlignments } = {}): ImageBlock =>
+  upgradeBlock({ id: "img", type: "image", image: picture(800, 600), caption: "", ...over }) as ImageBlock;
 const fromField = { fieldId: "field-1" };
 
 const html = (block: ImageBlock) =>
@@ -452,7 +455,7 @@ describe("the width controls at work", () => {
     it("keeps the position and the rest of the block", () => {
       const m = mount(image({ align: { mobile: "center" }, caption: "Harbour", shape: "square" }));
       m.slide(300);
-      expect(m.block).toMatchObject({ maxWidth: 300, align: { mobile: "center" }, caption: "Harbour", shape: "square", type: "image" });
+      expect(m.block).toMatchObject({ maxWidth: 300, align: "center", caption: "Harbour", shape: "square", type: "image" });
     });
 
     it("changes nothing without a picture to measure against", () => {
@@ -608,20 +611,22 @@ describe("the width controls at work", () => {
       const align = { mobile: "center", desktop: "right" } as const;
       const m = mount(image({ align }));
       expect(m.prop(isPosition, "what")).toBe("Position");
-      expect(m.prop(isPosition, "value")).toEqual(align);
+      // The block itself (D179: its base alignment and overrides), which the three screens are read from.
+      expect(m.prop(isPosition, "value")).toMatchObject({ align: "right", at: { md: { align: "center" } } });
+      expect(alignView(m.prop(isPosition, "value") as ImageBlock)).toEqual(align);
     });
 
     it("sets where the picture sits, leaving its width alone", () => {
       const m = mount(image({ maxWidth: 300 }));
-      m.fire(isPosition, "onChange", { mobile: "center" });
-      expect(m.patches).toEqual([{ align: { mobile: "center" } }]);
-      expect(m.block).toMatchObject({ maxWidth: 300, align: { mobile: "center" } });
+      m.fire(isPosition, "onChange", { align: "center", at: undefined });
+      expect(m.patches).toEqual([{ align: "center", at: undefined }]);
+      expect(m.block).toMatchObject({ maxWidth: 300, align: "center" });
     });
 
     it("takes the key away when the choice is back to nothing", () => {
       const m = mount(image({ align: { mobile: "center" } }));
-      m.fire(isPosition, "onChange", undefined);
-      expect(keysOf(m.patches[0])).toEqual(["align"]);
+      m.fire(isPosition, "onChange", { align: undefined, at: undefined });
+      expect(keysOf(m.patches[0])).toEqual(["align", "at"]);
       expect(m.patches[0].align).toBeUndefined();
       expect("align" in m.block).toBe(false);
     });

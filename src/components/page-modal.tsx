@@ -107,14 +107,14 @@ type Props = {
   /** Whether it may open by itself here: not on a working page, not in the admin (a footer's modal also reads the address). */
   auto: boolean;
   labels: { close: string; dialog: string };
-  /** The row's border, rounded corners and shadow, which are the panel's. */
-  panelStyle?: CSSProperties;
+  /** The row's border, rounded corners and shadow, which are the panel's: the class the part stylesheet draws them by (D179). */
+  panelClassName?: string;
   /** The builder's preview: open and closed from outside, and never by its own triggers. */
   preview?: { open: boolean; onClose: () => void };
   children: ReactNode;
 };
 
-export function PageModal({ config, storeId, auto, labels, panelStyle, preview, children }: Props) {
+export function PageModal({ config, storeId, auto, labels, panelClassName, preview, children }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const opener = useRef<Element | null>(null);
@@ -295,7 +295,7 @@ export function PageModal({ config, storeId, auto, labels, panelStyle, preview, 
         pressedOutside.current = false;
       }}
     >
-      <div ref={panel} tabIndex={-1} className="page-modal-panel bg-background text-foreground" style={panelStyle}>
+      <div ref={panel} tabIndex={-1} className={["page-modal-panel bg-background text-foreground", panelClassName].filter(Boolean).join(" ")}>
         {children}
       </div>
       {modal.closeButton !== false && (

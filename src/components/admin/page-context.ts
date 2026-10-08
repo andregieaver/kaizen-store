@@ -1,3 +1,4 @@
+import type { Breakpoints } from "@/lib/breakpoints";
 import type { CSSProperties } from "react";
 
 import type { GridData } from "@/lib/content-grid";
@@ -88,7 +89,7 @@ export type PageOwnerContext = {
     startFile: StartFieldFile | null;
   } | null;
   /** A store's theme for the canvas (D60): CSS for `[data-theme-canvas]` and its attributes; null for Kaizen. */
-  theme: { css: string; attributes: Record<string, string> } | null;
+  theme: { css: string; attributes: Record<string, string>; /** Where its screen sizes start (D179), for the canvas's part rules. */ breakpoints?: Breakpoints } | null;
   /** Templates shared between stores and the marketplace (D125); null on Kaizen's own pages. */
   templates: TemplateActions | null;
   /**

@@ -107,7 +107,7 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
         </p>
       </fieldset>
       <div className="flex flex-col gap-2">
-        <TextAlignFields what="Position" value={block.align} onChange={(align) => onChange({ align })} />
+        <TextAlignFields what="Position" value={block} onChange={onChange} />
         <p className="text-xs text-muted">Where the picture sits when it is narrower than its column. A left or right margin set under Spacing takes the place of this, so leave those at 0.</p>
       </div>
     </div>

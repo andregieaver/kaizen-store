@@ -2,24 +2,21 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 
 import {
-  ROW_LAYOUTS,
   blockText,
-  frameStyle,
-  imageDisplaySize,
-  rowSpacing,
-  spacingStyle,
   type PageBlock,
   type PageColumn,
   type ColumnJustify,
   type GradientBackground,
   type PageRow,
   type RowBackground,
-  type TextAlignments,
   type VerticalAlign,
 } from "@/lib/page-content";
 import { fontClass } from "@/lib/fonts";
 import type { BackgroundMotion } from "@/lib/motion";
 import { backgroundFx } from "@/lib/motion-attrs";
+import { blockStyle, clipsAnywhere, columnStyle, inlineNowrap, panelStyle, partClass, rowGridStyle, rowStyle, type PartsMode } from "@/lib/part-css";
+import { SIZES } from "@/lib/breakpoints";
+import { valueAt } from "@/lib/responsive";
 import { summarize } from "@/lib/seo";
 
 import { BackgroundVideo } from "./background-video";
@@ -28,9 +25,11 @@ import { BackgroundVideo } from "./background-video";
  * How a page's rows, columns and blocks are drawn with their settings (D47,
  * D48), shared by the site (`PageArticle`) and the page builder's canvas so
  * both look the same. The canvas leaves out custom ids, classes and column
- * links, and its "full width" is the canvas's.
+ * links, and its "full width" is the canvas's. What can differ by screen size
+ * (D179) is drawn by the part stylesheet (`src/lib/part-css.ts`, `PartStyles`):
+ * these give each element its classes, and the stylesheet says the rest.
  */
-export type PartsMode = "site" | "canvas";
+export type { PartsMode };
 
 type Box = { id?: string; className: string; style: CSSProperties };
 
@@ -42,67 +41,36 @@ const JUSTIFY: Record<VerticalAlign, string> = {
   middle: "[justify-content:center]",
   bottom: "[justify-content:end]",
 };
-const MD_ITEMS: Record<VerticalAlign, string> = { top: "md:items-start", middle: "md:items-center", bottom: "md:items-end" };
-const ITEMS: Record<VerticalAlign, string> = { top: "items-start", middle: "items-center", bottom: "items-end" };
 const INLINE_JUSTIFY: Record<ColumnJustify, string> = {
   start: "justify-start",
   center: "justify-center",
   end: "justify-end",
   between: "justify-between",
 };
-const TEXT_ALIGN = {
-  mobile: { left: "text-left", center: "text-center", right: "text-right" },
-  tablet: { left: "md:text-left", center: "md:text-center", right: "md:text-right" },
-  desktop: { left: "lg:text-left", center: "lg:text-center", right: "lg:text-right" },
-} as const;
-
-/** Rounded corners over a background picture, video or gradient clip it. */
-const clips = (part: PageRow | PageColumn) =>
-  Boolean(part.radius) && (part.background?.type === "image" || part.background?.type === "video" || part.background?.type === "gradient");
-
-/**
- * A part's colour, see-through if it has an opacity, and what is behind it
- * blurred (D86): frosted glass, such as a header over a picture.
- */
-const colorStyle = (part: PageRow | PageColumn): CSSProperties => {
-  const background = part.background;
-  const css: CSSProperties =
-    background?.type === "color"
-      ? {
-          backgroundColor:
-            background.opacity === undefined ? background.color : `color-mix(in srgb, ${background.color} ${background.opacity}%, transparent)`,
-        }
-      : {};
-  if (part.backdropBlur && (!background || background.type === "color")) {
-    css.backdropFilter = `blur(${part.backdropBlur}px)`;
-    css.WebkitBackdropFilter = `blur(${part.backdropBlur}px)`;
-  }
-  return css;
-};
 
 /**
  * The row itself: its background, height, margin and padding. A modal's row
  * (D121) is drawn `inPanel`: its border, corners, shadow and margin are the
- * panel's (`modalPanelStyle()`), which it fills.
+ * panel's (`modalPanelBox()`), which it fills.
  */
 export function rowBox(row: PageRow, mode: PartsMode, inPanel = false): Box {
-  const spacing = spacingStyle(rowSpacing(row.style));
-  if (inPanel) for (const side of ["Top", "Right", "Bottom", "Left"]) delete spacing[`margin${side}`];
   return {
     id: mode === "site" ? row.htmlId : undefined,
     className: cx(
+      partClass(row),
+      rowStyle(row, inPanel).className,
       "relative isolate flex flex-col",
       row.fullHeight && "min-h-svh",
-      clips(row) && !inPanel && "overflow-hidden",
+      clipsAnywhere(row) && !inPanel && "overflow-hidden",
       mode === "site" && row.className,
     ),
-    style: { ...spacing, ...(inPanel ? {} : frameStyle(row)), ...colorStyle(row) },
+    style: {},
   };
 }
 
 /** A modal's panel (D121): the row's border, rounded corners and shadow, which it clips its content to. */
-export function modalPanelStyle(row: PageRow): CSSProperties {
-  return frameStyle(row) as CSSProperties;
+export function modalPanelClass(row: PageRow): string {
+  return panelStyle(row).className;
 }
 
 /** Inside the row: in a full-width row, what it holds keeps to the content's width unless set to spread. */
@@ -111,28 +79,9 @@ export function rowInnerClass(row: PageRow, mode: PartsMode): string {
   return cx("flex flex-1 flex-col", keep && (mode === "site" ? "mx-auto w-full max-w-(--content-width)" : "px-6"));
 }
 
-/** The row's columns: side by side by its layout, stacked on phones (last first when reversed) unless kept side by side (D80). */
+/** The row's columns: side by side by its layout, or stacked where it stacks (Small unless set, D179; last first when reversed). */
 export function rowGrid(row: PageRow): Box {
-  const align = row.align ?? "top";
-  return {
-    className: row.sideBySide
-      ? cx(
-          "grid gap-2 [grid-template-columns:var(--columns)] md:gap-8",
-          row.fullHeight && "flex-1",
-          row.equalHeight ? "items-stretch" : ITEMS[align],
-        )
-      : cx(
-          "flex gap-8 md:grid md:[grid-template-columns:var(--columns)]",
-          row.reverseOnMobile ? "flex-col-reverse" : "flex-col",
-          row.fullHeight && "flex-1",
-          JUSTIFY[align],
-          row.equalHeight ? "md:items-stretch" : MD_ITEMS[align],
-        ),
-    // A width of 0 is a column as wide as what it holds (D80), narrower only when the row has no more room.
-    style: {
-      "--columns": ROW_LAYOUTS[row.layout].widths.map((w: number) => (w === 0 ? "minmax(0, max-content)" : `minmax(0, ${w}fr)`)).join(" "),
-    } as CSSProperties,
-  };
+  return { className: cx(rowGridStyle(row).className, row.fullHeight && "flex-1"), style: {} };
 }
 
 /** A column: its background, margin and padding, and where its content sits when columns are equally tall. */
@@ -140,78 +89,54 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
   return {
     id: mode === "site" ? column.htmlId : undefined,
     className: cx(
+      partClass(column),
+      columnStyle(column).className,
       // Side by side (D80): its components in a line that wraps, centred on each other, placed by `justify`.
-      // In a row kept side by side (a header's), they stay on one line, the widest (a logo) narrowing first.
+      // In a row that never stacks (a header's), they stay on one line, the widest (a logo) narrowing first.
       column.inline
         ? cx(
             "relative isolate flex min-w-0 flex-row items-center gap-x-2 gap-y-2 [&>*]:min-w-0",
-            row.sideBySide ? "flex-nowrap" : "flex-wrap",
+            inlineNowrap(row) ? "flex-nowrap" : "flex-wrap",
             INLINE_JUSTIFY[column.justify ?? "start"],
           )
         : "relative isolate flex min-w-0 flex-col gap-6",
       !column.inline && row.equalHeight && JUSTIFY[row.align ?? "top"],
       // In the canvas the column sits inside its pointing band, which it fills.
       mode === "canvas" && "flex-1",
-      clips(column) && "overflow-hidden",
+      clipsAnywhere(column) && "overflow-hidden",
       // Links in the text stay usable above the column's own link.
       mode === "site" && column.link && "[&_.rich-text_a]:relative [&_.rich-text_a]:z-[2]",
       mode === "site" && column.className,
     ),
-    style: { ...spacingStyle(column.style), ...frameStyle(column), ...colorStyle(column) },
+    style: {},
   };
 }
 
 /**
- * Where a picture narrower than its column sits, by screen (D151): auto margins, which text alignment cannot do to a box. Written
- * out whole so Tailwind finds each class; each screen unset follows the smaller one, as text does.
- */
-const PICTURE_SIDE = {
-  mobile: { left: "", center: "mx-auto", right: "ml-auto" },
-  tablet: { left: "md:ml-0 md:mr-0", center: "md:mx-auto", right: "md:ml-auto md:mr-0" },
-  desktop: { left: "lg:ml-0 lg:mr-0", center: "lg:mx-auto", right: "lg:ml-auto lg:mr-0" },
-} as const;
-
-const pictureSide = (align: TextAlignments | undefined): string =>
-  cx(align?.mobile && PICTURE_SIDE.mobile[align.mobile], align?.tablet && PICTURE_SIDE.tablet[align.tablet], align?.desktop && PICTURE_SIDE.desktop[align.desktop]);
-
-function alignClasses(align: TextAlignments | undefined): string | false {
-  return (
-    Boolean(align) &&
-    cx(
-      align?.mobile && TEXT_ALIGN.mobile[align.mobile],
-      align?.tablet && TEXT_ALIGN.tablet[align.tablet],
-      align?.desktop && TEXT_ALIGN.desktop[align.desktop],
-    )
-  );
-}
-
-/**
  * Around a block: its margin, padding, border and shadow, and the alignment
- * by screen of rich text, a heading or a button. Rounded corners clip what
- * it holds, such as a picture. A button takes its frame itself.
+ * of rich text, a heading or a button, by screen size (the part stylesheet).
+ * Rounded corners clip what it holds, such as a picture. A button takes its
+ * frame itself.
  */
 export function blockBox(block: PageBlock, mode: PartsMode): Box {
   // A picture's box is the picture's own width (D151), so its frame, effects, id and classes hug it, not the empty column beside
-  // it; null without a picture, so the empty block keeps the whole column. The limit is a class and a custom property, never
-  // an inline width: owner CSS and the page replicator's `#id` rules can still say otherwise.
-  const picture = block.type === "image" ? imageDisplaySize(block) : null;
+  // it; none without a picture, so the empty block keeps the whole column. The limit is a class and a custom property
+  // (`--picture-width`, by size in the part stylesheet), never an inline width: owner CSS and the page replicator's `#id`
+  // rules can still say otherwise.
+  const picture = block.type === "image" && block.image !== null;
   return {
     id: mode === "site" ? block.htmlId : undefined,
     className: cx(
-      "align" in block && alignClasses(block.align),
+      partClass(block),
+      blockStyle(block, mode).className,
       // `box-content` makes the limit the picture's width however much padding and border the block has.
       picture && "box-content max-w-(--picture-width)",
-      picture && block.type === "image" && pictureSide(block.align),
       // Its own font (D59) for all its text; the stylesheet comes with `FontLinks`.
       "font" in block && block.font && fontClass(block.font),
-      block.type !== "button" && Boolean(block.radius) && "overflow-hidden",
-      // A site's phone menu button is for phones; a part set so is left out on them, leaving no gap (D80).
-      mode === "site" && block.type === "site" && (block.part === "menuButton" ? "md:hidden" : block.hideOnPhones && "max-md:hidden"),
-      mode === "site" && block.type === "menu" && block.hideOnPhones && "max-md:hidden",
+      block.type !== "button" && SIZES.some((size) => Boolean(valueAt(block, "radius", size))) && "overflow-hidden",
       mode === "site" && block.className,
     ),
-    // A button's border, corners and shadow are the button's own (`PageBlockView`).
-    style: { ...spacingStyle(block.style), ...(block.type === "button" ? {} : frameStyle(block)), ...(picture ? ({ "--picture-width": `${picture.width}px` } as CSSProperties) : {}) },
+    style: {},
   };
 }
 

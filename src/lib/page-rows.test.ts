@@ -256,13 +256,15 @@ describe("settings (D48)", () => {
 
 describe("a picture's own size survives editing (D151)", () => {
   const picture = { url: "https://cdn.example.com/a.webp", width: 800, height: 600, alt: "A cup" };
-  const align = { mobile: "center", desktop: "right" } as const;
+  // Right from computers, centred below (D179: the base value and an override); each use gets its own copy.
+  const placed = () => ({ align: "right" as const, at: { md: { align: "center" as const } } });
+  const align = placed();
 
   /** A row holding a picture block that has been narrowed and placed, and the block's id. */
   const sized = () => {
     let rows = [newRow("2", id)];
     const column = rows[0].columns[1].id;
-    const block: ImageBlock = { ...(newBlock("image", id) as ImageBlock), image: picture, maxWidth: 300, align: { ...align } };
+    const block: ImageBlock = { ...(newBlock("image", id) as ImageBlock), image: picture, maxWidth: 300, ...placed() };
     rows = insertBlock(rows, column, block, 0);
     return { rows, column, block, blockId: block.id };
   };
@@ -278,15 +280,15 @@ describe("a picture's own size survives editing (D151)", () => {
     let rows = [newRow("1", id)];
     const block = newBlock("image", id);
     rows = insertBlock(rows, rows[0].columns[0].id, block, 0);
-    rows = patchBlock<ImageBlock>(rows, block.id, { maxWidth: 300, align });
-    expect(imageOf(rows, block.id)).toMatchObject({ maxWidth: 300, align });
+    rows = patchBlock<ImageBlock>(rows, block.id, { maxWidth: 300, ...placed() });
+    expect(imageOf(rows, block.id)).toMatchObject({ maxWidth: 300, ...align });
     // A narrower width replaces it, and leaves the position alone.
     rows = patchBlock<ImageBlock>(rows, block.id, { maxWidth: 120 });
-    expect(imageOf(rows, block.id)).toMatchObject({ maxWidth: 120, align });
+    expect(imageOf(rows, block.id)).toMatchObject({ maxWidth: 120, ...align });
     // Undefined is "the picture's own size": the key goes, so a page left alone stays as small as it was.
     rows = patchBlock<ImageBlock>(rows, block.id, { maxWidth: undefined });
     expect(imageOf(rows, block.id)).not.toHaveProperty("maxWidth");
-    expect(imageOf(rows, block.id)).toMatchObject({ align });
+    expect(imageOf(rows, block.id)).toMatchObject({ ...align });
     rows = patchBlock<ImageBlock>(rows, block.id, { align: undefined });
     expect(imageOf(rows, block.id)).not.toHaveProperty("align");
   });
@@ -295,10 +297,10 @@ describe("a picture's own size survives editing (D151)", () => {
     const { rows, blockId } = sized();
     const bigger = { url: "https://cdn.example.com/b.webp", width: 1600, height: 900, alt: "Another cup" };
     const replaced = updateBlock(rows, blockId, (block) => ({ ...block, image: bigger }) as ImageBlock);
-    expect(imageOf(replaced, blockId)).toMatchObject({ image: bigger, maxWidth: 300, align });
+    expect(imageOf(replaced, blockId)).toMatchObject({ image: bigger, maxWidth: 300, ...align });
     // Taking the picture away does not forget how it was to be drawn either.
     const removed = updateBlock(rows, blockId, (block) => ({ ...block, image: null }) as ImageBlock);
-    expect(imageOf(removed, blockId)).toMatchObject({ image: null, maxWidth: 300, align });
+    expect(imageOf(removed, blockId)).toMatchObject({ image: null, maxWidth: 300, ...align });
   });
 
   it("keeps both on a copy made by duplicating a block, a row or a saved part, under new ids", () => {
@@ -308,23 +310,23 @@ describe("a picture's own size survives editing (D151)", () => {
     const [first, copy] = duplicated[0].columns[1].blocks as ImageBlock[];
     expect(first.id).toBe(blockId);
     expect(copy.id).not.toBe(blockId);
-    expect(copy).toMatchObject({ type: "image", image: picture, maxWidth: 300, align });
+    expect(copy).toMatchObject({ type: "image", image: picture, maxWidth: 300, ...align });
 
     const copied = copyBlock(imageOf(rows, blockId), id) as ImageBlock;
     expect(copied.id).not.toBe(blockId);
-    expect(copied).toMatchObject({ maxWidth: 300, align });
+    expect(copied).toMatchObject({ maxWidth: 300, ...align });
 
     const fromRow = copyRow(rows[0], id);
     const inRow = fromRow.columns[1].blocks[0] as ImageBlock;
     expect(fromRow.id).not.toBe(rows[0].id);
     expect(inRow.id).not.toBe(blockId);
-    expect(inRow).toMatchObject({ maxWidth: 300, align });
+    expect(inRow).toMatchObject({ maxWidth: 300, ...align });
 
     const twice = duplicateRow(rows, rows[0].id, id);
-    expect((twice[1].columns[1].blocks[0] as ImageBlock)).toMatchObject({ maxWidth: 300, align });
+    expect((twice[1].columns[1].blocks[0] as ImageBlock)).toMatchObject({ maxWidth: 300, ...align });
 
     // A copy of its own: editing the copy's position leaves the original's as it was.
-    copy.align!.desktop = "left";
-    expect(imageOf(duplicated, blockId).align).toEqual({ mobile: "center", desktop: "right" });
+    copy.at!.md!.align = "left";
+    expect(imageOf(duplicated, blockId).at).toEqual({ md: { align: "center" } });
   });
 });
