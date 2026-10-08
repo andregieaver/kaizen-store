@@ -59,6 +59,11 @@ export type GridPlace = {
   archive?: boolean;
   /** On a category or tag page (D140): the term the page is for, which a grid that recommends recommends around. */
   term?: { id: string; kind: "category" | "tag" };
+  /**
+   * The address's parameters where the route has them and no `listing` or `route` carries them (Kaizen's pages): read only
+   * inside a part's display hole (D179 phase 4), so the page around stays prerendered.
+   */
+  query?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 /** Where a filterable grid reads its choices, and the address they go to. */

@@ -1,9 +1,10 @@
 # Responsive editing and visibility in the page builder (proposed D179)
 
-Status: **phases 1, 2 and 3 built** (phase 1: the model, the upgrade of saved pages, screen sizes in the theme and the part
+Status: **phases 1 to 4 built** (phase 1: the model, the upgrade of saved pages, screen sizes in the theme and the part
 stylesheet, section 9; phase 2: the builder's responsive mode, fields by size, visibility by size and the theme's screen
 sizes, section 10; phase 3: the Typography panel on every text, components' breakpoints on the store's sizes, and the
-entrance's delay and duration, section 11). Phases 4–6 are not started. Agreed with the owner on 8 October 2026; built after D178
+entrance's delay and duration, section 11; phase 4: Display by sign-in and conditions, left out by the server, section 12).
+Phases 5 and 6 are not started. Agreed with the owner on 8 October 2026; built after D178
 step 6, and before text colour and opacity (`docs/text-colour.md`, proposed D180). The model is Beaver Builder's: a value per
 screen size on the settings of every row, column and component, a responsive editing mode in the builder, and
 visibility by screen size, sign-in or conditions in each part's Advanced tab.
@@ -318,3 +319,96 @@ runs nothing.
   elements, 278,680 values, no difference; the old shape against the same pages upgraded (now with `foldTypography()`) is
   the same too. The parts' stylesheet comes after the site's (`next`) and before the theme's and the fonts' in the head,
   which the `:where()` rules and the doubled class of a family by size rely on.
+
+## 12. Phase 4, as built
+
+- **The model** (`src/lib/visibility.ts`, pure): `PartBase.visibility.show` is `"never" | "signedIn" | "signedOut" | { rules:
+  ConditionGroup[] }`, Always being nothing set (the schema drops `"always"`). `ConditionGroup` is `Condition[]`: OR between
+  groups, AND within one (`showsFor()`, `conditionHolds()`). A condition is `{ fact, op, value }` from a closed zod union
+  (`showSchema`, `conditionProblem()` for what the shape cannot say: a date's start before its end, two different times of
+  day, a cart value's amounts, a parameter's value for is, is not and contains, a company's yes or no against its ids). At
+  most 10 groups of 10 conditions, 50 choices in a condition, and **30 parts a page** shown by sign-in or conditions
+  (`CONDITIONAL_PARTS_MAX`; Never is not counted), held by `pageInput` (`displaysProblem()`).
+- **Facts and operators** (`FACTS`, `FACT_INFO`): visitor — signed in (is), customer group (is one of, is none of: tier
+  ids), company account (is yes/no, or is one of / none of: company ids), buys as (is, is not: business or private), has
+  bought before (is); place and language — country, language, currency (is one of, is none of); time — date and time
+  (between, either end open; from inclusive, until exclusive), day of the week (is one of, is none of), time of day
+  (between; a start after the end runs over midnight); cart and address — cart value (at least, at most, between), cart
+  contains product, cart contains a product in category (is one of, is none of; a category's parents count), address
+  parameter (is, is not, contains, is present, is not present). Times are local to the store's time zone
+  (`stores.time_zone`; Kaizen's pages Europe/Oslo), compared as local `YYYY-MM-DDTHH:mm` strings, so a date or hour in the
+  hour daylight saving skips never matches and one in the hour it repeats matches both times. A cart value is compared in
+  minor units: written in a currency, it is held against the cart's shown currency by the store's rates without rounding
+  (`conversionFactor()`); a currency without a rate never holds. A fact the place does not have (Kaizen's pages have no
+  shop, a header no address) is null, and a condition on it never holds, whatever its operator. A condition left choosing
+  no ids (a group deleted since) holds for nobody with "is one of" and for everybody with "is none of".
+- **Where each fact can be asked** (`factsOffered()`, `displayFactsProblem()` in `pageRulesProblem()`): Kaizen's pages offer
+  signed in (the admin, `getAccount()`), language, the three of time and the address parameter (`KAIZEN_FACTS`). The
+  **address parameter** is offered on pages only: their routes hand the address to the page as a promise
+  (`GridPlace.listing.query`, `GridPlace.route.query` on working, category and tag pages, the new `GridPlace.query` on
+  Kaizen's pages), awaited only inside the part's hole, so the page stays prerendered. A header or footer is drawn by the
+  layout, which has no address parameters, and articles and product layouts are drawn without them; reading them there
+  would make every page dynamic, so the fact is not offered (nothing was dropped from the owner's list otherwise).
+- **The server** (`src/components/visible-part.tsx`, `src/server/visibility.ts`): `PageRowView` and `RowMarkup` draw every
+  row, column and block through `<VisiblePart>` — pages, articles, headers, footers, product layouts, modals, working pages
+  and Kaizen's pages. Always draws the part; Never draws nothing; signed in, signed out and conditions are a `<Suspense
+  fallback={null}>` hole whose `Shown` awaits `visitorFacts(place, show)` and draws the part or nothing, so the page around
+  stays cached and prerendered and a hidden part's words are nowhere in the HTML or the RSC payload (the e2e reads the
+  whole response). `visitorFacts()` calls `connection()` first (time and sign-in are the request's), reads only the facts
+  the rule asks about, each kind once per request through `perRequest()`: the store's customer session (`getCustomer()`,
+  `customer_sessions`), the customer's groups (`customerTierIds()`, as campaigns read them), company (only while it is on,
+  selling to businesses is on and they are its owner or employee), has bought before (`bought` of `customer-admin.ts`: a
+  paid, never copied order of the customer with `restricted_at is null`, D162), the buyer (`getBuyer()`), the market from
+  the place (`marketIn()`), the store's time zone and rates, and the cart (`getCart()`: lines that can be bought, at the
+  shown price, without VAT for a business buyer, before shipping and discounts; products and their categories with their
+  parents). Nothing is written, no cookie or storage is set (no `KNOWN_COOKIES` entry), nothing is recorded, and no table
+  was added, so the personal-data register (D162) and `COPY_RULES` are unchanged. A search engine has no session and no
+  cart, so it sees what a signed-out visitor sees. The admin's previews of a draft (`inAdmin`) draw every part but a Never
+  one. A heading in a part some visitors do not see is not the page's main heading (the title stays, for screen readers).
+- **What the page says about itself** reads only what every visitor sees (`publicRows()`, `readByAnyone()`: Always only):
+  the description when none is written (`pageExcerpt()`: meta, Open Graph, structured data, grids of pages,
+  recommendations) and the chat agent's knowledge (`pageKnowledgeText()`), so a members' paragraph or a Never draft never
+  leaks there. (Found by the e2e: the first build had the hidden words in the meta description.)
+- **What must show to everyone**: the checkout, its payment form and its terms (`storePart` `checkout`,
+  `checkout_payment`, `checkout_terms`, D158) and the withdrawal link (D153) cannot take a display, nor the row and column
+  that hold them (`displayLocked()`; the builder disables the select and says why). Other pieces of the pay routes may
+  (a part shown only to businesses on the cart page); the hole imports nothing in `FORBIDDEN_ON_PAY_ROUTES`.
+- **Ids in rules** (tier, company, product and category ids): `savePage()` keeps only the store's own (`keepOwnRuleIds()` →
+  `ownRuleIds()`: its groups, companies, products not archived and product categories); a template, a page layout and a
+  design profile drop them all (`sanitizeTemplate()` → `withoutRuleIds()`, so `snapshotLayout()` too), keeping the
+  conditions with nothing chosen. A store copy (`clone_store()`, `duplicate_store()`, `clone_page_content()`) copies the
+  JSON in SQL: category ids are remapped already (it swaps every term id it knows), groups and companies are never copied,
+  and products get new ids, so their ids in the copy are not the new store's — they never match a cart (facts come only
+  from the store's own rows), show as **Removed** in the builder, and go on the next save. Remapping products in the copy
+  itself needs a migration (`clone_page_content()` swaps term and menu ids only) and was not done. The builder marks any id
+  the store's lists no longer hold as Removed, with a × to take it out.
+- **A/B tests and copies**: a display is part of the part, so duplicating, saved parts, globals, templates (less foreign
+  ids), page layouts, design profiles and A/B versions keep it, and `partChanges()`/`applyPart()` compare and copy it
+  (`responsive-copies.test.ts` holds it with a display of each kind). A part under test may carry conditions.
+- **The builder** (`src/components/admin/display-fields.tsx`): the Advanced tab's Visibility has **Display** under
+  Breakpoint (`DisplayFields`: Always, Never, Signed-out visitors, Signed-in visitors, Conditional logic); a modal row has
+  Display alone. Conditional logic opens the rule builder (`RuleBuilder`): groups joined by "Or", conditions joined by
+  "And" (each with its fact grouped by Visitor, Place and language, Time, Cart and address, its operator and its value),
+  "+ And" and "+ Or" buttons, the store's time zone above, each condition's problem under it. Values are the store's own:
+  groups, companies (listed only for staff who may read customers, D158; others ask "has a company account"), products
+  (with a search past eight), categories, countries, languages and currencies (`ruleChoices()`, through the page context's
+  `visibilityChoices` action, `storeVisibilityChoicesAction` with the builder's read keys, loaded when the rule builder
+  first opens and kept for the builder); dates and times are the browser's own pickers; a cart value is typed in the
+  currency's major unit and kept in minor units. Kaizen's pages and a design profile's workspace have no choices action
+  (Kaizen's offer only its facts; a workspace's ids would not reach a store). On the canvas every part with a display has
+  an eye (`DisplayBadge`): blue for Never, signed in and signed out, red for conditions (`--chart-1` and `--danger`, the
+  admin's tokens); a Never part is faded and the toolbar's **Hidden parts** switch leaves out every part with a display
+  (`canvasHiddenCss()`); **Who sees what** (`DisplayLegend`) explains the eyes (blue, red, and phase 2's grey) and lists the
+  parts, each opening its settings.
+- **Tests**: `src/lib/visibility.test.ts` (shapes and refusals, every fact and operator, unknown facts, OR and AND, dates and
+  hours in the store's time zone across both daylight-saving changes and midnight, weekdays across the date line, cart
+  values at their edges and across currencies, the limits and the parts that must show, Kaizen's facts, ids found, kept,
+  dropped by templates, and what a page says about itself), `src/components/admin/display-fields.test.ts` (the select, the
+  lock, the rule builder with the store's choices and a removed id, the eyes, the legend, the canvas rules),
+  `src/server/visibility.int.test.ts` (facts of a signed-in customer in a group and a company with a paid order and of a
+  guest; a restricted order and a switched-off company; an expired session; the cart in a euro market, without VAT for a
+  business, against amounts in euro and kroner; Kaizen's facts; ids kept on save; the builder's choices), and
+  `e2e/visibility.spec.ts` (a store page with parts for signed-out and signed-in visitors, a column for signed-in ones, a
+  Never part, a date that holds and one that ended, a country across Norway and Sweden and an address parameter; the
+  whole HTML is read, signed out and with a customer session and its cookie). `e2e/responsive-parity.spec.ts` still finds
+  saved pages unchanged against a capture of phase 3's build (4aa0759).

@@ -4,6 +4,7 @@ import { pageBlocks, type PageContent, type PageType } from "@/lib/page-content"
 import { pageIssues, refusedIssues } from "@/lib/page-a11y";
 import { productBlocks } from "@/lib/product-layout";
 import { siteLayoutProblem } from "@/lib/site-layout";
+import { displayFactsProblem } from "@/lib/visibility";
 
 /** Whose pages: a store's id, or null for Kaizen's own. */
 type PageOwner = string | null;
@@ -22,7 +23,9 @@ export function pageRulesProblem(owner: PageOwner, kind: PageType, content: Page
     searchProblem(owner, type, content) ??
     plansProblem(owner, content) ??
     customFieldProblem(owner, type, content) ??
-    storePartProblem(owner, type, content)
+    storePartProblem(owner, type, content) ??
+    // Who sees a part (D179 phase 4): Kaizen's pages ask only what exists there, a header or footer no address parameters.
+    displayFactsProblem(content.rows, owner === null ? "kaizen" : "store", type)
   );
 }
 

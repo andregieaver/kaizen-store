@@ -545,6 +545,15 @@ export function canvasHiddenCss(rows: PageRow[], breakpoints: Breakpoints, hide:
       byQuery.set(query, [...(byQuery.get(query) ?? []), ...rules]);
     }
   }
+  // Who sees a part (D179 phase 4), at every size: a Never part faded (or, with the switch, every part some visitors do
+  // not see left out); its eye (`DisplayBadge`) is always there.
+  for (const part of parts as (PartBase & { id: string })[]) {
+    const show = part.visibility?.show;
+    if (show === undefined || show === "always" || (!hide && show !== "never")) continue;
+    const item = `[data-builder-id=${quoted(part.id)}]`;
+    const rule = hide ? `${item}{display:none}` : `${item} > [class~=${quoted(partClass(part as { id: string }))}]{opacity:.4}`;
+    byQuery.set("always", [...(byQuery.get("always") ?? []), rule]);
+  }
   return [...byQuery].map(([query, rules]) => (query === "always" ? rules.join("\n") : `${query}{\n${rules.join("\n")}\n}`)).join("\n");
 }
 

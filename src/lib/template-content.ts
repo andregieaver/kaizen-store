@@ -6,6 +6,7 @@ import { ownProducts, type BlockType, type PageBlock, type PageColumn, type Page
 import { layoutBlocks, type PageLayout } from "./page-layout";
 import type { SavedPartKind } from "./saved-parts";
 import { summaryText } from "./templates";
+import { keepRuleIds, mapShows, withoutRuleIds } from "./visibility";
 
 /**
  * Using a template (D125) puts a copy of another owner's saved row, column or component on a store's page, or (D127,
@@ -15,7 +16,8 @@ import { summaryText } from "./templates";
  * every one, and takes the addresses it got back), and nothing here reads a database.
  *
  * What is left out: global marks (the copy is the store's own), form recipients, links and ids that point into
- * the other store (pages, products, categories, tags, menus, custom fields), the publisher's contact details (email
+ * the other store (pages, products, categories, tags, menus, custom fields, and the groups, companies, products and categories
+ * a part's display names, D179), the publisher's contact details (email
  * addresses and phone numbers in links, social profiles), the other owner's code (an HTML component, unless the
  * template is Kaizen's), and every address in Storage until it has been copied.
  */
@@ -247,6 +249,12 @@ function sanitizeBlock(block: PageBlock, from: ForeignStore, trusted: boolean): 
   }
 }
 
+/** A part with no ids of its owner's in its displays' conditions (D179 phase 4). */
+function withoutRuleIdsIn(kind: SavedPartKind, content: PartContent): PartContent {
+  if (kind === "page") return { ...(content as PageLayout), rows: mapShows((content as PageLayout).rows, (show) => keepRuleIds(show, () => false)) };
+  return withoutRuleIds(content as PageRow | PageColumn | PageBlock);
+}
+
 /**
  * A saved part as another store's page may hold it: no global marks (the copy is the store's own), and nothing
  * that points into the store it came from (see the top of this file). Pictures and videos are left for
@@ -270,7 +278,8 @@ export function sanitizeTemplate(
       return href === "" ? (without(column, ["link"]) as PageColumn) : { ...column, link: { ...column.link, href } };
     },
   });
-  const safe = withoutRecipients(cleaned);
+  // Who sees a part (D179 phase 4) comes along; the ids of the other store's groups, companies, products and categories do not.
+  const safe = withoutRuleIdsIn(kind, withoutRecipients(cleaned));
   if (kind !== "page") return safe;
   // A layout's own CSS stays when it is clean and does not reach into the other store's files; else it goes.
   const layout = safe as PageLayout;

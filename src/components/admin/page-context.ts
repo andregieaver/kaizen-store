@@ -11,6 +11,7 @@ import type { TranslateResult } from "@/lib/page-translate-ai";
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import type { PageLanguage } from "@/lib/page-translation";
 import type { TemplateActions } from "@/lib/templates";
+import type { VisibilityChoices } from "@/lib/visibility";
 import type { Term, TermKind } from "@/lib/taxonomy";
 import type { StandardMenus } from "@/lib/site-layout";
 import type { GridStore } from "@/server/content-grid";
@@ -125,6 +126,12 @@ export type PageOwnerContext = {
     gridTerms: (storeId: string) => Promise<Term[]>;
     /** What a custom grid item's link can point at (D155): the owner's pages, products, articles, categories and tags, by address. */
     linkTargets: () => Promise<ItemLinkTargets>;
+    /**
+     * What a part's conditions choose from (D179 phase 4): a store's groups, companies, products, categories, countries,
+     * languages and currencies. Absent for Kaizen's pages (sign-in, language, time and address only) and a design profile's
+     * workspace (whose ids would not reach a store).
+     */
+    visibilityChoices?: () => Promise<VisibilityChoices>;
     /** Saves the owner's CSS for every page (D100); it is live at once. */
     saveSiteCss: (css: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
     /** Copies a Google Fonts family to Kaizen before a block uses it (D59). */

@@ -25,6 +25,7 @@ import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelClass, 
 import { PartStyles } from "./part-styles";
 import { StorePartSection } from "./store-part-section";
 import { SearchSection } from "./search-section";
+import { VisiblePart } from "./visible-part";
 
 /**
  * A page's rows (D42, D43): on the site, and in the admin's preview of a
@@ -56,9 +57,12 @@ export function PageArticle({
   const rows = content.rows.filter(rowShows);
   // A heading component at level 1, or a product's title (D79), is the page's main heading (D49); else the title is, for screen readers.
   // (A modal's headings are its own: it is not in the page's flow, D121.)
+  // A heading in a part some visitors do not see (D179 phase 4) does not count: the title stays for them.
   const hasMainHeading = flowRows(rows).some((row) =>
+    seenByAll(row) &&
     row.columns.some((c) =>
-      c.blocks.some((b) => (b.type === "heading" && b.level === 1 && blockShowsUnbound(b)) || (b.type === "product" && b.part === "title")),
+      seenByAll(c) &&
+      c.blocks.some((b) => seenByAll(b) && ((b.type === "heading" && b.level === 1 && blockShowsUnbound(b)) || (b.type === "product" && b.part === "title"))),
     ),
   );
   // Motion (D128): the first flow row is drawn without waiting for scripts; the runtime is loaded only if something needs it.
@@ -89,6 +93,9 @@ export const pageRoomClass = (content: Pick<PageContent, "rows">, top: string, b
   return [rows[0]?.background ? "" : top, rows.at(-1)?.background ? "" : bottom].filter(Boolean).join(" ");
 };
 
+/** Whether every visitor sees a part (its display is Always, D179 phase 4). */
+const seenByAll = (part: { visibility?: { show?: unknown } }) => part.visibility?.show === undefined || part.visibility.show === "always";
+
 /** A row shows when something in it does, or it has a background of its own. */
 export const rowShows = (row: PageRow) =>
   Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockShowsUnbound));
@@ -117,11 +124,14 @@ export function PageRowView({
     <>
       {/* What the row's settings say at each screen size (D179). */}
       <PartStyles rows={[row]} owner={place.owner} />
-      {row.modal ? (
-        <ModalRow row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />
-      ) : (
-        <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} />
-      )}
+      {/* Who sees the row (D179 phase 4): the server leaves it out for anyone else. */}
+      <VisiblePart show={row.visibility?.show} place={place} preview={inAdmin}>
+        {row.modal ? (
+          <ModalRow row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />
+        ) : (
+          <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} preview={inAdmin} />
+        )}
+      </VisiblePart>
     </>
   );
 }
@@ -153,7 +163,7 @@ export async function ModalRow({
       labels={{ close: m.close, dialog: m.dialog }}
       panelClassName={modalPanelClass(row)}
     >
-      <RowMarkup row={panelRow} place={place} renderBlock={renderBlock} inPanel />
+      <RowMarkup row={panelRow} place={place} renderBlock={renderBlock} inPanel preview={inAdmin} />
     </PageModal>
   );
 }
@@ -165,12 +175,15 @@ function RowMarkup({
   renderBlock,
   inPanel = false,
   first = false,
+  preview = false,
 }: {
   row: PageRow;
   place: GridPlace;
   renderBlock?: (block: PageBlock) => ReactNode;
   inPanel?: boolean;
   first?: boolean;
+  /** The admin's preview: every part but a Never one is drawn (`VisiblePart`). */
+  preview?: boolean;
 }) {
   const box = rowBox(row, "site", inPanel);
   const grid = rowGrid(row);
@@ -192,7 +205,8 @@ function RowMarkup({
                 parentEnter: row.motion?.enter,
               });
               return (
-                <div key={column.id} id={col.id} className={col.className} style={{ ...col.style, ...colFx.style }} {...colFx.attrs}>
+                <VisiblePart key={column.id} show={column.visibility?.show} place={place} preview={preview}>
+                <div id={col.id} className={col.className} style={{ ...col.style, ...colFx.style }} {...colFx.attrs}>
                   <FontLinks families={partFonts(column)} />
                   <PartBackground background={column.background} motion={column.backgroundMotion} firstRow={first} />
                   <ColumnLinkCover column={column} />
@@ -209,7 +223,8 @@ function RowMarkup({
                     const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;
                     if (own === null) return null;
                     return (
-                      <div key={block.id} id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs}>
+                      <VisiblePart key={block.id} show={block.visibility?.show} place={place} preview={preview}>
+                      <div id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs}>
                         <FontLinks families={blockFonts(block)} />
                         {own !== undefined ? (
                           own
@@ -238,9 +253,11 @@ function RowMarkup({
                           <PageBlockView block={block} />
                         )}
                       </div>
+                      </VisiblePart>
                     );
                   })}
                 </div>
+                </VisiblePart>
               );
             })}
           </div>

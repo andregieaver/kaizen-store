@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return platformPageMetadata(found.page, `/${found.page.slug}`);
 }
 
-export default async function PlatformPage({ params }: Props) {
+export default async function PlatformPage({ params, searchParams }: Props) {
   const found = await load(params);
   if (!found) notFound();
   // A page that moved: its old address leads to the new one for good.
@@ -44,5 +44,5 @@ export default async function PlatformPage({ params }: Props) {
     if (address) permanentRedirect(address);
     notFound();
   }
-  return <PlatformPageView page={page} url={`/${page.slug}`} />;
+  return <PlatformPageView page={page} url={`/${page.slug}`} query={searchParams} />;
 }

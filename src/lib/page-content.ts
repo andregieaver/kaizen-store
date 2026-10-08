@@ -21,6 +21,7 @@ import { sourceTraits } from "./grid-source";
 import { menuLinkSchema, type MenuLink } from "./navigation";
 import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
 import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
+import { displaysProblem, publicRows, showSchema, type Show } from "./visibility";
 import { foldTypography, typographyAtSchema, typographyFamilies, typographyGroupsSchema, type TypographyGroups, type TypographyGroupsAt } from "./typography";
 import { SIZES, type Size, type SmallerSize } from "./breakpoints";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
@@ -356,7 +357,7 @@ export type PartBase = {
    * values, and each size holds only what it changes, read with `valueAt()` from smaller to larger.
    */
   at?: SizeOverrides;
-  /** Where the part shows (D179): `hideAt` leaves it out at those sizes (CSS). Sign-in and conditions come in phase 4. */
+  /** Where the part shows (D179): `hideAt` leaves it out at those sizes (CSS); `show` by sign-in or conditions (phase 4, the server). */
   visibility?: Visibility;
   /**
    * Its text's look per kind of text (D179 phase 3, `src/lib/typography.ts`): family, weight, size, line height, alignment,
@@ -403,7 +404,11 @@ export type PartSizeSettings = {
 /** Per smaller size, what differs from the size above (D179). */
 export type SizeOverrides = Partial<Record<SmallerSize, PartSizeSettings>>;
 /** Where a part shows (D179 6): by screen size for now. */
-export type Visibility = { hideAt?: Size[] };
+/**
+ * Where a part shows (D179): `hideAt` leaves it out at those sizes (CSS); `show` is who sees it (phase 4, `src/lib/visibility.ts`):
+ * never, signed in, signed out or by conditions, decided by the server (`<VisiblePart>`); always when unset.
+ */
+export type Visibility = { hideAt?: Size[]; show?: Show };
 /**
  * A row's or column's background (D48): a colour, or a picture with an
  * optional colour over it. A colour can be see-through (`opacity` 0–99; solid
@@ -1936,11 +1941,14 @@ const sizeOverrides = z
     return Object.keys(kept).length > 0 ? kept : undefined;
   });
 const visibility = z
-  .object({ hideAt: z.array(z.enum(SIZES)).max(SIZES.length).optional() })
+  .object({ hideAt: z.array(z.enum(SIZES)).max(SIZES.length).optional(), show: showSchema.optional() })
   .optional()
-  .transform((value) => {
+  .transform((value): Visibility | undefined => {
     const hideAt = SIZES.filter((size) => value?.hideAt?.includes(size));
-    return hideAt.length > 0 ? { hideAt } : undefined;
+    // Always is what nothing set means (D179 phase 4), so it is not stored.
+    const show = value?.show === "always" ? undefined : value?.show;
+    const kept: Visibility = { ...(hideAt.length > 0 && { hideAt }), ...(show !== undefined && { show }) };
+    return Object.keys(kept).length > 0 ? kept : undefined;
   });
 
 const partBase = {
@@ -2803,6 +2811,9 @@ export const pageInput = z.preprocess(
       if (sameModal) ctx.addIssue({ code: "custom", message: `Two modals on the page have the address name "${sameModal}". Give each its own.` });
       const twice = repeatedHtmlId(page.rows);
       if (twice) ctx.addIssue({ code: "custom", message: `Two parts of the page have the id "${twice}". Give each its own.` });
+      // Who sees a part (D179 phase 4): at most so many checked per request, never on what every buyer must see.
+      const display = displaysProblem(page.rows);
+      if (display) ctx.addIssue({ code: "custom", message: display });
     }),
 );
 
@@ -2829,8 +2840,8 @@ export function parsePageContent(value: unknown): PageContent | null {
 
 /** The page's words, for the description when none is written. */
 export function pageExcerpt(content: Pick<PageContent, "rows">, max?: number): string {
-  // What a modal says is not what the page is about (D121).
-  return summarize(pageBlocks({ rows: content.rows.filter((row) => !row.modal) }).map(blockText).join(" "), max);
+  // What a modal says is not what the page is about (D121); a part not every visitor sees is not either (D179 phase 4).
+  return summarize(pageBlocks({ rows: publicRows(content.rows).filter((row) => !row.modal) }).map(blockText).join(" "), max);
 }
 
 /** Whether two versions of a page say the same (the draft and what is published). */

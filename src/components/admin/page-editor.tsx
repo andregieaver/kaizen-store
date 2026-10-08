@@ -430,6 +430,7 @@ export function PageEditor({
           menusHref: context.menusHref,
           plans: context.plans,
           features: context.features ?? null,
+          shape,
           actions,
         }}
         aside={

@@ -17,9 +17,9 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** The platform's front page: one of Kaizen's own pages where one is chosen (D143), else the standard one. Sign-up opens with the invite-only beta. */
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const chosen = await platformPageForRole("front");
-  if (chosen) return <PlatformPageView page={chosen} url="/" front />;
+  if (chosen) return <PlatformPageView page={chosen} url="/" front query={searchParams} />;
   const [demo, seo] = await Promise.all([templateStoreSlug(), getPlatformSeo()]);
   return (
     <main id="main" className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 px-6 py-24">

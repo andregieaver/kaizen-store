@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { blockText, type PageContent } from "./page-content";
+import { publicRows } from "./visibility";
 
 /**
  * The chat agent's knowledge (D81), the pure parts: a site's pages,
@@ -95,6 +96,7 @@ export function cutPassages(text: string, max = PASSAGE_MAX): string[] {
 
 /** A page's or article's words for the agent: its title, then every block's text in order. */
 export function pageKnowledgeText(content: Pick<PageContent, "title" | "rows">): string {
-  const blocks = content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks.map(blockText)));
+  // Only what any visitor reads (D179 phase 4): the chat agent answers anyone.
+  const blocks = publicRows(content.rows).flatMap((row) => row.columns.flatMap((column) => column.blocks.map(blockText)));
   return cleanDocumentText(blocks.filter((text) => text.trim()).join("\n\n"));
 }

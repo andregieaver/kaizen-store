@@ -17,8 +17,8 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** Kaizen's blog (D57): one of its own pages where one is chosen (D143), else its articles, newest first. */
-export default async function BlogPage() {
+export default async function BlogPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const page = await platformPageForRole("blog");
-  if (page) return <PlatformPageView page={page} url="/blog" />;
+  if (page) return <PlatformPageView page={page} url="/blog" query={searchParams} />;
   return <BlogIndex />;
 }

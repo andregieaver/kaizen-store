@@ -32,6 +32,7 @@ import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./glob
 import { withPageAlts } from "./media-alts";
 import { pageRulesProblem, payPageProblem } from "./page-rules";
 import { scopedTermIds } from "./taxonomy";
+import { keepOwnRuleIds } from "./visibility";
 
 /**
  * Pages built in the page builder (D42), Kaizen's own (`owner` null, served
@@ -250,6 +251,8 @@ export async function savePage(
     // Only articles have an author (D57).
     ...(type === "article" && author ? { author } : {}),
   };
+  // Who sees a part (D179 phase 4): only the store's own groups, companies, products and categories stay in its conditions.
+  content = { ...content, rows: await keepOwnRuleIds(owner, content.rows) };
   // The page checker (wave 1, 1e): what a shopper, a screen reader or the checkout's policy would meet. The checkout page may not hold
   // what the policy would break (refused on any save); publishing with another blocking issue asks first, on the server, so skipping
   // the dialog cannot skip the question. A draft is never held back.

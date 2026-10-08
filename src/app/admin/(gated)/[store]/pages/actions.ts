@@ -16,7 +16,9 @@ import { AiError, aiFor } from "@/server/ai";
 import { db } from "@/db/client";
 import { type Membership } from "@/server/auth";
 import { BUILDER_READ, BUILDER_WRITE } from "@/lib/permissions";
-import { NO_ACCESS, checkAnyPermission, checkPageTypeAccess, checkPermission, requireAnyPermission } from "@/server/permissions";
+import { NO_ACCESS, checkAnyPermission, checkPageTypeAccess, checkPermission, memberCan, requireAnyPermission } from "@/server/permissions";
+import type { VisibilityChoices } from "@/lib/visibility";
+import { ruleChoices } from "@/server/visibility";
 import { fieldsTag, pageFacts, saveFieldData } from "@/server/custom-fields";
 import { itemLinkTargets, type ItemLinkTargets } from "@/server/link-targets";
 import { recommendedGridData } from "@/server/recommend-grid";
@@ -340,6 +342,15 @@ export async function storeGridTermsAction(storeSlug: string, _storeId: string):
 export async function storeLinkTargetsAction(storeSlug: string): Promise<ItemLinkTargets> {
   const member = await requireAnyPermission(storeSlug, BUILDER_READ);
   return itemLinkTargets(member.store.id, member.store.localization.locales[0] ?? "en-GB");
+}
+
+/**
+ * What a part's conditions choose from (D179 phase 4): the store's groups, products, categories, countries, languages and
+ * currencies, and its companies only for staff who may read customers (D158).
+ */
+export async function storeVisibilityChoicesAction(storeSlug: string): Promise<VisibilityChoices> {
+  const member = await requireAnyPermission(storeSlug, BUILDER_READ);
+  return ruleChoices(member.store, memberCan(member, "customers:read"));
 }
 
 /**

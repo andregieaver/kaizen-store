@@ -16,6 +16,9 @@ import {
   type Size,
 } from "@/lib/breakpoints";
 import { clearAt, sizeSource, visibilityPatch, type SizeField, type SizeSource } from "@/lib/responsive";
+import type { Show } from "@/lib/visibility";
+
+import { DisplayFields, showPatch, type DisplaySetup } from "./display-fields";
 import type { SizeOverrides } from "@/lib/page-content";
 
 /**
@@ -167,10 +170,13 @@ export function VisibilityFields({
   part,
   onChange,
   locked,
+  display,
 }: {
-  part: { visibility?: { hideAt?: Size[] } };
-  onChange: (patch: { visibility: { hideAt?: Size[] } | undefined }) => void;
+  part: { visibility?: { hideAt?: Size[]; show?: Show } };
+  onChange: (patch: { visibility: { hideAt?: Size[]; show?: Show } | undefined }) => void;
   locked?: string;
+  /** Who sees the part (phase 4): the page's facts and the store's choices; `locked` says why it is always shown. Absent: no Display. */
+  display?: { setup: DisplaySetup; locked?: string };
 }) {
   const hidden = new Set(part.visibility?.hideAt ?? []);
   const hint = useId();
@@ -207,6 +213,14 @@ export function VisibilityFields({
         </p>
       </div>
       {/* Display (phase 4, docs/responsive-editing.md 6): always, never, signed in, signed out or by conditions, left out by the server. */}
+      {display && (
+        <DisplayFields
+          show={part.visibility?.show}
+          setup={display.setup}
+          locked={display.locked}
+          onChange={(show) => onChange(showPatch(part.visibility, show))}
+        />
+      )}
     </fieldset>
   );
 }
@@ -425,7 +439,7 @@ export function HiddenPartsToggle({ hide, onChange }: { hide: boolean; onChange:
       role="switch"
       aria-checked={hide}
       onClick={() => onChange(!hide)}
-      title="Parts hidden at the size shown"
+      title="Parts hidden at the size shown, never shown, or shown only to some visitors (by sign-in or conditions)"
       className="flex min-h-9 items-center gap-2 rounded-md border border-border px-3 text-sm aria-checked:border-foreground aria-checked:bg-surface aria-checked:font-medium"
     >
       <Eye aria-hidden className="size-4" strokeWidth={1.75} />

@@ -29,7 +29,8 @@ const sized: PageBlock = {
     md: { radius: 0, border: null, typography: { text: { align: "center", letterSpacing: { value: 0.05, unit: "em" } } } },
     sm: { style: { margin: { top: 4, right: 0, bottom: 4, left: 0 } }, typography: { text: { size: { value: 1.5, unit: "rem" }, textShadow: null } } },
   },
-  visibility: { hideAt: ["sm"] },
+  // Who sees it (D179 phase 4) is part of the part too.
+  visibility: { hideAt: ["sm"], show: "signedIn" },
 } as PageBlock;
 const row: PageRow = {
   id: "r1",
@@ -37,10 +38,10 @@ const row: PageRow = {
   layout: "2",
   gap: 24,
   at: { sm: { stack: false, gap: 8, typography: { text: { transform: "uppercase" } } } },
-  visibility: { hideAt: ["xl"] },
+  visibility: { hideAt: ["xl"], show: { rules: [[{ fact: "hour", op: "between", value: { from: "09:00", to: "17:00" } }], [{ fact: "language", op: "in", value: ["en"] }]] } },
   typography: { text: { weight: 300, style: "italic" } },
   columns: [
-    { id: "c1", blocks: [sized], width: 2, at: { md: { width: 1, order: -1 } }, visibility: { hideAt: ["md"] } },
+    { id: "c1", blocks: [sized], width: 2, at: { md: { width: 1, order: -1 } }, visibility: { hideAt: ["md"], show: "never" } },
     { id: "c2", blocks: [] },
   ],
 };

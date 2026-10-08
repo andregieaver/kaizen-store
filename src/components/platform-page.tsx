@@ -36,7 +36,18 @@ export function platformPageMetadata(page: PublishedPage, url: string): Metadata
   };
 }
 
-export async function PlatformPageView({ page, url, front = false }: { page: PublishedPage; url: string; front?: boolean }) {
+export async function PlatformPageView({
+  page,
+  url,
+  front = false,
+  query,
+}: {
+  page: PublishedPage;
+  url: string;
+  front?: boolean;
+  /** The address's parameters, read only by a part shown by conditions (D179 phase 4). */
+  query?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const c = page.content;
   const origin = siteUrl();
   // Kaizen's header may lie over its pages (D80), over a front page's first row too.
@@ -55,7 +66,7 @@ export async function PlatformPageView({ page, url, front = false }: { page: Pub
           publishedAt: page.publishedAt,
         })}
       />
-      <PageArticle content={c} place={{ pageId: page.id, owner: null }} />
+      <PageArticle content={c} place={{ pageId: page.id, owner: null, query }} />
       <PageEditLink pageId={page.id} />
     </main>
   );

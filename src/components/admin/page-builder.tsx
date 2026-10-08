@@ -267,6 +267,8 @@ import { VideoUploadButton, type StartVideo } from "./video-upload";
 import type { PageOwnerContext } from "./page-context";
 import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
+import { DisplayBadge, DisplayFields, DisplayLegend, showPatch, type DisplaySetup } from "./display-fields";
+import { displayLocked, factsOffered, type Show } from "@/lib/visibility";
 
 /**
  * The page builder (D43, D44): a left sidebar with tabs (components, rows,
@@ -453,6 +455,8 @@ export type GridContext = {
    * that is off; absent for Kaizen's pages and a design profile's workspace, which offer every part.
    */
   features?: readonly string[] | null;
+  /** The kind of page the builder edits as (a version of a page is a page, D148): what a part's display may ask about (D179 phase 4). */
+  shape?: PageType;
   actions: PageOwnerContext["actions"];
 };
 
@@ -601,6 +605,8 @@ export function PageBuilder({
   );
   /** Parts hidden at the size shown: faded with an eye, or left out as on the site. */
   const [hideHidden, setHideHidden] = useState(false);
+  // The parts some visitors do not see (D179 phase 4), for the legend over the canvas.
+  const displayed = useMemo(() => displayedParts(rows), [rows]);
   const toggleResponsive = responsive.toggle;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -923,6 +929,7 @@ export function PageBuilder({
                 />
               </div>
               <div role="toolbar" aria-label="Screen sizes" className="flex flex-wrap items-center gap-2">
+                <DisplayLegend parts={displayed} onOpen={(id) => setDialog(displayDialog(rows, id))} />
                 <HiddenPartsToggle hide={hideHidden} onChange={setHideHidden} />
                 <ResponsiveToggle on={responsive.view !== null} onToggle={responsive.toggle} />
               </div>
@@ -2185,6 +2192,7 @@ function RowItem({
       )}
       <Line at={line} />
       <HiddenBadge hideAt={row.visibility?.hideAt} />
+      <DisplayBadge show={row.visibility?.show} />
       {/* A modal's row stays in the page here (D121): badged, with a preview of the real modal. */}
       {row.modal && <ModalBar row={row} lang={actions.lang} />}
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
@@ -2305,6 +2313,7 @@ function ColumnItem({
       )}
       <Line at={columnLine} vertical />
       <HiddenBadge hideAt={column.visibility?.hideAt} />
+      <DisplayBadge show={column.visibility?.show} />
       {/* The column itself, as the site draws it, inside its band for pointing. */}
       <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
       <PartBackground background={column.background} {...canvasBackground(actions.motionPreview, column.backgroundMotion)} />
@@ -2437,6 +2446,7 @@ function BlockItem({
       )}
       <Line at={line} />
       <HiddenBadge hideAt={block.visibility?.hideAt} />
+      <DisplayBadge show={block.visibility?.show} />
       <div className={box.className || undefined} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
         <FontLinks families={blockFonts(block)} />
         {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
@@ -2521,6 +2531,43 @@ export { ColorField };
 // Dialogs
 // ---------------------------------------------------------------------------
 
+/** The parts with a display other than Always, named as the canvas names them (D179 phase 4). */
+function displayedParts(rows: PageRow[]): { id: string; name: string; show: Show }[] {
+  const found: { id: string; name: string; show: Show }[] = [];
+  rows.forEach((row, r) => {
+    const rowName = `Row ${r + 1}`;
+    if (row.visibility?.show) found.push({ id: row.id, name: rowName, show: row.visibility.show });
+    row.columns.forEach((column, c) => {
+      const columnName = `${rowName}, column ${c + 1}`;
+      if (column.visibility?.show) found.push({ id: column.id, name: columnName, show: column.visibility.show });
+      column.blocks.forEach((block, b) => {
+        if (block.visibility?.show) found.push({ id: block.id, name: `${columnName}, ${blockLabels[block.type].toLowerCase()} ${b + 1}`, show: block.visibility.show });
+      });
+    });
+  });
+  return found;
+}
+
+/** The settings dialog of the row, column or block with this id. */
+function displayDialog(rows: PageRow[], id: string): Dialog {
+  for (const row of rows) {
+    if (row.id === id) return { kind: "edit-row", rowId: row.id, columnId: null };
+    for (const column of row.columns) {
+      if (column.id === id) return { kind: "edit-row", rowId: row.id, columnId: column.id };
+      if (column.blocks.some((block) => block.id === id)) return { kind: "edit-block", blockId: id };
+    }
+  }
+  return { kind: "edit-block", blockId: id };
+}
+
+/** What a part's Display offers on this page (D179 phase 4): its facts by owner and kind of page, and the store's choices. */
+function useDisplaySetup(grid: GridContext, pageType: PageType): DisplaySetup {
+  const kaizen = grid.owner === null;
+  const shape = grid.shape ?? pageType;
+  const choices = grid.actions.visibilityChoices;
+  return useMemo(() => ({ kaizen, facts: factsOffered(kaizen ? "kaizen" : "store", shape), choices }), [kaizen, shape, choices]);
+}
+
 function Dialogs({
   dialog,
   rows,
@@ -2559,6 +2606,8 @@ function Dialogs({
 }) {
   // The screen size the fields edit (D179 phase 2): Extra large is the parts' own settings, a smaller size its overrides.
   const { size } = useSizeEdit();
+  // Who sees a part (D179 phase 4): the facts the page offers and the store's choices.
+  const displaySetup = useDisplaySetup(grid, pageType);
   if (translate) return <TranslateDialogs dialog={dialog} rows={rows} onRows={onRows} onClose={onClose} translate={translate} />;
   /** A change made in a field at the size edited (`setAt()`), to the part as it is when it lands. */
   const sizedPatch = (target: Styled, patch: Partial<PartBase>) =>
@@ -2611,11 +2660,22 @@ function Dialogs({
           motion={part.motion}
           onChange={(motion) => onRows((current) => patchPart(current, target, { motion }))}
         />
-        {/* Beaver's Visibility (D179): by screen size here; sign-in and conditions are phase 4. A modal opens over any size. */}
-        {!row?.modal && (
+        {/* Beaver's Visibility (D179): by screen size, and who sees it (phase 4). A modal opens over any size, so it has Display only. */}
+        {row?.modal ? (
+          <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+            <legend className="float-left mb-1 w-full font-medium">Visibility</legend>
+            <DisplayFields
+              show={part.visibility?.show}
+              setup={displaySetup}
+              locked={displayLocked(part) ?? undefined}
+              onChange={(show) => plainPatch(target)(showPatch(part.visibility, show))}
+            />
+          </fieldset>
+        ) : (
           <VisibilityFields
             part={part}
             onChange={plainPatch(target)}
+            display={{ setup: displaySetup, locked: displayLocked(part) ?? undefined }}
             locked={
               block?.type === "site" && block.part === "withdrawal"
                 ? "The withdrawal link is for every visitor, so it shows at every size."
