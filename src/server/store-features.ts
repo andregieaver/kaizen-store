@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { homeMarket } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
+import { planFeatureChanges, targetProblems } from "@/lib/onboarding";
 import {
   FEATURES_BY_ID,
   dependentsOf,
@@ -179,7 +180,7 @@ export async function setFeature(member: Membership, id: FeatureId, on: boolean,
   if (!memberCan(member, "owner")) return { ok: false, problems: ["Only an owner can switch features on or off."] };
   const feature = FEATURES_BY_ID[id];
   if (!feature) return { ok: false, problems: ["There is no such feature."] };
-  const { store, account } = member;
+  const { store } = member;
   const locale = homeMarket(store)?.locale ?? "en";
 
   const outcome = await db().transaction(async (tx): Promise<SetFeatureResult & { before?: FeatureId[] }> => {
@@ -217,6 +218,13 @@ export async function setFeature(member: Membership, id: FeatureId, on: boolean,
 
   if (!outcome.ok || !outcome.changed) return outcome;
   const { before = [], features: after } = outcome;
+  await auditSwitch(member, id, on, before, after);
+  refreshFeatureTags(store);
+  return { ok: true, features: after, changed: true };
+}
+
+/** One switch in the activity log (`store.feature`, area settings): the feature, on or off, and what came on or went to sleep with it. */
+async function auditSwitch({ account, store }: Membership, id: FeatureId, on: boolean, before: FeatureId[], after: FeatureId[], extra: Record<string, unknown> = {}): Promise<void> {
   await audit(
     account.id,
     store.id,
@@ -226,11 +234,66 @@ export async function setFeature(member: Membership, id: FeatureId, on: boolean,
       on,
       // What else came on or went to sleep with it (the referral program with the bonus program, everything with the shop).
       alsoAffected: dependentsOf(id).filter((dep) => featureOn(before, dep) !== featureOn(after, dep)),
+      ...extra,
     },
     { area: "settings", target: { type: "store", id: store.id }, changes: { features: { from: before, to: after } } },
   );
-  refreshFeatureTags(store);
-  return { ok: true, features: after, changed: true };
+}
+
+export type SetFeaturesResult =
+  | { ok: true; features: FeatureId[]; changes: { id: FeatureId; on: boolean }[] }
+  | { ok: false; problems: string[]; blockers?: FeatureBlocker[]; warnings?: string[]; needsConfirmation?: boolean };
+
+/**
+ * Sets a store's kept features to a whole set at once (D178 step 6: the setup wizard's answers, a store template's features), with
+ * `setFeature()`'s rules for each switch: owners only, the set must hold together (each feature with what it needs), nothing is switched off
+ * while customers would be hit (`featureBlockers()`), and warnings need `confirmed`. The switches are made in an order each can be made in
+ * (`planFeatureChanges()`: off from the dependents up, then on from the shop down), all in one transaction under the store's row lock, so
+ * either all are made or none; each is audited as `store.feature` (with `via`), and the caches are refreshed once.
+ */
+export async function setFeatures(member: Membership, target: readonly FeatureId[], options: SetFeatureOptions & { via?: string } = {}): Promise<SetFeaturesResult> {
+  if (!memberCan(member, "owner")) return { ok: false, problems: ["Only an owner can switch features on or off."] };
+  const wanted = normaliseFeatures(target);
+  const holes = targetProblems(wanted);
+  if (holes.length > 0) return { ok: false, problems: holes };
+  const { store } = member;
+  const locale = homeMarket(store)?.locale ?? "en";
+
+  const outcome = await db().transaction(async (tx): Promise<SetFeaturesResult & { steps?: { id: FeatureId; on: boolean; before: FeatureId[]; after: FeatureId[] }[] }> => {
+    const [row] = await tx.execute<Row>(sql`select features from commerce.stores where id = ${store.id}::uuid for update`);
+    if (!row) return { ok: false, problems: ["That store is gone."] };
+    const before = normaliseFeatures(((row.features ?? []) as unknown[]).map(String));
+    const changes = planFeatureChanges(before, wanted);
+    if (changes.length === 0) return { ok: true, features: before, changes: [], steps: [] };
+
+    // Every switch is judged in the state the ones before it leave, from one count of the store's data (switches change no data).
+    const facts = changes.some((c) => !c.on) ? await featureFacts(store.id, tx) : null;
+    const blockers: FeatureBlocker[] = [];
+    const warnings: string[] = [];
+    const steps: { id: FeatureId; on: boolean; before: FeatureId[]; after: FeatureId[] }[] = [];
+    let state = before;
+    for (const change of changes) {
+      const next = normaliseFeatures(change.on ? [...state, change.id] : state.filter((f) => f !== change.id));
+      if (!change.on && facts && featureOn(state, change.id)) {
+        blockers.push(...featureBlockers(change.id, facts));
+        warnings.push(...featureWarnings(change.id, facts, state, moneyIn(locale)));
+      }
+      steps.push({ ...change, before: state, after: next });
+      state = next;
+    }
+    if (blockers.length > 0) {
+      return { ok: false, problems: ["Not everything can be switched off yet.", ...blockers.map((b) => b.text)], blockers, warnings };
+    }
+    if (warnings.length > 0 && !options.confirmed) return { ok: false, problems: ["Confirm to switch them off."], warnings, needsConfirmation: true };
+    await tx.execute(sql`update commerce.stores set features = ${`{${state.join(",")}}`}::text[] where id = ${store.id}::uuid`);
+    return { ok: true, features: state, changes, steps };
+  });
+
+  if (!outcome.ok) return outcome;
+  const { steps = [], features, changes } = outcome;
+  for (const step of steps) await auditSwitch(member, step.id, step.on, step.before, step.after, options.via ? { via: options.via } : {});
+  if (steps.length > 0) refreshFeatureTags(store);
+  return { ok: true, features, changes };
 }
 
 /**

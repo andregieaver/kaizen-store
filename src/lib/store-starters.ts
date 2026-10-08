@@ -5,6 +5,9 @@
  * the tests.
  */
 
+import { featureSummary } from "./onboarding";
+import { NEW_STORE_FEATURES } from "./store-features";
+
 export const STARTER_CATEGORIES = ["appointments", "retail", "downloads", "rentals_stays", "subscriptions", "services", "other"] as const;
 export type StarterCategory = (typeof STARTER_CATEGORIES)[number];
 
@@ -36,6 +39,8 @@ export type OfferedStarter = {
   pictureUrl: string | null;
   /** The template's store, whose storefront is the preview. */
   storeSlug: string;
+  /** What a store made from it starts with switched on (D178 step 6): the features its store keeps (`stores.features`). */
+  features: string[];
 };
 
 /**
@@ -56,6 +61,8 @@ export type StarterRow = OfferedStarter & {
   recommendedDesign: string | null;
   /** Details saved but not published (D177), or null. */
   draft: StarterDetails | null;
+  /** What the frozen copy keeps switched on (D178 step 6): what stores made from it get now; null before it was published under D177. */
+  publishedFeatures: string[] | null;
   /** The frozen copy's address (D177), or null when it was not published under D177 yet. */
   publishedSlug: string | null;
   publishedAt: string | null;
@@ -72,6 +79,8 @@ export type StarterCard = Pick<OfferedStarter, "title" | "summary" | "descriptio
   category: OfferedStarter["category"] | null;
   /** The template's storefront, opened in a new window; null when there is none to show. */
   previewHref: string | null;
+  /** What it switches on, in a few words (`featureSummary()`, D178 step 6). */
+  featureWords?: string | null;
 };
 
 /** The Standard store's card: the default template, offered first (D175). */
@@ -84,6 +93,8 @@ export function standardCard(previewHref: string | null): StarterCard {
     category: null,
     pictureUrl: null,
     previewHref,
+    // A store from the default template starts with the online shop alone (D178).
+    featureWords: featureSummary(NEW_STORE_FEATURES),
   };
 }
 

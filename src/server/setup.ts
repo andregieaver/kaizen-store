@@ -3,36 +3,36 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { featuresForAnswers, targetFeatures, type OnboardingAnswers } from "@/lib/onboarding";
 import { featureOn } from "@/lib/store-features";
 
 import { audit, type Membership } from "./auth";
+import { setFeatures, type SetFeaturesResult } from "./store-features";
 import { getPaymentSettings, type SaveResult } from "./settings";
 import type { Store, StoreDetails } from "./stores";
 
 type Row = Record<string, unknown>;
 
-/** The setup wizard's steps, in order. */
-export const SETUP_STEPS = [
-  { id: "details", title: "Your business" },
-  { id: "countries", title: "Where you sell" },
-  { id: "payments", title: "Payments" },
-  { id: "products", title: "Products" },
-  { id: "launch", title: "Open your store" },
-] as const;
+// The wizard's steps follow the store's features (D178 step 6): `src/lib/setup-steps.ts`.
+export { isSetupStep, SETUP_STEPS, setupStepsFor, type SetupStepId } from "@/lib/setup-steps";
 
-export type SetupStepId = (typeof SETUP_STEPS)[number]["id"];
-
-export function isSetupStep(value: string): value is SetupStepId {
-  return SETUP_STEPS.some((step) => step.id === value);
-}
+/**
+ * The audit action written when the owner answers the wizard's question "What will you sell?" (D178 step 6). The answers themselves are the
+ * store's features; this entry is how the wizard knows the question was answered, read from the activity log rather than stored apart.
+ */
+export const FEATURES_CHOSEN = "store.features_chosen";
 
 /** Demo products copied from the template have handles starting with `demo-`. */
 const DEMO_HANDLE = "demo-%";
 
 export type SetupProgress = {
+  /** The owner answered "What will you sell?" (an entry of `FEATURES_CHOSEN` in the store's activity log). */
+  features: boolean;
   details: boolean;
   countries: boolean;
   payments: boolean;
+  /** With Appointments on, staff to book; with Stays and rentals on, a room or an item (only asked while either is on). */
+  bookings: boolean;
   /** Stripe switched on, so shoppers can pay. */
   paymentsOn: boolean;
   /** Every country the store sells to has a shipping price. */
@@ -42,7 +42,7 @@ export type SetupProgress = {
   plan: boolean;
   /** Everything the store needs before it can open. */
   readyToOpen: boolean;
-  counts: { demoProducts: number; ownProducts: number };
+  counts: { demoProducts: number; ownProducts: number; staff: number; units: number };
 };
 
 /**
@@ -50,7 +50,7 @@ export type SetupProgress = {
  * the checklist stays right whichever page a change was made on.
  */
 export async function getSetupProgress(store: Store): Promise<SetupProgress> {
-  const [[counts], payments, [shippingRow], [planRow]] = await Promise.all([
+  const [[counts], payments, [shippingRow], [planRow], [facts]] = await Promise.all([
     db().execute<Row>(sql`
       select
         count(*) filter (where handle like ${DEMO_HANDLE} and status = 'active')::int as demo,
@@ -67,15 +67,25 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
       select 1 as on_plan from commerce.store_billing
       where store_id = ${store.id}::uuid and status in ('trialing', 'active', 'past_due')
     `),
+    db().execute<Row>(sql`
+      select
+        exists (select 1 from commerce.audit_log a where a.store_id = ${store.id}::uuid and a.action = ${FEATURES_CHOSEN}) as chosen,
+        (select count(*)::int from commerce.booking_resources r where r.store_id = ${store.id}::uuid and r.kind = 'staff' and r.active) as staff,
+        (select count(*)::int from commerce.booking_resources r where r.store_id = ${store.id}::uuid and r.kind in ('unit', 'item') and r.active) as units
+    `),
   ]);
   const d = store.details;
   const details = Boolean(d.legalName && d.contactEmail && d.postalAddress && d.country);
   const countries = store.keptMarkets.length > 0;
   const demoProducts = Number(counts?.demo ?? 0);
   const ownProducts = Number(counts?.own ?? 0);
+  const bookings =
+    (!featureOn(store, "appointments") || Number(facts?.staff ?? 0) > 0) && (!featureOn(store, "bookings") || Number(facts?.units ?? 0) > 0);
   return {
+    features: Boolean(facts?.chosen),
     details,
     countries,
+    bookings,
     // Test payments need no setup (D20): this is the store's real, live account.
     payments: payments.accounts.live?.cardPayments === "active",
     paymentsOn: payments.stripe.enabled,
@@ -83,7 +93,7 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
     products: ownProducts > 0 || demoProducts === 0,
     plan: Boolean(planRow),
     readyToOpen: details && countries,
-    counts: { demoProducts, ownProducts },
+    counts: { demoProducts, ownProducts, staff: Number(facts?.staff ?? 0), units: Number(facts?.units ?? 0) },
   };
 }
 
@@ -200,4 +210,32 @@ export async function listStoreProducts(store: Store): Promise<ProductRow[]> {
     status: String(row.status),
     kind: String(row.kind),
   }));
+}
+
+/**
+ * The owner's answer to "What will you sell?" (D178 step 6): the answers become the store's features through `setFeatures()` (owners only,
+ * each feature with what it needs, nothing switched off while customers would be hit, warnings only once `confirmed`, every switch audited as
+ * `store.feature`), keeping the bonus and referral programs as they are kept. The answer itself is one `store.features_chosen` entry in the
+ * activity log, which is how the wizard knows it was answered (`getSetupProgress().features`); nothing else is stored, and the owner changes
+ * everything later on the Features page.
+ */
+export async function answerFeatureQuestion(member: Membership, answers: OnboardingAnswers, options: { confirmed?: boolean } = {}): Promise<SetFeaturesResult> {
+  const answered = featuresForAnswers(answers);
+  if (!answered.ok) return { ok: false, problems: answered.problems };
+  const result = await setFeatures(member, targetFeatures(member.store.features, answered.features), { confirmed: options.confirmed, via: "setup" });
+  if (!result.ok) return result;
+  // The action is `FEATURES_CHOSEN`, written out so the audit scan sees it.
+  await audit(member.account.id, member.store.id, "store.features_chosen", { sells: answers.sells, extras: answers.extras, features: result.features }, {
+    area: "settings",
+    target: { type: "store", id: member.store.id },
+  });
+  return result;
+}
+
+/** The store template a store was made from (D175), by its title, for the wizard's question; null for a Standard store. */
+export async function starterTitleOf(store: Store): Promise<string | null> {
+  const [row] = await db().execute<Row>(sql`
+    select st.title from commerce.stores s join commerce.store_starters st on st.id = s.made_from_starter where s.id = ${store.id}::uuid
+  `);
+  return row ? String(row.title) : null;
 }

@@ -1,16 +1,18 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { SETUP_STEPS, type SetupProgress, type SetupStepId } from "@/server/setup";
+import type { SetupStep, SetupStepId } from "@/lib/setup-steps";
+import type { SetupProgress } from "@/server/setup";
 
 /**
  * The frame around every setup step: where you are, what is done, and a way
  * to move on without finishing (everything can be done later from the
- * checklist on the overview).
+ * checklist on the overview). The steps are the store's own (`setupStepsFor()`): they follow its features (D178 step 6).
  */
 export function SetupFrame({
   storeSlug,
   storeName,
+  steps,
   step,
   progress,
   title,
@@ -19,15 +21,16 @@ export function SetupFrame({
 }: {
   storeSlug: string;
   storeName: string;
+  steps: SetupStep[];
   step: SetupStepId;
   progress: SetupProgress;
   title: string;
   intro: ReactNode;
   children: ReactNode;
 }) {
-  const index = SETUP_STEPS.findIndex((s) => s.id === step);
-  const previous = SETUP_STEPS[index - 1];
-  const next = SETUP_STEPS[index + 1];
+  const index = steps.findIndex((s) => s.id === step);
+  const previous = steps[index - 1];
+  const next = steps[index + 1];
   const done = (id: SetupStepId) => id !== "launch" && progress[id];
   const base = `/admin/${storeSlug}/setup`;
 
@@ -35,11 +38,11 @@ export function SetupFrame({
     <div className="mx-auto flex max-w-2xl flex-col gap-6">
       <nav aria-label="Setup steps">
         <p className="mb-3 text-sm text-muted">
-          Setting up {storeName} · Step {index + 1} of {SETUP_STEPS.length}
+          Setting up {storeName} · Step {index + 1} of {steps.length}
         </p>
-        <ol className="grid grid-cols-5 gap-2 text-xs sm:text-sm">
-          {SETUP_STEPS.map((s, i) => (
-            <li key={s.id}>
+        <ol className="flex gap-2 text-xs sm:text-sm">
+          {steps.map((s, i) => (
+            <li key={s.id} className="min-w-0 flex-1">
               <Link
                 href={`${base}/${s.id}`}
                 aria-current={s.id === step ? "step" : undefined}

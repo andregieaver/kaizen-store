@@ -27,12 +27,25 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
     when: "The owner is new, asks what to do first, or the store is not open yet.",
     steps: [
       "Call setup_progress and say in one line how far along they are.",
+      "If they have not said what the store will sell, ask (the setup wizard asks it first, page setup): the features follow from it, and a website without an online shop has no shipping, payments or products to set up.",
       "Take the first unfinished step only; explain why it matters in a sentence and offer to open its page (open_admin_page).",
       "Business details (company) and countries come first; then a shipping price for every country (shipping); then Stripe (payments), which Stripe itself guides.",
       "Products: suggest replacing the demo products with their own (product.new). Offer the add-product skill.",
       "A Kaizen plan (billing) is needed to open.",
       "When everything is done, say so and point to Home, where they open the store.",
       "Remember what they sell and who to, if they tell you (remember, kind fact).",
+    ],
+  },
+  {
+    id: "store-features",
+    area: "store",
+    title: "Switch store features on or off",
+    when: "The owner asks to sell something new (appointments, stays, subscriptions, boxes, other countries, languages, businesses, a bonus or referral program), to stop offering it, or to make the store a website without an online shop.",
+    steps: [
+      "Call list_features and say what is on, off or asleep, and what the feature asked about needs.",
+      "To switch one on, call set_feature (kept for their approval); if something it needs is off, say so and switch that on first.",
+      "To switch one off, call set_feature: if customers would be hit, it is refused with the reasons; say them and what to do (the page from the reasons). What switching off means is shown with the approval: say it in a line.",
+      "Say that nothing is deleted: switching it on again brings everything back. After a switch on, offer to open its page to set it up (the link in the answer).",
     ],
   },
   {

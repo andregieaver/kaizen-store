@@ -18,6 +18,7 @@ import {
   publishStarter,
   restoreStarter,
   saveStarterDraft,
+  setStarterFeatures,
   unpublishStarter,
 } from "@/server/store-starters";
 
@@ -137,4 +138,22 @@ export async function openStarterAdminAction(starterId: string): Promise<FormSta
   const result = await joinStarter(admin, starterId);
   if (!result.ok) return { status: "error", messages: result.problems };
   redirect(`/admin/${result.slug}`);
+}
+
+/**
+ * The features a store template switches on (D178 step 6): its store's features, set as a whole through `setFeatures()`. Reaches new stores on
+ * the next Publish. A switch off with something to know (`featureWarnings()`) needs the form's tick, as on the Features page.
+ */
+export async function setStarterFeaturesAction(starterId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requirePlatformAdmin();
+  const target = formData.getAll("features").map(String);
+  const result = await setStarterFeatures(admin, starterId, target, { confirmed: formData.get("confirm") === "on" });
+  if (!result.ok) {
+    return {
+      status: "error",
+      messages: "needsConfirmation" in result ? [...result.warnings, "Tick “Switch off what I left out” to go on."] : result.problems,
+    };
+  }
+  refresh();
+  return { status: "ok", messages: ["Saved. New stores get these features once you publish the template again."] };
 }

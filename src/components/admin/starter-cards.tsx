@@ -50,6 +50,7 @@ export function StarterCards({
                     <span className="font-medium">{card.title}</span>
                     {card.category && <span className="text-muted">{STARTER_CATEGORY_LABELS[card.category]}</span>}
                     {card.summary && <span className="font-normal">{card.summary}</span>}
+                    {card.featureWords && <span className="text-muted">{`Starts with: ${card.featureWords}`}</span>}
                   </span>
                 </span>
               </label>

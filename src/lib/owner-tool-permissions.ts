@@ -39,6 +39,9 @@ export const TOOL_PERMISSIONS: Record<OwnerToolName, PermissionKey> = {
   list_pages: "website:read",
   search_insights: "settings:read",
   setup_progress: "owner",
+  // The store's features (D178): reading them is the owner's like the store's overview; switching is the owner's alone, as on the Features page.
+  list_features: "owner",
+  set_feature: "owner",
   store_checkup: "owner",
   list_customers: "customers:read",
   get_customer: "customers:read",

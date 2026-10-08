@@ -35,6 +35,12 @@ describe("the store template cards (D175)", () => {
     expect(html).toContain("More about it");
   });
 
+  it("says what each starts with switched on (D178 step 6)", () => {
+    const html = draw([standardCard("/s/demo"), { ...spa, featureWords: "Online shop with Appointments" }]);
+    expect(html).toContain("Starts with: Online shop<");
+    expect(html).toContain("Starts with: Online shop with Appointments");
+  });
+
   it("opens each preview in a new window, without giving the new window this page", () => {
     const html = draw([standardCard("/s/demo"), spa]);
     const links = html.match(/<a [^>]*>/g) ?? [];

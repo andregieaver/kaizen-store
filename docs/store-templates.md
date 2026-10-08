@@ -107,6 +107,11 @@ templates*. Platform admins only (`requirePlatformAdmin()` on every page and act
   so every platform admin can edit every template.
 * **Edit details** at `/admin/platform/store-templates/{id}`: title, summary, description, category, picture (uploaded to Kaizen's media
   library like other platform pictures, or chosen from it by address).
+* **Features** on the same page (D178 step 6, `docs/store-features.md` 4f): what a store made from the template starts with switched on, its
+  working store's `stores.features`, set as a whole by `setStarterFeatures()` (`setFeatures()` with the platform admin as the store's owner,
+  so needs, blockers, warnings and the `store.feature` audit hold). They reach new stores on the next Publish (the frozen copy keeps them and
+  `clone_starter_setup()` copies them), and the owners' and sign-up cards say *Starts with: …* from the published copy's features. A store
+  made from the template gets the setup's question "What will you sell?" pre-filled with them.
 * Every change is in the audit log (`platform.starter_created`, `_updated`, `_published`, `_unpublished`, `_archived`, `_restored`,
   `_deleted`, `_moved`, `_joined`; area `platform`), with the starter's store id.
 

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { BusinessDetailsFields } from "@/components/admin/business-details-fields";
 import { CountriesForm } from "@/components/admin/countries-form";
+import { FeatureQuestion, type QuestionWarning } from "@/components/admin/feature-question";
 import { SetupFrame } from "@/components/admin/setup-frame";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { storeBase, storeHref } from "@/lib/paths";
@@ -15,12 +16,19 @@ import {
   getSetupProgress,
   isSetupStep,
   listStoreProducts,
+  setupStepsFor,
+  starterTitleOf,
   type SetupProgress,
 } from "@/server/setup";
+import { featureFacts } from "@/server/store-features";
 import { listCountries } from "@/server/stores";
 
-import { FEATURES_BY_ID, featureOn, kindFeature, kindOffered } from "@/lib/store-features";
+import { answersForFeatures, QUESTION_FEATURES } from "@/lib/onboarding";
+import { nextSetupStep, stepApplies } from "@/lib/setup-steps";
+import { FEATURES_BY_ID, featureOn, featureWarnings, kindFeature, kindOffered } from "@/lib/store-features";
+import { formatMoney } from "@/lib/money";
 import {
+  chooseFeaturesAction,
   openStoreAction,
   removeDemoProductsAction,
   saveCountriesAction,
@@ -46,9 +54,23 @@ export default async function SetupStepPage({ params }: Props) {
     );
   }
 
-  const frame = { storeSlug: member.store.slug, storeName: member.store.name, step, progress };
+  // The wizard follows the store's features (D178 step 6): a step the store does not have resumes the wizard where it is.
+  if (!stepApplies(step, member.store)) redirect(`/admin/${member.store.slug}/setup`);
+  const steps = setupStepsFor(member.store);
+  const frame = { storeSlug: member.store.slug, storeName: member.store.name, steps, step, progress };
+  const selling = featureOn(member.store, "shop");
 
   switch (step) {
+    case "features":
+      return (
+        <SetupFrame
+          {...frame}
+          title="What will you sell?"
+          intro="Kaizen switches on what your store needs and keeps the rest out of your way. You can change all of it later under Settings, Features."
+        >
+          <FeaturesStep member={member} answered={progress.features} />
+        </SetupFrame>
+      );
     case "details":
       return (
         <SetupFrame
@@ -63,10 +85,24 @@ export default async function SetupStepPage({ params }: Props) {
       return (
         <SetupFrame
           {...frame}
-          title="Where you sell"
-          intro="Each country gets its own storefront in its own language and currency. You can change this at any time."
+          title={selling ? "Where you sell" : "Your country"}
+          intro={
+            selling
+              ? "Each country gets its own storefront in its own language and currency. You can change this at any time."
+              : "Your website is shown in your country's language. You can change this at any time."
+          }
         >
           <CountriesStep member={member} />
+        </SetupFrame>
+      );
+    case "bookings":
+      return (
+        <SetupFrame
+          {...frame}
+          title="Bookings"
+          intro="Shoppers book times with the staff, and stays and rentals in the rooms and items, you set up here. Each has its own opening hours or calendar."
+        >
+          <BookingsStep member={member} progress={progress} />
         </SetupFrame>
       );
     case "payments":
@@ -107,6 +143,33 @@ export default async function SetupStepPage({ params }: Props) {
   }
 }
 
+const moneyIn = (locale: string) => (minor: number, currency: string) => formatMoney(minor, currency, locale);
+
+async function FeaturesStep({ member, answered }: { member: Membership; answered: boolean }) {
+  const { store } = member;
+  const [facts, starter] = await Promise.all([featureFacts(store.id), starterTitleOf(store)]);
+  // What switching off a feature that is on now would mean, for the form's tick (the Features page's confirmation, D178).
+  const locale = store.markets[0]?.locale ?? "en";
+  const warnings: QuestionWarning[] = QUESTION_FEATURES.filter((id) => featureOn(store, id)).flatMap((id) => {
+    const lines = featureWarnings(id, facts, store, moneyIn(locale)).filter((line) => !line.includes("so it stops too") && !line.includes("so they stop too"));
+    return lines.length > 0 ? [{ label: FEATURES_BY_ID[id].label, lines }] : [];
+  });
+  return (
+    <FeatureQuestion
+      action={chooseFeaturesAction.bind(null, store.slug)}
+      answers={answersForFeatures(store)}
+      warnings={warnings}
+      note={
+        starter && !answered
+          ? `Your store was made from the store template ${starter}, so what it switches on is chosen. Change what you need.`
+          : answered
+            ? "This is what is switched on now."
+            : null
+      }
+    />
+  );
+}
+
 async function DetailsStep({ member }: { member: Membership }) {
   const { store } = member;
   const countries = await listCountries();
@@ -134,7 +197,7 @@ async function CountriesStep({ member }: { member: Membership }) {
       submitLabel="Save and continue"
       note={
         <p className="text-sm text-muted">
-          A product shows in a country once it has a price there. The demo products have prices for Norway, Sweden and Denmark.
+          {featureOn(store, "shop") && "A product shows in a country once it has a price there. The demo products have prices for Norway, Sweden and Denmark."}
           {!several && " To sell in more than one country, switch on Several countries under Settings, Features."}
         </p>
       }
@@ -176,6 +239,52 @@ async function PaymentsStep({ member }: { member: Membership }) {
       <div>
         <Link
           href={`/admin/${store.slug}/setup/products`}
+          className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
+        >
+          Continue
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function BookingsStep({ member, progress }: { member: Membership; progress: SetupProgress }) {
+  const { store } = member;
+  const base = `/admin/${store.slug}`;
+  const rows = [
+    ...(featureOn(store, "appointments")
+      ? [{ done: progress.counts.staff > 0, label: `Staff who take appointments (${progress.counts.staff})`, href: `${base}/bookings/staff` }]
+      : []),
+    ...(featureOn(store, "bookings")
+      ? [{ done: progress.counts.units > 0, label: `Rooms and items to book (${progress.counts.units})`, href: `${base}/bookings/units` }]
+      : []),
+  ];
+  return (
+    <div className="flex flex-col gap-4">
+      <ul className="flex flex-col gap-2 text-sm">
+        {rows.map((row) => (
+          <li key={row.href} className="flex items-baseline gap-2">
+            <span aria-hidden="true">{row.done ? "✓" : "○"}</span>
+            <span className="flex-1">
+              <span className="sr-only">{row.done ? "Done: " : "Not done: "}</span>
+              {row.label}
+            </span>
+            <Link href={row.href} className="underline">
+              {row.done ? "Change" : "Set up"}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      <p className="text-sm text-muted">
+        Times are shown in the store&apos;s time zone ({store.timeZone}), which you change under{" "}
+        <Link href={`${base}/settings/features`} className="underline">
+          Settings, Features
+        </Link>
+        .
+      </p>
+      <div>
+        <Link
+          href={`${base}/setup/${nextSetupStep("bookings", store)}`}
           className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
         >
           Continue
@@ -235,16 +344,24 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
 
 function LaunchStep({ member, progress }: { member: Membership; progress: SetupProgress }) {
   const { store } = member;
+  // A website (the online shop off, D178) has no checkout or products to set up: it opens with its details and country.
+  const selling = featureOn(store, "shop");
   const items = [
+    { done: progress.features, label: "What you sell", href: "features", required: false },
     { done: progress.details, label: "Business details", href: "details", required: true },
-    { done: progress.countries, label: "At least one country", href: "countries", required: true },
-    { done: progress.paymentsOn, label: "Checkout switched on", href: "payments", required: false },
-    {
-      done: progress.products,
-      label: progress.counts.demoProducts > 0 ? "Demo products replaced" : "Products",
-      href: "products",
-      required: false,
-    },
+    { done: progress.countries, label: selling ? "At least one country" : "Your country", href: "countries", required: true },
+    ...(stepApplies("bookings", store) ? [{ done: progress.bookings, label: "Staff, rooms or items to book", href: "bookings", required: false }] : []),
+    ...(selling
+      ? [
+          { done: progress.paymentsOn, label: "Checkout switched on", href: "payments", required: false },
+          {
+            done: progress.products,
+            label: progress.counts.demoProducts > 0 ? "Demo products replaced" : "Products",
+            href: "products",
+            required: false,
+          },
+        ]
+      : []),
   ];
   return (
     <div className="flex flex-col gap-5">
@@ -267,7 +384,9 @@ function LaunchStep({ member, progress }: { member: Membership; progress: SetupP
       </ul>
       {store.setupCompletedAt ? (
         <div role="status" className="flex flex-col gap-3 rounded-md border border-foreground p-4 text-sm">
-          <p className="font-medium">Your store is open. Share its address with your first customers.</p>
+          <p className="font-medium">
+            {selling ? "Your store is open. Share its address with your first customers." : "Your website is open. Share its address with your visitors."}
+          </p>
           <div className="flex flex-wrap gap-4">
             <Link href={storeHref(store.slug, storeBase(store.slug))} className="underline">
               View your store
@@ -280,13 +399,13 @@ function LaunchStep({ member, progress }: { member: Membership; progress: SetupP
       ) : (
         <ActionForm action={openStoreAction.bind(null, store.slug)} className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <SubmitButton disabled={!progress.readyToOpen}>Open my store</SubmitButton>
+            <SubmitButton disabled={!progress.readyToOpen}>{selling ? "Open my store" : "Open my website"}</SubmitButton>
             <Link href={storeHref(store.slug, storeBase(store.slug))} className="text-sm underline" target="_blank">
-              Preview the storefront
+              {selling ? "Preview the storefront" : "Preview the website"}
             </Link>
           </div>
           {!progress.readyToOpen && (
-            <p className="text-sm text-muted">Add your business details and a country to open the store.</p>
+            <p className="text-sm text-muted">Add your business details and a country to open {selling ? "the store" : "the website"}.</p>
           )}
         </ActionForm>
       )}

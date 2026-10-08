@@ -204,6 +204,8 @@ export const TOOL_WORDS: Record<string, string> = {
   set_fields: "Preparing the change",
   search_insights: "Looking at searches",
   setup_progress: "Checking the setup",
+  list_features: "Looking at the store's features",
+  set_feature: "Preparing the feature switch",
   store_checkup: "Checking the store",
   get_tax_profile: "Reading the tax settings",
   tax_readiness: "Checking what the VAT features need",

@@ -83,7 +83,7 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["home", "dashboard", "start", "checklist"],
   }),
   store("setup", "/setup", "Setup", "Main", "The setup wizard, resuming at the first unfinished step.", { keywords: ["wizard", "onboarding", "launch"] }),
-  store("setup.step", "/setup/[step]", "Setup step", "Main", "One step of the setup wizard: details, countries, payments, products or launch.", {
+  store("setup.step", "/setup/[step]", "Setup step", "Main", "One step of the setup wizard: what the store will sell, details, countries, bookings, payments, products or launch (the steps follow the store's features).", {
     keywords: ["wizard", "onboarding"],
   }),
   store("assistant", "/assistant", "AI manager", "Main", "The AI store manager's full page: conversations, and what it has learned about you.", {

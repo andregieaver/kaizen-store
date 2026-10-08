@@ -8,9 +8,13 @@ import { LifecycleBadge, LifecycleButtons } from "@/components/admin/lifecycle-b
 import { PreviewLink } from "@/components/admin/preview-link";
 import { StarterPictureField } from "@/components/admin/starter-picture-field";
 import { deleteBlocker } from "@/lib/lifecycle";
+import { formatMoney } from "@/lib/money";
+import { featureSummary } from "@/lib/onboarding";
 import { STARTER_CATEGORIES, STARTER_CATEGORY_LABELS, STARTER_LIMITS } from "@/lib/store-starters";
+import { FEATURES_BY_ID, STORE_FEATURES, featureKept, featureOn, featureWarnings } from "@/lib/store-features";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listDesigns } from "@/server/design-presets";
+import { featureFacts } from "@/server/store-features";
 import { getStarter, shownDetails, starterLifecycle, starterPreviewHref } from "@/server/store-starters";
 
 import { uploadPlatformImageAction } from "../../actions";
@@ -21,6 +25,7 @@ import {
   publishStarterAction,
   restoreStarterAction,
   saveStarterDraftAction,
+  setStarterFeaturesAction,
   unpublishStarterAction,
 } from "../actions";
 
@@ -44,6 +49,12 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
   const blocker = deleteBlocker("store template", { stores: starter.storesMade, requests: starter.requests });
   // The recommended profile as saved, even when it was archived since (it is then offered as such, to change).
   const recommended = shown.recommendedDesign ? designs.find((d) => d.id === shown.recommendedDesign) : null;
+  // What switching off one of its features would mean (D178 step 6), for the form's tick, as on a store's Features page.
+  const counted = await featureFacts(starter.storeId);
+  const warnings = STORE_FEATURES.filter((f) => featureOn(starter.features, f.id)).flatMap((f) => {
+    const lines = featureWarnings(f.id, counted, starter.features, (minor, currency) => formatMoney(minor, currency, "en"));
+    return lines.length > 0 ? [{ label: f.label, lines }] : [];
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -101,6 +112,56 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
             }}
           />
         </div>
+      </section>
+
+      <section aria-labelledby="features" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <h2 id="features" className="font-medium">
+          Features
+        </h2>
+        <p className="text-sm text-muted">
+          What a store made from this template starts with switched on (its store&apos;s Settings, Features). The owner&apos;s setup asks what
+          they will sell with these chosen, and they can change everything after. New stores get them once you publish.
+        </p>
+        <p className="text-sm">
+          Now: {featureSummary(starter.features)}.
+          {starter.publishedFeatures && ` As published: ${featureSummary(starter.publishedFeatures)}.`}
+        </p>
+        <ActionForm action={setStarterFeaturesAction.bind(null, starter.id)} className="flex max-w-3xl flex-col gap-3">
+          <fieldset className="flex flex-col gap-2">
+            <legend className="sr-only">Switched on</legend>
+            {STORE_FEATURES.map((feature) => (
+              <label key={feature.id} className="flex items-start gap-2 text-sm">
+                <input type="checkbox" name="features" value={feature.id} defaultChecked={featureKept(starter.features, feature.id)} className="mt-1" />
+                <span className="flex flex-col">
+                  <span className="font-medium">{feature.label}</span>
+                  <span className="text-muted">
+                    {feature.words}
+                    {feature.needs.length > 0 && ` Needs ${feature.needs.map((need) => FEATURES_BY_ID[need].label).join(" and ")}.`}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {warnings.length > 0 && (
+            <div className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm">
+              <p className="font-medium">If you switch off something that is on now:</p>
+              <ul className="list-disc pl-5">
+                {warnings.map((warning) => (
+                  <li key={warning.label}>
+                    {warning.label}: {warning.lines.join(" ")}
+                  </li>
+                ))}
+              </ul>
+              <label className="flex items-start gap-2">
+                <input type="checkbox" name="confirm" className="mt-1" />
+                <span>Switch off what I left out.</span>
+              </label>
+            </div>
+          )}
+          <div>
+            <SubmitButton>Save features</SubmitButton>
+          </div>
+        </ActionForm>
       </section>
 
       <ActionForm action={saveStarterDraftAction.bind(null, starter.id)} className="flex max-w-3xl flex-col gap-4">

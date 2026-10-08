@@ -57,8 +57,12 @@ Every store gets `shop`. Then, what a store uses stays on, the rest starts off:
 
 - From the template (`clone_store()`): the shop alone. `clone_store()` no longer copies the template's `bookings` and
   `deliveries` modules (patched on its live definition), so the new store's demo appointment, stay and rental are
-  there but not bookable until the owner switches their feature on (step 6 asks at setup).
-- From a store template (D175): the template's features (`clone_starter_setup()` copies `features`).
+  there but not bookable until the owner switches their feature on (the setup wizard asks first, section 4f).
+  **Kept in step 6 (decided):** a store from the default template starts with the shop alone; the wizard's first question
+  switches on what the owner will sell.
+- From a store template (D175): the template's features (`clone_starter_setup()` copies `features`), as its published
+  copy keeps them (`freeze_starter()` copies the working store with `clone_store()`, which adds `clone_starter_setup()`);
+  the platform admin chooses them on the template's page (section 4f).
 - A duplicate (D129, `duplicate_store()`): the original's features, a sleeping switch included.
 
 ## 3. Who switches, and how
@@ -329,6 +333,58 @@ website's All products page is listed at its own address); WordPress lists no we
 `/api/recommendations` and its events answer 404; the chat agent gets no product tools, cannot open the shop's places and states no shipping or
 return policy; cart reminders and low-stock notices skip a website.
 
+## 4f. Onboarding (step 6)
+
+**What will you sell?** The setup wizard (`/admin/{store}/setup`, a store not open yet, owners only) asks it first (step `features`,
+`FeatureQuestion`): what the store sells, several at once (products to ship, downloads, appointments, stays or rentals, subscriptions,
+subscription boxes) or *Just a website, no online shop* (alone), and three ticks (*Sell in several countries*, *Several languages*, *Sell to
+businesses*). The answers map to features only through `featuresForAnswers()` (`src/lib/onboarding.ts`, pure): anything sold switches on
+the shop and what that kind needs (appointments `appointments`, stays or rentals `bookings`, subscriptions `subscriptions`, boxes `boxes`;
+goods and downloads need nothing more); a website is the shop off; *Several languages* is `languages` and, with a shop, `currencies`; a
+website may not sell to businesses (refused in words). The question decides `QUESTION_FEATURES` (every feature but the bonus and referral
+programs, which keep their switches as kept: `targetFeatures()`).
+
+**Applied as the Features page applies.** `answerFeatureQuestion()` (`src/server/setup.ts`) calls `setFeatures()` (`src/server/store-features.ts`):
+the whole set in one transaction under the store's row lock, owners only (`memberCan(member, 'owner')`; the action asks `checkOwnerRole()`), the
+set must hold together (`targetProblems()`), the switches are made in an order each can be made in (`planFeatureChanges()`: off from the
+dependents up, then on from the shop down), each judged by `featureBlockers()`/`featureWarnings()` in the state the ones before leave, refused
+while customers would be hit, and with warnings only once confirmed (the form lists them and asks for a tick, only when something on now has
+something to warn of). Each switch is audited as `store.feature` with `via: "setup"`, and the caches are refreshed once.
+
+**The answer is the features.** Nothing else is stored. The wizard knows the question was answered from one `store.features_chosen` entry in the
+activity log (area `settings`, the answers and the features in `details`; `getSetupProgress().features`). *Why the activity log and not a
+column:* it is the record of the owner answering, needs no migration and no copy rule, and progress stays derived from data. Its one limit:
+the log is pruned after 24 months (`pruneAuditLog()`), so a store left unopened that long sees the question again, pre-filled with what it has.
+The question is always pre-filled from what is on now (`answersForFeatures()`: a website when the shop is off, each kind whose feature is on,
+else *Products to ship*), and says so for a store made from a store template ("made from the store template …, so what it switches on is
+chosen"). The wizard says the owner changes everything later under Settings, Features.
+
+**The wizard follows the features** (`src/lib/setup-steps.ts`, pure): `setupStepsFor(features)` gives the store's steps: *What you sell*, *Your
+business*, *Where you sell* (a website's *Your country*), *Bookings* only while Appointments or Stays and rentals is on (staff, or rooms and
+items, with links to their pages and the store's time zone; done when there is one of each that is on), *Payments* and *Products* only with the
+shop, and *Open your store*. A step the store does not have resumes the wizard (`firstOpenStep()`); "next" skips to the store's own next step
+(`nextSetupStep()`). Opening needs the business details and a country only (`completeSetup()`, unchanged), so a website opens without products
+or payments; the launch step lists the shop's items only with the shop and says *Open my website*. `store_is_active()` asks only the status and that the store is no starter, never selling setup.
+The AI manager's `setup_progress` follows the same rules (a website has no shipping, payments or products to set up).
+
+**Store templates choose features.** On `/admin/platform/store-templates/{id}` the platform admin sees what the template switches on (*Now*
+and *As published*, `featureSummary()`) and sets it as a whole (`setStarterFeatures()`: `setFeatures()` on the template's working store with the
+platform admin as its owner, as `joinStarter()` lets every platform admin edit every template; audited `store.feature` with `via:
+"store_template"`). They reach new stores on the next Publish: the frozen copy keeps them and `clone_starter_setup()` copies them into each store
+made from it; a change shows as "changed since published" (its audit entry is not a `platform.` one). The owners' and sign-up's cards
+(`StarterCards`) say *Starts with: Online shop with Appointments …* (`StarterCard.featureWords`, from the published copy's features; the
+Standard store's *Online shop*). The question at sign-up and on Create a store is not asked: the store template is the choice there, and the
+wizard asks right after, pre-filled with the template's features.
+
+**The AI manager.** `list_features` (read-only, ungated, the owner's key): each feature `on`, `off` or `asleep` (kept, waiting for a need,
+with `waiting_for`), in use, its needs and its page. `set_feature` (gated `public`, the owner's key): `preflightFeatureTool()` refuses a switch
+that changes nothing, whose needs are off or that is blocked, before it is kept; `keepForApproval()` writes the approval from the registry
+(`featureSwitchSummary()`: the feature's words, or its *off* words and the store's warnings) and keeps the warnings with the call
+(`approved_warnings`, any value the model passed is replaced); on the owner's yes `setFeatureTool()` runs `setFeature()` confirmed only when
+the warnings are still the ones approved (`sameWarnings()`), else it refuses and asks again. Neither is behind a feature (`TOOL_FEATURES`), so
+both are offered in a website and served over the store's MCP server as owner tools. Playbook: `store-features` in `ASSISTANT_SKILLS`, and
+`launch-store` asks what the store will sell.
+
 ## 5. Blockers and warnings
 
 Counted by `featureFacts()` (one query, reusing `storeObligations()` of `src/server/store-closure.ts`); the rules are
@@ -384,5 +440,7 @@ The store's own country is `stores.country`'s market, else its first active mark
    store's 404 through `missOrRedirect()`, legal pages following the features, with the rules of section 4e (migration
    `store_features_website_rules`). **Decided by the owner:** with the shop off, Orders stays reachable (out of the main menu) while any order can
    still be withdrawn from or has an open return, and the footer's withdrawal link stays as long; then both disappear. Nothing is deleted.
-6. **Onboarding**: a setup question ("What will you sell?") and store templates choosing features; new stores'
-   defaults revisited.
+6. **Onboarding** (done): the setup wizard's question "What will you sell?" setting the features through `setFeatures()`, the wizard's steps
+   following them (a website without payments or products; a bookings step with appointments or stays), store templates choosing features on
+   their page and showing them on their cards, new stores' defaults kept (the shop alone), and the AI manager's `list_features` and
+   `set_feature`, with the rules of section 4f. No migration.

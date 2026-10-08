@@ -15,6 +15,8 @@ import { askLife, lifeLink, lifeLinkOn, LifeLinkError } from "./kaizen-life-link
 import { runManagerTool, runPlatformTool, type ManagerContext } from "./manager-tools";
 import { experimentApprovalSummary } from "./experiment-tools";
 import { draftApprovalDetails } from "./order-ops-tools";
+import { featureApprovalDetails } from "./feature-tools";
+import { setFeatureInput } from "@/lib/feature-tools";
 import { OwnerToolError, preflightOwnerTool, runOwnerTool } from "./owner-tools";
 import type { Store } from "./stores";
 import { mayUseTool } from "@/lib/owner-tool-permissions";
@@ -615,6 +617,16 @@ export async function keepForApproval(
     const { approved_version: _ignored, ...rest } = args;
     void _ignored;
     args = details ? { ...rest, approved_version: details.version } : rest;
+  }
+  // A feature switch is described from the registry and the store's own warnings, which are kept with the call (a value the model passed is
+  // replaced): the owner's yes confirms exactly those, and the switch is refused if they have changed (D178).
+  if (store && tool === "set_feature") {
+    const parsed = setFeatureInput.safeParse(args);
+    if (parsed.success) {
+      const details = await featureApprovalDetails(store, parsed.data);
+      summary = details.summary;
+      args = { ...args, approved_warnings: details.warnings };
+    }
   }
   const [row] = await db().execute<Row>(sql`
     insert into commerce.assistant_approvals (store_id, conversation_id, account_id, tool, args, summary, category)

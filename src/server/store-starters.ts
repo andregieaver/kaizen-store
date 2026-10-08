@@ -7,6 +7,7 @@ import { db, readDb } from "@/db/client";
 import { storeBase, storeHref } from "@/lib/paths";
 import { slugProblem } from "@/lib/slug";
 import { deleteBlocker, type ListFilter } from "@/lib/lifecycle";
+import { featureSummary } from "@/lib/onboarding";
 import {
   isStarterCategory,
   movedOrder,
@@ -21,8 +22,11 @@ import {
   type StarterRow,
 } from "@/lib/store-starters";
 
+import { normaliseFeatures, type FeatureId } from "@/lib/store-features";
+
 import { audit, type Account } from "./auth";
-import { templateStoreSlug } from "./stores";
+import { setFeatures } from "./store-features";
+import { getStore, templateStoreSlug } from "./stores";
 
 /**
  * Store templates (D175, `docs/store-templates.md`): the platform's starting points for new stores. Each is a real store marked
@@ -47,6 +51,7 @@ const toOffered = (row: Row): OfferedStarter => ({
   category: (isStarterCategory(row.category) ? row.category : "other") as StarterCategory,
   pictureUrl: row.picture_url ? String(row.picture_url) : null,
   storeSlug: String(row.slug),
+  features: ((row.features ?? []) as unknown[]).map(String),
 });
 
 /**
@@ -55,7 +60,7 @@ const toOffered = (row: Row): OfferedStarter => ({
  */
 export async function listOfferedStarters(): Promise<OfferedStarter[]> {
   const rows = await readDb().execute<Row>(sql`
-    select st.id, st.title, st.summary, st.description, st.category, st.picture_url, s.slug
+    select st.id, st.title, st.summary, st.description, st.category, st.picture_url, s.slug, s.features
     from commerce.store_starters st
     join commerce.stores s on s.id = coalesce(st.published_store_id, st.store_id) and s.starter and s.status = 'active'
     where st.published and st.archived_at is null
@@ -78,13 +83,14 @@ export async function starterCards(): Promise<StarterCard[]> {
   const [template, offered] = await Promise.all([templateStoreSlug(), listOfferedStarters()]);
   return [
     standardCard(template ? starterPreviewHref(template) : null),
-    ...offered.map((starter) => ({ ...starter, previewHref: starterPreviewHref(starter.storeSlug) })),
+    ...offered.map((starter) => ({ ...starter, previewHref: starterPreviewHref(starter.storeSlug), featureWords: featureSummary(starter.features) })),
   ];
 }
 
 const ROW_SELECT = sql`
   select st.id, st.title, st.summary, st.description, st.category, st.picture_url, st.published, st.position, st.updated_at,
-         st.recommended_design, st.draft, st.published_at, st.archived_at, s.id as store_id, s.slug, s.name as store_name, p.slug as published_slug,
+         st.recommended_design, st.draft, st.published_at, st.archived_at, s.id as store_id, s.slug, s.name as store_name, s.features,
+         p.slug as published_slug, p.features as published_features,
          (select count(*)::int from commerce.stores m where m.made_from_starter = st.id and m.starter_copy_of is null) as stores_made,
          (select count(*)::int from commerce.access_requests r where r.starter_id = st.id) as requests,
          (st.published_at is not null and exists (
@@ -126,6 +132,7 @@ function toRow(row: Row): StarterRow {
     recommendedDesign: row.recommended_design ? String(row.recommended_design) : null,
     draft: readStarterDraft(row.draft),
     publishedSlug: row.published_slug ? String(row.published_slug) : null,
+    publishedFeatures: row.published_features ? (row.published_features as unknown[]).map(String) : null,
     publishedAt: iso(row.published_at),
     archivedAt: iso(row.archived_at),
     changedInStore: Boolean(row.changed_in_store),
@@ -415,4 +422,27 @@ export async function joinStarter(admin: Account, id: string): Promise<StarterRe
     await audit(admin.id, storeId, "platform.starter_joined", { starter: id }, { target: { type: "store_starter", id } });
   }
   return { ok: true, slug: String(starter.slug) };
+}
+
+/**
+ * Sets the features a store template switches on (D178 step 6): its working store's `stores.features`, through `setFeatures()` with the
+ * platform admin as its owner (every platform admin may edit every template, as `joinStarter()` lets them), so needs, blockers, warnings and
+ * the `store.feature` audit hold as on any store's Features page. They reach new stores on the next Publish (`clone_starter_setup()` copies them
+ * into the frozen copy), and the change shows as "changed since published".
+ */
+export async function setStarterFeatures(
+  admin: Account,
+  id: string,
+  target: readonly string[],
+  options: { confirmed?: boolean } = {},
+): Promise<StarterResult<{ features: FeatureId[] }> | { ok: false; problems: string[]; warnings: string[]; needsConfirmation: true }> {
+  if (!admin.platformAdmin || !isUuid(id)) return { ok: false, problems: ["Unknown store template."] };
+  const starter = await getStarter(id);
+  const store = starter ? await getStore(starter.storeSlug) : null;
+  if (!starter || !store) return { ok: false, problems: ["Unknown store template."] };
+  const result = await setFeatures({ account: admin, store, role: "owner" }, normaliseFeatures(target), { confirmed: options.confirmed, via: "store_template" });
+  if (!result.ok) {
+    return result.needsConfirmation ? { ok: false, problems: result.problems, warnings: result.warnings ?? [], needsConfirmation: true } : { ok: false, problems: result.problems };
+  }
+  return { ok: true, features: result.features };
 }

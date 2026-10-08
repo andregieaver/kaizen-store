@@ -123,6 +123,8 @@ import { listAdminProducts, setArchived } from "./products";
 import { sendBookingCancelled, sendOrderConfirmation, sendRefunded, sendShipped, sendStoreMessage } from "./shopper-emails";
 import { storeTag, type Store } from "./stores";
 import { effectiveFeatures, featureOn } from "@/lib/store-features";
+import { stepApplies } from "@/lib/setup-steps";
+import { listFeaturesTool, preflightFeatureTool, setFeatureTool } from "./feature-tools";
 
 type Row = Record<string, unknown>;
 
@@ -723,19 +725,28 @@ const adminLink = (store: Store, path: string) => `/admin/${store.slug}${path}`;
 async function setupProgressTool({ store }: OwnerToolContext) {
   const p = await getSetupProgress(store);
   const step = (done: boolean, what: string, page: string) => ({ what, done, page: adminLink(store, page) });
+  // The steps follow the store's features (D178 step 6): a website has no shipping, payments or products to set up.
+  const selling = featureOn(store, "shop");
   return {
     ready_to_open: p.readyToOpen,
     status: store.status,
+    website: !selling,
     steps: [
+      ...(store.setupCompletedAt ? [] : [step(p.features, "What the store will sell (the setup's first question)", "/setup/features")]),
       step(p.details, "Business details", "/settings/company"),
-      step(p.countries, "Countries to sell to", "/setup/countries"),
-      step(p.shipping, "Shipping price for every country", "/settings/shipping"),
-      step(p.payments, "Stripe account set up", "/settings/payments"),
-      step(p.paymentsOn, "Payments switched on", "/settings/payments"),
-      step(p.products, "Own products (not only the demo ones)", "/products"),
+      step(p.countries, selling ? "Countries to sell to" : "The website's country", "/setup/countries"),
+      ...(stepApplies("bookings", store) ? [step(p.bookings, "Staff, rooms or items to book", "/setup/bookings")] : []),
+      ...(selling
+        ? [
+            step(p.shipping, "Shipping price for every country", "/settings/shipping"),
+            step(p.payments, "Stripe account set up", "/settings/payments"),
+            step(p.paymentsOn, "Payments switched on", "/settings/payments"),
+            step(p.products, "Own products (not only the demo ones)", "/products"),
+          ]
+        : []),
       step(p.plan, "A Kaizen plan", "/billing"),
     ],
-    products: { own: p.counts.ownProducts, demo: p.counts.demoProducts },
+    ...(selling && { products: { own: p.counts.ownProducts, demo: p.counts.demoProducts } }),
   };
 }
 
@@ -1814,6 +1825,13 @@ export async function preflightOwnerTool(ctx: OwnerToolContext, name: string, ra
     if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
     return preflightSendDraft(ctx, input.input as Parameters<typeof preflightSendDraft>[1]);
   }
+  // A feature switch that could not be made (a need off, customers who would be hit) is refused now, never kept for a yes (D178).
+  if (name === "set_feature") {
+    const tool = OWNER_TOOLS_BY_NAME[name];
+    const input = readToolInput(tool, raw);
+    if (!input.ok) return fail(`The arguments could not be read: ${input.problem}`);
+    return preflightFeatureTool(ctx, input.input as OwnerToolInput<"set_feature">);
+  }
   // A test that could not be started, stopped or decided is refused now, never kept for a yes (D148).
   if (name === "start_experiment" || name === "stop_experiment" || name === "apply_winner") {
     const tool = OWNER_TOOLS_BY_NAME[name];
@@ -1898,6 +1916,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   archive_product: archiveProductTool,
   unpublish_page: unpublishPageTool,
   setup_progress: setupProgressTool,
+  list_features: listFeaturesTool,
+  set_feature: setFeatureTool,
   store_checkup: storeCheckup,
   get_tax_profile: getTaxProfileTool,
   tax_readiness: taxReadinessTool,

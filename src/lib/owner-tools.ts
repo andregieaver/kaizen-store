@@ -10,6 +10,7 @@ import { approveSummary, declineSummary } from "./return-tools";
 import { FROM_MAX, OVERVIEW_ROWS_DEFAULT, OVERVIEW_ROWS_MAX, TO_MAX, redirectSummary } from "./redirect-tools";
 import { ADJUST_REASONS, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, MOVEMENT_REASONS, NOTE_MAX, STOCK_MAX } from "./inventory";
 import { backorderSummary, setStockSummary } from "./stock-tools";
+import { featureSwitchSummaryOf, listFeaturesInput, setFeatureInput } from "./feature-tools";
 import { archiveOrdersInput, createDraftOrderInput, listDraftOrdersInput, listOrdersInput, sendDraftOrderInput, sendDraftSummary, tagOrdersInput } from "./order-ops-tools";
 
 /**
@@ -203,6 +204,17 @@ export const OWNER_TOOLS = [
     "search_insights",
     "What shoppers searched for in the store's search, most often first, and the searches that found nothing.",
     z.object({ days: z.number().int().min(1).max(90).default(30), limit: limit(30, 10) }),
+  ),
+  tool(
+    "list_features",
+    "The store's features (Settings, Features): the online shop's master switch (off, the store is a website) and each feature (subscriptions, subscription boxes, appointments, stays and rentals, several countries, languages and currencies, selling to businesses, the bonus and referral programs), each with its state (`on`; `off`; or `asleep`: switched on but waiting for a feature it needs, such as the online shop), whether the store has data for it (in use), what it needs, and its admin page. Read-only; call it before suggesting a switch.",
+    listFeaturesInput,
+  ),
+  tool(
+    "set_feature",
+    "Switches one store feature on or off, as the Features page does: on only when what it needs is on (switch the online shop or the bonus program on first); off is refused while customers would be hit (running subscriptions, bookings to come, goods paid for and not sent) with the reasons, and what switching off means (products no longer offered, credits on hold…) is told to the owner with the approval. Nothing is ever deleted: switching on again brings everything back. Use an id from list_features. Needs the owner's approval.",
+    setFeatureInput,
+    "public",
   ),
   tool(
     "setup_progress",
@@ -809,6 +821,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return input.archived === false ? `Put the product "${text("product")}" back as a draft.` : `Take the product "${text("product")}" off the site.`;
     case "add_redirect":
       return redirectSummary(text("from"), text("to"));
+    case "set_feature":
+      return featureSwitchSummaryOf(input);
     case "unpublish_page":
       return `Take the ${input.type === "article" ? "article" : "page"} ${text("page")} off the site, keeping its draft.`;
     case "approve_return":
