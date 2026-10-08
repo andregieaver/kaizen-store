@@ -75,6 +75,182 @@ const without = <K extends keyof PartSizeSettings>(at: At | undefined, key: K): 
   SMALLER_SIZES.reduce<At | undefined>((acc, size) => withAt(acc, size, key, undefined), at);
 
 // ---------------------------------------------------------------------------
+// Editing at a size (D179 phase 2): the builder's fields
+// ---------------------------------------------------------------------------
+
+/** Every setting that can differ by size: what `at` takes, and what the builder's fields mark with a device icon. */
+export const SIZE_KEYS = [
+  "style",
+  "border",
+  "radius",
+  "shadow",
+  "background",
+  "backdropBlur",
+  "stack",
+  "reverse",
+  "gap",
+  "width",
+  "order",
+  "align",
+  "maxWidth",
+  "columns",
+  "display",
+] as const satisfies readonly (keyof PartSizeSettings)[];
+export type SizeKey = (typeof SIZE_KEYS)[number];
+/** A field of the builder: a setting, or one of a part's two kinds of spacing, which are kept apart by size. */
+export type SizeField = Exclude<SizeKey, "style"> | "margin" | "padding";
+
+const isSizeKey = (key: string): key is SizeKey => (SIZE_KEYS as readonly string[]).includes(key);
+
+/** Settings that can be "none" at a size though a larger size sets them: stored as `null` there. */
+const NONE_AT_SIZE: ReadonlySet<SizeKey> = new Set(["border", "shadow", "background", "backdropBlur", "maxWidth"]);
+
+/** What a setting is where nothing sets it, at a size: a row stacks on Small only (a dual button nowhere); nothing is reversed; a grid is a grid; text starts on the left. */
+function fallbackAt(part: object, key: SizeKey, size: Size): unknown {
+  if (key === "stack") return (part as { type?: string }).type === "row" && size === "sm";
+  if (key === "reverse") return false;
+  if (key === "display") return "grid";
+  if (key === "align") return "left";
+  if (key === "radius") return 0;
+  return undefined;
+}
+
+/** The same setting: `null` and left out are the same (none), and so are a value and the default it equals. */
+const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/** The sizes above `size`, smallest first, that hold overrides (Extra large is the part's own). */
+const above = (size: Size): SmallerSize[] => walk(size).slice(1);
+
+type Spaced = WithAt & { style?: Spacing };
+
+/** A setting's value at `size` without the size's own override: what it inherits from the sizes above, or the part's own. */
+export function inheritedAt<K extends SizeKey>(part: WithAt & Partial<Record<K, unknown>>, key: K, size: Size): PartSizeSettings[K] | undefined {
+  for (const s of above(size)) {
+    const value = part.at?.[s]?.[key];
+    if (value !== undefined) return value;
+  }
+  return (part as Partial<Record<K, PartSizeSettings[K]>>)[key];
+}
+
+/** A part's margin or padding at `size` without the size's own. */
+function inheritedSpacing(part: Spaced, kind: "margin" | "padding", size: Size): Sides | undefined {
+  for (const s of above(size)) {
+    const value = part.at?.[s]?.style?.[kind];
+    if (value !== undefined) return value;
+  }
+  return part.style?.[kind];
+}
+
+/** A copy of `at` with a size's margin or padding set or taken away. */
+function withSpacingAt(at: At | undefined, size: SmallerSize, kind: "margin" | "padding", sides: Sides | undefined): At | undefined {
+  const style: Spacing = { ...(at?.[size]?.style ?? {}) };
+  if (sides === undefined) delete style[kind];
+  else style[kind] = sides;
+  return withAt(at, size, "style", Object.keys(style).length > 0 ? style : undefined);
+}
+
+const NO_SIDES: Sides = { top: 0, right: 0, bottom: 0, left: 0 };
+
+/**
+ * What a change made in a field at `size` does to a part (D179 phase 2): at Extra large the patch as it is (the part's own
+ * values); at a smaller size each setting that can vary goes into `at[size]`, only where it differs from what the size
+ * inherits (a value equal to it takes the override away), and "none" over an inherited value is kept as `null` (or no
+ * spacing as zeros). Settings that cannot vary by size are the part's own, at any size. A patch's own `at` (a field that
+ * cleared an override) is the starting point.
+ */
+export function setAt<P extends WithAt>(part: P, size: Size, patch: Partial<P>): Partial<P> {
+  if (size === "xl") return patch;
+  const out: Record<string, unknown> = {};
+  let at: At | undefined = "at" in patch ? (patch.at as At | undefined) : part.at;
+  const current = { ...part, at } as P;
+  for (const [key, value] of Object.entries(patch)) {
+    if (key === "at") continue;
+    if (!isSizeKey(key)) {
+      out[key] = value;
+      continue;
+    }
+    if (key === "style") {
+      const spacing = (value ?? {}) as Spacing;
+      for (const kind of ["margin", "padding"] as const) {
+        const inherited = inheritedSpacing(current as Spaced, kind, size);
+        const wanted = spacing[kind] ?? (inherited ? NO_SIDES : undefined);
+        at = withSpacingAt(at, size, kind, same(wanted, inherited) ? undefined : wanted);
+      }
+      continue;
+    }
+    const fallback = fallbackAt(part, key, size);
+    const inherited = inheritedAt(current as WithAt & Partial<Record<SizeKey, unknown>>, key, size) ?? fallback;
+    let next: unknown = value;
+    if (same(value ?? fallback, inherited)) next = undefined;
+    else if (value === undefined || value === null) next = NONE_AT_SIZE.has(key) ? null : undefined;
+    at = withAt(at, size as SmallerSize, key, next as PartSizeSettings[typeof key]);
+  }
+  out.at = at;
+  return out as Partial<P>;
+}
+
+/** Takes a field's override at `size` away, so the size inherits again: the part's new `at`. */
+export function clearAt(part: WithAt, size: Size, field: SizeField): { at: At | undefined } {
+  if (size === "xl") return { at: part.at };
+  if (field === "margin" || field === "padding") return { at: withSpacingAt(part.at, size, field, undefined) };
+  return { at: withAt(part.at, size, field, undefined) };
+}
+
+/** Where the value a field shows at `size` comes from: set at the size itself (`own`), or at `from` (null: nowhere, the default). */
+export type SizeSource = { own: boolean; from: Size | null };
+
+export function sizeSource(part: WithAt & Record<string, unknown>, size: Size, field: SizeField): SizeSource {
+  const kind = field === "margin" || field === "padding" ? field : null;
+  const read = (settings: PartSizeSettings | undefined): unknown =>
+    kind ? settings?.style?.[kind] : settings?.[field as Exclude<SizeField, "margin" | "padding">];
+  const own = kind ? (part.style as Spacing | undefined)?.[kind] : part[field];
+  if (size === "xl") return { own: own !== undefined, from: own !== undefined ? "xl" : null };
+  if (read(part.at?.[size]) !== undefined) return { own: true, from: size };
+  for (const s of above(size)) if (read(part.at?.[s]) !== undefined) return { own: false, from: s };
+  return { own: false, from: own !== undefined ? "xl" : null };
+}
+
+/**
+ * A part as its fields show it at `size`: every setting that can vary at its value there (`valueAt()`, margin and padding
+ * each on their own), "none" left out. Its `at` stays as it is, so where each value comes from can still be read
+ * (`sizeSource()`). Changes made to what is shown go back through `setAt()` with the part itself.
+ */
+export function viewAt<P extends WithAt>(part: P, size: Size): P {
+  if (size === "xl") return part;
+  const out: Record<string, unknown> = { ...part };
+  for (const key of SIZE_KEYS) {
+    if (key === "style") continue;
+    const value = valueAt(part as WithAt & Partial<Record<SizeKey, unknown>>, key, size);
+    if (value === undefined || value === null) delete out[key];
+    else out[key] = value;
+  }
+  const spacing = spacingAt(part as Spaced, size);
+  if (spacing.margin || spacing.padding) out.style = spacing;
+  else delete out.style;
+  return out as P;
+}
+
+/** A row's "one under another" at a size as a change: at Extra large its own (a row kept side by side everywhere stays so), else an override where it differs. */
+export function stackPatchAt(row: Pick<PageRow, "stack" | "at">, size: Size, stacked: boolean): Pick<PageRow, "stack" | "at"> | Record<string, never> {
+  if (size === "xl") {
+    if (stacked) return { stack: true };
+    return row.stack === true ? { stack: undefined } : {};
+  }
+  return setAt({ ...row, type: "row" }, size, { stack: stacked });
+}
+
+/** Whether a part is hidden at each size, as the Advanced tab's four switches; and the change one of them makes. */
+export function visibilityPatch(part: { visibility?: { hideAt?: Size[] } }, size: Size, shown: boolean): { visibility: { hideAt?: Size[] } | undefined } {
+  const hidden = new Set(part.visibility?.hideAt ?? []);
+  if (shown) hidden.delete(size);
+  else hidden.add(size);
+  const hideAt = SIZES.filter((s) => hidden.has(s));
+  const rest = { ...part.visibility, hideAt: hideAt.length > 0 ? hideAt : undefined };
+  if (rest.hideAt === undefined) delete rest.hideAt;
+  return { visibility: Object.keys(rest).length > 0 ? rest : undefined };
+}
+
+// ---------------------------------------------------------------------------
 // Alignments: by screen, smaller to larger (D48), into a base and overrides
 // ---------------------------------------------------------------------------
 
@@ -208,7 +384,7 @@ export const SIDE_BY_SIDE_GAP = 8;
  * `at` of a stored part with `key` set at a size. A setting saved the old way says all there is to say about its key, so
  * it takes the place of any override of that key (a stored part never has both; a test or a hand-made part may).
  */
-function setAt(raw: Json, size: SmallerSize, key: string, value: unknown) {
+function setRawAt(raw: Json, size: SmallerSize, key: string, value: unknown) {
   const at = isObject(raw.at) ? { ...raw.at } : {};
   const own = isObject(at[size]) ? { ...(at[size] as Json) } : {};
   own[key] = value;
@@ -217,7 +393,7 @@ function setAt(raw: Json, size: SmallerSize, key: string, value: unknown) {
 }
 
 /** `at` of a stored part without `key` at any size, before an old setting of that key is read into it. */
-function clearAt(raw: Json, key: string) {
+function clearRawAt(raw: Json, key: string) {
   if (!isObject(raw.at)) return;
   const at: Json = {};
   for (const size of SMALLER_SIZES) {
@@ -238,14 +414,14 @@ export function upgradeRow(value: unknown): unknown {
   const reverse = row.reverseOnMobile === true;
   delete row.sideBySide;
   delete row.reverseOnMobile;
-  clearAt(row, "reverse");
+  clearRawAt(row, "reverse");
   if (sideBySide) {
     // Never stacked; 8 px between columns on phones, 32 from tablets (`gap-2 md:gap-8`). Reversing never applied.
     row.stack = false;
-    clearAt(row, "stack");
-    clearAt(row, "gap");
-    setAt(row, "sm", "gap", SIDE_BY_SIDE_GAP);
-  } else if (reverse) setAt(row, "sm", "reverse", true);
+    clearRawAt(row, "stack");
+    clearRawAt(row, "gap");
+    setRawAt(row, "sm", "gap", SIDE_BY_SIDE_GAP);
+  } else if (reverse) setRawAt(row, "sm", "reverse", true);
   return row;
 }
 
@@ -277,10 +453,10 @@ export function upgradeBlock(value: unknown): unknown {
   if (isObject(block.align) && screens.every((value) => value === undefined || alignOf(value) !== undefined)) {
     const settings = alignSettings(block.align as TextAlignments);
     delete block.align;
-    clearAt(block, "align");
+    clearRawAt(block, "align");
     if (settings.align) block.align = settings.align;
-    if (settings.md) setAt(block, "md", "align", settings.md);
-    if (settings.sm) setAt(block, "sm", "align", settings.sm);
+    if (settings.md) setRawAt(block, "md", "align", settings.md);
+    if (settings.sm) setRawAt(block, "sm", "align", settings.sm);
   }
   if ("hideOnPhones" in block) {
     const hide = block.hideOnPhones === true;
@@ -295,8 +471,8 @@ export function upgradeBlock(value: unknown): unknown {
   if ("stackOnPhones" in block) {
     const stack = block.stackOnPhones === true;
     delete block.stackOnPhones;
-    clearAt(block, "stack");
-    if (stack) setAt(block, "sm", "stack", true);
+    clearRawAt(block, "stack");
+    if (stack) setRawAt(block, "sm", "stack", true);
   }
   if ("carouselOn" in block) {
     const phones = block.carouselOn === "phones" && block.display === "carousel";
@@ -304,16 +480,16 @@ export function upgradeBlock(value: unknown): unknown {
     if (phones) {
       // A carousel on phones, a grid from tablets' width.
       delete block.display;
-      clearAt(block, "display");
-      setAt(block, "sm", "display", "carousel");
+      clearRawAt(block, "display");
+      setRawAt(block, "sm", "display", "carousel");
     }
   }
   if (isGridColumns(block.columns)) {
     const { mobile, tablet, desktop } = block.columns;
     block.columns = desktop;
-    clearAt(block, "columns");
-    if (tablet !== desktop) setAt(block, "md", "columns", tablet);
-    if (mobile !== tablet) setAt(block, "sm", "columns", mobile);
+    clearRawAt(block, "columns");
+    if (tablet !== desktop) setRawAt(block, "md", "columns", tablet);
+    if (mobile !== tablet) setRawAt(block, "sm", "columns", mobile);
   }
   return block;
 }

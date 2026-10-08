@@ -58,7 +58,7 @@ export function rowBox(row: PageRow, mode: PartsMode, inPanel = false): Box {
     id: mode === "site" ? row.htmlId : undefined,
     className: cx(
       partClass(row),
-      rowStyle(row, inPanel).className,
+      rowStyle(row, inPanel, mode).className,
       "relative isolate flex flex-col",
       row.fullHeight && "min-h-svh",
       clipsAnywhere(row) && !inPanel && "overflow-hidden",
@@ -90,7 +90,7 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
     id: mode === "site" ? column.htmlId : undefined,
     className: cx(
       partClass(column),
-      columnStyle(column).className,
+      columnStyle(column, mode).className,
       // Side by side (D80): its components in a line that wraps, centred on each other, placed by `justify`.
       // In a row that never stacks (a header's), they stay on one line, the widest (a logo) narrowing first.
       column.inline

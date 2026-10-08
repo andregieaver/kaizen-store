@@ -4,13 +4,17 @@ import { useId, useState } from "react";
 
 import { BOUND_PICTURE_SIZE, IMAGE_WIDTH_MIN, imageDisplaySize, type ImageBlock } from "@/lib/page-content";
 import type { BlockPatch } from "@/lib/page-rows";
+import { setAt, sizeSource, valueAt } from "@/lib/responsive";
 
 import { TextAlignFields } from "./block-fields";
+import { SizeMark, inheritedClass, useSizeEdit } from "./responsive-edit";
 
 /**
  * A picture's width and position (D151), on its Style tab. A picture is drawn at its own size and never larger; Width makes it
  * narrower, in pixels, and Position says where it sits when it is narrower than its column. What is stored is only what differs
- * from the picture's own size and from the left, so a picture left alone keeps no setting.
+ * from the picture's own size and from the left, so a picture left alone keeps no setting. Both can differ by screen size
+ * (D179): they edit the size the builder is at, and below Extra large a width set larger can be given back or made the own
+ * size there.
  */
 
 /** What to store for a wish: nothing at or above the picture's own size (the key goes), else no less than the floor. */
@@ -27,12 +31,16 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
   // picture the block keeps of its own for when the field is empty.
   const bound = Boolean(block.bind);
   const own = bound ? { url: "", ...BOUND_PICTURE_SIZE, alt: "" } : block.image;
+  const { size } = useSizeEdit();
+  const maxWidth = valueAt(block, "maxWidth", size) ?? undefined;
+  const source = sizeSource(block, size, "maxWidth");
   const natural = own ? imageDisplaySize({ image: own, shape: block.shape }) : null;
-  const shown = own ? imageDisplaySize({ image: own, shape: block.shape, maxWidth: block.maxWidth }) : null;
+  const shown = own ? imageDisplaySize({ image: own, shape: block.shape, maxWidth }) : null;
   const min = natural ? Math.min(IMAGE_WIDTH_MIN, natural.width) : IMAGE_WIDTH_MIN;
   const tooSmall = natural !== null && natural.width <= IMAGE_WIDTH_MIN;
   const [draft, setDraft] = useState<string | null>(null);
-  const set = (px: number) => natural && onChange({ maxWidth: widthPatch(px, natural.width, min) });
+  const write = (value: number | undefined) => onChange(setAt(block, size, { maxWidth: value }));
+  const set = (px: number) => natural && write(widthPatch(px, natural.width, min));
   // A typed number is kept as soon as it is a width the picture can have; one still being typed (too small) waits for the
   // field to be left, so closing the dialog straight after typing loses nothing.
   const typed = (text: string) => {
@@ -46,13 +54,16 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
     const wanted = draft.trim() === "" ? Number.NaN : Number(draft);
     setDraft(null);
     // A width already kept as it was typed is not written again.
-    if (Number.isFinite(wanted) && natural && widthPatch(wanted, natural.width, min) !== block.maxWidth) set(wanted);
+    if (Number.isFinite(wanted) && natural && widthPatch(wanted, natural.width, min) !== maxWidth) set(wanted);
   };
 
   return (
     <div className="flex flex-col gap-5">
-      <fieldset disabled={!natural || tooSmall} className="flex flex-col gap-2">
-        <legend className="text-sm font-medium">Width</legend>
+      <fieldset disabled={!natural || tooSmall} className={`flex flex-col gap-2 ${inheritedClass(source, size)}`}>
+        <legend className="text-sm font-medium">
+          Width
+          <SizeMark part={block} field="maxWidth" label="Width" onPatch={onChange} />
+        </legend>
         <div className="flex min-h-10 flex-wrap items-center gap-3">
           <input
             id={`${id}-range`}
@@ -91,8 +102,8 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
           </label>
           <button
             type="button"
-            onClick={() => onChange({ maxWidth: undefined })}
-            disabled={block.maxWidth === undefined}
+            onClick={() => write(undefined)}
+            disabled={maxWidth === undefined}
             className="min-h-10 rounded-md border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
           >
             Own size

@@ -11,7 +11,7 @@ import { type FieldDef, type FieldEntity, type FieldGroup } from "@/lib/custom-f
 import { bindable, canBind } from "@/lib/field-binding";
 import { LOOP_SLOT_KEYS, isLoopable, slotChoices, suggestSlots, validSlots } from "@/lib/field-loop";
 import { AUTOPLAY_SECONDS, CAROUSEL_SNAPS, cleanCarousel, normalizeSeconds, resolveCarousel, type CarouselSettings, type CarouselSnap } from "@/lib/carousel-settings";
-import { alignPatch, alignView, stackPatch, stackedOnPhones } from "@/lib/responsive";
+import { setAt, sizeSource, valueAt } from "@/lib/responsive";
 import { tileFieldOptions } from "@/lib/tile-fields";
 import { isEmail } from "@/lib/forms";
 import { t } from "@/lib/i18n";
@@ -20,6 +20,7 @@ import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } fr
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
 import { RichTextEditor } from "./rich-text-editor";
+import { SizeMark, inheritedClass, useSizeEdit } from "./responsive-edit";
 
 import {
   ACCORDION_LOOKS,
@@ -104,7 +105,6 @@ import {
   type PageBlock,
   type SeparatorBlock,
   type TextAlign,
-  type TextAlignments,
   type SizeOverrides,
 } from "@/lib/page-content";
 
@@ -272,6 +272,8 @@ export function NumberField({
   max,
   unit,
   onChange,
+  mark,
+  muted = "",
 }: {
   label: string;
   value: number;
@@ -279,13 +281,20 @@ export function NumberField({
   max: number;
   unit?: string;
   onChange: (value: number) => void;
+  /** Beside the label: a setting that can differ by screen size has its device icon and where its value comes from (D179). */
+  mark?: ReactNode;
+  /** Classes that grey an inherited value (`inheritedClass()`). */
+  muted?: string;
 }) {
   const id = useId();
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
+    <div className={`flex flex-col gap-1 ${muted}`}>
+      <div className="flex flex-wrap items-center gap-1">
+        <label htmlFor={id} className="text-sm font-medium">
+          {label}
+        </label>
+        {mark}
+      </div>
       <div className="flex items-center gap-2">
         <input
           id={id}
@@ -355,6 +364,8 @@ export function Choices<T extends string>({
   value,
   onChange,
   disabled = false,
+  mark,
+  muted = "",
 }: {
   legend: string;
   hint?: string;
@@ -362,13 +373,18 @@ export function Choices<T extends string>({
   value: T;
   onChange: (value: T) => void;
   disabled?: boolean;
+  /** After the legend: a setting that can differ by screen size has its device icon and where its value comes from (D179). */
+  mark?: ReactNode;
+  /** Classes that grey an inherited value (`inheritedClass()`). */
+  muted?: string;
 }) {
   const name = useId();
   return (
-    <fieldset disabled={disabled} className="flex flex-col gap-2 disabled:opacity-50">
+    <fieldset disabled={disabled} className={`flex flex-col gap-2 disabled:opacity-50 ${muted}`}>
       <legend className="float-left mb-2 w-full text-sm font-medium">
         {legend}
         {hint && <span className="font-normal text-muted"> ({hint})</span>}
+        {mark}
       </legend>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => (
@@ -466,9 +482,8 @@ const ALIGN_OPTIONS = [
 
 
 /**
- * A part's alignment on phones, tablets and computers (D48); each larger screen follows the smaller unless set. Since
- * D179 the part keeps it as its base value and overrides by size: the three screens are read from Small, Medium and
- * Large (`alignView()`), and a choice is written back as such (`alignPatch()`), keeping the part's other overrides.
+ * A part's alignment (D48), at the screen size the builder edits (D179): at Extra large the part's own, below it an
+ * override of the size (`setAt()`), the inherited one greyed with where it comes from, and a × to give it back.
  */
 export function TextAlignFields({
   what = "Text alignment",
@@ -477,33 +492,19 @@ export function TextAlignFields({
 }: {
   what?: string;
   value: { align?: TextAlign; at?: SizeOverrides };
-  onChange: (patch: { align: TextAlign | undefined; at: SizeOverrides | undefined }) => void;
+  onChange: (patch: { align?: TextAlign | undefined; at?: SizeOverrides | undefined }) => void;
 }) {
-  const value = alignView(part);
-  const set = (screen: keyof TextAlignments, align: TextAlign | "same") => {
-    const next: TextAlignments = { ...value };
-    if (align === "same" || (screen === "mobile" && align === "left")) delete next[screen];
-    else next[screen] = align;
-    onChange(alignPatch(part, Object.keys(next).length > 0 ? next : undefined));
-  };
+  const { size } = useSizeEdit();
+  const source = sizeSource(part, size, "align");
   return (
-    <div className="flex flex-col gap-4">
-      <Choices legend={`${what} on phones`} options={ALIGN_OPTIONS} value={value?.mobile ?? "left"} onChange={(a) => set("mobile", a)} />
-      <Choices
-        legend="On tablets"
-        hint="768 pixels and wider"
-        options={[{ value: "same", label: "As on phones" }, ...ALIGN_OPTIONS]}
-        value={value?.tablet ?? "same"}
-        onChange={(a) => set("tablet", a)}
-      />
-      <Choices
-        legend="On computers"
-        hint="1024 pixels and wider"
-        options={[{ value: "same", label: "As on tablets" }, ...ALIGN_OPTIONS]}
-        value={value?.desktop ?? "same"}
-        onChange={(a) => set("desktop", a)}
-      />
-    </div>
+    <Choices
+      legend={what}
+      mark={<SizeMark part={part} field="align" label={what} onPatch={onChange} />}
+      muted={inheritedClass(source, size)}
+      options={ALIGN_OPTIONS}
+      value={valueAt(part, "align", size) ?? "left"}
+      onChange={(align) => onChange(setAt(part, size, { align: size === "xl" && align === "left" ? undefined : align }))}
+    />
   );
 }
 
@@ -849,14 +850,26 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
       <Choices legend="Corners" options={optionsOf(BUTTON_SHAPES)} value={block.shape ?? "rounded"} onChange={(shape: ButtonShape) => onChange({ shape: shape === "rounded" ? undefined : shape })} />
       <Choices legend="Weight" options={optionsOf(FONT_WEIGHTS)} value={block.weight ?? "medium"} onChange={(weight: FontWeight) => onChange({ weight: weight === "medium" ? undefined : weight })} />
       <NumberField label="Space between" value={block.gap ?? 12} min={0} max={DUAL_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
-      <Check
-        label="One under another on phones"
-        hint="Each as wide as the column on screens under 768 pixels."
-        checked={stackedOnPhones(block)}
-        onChange={(on) => onChange(stackPatch(block, on))}
-      />
+      <DualStackField block={block} onChange={onChange} />
       <TextAlignFields what="Position" value={block} onChange={onChange} />
     </>
+  );
+}
+
+/** A dual button's two one under another, each as wide as the column, at the size edited (D179). */
+function DualStackField({ block, onChange }: { block: DualButtonBlock; onChange: (patch: Partial<DualButtonBlock>) => void }) {
+  const { size } = useSizeEdit();
+  const source = sizeSource(block, size, "stack");
+  return (
+    <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(source, size)}`}>
+      <Check
+        label="One under another"
+        hint="Each as wide as the column."
+        checked={valueAt(block, "stack", size) === true}
+        onChange={(on) => onChange(setAt(block, size, { stack: size === "xl" ? on || undefined : on }))}
+      />
+      <SizeMark part={block} field="stack" label="One under another" onPatch={onChange} />
+    </div>
   );
 }
 

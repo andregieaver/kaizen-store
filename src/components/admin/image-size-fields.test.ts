@@ -3,11 +3,14 @@ import { renderToString } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { BOUND_PICTURE_SIZE, IMAGE_WIDTH_MIN, type ImageBlock, type PageRow, type TextAlignments } from "@/lib/page-content";
-import { alignView, upgradeBlock } from "@/lib/responsive";
+import { upgradeBlock } from "@/lib/responsive";
 import { patchBlock, type BlockPatch } from "@/lib/page-rows";
+
+import type { Size } from "@/lib/breakpoints";
 
 import { TextAlignFields } from "./block-fields";
 import { ImageSizeFields, widthPatch } from "./image-size-fields";
+import { SizeEditContext, type SizeEdit } from "./responsive-edit";
 
 /**
  * A picture's Width and Position on its Style tab (D151). The markup is drawn on the server as the other settings are
@@ -18,13 +21,16 @@ import { ImageSizeFields, widthPatch } from "./image-size-fields";
 
 // While `harness.on`, `useState` and `useId` are a plain slot array (so a handler can be fired, the component drawn again and
 // what it shows read); otherwise they are React's own, which `renderToString` needs.
-const harness = vi.hoisted(() => ({ on: false, slots: [] as unknown[], at: 0 }));
+const harness = vi.hoisted(() => ({ on: false, slots: [] as unknown[], at: 0, sizeEdit: null as unknown }));
 
 vi.mock("react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react")>();
   return {
     ...actual,
     useId: () => (harness.on ? "t" : actual.useId()),
+    // The builder's screen size (D179): the one a test gives, else the context's default (Extra large).
+    useContext: (context: { _currentValue: unknown }) =>
+      harness.on ? (harness.sizeEdit ?? context._currentValue) : actual.useContext(context as unknown as Parameters<typeof actual.useContext>[0]),
     useState: (initial: unknown) => {
       if (!harness.on) return actual.useState(initial);
       const slot = harness.at++;
@@ -43,8 +49,11 @@ const image = (over: Omit<Partial<ImageBlock>, "align"> & { align?: ImageBlock["
   upgradeBlock({ id: "img", type: "image", image: picture(800, 600), caption: "", ...over }) as ImageBlock;
 const fromField = { fieldId: "field-1" };
 
-const html = (block: ImageBlock) =>
-  renderToString(createElement(ImageSizeFields, { block, onChange: () => {} })).replace(/<!-- -->/g, "");
+/** Drawn at a screen size of the builder's (D179), Extra large unless said. */
+const html = (block: ImageBlock, size: Size = "xl") =>
+  renderToString(
+    createElement(SizeEditContext, { value: { size, active: size !== "xl", choose: () => {} } }, createElement(ImageSizeFields, { block, onChange: () => {} })),
+  ).replace(/<!-- -->/g, "");
 
 const attr = (tag: string, name: string) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
 const rangeOf = (out: string) => out.match(/<input[^>]*type="range"[^>]*>/)?.[0] ?? "";
@@ -113,7 +122,8 @@ describe("a picture's Width", () => {
   it("is one labelled group with a slider from the floor to the picture's own width", () => {
     const out = html(image());
     const group = out.slice(0, out.indexOf("</fieldset>"));
-    expect(group).toMatch(/<legend[^>]*>Width<\/legend>/);
+    // Named Width, with its device icon (D179).
+    expect(group).toMatch(/<legend[^>]*>Width<span[^]*data-size-switch[^]*<\/legend>/);
     const range = rangeOf(group);
     expect(range).not.toBe("");
     expect(attr(range, "min")).toBe("16");
@@ -294,51 +304,43 @@ describe("a picture's Position", () => {
     out.split("<fieldset").find((part) => new RegExp(`<legend[^>]*>${legend}`).test(part)) ?? "";
   const chosen = (part: string) => part.match(/<input[^>]*type="radio"[^>]*checked=""[^>]*value="([^"]+)"/)?.[1];
 
-  it("is drawn with its three screens even when nothing is set", () => {
+  it("is one group, with its device icon, even when nothing is set", () => {
     const out = html(image());
-    for (const legend of ["Position on phones", "On tablets", "On computers"]) {
-      expect(group(out, legend), legend).not.toBe("");
-    }
-    expect(chosen(group(out, "Position on phones"))).toBe("left");
-    expect(chosen(group(out, "On tablets"))).toBe("same");
-    expect(chosen(group(out, "On computers"))).toBe("same");
+    const part = group(out, "Position");
+    expect(part).not.toBe("");
+    expect(part).toContain("data-size-switch");
+    expect(chosen(part)).toBe("left");
+    expect(out).not.toContain("Position on phones");
     expect(out).toContain("Where the picture sits when it is narrower than its column.");
     expect(out).toContain("A left or right margin set under Spacing takes the place of this");
   });
 
   it("is drawn without a picture and with a picture too small to shrink", () => {
     for (const block of [image({ image: null }), image({ image: picture(10, 10) }), image({ image: null, bind: fromField })]) {
-      const out = html(block);
-      for (const legend of ["Position on phones", "On tablets", "On computers"]) {
-        expect(group(out, legend), legend).not.toBe("");
-      }
+      expect(group(html(block), "Position")).not.toBe("");
     }
   });
 
-  it("names the places a picture can sit, on each screen", () => {
-    const out = html(image());
-    for (const legend of ["Position on phones", "On tablets", "On computers"]) {
-      const part = group(out, legend);
-      for (const label of ["Left", "Centre", "Right"]) expect(part, `${legend} ${label}`).toContain(`>${label}</label>`);
-    }
-    expect(group(out, "On tablets")).toContain(">As on phones</label>");
-    expect(group(out, "On computers")).toContain(">As on tablets</label>");
+  it("names the places a picture can sit", () => {
+    const part = group(html(image()), "Position");
+    for (const label of ["Left", "Centre", "Right"]) expect(part, label).toContain(`>${label}</label>`);
   });
 
-  it("shows what is set on each screen", () => {
-    const out = html(image({ align: { mobile: "center", desktop: "right" } }));
-    expect(chosen(group(out, "Position on phones"))).toBe("center");
-    expect(chosen(group(out, "On tablets"))).toBe("same");
-    expect(chosen(group(out, "On computers"))).toBe("right");
-
-    const tablet = html(image({ align: { tablet: "center" } }));
-    expect(chosen(group(tablet, "Position on phones"))).toBe("left");
-    expect(chosen(group(tablet, "On tablets"))).toBe("center");
+  it("shows the place at the size the builder edits (D179), read larger to smaller", () => {
+    // Saved before D179: centred on phones, right on computers (a base of right, centre from Medium down).
+    const block = image({ align: { mobile: "center", desktop: "right" } });
+    expect(chosen(group(html(block), "Position"))).toBe("right");
+    expect(chosen(group(html(block, "lg"), "Position"))).toBe("right");
+    expect(chosen(group(html(block, "md"), "Position"))).toBe("center");
+    expect(chosen(group(html(block, "sm"), "Position"))).toBe("center");
+    expect(group(html(block, "lg"), "Position")).toContain("From Extra large");
+    expect(group(html(block, "md"), "Position")).toContain("Set for Medium");
+    expect(group(html(block, "sm"), "Position")).toContain("From Medium");
   });
 
   it("does not depend on the width being set", () => {
-    const out = html(image({ maxWidth: 300, align: { mobile: "right" } }));
-    expect(chosen(group(out, "Position on phones"))).toBe("right");
+    const out = html(image({ maxWidth: 300, align: { mobile: "right" } }), "sm");
+    expect(chosen(group(out, "Position"))).toBe("right");
     expect(attr(rangeOf(out), "value")).toBe("300");
   });
 });
@@ -376,8 +378,9 @@ describe("the width controls at work", () => {
    * The component as a builder holds it: it draws the block, and what it reports is applied by the real `patchBlock()` before
    * it draws again, with its own state (the typed draft) kept between draws.
    */
-  function mount(start: ImageBlock) {
+  function mount(start: ImageBlock, size: Size = "xl") {
     let current = start;
+    const sizeEdit: SizeEdit | null = size === "xl" ? null : { size, active: true, choose: () => {} };
     const patches: BlockPatch<ImageBlock>[] = [];
     const slots: unknown[] = [];
     const onChange = (patch: BlockPatch<ImageBlock>) => {
@@ -387,6 +390,7 @@ describe("the width controls at work", () => {
     const render = () => {
       harness.slots = slots;
       harness.at = 0;
+      harness.sizeEdit = sizeEdit;
       harness.on = true;
       try {
         return ImageSizeFields({ block: current, onChange });
@@ -607,28 +611,52 @@ describe("the width controls at work", () => {
   });
 
   describe("Position", () => {
-    it("is handed the block's own alignment and called Position", () => {
+    it("is handed the block itself and called Position", () => {
       const align = { mobile: "center", desktop: "right" } as const;
       const m = mount(image({ align }));
       expect(m.prop(isPosition, "what")).toBe("Position");
-      // The block itself (D179: its base alignment and overrides), which the three screens are read from.
+      // The block itself (D179: its base alignment and overrides), which the size edited is read from.
       expect(m.prop(isPosition, "value")).toMatchObject({ align: "right", at: { md: { align: "center" } } });
-      expect(alignView(m.prop(isPosition, "value") as ImageBlock)).toEqual(align);
     });
 
     it("sets where the picture sits, leaving its width alone", () => {
       const m = mount(image({ maxWidth: 300 }));
-      m.fire(isPosition, "onChange", { align: "center", at: undefined });
-      expect(m.patches).toEqual([{ align: "center", at: undefined }]);
+      m.fire(isPosition, "onChange", { align: "center" });
+      expect(m.patches).toEqual([{ align: "center" }]);
       expect(m.block).toMatchObject({ maxWidth: 300, align: "center" });
     });
 
     it("takes the key away when the choice is back to nothing", () => {
-      const m = mount(image({ align: { mobile: "center" } }));
-      m.fire(isPosition, "onChange", { align: undefined, at: undefined });
-      expect(keysOf(m.patches[0])).toEqual(["align", "at"]);
-      expect(m.patches[0].align).toBeUndefined();
+      const m = mount(image({ align: "center" }));
+      m.fire(isPosition, "onChange", { align: undefined });
+      expect(keysOf(m.patches[0])).toEqual(["align"]);
       expect("align" in m.block).toBe(false);
+    });
+  });
+
+  describe("at a smaller screen size (D179)", () => {
+    it("shows the width the size inherits, and makes one of its own there only", () => {
+      const m = mount(image({ maxWidth: 600 }), "md");
+      expect(m.prop(isRange, "value")).toBe(600);
+      m.slide(300);
+      expect(m.block.maxWidth).toBe(600);
+      expect(m.block.at).toEqual({ md: { maxWidth: 300 } });
+      expect(m.prop(isRange, "value")).toBe(300);
+    });
+
+    it("makes the picture its own size at the size alone, under a narrower larger size", () => {
+      const m = mount(image({ maxWidth: 300 }), "sm");
+      m.fire(isReset, "onClick");
+      expect(m.block.maxWidth).toBe(300);
+      expect(m.block.at).toEqual({ sm: { maxWidth: null } });
+      expect(m.prop(isRange, "value")).toBe(800);
+    });
+
+    it("takes the override away when the width is what the size inherits", () => {
+      const m = mount(image({ maxWidth: 300, at: { md: { maxWidth: 200 } } }), "md");
+      m.slide(300);
+      expect(m.block.at).toBeUndefined();
+      expect(m.block.maxWidth).toBe(300);
     });
   });
 });

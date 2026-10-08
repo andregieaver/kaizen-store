@@ -73,7 +73,7 @@ function spacingDecl(spacing: Spacing, dropMargin = false): Decl {
 }
 
 /** A border, rounded corners and a shadow as declarations (as `frameStyle()`). */
-function frameDecl(border: Border | undefined, radius: number | undefined, shadow: PartBase["shadow"]): Decl {
+function frameDecl(border: Border | null | undefined, radius: number | undefined, shadow: PartBase["shadow"] | null): Decl {
   const out: Decl = {};
   if (border) {
     out["border-style"] = border.style;
@@ -101,6 +101,12 @@ function colorDecl(part: PageRow | PageColumn, size: Size): Decl {
     out["-webkit-backdrop-filter"] = `blur(${blur}px)`;
   }
   return out;
+}
+
+/** On the site, a part left out at the sizes it is hidden at (D179 4: `visibility.hideAt`); the canvas shows it (`canvasHiddenCss()`). */
+function hiddenRules(part: PartBase, mode: PartsMode): PartRule[] {
+  const hidden = mode === "site" ? SIZES.filter((size) => hiddenAt(part, size)) : [];
+  return hidden.length > 0 ? [{ selector: "&", important: false, where: true, only: hidden, decl: { display: "none" } }] : [];
 }
 
 const perSize = (decl: (size: Size) => Decl): Record<Size, Decl> => Object.fromEntries(SIZES.map((size) => [size, decl(size)])) as Record<Size, Decl>;
@@ -144,8 +150,9 @@ const JUSTIFY: Record<VerticalAlign, string> = { top: "start", middle: "center",
 const ITEMS: Record<VerticalAlign, string> = { top: "flex-start", middle: "center", bottom: "flex-end" };
 
 /** A row's own box: its spacing (20 px of padding until set), frame and colour; inside a modal's panel (D121) the panel takes its margin and frame. */
-export function rowStyle(row: PageRow, inPanel = false): ElementStyle {
+export function rowStyle(row: PageRow, inPanel = false, mode: PartsMode = "site"): ElementStyle {
   return named([
+    ...hiddenRules(row, inPanel ? "canvas" : mode),
     {
       selector: "&",
       important: true,
@@ -220,8 +227,9 @@ export const inlineNowrap = (row: PageRow): boolean => neverStacks(row);
 // Columns
 // ---------------------------------------------------------------------------
 
-export function columnStyle(column: PageColumn): ElementStyle {
+export function columnStyle(column: PageColumn, mode: PartsMode = "site"): ElementStyle {
   return named([
+    ...hiddenRules(column, mode),
     {
       selector: "&",
       important: true,
@@ -260,7 +268,7 @@ export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
     sizes: perSize((size) => {
       const out: Decl = { ...spacingDecl(spacingAt(block, size)), ...(block.type === "button" ? {} : frameAt(block, size)) };
       if (block.type === "image" && picture) {
-        const shown = imageDisplaySize({ ...block, maxWidth: valueAt(block, "maxWidth", size) });
+        const shown = imageDisplaySize({ ...block, maxWidth: valueAt(block, "maxWidth", size) ?? undefined });
         if (shown) out["--picture-width"] = `${shown.width}px`;
       }
       if (block.type === "product" && block.part === "related") out["--grid-cols"] = String(valueAt(block, "columns", size) ?? RELATED_COLUMNS[size]);
@@ -366,11 +374,11 @@ export function partRules(rows: PageRow[], mode: PartsMode): PartRule[] {
   const out: PartRule[] = [];
   for (const row of rows) {
     const panel = mode === "site" && Boolean(row.modal);
-    out.push(...rowStyle(row, panel).rules, ...rowGridStyle(row).rules);
+    out.push(...rowStyle(row, panel, mode).rules, ...rowGridStyle(row).rules);
     if (row.modal) out.push(...panelStyle(row).rules);
     // The canvas also previews a modal in its panel (`ModalBar`).
-    if (row.modal && mode === "canvas") out.push(...rowStyle(row, true).rules);
-    for (const column of row.columns) out.push(...columnStyle(column).rules, ...blockRules(column.blocks, mode));
+    if (row.modal && mode === "canvas") out.push(...rowStyle(row, true, mode).rules);
+    for (const column of row.columns) out.push(...columnStyle(column, mode).rules, ...blockRules(column.blocks, mode));
   }
   return out;
 }
@@ -436,3 +444,34 @@ export const partCss = (
   query: QueryMode = mode === "canvas" ? "container" : "media",
   blocks: PageBlock[] = [],
 ): string => renderPartCss([...partRules(rows, mode), ...blockRules(blocks, mode)], breakpoints, query);
+
+// ---------------------------------------------------------------------------
+// Hidden parts on the canvas (D179 phase 2)
+// ---------------------------------------------------------------------------
+
+/** An attribute selector's value, quoted. */
+const quoted = (value: string) => `"${value.replace(/["\\]/g, "\\$&")}"`;
+
+/**
+ * The builder's canvas keeps a part that is hidden at a size (`visibility.hideAt`) where it can be edited: faded, with its
+ * grey eye (`[data-builder-hidden]`, shown only at those sizes), or, with `hide`, left out as on the site. Container
+ * queries on the canvas (`kz-page`), so they follow the size being edited; the canvas's items carry `data-builder-id`.
+ */
+export function canvasHiddenCss(rows: PageRow[], breakpoints: Breakpoints, hide: boolean): string {
+  const parts: PartBase[] = rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...column.blocks])]);
+  const byQuery = new Map<string, string[]>();
+  for (const part of parts as (PartBase & { id: string })[]) {
+    const sizes = SIZES.filter((size) => hiddenAt(part, size));
+    if (sizes.length === 0) continue;
+    const item = `[data-builder-id=${quoted(part.id)}]`;
+    const rules = hide
+      ? [`${item}{display:none}`]
+      : [`${item} > [class~=${quoted(partClass(part as { id: string }))}]{opacity:.4}`, `${item} > [data-builder-hidden]{display:inline-flex}`];
+    for (const run of sizeRuns(sizes)) {
+      const query = sizesQuery(breakpoints, run, "container");
+      if (query === null) continue;
+      byQuery.set(query, [...(byQuery.get(query) ?? []), ...rules]);
+    }
+  }
+  return [...byQuery].map(([query, rules]) => (query === "always" ? rules.join("\n") : `${query}{\n${rules.join("\n")}\n}`)).join("\n");
+}

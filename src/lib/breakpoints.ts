@@ -112,3 +112,57 @@ export function sizeRuns(sizes: readonly Size[]): Size[][] {
   if (run.length > 0) runs.push(run);
   return runs;
 }
+
+// ---------------------------------------------------------------------------
+// The builder's canvas at a size (D179 phase 2)
+// ---------------------------------------------------------------------------
+
+/** The narrowest canvas the builder offers, and the widest. */
+export const CANVAS_MIN = 320;
+export const CANVAS_MAX = 3840;
+
+/** A screen typical of each size: a computer, a small laptop, a tablet held upright, a phone. */
+export const TYPICAL_SCREENS: Record<Size, { width: number; height: number }> = {
+  xl: { width: 1440, height: 900 },
+  lg: { width: 1100, height: 800 },
+  md: { width: 820, height: 1180 },
+  sm: { width: 390, height: 844 },
+};
+
+/** The widths that are a size with these breakpoints, in whole pixels. */
+export function sizeRange(breakpoints: Breakpoints, size: Size): { min: number; max: number } {
+  const b = breakpointsOf({ breakpoints });
+  if (size === "sm") return { min: CANVAS_MIN, max: b.md - 1 };
+  if (size === "md") return { min: b.md, max: b.lg - 1 };
+  if (size === "lg") return { min: b.lg, max: b.xl - 1 };
+  return { min: b.xl, max: Math.max(b.xl, CANVAS_MAX) };
+}
+
+/** A width kept within a size's range. */
+export function clampWidth(breakpoints: Breakpoints, size: Size, width: number): number {
+  const { min, max } = sizeRange(breakpoints, size);
+  return Math.min(max, Math.max(min, Math.round(Number.isFinite(width) ? width : min)));
+}
+
+/** The canvas's width when a size is chosen: the typical screen's, or the middle of the size where the store's widths leave it out. */
+export function typicalWidth(breakpoints: Breakpoints, size: Size): number {
+  const { min, max } = sizeRange(breakpoints, size);
+  const typical = TYPICAL_SCREENS[size].width;
+  if (typical >= min && typical <= max) return typical;
+  return size === "xl" ? min + 160 : Math.round((min + max) / 2);
+}
+
+/** The size a width is, with these breakpoints. */
+export function sizeOfWidth(breakpoints: Breakpoints, width: number): Size {
+  const b = breakpointsOf({ breakpoints });
+  return width >= b.xl ? "xl" : width >= b.lg ? "lg" : width >= b.md ? "md" : "sm";
+}
+
+/** The zooms the canvas offers, in per cent. */
+export const ZOOMS = [100, 90, 75, 67, 50] as const;
+
+/** The largest zoom at which a canvas this wide fits the room there is (at least 50 %). */
+export function fitZoom(room: number, width: number): number {
+  if (!(room > 0) || !(width > 0)) return 100;
+  return ZOOMS.find((zoom) => (width * zoom) / 100 <= room) ?? ZOOMS[ZOOMS.length - 1];
+}

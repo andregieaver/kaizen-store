@@ -3,6 +3,7 @@
 import { useId, useState, useTransition, type ReactNode } from "react";
 
 import { FontLinks } from "@/components/font-links";
+import { BREAKPOINT_GAP, BREAKPOINT_MAX, BREAKPOINT_MIN, DEFAULT_BREAKPOINTS, breakpointsOf, breakpointsProblem, type Breakpoints } from "@/lib/breakpoints";
 import { fontClass, siteFontFamilies } from "@/lib/fonts";
 import {
   BUTTON_CORNERS,
@@ -206,6 +207,73 @@ function Preview({ settings, storeName, mode }: { settings: ThemeSettings; store
   );
 }
 
+const SIZE_STARTS = [
+  { key: "md", label: "Medium from", hint: "Tablets" },
+  { key: "lg", label: "Large from", hint: "Small laptops" },
+  { key: "xl", label: "Extra large from", hint: "Computers" },
+] as const;
+
+/**
+ * Where the screen sizes start (D179): the widths at which a part's settings for Medium, Large and Extra large take over.
+ * Typed widths are kept as typed while they are checked, and the problem is said beside them; Save waits for usable ones.
+ */
+export function BreakpointFields({ value, onChange }: { value: Breakpoints; onChange: (value: Breakpoints) => void }) {
+  const id = useId();
+  const [draft, setDraft] = useState<Record<keyof Breakpoints, string> | null>(null);
+  const shown = draft ?? { md: String(value.md), lg: String(value.lg), xl: String(value.xl) };
+  const typed: Breakpoints = { md: Number(shown.md), lg: Number(shown.lg), xl: Number(shown.xl) };
+  const problem = breakpointsProblem(typed);
+  const change = (key: keyof Breakpoints, text: string) => {
+    const next = { ...shown, [key]: text.replace(/[^\d]/g, "") };
+    setDraft(next);
+    onChange({ md: Number(next.md), lg: Number(next.lg), xl: Number(next.xl) });
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted">
+        Pages are edited at four screen sizes: Small (phones), Medium, Large and Extra large. A setting made for a size holds there
+        and on the smaller sizes until one of them sets its own. These are the widths, in pixels, where each size starts.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {SIZE_STARTS.map(({ key, label, hint }) => (
+          <label key={key} className="flex flex-col gap-1 text-sm font-medium">
+            {label}
+            <span className="flex items-center gap-2">
+              <input
+                inputMode="numeric"
+                value={shown[key]}
+                aria-invalid={problem !== null}
+                aria-describedby={`${id}-hint`}
+                onChange={(event) => change(key, event.target.value)}
+                className="min-h-10 w-24 rounded-md border border-border bg-background px-3 font-normal tabular-nums aria-invalid:border-red-700"
+              />
+              <span className="font-normal text-muted">px</span>
+            </span>
+            <span className="text-xs font-normal text-muted">{hint}</span>
+          </label>
+        ))}
+      </div>
+      <p id={`${id}-hint`} role={problem ? "alert" : undefined} className={`text-xs ${problem ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+        {problem ??
+          `Between ${BREAKPOINT_MIN} and ${BREAKPOINT_MAX} pixels, each at least ${BREAKPOINT_GAP} after the one before. Small is everything under Medium.`}
+      </p>
+      <div>
+        <button
+          type="button"
+          disabled={value.md === DEFAULT_BREAKPOINTS.md && value.lg === DEFAULT_BREAKPOINTS.lg && value.xl === DEFAULT_BREAKPOINTS.xl && draft === null}
+          onClick={() => {
+            setDraft(null);
+            onChange(DEFAULT_BREAKPOINTS);
+          }}
+          className={`${button} border border-border`}
+        >
+          Use the standard sizes ({DEFAULT_BREAKPOINTS.md}, {DEFAULT_BREAKPOINTS.lg} and {DEFAULT_BREAKPOINTS.xl})
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * A store's design (D60): its themes (the built-in templates and its own
  * saved ones), every setting of the one it is editing, and a preview. Save
@@ -241,6 +309,8 @@ export function ThemeEditor({
   const changedFromSource = !same(settings, sourceSettings);
   const unpublished = !same(theme, live);
   const warnings = themeWarnings(settings);
+  // Screen sizes that cannot be used are not saved (D179): the store keeps its own until they can.
+  const widthsProblem = settings.breakpoints ? breakpointsProblem(settings.breakpoints) : null;
   // A logo without a light version, on a background the theme makes dark somewhere.
   const behind = [darkBehindLogo(settings, "header"), darkBehindLogo(settings, "page")];
   const logoNeedsDarkVersion = logos.logo && !logos.dark && behind.some((b) => b.light || b.dark);
@@ -368,7 +438,7 @@ export function ThemeEditor({
               {changedFromSource ? " · changed" : ""}
               {unpublished ? " · not on the store yet" : " · on the store"}
             </p>
-            <button type="button" disabled={pending || !unpublished} onClick={publish} className={`${button} bg-foreground text-background`}>
+            <button type="button" disabled={pending || !unpublished || widthsProblem !== null} onClick={publish} className={`${button} bg-foreground text-background`}>
               Save
             </button>
             {loaded && changedFromSource && (
@@ -520,6 +590,10 @@ export function ThemeEditor({
                   : undefined
               }
             />
+          </Section>
+
+          <Section title="Screen sizes">
+            <BreakpointFields value={breakpointsOf(settings)} onChange={(breakpoints) => set({ breakpoints })} />
           </Section>
 
           <Section title="Product cards">

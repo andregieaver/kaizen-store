@@ -370,11 +370,12 @@ export type ColorBackground = { type: "color"; color: Color; opacity?: number };
  */
 export type PartSizeSettings = {
   style?: Spacing;
-  border?: Border;
+  /** `null` at a size: none there, though a larger size has one (D179 phase 2); the same for a shadow, colour, blur and width. */
+  border?: Border | null;
   radius?: number;
-  shadow?: Shadow;
-  background?: ColorBackground;
-  backdropBlur?: number;
+  shadow?: Shadow | null;
+  background?: ColorBackground | null;
+  backdropBlur?: number | null;
   /** A row's columns (or a dual button's two) one under another. */
   stack?: boolean;
   /** A row's stacked columns, last first. */
@@ -386,7 +387,7 @@ export type PartSizeSettings = {
   /** A column's place in its row. */
   order?: number;
   align?: TextAlign;
-  maxWidth?: number;
+  maxWidth?: number | null;
   /** A grid's columns. */
   columns?: number;
   /** A grid shown as a grid or as a carousel. */
@@ -1442,6 +1443,10 @@ export type PageColumn = PartBase & {
   inline?: boolean;
   /** Side by side, where they sit along the column: at its start unless set. */
   justify?: ColumnJustify;
+  /** Its share of the row at Extra large (D179; as a layout's widths, 0 is as wide as what it holds): the layout's unless set. */
+  width?: number;
+  /** Its place among the row's columns at Extra large (D179). */
+  order?: number;
 };
 
 export type VerticalAlign = "top" | "middle" | "bottom";
@@ -1912,21 +1917,26 @@ const gridColumnCount = z.number().int().min(1, "A grid has at least one column.
 /** Pixels between a row's columns or a grid's tiles. */
 const partGap = z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space at ${GRID_GAP_MAX} pixels or less.`).optional();
 
+/** A column's share of its row and its place among the others (D179). */
+const columnShare = z.number().int().min(0).max(12, "A column's share is 0 to 12.").optional();
+const columnOrder = z.number().int().min(-12).max(12, "A column's place is -12 to 12.").optional();
+
 /** What a part may set at a smaller size (D179): the same rules as its own settings, each optional. */
 const sizeSettings = z.object({
   style: spacing,
-  border: borderSchema,
+  // `null`: none at this size, though a larger size has one (D179 phase 2).
+  border: borderSchema.or(z.null()),
   radius: radiusSchema,
-  shadow: shadowSchema,
-  background: colorBackground.optional(),
-  backdropBlur,
+  shadow: shadowSchema.or(z.null()),
+  background: colorBackground.nullable().optional(),
+  backdropBlur: backdropBlur.or(z.null()),
   stack: z.boolean().optional(),
   reverse: z.boolean().optional(),
   gap: partGap,
-  width: z.number().int().min(0).max(12, "A column's share is 0 to 12.").optional(),
-  order: z.number().int().min(-12).max(12, "A column's place is -12 to 12.").optional(),
+  width: columnShare,
+  order: columnOrder,
   align: textAlign,
-  maxWidth: pictureWidth,
+  maxWidth: pictureWidth.or(z.null()),
   columns: gridColumnCount.optional(),
   display: z.enum(["grid", "carousel"]).optional(),
 });
@@ -2726,6 +2736,8 @@ export const pageColumnSchema = z.preprocess(upgradeColumn, z.object({
     .optional(),
   inline: z.boolean().optional(),
   justify: z.enum(Object.keys(COLUMN_JUSTIFY) as [ColumnJustify, ...ColumnJustify[]]).optional(),
+  width: columnShare,
+  order: columnOrder,
   ...partBase,
 }));
 

@@ -137,8 +137,69 @@ export function siteCss(css: string | null | undefined): string {
   return text && cssProblem(text) === null ? text : "";
 }
 
-/** The CSS kept inside one element and what it holds (the builder's canvas, the admin's previews). */
-export function scopedCss(css: string, root: string): string {
+/**
+ * The CSS kept inside one element and what it holds (the builder's canvas, the admin's previews). With `container`, its
+ * width queries follow that container instead of the window (`containerCss()`, the canvas at a size, D179).
+ */
+export function scopedCss(css: string, root: string, container?: string): string {
   const text = siteCss(css);
-  return text ? `@scope (${root}) {\n${text}\n}` : "";
+  if (!text) return "";
+  return `@scope (${root}) {\n${container ? containerCss(text, container) : text}\n}`;
+}
+
+/** One condition on the width: `(min-width: 600px)`, `(max-width: 40em)`, `(width < 768px)`, `(400px <= width < 800px)`. */
+const WIDTH_CONDITION =
+  /^\(\s*(?:(?:min|max)-width\s*:\s*[\d.]+[a-z]*|width\s*(?:<=?|>=?|=)\s*[\d.]+[a-z]*|[\d.]+[a-z]*\s*(?:<=?|>=?)\s*width(?:\s*(?:<=?|>=?)\s*[\d.]+[a-z]*)?)\s*\)$/i;
+
+/** A media query's prelude as the canvas's container query, or null when it asks anything but the width. */
+function widthOnly(prelude: string): string | null {
+  let query = prelude.trim().replace(/\s+/g, " ");
+  query = query.replace(/^only /i, "").replace(/^(?:screen|all) and /i, "");
+  // One condition, or several joined with `and`; a list (`,`), `not`, `or` or another feature stays a media query.
+  const parts = query.split(/ and /i);
+  if (parts.length === 0 || parts.some((part) => !WIDTH_CONDITION.test(part.trim()))) return null;
+  return parts.map((part) => part.trim()).join(" and ");
+}
+
+/**
+ * Owner CSS for the builder's canvas (D179 phase 2): its `@media` rules that ask only about the width become container
+ * queries on the canvas (`@container kz-page …`), so they follow the size being edited, not the admin's window. Everything
+ * else is left as it is: strings and comments are skipped, and a query about anything but the width (print, hover, colour
+ * scheme, a list) stays a media query. The site keeps the owner's CSS as written.
+ */
+export function containerCss(css: string, container = "kz-page"): string {
+  let out = "";
+  let i = 0;
+  while (i < css.length) {
+    const char = css[i];
+    if (char === "/" && css[i + 1] === "*") {
+      const end = css.indexOf("*/", i + 2);
+      const stop = end < 0 ? css.length : end + 2;
+      out += css.slice(i, stop);
+      i = stop;
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      let j = i + 1;
+      while (j < css.length && css[j] !== char && css[j] !== "\n") j += css[j] === "\\" ? 2 : 1;
+      out += css.slice(i, j + 1);
+      i = j + 1;
+      continue;
+    }
+    if (char === "@" && /^@media\b/i.test(css.slice(i, i + 7))) {
+      const open = css.indexOf("{", i);
+      if (open > 0) {
+        const prelude = css.slice(i + 6, open);
+        const query = /["'/;]/.test(prelude) ? null : widthOnly(prelude);
+        if (query) {
+          out += `@container ${container} ${query} `;
+          i = open;
+          continue;
+        }
+      }
+    }
+    out += char;
+    i += 1;
+  }
+  return out;
 }

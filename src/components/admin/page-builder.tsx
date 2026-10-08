@@ -1,19 +1,19 @@
 "use client";
 
-import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, type Breakpoints } from "@/lib/breakpoints";
-import { partCss } from "@/lib/part-css";
+import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, SIZE_LABELS, type Breakpoints, type Size } from "@/lib/breakpoints";
+import { canvasHiddenCss, partCss } from "@/lib/part-css";
 import {
   carouselAnywhere,
-  carouselOnPhonesOnly,
-  columnsPatch,
-  columnsView,
-  displayPatch,
-  hiddenOnPhones,
-  hideOnPhonesPatch,
-  reversePatch,
-  rowReversedOnPhones,
-  rowSideBySide,
-  sideBySidePatch,
+  carouselAt,
+  clearAt,
+  inheritedAt,
+  setAt,
+  sizeSource,
+  spacingAt,
+  stackAt,
+  stackPatchAt,
+  valueAt,
+  viewAt,
 } from "@/lib/responsive";
 import {
   DndContext,
@@ -41,6 +41,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  useCallback,
   useEffect,
   useEffectEvent,
   useId,
@@ -132,7 +133,6 @@ import {
   type Shadow,
   type ColumnLink,
   type ContentGridBlock,
-  type GridColumns,
   type GridContent,
   type GridElement,
   type GridSort,
@@ -197,9 +197,9 @@ import {
   patchPart,
   patchRow,
   setSpacing,
-  spacingOf,
   updateBlock,
   type BlockPatch,
+  type ColumnPatch,
   type RowPatch,
   type Styled,
 } from "@/lib/page-rows";
@@ -217,6 +217,22 @@ import { sourceTraits } from "@/lib/grid-source";
 import { CopyCurrentItems, CustomItemsEditor } from "./custom-items-editor";
 import { detachUse, globalContent, markUse, newUse, setLocal, usePlace, withoutUses } from "@/lib/global-parts";
 import { ScopedCss } from "@/components/custom-css";
+import {
+  HiddenBadge,
+  HiddenPartsToggle,
+  ResponsiveBar,
+  ResponsiveToggle,
+  SizeEditContext,
+  SizeMark,
+  VisibilityFields,
+  inheritedClass,
+  useSizeEdit,
+  isResponsiveShortcut,
+  typingIn,
+  useResponsiveMode,
+  type CanvasView,
+  type SizeEdit,
+} from "./responsive-edit";
 import type { PartSharing, TemplateActions, TemplateItem, TemplateSource } from "@/lib/templates";
 import { templatePreviewPath } from "@/lib/template-paths";
 import { byName, categoryTree, type Term } from "@/lib/taxonomy";
@@ -573,6 +589,26 @@ export function PageBuilder({
   const [motionOn, setMotionOn] = useState(false);
   const [motionRun, setMotionRun] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
+  // Responsive editing (D179 phase 2): the size edited and the canvas at it; null is Extra large, the canvas as wide as it can be.
+  const breakpoints = fonts.theme?.breakpoints ?? DEFAULT_BREAKPOINTS;
+  const room = useCallback(() => canvasRef.current?.clientWidth ?? 0, []);
+  const responsive = useResponsiveMode(breakpoints, room);
+  const sizeEdit = useMemo<SizeEdit>(
+    () => ({ size: responsive.view?.size ?? "xl", active: responsive.view !== null, choose: responsive.choose }),
+    [responsive.view, responsive.choose],
+  );
+  /** Parts hidden at the size shown: faded with an eye, or left out as on the site. */
+  const [hideHidden, setHideHidden] = useState(false);
+  const toggleResponsive = responsive.toggle;
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!isResponsiveShortcut(event) || typingIn(event.target)) return;
+      event.preventDefault();
+      toggleResponsive();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggleResponsive]);
   const motionSign = motionSignature(rows);
   useCanvasMotion(canvasRef, motionOn, motionSign, motionRun);
   // Motion the AI manager just added is shown at once (D128).
@@ -805,6 +841,7 @@ export function PageBuilder({
     fieldGroups === null || grid.owner === null ? null : siteParts ? ["store"] : productParts ? ["product"] : ["page", "article"];
 
   return (
+    <SizeEditContext value={sizeEdit}>
     <FieldGroupsContext value={fieldGroups}>
     <BindEntitiesContext value={bindEntities}>
       <DndContext
@@ -872,13 +909,32 @@ export function PageBuilder({
 
           <div className="flex min-w-0 flex-col gap-3">
           {!translate && (
-            <MotionPreviewToggle
-              on={motionOn}
-              onChange={(on) => {
-                setMotionOn(on);
-                if (on) setMotionRun((n) => n + 1);
-              }}
-              onReplay={() => setMotionRun((n) => n + 1)}
+            <div className="flex flex-wrap items-start gap-3">
+              <div className="min-w-0 flex-1">
+                <MotionPreviewToggle
+                  on={motionOn}
+                  onChange={(on) => {
+                    setMotionOn(on);
+                    if (on) setMotionRun((n) => n + 1);
+                  }}
+                  onReplay={() => setMotionRun((n) => n + 1)}
+                />
+              </div>
+              <div role="toolbar" aria-label="Screen sizes" className="flex flex-wrap items-center gap-2">
+                <HiddenPartsToggle hide={hideHidden} onChange={setHideHidden} />
+                <ResponsiveToggle on={responsive.view !== null} onToggle={responsive.toggle} />
+              </div>
+            </div>
+          )}
+          {responsive.view && (
+            <ResponsiveBar
+              view={responsive.view}
+              breakpoints={breakpoints}
+              onSize={responsive.choose}
+              onWidth={responsive.setWidth}
+              onHeight={responsive.setHeight}
+              onZoom={responsive.setZoom}
+              onExit={responsive.exit}
             />
           )}
           {/* The canvas draws with the site's own fonts (D59) and a store's theme (D60), as the site does. */}
@@ -893,10 +949,11 @@ export function PageBuilder({
             <FontLinks families={siteFontFamilies(fonts.site)} />
             {fonts.theme && <style>{fonts.theme.css}</style>}
             {/* What the parts' settings say at each screen size (D179), measured against the canvas (`kz-page`), not the window. */}
-            <CanvasPartStyles rows={rows} breakpoints={fonts.theme?.breakpoints ?? DEFAULT_BREAKPOINTS} />
-            {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin. */}
-            <ScopedCss css={css} root="[data-custom-css]" />
+            <CanvasPartStyles rows={rows} breakpoints={breakpoints} hideHidden={hideHidden} />
+            {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin; its width queries follow the canvas (D179). */}
+            <ScopedCss css={css} root="[data-custom-css]" container={PAGE_CONTAINER} />
             <Canvas
+              view={responsive.view}
               // Switching the preview on starts every entrance again; off, the canvas is drawn plain.
               key={motionOn ? `motion-${motionRun}` : "plain"}
               rows={rows}
@@ -1008,6 +1065,7 @@ export function PageBuilder({
       </DndContext>
     </BindEntitiesContext>
     </FieldGroupsContext>
+    </SizeEditContext>
   );
 }
 
@@ -1808,6 +1866,7 @@ function LetterIcon({ letter, bold = false }: { letter: string; bold?: boolean }
  * outside what it holds.
  */
 function Canvas({
+  view = null,
   rows,
   dragging,
   target,
@@ -1815,6 +1874,8 @@ function Canvas({
   onStartFromLayout,
   blank,
 }: {
+  /** Responsive mode (D179): the page at this width and height, zoomed; null is as wide as the canvas is. */
+  view?: CanvasView | null;
   rows: PageRow[];
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
@@ -1824,21 +1885,27 @@ function Canvas({
   /** Nothing is written on the page yet. */
   blank: boolean;
 }) {
-  return (
+  const section = (
     <section
       aria-labelledby="content-heading"
       data-builder-dragging={dragging ? "" : undefined}
+      data-builder-size={view?.size}
       // Links in the text are for visitors; in the editor they do nothing.
       onClickCapture={(event) => {
         if ((event.target as Element).closest("a")) event.preventDefault();
       }}
-      className="min-w-0 rounded-lg border border-border bg-background px-6 pt-10 pb-8"
+      className={`rounded-lg border border-border bg-background px-6 pt-10 pb-8 ${view ? "mx-auto w-max" : "min-w-0"}`}
+      // At a size the page is that wide and the section that much zoomed, so the part rules' container queries see that width.
+      style={view ? { zoom: view.zoom / 100, minHeight: view.height } : undefined}
     >
       <h2 id="content-heading" className="sr-only">
         Content
       </h2>
       {/* The page's container (D179): the part rules' sizes are its width. */}
-      <div className={`${PAGE_CONTAINER} flex flex-col gap-8`} style={{ containerType: "inline-size", containerName: PAGE_CONTAINER }}>
+      <div
+        className={`${PAGE_CONTAINER} flex flex-col gap-8`}
+        style={{ containerType: "inline-size", containerName: PAGE_CONTAINER, ...(view && { width: view.width }) }}
+      >
         <SortableContext items={rows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
           <ol className="flex flex-col gap-8">
             {rows.map((row, index) => (
@@ -1860,12 +1927,27 @@ function Canvas({
       </div>
     </section>
   );
+  if (!view) return section;
+  // A device's screen: the page scrolls inside it, as on the device, and the frame scrolls sideways when the size is wider than the room.
+  return (
+    <div
+      data-builder-frame=""
+      className="overflow-auto rounded-lg border border-border bg-surface p-3"
+      style={{ height: Math.round((view.height * view.zoom) / 100) + 26 }}
+    >
+      {section}
+    </div>
+  );
 }
 
 /** Below the last row: where a row dropped goes last, and what an empty page says. */
 /** The canvas's part stylesheet (D179): container queries against the canvas, worked out again only when the rows change. */
-function CanvasPartStyles({ rows, breakpoints }: { rows: PageRow[]; breakpoints: Breakpoints }) {
-  const css = useMemo(() => partCss(rows, "canvas", breakpoints), [rows, breakpoints]);
+function CanvasPartStyles({ rows, breakpoints, hideHidden }: { rows: PageRow[]; breakpoints: Breakpoints; hideHidden: boolean }) {
+  // With the parts hidden at a size: faded with their eye there, or left out (D179).
+  const css = useMemo(
+    () => [partCss(rows, "canvas", breakpoints), canvasHiddenCss(rows, breakpoints, hideHidden)].filter(Boolean).join("\n"),
+    [rows, breakpoints, hideHidden],
+  );
   return css ? <style>{css}</style> : null;
 }
 
@@ -2097,6 +2179,7 @@ function RowItem({
       />
       )}
       <Line at={line} />
+      <HiddenBadge hideAt={row.visibility?.hideAt} />
       {/* A modal's row stays in the page here (D121): badged, with a preview of the real modal. */}
       {row.modal && <ModalBar row={row} lang={actions.lang} />}
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
@@ -2216,6 +2299,7 @@ function ColumnItem({
       />
       )}
       <Line at={columnLine} vertical />
+      <HiddenBadge hideAt={column.visibility?.hideAt} />
       {/* The column itself, as the site draws it, inside its band for pointing. */}
       <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
       <PartBackground background={column.background} {...canvasBackground(actions.motionPreview, column.backgroundMotion)} />
@@ -2347,6 +2431,7 @@ function BlockItem({
       />
       )}
       <Line at={line} />
+      <HiddenBadge hideAt={block.visibility?.hideAt} />
       <div className={box.className || undefined} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
         <FontLinks families={blockFonts(block)} />
         {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
@@ -2467,7 +2552,17 @@ function Dialogs({
   upload: Upload | null;
   startVideo: StartVideo | null;
 }) {
+  // The screen size the fields edit (D179 phase 2): Extra large is the parts' own settings, a smaller size its overrides.
+  const { size } = useSizeEdit();
   if (translate) return <TranslateDialogs dialog={dialog} rows={rows} onRows={onRows} onClose={onClose} translate={translate} />;
+  /** A change made in a field at the size edited (`setAt()`), to the part as it is when it lands. */
+  const sizedPatch = (target: Styled, patch: Partial<PartBase>) =>
+    onRows((current) => {
+      const part = partOf(current, target);
+      return part ? patchPart(current, target, setAt(part as PartBase, size, patch)) : current;
+    });
+  /** A change that is already the part's (an override given back). */
+  const plainPatch = (target: Styled) => (patch: Partial<PartBase>) => onRows((current) => patchPart(current, target, patch));
   const done = (
     <button type="button" onClick={onClose} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
       Done
@@ -2500,8 +2595,26 @@ function Dialogs({
     const others = new Set(
       pageParts(rows).flatMap((p) => (p !== part && p.htmlId ? [p.htmlId.trim()] : [])),
     );
+    const block = target.kind === "block" ? (part as PageBlock) : null;
+    const row = target.kind === "row" ? (part as PageRow) : null;
     return (
-      <AdvancedFields part={part} taken={others} onChange={(patch) => onRows((current) => patchPart(current, target, patch))} />
+      <>
+        <AdvancedFields part={part} taken={others} onChange={(patch) => onRows((current) => patchPart(current, target, patch))} />
+        {/* Beaver's Visibility (D179): by screen size here; sign-in and conditions are phase 4. A modal opens over any size. */}
+        {!row?.modal && (
+          <VisibilityFields
+            part={part}
+            onChange={plainPatch(target)}
+            locked={
+              block?.type === "site" && block.part === "withdrawal"
+                ? "The withdrawal link is for every visitor, so it shows at every size."
+                : block?.type === "site" && block.part === "menuButton"
+                  ? "The menu button shows on Small only, where the menu is folded into it."
+                  : undefined
+            }
+          />
+        )}
+      </>
     );
   };
   /** The entrance, hover and scroll effects of the row, column or block a dialog is for (D128). */
@@ -2519,24 +2632,35 @@ function Dialogs({
     );
   };
   /** The border, rounded corners and shadow of the row, column or block a dialog is for (D49). */
-  const frameFields = (target: Styled) => (
-    <FrameFields
-      value={partOf(rows, target) ?? {}}
-      onChange={(patch) => onRows((current) => patchPart(current, target, patch))}
-    />
-  );
+  const frameFields = (target: Styled) => {
+    const part = partOf(rows, target);
+    if (!part) return null;
+    return <FrameFields value={viewAt(part, size)} sized={{ part, onPatch: plainPatch(target) }} onChange={(patch) => sizedPatch(target, patch)} />;
+  };
   /** A block's own font (D59), over the site's; `fallback` says what none means. */
   const fontField = (label: string, value: string | undefined, fallback: string, onChange: (font: string | undefined) => void) => (
     <FontPicker label={label} value={value} defaultLabel={fallback} install={fonts.install} onChange={onChange} />
   );
   /** Margin and padding of the row, column or block a dialog is for (D47). */
-  const spacingFields = (target: Styled) => (
-    <SpacingFields
-      value={spacingOf(rows, target)}
-      defaults={target.kind === "row" ? { padding: ROW_PADDING } : undefined}
-      onChange={(style) => onRows((current) => setSpacing(current, target, style))}
-    />
-  );
+  const spacingFields = (target: Styled) => {
+    const part = partOf(rows, target);
+    if (!part) return null;
+    return (
+      <SpacingFields
+        value={spacingAt(part, size)}
+        defaults={target.kind === "row" ? { padding: ROW_PADDING } : undefined}
+        sized={{ part, onPatch: plainPatch(target) }}
+        onChange={(style) => (size === "xl" ? onRows((current) => setSpacing(current, target, style)) : sizedPatch(target, { style }))}
+      />
+    );
+  };
+  /** A row's or column's background: its own at Extra large (any kind), a colour or none at a smaller size (D179). */
+  const backgroundFields = (target: Styled, own: ReactNode) => {
+    const part = partOf(rows, target) as PageRow | PageColumn | undefined;
+    if (!part) return null;
+    if (size === "xl") return own;
+    return <BackgroundAtSize key={size} part={part} size={size} onChange={(patch) => sizedPatch(target, patch)} onPatch={plainPatch(target)} />;
+  };
 
   return (
     <>
@@ -3131,6 +3255,7 @@ function Dialogs({
                     />
                   )}
                 </div>
+                <ColumnSizeFields column={column} row={row} onChange={(patch) => onRows((current) => patchColumn(current, column.id, patch))} />
                 <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
                   <legend className="float-left mb-2 w-full text-sm font-medium">Row layout</legend>
                   <p className="text-sm text-muted">
@@ -3143,19 +3268,23 @@ function Dialogs({
             }
             style={
               <>
-                <BackgroundFields
-                  value={column.background}
-                  upload={upload}
-                  // Columns are offered no video (only rows take one).
-                  onChange={(background) =>
-                    onRows((current) => patchColumn(current, column.id, { background: background?.type === "video" ? undefined : background }))
-                  }
-                  backdropBlur={column.backdropBlur}
-                  onBackdropBlur={(backdropBlur) => onRows((current) => patchColumn(current, column.id, { backdropBlur }))}
-                  target="column"
-                  motion={column.backgroundMotion}
-                  onMotion={(backgroundMotion) => onRows((current) => patchColumn(current, column.id, { backgroundMotion }))}
-                />
+                {backgroundFields(
+                  { kind: "column", id: column.id },
+                  <BackgroundFields
+                    value={column.background}
+                    upload={upload}
+                    // Columns are offered no video (only rows take one).
+                    onChange={(background) =>
+                      onRows((current) => patchColumn(current, column.id, { background: background?.type === "video" ? undefined : background }))
+                    }
+                    backdropBlur={column.backdropBlur}
+                    onBackdropBlur={(backdropBlur) => onRows((current) => patchColumn(current, column.id, { backdropBlur }))}
+                    target="column"
+                    motion={column.backgroundMotion}
+                    onMotion={(backgroundMotion) => onRows((current) => patchColumn(current, column.id, { backgroundMotion }))}
+                    mark={<SizeMark part={column} field="background" label="Background" onPatch={plainPatch({ kind: "column", id: column.id })} />}
+                  />,
+                )}
                 {spacingFields({ kind: "column", id: column.id })}
                 {frameFields({ kind: "column", id: column.id })}
               </>
@@ -3179,17 +3308,21 @@ function Dialogs({
             }
             style={
               <>
-                <BackgroundFields
-                  value={row.background}
-                  upload={upload}
-                  startVideo={startVideo}
-                  onChange={(background) => onRows((current) => patchRow(current, row.id, { background }))}
-                  backdropBlur={row.backdropBlur}
-                  onBackdropBlur={(backdropBlur) => onRows((current) => patchRow(current, row.id, { backdropBlur }))}
-                  target="row"
-                  motion={row.backgroundMotion}
-                  onMotion={(backgroundMotion) => onRows((current) => patchRow(current, row.id, { backgroundMotion }))}
-                />
+                {backgroundFields(
+                  { kind: "row", id: row.id },
+                  <BackgroundFields
+                    value={row.background}
+                    upload={upload}
+                    startVideo={startVideo}
+                    onChange={(background) => onRows((current) => patchRow(current, row.id, { background }))}
+                    backdropBlur={row.backdropBlur}
+                    onBackdropBlur={(backdropBlur) => onRows((current) => patchRow(current, row.id, { backdropBlur }))}
+                    target="row"
+                    motion={row.backgroundMotion}
+                    onMotion={(backgroundMotion) => onRows((current) => patchRow(current, row.id, { backgroundMotion }))}
+                    mark={<SizeMark part={row} field="background" label="Background" onPatch={plainPatch({ kind: "row", id: row.id })} />}
+                  />,
+                )}
                 {spacingFields({ kind: "row", id: row.id })}
                 {frameFields({ kind: "row", id: row.id })}
               </>
@@ -3538,12 +3671,16 @@ function SpacingFields({
   value,
   defaults,
   onChange,
+  sized,
 }: {
   value: Spacing | undefined;
   defaults?: Spacing;
   onChange: (value: Spacing) => void;
+  /** Margin and padding differ by screen size (D179): the part, for where each value comes from, and how to give one back. */
+  sized?: { part: PartBase; onPatch: (patch: Partial<PartBase>) => void };
 }) {
   const id = useId();
+  const { size } = useSizeEdit();
   const set = (kind: "margin" | "padding", side: (typeof SIDES)[number], text: string) => {
     const number = Math.max(0, Math.min(SPACING_MAX, Math.round(Number(text) || 0)));
     const sides = { ...NO_SIDES, ...(value?.[kind] ?? defaults?.[kind]), [side]: number };
@@ -3556,12 +3693,13 @@ function SpacingFields({
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
       {(["margin", "padding"] as const).map((kind) => (
-        <fieldset key={kind} className="flex flex-col gap-2">
+        <fieldset key={kind} className={`flex flex-col gap-2 ${sized ? inheritedClass(sizeSource(sized.part, size, kind), size) : ""}`}>
           <legend className="text-sm font-medium">
             {kind === "margin" ? "Margin" : "Padding"}{" "}
             <span className="font-normal text-muted">
               ({kind === "margin" ? "space outside" : "space inside"}, in pixels)
             </span>
+            {sized && <SizeMark part={sized.part} field={kind} label={kind === "margin" ? "Margin" : "Padding"} onPatch={sized.onPatch} />}
           </legend>
           <div className="grid grid-cols-4 gap-2">
             {SIDES.map((side) => (
@@ -3722,6 +3860,7 @@ function BackgroundFields({
   target,
   motion,
   onMotion,
+  mark,
 }: {
   value: RowBackground | undefined;
   upload: Upload | null;
@@ -3735,6 +3874,8 @@ function BackgroundFields({
   /** How the picture, video or gradient moves; only they can. */
   motion: BackgroundMotion | undefined;
   onMotion: (motion: BackgroundMotion | undefined) => void;
+  /** After the legend: its device icon (D179; a colour can differ by screen size). */
+  mark?: ReactNode;
 }) {
   // A picture or video chosen as the kind waits for its upload before it is kept.
   const [kind, setKind] = useState<"none" | RowBackground["type"]>(value?.type ?? "none");
@@ -3754,6 +3895,7 @@ function BackgroundFields({
     <div className="flex flex-col gap-4">
       <Choices
         legend="Background"
+        mark={mark}
         options={[
           { value: "none", label: "None" },
           { value: "color", label: "Colour" },
@@ -3959,7 +4101,7 @@ function OverlayFields({
   );
 }
 
-/** A row's width, height, order on phones and how its columns line up (D48). */
+/** A row's width and height, its columns at each screen size, and how they line up (D48, D179). */
 function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
   const full = row.width === "full";
   return (
@@ -3990,19 +4132,7 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
         checked={Boolean(row.fullHeight)}
         onChange={(fullHeight) => onChange({ fullHeight })}
       />
-      <Check
-        label="Side by side on phones"
-        hint="The columns stay side by side on phones instead of stacking, as in a header."
-        checked={rowSideBySide(row)}
-        onChange={(on) => onChange(sideBySidePatch(row, on))}
-      />
-      <Check
-        label="Reverse the columns on phones"
-        hint="On phones the columns stack; this puts the last one first."
-        checked={rowReversedOnPhones(row)}
-        disabled={rowSideBySide(row)}
-        onChange={(on) => onChange(reversePatch(row, on))}
-      />
+      <RowSizeFields row={row} onChange={onChange} />
       <Check
         label="Equal column height"
         hint="Every column as tall as the tallest, so their backgrounds line up."
@@ -4019,6 +4149,176 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
         value={row.align ?? "top"}
         onChange={(align) => onChange({ align: align === "top" ? undefined : align })}
       />
+    </div>
+  );
+}
+
+/**
+ * A row's columns at the size edited (D179): side by side or one under another (on Small unless set), the last first where
+ * they stack, and the space between them. Each with its device icon; below Extra large an override of the size.
+ */
+function RowSizeFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+  const { size } = useSizeEdit();
+  const stacked = stackAt(row, size);
+  const reverse = valueAt(row, "reverse", size) === true;
+  const back = (patch: { at: PageRow["at"] }) => onChange(patch);
+  return (
+    <div className="flex flex-col gap-4">
+      <Choices
+        legend="Columns"
+        mark={<SizeMark part={row} field="stack" label="Columns" onPatch={back} />}
+        muted={inheritedClass(sizeSource(row, size, "stack"), size)}
+        options={[
+          { value: "side", label: "Side by side" },
+          { value: "stack", label: "One under another" },
+        ]}
+        value={stacked ? "stack" : "side"}
+        onChange={(choice) => onChange(stackPatchAt(row, size, choice === "stack"))}
+      />
+      {stacked && (
+        <div className={`flex flex-wrap items-start gap-1 ${inheritedClass(sizeSource(row, size, "reverse"), size)}`}>
+          <Check
+            label="Last column first"
+            hint="Where the columns are one under another."
+            checked={reverse}
+            onChange={(on) => onChange(setAt(row, size, { reverse: size === "xl" ? on || undefined : on }))}
+          />
+          <SizeMark part={row} field="reverse" label="Last column first" onPatch={back} />
+        </div>
+      )}
+      <NumberField
+        label="Space between columns"
+        hint={`in pixels, up to ${GRID_GAP_MAX}`}
+        value={valueAt(row, "gap", size) ?? 32}
+        max={GRID_GAP_MAX}
+        mark={<SizeMark part={row} field="gap" label="Space between columns" onPatch={back} />}
+        muted={inheritedClass(sizeSource(row, size, "gap"), size)}
+        onChange={(gap) => onChange(setAt(row, size, { gap }))}
+      />
+    </div>
+  );
+}
+
+/** A column's share of its row and its place among the others, at the size edited (D179); the layout's until set. */
+function ColumnSizeFields({ column, row, onChange }: { column: PageColumn; row: PageRow; onChange: (patch: ColumnPatch) => void }) {
+  const { size } = useSizeEdit();
+  const index = row.columns.findIndex((c) => c.id === column.id);
+  const layoutWidth: number = ROW_LAYOUTS[row.layout].widths[index] ?? 1;
+  const back = (patch: { at: PageColumn["at"] }) => onChange(patch);
+  const width = valueAt(column, "width", size);
+  const order = valueAt(column, "order", size);
+  // The layout's share and the first place are no setting: chosen where nothing larger says otherwise, the setting goes.
+  const sizedOrDefault = (key: "width" | "order", value: number, fallback: number): ColumnPatch =>
+    size !== "xl" && value === (inheritedAt(column, key, size) ?? fallback)
+      ? clearAt(column, size, key)
+      : setAt(column, size, { [key]: size === "xl" && value === fallback ? undefined : value });
+  return (
+    <div className="flex flex-col gap-4 border-t border-border pt-4">
+      <NumberField
+        label="Share of the row"
+        hint={`the layout gives ${layoutWidth}; 0 is as wide as what it holds`}
+        value={width ?? layoutWidth}
+        max={12}
+        mark={<SizeMark part={column} field="width" label="Share of the row" onPatch={back} />}
+        muted={inheritedClass(sizeSource(column, size, "width"), size)}
+        onChange={(share) => onChange(sizedOrDefault("width", share, layoutWidth))}
+      />
+      <NumberField
+        label="Place"
+        hint="lower comes first, where columns are side by side or one under another"
+        value={order ?? 0}
+        min={-12}
+        max={12}
+        mark={<SizeMark part={column} field="order" label="Place" onPatch={back} />}
+        muted={inheritedClass(sizeSource(column, size, "order"), size)}
+        onChange={(place) => onChange(sizedOrDefault("order", place, 0))}
+      />
+    </div>
+  );
+}
+
+/**
+ * A row's or column's background below Extra large (D179): a colour (see-through if wanted) or none, and the blur of what
+ * is behind. A picture, video or gradient is the part's own at every size.
+ */
+function BackgroundAtSize({
+  part,
+  size,
+  onChange,
+  onPatch,
+}: {
+  part: PageRow | PageColumn;
+  size: Size;
+  onChange: (patch: Partial<PartBase>) => void;
+  onPatch: (patch: Partial<PartBase>) => void;
+}) {
+  const own = part.background;
+  if (own && own.type !== "color") {
+    return (
+      <p className="text-sm text-muted">
+        A {own.type === "image" ? "picture" : own.type === "video" ? "video" : "gradient"} background is the same at every screen size. Change
+        it at Extra large.
+      </p>
+    );
+  }
+  const value = valueAt(part, "background", size) ?? undefined;
+  const blur = valueAt(part, "backdropBlur", size) ?? undefined;
+  const color = value?.type === "color" ? value : null;
+  const back = (patch: { at: PartBase["at"] }) => onPatch(patch);
+  return (
+    <div className="flex flex-col gap-4">
+      <Choices
+        legend="Background"
+        mark={<SizeMark part={part} field="background" label="Background" onPatch={back} />}
+        muted={inheritedClass(sizeSource(part, size, "background"), size)}
+        options={[
+          { value: "none", label: "None" },
+          { value: "color", label: "Colour" },
+        ]}
+        value={color ? "color" : "none"}
+        onChange={(kind) => onChange({ background: kind === "color" ? { type: "color", color: own?.type === "color" ? own.color : "#ffffff" } : undefined } as Partial<PartBase>)}
+      />
+      {color && (
+        <div className="flex flex-wrap items-end gap-6">
+          <ColorField label="Background colour" value={color.color} onChange={(next) => onChange({ background: { ...color, color: next } } as Partial<PartBase>)} />
+          <RangeField
+            label="Opacity"
+            min={0}
+            max={100}
+            step={5}
+            value={color.opacity ?? 100}
+            shown={`${color.opacity ?? 100}%`}
+            onChange={(opacity) => {
+              const next = { type: "color" as const, color: color.color };
+              onChange({ background: opacity >= 100 ? next : { ...next, opacity } } as Partial<PartBase>);
+            }}
+          />
+        </div>
+      )}
+      <div className={`flex flex-col gap-3 ${inheritedClass(sizeSource(part, size, "backdropBlur"), size)}`}>
+        <div className="flex flex-wrap items-start gap-1">
+          <Check
+            label="Blur what is behind"
+            hint="Frosted glass: whatever lies behind shows through, blurred."
+            checked={Boolean(blur)}
+            onChange={(on) => onChange({ backdropBlur: on ? (blur ?? 12) : undefined } as Partial<PartBase>)}
+          />
+          <SizeMark part={part} field="backdropBlur" label="Blur what is behind" onPatch={back} />
+        </div>
+        {blur ? (
+          <div className="pl-7">
+            <RangeField
+              label="Blur"
+              min={1}
+              max={BACKDROP_BLUR_MAX}
+              step={1}
+              value={blur}
+              shown={`${blur} px`}
+              onChange={(next) => onChange({ backdropBlur: next } as Partial<PartBase>)}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -4229,28 +4529,38 @@ function NumberField({
   hint,
   value,
   max,
+  min = 0,
   onChange,
+  mark,
+  muted = "",
 }: {
   label: string;
   hint: string;
   value: number;
   max: number;
+  min?: number;
   onChange: (value: number) => void;
+  /** Beside the label: a setting that can differ by screen size has its device icon and where its value comes from (D179). */
+  mark?: ReactNode;
+  muted?: string;
 }) {
   const id = useId();
   return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label} <span className="font-normal text-muted">({hint})</span>
-      </label>
+    <div className={`flex flex-col gap-1 ${muted}`}>
+      <div className="flex flex-wrap items-center gap-1">
+        <label htmlFor={id} className="text-sm font-medium">
+          {label} <span className="font-normal text-muted">({hint})</span>
+        </label>
+        {mark}
+      </div>
       <input
         id={id}
         type="number"
         inputMode="numeric"
-        min={0}
+        min={min}
         max={max}
         value={value}
-        onChange={(event) => onChange(Math.max(0, Math.min(max, Math.round(Number(event.target.value) || 0))))}
+        onChange={(event) => onChange(Math.max(min, Math.min(max, Math.round(Number(event.target.value) || 0))))}
         className="min-h-10 w-28 rounded-md border border-border bg-background px-2 text-sm"
       />
     </div>
@@ -4262,17 +4572,26 @@ function FrameFields({
   value,
   onChange,
   what,
+  sized,
 }: {
   /** Whose, when a dialog has two sets, such as a content grid's tiles. */
   what?: string;
+  /** What is shown: the part's own, or at a size its values there (`viewAt()`). */
   value: Pick<PartBase, "border" | "radius" | "shadow">;
   onChange: (patch: Partial<PartBase>) => void;
+  /** A part's frame differs by screen size (D179): the part, for where each value comes from, and how to give one back. */
+  sized?: { part: PartBase; onPatch: (patch: Partial<PartBase>) => void };
 }) {
+  const { size } = useSizeEdit();
   const border = value.border;
   const name = (label: string) => (what ? `${what} ${label.toLowerCase()}` : label);
+  const mark = (field: "border" | "radius" | "shadow", label: string) =>
+    sized ? { mark: <SizeMark part={sized.part} field={field} label={label} onPatch={sized.onPatch} />, muted: inheritedClass(sizeSource(sized.part, size, field), size) } : {};
+  const atSize = Boolean(sized) && size !== "xl";
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
       <Choices
+        {...mark("border", "Border")}
         legend={name("Border")}
         options={[
           { value: "none", label: "None" },
@@ -4297,17 +4616,20 @@ function FrameFields({
             max={BORDER_MAX}
             onChange={(width) => onChange({ border: { ...border, width } })}
           />
-          <ColorField label={name("Border colour")} value={border.color} onChange={(color) => onChange({ border: { ...border, color } })} />
+          <ColorField key={size} label={name("Border colour")} value={border.color} onChange={(color) => onChange({ border: { ...border, color } })} />
         </>
       )}
       <NumberField
+        {...mark("radius", "Rounded corners")}
         label={name("Rounded corners")}
         hint="radius, in pixels"
         value={value.radius ?? 0}
         max={RADIUS_MAX}
-        onChange={(radius) => onChange({ radius: radius || undefined })}
+        // Square at a smaller size, under a rounded larger one, is kept as 0 there.
+        onChange={(radius) => onChange({ radius: atSize ? radius : radius || undefined })}
       />
       <Choices
+        {...mark("shadow", "Shadow")}
         legend={name("Shadow")}
         options={[
           { value: "none", label: "None" },
@@ -4586,25 +4908,73 @@ function TermChecks({
   );
 }
 
-/** Tiles side by side on phones, tablets and computers. */
-function ColumnsFields({ value, onChange }: { value: GridColumns; onChange: (value: GridColumns) => void }) {
-  const screens = [
-    ["mobile", "Columns on phones"],
-    ["tablet", "On tablets"],
-    ["desktop", "On computers"],
-  ] as const;
+/**
+ * How many tiles side by side at the size edited (D179): a grid's, related products' (two on Small and four above until
+ * set); at Extra large the part's own, below it an override of the size.
+ */
+function ColumnsFields<T extends { columns?: number; at?: PageBlock["at"] }>({
+  part,
+  fallback,
+  onChange,
+}: {
+  part: T;
+  /** What the size shows with nothing set. */
+  fallback: (size: Size) => number;
+  onChange: (patch: Partial<T>) => void;
+}) {
+  const { size } = useSizeEdit();
+  const value = valueAt(part, "columns", size) ?? fallback(size);
   return (
-    <div className="flex flex-col gap-4">
-      {screens.map(([screen, legend]) => (
-        <Choices
-          key={screen}
-          legend={legend}
-          options={Array.from({ length: GRID_COLUMNS_MAX[screen] }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
-          value={String(value[screen])}
-          onChange={(n) => onChange({ ...value, [screen]: Number(n) })}
-        />
-      ))}
-    </div>
+    <Choices
+      legend="Columns"
+      hint="tiles side by side"
+      mark={<SizeMark part={part} field="columns" label="Columns" onPatch={(patch) => onChange(patch as Partial<T>)} />}
+      muted={inheritedClass(sizeSource(part, size, "columns"), size)}
+      options={Array.from({ length: GRID_COLUMNS_MAX.desktop }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
+      value={String(value)}
+      onChange={(n) => onChange(setAt(part, size, { columns: Number(n) } as Partial<T>))}
+    />
+  );
+}
+
+/**
+ * A content grid shown as a grid or a carousel at the size edited (D155, D179: a carousel on Small only is a carousel
+ * there and a grid above), and its columns.
+ */
+function GridDisplayFields({ block, onChange }: { block: ContentGridBlock; onChange: (patch: BlockPatch<ContentGridBlock>) => void }) {
+  const { size } = useSizeEdit();
+  const carousel = carouselAt(block, size);
+  return (
+    <>
+      <Choices
+        legend="Show as"
+        mark={<SizeMark part={block} field="display" label="Show as" onPatch={onChange} />}
+        muted={inheritedClass(sizeSource(block, size, "display"), size)}
+        options={[
+          { value: "grid", label: "Grid" },
+          { value: "carousel", label: "Carousel" },
+        ]}
+        value={carousel ? "carousel" : "grid"}
+        onChange={(display) => {
+          const patch = setAt(block, size, { display: display === "carousel" ? "carousel" : size === "xl" ? undefined : "grid" } as Partial<ContentGridBlock>);
+          // A grid at every size keeps no carousel setting of its own.
+          const after = { ...block, ...patch } as ContentGridBlock;
+          onChange(carouselAnywhere(after) ? patch : { ...patch, peek: undefined });
+        }}
+      />
+      {carouselAnywhere(block) && (
+        <>
+          <p className="text-xs text-muted">
+            {carousel
+              ? "The tiles in one row that scrolls sideways; as many to a screen as the columns below. Nothing moves by itself unless you turn that on."
+              : "A carousel at another screen size; a grid at this one."}
+          </p>
+          <Check label="Show part of the next tile" checked={block.peek === true} onChange={(peek) => onChange({ peek: peek || undefined })} />
+          <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />
+        </>
+      )}
+      <ColumnsFields part={block} fallback={() => block.columns} onChange={onChange} />
+    </>
   );
 }
 
@@ -4824,26 +5194,7 @@ function ContentGridFields({
         </label>
       )}
       <div className="flex flex-col gap-4 border-t border-border pt-4">
-        <Choices
-          legend="Show as"
-          options={[
-            { value: "grid", label: "Grid" },
-            { value: "carousel", label: "Carousel" },
-          ]}
-          value={carouselAnywhere(block) ? "carousel" : "grid"}
-          onChange={(display) => onChange({ ...displayPatch(block, display === "carousel" ? "carousel" : "grid"), ...(display === "grid" && { peek: undefined }) })}
-        />
-        {carouselAnywhere(block) && (
-          <>
-            <p className="text-xs text-muted">
-              The tiles in one row that scrolls sideways; as many to a screen as the columns below. Nothing moves by itself unless you turn that on.
-            </p>
-            <Check label="Only on phones (a grid on larger screens)" checked={carouselOnPhonesOnly(block)} onChange={(on) => onChange(displayPatch(block, on ? "phones" : "carousel"))} />
-            <Check label="Show part of the next tile" checked={block.peek === true} onChange={(peek) => onChange({ peek: peek || undefined })} />
-            <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />
-          </>
-        )}
-        <ColumnsFields value={columnsView(block, { mobile: 1, tablet: 2, desktop: 3 })} onChange={(columns) => onChange(columnsPatch(block, columns))} />
+        <GridDisplayFields block={block} onChange={onChange} />
       </div>
       <fieldset className="flex flex-col gap-2 border-t border-border pt-4">
         <legend className="float-left mb-2 w-full text-sm font-medium">In each tile</legend>
@@ -4908,6 +5259,7 @@ const GRID_LEVELS = [2, 3, 4, 5, 6] as const;
 /** How a content grid's tiles look (D51): picture, heading, excerpt, button and the tile itself. */
 function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChange: (patch: BlockPatch<ContentGridBlock>) => void }) {
   const tile = block.tile;
+  const { size } = useSizeEdit();
   return (
     <div className="flex flex-col gap-4">
       <Choices
@@ -4954,9 +5306,11 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
         <NumberField
           label="Space between tiles"
           hint={`in pixels, up to ${GRID_GAP_MAX}`}
-          value={block.gap}
+          value={valueAt(block, "gap", size) ?? block.gap}
           max={GRID_GAP_MAX}
-          onChange={(gap) => onChange({ gap })}
+          mark={<SizeMark part={block} field="gap" label="Space between tiles" onPatch={onChange} />}
+          muted={inheritedClass(sizeSource(block, size, "gap"), size)}
+          onChange={(gap) => onChange(setAt(block, size, { gap }))}
         />
         <OptionalColor
           label="Tile background"
@@ -5622,14 +5976,18 @@ function MenuFields({
         value={block.direction ?? "row"}
         onChange={(direction) => onChange({ direction: direction === "row" ? undefined : direction })}
       />
-      <Check
-        label="Hide on phones"
-        hint="Phones have the menu button and the slide-out menu, with the main menu."
-        checked={hiddenOnPhones(block)}
-        onChange={(on) => onChange(hideOnPhonesPatch(block, on))}
-      />
+      <p className="text-xs text-muted">
+        To leave it out on phones, where the menu button and the slide-out menu have the main menu, switch off Small under
+        Advanced, Visibility.
+      </p>
     </div>
   );
+}
+
+/** Under a stand-in on the canvas: the sizes it is left out at on the site (D179). */
+function HiddenNote({ hideAt }: { hideAt: Size[] | undefined }) {
+  if (!hideAt?.length) return null;
+  return <span className="block text-[10px] text-muted">Not at {hideAt.map((size) => SIZE_LABELS[size]).join(", ")}</span>;
 }
 
 /** The store's search on the canvas: a box, and where its results go. */
@@ -5745,7 +6103,7 @@ function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] 
           </li>
         ))}
       </ul>
-      {hiddenOnPhones(block) && <span className="block text-[10px] text-muted">Not on phones</span>}
+      <HiddenNote hideAt={block.visibility?.hideAt} />
     </div>
   );
 }
@@ -5819,14 +6177,12 @@ function SiteFields({ block, onChange }: { block: SiteBlock; onChange: (patch: B
           onChange={(direction) => onChange({ direction: direction === "row" ? undefined : direction })}
         />
       )}
-      {/* The withdrawal link is for every visitor (D153): it cannot be hidden on phones. */}
+      {/* The withdrawal link is for every visitor (D153): it cannot be hidden at any size (Advanced, Visibility). */}
       {block.part !== "menuButton" && block.part !== "withdrawal" && (
-        <Check
-          label="Hide on phones"
-          hint="Phones have the menu button and the slide-out menu, with the menu, account and countries."
-          checked={hiddenOnPhones(block)}
-          onChange={(on) => onChange(hideOnPhonesPatch(block, on))}
-        />
+        <p className="text-xs text-muted">
+          To leave it out on phones, where the menu button and the slide-out menu have the menu, account and countries, switch
+          off Small under Advanced, Visibility.
+        </p>
       )}
     </div>
   );
@@ -5851,7 +6207,7 @@ function SiteStandIn({ block }: { block: SiteBlock }) {
       ))}
     </span>
   );
-  const phones = hiddenOnPhones(block) ? <span className="block text-[10px] text-muted">Not on phones</span> : null;
+  const phones = <HiddenNote hideAt={block.visibility?.hideAt} />;
   const body = (() => {
     switch (block.part) {
       case "logo":
@@ -6007,7 +6363,7 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
             max={RELATED_MAX}
             onChange={(limit) => onChange({ limit: Math.max(1, limit) })}
           />
-          <ColumnsFields value={columnsView(block, { mobile: 2, tablet: 4, desktop: 4 })} onChange={(columns) => onChange(columnsPatch(block, columns))} />
+          <ColumnsFields part={block} fallback={(size) => (size === "sm" ? 2 : 4)} onChange={onChange} />
         </>
       )}
     </div>

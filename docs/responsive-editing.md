@@ -1,7 +1,8 @@
 # Responsive editing and visibility in the page builder (proposed D179)
 
-Status: **phase 1 built** (the model, the upgrade of saved pages, screen sizes in the theme and the part stylesheet;
-section 9 says what was learned). Phases 2–6 are not started. Agreed with the owner on 8 October 2026; built after D178
+Status: **phases 1 and 2 built** (phase 1: the model, the upgrade of saved pages, screen sizes in the theme and the part
+stylesheet, section 9; phase 2: the builder's responsive mode, fields by size, visibility by size and the theme's screen
+sizes, section 10). Phases 3–6 are not started. Agreed with the owner on 8 October 2026; built after D178
 step 6, and before text colour and opacity (`docs/text-colour.md`, proposed D180). The model is Beaver Builder's: a value per
 screen size on the settings of every row, column and component, a responsive editing mode in the builder, and
 visibility by screen size, sign-in or conditions in each part's Advanced tab.
@@ -176,3 +177,60 @@ runs nothing.
   flex-direction and wrap, order, grid-template-columns, align-items, justify-content, gaps, max-width), captured from a
   build of `origin/main` before the change and compared with the build after: 3,512 elements, 108,872 values, no
   difference. The same spec holds a store with the pages in the old shape against one with them upgraded.
+
+## 10. Phase 2, as built
+
+- **Responsive mode** (`src/components/admin/responsive-edit.tsx`, wired in `PageBuilder`): off, the builder edits Extra large
+  and the canvas is as wide as the column, as before. The toolbar's **Responsive** button, Ctrl or Cmd + Shift + R (not while
+  typing in a field) or any field's device icon turns it on; a bar over the canvas (`ResponsiveBar`) then has the size (a
+  menu of the four, with their pixel ranges), the canvas's width (typed, kept within the size: `sizeRange()`, `clampWidth()`)
+  × height, a zoom of 50–100 % and **Exit**. A size opens at a typical screen's width and height (`TYPICAL_SCREENS`: 1440 ×
+  900, 1100 × 800, 820 × 1180, 390 × 844; the middle of the size where a store's own widths leave the typical one out,
+  `typicalWidth()`), zoomed to fit the column until a zoom is chosen (`fitZoom()`). The state is the builder's only
+  (`useResponsiveMode()`); fields read the size from `SizeEditContext` (`useSizeEdit()`).
+- **The canvas at a size**: the page (`kz-page`) is given the width and the section around it CSS `zoom`, inside a frame of
+  the height that scrolls, so phase 1's container queries see exactly the size's width. Owner CSS on the canvas has its
+  width-only `@media` rules turned into `@container kz-page` ones (`containerCss()` in `src/lib/custom-css.ts`, through
+  `ScopedCss`'s `container`; strings, comments, lists, `not` and other features are left alone); the site keeps the CSS
+  as written. Parts hidden at the size stay on the canvas, faded, with a grey eye (`HiddenBadge`), or left out with the
+  toolbar's **Hidden parts** switch (`canvasHiddenCss()` in `src/lib/part-css.ts`: container queries on `data-builder-id`,
+  so they follow the size shown even outside responsive mode).
+- **Fields at a size**: every field `at` takes has a device icon (`SizeMark`/`SizeSwitch`): spacing (margin and padding
+  apart), border, corners, shadow, a row's or column's colour and backdrop blur, a row's columns side by side or one under
+  another, last first and the space between them (`RowSizeFields`), a column's share and place (`ColumnSizeFields`; new
+  `PageColumn.width`/`order` are its Extra large values), alignment and a picture's position (`TextAlignFields`), a
+  picture's width (`ImageSizeFields`), a grid's columns, gap and grid or carousel (`GridDisplayFields`, `ColumnsFields`),
+  related products' columns and a dual button's stacking. At Extra large a field edits the part's own value; below it, the
+  pure helpers in `src/lib/responsive.ts` write the size: `setAt(part, size, patch)` (only what differs from what the size
+  inherits, an equal value takes the override away, "none" over an inherited border, shadow, colour, blur or width is
+  `null`, no spacing over inherited spacing is zeros, square corners are 0; settings that never vary go to the part),
+  `clearAt(part, size, field)` (the × that gives an override back), `sizeSource()` (the "From Large" note, or the size's
+  own mark) and `viewAt()` (what the fields show at the size). An inherited value is shown greyed (`inheritedClass()`). A
+  picture, video or gradient background is the part's own at every size; below Extra large the background is a colour or
+  none (`BackgroundAtSize`). `at`'s schema takes `null` for those five settings.
+- **The old phone switches are gone from the dialogs** (side by side and reversed on phones, one under another on phones,
+  carousel on phones only, columns per phone, tablet and computer, alignment per screen, hide on phones): their places are
+  the fields above at Small, and the Advanced tab's **Visibility → Breakpoint** (`VisibilityFields`: four device buttons,
+  pressed where the part shows, `visibilityPatch()`), offered on rows (not modals), columns and blocks; the withdrawal link
+  (D153) and the phone's menu button cannot be hidden there. Display (always, never, signed in, conditions) is phase 4 and
+  has its place marked in `VisibilityFields`. Hidden rows and columns are now left out on the site too (`hiddenRules()` in
+  `rowStyle()`/`columnStyle()`; blocks were in phase 1), so nothing changes on a saved page until an owner hides one.
+- **Screen sizes in Design** (`BreakpointFields` in `ThemeEditor`): Medium from, Large from and Extra large from, checked by
+  `breakpointsProblem()` as typed (Save waits for usable widths) with a button back to the standard sizes. Design profiles'
+  snapshots carry them as part of the theme (held by `responsive-copies.test.ts`). **Kaizen's own pages have no editor**:
+  Kaizen has no theme, and `platform_settings` has no place for them without a migration (or putting them in another
+  setting's column); its pages keep the defaults (`breakpointsFor(null)`). A follow-up adds a `breakpoints` jsonb column
+  or a design settings page for Kaizen.
+- **Copies**: duplicating, saved parts, templates (`sanitizeTemplate()`), globals and their uses and A/B tests of a part
+  (`partChanges()`/`applyPart()`) keep `at` and `visibility` as they are (`src/lib/responsive-copies.test.ts`); there is no
+  copy-and-paste of styles in the builder to carry them.
+- **Tests**: `src/lib/responsive-edit.test.ts` (the helpers, the canvas's widths and zoom, the hidden parts' rules, the
+  `@media` → `@container` rewrite), `src/components/admin/responsive-edit.test.ts` (the bar, a field at a size with its
+  icon, note and ×, Visibility, the toolbar and canvas, the shortcut, the theme's widths, drawn with `renderToString`),
+  `image-size-fields.test.ts` (a picture's width and position at a size). There is no e2e of the builder: e2e has no admin
+  sign-in. `e2e/responsive-parity.spec.ts` still holds the site unchanged, also against a capture of phase 1's build
+  (4718782): 20 page widths, 3,544 elements, 109,864 values, no difference.
+- **Still on the window's breakpoints in the canvas**: Tailwind's `md:`/`lg:`/`sm:` classes inside blocks (heading and
+  article title sizes, field loops, custom fields, Kaizen's plans, the listing's grid, the gallery's arrows, the standard
+  header's menu button) follow the admin's window, not the canvas, so at Small in a wide window a heading keeps its large
+  size there. Heading sizes move to the part rules with typography (phase 3); the rest to container variants after.

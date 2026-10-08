@@ -25,9 +25,10 @@ export function CustomCss({ css, name }: { css: string | null | undefined; name:
 /**
  * CSS kept inside `root` and what it holds, each part checked on its own: in
  * the admin (the builder's canvas, previews), where it must never reach the
- * admin's own page.
+ * admin's own page. In the builder's canvas (`container`, D179) its width
+ * queries follow the canvas's size instead of the window.
  */
-export function ScopedCss({ css, root }: { css: (string | null | undefined)[]; root: string }) {
-  const text = css.map((part) => (part ? scopedCss(part, root) : "")).filter(Boolean).join("\n");
+export function ScopedCss({ css, root, container }: { css: (string | null | undefined)[]; root: string; container?: string }) {
+  const text = css.map((part) => (part ? scopedCss(part, root, container) : "")).filter(Boolean).join("\n");
   return text ? <style>{text}</style> : null;
 }
