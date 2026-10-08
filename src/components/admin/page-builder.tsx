@@ -67,6 +67,7 @@ import {
   ROW_LAYOUTS,
   ROW_LAYOUT_KEYS,
   ROWS_MAX,
+  BACKDROP_BLUR_MAX,
   BLUR_MAX,
   BORDER_MAX,
   BORDER_STYLES,
@@ -3772,7 +3773,7 @@ function BackgroundFields({
               <RangeField
                 label="Blur"
                 min={1}
-                max={BLUR_MAX}
+                max={BACKDROP_BLUR_MAX}
                 step={1}
                 value={backdropBlur}
                 shown={`${backdropBlur} px`}

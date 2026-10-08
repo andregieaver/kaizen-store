@@ -11,7 +11,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { enabledLanguages } from "@/server/languages";
 import { uiCounts } from "@/server/ui-text";
 
-import { fetchRatesAction, saveCurrenciesAction, saveLanguagesAction } from "./actions";
+import { fetchRatesAction, saveCurrenciesAction, saveLanguagesAction, saveStoreLanguageAction } from "./actions";
 
 export const metadata: Metadata = { title: "Languages and currencies" };
 
@@ -36,6 +36,8 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
     return `Interface ${share} % translated${c.reviewed >= c.translated ? ", reviewed" : ", not yet reviewed"}`;
   };
   const main = localization.locales[0];
+  // Every variant of every language the platform offers (D111), for the one-language choice while Several languages is off.
+  const allLocales = languageOptions(languages).flatMap(({ locales }) => locales);
   // Every country the store keeps, offered or not, keeps its language and currency.
   const ownLanguages = new Set(store.keptMarkets.map((market) => market.ownLocale.split("-")[0]));
   const natives = new Set(store.keptMarkets.map((market) => market.nativeCurrency));
@@ -66,7 +68,34 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
           first; the others are translations. A language a country shows by default cannot be removed.
         </p>
         {!languagesOn ? (
-          <FeatureOffNote storeSlug={store.slug} feature="languages" owner={owner} what="Languages besides each country's own" />
+          <>
+            <ActionForm action={saveStoreLanguageAction.bind(null, store.slug)} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label htmlFor="main-language" className="text-sm font-medium">Main language</label>
+                <select id="main-language" name="main" defaultValue={main} disabled={!owner} className={input}>
+                  {allLocales.map((locale) => (
+                    <option key={locale} value={locale}>{languageName(locale)} ({locale})</option>
+                  ))}
+                </select>
+              </div>
+              <h3 className="text-base font-semibold">Each country&apos;s language</h3>
+              <p className="text-sm text-muted">What shoppers see at the country&apos;s address (<code>/no</code>).</p>
+              <ul className="flex flex-col gap-2">
+                {markets.map((market) => (
+                  <li key={market.code} className="flex items-center justify-between gap-3">
+                    <label htmlFor={`market-${market.code}`}>{market.name}</label>
+                    <select id={`market-${market.code}`} name={`market:${market.code}`} defaultValue={market.ownLocale} disabled={!owner} className={input}>
+                      {allLocales.map((locale) => (
+                        <option key={locale} value={locale}>{languageName(locale)} ({locale})</option>
+                      ))}
+                    </select>
+                  </li>
+                ))}
+              </ul>
+              {owner && <div><SubmitButton>Save language</SubmitButton></div>}
+            </ActionForm>
+            <FeatureOffNote storeSlug={store.slug} feature="languages" owner={owner} what="More languages for shoppers to choose from" />
+          </>
         ) : (
         <ActionForm action={saveLanguagesAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <table className="w-full rounded-lg border border-border bg-background text-left text-sm">

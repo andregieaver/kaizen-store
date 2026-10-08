@@ -160,3 +160,18 @@ export function languageOptions(languages: readonly { lang: string; locales: rea
 export function isOfferable(languages: readonly { locales: readonly string[] }[], locale: string): boolean {
   return languages.some((language) => language.locales.includes(locale));
 }
+
+/**
+ * The store's languages and each country's language when one is chosen with Several languages off (D178): `main` first, each country's in,
+ * then the others the store keeps texts in. A kept variant of a chosen language gives way ("en-IE" when "en-GB" is chosen), and the main
+ * language's variant wins over a country's.
+ */
+export function oneLanguageChoice(kept: readonly string[], main: string, marketLocales: Record<string, string>): [string[], Record<string, string>] {
+  const langOf = (locale: string) => locale.split("-")[0];
+  const chosen = [...new Set([main, ...Object.values(marketLocales)])];
+  const byLang = new Map<string, string>();
+  for (const locale of chosen) if (!byLang.has(langOf(locale))) byLang.set(langOf(locale), locale);
+  const pick = (locale: string) => byLang.get(langOf(locale)) ?? locale;
+  const locales = [...new Set([...chosen.map(pick), ...kept.filter((locale) => !byLang.has(langOf(locale)))])];
+  return [locales, Object.fromEntries(Object.entries(marketLocales).map(([code, locale]) => [code, pick(locale)]))];
+}

@@ -4,7 +4,7 @@ import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { parseRate, stepMinor } from "@/lib/currency";
-import { isOfferable, languageOptions } from "@/lib/localization";
+import { isOfferable, languageOptions, oneLanguageChoice } from "@/lib/localization";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
 import { featureOffText, featureOn } from "@/lib/store-features";
 import { type Membership } from "@/server/auth";
@@ -56,6 +56,25 @@ export async function saveLanguagesAction(storeSlug: string, _state: FormState, 
     if (locale && isOfferable(offered, locale)) marketLocales[market.code] = locale;
   }
   return done(owner, await saveLanguages(owner, ordered, marketLocales), "Languages saved.");
+}
+
+/**
+ * The store's main language and each country's own, the one choice there is with Several languages off (D178): one language needs no
+ * "several". The other languages the store keeps texts in stay as they are, hidden while the feature is off.
+ */
+export async function saveStoreLanguageAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const owner = await asOwner(storeSlug);
+  if (!("store" in owner)) return owner;
+  const offered = await enabledLanguages();
+  const main = String(formData.get("main") ?? "");
+  if (!isOfferable(offered, main)) return { status: "error", messages: ["Choose the store's main language."] };
+  const marketLocales: Record<string, string> = {};
+  for (const market of owner.store.markets) {
+    const chosen = String(formData.get(`market:${market.code}`) ?? "");
+    if (isOfferable(offered, chosen)) marketLocales[market.code] = chosen;
+  }
+  const [locales, byMarket] = oneLanguageChoice(owner.store.localization.keptLocales, main, marketLocales);
+  return done(owner, await saveLanguages(owner, locales, byMarket), "Language saved.");
 }
 
 /** The currencies offered, their rates and rounding, and whether the rates follow the ECB's. */

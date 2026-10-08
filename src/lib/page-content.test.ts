@@ -484,13 +484,16 @@ describe("row, column and component settings (D48)", () => {
     );
   });
 
-  it("keeps a background picture's blur, in whole pixels from 1 to 20, on rows and columns", () => {
+  it("keeps a background picture's blur, in whole pixels from 1 to 100, on rows and columns", () => {
     const picture = { type: "image", image: { url: "https://e.com/a.webp", width: 800, height: 600 }, overlay: null };
-    const parsed = pageInput.parse(page({ background: { ...picture, blur: 6 } }, { background: { ...picture, blur: 20 } }));
+    const parsed = pageInput.parse(page({ background: { ...picture, blur: 6 } }, { background: { ...picture, blur: 100 } }));
     expect(parsed.rows[0].background).toMatchObject({ blur: 6 });
-    expect(parsed.rows[0].columns[0].background).toMatchObject({ blur: 20 });
+    expect(parsed.rows[0].columns[0].background).toMatchObject({ blur: 100 });
     expect(pageInput.parse(page({ background: picture })).rows[0].background).not.toHaveProperty("blur");
-    for (const bad of [0, 21, 2.5, -1]) expect(problems(page({ background: { ...picture, blur: bad } }))).not.toEqual([]);
+    for (const bad of [0, 101, 2.5, -1]) expect(problems(page({ background: { ...picture, blur: bad } }))).not.toEqual([]);
+    // What is behind a part is blurred 20 px at most.
+    expect(pageInput.parse(page({ backdropBlur: 20 })).rows[0].backdropBlur).toBe(20);
+    expect(problems(page({ backdropBlur: 21 }))).not.toEqual([]);
   });
 
   it("keeps a column's link when its address is safe", () => {

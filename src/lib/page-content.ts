@@ -378,7 +378,10 @@ export type GradientBackground = {
   /** A fine noise over it. */
   grain?: boolean;
 };
-export const BLUR_MAX = 20;
+/** How soft a background picture or video may be drawn, in pixels. */
+export const BLUR_MAX = 100;
+/** How much what is behind a part may be blurred (D86): kept low, as a large backdrop blur is costly for the browser to draw. */
+export const BACKDROP_BLUR_MAX = 20;
 /**
  * A row's background video: plays without sound, on a loop, with a colour
  * and blur over it as a picture takes. `poster` is a still from it, shown
@@ -1873,7 +1876,7 @@ const overlay = z.object({ color, opacity: z.number().int().min(0).max(100) }).n
 const blur = z.number().int().min(1).max(BLUR_MAX).optional();
 const colorBackground = z.object({ type: z.literal("color"), color, opacity: z.number().int().min(0).max(99).optional() });
 /** How much what is behind a part is blurred (D86), with no background or a colour. */
-const backdropBlur = z.number().int().min(1).max(BLUR_MAX).optional();
+const backdropBlur = z.number().int().min(1).max(BACKDROP_BLUR_MAX).optional();
 const imageBackground = z.object({ type: z.literal("image"), image: picture, overlay, blur });
 const gradientBackground = z.object({
   type: z.literal("gradient"),

@@ -14,6 +14,7 @@ import {
   marketChoices,
   mergeLocales,
   offers,
+  oneLanguageChoice,
 } from "./localization";
 
 const no = toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" });
@@ -100,5 +101,17 @@ describe("with the Countries and languages features (D178)", () => {
     expect(loc.currencies.map((c) => c.currency)).toEqual(["NOK", "SEK", "EUR"]);
     expect(loc.rates.get("SEK")?.rate).toBe(11);
     expect(loc.rates.has("DKK")).toBe(true);
+  });
+});
+
+describe("oneLanguageChoice", () => {
+  it("puts the main language first, then the countries', then the languages kept", () => {
+    expect(oneLanguageChoice(["nb-NO", "sv-SE"], "en-GB", { NO: "en-GB" })).toEqual([["en-GB", "nb-NO", "sv-SE"], { NO: "en-GB" }]);
+  });
+  it("lets a kept variant of a chosen language give way, the main language's variant winning", () => {
+    expect(oneLanguageChoice(["nb-NO", "en-IE"], "en-GB", { NO: "en-IE" })).toEqual([["en-GB", "nb-NO"], { NO: "en-GB" }]);
+  });
+  it("keeps a country in a language other than the main one", () => {
+    expect(oneLanguageChoice(["nb-NO"], "en-GB", { NO: "nb-NO" })).toEqual([["en-GB", "nb-NO"], { NO: "nb-NO" }]);
   });
 });
