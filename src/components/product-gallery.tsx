@@ -199,7 +199,7 @@ function Arrow({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      className={`absolute top-1/2 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 text-foreground shadow-md transition hover:bg-background disabled:pointer-events-none disabled:opacity-0 md:flex ${
+      className={`absolute top-1/2 hidden size-11 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 text-foreground shadow-md transition hover:bg-background disabled:pointer-events-none disabled:opacity-0 kzb-md-flex ${
         direction === "previous" ? "left-3" : "right-3"
       }`}
     >

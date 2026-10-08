@@ -23,8 +23,12 @@ const sized: PageBlock = {
   type: "heading",
   text: "Hello",
   level: 2,
-  align: "right",
-  at: { md: { align: "center", radius: 0, border: null }, sm: { style: { margin: { top: 4, right: 0, bottom: 4, left: 0 } } } },
+  // Its typography (D179 phase 3), with a size's own: kept by every copy as the rest is.
+  typography: { text: { align: "right", family: "Lora", size: { value: 40, unit: "px" }, textShadow: { color: "#000000", x: 1, y: 2, blur: 3 } } },
+  at: {
+    md: { radius: 0, border: null, typography: { text: { align: "center", letterSpacing: { value: 0.05, unit: "em" } } } },
+    sm: { style: { margin: { top: 4, right: 0, bottom: 4, left: 0 } }, typography: { text: { size: { value: 1.5, unit: "rem" }, textShadow: null } } },
+  },
   visibility: { hideAt: ["sm"] },
 } as PageBlock;
 const row: PageRow = {
@@ -32,14 +36,15 @@ const row: PageRow = {
   type: "row",
   layout: "2",
   gap: 24,
-  at: { sm: { stack: false, gap: 8 } },
+  at: { sm: { stack: false, gap: 8, typography: { text: { transform: "uppercase" } } } },
   visibility: { hideAt: ["xl"] },
+  typography: { text: { weight: 300, style: "italic" } },
   columns: [
     { id: "c1", blocks: [sized], width: 2, at: { md: { width: 1, order: -1 } }, visibility: { hideAt: ["md"] } },
     { id: "c2", blocks: [] },
   ],
 };
-const responsive = (part: { at?: unknown; visibility?: unknown }) => ({ at: part.at, visibility: part.visibility });
+const responsive = (part: { at?: unknown; visibility?: unknown; typography?: unknown }) => ({ at: part.at, visibility: part.visibility, typography: part.typography });
 
 describe("copies keep the settings by size and the visibility", () => {
   it("duplicating a row, a column or a component", () => {

@@ -62,7 +62,7 @@ describe("converting a captured page into rows and blocks", () => {
     expect(built.rows).toHaveLength(1);
     const blocks = blocksOf(built.rows);
     expect(blocks.map((b) => b.type)).toEqual(["heading", "richText", "button"]);
-    expect(blocks[0]).toMatchObject({ type: "heading", level: 1, text: "Make it better, every day", font: "Inter" });
+    expect(blocks[0]).toMatchObject({ type: "heading", level: 1, text: "Make it better, every day", typography: { text: { family: "Inter" } } });
     expect(blocks[2]).toMatchObject({ type: "button", label: "Get started", href: "https://example.com/start", variant: "filled" });
     // The section's colour is the row's own background.
     expect(built.rows[0].background).toEqual({ type: "color", color: "#141828" });

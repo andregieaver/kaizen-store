@@ -18,6 +18,7 @@ import { blockStyle, clipsAnywhere, columnStyle, inlineNowrap, panelStyle, partC
 import { SIZES } from "@/lib/breakpoints";
 import { valueAt } from "@/lib/responsive";
 import { summarize } from "@/lib/seo";
+import { boxFamilies } from "@/lib/typography";
 
 import { BackgroundVideo } from "./background-video";
 
@@ -59,6 +60,8 @@ export function rowBox(row: PageRow, mode: PartsMode, inPanel = false): Box {
     className: cx(
       partClass(row),
       rowStyle(row, inPanel, mode).className,
+      // Its font (D179), which what it holds inherits.
+      ...boxFamilies(row).map(fontClass),
       "relative isolate flex flex-col",
       row.fullHeight && "min-h-svh",
       clipsAnywhere(row) && !inPanel && "overflow-hidden",
@@ -91,6 +94,7 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
     className: cx(
       partClass(column),
       columnStyle(column, mode).className,
+      ...boxFamilies(column).map(fontClass),
       // Side by side (D80): its components in a line that wraps, centred on each other, placed by `justify`.
       // In a row that never stacks (a header's), they stay on one line, the widest (a logo) narrowing first.
       column.inline
@@ -131,8 +135,8 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
       blockStyle(block, mode).className,
       // `box-content` makes the limit the picture's width however much padding and border the block has.
       picture && "box-content max-w-(--picture-width)",
-      // Its own font (D59) for all its text; the stylesheet comes with `FontLinks`.
-      "font" in block && block.font && fontClass(block.font),
+      // Its own font (D59) for all its text, from its typography (D179); the stylesheet comes with `FontLinks`.
+      ...boxFamilies(block).map(fontClass),
       block.type !== "button" && SIZES.some((size) => Boolean(valueAt(block, "radius", size))) && "overflow-hidden",
       mode === "site" && block.className,
     ),

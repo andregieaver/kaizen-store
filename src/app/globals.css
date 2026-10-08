@@ -372,16 +372,7 @@ html[data-overlay-on] [data-header-wrap][data-at-top] .site-header {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
-@media (width >= 48rem) {
-  [data-carousel-track] {
-    --cols: var(--grid-cols, var(--grid-tablet, 2));
-  }
-}
-@media (width >= 64rem) {
-  [data-carousel-track] {
-    --cols: var(--grid-cols, var(--grid-desktop, 3));
-  }
-}
+/* From Medium the tablet's columns, from Large the computer's: by the store's screen sizes (D179, `breakpointClassCss()`). */
 /*
  * A content grid's carousel takes its columns from its list's rules by the store's screen sizes (D179, `gridListStyle()`), which also
  * lay it out as a grid of the same columns at the sizes where it is not a carousel (`carouselOn: "phones"` before D179).

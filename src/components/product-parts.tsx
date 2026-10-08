@@ -8,7 +8,6 @@ import { CampaignNotices } from "@/components/campaign-notice";
 import { CustomFieldGroups, CustomFieldView } from "@/components/custom-fields-view";
 import { JsonLdScript } from "@/components/json-ld";
 import { PageArticle } from "@/components/page-article";
-import { HEADING_SIZES } from "@/components/page-block";
 import { Price, VatAmount } from "@/components/price";
 import { ProductBar } from "@/components/product-bar";
 import { ProductGallery } from "@/components/product-gallery";
@@ -117,7 +116,7 @@ export function ProductPartView({ block, ctx }: { block: ProductBlock; ctx: Prod
     case "title":
       return (
         <div className="flex items-start justify-between gap-4">
-          <h1 className={`${block.size ? HEADING_SIZES[block.size] : "text-3xl"} flex-1 font-heading tracking-tight`}>{product.title}</h1>
+          <h1 className="flex-1 font-heading text-3xl tracking-tight">{product.title}</h1>
           {block.wishlist !== false && (
             <WishlistHeart
               store={store.slug}

@@ -517,7 +517,9 @@ describe("row, column and component settings (D48)", () => {
     const aligned = { ...block, align: { mobile: "center", desktop: "right" } };
     const picture = { id: "i1", type: "image", image: null, caption: "", shape: "circle" };
     const blocks = pageInput.parse(page({}, {}, [aligned, picture])).rows[0].columns[0].blocks;
-    expect(blocks[0]).toMatchObject({ align: "right", at: { md: { align: "center" } } });
+    // Text alignment is the text's typography (D179 phase 3): right, centred below Medium.
+    expect(blocks[0]).toMatchObject({ typography: { text: { align: "right" } }, at: { md: { typography: { text: { align: "center" } } } } });
+    expect(blocks[0]).not.toHaveProperty("align");
     expect(blocks[1]).toMatchObject({ shape: "circle" });
     expect(problems(page({}, {}, [{ ...block, align: { tablet: "justify" } }]))).not.toEqual([]);
     expect(problems(page({}, {}, [{ ...picture, shape: "oval" }]))).not.toEqual([]);
@@ -604,7 +606,14 @@ describe("borders, corners and shadows; headings and buttons (D49)", () => {
     const styled = { ...heading("h", 2, " Our prices "), size: "2xl", weight: "bold", textColor: "#112233", align: { mobile: "center" } };
     const parsed = pageInput.parse(page([styled, heading("e", 3, "")]));
     const [first, empty] = parsed.rows[0].columns[0].blocks;
-    expect(first).toMatchObject({ text: "Our prices", level: 2, size: "2xl", weight: "bold", textColor: "#112233" });
+    // Its size, weight and alignment are its typography (D179): Huge is 3.75rem from Medium, 2.25rem on Small.
+    expect(first).toMatchObject({
+      text: "Our prices",
+      level: 2,
+      textColor: "#112233",
+      typography: { text: { size: { value: 3.75, unit: "rem" }, weight: 700, align: "center" } },
+      at: { sm: { typography: { text: { size: { value: 2.25, unit: "rem" } } } } },
+    });
     expect([first, empty].map(blockHasContent)).toEqual([true, false]);
     expect(pageExcerpt(parsed)).toBe("Our prices");
     expect(problems(page([heading("x", 7)]))).toEqual(["A heading has an unknown level."]);
@@ -746,11 +755,14 @@ describe("fonts per component (D59)", () => {
     ];
     const parsed = pageInput.parse(page(blocks));
     const [text, heading, button, image, grid] = parsed.rows[0].columns[0].blocks;
-    expect(text).toMatchObject({ font: "Lora" });
-    expect(heading).toMatchObject({ font: "Playfair Display" });
-    expect(button).toMatchObject({ font: "Inter", weight: "bold" });
+    // Each the family of its typography (D179): a grid's tiles' text and titles apart.
+    expect(text).toMatchObject({ typography: { text: { family: "Lora" } } });
+    expect(heading).toMatchObject({ typography: { text: { family: "Playfair Display" } } });
+    expect(button).toMatchObject({ typography: { text: { family: "Inter", weight: 700 } } });
     expect(JSON.parse(JSON.stringify(image))).not.toHaveProperty("font");
-    expect(grid).toMatchObject({ font: "Inter", headingFont: "Lora" });
+    expect(JSON.parse(JSON.stringify(image))).not.toHaveProperty("typography");
+    expect(grid).toMatchObject({ typography: { text: { family: "Inter" }, title: { family: "Lora" } } });
+    for (const block of [text, heading, button, grid]) expect(block).not.toHaveProperty("font");
     expect(parsed.rows[0].columns[0].blocks.flatMap(blockFonts)).toEqual(["Lora", "Playfair Display", "Inter", "Inter", "Lora"]);
     expect(pageFonts(parsed)).toEqual(["Lora", "Playfair Display", "Inter"]);
   });

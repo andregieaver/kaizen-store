@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 
-import { blockFonts, blockShowsUnbound, type PageBlock, type PageContent, type PageRow } from "@/lib/page-content";
+import { blockFonts, blockShowsUnbound, partFonts, type PageBlock, type PageContent, type PageRow } from "@/lib/page-content";
 
 import { withoutBindings } from "@/lib/field-binding";
 import { t } from "@/lib/i18n";
@@ -179,6 +179,7 @@ function RowMarkup({
   return (
     <div className={row.width === "full" || inPanel ? undefined : "mx-auto w-full max-w-(--content-width)"}>
       <div id={box.id} className={box.className} style={{ ...box.style, ...rowFx.style }} {...rowFx.attrs}>
+        <FontLinks families={partFonts(row)} />
         <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} />
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
@@ -192,6 +193,7 @@ function RowMarkup({
               });
               return (
                 <div key={column.id} id={col.id} className={col.className} style={{ ...col.style, ...colFx.style }} {...colFx.attrs}>
+                  <FontLinks families={partFonts(column)} />
                   <PartBackground background={column.background} motion={column.backgroundMotion} firstRow={first} />
                   <ColumnLinkCover column={column} />
                   {column.blocks.filter(blockShowsUnbound).map((block, blockIndex) => {

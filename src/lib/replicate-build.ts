@@ -1156,7 +1156,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
           label: words.slice(0, 100),
           href: leaf.href ?? "#",
           variant: filled ? "filled" : outlined ? "outline" : "text",
-          ...(type.native ? { font: type.native } : {}),
+          ...(type.native ? { typography: { text: { family: type.native } } } : {}),
         };
         return block;
       }
@@ -1172,7 +1172,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
         put(id, "", { ...at.d, ...type.decl(leaf, pin?.base), ...(oneLine(leaf) ? { "white-space": "nowrap" } : {}) }, { ...at.m, ...(phone ? { ...type.decl(phone, pin?.baseM), "white-space": oneLine(phone) ? "nowrap" : "normal" } : {}) });
         register();
         counts.headings += 1;
-        const block: HeadingBlock = { ...base, type: "heading", text: words.slice(0, 300), level: used, ...(type.native ? { font: type.native } : {}) };
+        const block: HeadingBlock = { ...base, type: "heading", text: words.slice(0, 300), level: used, ...(type.native ? { typography: { text: { family: type.native } } } : {}) };
         return block;
       }
 
@@ -1204,7 +1204,7 @@ export function buildReplica(input: BuildInput, newId: () => string): BuildOutpu
       });
       register();
       counts.texts += 1;
-      const block: RichTextBlock = { ...base, type: "richText", doc: docOf(group), ...(type.native ? { font: type.native } : {}) };
+      const block: RichTextBlock = { ...base, type: "richText", doc: docOf(group), ...(type.native ? { typography: { text: { family: type.native } } } : {}) };
       return block;
     }
 

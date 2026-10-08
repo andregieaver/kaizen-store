@@ -218,7 +218,7 @@ function ShopTools({ store, market }: Props) {
       </Link>
       <Link
         href={`${base}/account`}
-        className="hidden size-11 items-center justify-center rounded-full hover:bg-current/5 md:flex"
+        className="hidden size-11 items-center justify-center rounded-full hover:bg-current/5 kzb-md-flex"
       >
         <Icon name="user" />
         <span className="sr-only">{m.account.title}</span>
@@ -248,7 +248,7 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
       data-open-menu
       aria-haspopup="dialog"
       aria-controls="store-menu"
-      className="-ml-2 flex size-11 items-center justify-center rounded-full md:hidden"
+      className="-ml-2 flex size-11 items-center justify-center rounded-full kzb-md-hidden"
     >
       <Icon name="menu" />
       <span className="sr-only">{m.openMenu}</span>
@@ -272,7 +272,7 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
   const tools = (
     <div className={`flex items-center gap-1 ${centred ? "justify-end" : "ml-auto"}`}>
       <MarketChoice store={store} market={market} m={m} />
-      <LocaleChoice store={store} market={market} m={m} className="hidden md:flex" />
+      <LocaleChoice store={store} market={market} m={m} className="hidden kzb-md-flex" />
       {store.theme.settings.visitorSwitch && <StoreColorSwitch store={store} labels={m.colorMode} />}
       {selling && <ShopTools store={store} market={market} />}
     </div>

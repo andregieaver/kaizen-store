@@ -80,7 +80,7 @@ describe("a grid of custom items, drawn", () => {
   it("draws the price text as plain words: no Price, no VAT label, no reference price, no cart", () => {
     const out = draw(grid({ items: [item({ priceText: "From 199 kr" })] }));
     expect(out).toContain("From 199 kr");
-    expect(out).toMatch(/<p class="font-medium">From 199 kr<\/p>/);
+    expect(out).toMatch(/<p class="font-medium" data-kz-text="price">From 199 kr<\/p>/);
     for (const forbidden of ["VAT", "mva", "for-private", "for-business", "line-through", "Add to cart", "<form", "<button"]) {
       expect(out, forbidden).not.toContain(forbidden);
     }

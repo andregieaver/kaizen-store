@@ -4,7 +4,6 @@ import type { CSSProperties } from "react";
 import { Inline } from "@/components/inline-text";
 import { inlinePlain } from "@/lib/inline-text";
 import {
-  HEADING_DEFAULT_SIZE,
   faqShows,
   richTextPlain,
   type AccordionBlock,
@@ -19,7 +18,6 @@ import {
   type DualButtonSide,
   type FontWeight,
   type HeadingBlock,
-  type HeadingSize,
   type ImageShape,
   type PageBlock,
   type SeparatorBlock,
@@ -52,13 +50,6 @@ export const SHAPES: Record<ImageShape, string> = {
   circle: "aspect-square object-cover rounded-full",
 };
 
-export const HEADING_SIZES: Record<HeadingSize, string> = {
-  sm: "text-lg",
-  md: "text-xl md:text-2xl",
-  lg: "text-2xl md:text-3xl",
-  xl: "text-3xl md:text-5xl",
-  "2xl": "text-4xl md:text-6xl",
-};
 export const WEIGHTS: Record<FontWeight, string> = {
   normal: "font-normal",
   medium: "font-medium",
@@ -162,11 +153,15 @@ export function PageBlockView({ block }: { block: PageBlock }) {
   }
 }
 
+/**
+ * A heading (D49): its size (by its level unless set), weight (the theme's unless set), alignment and font are its
+ * typography (D179), drawn by the part stylesheet by the store's screen sizes.
+ */
 function Heading({ block }: { block: HeadingBlock }) {
   const Tag = `h${block.level}` as const;
   return (
     <Tag
-      className={`leading-tight text-balance ${HEADING_SIZES[block.size ?? HEADING_DEFAULT_SIZE[block.level]]} ${block.weight ? WEIGHTS[block.weight] : "font-heading"}`}
+      className="leading-tight text-balance font-heading"
       style={block.textColor ? { color: block.textColor } : undefined}
     >
       <Inline text={block.text} links />
@@ -208,7 +203,8 @@ export function buttonLook(
  * a filled button. It stays usable above a column's own link.
  */
 function Button({ block }: { block: ButtonBlock }) {
-  const look = buttonLook(block, block.fullWidth, block.weight);
+  // Its weight, medium unless its typography sets one (D179).
+  const look = buttonLook(block, block.fullWidth);
   return (
     <a
       href={block.href}
@@ -270,7 +266,7 @@ function DualButton({ block }: { block: DualButtonBlock }) {
 }
 
 function SideButton({ side, block }: { side: DualButtonSide; block: DualButtonBlock }) {
-  const look = buttonLook({ ...side, size: block.size, shape: block.shape }, false, block.weight);
+  const look = buttonLook({ ...side, size: block.size, shape: block.shape });
   return (
     <a href={side.href} {...(side.newTab && { target: "_blank", rel: "noopener noreferrer" })} style={look.style} className={look.className}>
       <Inline text={side.label} />
@@ -318,7 +314,7 @@ function DetailsList({ block, items }: { block: AccordionBlock | FaqBlock; items
           className={`group ${boxed ? "rounded-lg border border-border px-4" : ""}`}
         >
           <summary
-            className={`flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-medium [&::-webkit-details-marker]:hidden ${HEADING_SIZES[block.titleSize ?? "sm"]}`}
+            className={`flex cursor-pointer list-none items-center justify-between gap-4 py-4 font-medium [&::-webkit-details-marker]:hidden text-lg`}
           >
             <span>
               <Inline text={item.title} />

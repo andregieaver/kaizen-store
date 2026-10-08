@@ -56,6 +56,12 @@ describe("motion.css", () => {
     expect(css).toMatch(/fx-failsafe 400ms ease 4s/);
   });
 
+  it("times an entrance by its own duration and delay (D179 phase 3), never by a parent's", () => {
+    expect(css).toMatch(/@property --fx-duration \{\s*syntax: "\*";\s*inherits: false;\s*\}/);
+    expect(css).toContain("--fx-dur: var(--fx-duration, 700ms);");
+    expect(css).toContain("animation-delay: calc(var(--fx-delay, 0ms)");
+  });
+
   it("uses no file of its own: colours, gradients and an inline noise only", () => {
     const urls = [...css.matchAll(/url\(([^)]*)\)/g)].map((m) => m[1]);
     expect(urls.length).toBe(1);

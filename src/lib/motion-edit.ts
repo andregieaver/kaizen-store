@@ -5,6 +5,9 @@ import {
   HOVER_EFFECTS,
   SCROLL_EFFECTS,
   STAGGER_MAX,
+  DELAY_MAX,
+  DURATION_MAX,
+  DURATION_MIN,
   effectsFor,
   type BackgroundMotion,
   type EnterEffect,
@@ -142,7 +145,8 @@ export function patchEnter(
     delete next.start;
     delete next.once;
   }
-  if (next.delay !== undefined) next.delay = clampStep(next.delay, 0, 2000);
+  if (next.delay !== undefined) next.delay = clampStep(next.delay, 0, DELAY_MAX);
+  if (next.duration !== undefined) next.duration = Math.min(DURATION_MAX, Math.max(DURATION_MIN, Math.round(next.duration / 10) * 10));
   if (next.stagger !== undefined) next.stagger = clampStep(next.stagger, 0, STAGGER_MAX);
   if (part && !staggerKind(part, next.effect)) delete next.stagger;
   return tidy({ ...motion, enter: lean(next) });

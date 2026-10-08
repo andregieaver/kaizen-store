@@ -26,6 +26,7 @@ import {
   type Shadow,
 } from "./page-content";
 import { columnsPatch, columnsView, displayPatch } from "./responsive";
+import { presetTypography, type TypographyGroups } from "./typography";
 import { isSafeAddress } from "./field-parts";
 import { menuLinkSchema } from "./navigation";
 import { pageCount, tilesPerScreen, type CarouselSettings } from "./carousel-settings";
@@ -1239,7 +1240,7 @@ function readCarousel(group: CardGroup, env: GridEnv): CarouselRead {
 export type GridStyle = {
   /** The block's own settings, to merge into a `ContentGridBlock`. */
   block: Pick<ContentGridBlock, "columns" | "gap" | "show" | "headingLevel" | "excerptLines" | "buttonLabel" | "emptyText"> &
-    Partial<Pick<ContentGridBlock, "tile" | "imageShape" | "headingSize" | "button" | "display" | "at" | "peek" | "carousel" | "font" | "headingFont">>;
+    Partial<Pick<ContentGridBlock, "tile" | "imageShape" | "button" | "display" | "at" | "peek" | "carousel" | "typography">>;
   /** Rules for the grid part, by suffix (the places the grid draws), for computers and phones. */
   rules: { suffix: string; desktop: Decl; mobile: Decl }[];
   notes: string[];
@@ -1670,9 +1671,18 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
   // Columns by screen, and a carousel on phones only, as the per-size settings (D179): computers' at Extra large, the rest as overrides.
   const sized = columnsPatch({}, columns);
   const carousel = plan.carousel ? displayPatch({ at: sized.at }, plan.carousel.phonesOnly ? "phones" : "carousel") : { display: undefined, at: sized.at };
+  // The tiles' fonts and their titles' size as the grid's typography (D179): the size a preset near the one measured (its look is the
+  // page's CSS, which wins over it), the families the store has installed.
+  const titlePreset = titleNode ? presetTypography(headingSizeOf(sizeOf(titleNode)), false) : null;
+  const title = { ...(titlePreset?.base ?? {}), ...(headFonts.native ? { family: headFonts.native } : {}) };
+  const typography: TypographyGroups = {
+    ...(fonts.native ? { text: { family: fonts.native } } : {}),
+    ...(Object.keys(title).length > 0 ? { title } : {}),
+  };
+  const sizedAt = titlePreset?.small ? { ...carousel.at, sm: { ...carousel.at?.sm, typography: { title: titlePreset.small } } } : carousel.at;
   const block: GridStyle["block"] = {
     columns: sized.columns,
-    ...(carousel.at ? { at: carousel.at } : {}),
+    ...(sizedAt ? { at: sizedAt } : {}),
     gap,
     show,
     headingLevel,
@@ -1682,10 +1692,8 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
     emptyText: "",
     ...(Object.keys(tile).length > 0 ? { tile } : {}),
     imageShape: shaped.shape,
-    ...(titleNode ? { headingSize: headingSizeOf(sizeOf(titleNode)) } : {}),
     ...(button ? { button } : {}),
-    ...(fonts.native ? { font: fonts.native } : {}),
-    ...(headFonts.native ? { headingFont: headFonts.native } : {}),
+    ...(Object.keys(typography).length > 0 ? { typography } : {}),
     ...(plan.carousel ? { ...(carousel.display ? { display: carousel.display } : {}), ...(plan.carousel.peek ? { peek: true } : {}), ...(Object.keys(plan.carousel.settings).length > 0 ? { carousel: plan.carousel.settings } : {}) } : {}),
   };
   return { block, rules, notes };

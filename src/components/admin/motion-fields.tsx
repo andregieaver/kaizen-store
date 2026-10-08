@@ -2,10 +2,12 @@
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode } from "react";
 
-import { partFx, type FxProps } from "@/lib/motion-attrs";
+import { SPEED_MS, partFx, type FxProps } from "@/lib/motion-attrs";
 import { initMotion } from "@/lib/motion-runtime";
 import {
   DELAY_MAX,
+  DURATION_MAX,
+  DURATION_MIN,
   MOTION_DISTANCES,
   MOTION_EASES,
   MOTION_INTENSITIES,
@@ -143,13 +145,7 @@ export function MotionFields({
                 onChange={(ease) => onChange(patchEnter(motion, { ease }, part))}
               />
             </div>
-            <MotionRange
-              label="Delay"
-              max={DELAY_MAX}
-              value={enter.delay ?? 0}
-              shown={(ms) => (ms === 0 ? "None" : `${ms} ms`)}
-              onChange={(delay) => onChange(patchEnter(motion, { delay }, part))}
-            />
+            <p className="text-xs text-muted">Its delay and duration, in seconds, are under Advanced, Animation.</p>
             {stagger && (
               <MotionRange
                 label={STAGGER_LABELS[stagger]}
@@ -212,6 +208,118 @@ export function MotionFields({
           />
         )}
       </Section>
+    </div>
+  );
+}
+
+/** Seconds as the fields show them: tenths, without a trailing zero. */
+const seconds = (ms: number) => String(Math.round(ms / 100) / 10);
+
+/**
+ * Beaver's Animation in the Advanced tab (D179 phase 3): the entrance's **Delay** (0 to 10 seconds) and **Duration** (0.1 to
+ * 5 seconds, its speed's when empty), in tenths of a second. Stored in milliseconds on the entrance (`delay`, `duration`)
+ * and drawn as `--fx-delay` and `--fx-duration`; visitors who ask for less motion still see none, and the content shows
+ * whatever the times say if the page's scripts never run.
+ */
+export function AnimationFields({
+  part,
+  motion,
+  onChange,
+}: {
+  part: MotionPart;
+  motion: PartMotion | undefined;
+  onChange: (motion: PartMotion | undefined) => void;
+}) {
+  const id = useId();
+  const enter = motion?.enter;
+  return (
+    <fieldset className="flex flex-col gap-3 border-t border-border pt-4" data-animation-fields="">
+      <legend className="float-left mb-1 w-full font-medium">Animation</legend>
+      {enter ? (
+        <div className="flex flex-wrap gap-4">
+          <SecondsField
+            id={`${id}-delay`}
+            label="Delay"
+            hint="0 to 10 seconds"
+            value={enter.delay ?? 0}
+            min={0}
+            max={DELAY_MAX}
+            empty="0"
+            onChange={(ms) => onChange(patchEnter(motion, { delay: ms ?? 0 }, part))}
+          />
+          <SecondsField
+            id={`${id}-duration`}
+            label="Duration"
+            hint={`0.1 to 5 seconds; empty is its speed's (${seconds(SPEED_MS[enter.speed ?? ENTER_DEFAULTS.speed])})`}
+            value={enter.duration}
+            min={DURATION_MIN}
+            max={DURATION_MAX}
+            empty={seconds(SPEED_MS[enter.speed ?? ENTER_DEFAULTS.speed])}
+            onChange={(ms) => onChange(patchEnter(motion, { duration: ms }, part))}
+          />
+        </div>
+      ) : (
+        <p className="text-sm text-muted">Choose an entrance under Motion to set when it starts and how long it takes.</p>
+      )}
+    </fieldset>
+  );
+}
+
+function SecondsField({
+  id,
+  label,
+  hint,
+  value,
+  min,
+  max,
+  empty,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  value: number | undefined;
+  min: number;
+  max: number;
+  empty: string;
+  onChange: (ms: number | undefined) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const shown = draft ?? (value === undefined ? "" : seconds(value));
+  const typed = Number(shown);
+  const invalid = shown.trim() !== "" && (!Number.isFinite(typed) || typed * 1000 < min || typed * 1000 > max);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <span className="flex items-center gap-2">
+        <input
+          id={id}
+          type="number"
+          inputMode="decimal"
+          step={0.1}
+          min={min / 1000}
+          max={max / 1000}
+          value={shown}
+          placeholder={empty}
+          aria-invalid={invalid}
+          aria-describedby={`${id}-hint`}
+          onChange={(event) => {
+            const next = event.target.value;
+            setDraft(next);
+            if (next.trim() === "") return onChange(undefined);
+            const ms = Math.round(Number(next) * 10) * 100;
+            if (Number.isFinite(ms) && ms >= min && ms <= max) onChange(ms);
+          }}
+          onBlur={() => setDraft(null)}
+          className="min-h-10 w-24 rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-red-700"
+        />
+        <span className="text-sm text-muted">s</span>
+      </span>
+      <span id={`${id}-hint`} className="text-xs text-muted">
+        {hint}
+      </span>
     </div>
   );
 }

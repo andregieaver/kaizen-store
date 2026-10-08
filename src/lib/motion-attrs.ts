@@ -104,7 +104,9 @@ const ms = (n: number) => `${n}ms`;
 /** The variables an entrance's amounts set, leaving out the defaults the stylesheet has. */
 function enterStyle(enter: EnterMotion, into: Record<string, string | number>) {
   if (enter.delay) into["--fx-delay"] = ms(enter.delay);
-  if (enter.speed && enter.speed !== "normal") into["--fx-dur"] = ms(SPEED_MS[enter.speed]);
+  // A duration of its own (D179 phase 3) is `--fx-duration`, which motion.css prefers to the speed's.
+  if (enter.duration) into["--fx-duration"] = ms(enter.duration);
+  else if (enter.speed && enter.speed !== "normal") into["--fx-dur"] = ms(SPEED_MS[enter.speed]);
   if (enter.ease && enter.ease !== "smooth") into["--fx-ease"] = EASE_CURVES[enter.ease];
   if (enter.distance && enter.distance !== "medium") {
     into["--fx-dist"] = px(DISTANCE_PX[enter.distance]);

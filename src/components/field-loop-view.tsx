@@ -19,9 +19,9 @@ import type { LoopColumns, LoopLayout } from "@/lib/page-content";
  */
 
 const COLUMNS: Record<LoopColumns, string> = {
-  2: "sm:grid-cols-2",
-  3: "sm:grid-cols-2 lg:grid-cols-3",
-  4: "sm:grid-cols-2 lg:grid-cols-4",
+  2: "kzb-md-cols-2",
+  3: "kzb-md-cols-2 kzb-lg-cols-3",
+  4: "kzb-md-cols-2 kzb-lg-cols-4",
 };
 
 /** A link to a safe address: a page of the site goes through the router, anything else is a plain link. */
@@ -63,12 +63,12 @@ function Words({ row, whole, Title }: { row: LoopRow; whole: boolean; Title: "h2
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
       {row.badge && (
-        <span className="w-fit rounded-button bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+        <span className="w-fit rounded-button bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground" data-kz-text="badge">
           {row.badge}
         </span>
       )}
       {row.title && (
-        <Title className="leading-snug font-heading font-medium text-balance">
+        <Title className="leading-snug font-heading font-medium text-balance" data-kz-text="title">
           {link ? (
             <Anchor link={link} className={`${LINK} ${whole ? STRETCH : ""}`}>
               {row.title}
@@ -81,14 +81,16 @@ function Words({ row, whole, Title }: { row: LoopRow; whole: boolean; Title: "h2
       {row.text &&
         (row.text.kind === "rich" ? (
           // Rich text may hold links of its own, so it stays above the stretched link to be usable.
-          <div className="relative z-[2] text-sm text-muted">
+          <div className="relative z-[2] text-sm text-muted" data-kz-text="excerpt">
             <RichText doc={row.text.doc} />
           </div>
         ) : (
-          <p className="text-sm whitespace-pre-line text-muted">{row.text.text}</p>
+          <p className="text-sm whitespace-pre-line text-muted" data-kz-text="excerpt">
+            {row.text.text}
+          </p>
         ))}
       {link && !row.title && (
-        <p className="text-sm">
+        <p className="text-sm" data-kz-text="button">
           <Anchor link={link} className={`${LINK} underline ${whole ? STRETCH : ""}`} />
         </p>
       )}
@@ -103,7 +105,7 @@ function Item({ row, layout, whole, Title }: { row: LoopRow; layout: LoopLayout;
     case "list":
       return (
         <li className={`${linked} flex items-start gap-4 py-3`}>
-          <Picture row={row} small className="size-16 shrink-0 rounded-lg object-cover sm:size-20" />
+          <Picture row={row} small className="size-16 shrink-0 rounded-lg object-cover kzb-md-size-20" />
           {words}
         </li>
       );

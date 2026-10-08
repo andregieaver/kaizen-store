@@ -134,6 +134,58 @@ function flatPage(): Json {
 const quotes = (id: string) =>
   ["a", "b", "c", "d", "e"].map((x) => ({ id: `${id}-${x}`, quote: `Sitat ${x}: en god opplevelse fra start til slutt.`, name: `Navn ${x}`, role: "Oslo", rating: 5, picture: null }));
 
+/**
+ * Phase 3 (D179, `docs/responsive-editing.md` 11): every text setting saved before the Typography panel (a heading's size,
+ * weight, alignment and font, a block's font, a grid's heading size and font, an accordion's and FAQ's title size, a button's
+ * weight, an image's caption font, rich text's and a product title's alignment) and the components whose Tailwind breakpoints
+ * moved onto the store's screen sizes (tabs, testimonials).
+ */
+function typoPage(menuId: string | null): Json {
+  const panel = (id: string, title: string) => ({ id, title, body: doc(`Svar på ${title.toLowerCase()}.`) });
+  return page("Typografi", "typografi", [
+    row("t1", "2", [
+      col("t1c1", [
+        { id: "t1h2", type: "heading", text: "Nivå to uten størrelse", level: 2 },
+        { id: "t1h3", type: "heading", text: "Nivå tre", level: 3, weight: "bold" },
+        { id: "t1h4", type: "heading", text: "Nivå fire", level: 4, align: { tablet: "center" }, font: "Lora" },
+        { id: "t1h5", type: "heading", text: "Nivå fem", level: 5, weight: "normal", textColor: "#a84a26" },
+        { id: "t1h6", type: "heading", text: "Nivå seks", level: 6 },
+      ]),
+      col("t1c2", [
+        { id: "t1s1", type: "heading", text: "Liten", level: 2, size: "sm" },
+        { id: "t1s2", type: "heading", text: "Middels", level: 2, size: "md", weight: "medium" },
+        { id: "t1s3", type: "heading", text: "Stor", level: 3, size: "lg", align: { mobile: "center", desktop: "right" } },
+        { id: "t1s4", type: "heading", text: "Ekstra stor", level: 2, size: "xl", weight: "semibold" },
+        { id: "t1s5", type: "heading", text: "Enorm", level: 2, size: "2xl", font: "Playfair Display" },
+      ]),
+    ]),
+    row("t2", "2", [
+      col("t2c1", [
+        text("t2t", "Rik tekst med egen skrift, midtstilt.", { font: "Lora", align: { mobile: "center" } }),
+        { id: "t2b", type: "button", label: "Fet knapp", href: "/", weight: "bold", font: "Lora" },
+        { id: "t2d", type: "dualButton", first: { label: "En", href: "/" }, second: { label: "To", href: "/", variant: "outline" }, weight: "semibold", font: "Lora" },
+        { id: "t2i", type: "image", image: picture, caption: "Bildetekst i egen skrift", font: "Lora" },
+      ]),
+      col("t2c2", [
+        { id: "t2a", type: "accordion", items: [panel("t2a1", "Første"), panel("t2a2", "Andre")], titleSize: "md", openFirst: true, font: "Lora" },
+        { id: "t2f", type: "faq", items: [panel("t2f1", "Hvorfor?"), panel("t2f2", "Hvordan?")], titleSize: "xl", look: "boxed" },
+        { id: "t2a3", type: "accordion", items: [panel("t2a31", "Standard")] },
+        { id: "t2tab", type: "tabs", items: [panel("t2tab1", "Fane én"), panel("t2tab2", "Fane to")], font: "Lora" },
+      ]),
+    ]),
+    row("t3", "1", [
+      col("t3c1", [
+        grid("t3g", { headingSize: "lg", headingFont: "Playfair Display", font: "Lora" }),
+        grid("t3g2", { headingSize: "2xl", headingLevel: 2 }),
+        { id: "t3q", type: "testimonials", columns: 2, items: quotes("t3q"), font: "Lora" },
+        { id: "t3l", type: "iconList", items: [{ id: "t3l1", icon: "check", text: "Linje én", href: "" }, { id: "t3l2", icon: "check", text: "Linje to", href: "" }], font: "Lora" },
+        { id: "t3s", type: "socialLinks", links: [{ id: "t3s1", network: "facebook", href: "https://facebook.com/kaizen" }], showNames: true, font: "Lora" },
+        ...(menuId ? [{ id: "t3m", type: "menu", menuId, font: "Lora", align: { mobile: "center" } }] : []),
+      ]),
+    ]),
+  ]);
+}
+
 function headerPage(menuId: string | null): Json {
   const menu = menuId ? [{ id: "hm", type: "menu", menuId, hideOnPhones: true }] : [];
   return page("Topp", "topp", [
@@ -165,7 +217,7 @@ function productLayout(): Json {
     row("pr1", "2", [
       col("pc1", [{ id: "pg", type: "product", part: "gallery" }]),
       col("pc2", [
-        { id: "pt", type: "product", part: "title", align: { tablet: "center", desktop: "left" } },
+        { id: "pt", type: "product", part: "title", size: "lg", align: { tablet: "center", desktop: "left" } },
         { id: "pp", type: "product", part: "price" },
         { id: "pb", type: "product", part: "buy" },
         { id: "pd", type: "product", part: "description" },
@@ -193,6 +245,7 @@ async function storeWithPages(name: string, shape: (rows: Json[]) => Json[], kee
       return made.id as string;
     };
     await insert("page", flatPage());
+    await insert("page", typoPage(menu?.id ?? null));
     const header = await insert("header", headerPage(menu?.id ?? null));
     const footer = await insert("footer", footerPage(menu?.id ?? null));
     const layout = await insert("product_layout", productLayout());
@@ -203,6 +256,17 @@ async function storeWithPages(name: string, shape: (rows: Json[]) => Json[], kee
   }
 }
 
+/** A store as new stores are, with the standard header and footer, and the same catalogue as the stores above. */
+async function plainStore(keep: string[]): Promise<string> {
+  const { slug, id } = await testStore("parity-plain");
+  const sql = testDb();
+  try {
+    await sql`update commerce.products set status = 'draft' where store_id = ${id} and status = 'active' and not (handle = any(${keep}))`;
+  } finally {
+    await sql.end();
+  }
+  return slug;
+}
 type Styles = Record<string, Record<string, string>>;
 type Capture = Record<string, Styles>;
 
@@ -213,6 +277,8 @@ const PROPS = [
   "border-top-width", "border-right-width", "border-bottom-width", "border-left-width", "border-top-style", "border-top-color",
   "border-top-left-radius", "box-shadow", "background-color", "backdrop-filter",
   "text-align", "flex-direction", "flex-wrap", "order", "grid-template-columns", "align-items", "justify-content", "row-gap", "column-gap", "max-width",
+  // Phase 3: typography.
+  "font-size", "font-weight", "line-height", "letter-spacing", "text-transform", "font-family", "text-shadow", "font-style", "text-decoration-line",
 ];
 
 /** Every element in the body by its place (tag and position among its siblings), with its box and its computed styles. */
@@ -294,6 +360,8 @@ export function differences(before: Capture, after: Capture, limit = 60): string
 const pathsOf = (store: { slug: string; product: string }) => ({
   front: `/s/${store.slug}/no`,
   flate: `/s/${store.slug}/no/flate`,
+  typo: `/s/${store.slug}/no/typografi`,
+  products: `/s/${store.slug}/no/products`,
   about: `/s/${store.slug}/no/om-oss`,
   product: `/s/${store.slug}/no/p/${store.product}`,
 });
@@ -308,7 +376,15 @@ test("old pages look as they did before the per-size model (against a capture of
   // A capture keeps the store's products, so a later run on a database other tests have added to compares the same catalogue.
   const saved = capture ? null : (JSON.parse(readFileSync(baseline!, "utf8")) as { products: string[]; styles: Capture });
   const store = await storeWithPages("parity-old", (rows) => rows, saved?.products);
-  const now = await captureAll(page, { ...pathsOf(store), kaizen: "/" });
+  // A store with the standard header and footer (its menu button and the listing's grid on the store's screen sizes, phase 3).
+  const plain = await plainStore(saved?.products ?? store.products);
+  const now = await captureAll(page, {
+    ...pathsOf(store),
+    kaizen: "/",
+    "plain-front": `/s/${plain}/no`,
+    "plain-products": `/s/${plain}/no/products`,
+    "plain-product": `/s/${plain}/no/p/${store.product}`,
+  });
   if (capture) {
     writeFileSync(capture, JSON.stringify({ products: store.products, styles: now }));
     return;

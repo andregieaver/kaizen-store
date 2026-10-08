@@ -208,7 +208,7 @@ export function ProductGrid({
   notices?: CampaignNotices;
 }) {
   return (
-    <ul className={sizedColumns ? "grid grid-cols-[repeat(var(--grid-cols),minmax(0,1fr))] gap-6" : "grid grid-cols-2 gap-6 md:grid-cols-4"}>
+    <ul className={sizedColumns ? "grid grid-cols-[repeat(var(--grid-cols),minmax(0,1fr))] gap-6" : "grid grid-cols-2 gap-6 kzb-md-cols-4"}>
       {products.map((product, index) => (
         <ProductCard
           key={product.handle}

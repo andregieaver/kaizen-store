@@ -181,7 +181,13 @@ describe("changing an entrance", () => {
   it("steps and limits the delay and stagger, and leaves a zero out", () => {
     const base = setEnterEffect(undefined, "fade", ROW);
     expect(patchEnter(base, { delay: 130 }, ROW)?.enter?.delay).toBe(150);
-    expect(patchEnter(base, { delay: 99999 }, ROW)?.enter?.delay).toBe(2000);
+    // Up to 10 seconds (D179 phase 3, the Advanced tab's Animation), and a duration of 0.1 to 5.
+    expect(patchEnter(base, { delay: 99999 }, ROW)?.enter?.delay).toBe(10_000);
+    expect(patchEnter(base, { delay: 2500 }, ROW)?.enter?.delay).toBe(2500);
+    expect(patchEnter(base, { duration: 1500 }, ROW)?.enter?.duration).toBe(1500);
+    expect(patchEnter(base, { duration: 99999 }, ROW)?.enter?.duration).toBe(5000);
+    expect(patchEnter(base, { duration: 1 }, ROW)?.enter?.duration).toBe(100);
+    expect(patchEnter(patchEnter(base, { duration: 900 }, ROW), { duration: undefined }, ROW)?.enter).toEqual({ effect: "fade" });
     expect(patchEnter(base, { delay: -50 }, ROW)?.enter).toEqual({ effect: "fade" });
     expect(patchEnter(base, { stagger: 99999 }, ROW)?.enter?.stagger).toBe(STAGGER_MAX);
     const delayed = patchEnter(base, { delay: 200 }, ROW);

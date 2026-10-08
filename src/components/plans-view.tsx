@@ -7,7 +7,8 @@ import { formatBps } from "@/lib/plans";
 import { buttonLook } from "./page-block";
 
 // Written out whole so Tailwind finds every class.
-const COLUMNS = ["", "lg:grid-cols-1", "lg:grid-cols-2", "lg:grid-cols-3", "lg:grid-cols-4"] as const;
+// From Large, by the store's screen sizes (D179, `BREAKPOINT_CLASSES`).
+const COLUMNS = ["", "kzb-lg-cols-1", "kzb-lg-cols-2", "kzb-lg-cols-3", "kzb-lg-cols-4"] as const;
 
 const Check = () => (
   <svg aria-hidden="true" viewBox="0 0 20 20" className="mt-0.5 size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2">
@@ -33,7 +34,7 @@ export function PlansView({ block, data, lang = "en" }: { block: PlansBlock; dat
 
   return (
     <div className="flex flex-col gap-10">
-      <div className={`grid gap-4 sm:grid-cols-2 ${columns}`}>
+      <div className={`grid gap-4 kzb-md-cols-2 ${columns}`}>
         {cards.map((card) => (
           <PlanCardView key={card.id} card={card} look={buttonLook({ variant: card.highlighted ? "filled" : "outline" }, true)} href={href} label={label} money={money} every={every} m={m} />
         ))}
@@ -106,11 +107,13 @@ function PlanCardView({
         <p className="absolute -top-3 left-6 rounded-full bg-accent px-3 py-0.5 text-xs font-medium text-accent-foreground">{m.popular}</p>
       )}
       <div>
-        <h3 id={`plan-${card.id}`} className="text-xl font-semibold">{card.name}</h3>
+        <h3 id={`plan-${card.id}`} className="text-xl font-semibold" data-kz-text="name">
+          {card.name}
+        </h3>
         {card.description && <p className="mt-1 text-sm text-muted">{card.description}</p>}
       </div>
       <div>
-        <p className="text-3xl font-semibold">
+        <p className="text-3xl font-semibold" data-kz-text="price">
           {money(card.main)} <span className="text-base font-normal text-muted">{every(card.main)}</span>
         </p>
         <p className="text-xs text-muted">{m.exVat}</p>
@@ -118,14 +121,14 @@ function PlanCardView({
         {card.yearlySavingPercent !== null && <p className="text-sm font-medium text-accent">{m.saveYearly(String(card.yearlySavingPercent))}</p>}
       </div>
       <p className="text-sm">{m.fee(formatBps(card.saleFeeBps))}</p>
-      <a href={href} className={look.className} style={look.style}>
+      <a href={href} className={look.className} style={look.style} data-kz-text="button">
         {label}
         <span className="sr-only"> – {card.name}</span>
       </a>
       {card.features.length > 0 && (
         <div>
           <p className="mb-2 text-sm font-medium">{m.includes}</p>
-          <ul className="flex flex-col gap-1.5 text-sm">
+          <ul className="flex flex-col gap-1.5 text-sm" data-kz-text="meta">
             {card.features.map((feature) => (
               <li key={feature.id} className="flex gap-2">
                 <Check />

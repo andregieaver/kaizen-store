@@ -65,7 +65,7 @@ export function TabsView({
               event.preventDefault();
               choose(to);
             }}
-            className={`min-h-11 shrink-0 whitespace-nowrap text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 md:text-base ${TABS[look]}`}
+            className={`min-h-11 shrink-0 whitespace-nowrap text-sm transition focus-visible:outline-2 focus-visible:outline-offset-2 kzb-md-text-base ${TABS[look]}`}
           >
             {title}
           </button>

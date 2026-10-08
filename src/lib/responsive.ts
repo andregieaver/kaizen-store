@@ -1,5 +1,6 @@
 import { SIZES, SMALLER_SIZES, type Size, type SmallerSize } from "./breakpoints";
 import type { GridColumns, PageBlock, PageRow, PartSizeSettings, Sides, Spacing, TextAlign, TextAlignments } from "./page-content";
+import { foldTypography } from "./typography";
 
 /**
  * Settings by screen size (D179, `docs/responsive-editing.md` 3). A part's settings as saved are its Extra large values;
@@ -510,7 +511,8 @@ export function upgradeResponsive(rows: unknown): unknown {
       columns: row.columns.map((rawColumn) => {
         const column = upgradeColumn(rawColumn);
         if (!isObject(column) || !Array.isArray(column.blocks)) return column;
-        return { ...column, blocks: column.blocks.map(upgradeBlock) };
+        // And their text's settings into typography (D179 phase 3), as `pageBlockSchema` does.
+        return { ...column, blocks: column.blocks.map((block) => foldTypography(upgradeBlock(block))) };
       }),
     };
   });

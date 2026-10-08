@@ -1,8 +1,9 @@
 # Responsive editing and visibility in the page builder (proposed D179)
 
-Status: **phases 1 and 2 built** (phase 1: the model, the upgrade of saved pages, screen sizes in the theme and the part
+Status: **phases 1, 2 and 3 built** (phase 1: the model, the upgrade of saved pages, screen sizes in the theme and the part
 stylesheet, section 9; phase 2: the builder's responsive mode, fields by size, visibility by size and the theme's screen
-sizes, section 10). Phases 3–6 are not started. Agreed with the owner on 8 October 2026; built after D178
+sizes, section 10; phase 3: the Typography panel on every text, components' breakpoints on the store's sizes, and the
+entrance's delay and duration, section 11). Phases 4–6 are not started. Agreed with the owner on 8 October 2026; built after D178
 step 6, and before text colour and opacity (`docs/text-colour.md`, proposed D180). The model is Beaver Builder's: a value per
 screen size on the settings of every row, column and component, a responsive editing mode in the builder, and
 visibility by screen size, sign-in or conditions in each part's Advanced tab.
@@ -233,4 +234,87 @@ runs nothing.
 - **Still on the window's breakpoints in the canvas**: Tailwind's `md:`/`lg:`/`sm:` classes inside blocks (heading and
   article title sizes, field loops, custom fields, Kaizen's plans, the listing's grid, the gallery's arrows, the standard
   header's menu button) follow the admin's window, not the canvas, so at Small in a wide window a heading keeps its large
-  size there. Heading sizes move to the part rules with typography (phase 3); the rest to container variants after.
+  size there. Heading sizes move to the part rules with typography (phase 3); the rest to container variants after. (Both done in
+  phase 3, section 11.)
+
+## 11. Phase 3, as built
+
+- **The model** (`src/lib/typography.ts`): `Typography` (family, weight 100–900, size with unit px, em, rem, % or vw, line
+  height unitless or px, alignment, letter spacing in px or em, transform, decoration, style, variant, text shadow with
+  colour, x, y and blur) and its schemas (`typographyGroupsSchema`, `typographyAtSchema`, limits per unit), held per kind of
+  text (`TextRole`: text, heading, title, body, excerpt, price, quote, name, meta, label, value, input, button, badge,
+  message, caption) on `PartBase.typography`, with a size's own in `at.{size}.typography` (a shadow may be `null` there).
+  Read key by key, smaller to larger (`typographyAt()`, `typographyValueAt()`), like spacing. Colour has its place for D180.
+- **Every text has a size** (the owner's addition): `textRoles(part)` gives each component's kinds of text and the element
+  each is written on (a selector, with `data-kz-text` marks where none names it: grid titles, excerpts, prices, badges,
+  details and buttons; testimonials' names and titles; social networks' names; plans' names, prices, features and
+  buttons; field loops' titles, texts, badges and links; custom fields' labels and values). `TEXT_FIELDS` names the kind of
+  every text `mapBlockTexts()` lists and of the texts a component draws that are not the page's words; `UNDRAWN_TEXTS` the
+  few never drawn as words (alt texts, a video's and HTML frame's title, a form's email subject). `typography.test.ts`
+  walks every block type filled with every text and fails for a text without a kind, a kind without a group, or a group
+  whose size the stylesheet does not write. Texts that had no size setting before: buttons' and dual buttons' labels,
+  image captions, accordion, tab and FAQ titles and bodies, testimonials' quotes, names and titles, icon list lines, social
+  networks' names, forms' labels, fields, hints, choices, buttons and thank-you texts, the newsletter's, a grid's excerpts,
+  prices, badges, details and buttons (titles had a preset), field loops' slots and headings, custom fields' labels, values
+  and headings, plans' names, prices, features and buttons, menu links, the search box, site parts, product parts'
+  words and headings, shop components, and rows' and columns' text. Components drawn from the site's own pieces (a
+  menu, a site part, a product's parts, the search) take a size set as the size of all they draw (`flatten`:
+  `font-size: inherit` below them), so their pieces' own sizes give way.
+- **The upgrade** (`foldTypography()`, run after `upgradeBlock()` by `pageBlockSchema` and `upgradeResponsive()`): a heading's
+  `size` (a preset), `weight` and `align`; `font` on every block (an image's is its caption's); a grid's `headingSize` and
+  `headingFont` (its titles'); an accordion's and FAQ's `titleSize` (size and line height, as the class had); a button's and
+  dual button's `weight`; rich text's and the aligned product parts' `align` (and their `at.*.align`); a product title's
+  `size`. A preset is Tailwind's size from Medium up and on Small (`HEADING_PRESETS`, `presetTypography()`), its line height
+  in pixels where the element had none of its own. A value the old shape could not hold goes with its key for the schema to
+  refuse, as before. Old fields are gone from the types, the schemas and the dialogs.
+- **Drawing** (`typographyRules()` in `src/lib/part-css.ts`, in `rowStyle()`, `columnStyle()` and `blockStyle()`): each role's
+  settings on its element as `:where()` outside any layer (what was a Tailwind class: beats the utilities, gives way to any
+  rule of the page, so owner CSS and the replicator's `#id` rules still win); rich text's and panel bodies' on `.rich-text`
+  with the part's class, to win over its line height. Alignment of a text role whose alignment was the block's is on the
+  block, as before. A heading's size by its level where none is set is written here by the store's screen sizes
+  (`headingDefaultSize()`, Tailwind's `md:` before). A family at Extra large is its stylesheet's class (`boxFamilies()` on
+  the part, `familyClassOf()` for a grid's titles), as before; a family that differs by size, or of a role with no class,
+  is a rule with the part's class doubled (beating the class) and the system's sans serif as its fallback while loading
+  (the rule does not know the family's kind; the class does). `pageFonts()` lists rows', columns' and every size's
+  families, so saving installs them (D59) and `FontLinks` loads them (the page article draws rows' and columns' too).
+- **Breakpoint classes** (`BREAKPOINT_CLASSES`, `breakpointClassCss()`): `kzb-md-…` and `kzb-lg-…` classes in place of
+  Tailwind's `sm:` (now Medium, 768 px by default, from 640), `md:` and `lg:` in field loops, custom fields, Kaizen's plans,
+  tabs' titles, testimonials, an article's title, the product listing's grid, the gallery's arrows, the standard header's
+  menu button, account link and country choice and a site part's menu button, and the carousel's fallback columns
+  (`globals.css`'s `@media` rules). Drawn by `BreakpointSheet` with the store's screen sizes beside the part stylesheet
+  (`PartStyles`), in the store's head (`StoreThemeStyles`) and Kaizen's layout, and as container queries on the canvas
+  (`CanvasPartStyles`), so the canvas at a size shows them right. Other storefront chrome (cart, checkout, account pages)
+  keeps Tailwind's breakpoints.
+- **The builder**: `TypographyFields` (`src/components/admin/typography-fields.tsx`) in every Style tab (rows, columns and
+  every component with text), a folding group per kind of text, each with Font (family through the font picker, which
+  installs it, weight, size and unit, line height, align where the component's Position does not place it), Style &
+  spacing (letter spacing, transform Normal/Tt/TT/tt, decoration, style, variant) and Text shadow (colour, x, y, blur);
+  every setting has its device icon (`TypoMark`), where it comes from at the size, greyed while inherited, and a × that gives
+  a size's own back (`typographyPatch()`, `typographySource()`, `clearTypographyAt()`). The old Size, Weight, Text
+  alignment and Font fields are gone (a button's, menu's, picture's and dual button's Position stays).
+- **Animation** (D128): an entrance's `delay` is 0–10 s (was 2 s) and `duration` 0.1–5 s (new, over its speed), in
+  milliseconds on the entrance, drawn as `--fx-delay` and `--fx-duration` by `partFx()`; `motion.css` takes `--fx-dur` from
+  `--fx-duration`, registered as not inherited (`@property`), so a child never takes a parent's. Reduced motion, the
+  no-script rules, the failsafe and the first row's rules are unchanged. The Advanced tab's **Animation** has Delay and
+  Duration in seconds (`AnimationFields`); the Motion tab's delay slider is gone. A motion plan never sets a duration, keeps
+  its delays as it did, and never touches an entrance the owner set (`applyMotionPlan()` fills empty slots only).
+- **Copies, templates, tests and AI**: typography is part of the part, so copies, saved parts, globals, templates, A/B
+  versions and design profiles keep it (`responsive-copies.test.ts` holds typography too); a template's families are
+  installed when the page using it is saved, as before. The AI page studio writes its headings' looks through
+  `headingLook()` and rich text's alignment through `alignTypography()`; the replicator writes measured families as
+  typography and a grid's title preset with `presetTypography()`, and keeps measured sizes and letter spacing in the page's
+  CSS (its `.rp.rp` rules win over typography anyway; moving them is not trivial and is left). `pageIssues()` reads levels,
+  words and colours, which typography does not touch.
+- **Tests**: `src/lib/typography.test.ts` (every text has a size; the property tests of every heading level × preset ×
+  weight × alignment by screen, every title preset, every weight and font, at 375, 800, 1100 and 1400 px, against the old
+  classes; drawing; editing; families), `src/components/admin/typography-fields.test.ts` (the panel and Animation),
+  `motion-*.test.ts` (delay and duration).
+- **Parity**: `e2e/responsive-parity.spec.ts` also captures font-size, font-weight, line-height, letter-spacing,
+  text-transform, font-family, text-shadow, font-style and text-decoration-line, and draws a page of every old text setting
+  (headings of every level and preset, weights, fonts, aligned rich text and buttons, accordions, FAQs, tabs, grids with
+  title presets and fonts, testimonials, icon lists, social links, a menu), the product title with a preset, the product
+  listing, and a store with the standard header and footer (its front page, listing and a product). Captured from a build of
+  `origin/main` (c92fcd5, phase 2) on its own fresh database and compared with the build after: 40 page widths, 6,967
+  elements, 278,680 values, no difference; the old shape against the same pages upgraded (now with `foldTypography()`) is
+  the same too. The parts' stylesheet comes after the site's (`next`) and before the theme's and the fonts' in the head,
+  which the `:where()` rules and the doubled class of a family by size rely on.

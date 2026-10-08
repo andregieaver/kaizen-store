@@ -1,3 +1,4 @@
+import { alignTypography, headingLook } from "./typography";
 import { z } from "zod";
 
 import { findClaims, type ClaimFinding } from "./claims";
@@ -740,14 +741,22 @@ function row(ctx: Ctx, layout: RowLayout, columns: PageBlock[][], extra: Partial
   };
 }
 
-function heading(ctx: Ctx, text: string, level: HeadingLevel, size: HeadingSize, extra: Partial<HeadingBlock> = {}): HeadingBlock[] {
+/** A heading with its look by the names the studio thinks in (D49), written as its typography (D179). */
+function heading(
+  ctx: Ctx,
+  text: string,
+  level: HeadingLevel,
+  size: HeadingSize,
+  extra: { align?: TextAlign; weight?: "normal" | "medium" | "semibold" | "bold"; textColor?: string } = {},
+): HeadingBlock[] {
   const words = text.trim().slice(0, HEADING_MAX);
-  return words ? [{ id: ctx.id(), type: "heading", text: words, level, size, ...extra }] : [];
+  const { textColor, ...look } = extra;
+  return words ? [{ id: ctx.id(), type: "heading", text: words, level, ...headingLook({ size, ...look }), ...(textColor && { textColor }) }] : [];
 }
 
 function text(ctx: Ctx, words: string, align?: TextAlign): RichTextBlock[] {
   if (!words.trim()) return [];
-  return [{ id: ctx.id(), type: "richText", doc: textToRichText(words, ctx.allowLink), ...(align && { align }) }];
+  return [{ id: ctx.id(), type: "richText", doc: textToRichText(words, ctx.allowLink), ...alignTypography(align) }];
 }
 
 /** The section's buttons that go to an address on the site: one, two side by side, or none. */

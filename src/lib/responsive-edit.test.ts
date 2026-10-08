@@ -12,8 +12,9 @@ import { clearAt, inheritedAt, setAt, sizeSource, spacingAt, stackAt, stackPatch
  * canvas is a container of the size's width, and owner CSS follows it there.
  */
 
-const text = (over: Partial<Extract<PageBlock, { type: "richText" }>> = {}) =>
-  ({ id: "b", type: "richText", doc: { type: "doc", content: [] }, ...over }) as Extract<PageBlock, { type: "richText" }>;
+// A component whose alignment is a setting of its own (a button's Position; text's alignment is typography since phase 3).
+const text = (over: Partial<Extract<PageBlock, { type: "button" }>> = {}) =>
+  ({ id: "b", type: "button", label: "Go", href: "/", ...over }) as Extract<PageBlock, { type: "button" }>;
 const row = (over: Partial<PageRow> = {}): PageRow => ({
   id: "r",
   type: "row",
@@ -74,7 +75,7 @@ describe("setAt", () => {
   });
 
   it("passes settings that never vary by size to the part, at any size", () => {
-    expect(setAt(text(), "sm", { font: "Inter" } as Partial<PageBlock>)).toEqual({ font: "Inter", at: undefined });
+    expect(setAt(text(), "sm", { newTab: true })).toEqual({ newTab: true, at: undefined });
   });
 
   it("starts from a patch's own at, as a field that gave an override back sends it", () => {

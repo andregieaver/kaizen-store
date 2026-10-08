@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { CustomCss } from "@/components/custom-css";
 import { FontLinks } from "@/components/font-links";
+import { BreakpointSheet } from "@/components/part-styles";
+import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
 import { KaizenChat } from "@/components/site-chat";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
@@ -49,6 +51,8 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
       >
         {/* Kaizen's own fonts, from its copies (D59). */}
         <FontLinks families={siteFontFamilies(chrome.fonts)} />
+        {/* Kaizen's screen sizes are the defaults (D179): the breakpoint classes of what is drawn outside rows. */}
+        <BreakpointSheet breakpoints={DEFAULT_BREAKPOINTS} />
         {/* Kaizen's own CSS for every page, and its header's and footer's (D100). */}
         <CustomCss css={chrome.customCss} name="kaizen" />
         <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />

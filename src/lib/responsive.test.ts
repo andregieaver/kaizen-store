@@ -25,6 +25,7 @@ import {
   withAt,
 } from "./responsive";
 import { parseStoreTheme, templateSettings, themeSettingsSchema } from "./theme";
+import { typographyValueAt } from "./typography";
 
 /**
  * Responsive editing, phase 1 (D179, `docs/responsive-editing.md` 3): the per-size model, the upgrade of what pages were
@@ -116,7 +117,8 @@ describe("values by size", () => {
 
   it("are kept by the schema, which refuses what a size cannot take and drops sizes that say nothing", () => {
     const parsed = pageBlockSchema.parse({ id: "h", type: "heading", text: "x", level: 2, align: "left", at: { md: { align: "center" }, sm: {} }, visibility: { hideAt: ["sm", "xl", "sm"] } });
-    expect(parsed).toMatchObject({ at: { md: { align: "center" } }, visibility: { hideAt: ["xl", "sm"] } });
+    // A heading's alignment is its text's typography since phase 3, by size as before.
+    expect(parsed).toMatchObject({ at: { md: { typography: { text: { align: "center" } } } }, visibility: { hideAt: ["xl", "sm"] } });
     expect(parsed.at).not.toHaveProperty("sm");
     expect(pageBlockSchema.safeParse({ id: "h", type: "heading", text: "x", level: 2, at: { md: { align: "justify" } } }).success).toBe(false);
     expect(pageBlockSchema.safeParse({ id: "h", type: "heading", text: "x", level: 2, at: { xs: { align: "left" } } }).data).not.toHaveProperty("at.xs");
@@ -127,10 +129,13 @@ describe("values by size", () => {
 describe("the upgrade of saved shapes, against what they did (property)", () => {
   it("gives every alignment by screen the same value at every width, and the editor's three screens back unchanged", () => {
     for (const view of everyAlignment()) {
-      const block = pageBlockSchema.parse({ id: "t", type: "richText", doc: { type: "doc", content: [] }, align: view });
+      // Text's alignment is its typography since phase 3 (`foldTypography()`); a button's is its Position, `align` by size.
+      const text = pageBlockSchema.parse({ id: "t", type: "richText", doc: { type: "doc", content: [] }, align: view });
+      const block = pageBlockSchema.parse({ id: "b", type: "button", label: "Go", href: "/", align: view });
       for (const width of TEST_WIDTHS) {
         const old = oldAlignAt(view, width);
         const now = valueAt(block, "align", SIZE_OF_WIDTH(width));
+        expect([view, width, typographyValueAt(text, "text", "align", SIZE_OF_WIDTH(width)) ?? "none"]).toEqual([view, width, now ?? "none"]);
         // A screen with no class inherits, which on a left-to-right page is left: the upgrade writes that left where a larger size is set.
         expect([view, width, now ?? "none"]).toEqual([view, width, old ?? (Object.keys(view).length > 0 ? "left" : "none")]);
       }
@@ -330,7 +335,7 @@ describe("the part stylesheet", () => {
     expect(rowStyle({ ...a, id: "other" }).className).toBe(rowStyle(a).className);
     expect(rowStyle(b).className).not.toBe(rowStyle(a).className);
     // A part that says nothing gets no class.
-    expect(blockStyle({ id: "h", type: "heading", text: "x", level: 2 }, "site").className).toBe("");
+    expect(blockStyle({ id: "t", type: "richText", doc: { type: "doc", content: [] } }, "site").className).toBe("");
   });
 
   it("measures the canvas by its container and the site by the window, with the store's own sizes", () => {

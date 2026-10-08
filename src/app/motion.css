@@ -15,6 +15,12 @@
  *    has an entrance); hover owns `transform`. A part's animations are one list of three slots: entrance, scroll, ambient.
  *  - In the `components` layer, so a utility on the same element (`absolute`, `sticky`) still wins.
  */
+/* An entrance's own duration (D179 phase 3): never taken from a parent's, so each part's is its own. */
+@property --fx-duration {
+  syntax: "*";
+  inherits: false;
+}
+
 @layer components {
   /* ---------------------------------------------------------------- structure, not motion */
 
@@ -202,7 +208,8 @@
 
     [data-fx-enter] {
       --fx-en: fx-in;
-      --fx-dur: 700ms;
+      /* Its own duration (D179 phase 3, `--fx-duration`, never inherited), else its speed's (`--fx-dur` set on it) or the default. */
+      --fx-dur: var(--fx-duration, 700ms);
       --fx-ease: cubic-bezier(0.22, 1, 0.36, 1);
       --fx-dist: 40px;
       --fx-amt: 1;

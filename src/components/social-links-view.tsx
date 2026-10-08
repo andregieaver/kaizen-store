@@ -61,7 +61,11 @@ export function SocialLinksView({ block }: { block: SocialLinksBlock }) {
               style={style}
             >
               <BrandIcon network={link.network} className={ICON[size]} />
-              {named && <span className="text-sm font-medium">{name}</span>}
+              {named && (
+                <span className="text-sm font-medium" data-kz-text="name">
+                  {name}
+                </span>
+              )}
             </a>
           </li>
         );

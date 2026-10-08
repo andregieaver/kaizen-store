@@ -62,10 +62,11 @@ describe("the field loop drawn on the site (D120)", () => {
   });
 
   it("follows the columns on larger screens for cards, grid and columns, one column for a list", () => {
-    expect(html({ layout: "grid", columns: 4 })).toContain("lg:grid-cols-4");
-    expect(html({ layout: "columns", columns: 2 })).toContain("sm:grid-cols-2");
-    expect(html({ layout: "columns", columns: 2 })).not.toContain("lg:grid-cols");
-    expect(html({ layout: "list", columns: 4 })).not.toContain("grid-cols");
+    // By the store's screen sizes (D179 phase 3: the breakpoint classes, `BREAKPOINT_CLASSES`).
+    expect(html({ layout: "grid", columns: 4 })).toContain("kzb-lg-cols-4");
+    expect(html({ layout: "columns", columns: 2 })).toContain("kzb-md-cols-2");
+    expect(html({ layout: "columns", columns: 2 })).not.toContain("kzb-lg-cols");
+    expect(html({ layout: "list", columns: 4 })).not.toMatch(/grid-cols|kzb-\w+-cols/);
   });
 
   it("makes the whole card the link with one anchor stretched over it, never a link in a link", () => {

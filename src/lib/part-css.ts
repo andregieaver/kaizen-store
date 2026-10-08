@@ -15,6 +15,7 @@ import {
   type VerticalAlign,
 } from "./page-content";
 import { carouselAnywhere, carouselAt, hiddenAt, neverStacks, spacingAt, stackAt, valueAt } from "./responsive";
+import { familyClassOf, familyStack, headingDefaultSize, textRoles, typographyAt, typographyDecl, typographyValueAt } from "./typography";
 
 /**
  * The part stylesheet (D179, `docs/responsive-editing.md` 3): every setting of a row, column or block that can differ by
@@ -166,6 +167,7 @@ export function rowStyle(row: PageRow, inPanel = false, mode: PartsMode = "site"
         };
       }),
     },
+    ...typographyRules(row),
   ]);
 }
 
@@ -236,7 +238,75 @@ export function columnStyle(column: PageColumn, mode: PartsMode = "site"): Eleme
       where: true,
       sizes: perSize((size) => ({ ...spacingDecl(spacingAt(column, size)), ...frameAt(column, size), ...colorDecl(column, size) })),
     },
+    ...typographyRules(column),
   ]);
+}
+
+// ---------------------------------------------------------------------------
+// Typography (D179 phase 3)
+// ---------------------------------------------------------------------------
+
+/** The headings a family's class also sets (its stylesheet's `.kf-… :where(h1, …)`), which a family by size must set too. */
+const HEADINGS = ":where(h1, h2, h3, h4, h5, h6)";
+
+/**
+ * A part's typography (`src/lib/typography.ts`), per kind of text, on the element each names: what was a Tailwind class
+ * (a heading's size and weight, a title's size) is `:where()` outside any layer, beating the utilities and giving way to
+ * any rule of the page, as before; a kind of text that must win over a site rule of its own (rich text's line height) is
+ * written with the part's class. A heading's size by its level, where nothing sets one, is written here too, by the
+ * store's screen sizes (Tailwind's `md:` before). Alignment of a part's text is on the part's own element, as it was. A
+ * family is its stylesheet's class (`blockBox()`, a grid's titles), unless it differs by size or has no element of its
+ * own: then a rule here, which beats the class.
+ */
+export function typographyRules(part: PartBase & { type?: string; part?: string; level?: number }): PartRule[] {
+  const rules: PartRule[] = [];
+  for (const def of textRoles(part)) {
+    rules.push({
+      selector: def.selector,
+      important: false,
+      where: !def.strong,
+      sizes: perSize((size) => {
+        const settings = typographyAt(part, def.role, size);
+        const decl = typographyDecl(settings);
+        if (part.type === "heading" && def.role === "text" && !decl["font-size"]) decl["font-size"] = headingDefaultSize(part.level ?? 2, size);
+        if (def.align === "self" && settings.align) decl["text-align"] = settings.align;
+        return decl;
+      }),
+    });
+    if (def.flatten) {
+      // A size set is the size of all the component draws: its pieces' own sizes give way to it.
+      rules.push({
+        selector: "& *",
+        important: false,
+        where: true,
+        sizes: perSize((size) => (typographyValueAt(part, def.role, "size", size) ? { "font-size": "inherit" } : ({} as Decl))),
+      });
+    }
+    if (def.align === "box") {
+      rules.push({
+        selector: "&",
+        important: false,
+        where: true,
+        sizes: perSize((size) => {
+          const align = typographyValueAt(part, def.role, "align", size);
+          return align ? { "text-align": align } : ({} as Decl);
+        }),
+      });
+    }
+    if (!familyClassOf(part, def) && SIZES.some((size) => typographyValueAt(part, def.role, "family", size))) {
+      const own = def.selector.replaceAll("&", "&&");
+      rules.push({
+        selector: def.selector === "&" ? `${own}, ${own} ${HEADINGS}` : own,
+        important: false,
+        where: false,
+        sizes: perSize((size) => {
+          const family = typographyValueAt(part, def.role, "family", size);
+          return family ? { "font-family": familyStack(family) } : ({} as Decl);
+        }),
+      });
+    }
+  }
+  return rules;
 }
 
 // ---------------------------------------------------------------------------
@@ -278,6 +348,8 @@ export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
   if (block.type === "button") {
     rules.push({ selector: "& [data-button-frame]", important: true, where: true, sizes: perSize((size) => frameAt(block, size)) });
   }
+  rules.push(...typographyRules(block));
+  // A component's Position (D48): a button, a menu, a picture, a site component (text alignment is typography, above).
   if ("align" in block || (block.at && SMALLER_SIZES.some((s) => block.at?.[s]?.align))) {
     rules.push({
       selector: "&",
@@ -474,4 +546,63 @@ export function canvasHiddenCss(rows: PageRow[], breakpoints: Breakpoints, hide:
     }
   }
   return [...byQuery].map(([query, rules]) => (query === "always" ? rules.join("\n") : `${query}{\n${rules.join("\n")}\n}`)).join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Breakpoint classes (D179 phase 3): components' own layout by the store's screen sizes
+// ---------------------------------------------------------------------------
+
+/**
+ * Classes that change a component's own layout from a screen size up, by the store's screen sizes (and on the builder's
+ * canvas by its width): what Tailwind's `sm:`, `md:` and `lg:` did at the window's fixed widths in field loops, custom
+ * fields, Kaizen's plans, tabs, testimonials, the product listing and gallery, and the standard header. Tailwind's `sm:`
+ * (640 px) is Medium now. Written as `:where()` outside any layer, as the part rules are: they beat the utilities they
+ * stand beside and give way to any rule of the page. A component takes one by name (`kzb-md-cols-2`); a new one is a line
+ * here.
+ */
+export const BREAKPOINT_CLASSES: Record<string, { from: "md" | "lg"; decl: Decl }> = {
+  "kzb-md-cols-2": { from: "md", decl: { "grid-template-columns": "repeat(2, minmax(0, 1fr))" } },
+  "kzb-md-cols-3": { from: "md", decl: { "grid-template-columns": "repeat(3, minmax(0, 1fr))" } },
+  "kzb-md-cols-4": { from: "md", decl: { "grid-template-columns": "repeat(4, minmax(0, 1fr))" } },
+  "kzb-md-cols-5": { from: "md", decl: { "grid-template-columns": "repeat(5, minmax(0, 1fr))" } },
+  "kzb-md-cols-label": { from: "md", decl: { "grid-template-columns": "minmax(0, 1fr) minmax(0, 2fr)" } },
+  "kzb-md-gap-3": { from: "md", decl: { gap: "0.75rem" } },
+  "kzb-md-gap-4": { from: "md", decl: { gap: "1rem" } },
+  "kzb-md-size-20": { from: "md", decl: { width: "5rem", height: "5rem" } },
+  "kzb-md-hidden": { from: "md", decl: { display: "none" } },
+  "kzb-md-flex": { from: "md", decl: { display: "flex" } },
+  "kzb-md-text-base": { from: "md", decl: { "font-size": "1rem", "line-height": "var(--tw-leading, 1.5)" } },
+  // An article's title (`ArticleView`): Tailwind's `text-4xl`.
+  "kzb-md-text-4xl": { from: "md", decl: { "font-size": "2.25rem", "line-height": "var(--tw-leading, calc(2.5 / 2.25))" } },
+  "kzb-md-grid-cols-2": { from: "md", decl: { "--grid-cols": "2" } },
+  "kzb-lg-cols-1": { from: "lg", decl: { "grid-template-columns": "repeat(1, minmax(0, 1fr))" } },
+  "kzb-lg-cols-2": { from: "lg", decl: { "grid-template-columns": "repeat(2, minmax(0, 1fr))" } },
+  "kzb-lg-cols-3": { from: "lg", decl: { "grid-template-columns": "repeat(3, minmax(0, 1fr))" } },
+  "kzb-lg-cols-4": { from: "lg", decl: { "grid-template-columns": "repeat(4, minmax(0, 1fr))" } },
+  "kzb-lg-grid-cols-3": { from: "lg", decl: { "--grid-cols": "3" } },
+  "kzb-lg-grid-cols-4": { from: "lg", decl: { "--grid-cols": "4" } },
+};
+
+/**
+ * A carousel's columns where its grid sets none (`globals.css`'s `--grid-mobile` and the rest, D91): from Medium the
+ * tablet's, from Large the computer's. The attribute twice, to win over the track's own rule wherever the sheets are.
+ */
+const CAROUSEL_FALLBACKS: { from: "md" | "lg"; decl: Decl }[] = [
+  { from: "md", decl: { "--cols": "var(--grid-cols, var(--grid-tablet, 2))" } },
+  { from: "lg", decl: { "--cols": "var(--grid-cols, var(--grid-desktop, 3))" } },
+];
+
+/** The stylesheet of the breakpoint classes for a store's screen sizes: media queries on the site, container queries on the canvas. */
+export function breakpointClassCss(breakpoints: Breakpoints, mode: QueryMode = "media"): string {
+  const out: string[] = [];
+  for (const from of ["md", "lg"] as const) {
+    const query = sizesQuery(breakpoints, from === "md" ? ["xl", "lg", "md"] : ["xl", "lg"], mode);
+    if (!query || query === "always") continue;
+    const rules = Object.entries(BREAKPOINT_CLASSES)
+      .filter(([, rule]) => rule.from === from)
+      .map(([name, rule]) => `:where(.${name}){${body(rule.decl, false)}}`);
+    rules.push(...CAROUSEL_FALLBACKS.filter((rule) => rule.from === from).map((rule) => `[data-carousel-track][data-carousel-track]{${body(rule.decl, false)}}`));
+    out.push(`${query}{\n${rules.join("\n")}\n}`);
+  }
+  return out.join("\n");
 }

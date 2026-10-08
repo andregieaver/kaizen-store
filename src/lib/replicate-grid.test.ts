@@ -179,11 +179,13 @@ describe("a static grid of four cards", () => {
     expect(grid.gap).toBe(20);
     expect(grid.tile).toMatchObject({ background: "#ffffff", radius: 12, shadow: "md", border: { width: { top: 1, right: 1, bottom: 1, left: 1 }, color: "#dcdce1", style: "solid" } });
     expect(grid.headingLevel).toBe(3);
-    expect(grid.headingSize).toBe("md");
+    // The "md" preset as the titles' typography (D179): 1.5rem, 1.25rem on Small.
+    expect(grid.typography?.title?.size).toEqual({ value: 1.5, unit: "rem" });
+    expect(grid.at?.sm?.typography?.title?.size).toEqual({ value: 1.25, unit: "rem" });
     expect(grid.show).toEqual({ image: true, heading: true, excerpt: true, price: false, button: true });
     expect(grid.button).toMatchObject({ variant: "filled", shape: "rounded", size: "md", fill: "#4f46e5", textColor: "#ffffff" });
     expect(grid.excerptLines).toBeGreaterThanOrEqual(3);
-    expect(grid.font).toBe("Inter");
+    expect(grid.typography?.text?.family).toBe("Inter");
     expect(grid.display).toBeUndefined();
   });
 

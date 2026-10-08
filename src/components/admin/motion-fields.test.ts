@@ -186,8 +186,8 @@ describe("a part's Motion tab", () => {
       "Speed",
       "Distance",
       "Easing",
-      "Delay",
-      "300 ms",
+      // The delay and duration are under Advanced, Animation (D179 phase 3), in seconds.
+      "under Advanced, Animation",
       "Time between components",
       "100 ms",
       "Play it again each time it comes into view",
@@ -197,8 +197,7 @@ describe("a part's Motion tab", () => {
     }
     expect(out).toMatch(/<option value="slow" selected="">Slow<\/option>/);
     expect(out).toMatch(/<option value="strong" selected="">Strong<\/option>/);
-    // A range for the delay in steps of 50 up to two seconds.
-    expect(out).toMatch(/type="range" min="0" max="2000" step="50"[^>]*value="300"/);
+    expect(out).not.toMatch(/type="range" min="0" max="2000"/);
   });
 
   it("leaves out what does not apply: no start or repeat when it plays as the page opens, no stagger for a component", () => {

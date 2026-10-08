@@ -21,13 +21,14 @@ export type TestimonialEntry = {
 
 /**
  * The columns at each screen size (D179): one on Small, at most two on Medium, all from Large. A testimonials component's
- * own rules set `--grid-cols` by the store's screen sizes (`blockStyle()`), over these classes (the window's default sizes).
+ * own rules set `--grid-cols` by the store's screen sizes (`blockStyle()`); elsewhere (Google's reviews outside a page's rows) these
+ * breakpoint classes do, by the store's screen sizes too (`BREAKPOINT_CLASSES`).
  */
 const COLUMNS: Record<TestimonialColumns, string> = {
   1: "",
-  2: "md:[--grid-cols:2]",
-  3: "md:[--grid-cols:2] lg:[--grid-cols:3]",
-  4: "md:[--grid-cols:2] lg:[--grid-cols:4]",
+  2: "kzb-md-grid-cols-2",
+  3: "kzb-md-grid-cols-2 kzb-lg-grid-cols-3",
+  4: "kzb-md-grid-cols-2 kzb-lg-grid-cols-4",
 };
 const LOOKS: Record<TestimonialLook, string> = {
   cards: "rounded-lg border border-border bg-background p-5 shadow-sm",
@@ -91,14 +92,16 @@ export function TestimonialCards({
               <span className="flex flex-col text-sm">
                 {entry.name &&
                   (entry.nameHref ? (
-                    <a href={entry.nameHref} target="_blank" rel="noopener noreferrer nofollow" className="font-semibold hover:underline">
+                    <a href={entry.nameHref} target="_blank" rel="noopener noreferrer nofollow" className="font-semibold hover:underline" data-kz-text="name">
                       {entry.name}
                     </a>
                   ) : (
-                    <span className="font-semibold">{entry.name}</span>
+                    <span className="font-semibold" data-kz-text="name">
+                      {entry.name}
+                    </span>
                   ))}
                 {entry.role && (
-              <span className="text-muted">
+              <span className="text-muted" data-kz-text="meta">
                 <Inline text={entry.role} />
               </span>
             )}

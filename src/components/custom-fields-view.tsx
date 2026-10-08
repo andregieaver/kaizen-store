@@ -56,7 +56,7 @@ function Anchor({ link, className = LINK, children }: { link: ShownLink; classNa
 function RelatedLinks({ links }: { links: ShownLink[] }) {
   if (links.some((link) => link.image)) {
     return (
-      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <ul className="grid grid-cols-2 gap-3 kzb-md-cols-3">
         {links.map((link, index) => (
           <li key={`${link.href}-${index}`}>
             <Anchor link={link} className="group flex flex-col gap-2 no-underline">
@@ -94,7 +94,7 @@ function NestedFields({ fields }: { fields: ShownField[] }) {
   return (
     <dl className="flex flex-col gap-2">
       {fields.map((field) => (
-        <div key={field.id} className="grid gap-0.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-3">
+        <div key={field.id} className="grid gap-0.5 kzb-md-cols-label kzb-md-gap-3">
           <dt className="text-muted">{field.label}</dt>
           <dd className="min-w-0">{fieldValue(field, "list")}</dd>
         </div>
@@ -138,7 +138,7 @@ function Rows({ rows, display }: { rows: ShownField[][]; display: FieldDisplay }
     );
   }
   return (
-    <ul className={display === "cards" ? "grid gap-3 sm:grid-cols-2" : "flex flex-col gap-3"}>
+    <ul className={display === "cards" ? "grid gap-3 kzb-md-cols-2" : "flex flex-col gap-3"}>
       {rows.map((row, index) => (
         <li
           key={index}
@@ -175,7 +175,9 @@ function FlexibleBlocks({ blocks, display }: { blocks: ShownBlock[]; display: Fi
                 fieldValue(field, "list")
               ) : (
                 <>
-                  <span className="font-medium">{field.label}: </span>
+                  <span className="font-medium" data-kz-text="label">
+                    {field.label}:{" "}
+                  </span>
                   {fieldValue(field, "list")}
                 </>
               )}
@@ -303,7 +305,7 @@ export function fieldValue(field: ShownField, display: FieldDisplay = "table"): 
     }
     case "gallery":
       return (
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <ul className="grid grid-cols-2 gap-2 kzb-md-cols-3">
           {picturesOf(value).map((picture, index) => (
             <li key={`${picture.url}-${index}`}>
               {/* eslint-disable-next-line @next/next/no-img-element -- as above */}
@@ -361,17 +363,25 @@ export function CustomFieldsList({
 
   if (display === "list") {
     return (
-      <ul className="flex flex-col gap-2 text-sm">
+      <ul className="flex flex-col gap-2 text-sm" data-kz-text="value">
         {shown.map((field) => (
           <li key={field.id} className="flex flex-col gap-1">
             {isInline(field) ? (
               <div>
-                {showLabel && <span className="font-medium">{field.label}: </span>}
+                {showLabel && (
+                  <span className="font-medium" data-kz-text="label">
+                    {field.label}:{" "}
+                  </span>
+                )}
                 {fieldValue(field, display)}
               </div>
             ) : (
               <>
-                {showLabel && <div className="font-medium">{field.label}</div>}
+                {showLabel && (
+                  <div className="font-medium" data-kz-text="label">
+                    {field.label}
+                  </div>
+                )}
                 {fieldValue(field, display)}
               </>
             )}
@@ -383,7 +393,7 @@ export function CustomFieldsList({
 
   if (display === "cards") {
     return (
-      <dl className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
+      <dl className="grid gap-3 text-sm kzb-md-cols-2 kzb-lg-cols-3">
         {shown.map((field) => (
           <div key={field.id} className="flex flex-col gap-1 rounded-lg border border-border p-4">
             {showLabel && <dt className="text-xs font-medium tracking-wide text-muted uppercase">{field.label}</dt>}
@@ -402,7 +412,7 @@ export function CustomFieldsList({
           className={
             // A repeater's table wants the whole width, so its label goes above it.
             showLabel && field.type !== "repeater" && field.type !== "flexible"
-              ? "grid gap-1 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] sm:gap-4"
+              ? "grid gap-1 px-4 py-3 kzb-md-cols-label kzb-md-gap-4"
               : "flex flex-col gap-1 px-4 py-3"
           }
         >

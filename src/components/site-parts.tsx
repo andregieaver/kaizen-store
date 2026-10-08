@@ -86,7 +86,7 @@ function MenuButton({ label }: { label: string }) {
       data-open-menu
       aria-haspopup="dialog"
       aria-controls="store-menu"
-      className="flex size-11 items-center justify-center rounded-full md:hidden"
+      className="flex size-11 items-center justify-center rounded-full kzb-md-hidden"
     >
       <Icon name="menu" />
       <span className="sr-only">{label}</span>

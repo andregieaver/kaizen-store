@@ -63,7 +63,10 @@ export type MotionIntensity = keyof typeof MOTION_INTENSITIES;
 export const MOTION_STARTS = { early: "Just as it appears", middle: "A little way in", late: "Well into view" } as const;
 export type MotionStart = keyof typeof MOTION_STARTS;
 
-export const DELAY_MAX = 2000;
+/** An entrance's delay and duration (D179 phase 3, Beaver's Animation): 0–10 s and 0.1–5 s, in milliseconds, set in steps of 0.1 s. */
+export const DELAY_MAX = 10_000;
+export const DURATION_MIN = 100;
+export const DURATION_MAX = 5000;
 export const STAGGER_MAX = 600;
 
 /**
@@ -76,8 +79,10 @@ export type EnterMotion = {
   speed?: MotionSpeed;
   ease?: MotionEase;
   distance?: MotionDistance;
-  /** Milliseconds before it starts, in steps of 50. */
+  /** Milliseconds before it starts (the builder sets tenths of a second; plans and older pages steps of 50). */
   delay?: number;
+  /** Milliseconds it takes, over its speed's (D179 phase 3); its speed's when left out. */
+  duration?: number;
   trigger?: "view" | "load";
   start?: MotionStart;
   once?: boolean;
@@ -171,6 +176,7 @@ const enterMotion = z.object({
   ease: z.enum(Object.keys(MOTION_EASES) as [MotionEase, ...MotionEase[]]).optional(),
   distance: z.enum(Object.keys(MOTION_DISTANCES) as [MotionDistance, ...MotionDistance[]]).optional(),
   delay: z.number().int().min(0).max(DELAY_MAX).optional(),
+  duration: z.number().int().min(DURATION_MIN).max(DURATION_MAX).optional(),
   trigger: z.enum(["view", "load"]).optional(),
   start: z.enum(Object.keys(MOTION_STARTS) as [MotionStart, ...MotionStart[]]).optional(),
   once: z.boolean().optional(),

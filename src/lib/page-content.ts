@@ -13,7 +13,6 @@ import {
   type GradientStyle,
   type PartMotion,
 } from "./motion";
-import { fontFamily } from "./fonts";
 import { carouselSettingsSchema, type CarouselSettings } from "./carousel-settings";
 import { customPictureProblem } from "./custom-picture";
 import { isSafeAddress } from "./field-parts";
@@ -22,6 +21,7 @@ import { sourceTraits } from "./grid-source";
 import { menuLinkSchema, type MenuLink } from "./navigation";
 import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
 import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
+import { foldTypography, typographyAtSchema, typographyFamilies, typographyGroupsSchema, type TypographyGroups, type TypographyGroupsAt } from "./typography";
 import { SIZES, type Size, type SmallerSize } from "./breakpoints";
 import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
@@ -358,6 +358,11 @@ export type PartBase = {
   at?: SizeOverrides;
   /** Where the part shows (D179): `hideAt` leaves it out at those sizes (CSS). Sign-in and conditions come in phase 4. */
   visibility?: Visibility;
+  /**
+   * Its text's look per kind of text (D179 phase 3, `src/lib/typography.ts`): family, weight, size, line height, alignment,
+   * letter spacing, transform, decoration, style, variant and shadow; a row's or column's is inherited by what it holds.
+   */
+  typography?: TypographyGroups;
 };
 
 /** The one kind of background a part can take per screen size (D179): a colour; a picture, video or gradient is the part's own. */
@@ -392,6 +397,8 @@ export type PartSizeSettings = {
   columns?: number;
   /** A grid shown as a grid or as a carousel. */
   display?: "grid" | "carousel";
+  /** Its typography at the size, per kind of text: what differs (D179 phase 3). */
+  typography?: TypographyGroupsAt;
 };
 /** Per smaller size, what differs from the size above (D179). */
 export type SizeOverrides = Partial<Record<SmallerSize, PartSizeSettings>>;
@@ -471,11 +478,6 @@ export const IMAGE_SHAPE_RATIO: Record<ImageShape, number> = { landscape: 4 / 3,
 /** A picture taken from a custom field is not known by its size where it is drawn (`field-binding.ts`); this stands in for it. */
 export const BOUND_PICTURE_SIZE = { width: 1600, height: 1200 } as const;
 
-/**
- * A Google Fonts family a block's text uses (D59), over the site's own;
- * self-hosted, so it must be installed (`installFont`) before it shows.
- */
-export type BlockFont = { font?: string };
 
 /**
  * A block taking what it shows from a custom field of the thing the page
@@ -494,7 +496,8 @@ export type Bindable = { bind?: FieldBinding };
 /** Whose custom fields a component shows (D120): the thing it is on, or the store itself. */
 export type FieldSource = "store";
 
-export type RichTextBlock = PartBase & BlockFont & Bindable & { id: string; type: "richText"; doc: RichTextDoc; align?: TextAlign };
+/** Rich text (D42); its alignment, font and the rest of its look are its typography (D179). */
+export type RichTextBlock = PartBase & Bindable & { id: string; type: "richText"; doc: RichTextDoc };
 /**
  * A picture (D47): uploaded and shrunk in the browser; none yet while it is being set up. It is drawn at its own size and
  * never larger (D151), shrinking only to fit a narrower column or a phone; `maxWidth` makes it narrower and `align` places it.
@@ -502,8 +505,6 @@ export type RichTextBlock = PartBase & BlockFont & Bindable & { id: string; type
 export type ImageBlock = PartBase & Bindable & {
   id: string;
   type: "image";
-  /** The caption's font. */
-  font?: string;
   image: { url: string; width: number; height: number; alt: string } | null;
   caption: string;
   shape?: ImageShape;
@@ -527,7 +528,7 @@ export function imageDisplaySize(block: Pick<ImageBlock, "image" | "shape" | "ma
 }
 /** Heading levels: 1 is the page's main heading, used once (D49). */
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
-/** How large a heading looks, apart from its level. */
+/** How large a heading looked, apart from its level, before the Typography panel (D49; folded into it on read, D179). */
 export const HEADING_SIZES = { sm: "Small", md: "Medium", lg: "Large", xl: "Extra large", "2xl": "Huge" } as const;
 export type HeadingSize = keyof typeof HEADING_SIZES;
 /** The size a heading has unless one is chosen. */
@@ -537,15 +538,12 @@ export type FontWeight = keyof typeof FONT_WEIGHTS;
 export const HEADING_MAX = 300;
 
 /** A heading (D49): one line of text at a level, with its look. */
-export type HeadingBlock = PartBase & BlockFont & Bindable & {
+export type HeadingBlock = PartBase & Bindable & {
   id: string;
   type: "heading";
   text: string;
   level: HeadingLevel;
-  size?: HeadingSize;
-  /** The theme's heading weight unless chosen (D60). */
-  weight?: FontWeight;
-  align?: TextAlign;
+  /** Its size, weight (the theme's unless set, D60), alignment and font are its typography (D179); its size by level unless set. */
   textColor?: Color;
 };
 
@@ -561,12 +559,11 @@ export const BUTTON_LABEL_MAX = 100;
  * A button (D49): a link that looks like a button. Shown once it has both
  * its text and its address; the defaults are filled, medium and rounded.
  */
-export type ButtonBlock = PartBase & BlockFont & Bindable & {
+export type ButtonBlock = PartBase & Bindable & {
   id: string;
   type: "button";
   label: string;
-  /** Medium unless chosen. */
-  weight?: FontWeight;
+  /** Its weight (medium unless set) and font are its typography (D179). */
   href: string;
   newTab?: boolean;
   variant?: ButtonVariant;
@@ -682,10 +679,7 @@ export const customItemShows = (item: CustomGridItem): boolean =>
 export type ContentGridBlock = PartBase & {
   id: string;
   type: "contentGrid";
-  /** The tiles' text: excerpt, price and button (D59). */
-  font?: string;
-  /** The tiles' headings, over `font`. */
-  headingFont?: string;
+  /** The tiles' fonts and sizes are its typography (D179): the tiles' text, their titles, excerpts and prices. */
   source: GridSource;
   categories: string[];
   tags: string[];
@@ -712,7 +706,6 @@ export type ContentGridBlock = PartBase & {
    */
   imageShape?: ImageShape | "original" | "theme";
   headingLevel: Exclude<HeadingLevel, 1>;
-  headingSize?: HeadingSize;
   /** Lines of excerpt at most. */
   excerptLines: number;
   /**
@@ -813,13 +806,11 @@ export type LoopConfig = {
  * information and related products in the shopper's language unless one
  * of the store's own is given.
  */
-export type ProductBlock = PartBase & BlockFont & {
+export type ProductBlock = PartBase & {
   id: string;
   type: "product";
   part: ProductPart;
-  align?: TextAlign;
-  /** The title's size. */
-  size?: HeadingSize;
+  /** The title's size and the text's alignment are its typography (D179). */
   /** The title: the wishlist heart beside it; on unless off. */
   wishlist?: boolean;
   /** The price: large unless off. */
@@ -894,7 +885,7 @@ export const LOGO_HEIGHT = { min: 16, max: 160, header: 40, footer: 32 } as cons
  * drop-down list or as links, side by side or one under another. Menus are
  * menu components (`MenuBlock`, D85), which any page can have.
  */
-export type SiteBlock = PartBase & BlockFont & {
+export type SiteBlock = PartBase & {
   id: string;
   type: "site";
   part: SitePart;
@@ -913,7 +904,7 @@ export type SiteBlock = PartBase & BlockFont & {
  * under another, optionally left out on phones (where the phone's menu has
  * the main one).
  */
-export type MenuBlock = PartBase & BlockFont & {
+export type MenuBlock = PartBase & {
   id: string;
   type: "menu";
   /** The menu; none chosen yet shows nothing. */
@@ -929,7 +920,7 @@ export type MenuBlock = PartBase & BlockFont & {
  * only about finding something, such as the 404 page, takes just the box.
  * A store's pages only.
  */
-export type SearchBlock = PartBase & BlockFont & {
+export type SearchBlock = PartBase & {
   id: string;
   type: "search";
   /** Show the results as well as the box (on by default); the box alone leads to the search page. */
@@ -942,7 +933,7 @@ export type SearchBlock = PartBase & BlockFont & {
  * (`commerce.plans`, `plan_prices`, `plan_features`), read where the page is shown, so a change to a
  * plan shows on the page with no edit to it. Kaizen's own pages only; stores sell their own things.
  */
-export type PlansBlock = PartBase & BlockFont & {
+export type PlansBlock = PartBase & {
   id: string;
   type: "plans";
   /** The currency the prices show in; none: the platform's first. */
@@ -965,7 +956,7 @@ export type PlansBlock = PartBase & BlockFont & {
  * shopper's language, and it draws nothing when the page has no value for
  * them. A store's pages and articles only.
  */
-export type CustomFieldBlock = PartBase & BlockFont & {
+export type CustomFieldBlock = PartBase & {
   id: string;
   type: "customField";
   /** The group; none chosen: every group that applies to the page. */
@@ -988,7 +979,7 @@ export type CustomFieldBlock = PartBase & BlockFont & {
  * builder's answer to ACF's repeater loop. It draws nothing when the field is
  * missing, private or has no rows. A store's pages and articles only.
  */
-export type FieldLoopBlock = PartBase & BlockFont & LoopConfig & {
+export type FieldLoopBlock = PartBase & LoopConfig & {
   id: string;
   type: "fieldLoop";
 };
@@ -1002,7 +993,7 @@ export type FieldLoopBlock = PartBase & BlockFont & LoopConfig & {
  * role, `src/lib/page-roles.ts`), so it does nothing elsewhere. A store's
  * pages only.
  */
-export type StorePartBlock = PartBase & BlockFont & {
+export type StorePartBlock = PartBase & {
   id: string;
   type: "storePart";
   part: ShopPart;
@@ -1044,14 +1035,14 @@ export type DualButtonSide = Pick<ButtonBlock, "label" | "href" | "newTab" | "va
  * their place; one under another on phones if set. Each shows once it has
  * both its text and its address.
  */
-export type DualButtonBlock = PartBase & BlockFont & {
+export type DualButtonBlock = PartBase & {
   id: string;
   type: "dualButton";
   first: DualButtonSide;
   second: DualButtonSide;
   size?: ButtonSize;
   shape?: ButtonShape;
-  weight?: FontWeight;
+  /** Their weight (medium unless set) and font are its typography (D179). */
   /** Pixels between them; 12 unless set. */
   gap?: number;
   /** One under another, each the column's width (per size in `at`, D179). */
@@ -1079,7 +1070,7 @@ export type AccordionLook = keyof typeof ACCORDION_LOOKS;
  * the browser's find opens the one holding what was searched for. The
  * first may start open, and only one may be open at a time if set.
  */
-export type AccordionBlock = PartBase & BlockFont & {
+export type AccordionBlock = PartBase & {
   id: string;
   type: "accordion";
   items: PanelItem[];
@@ -1087,8 +1078,7 @@ export type AccordionBlock = PartBase & BlockFont & {
   /** Opening one closes the others. */
   single?: boolean;
   look?: AccordionLook;
-  /** The titles' size; medium unless set. */
-  titleSize?: HeadingSize;
+  /** The titles' size is the `title` typography (D179). */
 };
 
 export const TABS_LOOKS = { underline: "Underline", pills: "Pills", boxed: "Boxed" } as const;
@@ -1101,7 +1091,7 @@ export type TabsAlign = keyof typeof TABS_ALIGNS;
  * of tabs, as the ARIA tabs pattern has them. Each panel is in the page,
  * so search engines read them all; tabs without a title are left out.
  */
-export type TabsBlock = PartBase & BlockFont & {
+export type TabsBlock = PartBase & {
   id: string;
   type: "tabs";
   items: PanelItem[];
@@ -1115,7 +1105,7 @@ export type TabsBlock = PartBase & BlockFont & {
  * engines and AI assistants as schema.org's FAQPage unless switched off.
  * A question shows once it has both.
  */
-export type FaqBlock = PartBase & BlockFont & {
+export type FaqBlock = PartBase & {
   id: string;
   type: "faq";
   /** Each item's title is the question and its text the answer. */
@@ -1123,7 +1113,6 @@ export type FaqBlock = PartBase & BlockFont & {
   openFirst?: boolean;
   single?: boolean;
   look?: AccordionLook;
-  titleSize?: HeadingSize;
   /** The FAQPage data; on unless off. */
   structuredData?: boolean;
 };
@@ -1228,7 +1217,6 @@ export type TestimonialsBlock = PartBase & {
   display?: "carousel";
   /** What the carousel does besides scrolling (D155, B), as a content grid's. */
   carousel?: CarouselSettings;
-  font?: string;
 };
 
 /** A testimonial that shows: it has its words. */
@@ -1266,7 +1254,6 @@ export type SocialLinksBlock = PartBase & {
   position?: SeparatorPosition;
   /** The network's name beside its logo. */
   showNames?: boolean;
-  font?: string;
 };
 
 /** A link that shows: its address is one. */
@@ -1296,7 +1283,6 @@ export type IconListBlock = PartBase & {
   gap?: number;
   /** Side by side: where the lines sit. */
   position?: SeparatorPosition;
-  font?: string;
 };
 
 /** A line that shows: it has words. */
@@ -1345,8 +1331,7 @@ export type FormButton = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill"
  * visitor's email address to reply to when the form asks for one.
  * Texts left empty read in the page's language.
  */
-export type EmailFormBlock = PartBase &
-  BlockFont & {
+export type EmailFormBlock = PartBase & {
     id: string;
     type: "emailForm";
     /** Where submissions are emailed: 1 to 5 addresses. */
@@ -1372,8 +1357,7 @@ export type NewsletterLayout = keyof typeof NEWSLETTER_LAYOUTS;
  * with a link, and only then is the sign-up emailed to the `recipients`,
  * with the words consented to and when.
  */
-export type NewsletterBlock = PartBase &
-  BlockFont & {
+export type NewsletterBlock = PartBase & {
     id: string;
     type: "newsletter";
     recipients: string[];
@@ -1735,17 +1719,13 @@ export function repeatedHtmlId(rows: PageRow[]): string | null {
 export const gridImageShape = (block: Pick<ContentGridBlock, "imageShape" | "source">) =>
   block.imageShape ?? (sourceTraits(block.source).products ? "theme" : "landscape");
 
-/** The Google Fonts families a block uses (D59). */
-export function blockFonts(block: PageBlock): string[] {
-  const fonts = [
-    "font" in block ? block.font : undefined,
-    block.type === "contentGrid" ? block.headingFont : undefined,
-  ];
-  return fonts.filter((font): font is string => Boolean(font));
-}
+/** The Google Fonts families a row, column or block uses (D59): its typography's, at every size and for every kind of text (D179). */
+export const partFonts = (part: PageRow | PageColumn | PageBlock): string[] => typographyFamilies(part);
+/** The families a block uses. */
+export const blockFonts = (block: PageBlock): string[] => partFonts(block);
 
-/** Every family a page's blocks use, once each. */
-export const pageFonts = (content: Pick<PageContent, "rows">) => [...new Set(pageBlocks(content).flatMap(blockFonts))];
+/** Every family a page's rows, columns and blocks use, once each. */
+export const pageFonts = (content: Pick<PageContent, "rows">) => [...new Set(pageParts(content.rows).flatMap(partFonts))];
 
 /** Every block on the page, row by row and column by column. */
 export function pageBlocks(content: Pick<PageContent, "rows">): PageBlock[] {
@@ -1939,6 +1919,7 @@ const sizeSettings = z.object({
   maxWidth: pictureWidth.or(z.null()),
   columns: gridColumnCount.optional(),
   display: z.enum(["grid", "carousel"]).optional(),
+  typography: typographyAtSchema,
 });
 /** A part's overrides by size, with sizes that set nothing left out. */
 const sizeOverrides = z
@@ -1970,6 +1951,7 @@ const partBase = {
   shadow: shadowSchema,
   at: sizeOverrides,
   visibility,
+  typography: typographyGroupsSchema,
   global: z.uuid().optional(),
   local: z.literal(true).optional(),
   htmlId: optionalText(
@@ -2025,9 +2007,6 @@ const background = z
   .optional();
 const rowBackground = z.discriminatedUnion("type", [colorBackground, imageBackground, gradientBackground, videoBackground]).optional();
 
-/** A block's own font (D59): a Google Fonts family, or none for the site's. */
-const blockFont = optionalText(fontFamily);
-
 
 /** A custom field's id, as the store's field groups make them (`newFieldId()`). */
 const FIELD_ID = /^f_[a-z0-9]{6,24}$/;
@@ -2051,8 +2030,6 @@ const richTextBlock = z.object({
     ctx.addIssue({ code: "custom", message: cleaned.problem });
     return z.NEVER;
   }),
-  align: textAlign,
-  font: blockFont,
   bind: bindRule,
   ...partBase,
 });
@@ -2072,7 +2049,6 @@ const imageBlock = z.object({
   shape: z.enum(Object.keys(IMAGE_SHAPES) as [ImageShape, ...ImageShape[]]).optional(),
   maxWidth: pictureWidth,
   align: textAlign,
-  font: blockFont,
   bind: bindRule,
   ...partBase,
 });
@@ -2082,11 +2058,7 @@ const headingBlock = z.object({
   type: z.literal("heading"),
   text: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`),
   level: z.literal([1, 2, 3, 4, 5, 6], "A heading has an unknown level."),
-  size: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
-  weight: z.enum(Object.keys(FONT_WEIGHTS) as [FontWeight, ...FontWeight[]]).optional(),
-  align: textAlign,
   textColor: color.optional(),
-  font: blockFont,
   bind: bindRule,
   ...partBase,
 });
@@ -2107,8 +2079,6 @@ const buttonBlock = z.object({
   align: textAlign,
   fill: color.optional(),
   textColor: color.optional(),
-  weight: z.enum(Object.keys(FONT_WEIGHTS) as [FontWeight, ...FontWeight[]]).optional(),
-  font: blockFont,
   bind: bindRule,
   ...partBase,
 });
@@ -2207,7 +2177,6 @@ const contentGridBlock = z
   carousel: carouselSettingsSchema.optional(),
   imageShape: z.enum(["original", "theme", ...(Object.keys(IMAGE_SHAPES) as ImageShape[])]).optional(),
   headingLevel: z.literal([2, 3, 4, 5, 6], "A tile's heading has an unknown level."),
-  headingSize: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
   excerptLines: z.number().int().min(1).max(6),
   tileFields: z
     .array(z.string().regex(FIELD_ID, "A grid's tile names an unknown field."))
@@ -2232,8 +2201,6 @@ const contentGridBlock = z
     })
     .optional(),
   gap: z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space between tiles at ${GRID_GAP_MAX} pixels or less.`),
-  font: blockFont,
-  headingFont: blockFont,
   items: z
     .array(customGridItemSchema)
     .max(CUSTOM_ITEMS_MAX, `A grid holds at most ${CUSTOM_ITEMS_MAX} custom items.`)
@@ -2276,8 +2243,6 @@ const productBlock = z.object({
   id: itemId,
   type: z.literal("product"),
   part: z.enum(Object.keys(PRODUCT_PARTS) as [ProductPart, ...ProductPart[]], "A product component shows an unknown part."),
-  align: textAlign,
-  size: z.enum(Object.keys(HEADING_SIZES) as [HeadingSize, ...HeadingSize[]]).optional(),
   wishlist: z.boolean().optional(),
   large: z.boolean().optional(),
   thumbnails: z.boolean().optional(),
@@ -2291,7 +2256,6 @@ const productBlock = z.object({
   showLabel: z.boolean().optional(),
   source: z.literal("store").optional(),
   loop: loopSettings.optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2308,7 +2272,6 @@ const siteBlock = z.object({
     .optional(),
   direction: z.enum(["row", "column"]).optional(),
   display: z.enum(["dropdown", "list"]).optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2318,7 +2281,6 @@ const menuBlock = z.object({
   menuId: z.uuid("Choose a menu for each menu component.").optional(),
   direction: z.enum(["row", "column"]).optional(),
   align: textAlign,
-  font: blockFont,
   ...partBase,
 });
 
@@ -2326,7 +2288,6 @@ const searchBlock = z.object({
   id: itemId,
   type: z.literal("search"),
   results: z.boolean().optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2343,7 +2304,6 @@ const plansBlock = z.object({
     .trim()
     .refine((href) => href === "" || isLinkAddress(href), "A button's address must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.")
     .default(""),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2357,7 +2317,6 @@ const customFieldBlock = z.object({
   showHeading: z.boolean().optional(),
   heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
   source: z.literal("store").optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2369,7 +2328,6 @@ const fieldLoopBlock = z.object({
   ...loopSettings.shape,
   showHeading: z.boolean().optional(),
   heading: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`).optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2377,7 +2335,6 @@ const storePartBlock = z.object({
   id: itemId,
   type: z.literal("storePart"),
   part: z.enum(SHOP_PART_KEYS as [ShopPart, ...ShopPart[]]),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2413,11 +2370,9 @@ const dualButtonBlock = z.object({
   second: dualButtonSide,
   size: buttonBlock.shape.size,
   shape: buttonBlock.shape.shape,
-  weight: buttonBlock.shape.weight,
   gap: z.number().int().min(0).max(DUAL_GAP_MAX, `Keep the space between the buttons at ${DUAL_GAP_MAX} pixels or less.`).optional(),
   stack: z.boolean().optional(),
   align: textAlign,
-  font: blockFont,
   ...partBase,
 });
 
@@ -2439,8 +2394,6 @@ const accordionBlock = z.object({
   openFirst: z.boolean().optional(),
   single: z.boolean().optional(),
   look: z.enum(Object.keys(ACCORDION_LOOKS) as [AccordionLook, ...AccordionLook[]]).optional(),
-  titleSize: headingBlock.shape.size,
-  font: blockFont,
   ...partBase,
 });
 
@@ -2450,7 +2403,6 @@ const tabsBlock = z.object({
   items: panelItems,
   look: z.enum(Object.keys(TABS_LOOKS) as [TabsLook, ...TabsLook[]]).optional(),
   tabsAlign: z.enum(Object.keys(TABS_ALIGNS) as [TabsAlign, ...TabsAlign[]]).optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2461,9 +2413,7 @@ const faqBlock = z.object({
   openFirst: z.boolean().optional(),
   single: z.boolean().optional(),
   look: accordionBlock.shape.look,
-  titleSize: headingBlock.shape.size,
   structuredData: z.boolean().optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2538,7 +2488,6 @@ const testimonialsBlock = z.object({
   showRating: z.boolean().optional(),
   display: z.literal("carousel", "Testimonials are shown in an unknown way.").optional(),
   carousel: carouselSettingsSchema.optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2568,7 +2517,6 @@ const socialLinksBlock = z.object({
   gap: z.number().int().min(0).max(SOCIAL_GAP_MAX).optional(),
   position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),
   showNames: z.boolean().optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2595,7 +2543,6 @@ const iconListBlock = z.object({
   iconSize: z.enum(Object.keys(BUTTON_SIZES) as [ButtonSize, ...ButtonSize[]]).optional(),
   gap: z.number().int().min(0).max(SOCIAL_GAP_MAX).optional(),
   position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),
-  font: blockFont,
   ...partBase,
 });
 
@@ -2651,7 +2598,6 @@ const emailFormBlock = z.object({
   successMessage: formText("the thank-you message").default(""),
   consent: formText("the tick box's words").optional(),
   button: formButton,
-  font: blockFont,
   ...partBase,
 });
 
@@ -2667,7 +2613,6 @@ const newsletterBlock = z.object({
   confirm: z.boolean().optional(),
   layout: z.enum(Object.keys(NEWSLETTER_LAYOUTS) as [NewsletterLayout, ...NewsletterLayout[]]).optional(),
   button: formButton,
-  font: blockFont,
   ...partBase,
 });
 
@@ -2701,7 +2646,7 @@ export const pageBlockUnion = z.discriminatedUnion("type", [
 ]);
 
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer; one saved before D179 is read into the per-size shape. */
-export const pageBlockSchema = z.preprocess(upgradeBlock, pageBlockUnion);
+export const pageBlockSchema = z.preprocess((value) => foldTypography(upgradeBlock(value)), pageBlockUnion);
 
 /**
  * A grid that no longer shows custom items (the owner chose Pages, Articles or Products after writing some) keeps them in the

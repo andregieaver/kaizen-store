@@ -848,7 +848,6 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
       {look("second", "Second button", "filled")}
       <Choices legend="Size" options={optionsOf(BUTTON_SIZES)} value={block.size ?? "md"} onChange={(size: ButtonSize) => onChange({ size: size === "md" ? undefined : size })} />
       <Choices legend="Corners" options={optionsOf(BUTTON_SHAPES)} value={block.shape ?? "rounded"} onChange={(shape: ButtonShape) => onChange({ shape: shape === "rounded" ? undefined : shape })} />
-      <Choices legend="Weight" options={optionsOf(FONT_WEIGHTS)} value={block.weight ?? "medium"} onChange={(weight: FontWeight) => onChange({ weight: weight === "medium" ? undefined : weight })} />
       <NumberField label="Space between" value={block.gap ?? 12} min={0} max={DUAL_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
       <DualStackField block={block} onChange={onChange} />
       <TextAlignFields what="Position" value={block} onChange={onChange} />
@@ -927,19 +926,13 @@ function AccordionStyleFields({
   onChange,
 }: {
   block: AccordionBlock | FaqBlock;
-  onChange: (patch: Partial<Pick<AccordionBlock, "openFirst" | "single" | "look" | "titleSize">>) => void;
+  onChange: (patch: Partial<Pick<AccordionBlock, "openFirst" | "single" | "look">>) => void;
 }) {
   return (
     <>
       <Check label={block.type === "faq" ? "First question open" : "First section open"} hint="Shown open when the page loads." checked={Boolean(block.openFirst)} onChange={(openFirst) => onChange({ openFirst: openFirst || undefined })} />
       <Check label="One open at a time" hint={block.type === "faq" ? "Opening a question closes the one that was open." : "Opening a section closes the one that was open."} checked={Boolean(block.single)} onChange={(single) => onChange({ single: single || undefined })} />
       <Choices legend="Look" options={optionsOf(ACCORDION_LOOKS)} value={block.look ?? "lines"} onChange={(look) => onChange({ look: look === "lines" ? undefined : look })} />
-      <Choices
-        legend="Title size"
-        options={optionsOf(HEADING_SIZES)}
-        value={block.titleSize ?? "sm"}
-        onChange={(titleSize: HeadingSize) => onChange({ titleSize: titleSize === "sm" ? undefined : titleSize })}
-      />
     </>
   );
 }

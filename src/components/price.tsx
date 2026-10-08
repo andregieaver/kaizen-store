@@ -149,16 +149,19 @@ export function Price({
   m,
   from = false,
   large = false,
+  textRole,
 }: {
   price: PriceView;
   locale: string;
   m: Messages;
   from?: boolean;
   large?: boolean;
+  /** The kind of text the figure is in a component's typography (D179: `data-kz-text`, a content grid's `price`). */
+  textRole?: string;
 }) {
   return (
     <div>
-      <p className={large ? "text-2xl font-semibold" : "font-semibold"}>
+      <p className={large ? "text-2xl font-semibold" : "font-semibold"} data-kz-text={textRole}>
         {from && <span className="font-normal">{m.fromPrice} </span>}
         <VatAmount amountMinor={price.amountMinor} currency={price.currency} locale={locale} vat={price.vat} labels={m} />
       </p>

@@ -6,6 +6,7 @@ import { snapAttribute } from "@/lib/carousel-settings";
 import { noticesFor, type CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import { fontClass } from "@/lib/fonts";
+import { familyClassOf, textRoles } from "@/lib/typography";
 import { t } from "@/lib/i18n";
 import { inlinePlain } from "@/lib/inline-text";
 import { sourceTraits } from "@/lib/grid-source";
@@ -15,7 +16,7 @@ import { carouselAnywhere } from "@/lib/responsive";
 
 import { Carousel } from "./carousel";
 import { Inline } from "./inline-text";
-import { HEADING_SIZES, SHAPES, buttonLook } from "./page-block";
+import { SHAPES, buttonLook } from "./page-block";
 import { CampaignBadge } from "./campaign-notice";
 import { Price } from "./price";
 
@@ -38,6 +39,9 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
   const traits = sourceTraits(block.source);
   const themed = shape === "theme" && traits.products;
   const Heading = `h${block.headingLevel}` as const;
+  // The titles' own family (D179), drawn as its class unless it differs by size (then the part stylesheet's rule).
+  const titleRole = textRoles(block).find((def) => def.role === "title");
+  const titleFamily = titleRole ? familyClassOf(block, titleRole) : undefined;
   // The item's own button text (custom items, D155), else the grid's, else the kind of content's.
   const label = block.buttonLabel || (traits.button === "viewProduct" ? m.viewProduct : m.readMore);
   // Words an owner typed into the grid or its custom items may hold inline markup (a span with a class, bold); a product's or a page's own title never does.
@@ -95,9 +99,9 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
           {item.badge && !(block.show.image && item.image) && <ItemBadge text={item.badge} />}
           {block.show.heading && item.title && (
             <Heading
-              className={`leading-snug font-heading text-balance ${HEADING_SIZES[block.headingSize ?? "sm"]} ${
-                block.headingFont ? fontClass(block.headingFont) : ""
-              }`}
+              // Its size and font are the grid's `title` typography (D179), over these.
+              data-kz-text="title"
+              className={`leading-snug font-heading text-balance text-lg ${titleFamily ? fontClass(titleFamily) : ""}`}
             >
               {item.href !== "" ? (
                 <a href={item.href} className="relative z-[2] hover:underline focus-visible:outline-2" {...externalAttributes(item)}>
@@ -114,7 +118,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
           )}
           {item.fields && item.fields.length > 0 && (
             // Custom fields chosen for the tiles (D120): one line each, plain words.
-            <ul className="flex flex-col gap-0.5 text-sm text-muted">
+            <ul className="flex flex-col gap-0.5 text-sm text-muted" data-kz-text="meta">
               {item.fields.map((field, index) => (
                 <li key={`${field.label}-${index}`}>
                   {field.label !== "" && <span className="font-medium">{`${field.label}:`}</span>} {field.text}
@@ -129,6 +133,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
           )}
           {block.show.excerpt && item.excerpt && (
             <p
+              data-kz-text="excerpt"
               className="text-sm text-muted"
               style={{
                 display: "-webkit-box",
@@ -141,11 +146,13 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
             </p>
           )}
           {block.show.price && item.price && (
-            <Price price={item.price.view} locale={data.locale} m={m} from={item.price.from} />
+            <Price price={item.price.view} locale={data.locale} m={m} from={item.price.from} textRole="price" />
           )}
           {block.show.price && item.priceText && (
             // A custom item's price is the owner's own words (D155): plain text, no VAT label, no reference price, nothing to buy.
-            <p className="font-medium">{words(item.priceText)}</p>
+            <p className="font-medium" data-kz-text="price">
+              {words(item.priceText)}
+            </p>
           )}
           {block.show.button && item.href !== "" && (
             <div className="mt-auto pt-1">
@@ -156,6 +163,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
                 aria-label={itemName(block, item) ? `${inlinePlain(item.buttonLabel || label)}: ${plain(itemName(block, item))}` : undefined}
                 className={button.className}
                 style={button.style}
+                data-kz-text="button"
                 {...externalAttributes(item)}
               >
                 <Inline text={item.buttonLabel || label} />
@@ -249,6 +257,7 @@ function TilePicture({ image, alt, shape }: { image: { url: string; width?: numb
 function ItemBadge({ text, over = false }: { text: string; over?: boolean }) {
   return (
     <span
+      data-kz-text="badge"
       className={`rounded-button bg-accent px-2 py-1 text-xs font-medium text-accent-foreground ${
         over ? "pointer-events-none absolute top-2 left-2 z-10" : "self-start"
       }`}

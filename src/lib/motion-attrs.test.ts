@@ -72,6 +72,8 @@ describe("an entrance", () => {
       "--fx-amt": 2,
     });
     expect(partFx(enter("fade-up", { speed: "fast" }), "block").style).toEqual({ "--fx-dur": "400ms" });
+    // A duration of its own (D179 phase 3) is `--fx-duration` and stands over the speed; a delay up to 10 s is `--fx-delay`.
+    expect(partFx(enter("fade-up", { speed: "fast", duration: 2500, delay: 9500 }), "block").style).toEqual({ "--fx-duration": "2500ms", "--fx-delay": "9500ms" });
     expect(partFx(enter("fade-up", { distance: "small" }), "block").style).toMatchObject({
       "--fx-dist": "16px",
       "--fx-amt": 0.4,

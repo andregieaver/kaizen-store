@@ -343,7 +343,7 @@ describe("a picture placed by screen", () => {
 
   it("never gives a heading or a button the picture's auto margins, though they align by text", () => {
     const blocks: PageBlock[] = [
-      { id: "h", type: "heading", text: "Hello", level: 2, align: "right", at: { md: { align: "center" } } },
+      { id: "h", type: "heading", text: "Hello", level: 2, typography: { text: { align: "right" } }, at: { md: { typography: { text: { align: "center" } } } } },
       { id: "t", type: "button", label: "Go", href: "/go", align: "center" },
     ];
     const html = draw(page(rowOf("r1", ...blocks)));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useEffect, useId, useState } from "react";
+import { useDeferredValue, useEffect, useId, useState, type ReactNode } from "react";
 
 import { FontLinks } from "@/components/font-links";
 import { catalogFont, fontClass, fontSlug, FONT_CATEGORIES, type CatalogFont, type CatalogRow, type FontCategory } from "@/lib/fonts";
@@ -49,6 +49,7 @@ export function FontPicker({
   onChange,
   install,
   defaultLabel,
+  mark,
 }: {
   label: string;
   value: string | undefined;
@@ -56,14 +57,19 @@ export function FontPicker({
   install: InstallFont;
   /** What no choice means, e.g. "The site's body font". */
   defaultLabel: string;
+  /** Beside the label: a setting that can differ by screen size has its device icon and where its value comes from (D179). */
+  mark?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const labelId = useId();
   return (
     <div className="flex flex-col gap-1">
-      <span id={labelId} className="text-sm font-medium">
-        {label}
-      </span>
+      <div className="flex flex-wrap items-center gap-1">
+        <span id={labelId} className="text-sm font-medium">
+          {label}
+        </span>
+        {mark}
+      </div>
       <FontLinks families={[value]} />
       <button
         type="button"

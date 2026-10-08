@@ -1,7 +1,7 @@
 "use client";
 
 import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, SIZE_LABELS, type Breakpoints, type Size } from "@/lib/breakpoints";
-import { canvasHiddenCss, partCss } from "@/lib/part-css";
+import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
 import {
   carouselAnywhere,
   carouselAt,
@@ -59,7 +59,7 @@ import { INLINE_HINT, inlinePlain } from "@/lib/inline-text";
 import { t } from "@/lib/i18n";
 import { FontLinks } from "@/components/font-links";
 
-import { HEADING_SIZES as HEADING_SIZE_CLASS, PageBlockView } from "@/components/page-block";
+import { PageBlockView } from "@/components/page-block";
 import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
@@ -77,7 +77,7 @@ import { useTemplateUse, type TemplateUse } from "./templates-use";
 import { SavedLayoutDialog } from "./saved-layout-dialog";
 import { ModalBar } from "./modal-preview";
 import { BackgroundMotionFields, GradientFields } from "./gradient-fields";
-import { MotionFields } from "./motion-fields";
+import { AnimationFields, MotionFields } from "./motion-fields";
 import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
 import {
   BLOCKS_MAX,
@@ -107,6 +107,7 @@ import {
   SHADOWS,
   SPACING_MAX,
   blockFonts,
+  pageFonts,
   bindingOf,
   blockHasContent,
   blockOwnContent,
@@ -258,7 +259,8 @@ import {
   OptionalColor,
   TextAlignFields,
 } from "./block-fields";
-import { FontPicker, type InstallFont } from "./font-picker";
+import { type InstallFont } from "./font-picker";
+import { TypographyFields } from "./typography-fields";
 import { ImageSizeFields } from "./image-size-fields";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
@@ -947,6 +949,8 @@ export function PageBuilder({
             data-custom-css=""
           >
             <FontLinks families={siteFontFamilies(fonts.site)} />
+            {/* The families the rows' and columns' typography uses (D179); the blocks' come with each block. */}
+            <FontLinks families={pageFonts({ rows })} />
             {fonts.theme && <style>{fonts.theme.css}</style>}
             {/* What the parts' settings say at each screen size (D179), measured against the canvas (`kz-page`), not the window. */}
             <CanvasPartStyles rows={rows} breakpoints={breakpoints} hideHidden={hideHidden} />
@@ -1945,7 +1949,8 @@ function Canvas({
 function CanvasPartStyles({ rows, breakpoints, hideHidden }: { rows: PageRow[]; breakpoints: Breakpoints; hideHidden: boolean }) {
   // With the parts hidden at a size: faded with their eye there, or left out (D179).
   const css = useMemo(
-    () => [partCss(rows, "canvas", breakpoints), canvasHiddenCss(rows, breakpoints, hideHidden)].filter(Boolean).join("\n"),
+    () =>
+      [breakpointClassCss(breakpoints, "container"), partCss(rows, "canvas", breakpoints), canvasHiddenCss(rows, breakpoints, hideHidden)].filter(Boolean).join("\n"),
     [rows, breakpoints, hideHidden],
   );
   return css ? <style>{css}</style> : null;
@@ -2600,6 +2605,12 @@ function Dialogs({
     return (
       <>
         <AdvancedFields part={part} taken={others} onChange={(patch) => onRows((current) => patchPart(current, target, patch))} />
+        {/* Beaver's Animation (D179 phase 3): the entrance's delay and duration, in seconds. */}
+        <AnimationFields
+          part={target.kind === "block" ? { kind: "block", blockType: (part as PageBlock).type } : { kind: target.kind }}
+          motion={part.motion}
+          onChange={(motion) => onRows((current) => patchPart(current, target, { motion }))}
+        />
         {/* Beaver's Visibility (D179): by screen size here; sign-in and conditions are phase 4. A modal opens over any size. */}
         {!row?.modal && (
           <VisibilityFields
@@ -2637,10 +2648,22 @@ function Dialogs({
     if (!part) return null;
     return <FrameFields value={viewAt(part, size)} sized={{ part, onPatch: plainPatch(target) }} onChange={(patch) => sizedPatch(target, patch)} />;
   };
-  /** A block's own font (D59), over the site's; `fallback` says what none means. */
-  const fontField = (label: string, value: string | undefined, fallback: string, onChange: (font: string | undefined) => void) => (
-    <FontPicker label={label} value={value} defaultLabel={fallback} install={fonts.install} onChange={onChange} />
-  );
+  /**
+   * The Typography panel (D179 phase 3) of the row, column or block a dialog is for: a group per kind of text it has, at the
+   * size the builder edits; families are installed as they are chosen (D59). `familyDefault` says what no family means.
+   */
+  const typographyFields = (target: Styled, familyDefault = "Inherited") => {
+    const part = partOf(rows, target);
+    if (!part) return null;
+    return (
+      <TypographyFields
+        part={part}
+        familyDefault={familyDefault}
+        install={fonts.install}
+        onChange={(patch) => onRows((current) => patchPart(current, target, patch as Partial<PartBase>))}
+      />
+    );
+  };
   /** Margin and padding of the row, column or block a dialog is for (D47). */
   const spacingFields = (target: Styled) => {
     const part = partOf(rows, target);
@@ -2701,13 +2724,7 @@ function Dialogs({
             }
             style={
               <>
-                {fontField("Font", block.font, "The site's body font", (font) =>
-                  onRows((current) => patchBlock<RichTextBlock>(current, block.id, { font })),
-                )}
-                <TextAlignFields
-                  value={block}
-                  onChange={(patch) => onRows((current) => patchBlock<RichTextBlock>(current, block.id, patch))}
-                />
+                {typographyFields({ kind: "block", id: block.id }, "The site's body font")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -2756,9 +2773,7 @@ function Dialogs({
                   onChange={(shape) => onRows((current) => patchBlock<ImageBlock>(current, block.id, { shape }))}
                 />
                 <ImageSizeFields block={block} onChange={(patch) => onRows((current) => patchBlock<ImageBlock>(current, block.id, patch))} />
-                {fontField("Caption font", block.font, "The site's body font", (font) =>
-                  onRows((current) => patchBlock<ImageBlock>(current, block.id, { font })),
-                )}
+                {typographyFields({ kind: "block", id: block.id }, "The site's body font")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -2802,13 +2817,11 @@ function Dialogs({
             }
             style={
               <>
-                {fontField("Font", block.font, "The site's heading font", (font) =>
-                  onRows((current) => patchBlock<HeadingBlock>(current, block.id, { font })),
-                )}
                 <HeadingStyleFields
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<HeadingBlock>(current, block.id, patch))}
                 />
+                {typographyFields({ kind: "block", id: block.id }, "The site's heading font")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -2849,13 +2862,11 @@ function Dialogs({
             }
             style={
               <>
-                {fontField("Font", block.font, "The site's body font", (font) =>
-                  onRows((current) => patchBlock<ButtonBlock>(current, block.id, { font })),
-                )}
                 <ButtonStyleFields
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ButtonBlock>(current, block.id, patch))}
                 />
+                {typographyFields({ kind: "block", id: block.id }, "The site's body font")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -2887,13 +2898,10 @@ function Dialogs({
             general={<editor.General block={block} context={{ upload, startVideo }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />}
             style={
               <>
-                {editor.font &&
-                  fontField(editor.font.label, (block as { font?: string }).font, editor.font.fallback, (font) =>
-                    onRows((current) => patchBlock(current, block.id, { font } as Partial<PageBlock>)),
-                  )}
                 {editor.Style && (
                   <editor.Style block={block} context={{ upload, startVideo }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />
                 )}
+                {typographyFields({ kind: "block", id: block.id }, editor.font?.fallback)}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -2926,12 +2934,7 @@ function Dialogs({
             }
             style={
               <>
-                {fontField("Font", block.font, "The site's fonts", (font) =>
-                  onRows((current) => patchBlock<ProductBlock>(current, block.id, { font })),
-                )}
-                {ALIGNED_PARTS.includes(block.part) && (
-                  <TextAlignFields value={block} onChange={(patch) => onRows((current) => patchBlock<ProductBlock>(current, block.id, patch))} />
-                )}
+                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -2962,9 +2965,7 @@ function Dialogs({
             general={<SiteFields block={block} onChange={(patch) => onRows((current) => patchBlock<SiteBlock>(current, block.id, patch))} />}
             style={
               <>
-                {fontField("Font", block.font, "The site's fonts", (font) =>
-                  onRows((current) => patchBlock<SiteBlock>(current, block.id, { font })),
-                )}
+                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3007,9 +3008,7 @@ function Dialogs({
                   value={block}
                   onChange={(patch) => onRows((current) => patchBlock<MenuBlock>(current, block.id, patch))}
                 />
-                {fontField("Font", block.font, "The site's fonts", (font) =>
-                  onRows((current) => patchBlock<MenuBlock>(current, block.id, { font })),
-                )}
+                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3046,9 +3045,7 @@ function Dialogs({
             }
             style={
               <>
-                {fontField("Font", block.font, "The site's fonts", (font) =>
-                  onRows((current) => patchBlock<PlansBlock>(current, block.id, { font })),
-                )}
+                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3086,9 +3083,7 @@ function Dialogs({
             }
             style={
               <>
-                {fontField("Font", block.font, "The site's fonts", (font) =>
-                  onRows((current) => patchBlock<SearchBlock>(current, block.id, { font })),
-                )}
+                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3151,9 +3146,7 @@ function Dialogs({
             }
             style={
               <>
-                {fontField("Font", block.font, "The site's fonts", (font) =>
-                  onRows((current) => patchBlock<StorePartBlock>(current, block.id, { font })),
-                )}
+                {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3191,19 +3184,11 @@ function Dialogs({
             }
             style={
               <>
-                {fontField("Font of the tiles", block.font, "The site's body font", (font) =>
-                  onRows((current) => patchBlock<ContentGridBlock>(current, block.id, { font })),
-                )}
-                {fontField(
-                  "Font of the tiles' headings",
-                  block.headingFont,
-                  block.font ? "The tiles' font" : "The site's heading font",
-                  (headingFont) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, { headingFont })),
-                )}
                 <GridStyleFields
                   block={block}
                   onChange={(patch) => onRows((current) => patchBlock<ContentGridBlock>(current, block.id, patch))}
                 />
+                {typographyFields({ kind: "block", id: block.id }, "The site's body font")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
               </>
@@ -3285,6 +3270,7 @@ function Dialogs({
                     mark={<SizeMark part={column} field="background" label="Background" onPatch={plainPatch({ kind: "column", id: column.id })} />}
                   />,
                 )}
+                {typographyFields({ kind: "column", id: column.id })}
                 {spacingFields({ kind: "column", id: column.id })}
                 {frameFields({ kind: "column", id: column.id })}
               </>
@@ -3323,6 +3309,7 @@ function Dialogs({
                     mark={<SizeMark part={row} field="background" label="Background" onPatch={plainPatch({ kind: "row", id: row.id })} />}
                   />,
                 )}
+                {typographyFields({ kind: "row", id: row.id })}
                 {spacingFields({ kind: "row", id: row.id })}
                 {frameFields({ kind: "row", id: row.id })}
               </>
@@ -4692,27 +4679,10 @@ function HeadingFields({
   );
 }
 
-/** A heading's size, weight, alignment and colour (D49). */
+/** A heading's colour (D49); its size, weight, alignment and font are its typography (D179). */
 function HeadingStyleFields({ block, onChange }: { block: HeadingBlock; onChange: (patch: BlockPatch<HeadingBlock>) => void }) {
   return (
     <div className="flex flex-col gap-4">
-      <Choices
-        legend="Size"
-        options={(Object.keys(HEADING_SIZES) as HeadingSize[]).map((size) => ({ value: size, label: HEADING_SIZES[size] }))}
-        value={block.size ?? HEADING_DEFAULT_SIZE[block.level]}
-        onChange={(size) => onChange({ size })}
-      />
-      <Choices
-        legend="Weight"
-        hint="the theme's unless chosen"
-        options={[
-          { value: "theme" as const, label: "Theme's" },
-          ...(Object.keys(FONT_WEIGHTS) as FontWeight[]).map((weight) => ({ value: weight, label: FONT_WEIGHTS[weight] })),
-        ]}
-        value={block.weight ?? "theme"}
-        onChange={(weight) => onChange({ weight: weight === "theme" ? undefined : weight })}
-      />
-      <TextAlignFields value={block} onChange={onChange} />
       <OptionalColor
         label="Text colour"
         hint="Otherwise the site's text colour."
@@ -4782,17 +4752,11 @@ function ButtonFields({ block, onChange }: { block: ButtonBlock; onChange: (bloc
   );
 }
 
-/** A button's look: kind, size, corners, width, place and colours (D49). */
+/** A button's look: kind, size, corners, width, place and colours (D49); its weight and font are its typography (D179). */
 function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: (patch: BlockPatch<ButtonBlock>) => void }) {
   return (
     <div className="flex flex-col gap-4">
       <ButtonLookFields look={block} onChange={onChange} />
-      <Choices
-        legend="Weight"
-        options={(Object.keys(FONT_WEIGHTS) as FontWeight[]).map((weight) => ({ value: weight, label: FONT_WEIGHTS[weight] }))}
-        value={block.weight ?? "medium"}
-        onChange={(weight) => onChange({ weight: weight === "medium" ? undefined : weight })}
-      />
       <Check
         label="Full width"
         hint="As wide as its column."
@@ -5283,12 +5247,6 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
         options={GRID_LEVELS.map((level) => ({ value: String(level), label: `H${level}` }))}
         value={String(block.headingLevel)}
         onChange={(level) => onChange({ headingLevel: Number(level) as ContentGridBlock["headingLevel"] })}
-      />
-      <Choices
-        legend="Heading size"
-        options={(Object.keys(HEADING_SIZES) as HeadingSize[]).map((size) => ({ value: size, label: HEADING_SIZES[size] }))}
-        value={block.headingSize ?? "sm"}
-        onChange={(size) => onChange({ headingSize: size === "sm" ? undefined : size })}
       />
       <NumberField
         label="Excerpt"
@@ -6309,15 +6267,7 @@ function ProductFields({ block, onChange }: { block: ProductBlock; onChange: (pa
       {block.part === "title" && (
         <>
           <Check label="Wishlist heart" hint="Beside the title, to save the product." checked={block.wishlist !== false} onChange={(on) => onChange({ wishlist: on ? undefined : false })} />
-          <Choices
-            legend="Size"
-            options={[
-              { value: "standard" as const, label: "Standard" },
-              ...(Object.keys(HEADING_SIZES) as HeadingSize[]).map((size) => ({ value: size, label: HEADING_SIZES[size] })),
-            ]}
-            value={block.size ?? "standard"}
-            onChange={(size) => onChange({ size: size === "standard" ? undefined : size })}
-          />
+          <p className="text-xs text-muted">The title&apos;s size, weight and font are under Style, Typography.</p>
         </>
       )}
       {block.part === "price" && (
@@ -6410,7 +6360,9 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
       case "title":
         return (
           <span className="flex items-start justify-between gap-4">
-            <span className={`${block.size ? HEADING_SIZE_CLASS[block.size] : "text-3xl"} font-heading tracking-tight`}>Product name</span>
+            <span data-kz-stand-in="title" className="font-heading text-3xl tracking-tight">
+              Product name
+            </span>
             {block.wishlist !== false && <span className="size-11 shrink-0 rounded-full border border-border" />}
           </span>
         );
