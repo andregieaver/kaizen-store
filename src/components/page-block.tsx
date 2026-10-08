@@ -154,23 +154,20 @@ export function PageBlockView({ block }: { block: PageBlock }) {
 }
 
 /**
- * A heading (D49): its size (by its level unless set), weight (the theme's unless set), alignment and font are its
- * typography (D179), drawn by the part stylesheet by the store's screen sizes.
+ * A heading (D49): its size (by its level unless set), weight (the theme's unless set), alignment, font and colour are its
+ * typography (D179, D180), drawn by the part stylesheet by the store's screen sizes.
  */
 function Heading({ block }: { block: HeadingBlock }) {
   const Tag = `h${block.level}` as const;
   return (
-    <Tag
-      className="leading-tight text-balance font-heading"
-      style={block.textColor ? { color: block.textColor } : undefined}
-    >
+    <Tag className="leading-tight text-balance font-heading">
       <Inline text={block.text} links />
     </Tag>
   );
 }
 
 /** How a button looks (D49): its kind, size, corners and colours; also a content grid's tile buttons (D51). */
-export type ButtonLook = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "textColor">;
+export type ButtonLook = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill">;
 
 /** The classes and colours of a link that looks like a button. */
 export function buttonLook(
@@ -190,10 +187,8 @@ export function buttonLook(
     className: `relative z-[2] inline-flex items-center justify-center text-center ${WEIGHTS[weight]} transition focus-visible:outline-2 focus-visible:outline-offset-2 ${
       BUTTON_SIZES[size]
     } ${variant === "text" ? "" : `${BUTTON_PADDING[size]} ${BUTTON_SHAPES[look?.shape ?? "rounded"]}`} ${fullWidth ? "w-full" : ""} ${colors}`,
-    style:
-      variant === "filled"
-        ? { backgroundColor: look?.fill, color: look?.textColor }
-        : { color: look?.textColor ?? look?.fill, borderColor: look?.fill },
+    // Its text colour is its block's typography (D180), which beats this as the inline colour it was.
+    style: variant === "filled" ? { backgroundColor: look?.fill } : { color: look?.fill, borderColor: look?.fill },
   };
 }
 
@@ -250,7 +245,6 @@ function Separator({ block }: { block: SeparatorBlock }) {
  * column's width, on phones if set.
  */
 function DualButton({ block }: { block: DualButtonBlock }) {
-  const sides = [block.first, block.second].filter(buttonShows);
   return (
     <div
       // One under another where it stacks (D179: the block's rules, `blockStyle()`).
@@ -258,17 +252,26 @@ function DualButton({ block }: { block: DualButtonBlock }) {
       className="inline-flex flex-wrap items-center"
       style={{ gap: `${block.gap ?? 12}px` }}
     >
-      {sides.map((side, index) => (
-        <SideButton key={index} side={side} block={block} />
-      ))}
+      {(["first", "second"] as const)
+        .filter((which) => buttonShows(block[which]))
+        .map((which) => (
+          <SideButton key={which} which={which} side={block[which]} block={block} />
+        ))}
     </div>
   );
 }
 
-function SideButton({ side, block }: { side: DualButtonSide; block: DualButtonBlock }) {
+function SideButton({ which, side, block }: { which: "first" | "second"; side: DualButtonSide; block: DualButtonBlock }) {
   const look = buttonLook({ ...side, size: block.size, shape: block.shape });
   return (
-    <a href={side.href} {...(side.newTab && { target: "_blank", rel: "noopener noreferrer" })} style={look.style} className={look.className}>
+    <a
+      href={side.href}
+      {...(side.newTab && { target: "_blank", rel: "noopener noreferrer" })}
+      style={look.style}
+      className={look.className}
+      // Each button's own typography (its colour, D180).
+      data-kz-text={which}
+    >
       <Inline text={side.label} />
       {side.newTab && <span className="sr-only"> (opens in a new tab)</span>}
     </a>

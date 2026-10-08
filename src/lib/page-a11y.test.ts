@@ -34,6 +34,8 @@ const row = (columns: PageColumn[], over: Partial<PageRow> = {}): PageRow => ({ 
 const page = (...rows: PageRow[]): Pick<PageContent, "rows" | "title"> => ({ title: "A page", rows });
 const one = (...blocks: PageBlock[]) => page(row([col(blocks)]));
 const rules = (issues: PageIssue[]) => issues.map((i) => i.rule);
+/** A text colour (D180): the part's typography, with an opacity if given, at Extra large or a smaller size. */
+const ink = (color: string, opacity?: number) => ({ typography: { text: { color, ...(opacity !== undefined && { opacity }) } } });
 
 describe("the rules", () => {
   it("have a severity and a title each, and the blocking ones are those that ask before publishing", () => {
@@ -163,18 +165,18 @@ describe("headings", () => {
 
 describe("contrast", () => {
   it("finds a heading colour too close to the row's or column's solid background", () => {
-    const grey = heading(2, "Grey on white", { textColor: "#aaaaaa" });
-    const ok = heading(2, "Black on white", { textColor: "#000000" });
+    const grey = heading(2, "Grey on white", ink("#aaaaaa"));
+    const ok = heading(2, "Black on white", ink("#000000"));
     const issues = pageIssues(page(row([col([grey, ok])], { background: { type: "color", color: "#ffffff" } })));
     expect(issues.map((i) => [i.rule, i.blockId])).toEqual([["contrast", grey.id]]);
     expect(issues[0].message).toMatch(/2\.3:1.*4\.5:1/);
     // The column's own background wins over the row's.
-    const inner = heading(2, "White on black column", { textColor: "#ffffff" });
+    const inner = heading(2, "White on black column", ink("#ffffff"));
     expect(pageIssues(page(row([col([inner], { background: { type: "color", color: "#000000" } })], { background: { type: "color", color: "#ffffff" } })))).toEqual([]);
   });
 
   it("does not check what it cannot know: pictures, gradients, videos, see-through colours", () => {
-    const grey = () => heading(2, "Grey", { textColor: "#aaaaaa" });
+    const grey = () => heading(2, "Grey", ink("#aaaaaa"));
     for (const background of [
       { type: "image", image: { url: "u", width: 1, height: 1 }, overlay: null },
       { type: "gradient", style: "shift", colors: ["#fff", "#eee"] },
@@ -186,17 +188,17 @@ describe("contrast", () => {
   });
 
   it("holds a solid colour with opacity 100, and short hex colours, to the same rule", () => {
-    const grey = heading(2, "Grey", { textColor: "#aaa" });
+    const grey = heading(2, "Grey", ink("#aaa"));
     expect(rules(pageIssues(page(row([col([grey])], { background: { type: "color", color: "#fff", opacity: 100 } }))))).toEqual(["contrast"]);
   });
 
   it("holds a button's text to its fill when the owner chose both", () => {
-    const bad = button("Buy now", "/buy", { fill: "#ffff00", textColor: "#ffffff" });
-    const good = button("Buy now", "/buy", { fill: "#000000", textColor: "#ffffff" });
+    const bad = button("Buy now", "/buy", { fill: "#ffff00", ...ink("#ffffff") });
+    const good = button("Buy now", "/buy", { fill: "#000000", ...ink("#ffffff") });
     const theme = button("Buy now", "/buy", { fill: "#ffff00" });
     expect(rules(pageIssues(one(bad, good, theme)))).toEqual(["contrast"]);
     // An outline button's text sits on the background behind it.
-    const outline = button("Buy now", "/buy", { variant: "outline", textColor: "#cccccc" });
+    const outline = button("Buy now", "/buy", { variant: "outline", ...ink("#cccccc") });
     expect(rules(pageIssues(page(row([col([outline])], { background: { type: "color", color: "#ffffff" } }))))).toEqual(["contrast"]);
   });
 
@@ -216,8 +218,90 @@ describe("contrast", () => {
     // A row with no background of its own is the theme's page: nothing of the owner's to hold it to.
     expect(pageIssues(one(body), { theme: light })).toEqual([]);
     // An explicit text colour with no explicit background is held to the theme's background.
-    expect(rules(pageIssues(one(heading(2, "Pale", { textColor: "#eeeeee" })), { theme: light }))).toEqual(["contrast"]);
-    expect(pageIssues(one(heading(2, "Dark", { textColor: "#222222" })), { theme: light })).toEqual([]);
+    expect(rules(pageIssues(one(heading(2, "Pale", ink("#eeeeee"))), { theme: light }))).toEqual(["contrast"]);
+    expect(pageIssues(one(heading(2, "Dark", ink("#222222"))), { theme: light })).toEqual([]);
+  });
+
+  describe("with opacity, inheritance and screen sizes (D180)", () => {
+    const white = { background: { type: "color" as const, color: "#ffffff" } };
+
+    it("passes an opaque dark text and fails the same colour faded until it is too light", () => {
+      expect(pageIssues(page(row([col([heading(2, "Solid", ink("#333333"))])], white)))).toEqual([]);
+      expect(pageIssues(page(row([col([heading(2, "Solid at 100", ink("#333333", 100))])], white)))).toEqual([]);
+      // #333333 at 40 % over white blends to #adadad: 2.2:1.
+      const faded = heading(2, "Faded", ink("#333333", 40));
+      const issues = pageIssues(page(row([col([faded])], white)));
+      expect(issues.map((i) => [i.rule, i.blockId, i.severity])).toEqual([["contrast", faded.id, "blocking"]]);
+      expect(issues[0].message).toMatch(/2\.2:1/);
+      // Lightly faded still reads: #333333 at 90 % is #474747, 9.4:1.
+      expect(pageIssues(page(row([col([heading(2, "Nearly solid", ink("#333333", 90))])], white)))).toEqual([]);
+      // Faded over the theme's background where the owner gave none.
+      expect(rules(pageIssues(one(heading(2, "Faded", ink("#000000", 20))), { theme: { sets: [{ name: "light", text: "#111111", background: "#ffffff" }] } }))).toEqual(["contrast"]);
+    });
+
+    it("takes the column's colour, else the row's, down to blocks that set none, and a block's own wins", () => {
+      const body = text(doc(para("Words")));
+      const pale = { ...white, ...ink("#cccccc") };
+      // From the column.
+      expect(rules(pageIssues(page(row([col([body], pale)]))))).toEqual(["contrast"]);
+      // From the row, over the row's background.
+      expect(rules(pageIssues(page(row([col([text(doc(para("Words")))])], pale))))).toEqual(["contrast"]);
+      // The column's own colour wins over the row's.
+      expect(pageIssues(page(row([col([text(doc(para("Words")))], ink("#111111"))], pale)))).toEqual([]);
+      // A block's own colour wins over both.
+      expect(pageIssues(page(row([col([heading(2, "Own", ink("#000000"))], pale)])))).toEqual([]);
+      // A column's colour faded by its own opacity.
+      expect(rules(pageIssues(page(row([col([text(doc(para("Words")))], { ...white, ...{ typography: { text: { color: "#000000", opacity: 25 } } } })]))))).toEqual(["contrast"]);
+    });
+
+    it("checks every screen size where the colour or the background differs, and says which", () => {
+      // Dark on white everywhere, but faded on Small only.
+      const small = heading(2, "Faded on phones", { ...ink("#222222"), at: { sm: { typography: { text: { opacity: 30 } } } } });
+      const issues = pageIssues(page(row([col([small])], white)));
+      expect(issues.map((i) => i.rule)).toEqual(["contrast"]);
+      expect(issues[0].message).toMatch(/at Small\.$/);
+      // A pale colour that a dark one replaces from Medium down: fails at Extra large and Large.
+      const large = heading(2, "Pale on computers", { ...ink("#dddddd"), at: { md: { typography: { text: { color: "#111111" } } } } });
+      expect(pageIssues(page(row([col([large])], white)))[0].message).toMatch(/at Extra large, Large\.$/);
+      // The background differs by size: a dark row on Small under white text.
+      const whiteText = heading(2, "White", ink("#ffffff"));
+      const dark = { background: { type: "color" as const, color: "#000000" }, at: { sm: { background: { type: "color" as const, color: "#f5f5f5" } } } };
+      expect(pageIssues(page(row([col([whiteText])], dark as Partial<PageRow>)))[0].message).toMatch(/at Small\.$/);
+      // Fine at every size: no issue.
+      expect(pageIssues(page(row([col([heading(2, "Fine", { ...ink("#000000"), at: { sm: { typography: { text: { opacity: 90 } } } } })])], white)))).toEqual([]);
+    });
+
+    it("checks colours marked on words in rich text, with their opacity", () => {
+      const marked = (color: string, opacity?: number): RichTextDoc =>
+        doc({ type: "paragraph", content: [{ type: "text", text: "Coloured", marks: [{ type: "textStyle", attrs: { color, ...(opacity !== undefined && { opacity }) } }] }] });
+      expect(pageIssues(page(row([col([text(marked("#1d4ed8"))])], white)))).toEqual([]);
+      const pale = text(marked("#1d4ed8", 30));
+      const issues = pageIssues(page(row([col([pale])], white)));
+      expect(issues.map((i) => [i.rule, i.blockId])).toEqual([["contrast", pale.id]]);
+      expect(issues[0].message).toMatch(/^Coloured words/);
+      // In an accordion's body too.
+      const accordion = { id: id("a"), type: "accordion", items: [{ id: id("i"), title: "Q", body: marked("#eeeeee") }] } as unknown as PageBlock;
+      expect(rules(pageIssues(page(row([col([accordion])], white))))).toEqual(["contrast"]);
+    });
+
+    it("holds each of a dual button's two to its fill, and any other kind of text a block colours", () => {
+      const dual = {
+        id: id("d"),
+        type: "dualButton",
+        first: { label: "Shop the range", href: "/shop", fill: "#ffff00" },
+        second: { label: "About the shop", href: "/about", variant: "outline" },
+        typography: { first: { color: "#ffffff" } },
+      } as unknown as PageBlock;
+      const issues = pageIssues(page(row([col([dual])], white)));
+      expect(issues.map((i) => i.rule)).toEqual(["contrast"]);
+      expect(issues[0].message).toMatch(/^The first button's text/);
+      // The buttons' shared colour reaches the second, an outline over the row.
+      const shared = { ...dual, first: { label: "Shop the range", href: "/shop", fill: "#000000" }, typography: { text: { color: "#eeeeee" } } } as unknown as PageBlock;
+      expect(pageIssues(page(row([col([shared])], white)))[0].message).toMatch(/^The second button's text/);
+      // A grid's titles in a pale colour.
+      const grid = { id: id("g"), type: "contentGrid", typography: { title: { color: "#f0f0f0" } } } as unknown as PageBlock;
+      expect(pageIssues(page(row([col([grid])], white)))[0].message).toMatch(/^The titles/);
+    });
   });
 
   it("makes theme sets from the theme's settings as themeWarnings() reads them", () => {

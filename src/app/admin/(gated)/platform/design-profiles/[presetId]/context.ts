@@ -1,5 +1,6 @@
 import "server-only";
 
+import { themeSwatches } from "@/lib/colour";
 import { breakpointsOf } from "@/lib/breakpoints";
 
 import type { PageOwnerContext } from "@/components/admin/page-context";
@@ -66,6 +67,7 @@ export async function workspacePageContext(store: Store, workspace: DesignWorksp
     theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings), breakpoints: breakpointsOf(store.theme.settings) },
     templates: null,
     check: { theme: themeSetsOf(store.theme.settings), checkoutPageId: null },
+    colours: themeSwatches(store.theme.settings),
     variantOf: null,
     experimentsHref: null,
     fields: null,

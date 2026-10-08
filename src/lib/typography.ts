@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { SIZES, SMALLER_SIZES, type Size, type SmallerSize } from "./breakpoints";
+import { colourCss, opacityValue } from "./colour";
 import { fontFamily } from "./fonts";
 
 /**
@@ -13,8 +14,10 @@ import { fontFamily } from "./fonts";
  * part itself for rows and columns, whose text inherits it.
  *
  * Settings saved before the panel (a heading's size, weight and alignment, a block's font, a grid's heading size and font,
- * an accordion's title size, a button's weight, rich text's and a product title's alignment) are folded into it on read
- * (`foldTypography()`, run by `upgradeBlock()`), drawing exactly as before. Pure, for the browser and the server.
+ * an accordion's title size, a button's weight, rich text's and a product title's alignment) and the text colours kept on
+ * their own before D180 (a heading's, a button's, each of a dual button's two, a grid's and a form's button's) are folded
+ * into it on read (`foldTypography()`, run by `upgradeBlock()`), drawing exactly as before. Pure, for the browser and the
+ * server.
  */
 
 // ---------------------------------------------------------------------------
@@ -80,7 +83,10 @@ export type Typography = {
   style?: TextStyle;
   variant?: TextVariant;
   textShadow?: TextShadow;
-  // Colour is D180 (`docs/text-colour.md`): it takes its place here.
+  /** Its colour (D180, `docs/text-colour.md`), `#rrggbb`; the inherited one unless set. */
+  color?: string;
+  /** How solid its colour is, 0 to 100 (solid unless set); it acts on a colour set here or inherited from a larger size. */
+  opacity?: number;
 };
 export type TypographyKey = keyof Typography;
 export const TYPOGRAPHY_KEYS = [
@@ -95,6 +101,8 @@ export const TYPOGRAPHY_KEYS = [
   "style",
   "variant",
   "textShadow",
+  "color",
+  "opacity",
 ] as const satisfies readonly TypographyKey[];
 
 /** At a smaller size: the same, and a shadow can be none there (`null`) though a larger size has one. */
@@ -118,6 +126,9 @@ export const TEXT_ROLES = [
   "badge",
   "message",
   "caption",
+  // A dual button's two (D180: each its own colour, as each had its own text colour).
+  "first",
+  "second",
 ] as const;
 export type TextRole = (typeof TEXT_ROLES)[number];
 
@@ -173,6 +184,8 @@ const typographyShape = {
   decoration: z.enum(Object.keys(TEXT_DECORATIONS) as [TextDecoration, ...TextDecoration[]]).optional(),
   style: z.enum(Object.keys(TEXT_STYLES) as [TextStyle, ...TextStyle[]]).optional(),
   variant: z.enum(Object.keys(TEXT_VARIANTS) as [TextVariant, ...TextVariant[]]).optional(),
+  color: hex.optional(),
+  opacity: opacityValue.optional(),
 };
 
 /** Settings left out are none; a group with nothing set is left out, and so is a part's typography with no group. */
@@ -250,7 +263,10 @@ export function typographyFamilies(part: WithTypography): string[] {
  * places it). `family`: how its family at Extra large is drawn: the family's class on the part (`box`) or on the element
  * (`element`, which the component draws), or a rule (`rule`). A family that differs by size is always a rule. `flatten`: a
  * size set here is the size of everything the component draws (its parts' own sizes give way, `font-size: inherit`), for
- * components whose texts are the site's own pieces (a header's parts, a menu, a product's parts).
+ * components whose texts are the site's own pieces (a header's parts, a menu, a product's parts); a colour set there is
+ * likewise the colour of all it draws but its buttons. `colourFrom` (D180): where the role has no colour at a size, the
+ * colour of that role (a dual button's first and second take the buttons' text colour); `colour: false`: the role's colour
+ * is drawn only through the roles that take it (`colourFrom`), as its selector names the same elements.
  */
 export type RoleDef = {
   role: TextRole;
@@ -260,6 +276,8 @@ export type RoleDef = {
   align: "box" | "self" | false;
   family: "box" | "element" | "rule";
   flatten?: boolean;
+  colourFrom?: TextRole;
+  colour?: false;
 };
 
 const TEXT: RoleDef = { role: "text", label: "Text", selector: "&", align: "self", family: "box" };
@@ -307,7 +325,12 @@ export function textRoles(part: TypedPart): RoleDef[] {
       // Its alignment is the button's Position.
       return [{ ...TEXT, label: "Button text", selector: "& [data-button-frame]", align: false }];
     case "dualButton":
-      return [{ ...TEXT, label: "Buttons' text", selector: "& [data-dual-buttons] > a", align: false }];
+      // Both buttons' text, then each button's own (its colour, as each had its own text colour before D180).
+      return [
+        { ...TEXT, label: "Buttons' text", selector: "& [data-dual-buttons] > a", align: false, colour: false },
+        role("first", "First button", marked("first"), { align: false, colourFrom: "text" }),
+        role("second", "Second button", marked("second"), { align: false, colourFrom: "text" }),
+      ];
     case "image":
       // A picture's alignment is its Position; its caption's text is its own.
       return [role("caption", "Caption", "& figcaption", { family: "box" })];
@@ -489,6 +512,27 @@ export function typographyDecl(t: TypographyOverride): Decl {
   return out;
 }
 
+/**
+ * A kind of text's colour at a size (D180): its own colour (else, with `colourFrom`, the other role's) with the opacity of
+ * the same role at that size; undefined where neither has a colour. An opacity alone (no colour anywhere) draws nothing.
+ */
+export function colourAt(part: WithTypography, def: Pick<RoleDef, "role" | "colourFrom">, size: Size): { color: string; opacity?: number } | undefined {
+  for (const role of def.colourFrom ? [def.role, def.colourFrom] : [def.role]) {
+    const color = typographyValueAt(part, role, "color", size) as string | undefined;
+    if (color) {
+      const opacity = typographyValueAt(part, role, "opacity", size) as number | undefined;
+      return opacity === undefined ? { color } : { color, opacity };
+    }
+  }
+  return undefined;
+}
+
+/** A kind of text's colour at a size as CSS, or undefined (`colourCss()`). */
+export function colourCssAt(part: WithTypography, def: Pick<RoleDef, "role" | "colourFrom">, size: Size): string | undefined {
+  const own = colourAt(part, def, size);
+  return own ? colourCss(own.color, own.opacity) : undefined;
+}
+
 // ---------------------------------------------------------------------------
 // Headings' sizes (formerly Tailwind classes with `md:` breakpoints)
 // ---------------------------------------------------------------------------
@@ -608,10 +652,37 @@ function moveFont(raw: Json, key: string, role: TextRole) {
   put(raw, role, { family: typeof font === "string" ? font.trim() : font });
 }
 
-/** Whether a stored block holds settings from before the Typography panel. */
+/** Moves a text colour kept on its own (before D180) into a role's colour. */
+function moveColour(raw: Json, key: string, role: TextRole) {
+  const color = raw[key];
+  if (!(key in raw)) return;
+  delete raw[key];
+  if (color === undefined) return;
+  // A value the old shape could not hold goes with it, for the schema to refuse as it did.
+  put(raw, role, { color });
+}
+
+/** Moves a nested look's text colour (a dual button's side, a grid's or a form's button) into a role's colour. */
+function moveNestedColour(raw: Json, key: string, role: TextRole) {
+  const own = raw[key];
+  if (!isObject(own) || !("textColor" in own)) return;
+  const next = { ...own };
+  const color = next.textColor;
+  delete next.textColor;
+  raw[key] = next;
+  if (color !== undefined) put(raw, role, { color });
+}
+
+/** Blocks whose buttons kept a text colour of their own before D180. */
+const BUTTON_LOOKS = new Set(["contentGrid", "emailForm", "newsletter"]);
+
+/** Whether a stored block holds settings from before the Typography panel (D179) or a text colour of its own (D180). */
 const OLD_KEYS = ["font", "headingFont", "headingSize", "titleSize"] as const;
 function holdsOld(raw: Json): boolean {
   if (OLD_KEYS.some((key) => key in raw)) return true;
+  if ((raw.type === "heading" || raw.type === "button") && "textColor" in raw) return true;
+  if (raw.type === "dualButton" && [raw.first, raw.second].some((side) => isObject(side) && "textColor" in side)) return true;
+  if (BUTTON_LOOKS.has(String(raw.type)) && isObject(raw.button) && "textColor" in raw.button) return true;
   if ((raw.type === "heading" || raw.type === "button" || raw.type === "dualButton") && "weight" in raw) return true;
   if (raw.type === "heading" && "size" in raw) return true;
   if (raw.type === "product" && raw.part === "title" && "size" in raw) return true;
@@ -636,6 +707,7 @@ export function foldTypography(value: unknown): unknown {
       moveWeight(raw, "text");
       moveAlign(raw, "text");
       moveFont(raw, "font", "text");
+      moveColour(raw, "textColor", "text");
       break;
     case "richText":
       moveAlign(raw, "text");
@@ -648,6 +720,9 @@ export function foldTypography(value: unknown): unknown {
     case "dualButton":
       moveWeight(raw, "text");
       moveFont(raw, "font", "text");
+      moveColour(raw, "textColor", "text");
+      moveNestedColour(raw, "first", "first");
+      moveNestedColour(raw, "second", "second");
       break;
     case "accordion":
     case "faq":
@@ -658,6 +733,12 @@ export function foldTypography(value: unknown): unknown {
       movePreset(raw, "headingSize", "title", false);
       moveFont(raw, "font", "text");
       moveFont(raw, "headingFont", "title");
+      moveNestedColour(raw, "button", "button");
+      break;
+    case "emailForm":
+    case "newsletter":
+      moveFont(raw, "font", "text");
+      moveNestedColour(raw, "button", "button");
       break;
     case "product":
       if (raw.part === "title") movePreset(raw, "size", "text", true);

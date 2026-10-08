@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { HEX6, colourCss, isOpacity } from "@/lib/colour";
 import type { BlockNode, InlineNode, Mark, RichTextDoc } from "@/lib/page-content";
 
 /**
@@ -60,13 +61,19 @@ function inline(nodes: InlineNode[] = []): ReactNode {
   return nodes.map((node, index) => (node.type === "hardBreak" ? <br key={index} /> : marked(node.text, node.marks ?? [], index)));
 }
 
-/** Text wrapped in its marks; a link goes outermost. */
+/** Text wrapped in its marks; a link goes outermost, so a colour (D180) is the words' own inside it. */
 function marked(text: string, marks: Mark[], key: number): ReactNode {
   let out: ReactNode = text;
   for (const mark of marks) {
     if (mark.type === "bold") out = <strong>{out}</strong>;
     else if (mark.type === "italic") out = <em>{out}</em>;
     else if (mark.type === "underline") out = <u>{out}</u>;
+  }
+  const colour = marks.find((mark) => mark.type === "textStyle");
+  // Only a colour as `cleanRichText()` keeps it, drawn as a style on an element, never as HTML.
+  if (colour && HEX6.test(colour.attrs.color)) {
+    const opacity = isOpacity(colour.attrs.opacity) ? colour.attrs.opacity : undefined;
+    out = <span style={{ color: colourCss(colour.attrs.color, opacity) }}>{out}</span>;
   }
   const link = marks.find((mark) => mark.type === "link");
   if (link) {

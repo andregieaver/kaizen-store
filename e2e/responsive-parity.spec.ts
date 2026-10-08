@@ -183,6 +183,34 @@ function typoPage(menuId: string | null): Json {
         ...(menuId ? [{ id: "t3m", type: "menu", menuId, font: "Lora", align: { mobile: "center" } }] : []),
       ]),
     ]),
+    // D180 (`docs/text-colour.md`): text colours kept on their own before, folded into typography on read.
+    row("t4", "2", [
+      col("t4c1", [
+        { id: "t4b1", type: "button", label: "Fylt med tekstfarge", href: "/", fill: "#1d4ed8", textColor: "#fefce8" },
+        { id: "t4b2", type: "button", label: "Kontur med tekstfarge", href: "/", variant: "outline", fill: "#1d4ed8", textColor: "#a84a26" },
+        { id: "t4b3", type: "button", label: "Lenke med tekstfarge", href: "/", variant: "text", textColor: "#a84a26" },
+        { id: "t4b4", type: "button", label: "Kontur uten tekstfarge", href: "/", variant: "outline", fill: "#1d4ed8" },
+        {
+          id: "t4d",
+          type: "dualButton",
+          first: { label: "Første", href: "/", fill: "#14532d", textColor: "#f0fdf4" },
+          second: { label: "Andre", href: "/", variant: "outline", textColor: "#7c2d12" },
+        },
+      ]),
+      col("t4c2", [
+        { id: "t4n", type: "newsletter", recipients: ["post@example.com"], placeholder: "", submitLabel: "", successMessage: "", consent: "", button: { fill: "#111827", textColor: "#fde68a" } },
+        {
+          id: "t4f",
+          type: "emailForm",
+          recipients: ["post@example.com"],
+          subject: "",
+          fields: [{ id: "t4f1", kind: "email", label: "", required: true }],
+          submitLabel: "",
+          successMessage: "",
+          button: { variant: "outline", textColor: "#a84a26" },
+        },
+      ], { background: { type: "color", color: "#f5f5f4" } }),
+    ]),
   ]);
 }
 
@@ -279,6 +307,8 @@ const PROPS = [
   "text-align", "flex-direction", "flex-wrap", "order", "grid-template-columns", "align-items", "justify-content", "row-gap", "column-gap", "max-width",
   // Phase 3: typography.
   "font-size", "font-weight", "line-height", "letter-spacing", "text-transform", "font-family", "text-shadow", "font-style", "text-decoration-line",
+  // D180: colour and opacity.
+  "color", "opacity",
 ];
 
 /** Every element in the body by its place (tag and position among its siblings), with its box and its computed styles. */

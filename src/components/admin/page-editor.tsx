@@ -59,6 +59,7 @@ import type { EditablePage, PageState } from "@/server/pages";
 import { CssPanel } from "./css-panel";
 import type { Upload } from "./image-upload";
 import type { PageOwnerContext, PageSaveState } from "./page-context";
+import { ColourSwatches } from "./colour-field";
 import { ColorField, newId, PageBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
@@ -390,7 +391,9 @@ export function PageEditor({
   const state: PageState | null = saved ? (dirty && saved.published ? "changed" : saved.state) : null;
 
   return (
-    // Full width (see `AdminMain`): a left sidebar, the content and a right sidebar, a quarter, a half and a quarter.
+    // Every colour field offers the theme's colours (D180).
+    <ColourSwatches value={context.colours}>
+    {/* Full width (see `AdminMain`): a left sidebar, the content and a right sidebar, a quarter, a half and a quarter. */}
     <div className="flex flex-col gap-6 pb-28">
       <PageBuilder
         // A new language starts with its dialogs closed.
@@ -834,6 +837,7 @@ export function PageEditor({
         </div>
       </div>
     </div>
+    </ColourSwatches>
   );
 }
 

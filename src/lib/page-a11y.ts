@@ -7,13 +7,20 @@
  * asks for cannot be skipped by skipping the dialog.
  *
  * It reads only the page's own content. It cannot know the final colour behind text laid over a picture, a video or a
- * gradient (those are not checked, and the tab says so), nor a colour that is see-through. A passing check does not make a
- * page accessible: it finds some of the problems, the ones a machine can see.
+ * gradient (those are not checked, and the tab says so), nor a background that is see-through. Text that is see-through
+ * (D180: a colour with an opacity) is blended over its background first (`blend()`), at every screen size where the text's
+ * colour or the background differs (`valueAt()`, `colourAt()`); a block's text with no colour of its own takes its column's,
+ * else its row's, as the browser passes it down. A passing check does not make a page accessible: it finds some of the
+ * problems, the ones a machine can see.
  */
+import { SIZES, SIZE_LABELS, type Size } from "./breakpoints";
+import { blend } from "./colour";
 import { inlinePlain } from "./inline-text";
 import { contrastRatio } from "./theme";
 import type { PageBlock, PageColumn, PageContent, PageRow, RichTextDoc, BlockNode, InlineNode } from "./page-content";
 import { localizePage } from "./page-translation";
+import { valueAt } from "./responsive";
+import { colourAt, textRoles, type RoleDef } from "./typography";
 
 export const PAGE_ISSUE_RULES = [
   "image_alt",
@@ -148,6 +155,8 @@ type RichFacts = {
   headings: { level: number; text: string }[];
   /** Each link's visible text. */
   links: string[];
+  /** The colours marked on words (D180), each once. */
+  colours: Ink[];
 };
 
 function inlineText(nodes: InlineNode[] | undefined): string {
@@ -155,7 +164,7 @@ function inlineText(nodes: InlineNode[] | undefined): string {
 }
 
 function richFacts(doc: RichTextDoc | undefined): RichFacts {
-  const facts: RichFacts = { text: "", headings: [], links: [] };
+  const facts: RichFacts = { text: "", headings: [], links: [], colours: [] };
   const lines: string[] = [];
   const visitInline = (nodes: InlineNode[] | undefined) => {
     // Adjacent text nodes with the same link are one link.
@@ -170,6 +179,11 @@ function richFacts(doc: RichTextDoc | undefined): RichFacts {
       if (node.type !== "text") {
         flush();
         continue;
+      }
+      for (const mark of node.marks ?? []) {
+        if (mark.type !== "textStyle" || node.text.trim() === "") continue;
+        const ink: Ink = { color: mark.attrs.color.toLowerCase(), ...(mark.attrs.opacity !== undefined && { opacity: mark.attrs.opacity }) };
+        if (!facts.colours.some((c) => c.color === ink.color && c.opacity === ink.opacity)) facts.colours.push(ink);
       }
       const linked = (node.marks ?? []).some((m) => m.type === "link");
       if (linked !== inLink) flush();
@@ -211,18 +225,34 @@ function richFacts(doc: RichTextDoc | undefined): RichFacts {
 // The checks
 // ---------------------------------------------------------------------------
 
-/** What is behind a block's text, as far as is known: the column's solid colour, else the row's. */
-function behind(row: PageRow, column: PageColumn): { color: string | null; unknown: boolean } {
-  if (column.background) {
-    const own = solid(column.background);
-    return own ? { color: own, unknown: false } : { color: null, unknown: true };
-  }
-  if (row.background) {
-    const own = solid(row.background as { type: string; color?: string; opacity?: number });
+/** A text's colour and how solid it is (0–100, solid unless set). */
+type Ink = { color: string; opacity?: number };
+
+/** What is behind a block's text at a size, as far as is known: the column's solid colour, else the row's. */
+function behindAt(row: PageRow, column: PageColumn, size: Size): { color: string | null; unknown: boolean } {
+  for (const part of [column, row] as const) {
+    const background = valueAt(part, "background", size);
+    if (!background) continue;
+    const own = solid(background as { type: string; color?: string; opacity?: number });
     return own ? { color: own, unknown: false } : { color: null, unknown: true };
   }
   return { color: null, unknown: false };
 }
+
+const TEXT_ROLE: Pick<RoleDef, "role"> = { role: "text" };
+
+/** A part's colour of a kind of text at a size, as a checkable ink (`#rrggbb`); null where it has none or one not checkable. */
+function inkAt(part: Parameters<typeof colourAt>[0], def: Pick<RoleDef, "role" | "colourFrom">, size: Size): Ink | null {
+  const own = colourAt(part, def, size);
+  const color = hex6(own?.color);
+  return own && color ? { color, ...(own.opacity !== undefined && { opacity: own.opacity }) } : null;
+}
+
+/** The colour a block's text takes from around it at a size: its column's, else its row's (CSS passes colour down). */
+const aroundAt = (row: PageRow, column: PageColumn, size: Size): Ink | null => inkAt(column, TEXT_ROLE, size) ?? inkAt(row, TEXT_ROLE, size);
+
+/** Kinds of text drawn on their own fill (a button's), not on the block's background. */
+const ON_FILL: ReadonlySet<string> = new Set(["button"]);
 
 export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partial<Pick<PageContent, "translations" | "seo" | "thumbnail">>, context: CheckContext = {}): PageIssue[] {
   const issues: PageIssue[] = [];
@@ -236,7 +266,6 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
 
   for (const row of content.rows) {
     for (const column of row.columns) {
-      const back = behind(row, column);
       for (const block of column.blocks) {
         const place = { rowId: row.id, columnId: column.id, blockId: block.id };
         const where = blockWord(block);
@@ -258,26 +287,73 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
           lastLevel = level;
         };
 
-        const textOver = (textColor: string | null, label: string, over: string | null, overUnknown: boolean) => {
-          // An explicit text colour over an explicit solid background; with the theme, the theme's colour stands in for a missing one.
-          if (overUnknown) return;
-          const pairs: { text: string; bg: string; set: string | null }[] = [];
-          if (textColor && over) pairs.push({ text: textColor, bg: over, set: null });
-          else if (context.theme) {
-            for (const set of context.theme.sets) {
-              const text = textColor ?? hex6(set.text);
-              const bg = over ?? hex6(set.background);
-              // Nothing of the page's own to hold it to when neither colour is the owner's.
-              if (!textColor && !over) continue;
-              if (text && bg) pairs.push({ text, bg, set: set.name });
+        /**
+         * Text over a background, at every screen size: a colour with an opacity is blended over what is behind it first. An
+         * explicit text colour over an explicit solid background; with the theme, its colour stands in for a missing one
+         * (`themeText`: where the text's own is the theme's text colour). One issue a block, naming the sizes where only
+         * some fail.
+         */
+        let contrastAdded = false;
+        const textOver = (label: string, at: (size: Size) => { ink: Ink | null; over: string | null; unknown: boolean }, themeText = true) => {
+          if (contrastAdded) return;
+          let first: { ratio: number; set: string | null } | null = null;
+          const failing: Size[] = [];
+          for (const size of SIZES) {
+            const { ink, over, unknown } = at(size);
+            if (unknown) continue;
+            const pairs: { text: string; bg: string; set: string | null }[] = [];
+            if (ink && over) pairs.push({ text: blend(ink.color, ink.opacity, over), bg: over, set: null });
+            else if (context.theme && (ink || over) && (ink || themeText)) {
+              for (const set of context.theme.sets) {
+                const bg = over ?? hex6(set.background);
+                const text = ink ? (bg ? blend(ink.color, ink.opacity, bg) : null) : hex6(set.text);
+                if (text && bg) pairs.push({ text, bg, set: set.name });
+              }
             }
+            const bad = pairs.map((pair) => ({ ratio: contrastRatio(pair.text, pair.bg), set: pair.set })).find((pair) => pair.ratio < MIN_CONTRAST);
+            if (!bad) continue;
+            failing.push(size);
+            first ??= bad;
           }
-          for (const pair of pairs) {
-            const ratio = contrastRatio(pair.text, pair.bg);
-            if (ratio < MIN_CONTRAST) {
-              add("contrast", place, where, `${label} is hard to read on its background (${ratio.toFixed(1)}:1; aim for ${MIN_CONTRAST}:1)${pair.set ? ` in the ${pair.set} colours` : ""}.`);
-              break;
-            }
+          if (!first) return;
+          contrastAdded = true;
+          const sizes = failing.length < SIZES.length ? ` at ${failing.map((size) => SIZE_LABELS[size]).join(", ")}` : "";
+          add("contrast", place, where, `${label} is hard to read on its background (${first.ratio.toFixed(1)}:1; aim for ${MIN_CONTRAST}:1)${first.set ? ` in the ${first.set} colours` : ""}${sizes}.`);
+        };
+        /** A block's own kind of text over its column's or row's background, its colour else the one around it. */
+        const ownText = (label: string, def: Pick<RoleDef, "role" | "colourFrom">, inherits: boolean, themeText: boolean) =>
+          textOver(
+            label,
+            (size) => ({ ink: inkAt(block, def, size) ?? (inherits ? aroundAt(row, column, size) : null), ...behindOf(size) }),
+            themeText,
+          );
+        const behindOf = (size: Size) => {
+          const back = behindAt(row, column, size);
+          return { over: back.color, unknown: back.unknown };
+        };
+        /** Words coloured in rich text (D180), each colour over the block's background. */
+        const marked = (facts: RichFacts) => {
+          for (const ink of facts.colours) textOver("Coloured words in this text", (size) => ({ ink, ...behindOf(size) }), false);
+        };
+        /** A button's text: on its fill where it is filled (when the fill is known), else over the background in its colour or its fill's. */
+        const buttonText = (label: string, def: Pick<RoleDef, "role" | "colourFrom">, variant: string | undefined, fill: string | undefined) => {
+          if (variant === "filled" || variant === undefined) {
+            const over = hex6(fill);
+            if (over) textOver(label, (size) => ({ ink: inkAt(block, def, size), over, unknown: false }), false);
+          } else {
+            const fillInk = hex6(fill);
+            textOver(label, (size) => ({ ink: inkAt(block, def, size) ?? (fillInk ? { color: fillInk } : null), ...behindOf(size) }));
+          }
+        };
+
+        /**
+         * Every kind of text a block colours (D180) but text drawn on a button's fill: its own colour (its main text also the
+         * column's or row's) over its background.
+         */
+        const ownColours = () => {
+          for (const def of textRoles(block)) {
+            if (ON_FILL.has(def.role) || def.colour === false) continue;
+            ownText(def.role === "text" ? "The text" : `The ${def.label.toLowerCase()}`, def, def.role === "text", false);
           }
         };
 
@@ -289,11 +365,12 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
               if (alt === "") add("image_alt", place, where, "This picture has no alt text, so a screen reader cannot say what it shows.");
               else if (alt.length > ALT_ADVISED_MAX) add("alt_long", place, where, `The alt text is ${alt.length} characters; aim for under ${ALT_ADVISED_MAX}.`);
             }
+            ownColours();
             break;
           }
           case "heading": {
             heading(block.level, inlinePlain(block.text), Boolean(block.bind));
-            textOver(hex6(block.textColor), "The heading", back.color, back.unknown);
+            ownText("The heading", TEXT_ROLE, true, true);
             break;
           }
           case "richText": {
@@ -303,19 +380,16 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
               if (link.trim() === "") add("empty_link", place, where, "A link in this text has no words.");
               else if (isGenericLinkText(link)) add("link_text_generic", place, where, `The link "${link.trim()}" does not say where it goes.`);
             }
-            // Rich text has no colour of its own: it is the theme's.
-            textOver(null, "The text", back.color, back.unknown);
+            // Its colour is its own, else its column's or row's, else the theme's; then any words coloured in it.
+            ownText("The text", TEXT_ROLE, true, true);
+            marked(facts);
             break;
           }
           case "button": {
             if (block.bind) break;
             if (block.label.trim() === "" || block.href.trim() === "") add("empty_link", place, where, block.label.trim() === "" ? "This button has no text." : "This button goes nowhere: it has no address.");
             else if (isGenericLinkText(inlinePlain(block.label))) add("link_text_generic", place, where, `The button "${inlinePlain(block.label).trim()}" does not say where it goes.`);
-            if (block.variant === "filled" || block.variant === undefined) {
-              const fill = hex6(block.fill);
-              const text = hex6(block.textColor);
-              if (fill && text) textOver(text, "The button's text", fill, false);
-            } else textOver(hex6(block.textColor ?? block.fill), "The button's text", back.color, back.unknown);
+            buttonText("The button's text", TEXT_ROLE, block.variant, block.fill);
             break;
           }
           case "dualButton": {
@@ -325,11 +399,13 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
               if (empty && nowhere) continue; // not shown: nothing to read
               if (empty || nowhere) add("empty_link", place, where, `The ${name} button ${empty ? "has no text" : "goes nowhere: it has no address"}.`);
               else if (isGenericLinkText(inlinePlain(side.label))) add("link_text_generic", place, where, `The ${name} button "${inlinePlain(side.label).trim()}" does not say where it goes.`);
+              else buttonText(`The ${name} button's text`, { role: name, colourFrom: "text" }, side.variant, side.fill);
             }
             break;
           }
           case "socialLinks": {
             for (const link of block.links) if (link.href.trim() === "") add("empty_link", place, where, "A social link has no address.");
+            ownColours();
             break;
           }
           case "accordion":
@@ -341,7 +417,9 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
                 if (link.trim() === "") add("empty_link", place, where, "A link in this text has no words.");
                 else if (isGenericLinkText(link)) add("link_text_generic", place, where, `The link "${link.trim()}" does not say where it goes.`);
               }
+              marked(facts);
             }
+            ownColours();
             break;
           }
           case "html": {
@@ -353,6 +431,7 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
             break;
           }
           default:
+            ownColours();
             break;
         }
       }

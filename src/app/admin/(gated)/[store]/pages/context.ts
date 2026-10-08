@@ -1,5 +1,6 @@
 import "server-only";
 
+import { themeSwatches } from "@/lib/colour";
 import { breakpointsOf } from "@/lib/breakpoints";
 
 import type { PageOwnerContext } from "@/components/admin/page-context";
@@ -90,6 +91,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     // Templates shared between stores and the marketplace (D125), bound to the store.
     // What the page checker needs (wave 1, 1e): the theme's colours, and the page chosen for the checkout.
     check: { theme: themeSetsOf(store.theme.settings), checkoutPageId: store.pageRoles.checkout ?? null },
+    colours: themeSwatches(store.theme.settings),
     variantOf,
     // Tests of a page, a product layout, a header or a footer, and of their parts (D148).
     experimentsHref: type === "page" || type === "product_layout" || type === "header" || type === "footer" ? `/admin/${store.slug}/experiments/new` : null,

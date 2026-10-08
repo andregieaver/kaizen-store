@@ -253,7 +253,7 @@ describe("building the page", () => {
     );
     expect(banner.pictures).toEqual([expect.objectContaining({ target: { kind: "row", rowId: banner.content.rows[0].id }, thumbnail: true })]);
     expect(banner.content.rows[0]).toMatchObject({ width: "full" });
-    expect(pageBlocks(banner.content)[0]).toMatchObject({ type: "heading", level: 1, textColor: "#ffffff" });
+    expect(pageBlocks(banner.content)[0]).toMatchObject({ type: "heading", level: 1, typography: { text: { color: "#ffffff" } } });
     expect(pageInput.safeParse(banner.content).success).toBe(true);
   });
 

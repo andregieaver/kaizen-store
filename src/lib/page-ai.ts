@@ -751,7 +751,10 @@ function heading(
 ): HeadingBlock[] {
   const words = text.trim().slice(0, HEADING_MAX);
   const { textColor, ...look } = extra;
-  return words ? [{ id: ctx.id(), type: "heading", text: words, level, ...headingLook({ size, ...look }), ...(textColor && { textColor }) }] : [];
+  const shaped = headingLook({ size, ...look });
+  // Its colour is its typography too (D180).
+  const typography = textColor ? { ...shaped.typography, text: { ...shaped.typography?.text, color: textColor } } : shaped.typography;
+  return words ? [{ id: ctx.id(), type: "heading", text: words, level, ...shaped, ...(typography && { typography }) }] : [];
 }
 
 function text(ctx: Ctx, words: string, align?: TextAlign): RichTextBlock[] {
@@ -760,7 +763,9 @@ function text(ctx: Ctx, words: string, align?: TextAlign): RichTextBlock[] {
 }
 
 /** The section's buttons that go to an address on the site: one, two side by side, or none. */
-function buttons(ctx: Ctx, copy: SectionCopy, section: PlanSection, align?: TextAlign, look: Partial<ButtonBlock> = {}): PageBlock[] {
+function buttons(ctx: Ctx, copy: SectionCopy, section: PlanSection, align?: TextAlign, colours: Pick<ButtonBlock, "fill"> & { textColor?: string } = {}): PageBlock[] {
+  // A text colour is the button's typography (D180); the fill is the button's own.
+  const { textColor, ...look } = colours;
   const links = section.links ?? [];
   const usable = copy.buttons
     .map((button, index) => ({ label: button.label.trim(), href: ctx.allowLink(button.href) ? button.href : (links[index] ?? "") }))
@@ -769,17 +774,18 @@ function buttons(ctx: Ctx, copy: SectionCopy, section: PlanSection, align?: Text
   if (usable.length === 0) return [];
   const size = section.pattern === "hero" ? "lg" : "md";
   if (usable.length === 1) {
-    return [{ id: ctx.id(), type: "button", label: usable[0].label, href: usable[0].href, size, ...(align && { align }), ...look }];
+    return [{ id: ctx.id(), type: "button", label: usable[0].label, href: usable[0].href, size, ...(align && { align }), ...look, ...(textColor && { typography: { text: { color: textColor } } }) }];
   }
   const dual: DualButtonBlock = {
     id: ctx.id(),
     type: "dualButton",
-    first: { label: usable[0].label, href: usable[0].href, ...(look.fill && { fill: look.fill }), ...(look.textColor && { textColor: look.textColor }) },
+    first: { label: usable[0].label, href: usable[0].href, ...(look.fill && { fill: look.fill }) },
     second: { label: usable[1].label, href: usable[1].href, variant: "outline", ...(look.fill && { fill: look.fill }) },
     size,
     // One under another on phones (D179: stacked at Small).
     at: { sm: { stack: true } },
     ...(align && { align }),
+    ...(textColor && { typography: { first: { color: textColor } } }),
   };
   return [dual];
 }

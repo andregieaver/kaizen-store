@@ -74,7 +74,7 @@ const pattern = (key: string, block: PageBlock) =>
     .replace(/detail-d1\./, "detail-*.")
     .replace(/option\d+$/, "option*");
 
-describe("every text a component draws has a size (owner's addition to phase 3)", () => {
+describe("every text a component draws has a size (owner's addition to phase 3) and a colour (D180)", () => {
   it("names a kind of text for every text of every kind of component", () => {
     for (const type of BLOCK_TYPES) {
       const block = filled(type);
@@ -102,8 +102,10 @@ describe("every text a component draws has a size (owner's addition to phase 3)"
           expect(roles, `${type}${part ? ` (${part})` : ""}: ${field} → ${role}`).toContain(role);
         }
         for (const def of textRoles({ type, part })) {
-          const block = { ...filled(type), ...(part ? { part } : {}), typography: { [def.role]: { size: { value: 21, unit: "px" } } } } as PageBlock;
+          const block = { ...filled(type), ...(part ? { part } : {}), typography: { [def.role]: { size: { value: 21, unit: "px" }, color: "#123456" } } } as PageBlock;
           expect(css(block), `${type}: ${def.role}`).toContain("font-size:21px");
+          // And a colour (D180, `docs/text-colour.md`): every text has one too.
+          expect(css(block), `${type}: ${def.role} colour`).toContain("color:#123456!important");
         }
       }
     }

@@ -1,4 +1,5 @@
 import type { Breakpoints } from "@/lib/breakpoints";
+import type { ColourSwatch } from "@/lib/colour";
 import type { CSSProperties } from "react";
 
 import type { GridData } from "@/lib/content-grid";
@@ -98,6 +99,8 @@ export type PageOwnerContext = {
    * and the page chosen for the checkout, which may not hold what the payment policy would break. Kaizen's own pages have no theme.
    */
   check: { theme: ThemeSet[]; checkoutPageId: string | null } | null;
+  /** The colours colour fields offer as swatches (D180): the store theme's (`themeSwatches()`), Kaizen's own on its pages (`platformSwatches()`). */
+  colours: ColourSwatch[];
   /** For a version made for an A/B test (D148): the kind of page it is a version of, so the builder offers what that kind holds; null otherwise. */
   variantOf: PageType | null;
   /** Where a store's A/B tests are made (D148), for the builder's "A/B test this"; null for Kaizen's pages and for anything but a store's page. */

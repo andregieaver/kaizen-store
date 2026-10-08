@@ -88,7 +88,8 @@ describe("publishing with a blocking issue", () => {
   });
 
   it("holds a text colour that is hard to read on its background", async () => {
-    const hard = row({ ...heading(2, "Low contrast"), textColor: "#777777" } as PageBlock);
+    // Saved in the shape before D180 (a heading's own text colour): folded into its typography on read, and checked the same.
+    const hard = row({ ...heading(2, "Low contrast"), textColor: "#777777" } as unknown as PageBlock);
     const withBackground = { ...hard, background: { type: "color", color: "#888888" } } as unknown as PageContent["rows"][number];
     const held = await pages.savePage(owner.account, store.id, null, page([withBackground]), { publish: true });
     expect(held).toMatchObject({ ok: false, code: "needs_confirmation" });

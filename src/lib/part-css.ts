@@ -15,7 +15,8 @@ import {
   type VerticalAlign,
 } from "./page-content";
 import { carouselAnywhere, carouselAt, hiddenAt, neverStacks, spacingAt, stackAt, valueAt } from "./responsive";
-import { familyClassOf, familyStack, headingDefaultSize, textRoles, typographyAt, typographyDecl, typographyValueAt } from "./typography";
+import { colourCss } from "./colour";
+import { colourCssAt, familyClassOf, familyStack, headingDefaultSize, textRoles, typographyAt, typographyDecl, typographyValueAt } from "./typography";
 
 /**
  * The part stylesheet (D179, `docs/responsive-editing.md` 3): every setting of a row, column or block that can differ by
@@ -94,8 +95,7 @@ function colorDecl(part: PageRow | PageColumn, size: Size): Decl {
   const blur = valueAt(part, "backdropBlur", size);
   const out: Decl = {};
   if (background?.type === "color") {
-    out["background-color"] =
-      background.opacity === undefined ? background.color : `color-mix(in srgb, ${background.color} ${background.opacity}%, transparent)`;
+    out["background-color"] = colourCss(background.color, background.opacity);
   }
   if (blur && (!background || background.type === "color")) {
     out["backdrop-filter"] = `blur(${blur}px)`;
@@ -246,6 +246,9 @@ export function columnStyle(column: PageColumn, mode: PartsMode = "site"): Eleme
 // Typography (D179 phase 3)
 // ---------------------------------------------------------------------------
 
+/** What keeps its own colour inside a component whose colour is the colour of all it draws: buttons and what is in them. */
+const FLATTEN_KEEPS = "button, button *, .button-primary, .button-primary *, [data-button-frame], [data-button-frame] *";
+
 /** The headings a family's class also sets (its stylesheet's `.kf-… :where(h1, …)`), which a family by size must set too. */
 const HEADINGS = ":where(h1, h2, h3, h4, h5, h6)";
 
@@ -273,6 +276,19 @@ export function typographyRules(part: PartBase & { type?: string; part?: string;
         return decl;
       }),
     });
+    if (def.colour !== false) {
+      // Its colour (D180): as an inline style was (a heading's and a button's text colour were), it beats every normal rule
+      // and gives way to every important rule of the page; the part's text inherits a row's or column's.
+      rules.push({
+        selector: def.selector,
+        important: true,
+        where: true,
+        sizes: perSize((size) => {
+          const color = colourCssAt(part, def, size);
+          return color ? { color } : ({} as Decl);
+        }),
+      });
+    }
     if (def.flatten) {
       // A size set is the size of all the component draws: its pieces' own sizes give way to it.
       rules.push({
@@ -280,6 +296,13 @@ export function typographyRules(part: PartBase & { type?: string; part?: string;
         important: false,
         where: true,
         sizes: perSize((size) => (typographyValueAt(part, def.role, "size", size) ? { "font-size": "inherit" } : ({} as Decl))),
+      });
+      // And a colour set is the colour of all it draws but its buttons, which keep theirs on their own fill.
+      rules.push({
+        selector: `& :not(${FLATTEN_KEEPS})`,
+        important: true,
+        where: true,
+        sizes: perSize((size) => (colourCssAt(part, def, size) ? { color: "inherit" } : ({} as Decl))),
       });
     }
     if (def.align === "box") {

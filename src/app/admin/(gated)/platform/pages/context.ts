@@ -1,5 +1,6 @@
 import "server-only";
 
+import { platformSwatches } from "@/lib/colour";
 import type { PageOwnerContext } from "@/components/admin/page-context";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { reservedPageSlugs, type PageType } from "@/lib/page-content";
@@ -58,6 +59,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     theme: null,
     templates: null,
     check: null,
+    colours: platformSwatches(),
     variantOf: null,
     experimentsHref: null,
     fields: null,

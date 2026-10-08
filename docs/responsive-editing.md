@@ -5,7 +5,7 @@ stylesheet, section 9; phase 2: the builder's responsive mode, fields by size, v
 sizes, section 10; phase 3: the Typography panel on every text, components' breakpoints on the store's sizes, and the
 entrance's delay and duration, section 11; phase 4: Display by sign-in and conditions, left out by the server, section 12).
 Phases 5 and 6 are not started. Agreed with the owner on 8 October 2026; built after D178
-step 6, and before text colour and opacity (`docs/text-colour.md`, proposed D180). The model is Beaver Builder's: a value per
+step 6, and before text colour and opacity (`docs/text-colour.md`, D180, built since). The model is Beaver Builder's: a value per
 screen size on the settings of every row, column and component, a responsive editing mode in the builder, and
 visibility by screen size, sign-in or conditions in each part's Advanced tab.
 
@@ -245,7 +245,7 @@ runs nothing.
   colour, x, y and blur) and its schemas (`typographyGroupsSchema`, `typographyAtSchema`, limits per unit), held per kind of
   text (`TextRole`: text, heading, title, body, excerpt, price, quote, name, meta, label, value, input, button, badge,
   message, caption) on `PartBase.typography`, with a size's own in `at.{size}.typography` (a shadow may be `null` there).
-  Read key by key, smaller to larger (`typographyAt()`, `typographyValueAt()`), like spacing. Colour has its place for D180.
+  Read key by key, smaller to larger (`typographyAt()`, `typographyValueAt()`), like spacing. Colour and opacity joined it in D180 (`docs/text-colour.md`).
 - **Every text has a size** (the owner's addition): `textRoles(part)` gives each component's kinds of text and the element
   each is written on (a selector, with `data-kz-text` marks where none names it: grid titles, excerpts, prices, badges,
   details and buttons; testimonials' names and titles; social networks' names; plans' names, prices, features and

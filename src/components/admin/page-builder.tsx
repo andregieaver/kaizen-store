@@ -2877,10 +2877,6 @@ function Dialogs({
             }
             style={
               <>
-                <HeadingStyleFields
-                  block={block}
-                  onChange={(patch) => onRows((current) => patchBlock<HeadingBlock>(current, block.id, patch))}
-                />
                 {typographyFields({ kind: "block", id: block.id }, "The site's heading font")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -3954,21 +3950,18 @@ function BackgroundFields({
         onChange={choose}
       />
       {kind === "color" && value?.type === "color" && (
-        <div className="flex flex-wrap items-end gap-6">
-          <ColorField label="Background colour" value={value.color} onChange={(color) => onChange({ ...value, color })} />
-          <RangeField
-            label="Opacity"
-            min={0}
-            max={100}
-            step={5}
-            value={value.opacity ?? 100}
-            shown={`${value.opacity ?? 100}%`}
-            onChange={(opacity) => {
+        <ColorField
+          label="Background colour"
+          value={value.color}
+          onChange={(color) => onChange({ ...value, color })}
+          opacity={{
+            value: value.opacity,
+            onChange: (opacity) => {
               const next: RowBackground = { type: "color", color: value.color };
-              onChange(opacity >= 100 ? next : { ...next, opacity });
-            }}
-          />
-        </div>
+              onChange(opacity === undefined ? next : { ...next, opacity });
+            },
+          }}
+        />
       )}
       {(kind === "none" || kind === "color") && (
         <>
@@ -4326,21 +4319,18 @@ function BackgroundAtSize({
         onChange={(kind) => onChange({ background: kind === "color" ? { type: "color", color: own?.type === "color" ? own.color : "#ffffff" } : undefined } as Partial<PartBase>)}
       />
       {color && (
-        <div className="flex flex-wrap items-end gap-6">
-          <ColorField label="Background colour" value={color.color} onChange={(next) => onChange({ background: { ...color, color: next } } as Partial<PartBase>)} />
-          <RangeField
-            label="Opacity"
-            min={0}
-            max={100}
-            step={5}
-            value={color.opacity ?? 100}
-            shown={`${color.opacity ?? 100}%`}
-            onChange={(opacity) => {
+        <ColorField
+          label="Background colour"
+          value={color.color}
+          onChange={(next) => onChange({ background: { ...color, color: next } } as Partial<PartBase>)}
+          opacity={{
+            value: color.opacity,
+            onChange: (opacity) => {
               const next = { type: "color" as const, color: color.color };
-              onChange({ background: opacity >= 100 ? next : { ...next, opacity } } as Partial<PartBase>);
-            }}
-          />
-        </div>
+              onChange({ background: opacity === undefined ? next : { ...next, opacity } } as Partial<PartBase>);
+            },
+          }}
+        />
       )}
       <div className={`flex flex-col gap-3 ${inheritedClass(sizeSource(part, size, "backdropBlur"), size)}`}>
         <div className="flex flex-wrap items-start gap-1">
@@ -4735,21 +4725,6 @@ function HeadingFields({
             : "H1 is the page's main heading; sections below it are H2, and parts of those H3 and so on."}
         </p>
       </div>
-    </div>
-  );
-}
-
-/** A heading's colour (D49); its size, weight, alignment and font are its typography (D179). */
-function HeadingStyleFields({ block, onChange }: { block: HeadingBlock; onChange: (patch: BlockPatch<HeadingBlock>) => void }) {
-  return (
-    <div className="flex flex-col gap-4">
-      <OptionalColor
-        label="Text colour"
-        hint="Otherwise the site's text colour."
-        value={block.textColor}
-        fallback="#111827"
-        onChange={(textColor) => onChange({ textColor })}
-      />
     </div>
   );
 }

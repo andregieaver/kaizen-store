@@ -183,7 +183,9 @@ describe("a static grid of four cards", () => {
     expect(grid.typography?.title?.size).toEqual({ value: 1.5, unit: "rem" });
     expect(grid.at?.sm?.typography?.title?.size).toEqual({ value: 1.25, unit: "rem" });
     expect(grid.show).toEqual({ image: true, heading: true, excerpt: true, price: false, button: true });
-    expect(grid.button).toMatchObject({ variant: "filled", shape: "rounded", size: "md", fill: "#4f46e5", textColor: "#ffffff" });
+    expect(grid.button).toMatchObject({ variant: "filled", shape: "rounded", size: "md", fill: "#4f46e5" });
+    // Its text colour is the grid's typography (D180).
+    expect(grid.typography?.button?.color).toBe("#ffffff");
     expect(grid.excerptLines).toBeGreaterThanOrEqual(3);
     expect(grid.typography?.text?.family).toBe("Inter");
     expect(grid.display).toBeUndefined();

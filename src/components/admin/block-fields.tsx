@@ -19,6 +19,7 @@ import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
+import { ColorField } from "./colour-field";
 import { RichTextEditor } from "./rich-text-editor";
 import { SizeMark, inheritedClass, useSizeEdit } from "./responsive-edit";
 
@@ -315,46 +316,8 @@ export function NumberField({
   );
 }
 
-const HEX = /^#[0-9a-fA-F]{6}$/;
-
-/** A colour: the browser's picker, or `#rrggbb` typed. */
-export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (color: string) => void }) {
-  const id = useId();
-  const [text, setText] = useState(value);
-  return (
-    <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          aria-label={`${label}: choose`}
-          value={value}
-          onChange={(event) => {
-            setText(event.target.value);
-            onChange(event.target.value);
-          }}
-          className="h-10 w-14 cursor-pointer rounded-md border border-border bg-background p-1"
-        />
-        <input
-          id={id}
-          value={text}
-          maxLength={7}
-          spellCheck={false}
-          aria-invalid={!HEX.test(text)}
-          onChange={(event) => {
-            setText(event.target.value);
-            if (HEX.test(event.target.value)) onChange(event.target.value.toLowerCase());
-          }}
-          className="min-h-10 w-28 rounded-md border border-border bg-background px-2 font-mono text-sm aria-invalid:border-red-700"
-        />
-      </div>
-    </div>
-  );
-}
-
-
+/** The one colour field (D180): its own module, here for the fields that import it from this one. */
+export { ColorField };
 
 /** One of a few choices, as a row of buttons (radio buttons underneath). */
 export function Choices<T extends string>({
@@ -543,13 +506,6 @@ export function ButtonLookFields({ look, onChange }: { look: ButtonLook; onChang
         value={look.fill}
         fallback="#1d4ed8"
         onChange={(fill) => onChange({ fill })}
-      />
-      <OptionalColor
-        label="Text colour"
-        hint={variant === "filled" ? "Otherwise the site's background colour." : "Otherwise the button colour."}
-        value={look.textColor}
-        fallback="#ffffff"
-        onChange={(textColor) => onChange({ textColor })}
       />
     </>
   );
@@ -831,13 +787,6 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
           value={side.fill}
           fallback="#1d4ed8"
           onChange={(fill) => set({ fill })}
-        />
-        <OptionalColor
-          label="Text colour"
-          hint={variant === "filled" ? "Otherwise the accent's own text colour." : "Otherwise the button colour."}
-          value={side.textColor}
-          fallback="#ffffff"
-          onChange={(textColor) => set({ textColor })}
         />
       </fieldset>
     );

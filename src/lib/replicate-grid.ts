@@ -1645,6 +1645,8 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
   // The button: its look, and its type and room.
   const buttonNode = exemplar("button");
   let button: GridStyle["block"]["button"];
+  // The button's text colour is the grid's typography (D180), as its own text colour was drawn.
+  let buttonColour: string | undefined;
   if (buttonNode) {
     const filled = paints(buttonNode.s.backgroundColor);
     const outlined = !filled && (["Top", "Right", "Bottom", "Left"] as const).some((side) => style.borderOf(buttonNode, side) > 0);
@@ -1652,7 +1654,8 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
     const radius = px((buttonNode.s.borderTopLeftRadius ?? "0px").split(" ")[0]) ?? 0;
     const shape: ButtonShape = radius >= buttonNode.box[3] / 2 - 1 ? "pill" : radius <= 2 ? "square" : "rounded";
     const size: ButtonSize = buttonNode.box[3] < 36 ? "sm" : buttonNode.box[3] <= 48 ? "md" : "lg";
-    button = { variant, size, shape, ...(filled && hexOf(buttonNode.s.backgroundColor) ? { fill: hexOf(buttonNode.s.backgroundColor)! } : {}), ...(hexOf(buttonNode.s.color) ? { textColor: hexOf(buttonNode.s.color)! } : {}) };
+    button = { variant, size, shape, ...(filled && hexOf(buttonNode.s.backgroundColor) ? { fill: hexOf(buttonNode.s.backgroundColor)! } : {}), };
+    buttonColour = hexOf(buttonNode.s.color) ?? undefined;
     const [buttonD, buttonM] = typed(buttonNode, fonts);
     const keep = (d: Decl): Decl => Object.fromEntries(Object.entries(d).filter(([k]) => ["font-size", "font-weight", "letter-spacing", "text-transform", "line-height", "font-family"].includes(k)));
     rule(`${li} .mt-auto a`, keep(buttonD), keep(buttonM));
@@ -1678,6 +1681,7 @@ export function styleGrid(plan: GridPlan, env: GridEnv, style: StyleEnv): GridSt
   const typography: TypographyGroups = {
     ...(fonts.native ? { text: { family: fonts.native } } : {}),
     ...(Object.keys(title).length > 0 ? { title } : {}),
+    ...(buttonColour ? { button: { color: buttonColour } } : {}),
   };
   const sizedAt = titlePreset?.small ? { ...carousel.at, sm: { ...carousel.at?.sm, typography: { title: titlePreset.small } } } : carousel.at;
   const block: GridStyle["block"] = {

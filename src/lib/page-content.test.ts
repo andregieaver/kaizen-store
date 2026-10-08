@@ -606,12 +606,12 @@ describe("borders, corners and shadows; headings and buttons (D49)", () => {
     const styled = { ...heading("h", 2, " Our prices "), size: "2xl", weight: "bold", textColor: "#112233", align: { mobile: "center" } };
     const parsed = pageInput.parse(page([styled, heading("e", 3, "")]));
     const [first, empty] = parsed.rows[0].columns[0].blocks;
-    // Its size, weight and alignment are its typography (D179): Huge is 3.75rem from Medium, 2.25rem on Small.
+    // Its size, weight and alignment are its typography (D179): Huge is 3.75rem from Medium, 2.25rem on Small; its colour too (D180).
+    expect(first).not.toHaveProperty("textColor");
     expect(first).toMatchObject({
       text: "Our prices",
       level: 2,
-      textColor: "#112233",
-      typography: { text: { size: { value: 3.75, unit: "rem" }, weight: 700, align: "center" } },
+      typography: { text: { size: { value: 3.75, unit: "rem" }, weight: 700, align: "center", color: "#112233" } },
       at: { sm: { typography: { text: { size: { value: 2.25, unit: "rem" } } } } },
     });
     expect([first, empty].map(blockHasContent)).toEqual([true, false]);
@@ -631,7 +631,8 @@ describe("borders, corners and shadows; headings and buttons (D49)", () => {
     const styled = button({ variant: "outline", size: "lg", shape: "pill", fullWidth: true, newTab: true, fill: "#1d4ed8", textColor: "#ffffff" });
     const parsed = pageInput.parse(page([styled, button({ id: "draft", href: "" })]));
     const [ready, draft] = parsed.rows[0].columns[0].blocks;
-    expect(ready).toMatchObject({ variant: "outline", size: "lg", shape: "pill", fullWidth: true, newTab: true });
+    expect(ready).toMatchObject({ variant: "outline", size: "lg", shape: "pill", fullWidth: true, newTab: true, typography: { text: { color: "#ffffff" } } });
+    expect(ready).not.toHaveProperty("textColor");
     expect([ready, draft].map(blockHasContent)).toEqual([true, false]);
     expect(pageExcerpt(parsed)).toBe("");
     for (const href of ["javascript:alert(1)", "//evil.example"]) {

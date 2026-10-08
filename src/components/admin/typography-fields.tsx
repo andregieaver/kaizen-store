@@ -45,8 +45,8 @@ import { SizeSwitch, inheritedClass, sizeNote, useSizeEdit } from "./responsive-
  * a group per kind of text it has (`textRoles()`), each in three folding sections, **Font** (family, weight, size, line
  * height, alignment), **Style & spacing** (letter spacing, transform, decoration, style, variant) and **Text shadow**. Every
  * setting is edited at the screen size the builder is at, with its device icon, where its value comes from (greyed while
- * inherited) and a × that gives a size's own back (`typographyPatch()`, `clearTypographyAt()`). Colour is D180's, in its
- * place in the Font section.
+ * inherited) and a × that gives a size's own back (`typographyPatch()`, `clearTypographyAt()`). **Colour** and its opacity
+ * (D180) open the Font section, in the one colour field with the theme's swatches.
  */
 
 type Part = { type?: string; part?: string; typography?: TypographyGroups; at?: SizeOverrides };
@@ -115,6 +115,16 @@ function RoleFields({ part, def, onChange, install, familyDefault }: { part: Par
   return (
     <div className="flex flex-col">
       <Section title="Font" open>
+        {/* Colour and how solid it is (D180), at the top as in Beaver's panel; per size like every setting here. */}
+        <ColorField
+          label="Colour"
+          {...field("color", "Colour")}
+          value={shown.color}
+          placeholder="Inherited"
+          onChange={(color) => set("color", color)}
+          onClear={() => set("color", undefined)}
+          opacity={{ value: shown.opacity, onChange: (opacity) => set("opacity", opacity), ...field("opacity", "Opacity") }}
+        />
         <FontPicker
           label="Family"
           value={shown.family}
@@ -161,7 +171,6 @@ function RoleFields({ part, def, onChange, install, familyDefault }: { part: Par
             onChange={(value) => set("align", value === "" ? undefined : (value as Typography["align"]))}
           />
         )}
-        {/* Colour (D180, docs/text-colour.md) takes its place here. */}
       </Section>
       <Section title="Style & spacing">
         <MeasureField

@@ -1,18 +1,59 @@
 "use client";
 
+import { Mark } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import { Placeholder } from "@tiptap/extensions";
 import StarterKit from "@tiptap/starter-kit";
 import { useId, useState, type ReactNode } from "react";
 
+import { HEX6, colourCss, isOpacity } from "@/lib/colour";
 import { isLinkAddress, type RichTextDoc } from "@/lib/page-content";
+
+import { ColorField } from "./colour-field";
 
 /**
  * A rich-text block in the page editor (D42): Tiptap (ProseMirror) in the
  * browser, limited to what pages show: headings 2–4, paragraphs, bold,
- * italic, underline, links, lists, quotes and lines. It writes JSON, which
- * the server checks again and the site renders as elements, never as HTML.
+ * italic, underline, links, a colour (D180), lists, quotes and lines. It
+ * writes JSON, which the server checks again and the site renders as
+ * elements, never as HTML.
  */
+
+/**
+ * A colour on words (D180): Tiptap's `textStyle` mark with `color` (`#rrggbb`) and an optional `opacity` (0–100), as
+ * `cleanRichText()` keeps it. Only its own spans are read back (`data-color`), so pasted styles never come in.
+ */
+const TextColour = Mark.create({
+  name: "textStyle",
+  addAttributes() {
+    return {
+      color: {
+        default: null,
+        parseHTML: (element: HTMLElement) => {
+          const color = element.getAttribute("data-color");
+          return color && HEX6.test(color) ? color.toLowerCase() : null;
+        },
+        renderHTML: () => ({}),
+      },
+      opacity: {
+        default: null,
+        parseHTML: (element: HTMLElement) => {
+          const value = element.getAttribute("data-opacity");
+          return value !== null && isOpacity(Number(value)) ? Number(value) : null;
+        },
+        renderHTML: () => ({}),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "span[data-color]" }];
+  },
+  renderHTML({ mark }) {
+    const color = typeof mark.attrs.color === "string" && HEX6.test(mark.attrs.color) ? mark.attrs.color : null;
+    const opacity = isOpacity(mark.attrs.opacity) ? mark.attrs.opacity : null;
+    return ["span", { ...(color && { "data-color": color, style: `color: ${colourCss(color, opacity)}` }), ...(opacity !== null && { "data-opacity": String(opacity) }) }, 0];
+  },
+});
 
 const EXTENSIONS = [
   StarterKit.configure({
@@ -30,6 +71,7 @@ const EXTENSIONS = [
     },
   }),
   Placeholder.configure({ placeholder: "Write here …" }),
+  TextColour,
 ];
 
 /** What a person types as a link: "kaizen.no" means https://kaizen.no. */
@@ -96,12 +138,21 @@ function Toolbar({ editor, label }: { editor: Editor; label: string }) {
       blockquote: e.isActive("blockquote"),
       link: e.isActive("link"),
       href: (e.getAttributes("link").href as string | undefined) ?? "",
+      color: (e.getAttributes("textStyle").color as string | null | undefined) ?? undefined,
+      opacity: (e.getAttributes("textStyle").opacity as number | null | undefined) ?? undefined,
       canUndo: e.can().undo(),
       canRedo: e.can().redo(),
     }),
   });
   const [linking, setLinking] = useState(false);
+  const [colouring, setColouring] = useState(false);
   const chain = () => editor.chain().focus();
+  /** Colours the selected words, or the coloured words the cursor is in (without taking the focus from the colour field). */
+  const colour = (attrs: { color: string; opacity: number | null } | null) => {
+    let next = editor.chain();
+    if (editor.state.selection.empty && state.color) next = next.extendMarkRange("textStyle");
+    (attrs ? next.setMark("textStyle", attrs) : next.unsetMark("textStyle")).run();
+  };
 
   const button = (name: string, pressed: boolean | undefined, run: () => void, children: ReactNode, disabled = false) => (
     <button
@@ -145,6 +196,15 @@ function Toolbar({ editor, label }: { editor: Editor; label: string }) {
         {button("Italic", state.italic, () => chain().toggleItalic().run(), <em className="font-serif">I</em>)}
         {button("Underline", state.underline, () => chain().toggleUnderline().run(), <u>U</u>)}
         {button("Link", state.link || linking, () => setLinking((open) => !open), <LinkIcon />)}
+        {button(
+          "Text colour",
+          Boolean(state.color) || colouring,
+          () => setColouring((open) => !open),
+          <span aria-hidden className="flex flex-col items-center leading-none">
+            A
+            <span className="mt-0.5 h-1 w-4 rounded-sm border border-border" style={state.color ? { backgroundColor: colourCss(state.color, state.opacity) } : undefined} />
+          </span>,
+        )}
         <span aria-hidden className="mx-1 h-6 w-px bg-border" />
         {button("Bulleted list", state.bulletList, () => chain().toggleBulletList().run(), <ListIcon />)}
         {button("Numbered list", state.orderedList, () => chain().toggleOrderedList().run(), <NumberedIcon />)}
@@ -154,6 +214,21 @@ function Toolbar({ editor, label }: { editor: Editor; label: string }) {
         {button("Undo", undefined, () => chain().undo().run(), <span aria-hidden>↶</span>, !state.canUndo)}
         {button("Redo", undefined, () => chain().redo().run(), <span aria-hidden>↷</span>, !state.canRedo)}
       </div>
+      {colouring && (
+        <div className="flex flex-wrap items-end gap-3 border-t border-border p-2">
+          <ColorField
+            label="Text colour"
+            value={state.color}
+            placeholder="The text's own"
+            onChange={(color) => colour({ color, opacity: state.opacity ?? null })}
+            onClear={() => colour(null)}
+            opacity={{ value: state.opacity, onChange: (opacity) => state.color && colour({ color: state.color, opacity: opacity ?? null }) }}
+          />
+          <button type="button" onClick={() => setColouring(false)} className="min-h-9 px-2 text-sm underline">
+            Done
+          </button>
+        </div>
+      )}
       {linking && (
         <LinkForm
           key={state.href}

@@ -14,6 +14,7 @@ import {
   type PartMotion,
 } from "./motion";
 import { carouselSettingsSchema, type CarouselSettings } from "./carousel-settings";
+import { HEX6, isOpacity } from "./colour";
 import { customPictureProblem } from "./custom-picture";
 import { isSafeAddress } from "./field-parts";
 import { inlinePlain } from "./inline-text";
@@ -82,12 +83,18 @@ export const RESERVED_PAGE_SLUGS: readonly string[] = [
 // Rich text
 // ---------------------------------------------------------------------------
 
-/** Text marks the editor offers. */
+/**
+ * Text marks the editor offers. `textStyle` is a colour (D180): `#rrggbb`, and how solid it is (0–100, solid unless set),
+ * drawn by `<RichText>` as a style on a span, never as HTML.
+ */
 export type Mark =
   | { type: "bold" }
   | { type: "italic" }
   | { type: "underline" }
-  | { type: "link"; attrs: { href: string } };
+  | { type: "link"; attrs: { href: string } }
+  | { type: "textStyle"; attrs: TextColourAttrs };
+
+export type TextColourAttrs = { color: string; opacity?: number };
 
 export type TextNode = { type: "text"; text: string; marks?: Mark[] };
 export type InlineNode = TextNode | { type: "hardBreak" };
@@ -159,6 +166,18 @@ function cleanMarks(value: unknown): Mark[] | undefined {
           );
         }
         marks.push({ type: "link", attrs: { href } });
+        break;
+      }
+      case "textStyle": {
+        // A colour (D180), and nothing else Tiptap's text style may carry; one without a colour is no mark.
+        const attrs = isObject(mark.attrs) ? mark.attrs : {};
+        if (attrs.color === undefined || attrs.color === null || attrs.color === "") break;
+        if (typeof attrs.color !== "string" || !HEX6.test(attrs.color)) throw new RichTextProblem("A text colour is written as # and six hex digits, like #1f2937.");
+        const opacity = attrs.opacity;
+        if (opacity !== undefined && opacity !== null && !isOpacity(opacity)) throw new RichTextProblem("A text colour's opacity is a whole number from 0 to 100.");
+        const color = attrs.color.toLowerCase();
+        if (marks.some((m) => m.type === "textStyle")) throw new RichTextProblem("A text has one colour.");
+        marks.push({ type: "textStyle", attrs: typeof opacity === "number" && opacity < 100 ? { color, opacity } : { color } });
         break;
       }
       default:
@@ -548,8 +567,7 @@ export type HeadingBlock = PartBase & Bindable & {
   type: "heading";
   text: string;
   level: HeadingLevel;
-  /** Its size, weight (the theme's unless set, D60), alignment and font are its typography (D179); its size by level unless set. */
-  textColor?: Color;
+  /** Its size, weight (the theme's unless set, D60), alignment, font and colour are its typography (D179, D180); its size by level unless set. */
 };
 
 export const BUTTON_VARIANTS = { filled: "Filled", outline: "Outline", text: "Text link" } as const;
@@ -577,9 +595,8 @@ export type ButtonBlock = PartBase & Bindable & {
   fullWidth?: boolean;
   /** Where the button sits, as text is aligned. */
   align?: TextAlign;
-  /** The fill (or an outline's line and text); the site's text colour unless chosen. */
+  /** The fill (or an outline's line and text); the site's text colour unless chosen. Its text colour is its typography (D180). */
   fill?: Color;
-  textColor?: Color;
 };
 
 /** What a content grid shows (D51): its kinds of content; articles come with the articles themselves. */
@@ -718,7 +735,7 @@ export type ContentGridBlock = PartBase & {
    * `TILE_FIELDS_MAX`, by field id): only the plain ones of products, pages and articles.
    */
   tileFields?: string[];
-  button?: Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "textColor">;
+  button?: Pick<ButtonBlock, "variant" | "size" | "shape" | "fill">;
   tile?: GridTile;
   /** Space between tiles, in pixels. */
   gap: number;
@@ -1031,7 +1048,7 @@ export type SeparatorBlock = PartBase & {
 };
 
 /** One of a dual button's two (D91): its text, address and colours; the pair share size, corners and weight. */
-export type DualButtonSide = Pick<ButtonBlock, "label" | "href" | "newTab" | "variant" | "fill" | "textColor">;
+export type DualButtonSide = Pick<ButtonBlock, "label" | "href" | "newTab" | "variant" | "fill">;
 
 /**
  * Two buttons side by side (D91), such as "Shop now" and "Read more": each
@@ -1328,7 +1345,7 @@ export type FormField = {
 };
 
 /** How a form's button looks: a button's look (D49). */
-export type FormButton = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "textColor" | "fullWidth">;
+export type FormButton = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "fullWidth">;
 
 /**
  * An email form (D93): the owner's questions; what a visitor sends is
@@ -2066,7 +2083,6 @@ const headingBlock = z.object({
   type: z.literal("heading"),
   text: z.string().trim().max(HEADING_MAX, `Keep a heading under ${HEADING_MAX} characters.`),
   level: z.literal([1, 2, 3, 4, 5, 6], "A heading has an unknown level."),
-  textColor: color.optional(),
   bind: bindRule,
   ...partBase,
 });
@@ -2086,7 +2102,6 @@ const buttonBlock = z.object({
   fullWidth: z.boolean().optional(),
   align: textAlign,
   fill: color.optional(),
-  textColor: color.optional(),
   bind: bindRule,
   ...partBase,
 });
@@ -2196,7 +2211,6 @@ const contentGridBlock = z
       size: buttonBlock.shape.size,
       shape: buttonBlock.shape.shape,
       fill: color.optional(),
-      textColor: color.optional(),
     })
     .optional(),
   tile: z
@@ -2368,7 +2382,6 @@ const dualButtonSide = z.object({
   newTab: z.boolean().optional(),
   variant: buttonBlock.shape.variant,
   fill: color.optional(),
-  textColor: color.optional(),
 });
 
 const dualButtonBlock = z.object({
@@ -2567,7 +2580,6 @@ const formButton = z
     size: buttonBlock.shape.size,
     shape: buttonBlock.shape.shape,
     fill: color.optional(),
-    textColor: color.optional(),
     fullWidth: z.boolean().optional(),
   })
   .optional();

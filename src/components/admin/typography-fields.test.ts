@@ -7,6 +7,7 @@ vi.mock("server-only", () => ({}));
 import type { Size } from "@/lib/breakpoints";
 import type { PageBlock } from "@/lib/page-content";
 
+import { ColourSwatches } from "./colour-field";
 import { AnimationFields } from "./motion-fields";
 import { SizeEditContext } from "./responsive-edit";
 import { TypographyFields } from "./typography-fields";
@@ -27,21 +28,44 @@ const panel = (part: object, size: Size = "xl") =>
 describe("the Typography panel", () => {
   it("has Beaver's sections and every setting, each with its device icon", () => {
     const html = panel({ id: "t", type: "richText", doc: { type: "doc", content: [] } });
-    for (const words of ["Typography", "Font", "Style &amp; spacing", "Text shadow", "Family", "Weight", "Size", "Line height", "Align", "Letter spacing", "Transform", "Decoration", "Style", "Variant"]) {
+    for (const words of ["Typography", "Font", "Style &amp; spacing", "Text shadow", "Colour", "Opacity", "Family", "Weight", "Size", "Line height", "Align", "Letter spacing", "Transform", "Decoration", "Style", "Variant"]) {
       expect(html, words).toContain(`>${words}<`);
     }
     // Normal, Tt, TT and tt.
     for (const transform of ["Tt", "TT", "tt"]) expect(html).toContain(`>${transform}</button>`);
-    // A device icon by each of the eleven settings.
-    expect(html.match(/data-size-switch=""/g)).toHaveLength(11);
+    // A device icon by each of the thirteen settings (D180's colour and opacity among them).
+    expect(html.match(/data-size-switch=""/g)).toHaveLength(13);
     for (const unit of ["px", "em", "rem", "%", "vw"]) expect(html).toContain(`<option value="${unit}">`);
   });
 
   it("gives a component with several kinds of text a group each, and none to a component without text", () => {
     const html = panel({ id: "a", type: "accordion", items: [] });
     for (const group of ["Text", "Titles", "Texts"]) expect(html).toContain(`${group}`);
-    expect(html.match(/data-size-switch=""/g)).toHaveLength(33);
+    expect(html.match(/data-size-switch=""/g)).toHaveLength(39);
     expect(panel({ id: "s", type: "separator" })).toBe("");
+  });
+
+  it("opens the Font section with the colour (D180): the theme's swatches, an opacity off until a colour is chosen, a × to clear", () => {
+    const swatches = [{ name: "Text", colour: "#171717" }, { name: "Accent", colour: "#1d4ed8" }];
+    const drawn = (part: object, size: Size = "xl") =>
+      atSize(size, createElement(ColourSwatches, { value: swatches }, createElement(TypographyFields, { part: part as PageBlock, onChange: () => {}, install })));
+    const none = drawn({ id: "h", type: "heading", text: "x", level: 2 });
+    // Colour comes before Family.
+    expect(none.indexOf(">Colour<")).toBeLessThan(none.indexOf(">Family<"));
+    expect(none).toContain('aria-label="Text (#171717)"');
+    expect(none).toContain('aria-label="Accent (#1d4ed8)"');
+    expect(none).toContain("Choose a colour first.");
+    expect(none).not.toContain("Clear colour");
+    const set = drawn({ id: "h", type: "heading", text: "x", level: 2, typography: { text: { color: "#1d4ed8", opacity: 60 } } });
+    expect(set).toContain('value="#1d4ed8"');
+    expect(set).toContain('value="60"');
+    expect(set).toContain('aria-label="Clear colour"');
+    expect(set).toMatch(/aria-label="Accent \(#1d4ed8\)" aria-pressed="true"/);
+    // On Small, inherited from Extra large, greyed with where it comes from.
+    expect(drawn({ id: "h", type: "heading", text: "x", level: 2, typography: { text: { color: "#1d4ed8" } } }, "sm")).toContain("From Extra large");
+    // A dual button: the buttons' text, and each button's own.
+    const dual = drawn({ id: "d", type: "dualButton", first: { label: "A", href: "/" }, second: { label: "B", href: "/" } });
+    for (const group of ["Buttons&#x27; text", "First button", "Second button"]) expect(dual).toContain(group);
   });
 
   it("offers no alignment where the component's Position places it", () => {
