@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { LEGAL_ROLE_COPY, isLegalRole } from "@/lib/legal-roles";
 import { blockText } from "@/lib/page-content";
 import { requirePermission } from "@/server/permissions";
@@ -17,7 +18,11 @@ export const metadata: Metadata = { title: "Terms as shown" };
  */
 export default async function OrderTermsAsShownPage({ params }: PageProps<"/admin/[store]/orders/[orderId]/terms/[role]">) {
   const { store: slug, orderId, role } = await params;
-  const { store } = await requirePermission(slug, "orders:read");
+  const gated = await requirePermission(slug, "orders:read");
+  // While the online shop is off (D178 step 5), what was sold stays reachable as long as an order can still be withdrawn from or returned.
+  const shopOff = await requireShopOrAfterSale(gated);
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(orderId).success || !isLegalRole(role)) notFound();
   const snapshot = await snapshotForOrder(store.id, orderId, role, null);
   if (!snapshot) notFound();

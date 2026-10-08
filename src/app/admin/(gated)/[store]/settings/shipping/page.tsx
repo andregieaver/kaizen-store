@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatPriceInput } from "@/lib/product-input";
 import { requirePermission } from "@/server/permissions";
@@ -12,7 +13,11 @@ export const metadata: Metadata = { title: "Shipping" };
 const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
 
 export default async function ShippingPage({ params }: PageProps<"/admin/[store]/settings/shipping">) {
-  const { store } = await requirePermission((await params).store, "settings:read");
+  const gated = await requirePermission((await params).store, "settings:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const settings = await getShippingSettings(store);
 
   return (

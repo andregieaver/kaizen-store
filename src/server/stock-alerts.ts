@@ -43,7 +43,7 @@ async function pendingCrossings(): Promise<Pending[]> {
     left join commerce.product_translations tl on tl.product_id = p.id and tl.locale = coalesce((s.locales)[1], 'en')
     left join lateral (select title from commerce.product_translations where product_id = p.id order by locale limit 1) tf on true
     where a.state = 'low' and a.notified_at is null and a.crossed_at is not null and v.active and v.low_stock_threshold is not null
-      and commerce.store_is_active(a.store_id)
+      and commerce.store_is_active(a.store_id) and commerce.feature_on(a.store_id, 'shop')
     order by a.store_id, a.crossed_at, a.variant_id
   `);
   return rows.map((r) => ({

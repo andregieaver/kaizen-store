@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ProductEditor } from "@/components/admin/product-editor";
 import { requirePermission } from "@/server/permissions";
 import { fieldsForEditor } from "@/server/custom-fields";
@@ -14,7 +15,11 @@ export const metadata: Metadata = { title: "Edit product" };
 
 export default async function EditProductPage({ params }: PageProps<"/admin/[store]/products/[productId]">) {
   const { store: slug, productId } = await params;
-  const { store } = await requirePermission(slug, "products:read");
+  const gated = await requirePermission(slug, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(productId).success) notFound();
   const context = await getEditorContext(store);
   const product = await getProductForEdit(store, context, productId);

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { aiFor } from "@/server/ai";
 import { requirePermission } from "@/server/permissions";
 import { SEARCH_LOG_DAYS, searchStats } from "@/server/search";
@@ -17,7 +18,11 @@ const percent = new Intl.NumberFormat("en-GB", { style: "percent", maximumFracti
  * product the store lacks, or a word its products do not use yet.
  */
 export default async function SearchStatsPage({ params }: PageProps<"/admin/[store]/search">) {
-  const { store } = await requirePermission((await params).store, "settings:read");
+  const gated = await requirePermission((await params).store, "settings:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const [stats, ai] = await Promise.all([searchStats(store.id), aiFor(store.id)]);
   const meaningOn = Boolean(ai?.space);
 

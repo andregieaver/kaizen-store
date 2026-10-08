@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ImportUpload } from "@/components/admin/data/import-flow";
 import { DataPageHead, DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
@@ -23,7 +24,11 @@ type Props = PageProps<"/admin/[store]/products/import">;
  * right to change products. One import is open per store at a time; an import that was started is continued from its own page.
  */
 export default async function ProductImportPage({ params }: Props) {
-  const { store } = await requirePermission((await params).store, "products:read");
+  const gated = await requirePermission((await params).store, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead

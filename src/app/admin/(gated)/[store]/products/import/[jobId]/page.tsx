@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { FindingsTable, type FindingItem } from "@/components/admin/data/findings-table";
 import { CancelJobButton, ImportApply, ImportOptionsForm } from "@/components/admin/data/import-flow";
 import { AppliedSummary, DryRunSummary } from "@/components/admin/data/import-summary";
@@ -32,7 +33,11 @@ const PAGE_SIZE = 50;
  */
 export default async function ImportJobPage({ params, searchParams }: Props) {
   const { store: slug, jobId } = await params;
-  const { store } = await requirePermission(slug, "products:read");
+  const gated = await requirePermission(slug, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead

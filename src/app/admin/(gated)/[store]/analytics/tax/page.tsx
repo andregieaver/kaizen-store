@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { OssView } from "@/components/admin/analytics/oss-view";
 import { Note } from "@/components/admin/analytics/section";
@@ -81,6 +82,9 @@ function ProblemCard({ title }: { title: string }) {
 export default async function AnalyticsTaxPage({ params, searchParams }: PageProps<"/admin/[store]/analytics/tax">) {
   const raw = await searchParams;
   const ctx = await analyticsContext((await params).store, hasPeriod(raw) ? raw : { ...raw, period: "last_month" });
+  // Sales analytics are part of the online shop (D178 step 5): hidden while it is off; traffic stays.
+  const shopOff = requireFeature(ctx, "shop");
+  if (shopOff) return shopOff;
   const { store } = ctx;
   const today = todayIn(ctx.now, store.timeZone);
   const query = parseTaxQuery(raw, today);

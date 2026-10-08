@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { PickListView } from "@/components/admin/orders/pick-list-view";
 import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
@@ -22,7 +23,11 @@ const SORT_WORDS: Record<PickSort, string> = { sku: "SKU", title: "Title", quant
  */
 export default async function PickListPage({ params, searchParams }: PageProps<"/admin/[store]/orders/pick-list">) {
   const { store: slug } = await params;
-  const { store } = await requirePermission(slug, "orders:read");
+  const gated = await requirePermission(slug, "orders:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const query = await searchParams;
   const parsed = parsePickParams({ ids: one(query.ids), by: one(query.by), sort: one(query.sort) });
   const back = (

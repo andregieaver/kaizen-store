@@ -300,6 +300,12 @@ export type MenuNames = TermNames & { page?: PageNames; article?: PageNames; blo
  * Whether a link still leads somewhere: a category or tag that is gone, or a
  * store page that is not published, is left out of the menu.
  */
+/** The links into the online shop (D178 step 5): All products, My account, the cart, a product, a category or tag of products. */
+export const SHOP_LINK_KINDS = ["products", "account", "cart", "product", "category", "tag"] as const;
+
+/** Whether a store menu's link leads into the online shop: a website (the shop off) leaves it out of its menus. */
+export const shopLink = (link: { kind: string }): boolean => (SHOP_LINK_KINDS as readonly string[]).includes(link.kind);
+
 export function linkExists(link: MenuLink | PlatformMenuLink, names: MenuNames): boolean {
   if (link.kind === "category" || link.kind === "tag") return names[link.kind].has(link.slug);
   if (link.kind === "page" && "slug" in link) return names.page?.has(link.slug) ?? false;

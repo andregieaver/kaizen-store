@@ -11,6 +11,7 @@ import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import type { SearchFilters } from "@/lib/query-understanding";
 import { normalizeQuery } from "@/lib/search";
+import { featureOn } from "@/lib/store-features";
 import { byName, type Term } from "@/lib/taxonomy";
 import { storeAndMarket, type GridPlace } from "@/server/content-grid";
 import { understandQuery } from "@/server/query-understanding";
@@ -40,7 +41,8 @@ export function SearchSection({ place, results = true }: { place: GridPlace; res
 
 async function Search({ place, results }: { place: GridPlace; results: boolean }) {
   const shop = place.owner ? await storeAndMarket(place.owner, place.market ?? null) : null;
-  if (!shop) return null;
+  // Search finds products (D72): a website (D178 step 5: the online shop off) has none to find.
+  if (!shop || !featureOn(shop.store, "shop")) return null;
   const { store, market } = shop;
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);

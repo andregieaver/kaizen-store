@@ -18,7 +18,7 @@ import { getCustomer } from "@/server/customers";
 import { deliveryView } from "@/server/delivery-choice";
 import { chooseDelivery, quoteDelivery } from "@/server/delivery-options";
 import { checkCodeForOrder, setCartCode } from "@/server/discounts";
-import { resolveShop } from "@/server/shop";
+import { resolveSellingShop } from "@/server/shop";
 
 import { applyCreditsForm } from "../cart/bonus";
 
@@ -26,7 +26,7 @@ const email = z.email().max(254);
 
 /** This browser's checkout: the store, its market, the cart and the order waiting for payment. */
 async function openCheckout(storeSlug: string, marketSlug: string) {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return null;
   const cartId = await readCartId({ storeId: shop.store.id, market: shop.market });
   const open = cartId ? await getOpenCheckout(shop.store.id, cartId) : null;
@@ -81,7 +81,7 @@ export async function checkoutCodeAction(
   _state: CheckoutCodeState,
   form: FormData,
 ): Promise<CheckoutCodeState> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { problem: null, tried: "" };
   const m = t(shop.market.lang);
   const cartShop = { storeId: shop.store.id, market: shop.market };

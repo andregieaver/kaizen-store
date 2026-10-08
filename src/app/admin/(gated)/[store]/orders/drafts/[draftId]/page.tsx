@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DraftScreen } from "@/components/admin/drafts/draft-screen";
 import { db } from "@/db/client";
 import { draftMarketOptions } from "@/lib/draft-markets";
@@ -38,7 +39,11 @@ type Props = PageProps<"/admin/[store]/orders/drafts/[draftId]">;
  */
 export default async function DraftPage({ params }: Props) {
   const { store: slug, draftId } = await params;
-  const { store } = await requirePermission(slug, "orders:read");
+  const gated = await requirePermission(slug, "orders:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(draftId).success) notFound();
   return (
     <div className="flex flex-col gap-6">

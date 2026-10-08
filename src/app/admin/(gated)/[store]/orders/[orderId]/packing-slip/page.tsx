@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { PackingSlipView } from "@/components/admin/orders/packing-slip-view";
 import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
@@ -21,7 +22,11 @@ export const metadata: Metadata = { title: "Packing slip" };
  */
 export default async function PackingSlipPage({ params, searchParams }: PageProps<"/admin/[store]/orders/[orderId]/packing-slip">) {
   const { store: slug, orderId } = await params;
-  const { store } = await requirePermission(slug, "orders:read");
+  const gated = await requirePermission(slug, "orders:read");
+  // While the online shop is off (D178 step 5), what was sold stays reachable as long as an order can still be withdrawn from or returned.
+  const shopOff = await requireShopOrAfterSale(gated);
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(orderId).success) notFound();
   const shipment = (await searchParams).shipment;
   if (shipment !== undefined) {

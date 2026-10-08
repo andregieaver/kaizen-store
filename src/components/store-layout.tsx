@@ -5,8 +5,9 @@ import { t, type Messages } from "@/lib/i18n";
 import { currencyChoices, currencyName, languageChoices, languageName } from "@/lib/localization";
 import { marketSlug } from "@/lib/market-slug";
 import type { Market } from "@/lib/markets";
-import { linkExists, menuHref, menuLabel, menuTree, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
+import { linkExists, menuHref, menuLabel, menuTree, shopLink, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
 import { marketPath, storeBase } from "@/lib/paths";
+import { featureOn } from "@/lib/store-features";
 import { darkBehindLogo, type HeaderBackground, type LogoPlace } from "@/lib/theme";
 import { publishedPageNames } from "@/server/pages";
 import type { Store } from "@/server/stores";
@@ -54,9 +55,11 @@ export async function MenuLinks({
   if (items.length === 0) return null;
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
-  const builtIn = { home: store.frontPageId ? m.home : m.allProducts, products: m.allProducts, account: m.account.title, cart: m.cart, blog: m.blog };
+  // A website (D178 step 5: the online shop off) has no products, categories, tags, cart or My account to link to: those links are left out.
+  const selling = featureOn(store, "shop");
+  const builtIn = { home: store.frontPageId || !selling ? m.home : m.allProducts, products: m.allProducts, account: m.account.title, cart: m.cart, blog: m.blog };
   const [terms, pages, articles, blogTerms] = await Promise.all([
-    siteTerms(store.id, "product"),
+    selling ? siteTerms(store.id, "product") : Promise.resolve([]),
     publishedPageNames(store.id, market.locale),
     publishedPageNames(store.id, market.locale, "article"),
     siteTerms(store.id, "article"),
@@ -81,7 +84,10 @@ export async function MenuLinks({
     };
   };
   // A link with nothing to say (no text of its own and no name to take) is left out too.
-  const nodes = menuTree(items, (item) => linkExists(item.link, names) && menuLabel(item, market.locale, builtIn, names) !== "").map(toNode);
+  const nodes = menuTree(
+    items,
+    (item) => (selling || !shopLink(item.link)) && linkExists(item.link, names) && menuLabel(item, market.locale, builtIn, names) !== "",
+  ).map(toNode);
   return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} />;
 }
 
@@ -200,9 +206,37 @@ export const HEADER_BACKGROUND: Record<HeaderBackground, string> = {
   inverse: "bg-foreground text-background",
 };
 
-export function StoreHeader({ store, market, notice }: Props & { notice: string | null }) {
+/** The online shop's tools in the standard header: search, My account, wishlists and the cart (none in a website, D178 step 5). */
+function ShopTools({ store, market }: Props) {
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
+  return (
+    <>
+      <Link href={`${base}/search`} className="flex size-11 items-center justify-center rounded-full hover:bg-current/5">
+        <Icon name="search" />
+        <span className="sr-only">{m.search.title}</span>
+      </Link>
+      <Link
+        href={`${base}/account`}
+        className="hidden size-11 items-center justify-center rounded-full hover:bg-current/5 md:flex"
+      >
+        <Icon name="user" />
+        <span className="sr-only">{m.account.title}</span>
+      </Link>
+      <Link href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5">
+        <Icon name="heart" />
+        <WishlistCount base={base} />
+        <span className="sr-only">{m.wishlist.title}</span>
+      </Link>
+      <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} />}>
+        <CartLink storeId={store.id} storeSlug={store.slug} market={market} />
+      </Suspense>
+    </>
+  );
+}
+
+export function StoreHeader({ store, market, notice }: Props & { notice: string | null }) {
+  const m = t(market.lang);
   const header = storeMenu(store, store.headerMenuId);
   const layout = store.theme.settings.layout;
   // The logo on the left with the menu beside it, or in the middle with the menu below (D60).
@@ -233,30 +267,14 @@ export function StoreHeader({ store, market, notice }: Props & { notice: string 
         />
       </nav>
     );
+  // A website (D178 step 5: the online shop off) has no search of products, My account, wishlists or cart in its header.
+  const selling = featureOn(store, "shop");
   const tools = (
     <div className={`flex items-center gap-1 ${centred ? "justify-end" : "ml-auto"}`}>
       <MarketChoice store={store} market={market} m={m} />
       <LocaleChoice store={store} market={market} m={m} className="hidden md:flex" />
       {store.theme.settings.visitorSwitch && <StoreColorSwitch store={store} labels={m.colorMode} />}
-      <Link href={`${base}/search`} className="flex size-11 items-center justify-center rounded-full hover:bg-current/5">
-        <Icon name="search" />
-        <span className="sr-only">{m.search.title}</span>
-      </Link>
-      <Link
-        href={`${base}/account`}
-        className="hidden size-11 items-center justify-center rounded-full hover:bg-current/5 md:flex"
-      >
-        <Icon name="user" />
-        <span className="sr-only">{m.account.title}</span>
-      </Link>
-      <Link href={`${base}/wishlist`} className="relative flex size-11 items-center justify-center rounded-full hover:bg-current/5">
-        <Icon name="heart" />
-        <WishlistCount base={base} />
-        <span className="sr-only">{m.wishlist.title}</span>
-      </Link>
-      <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} />}>
-        <CartLink storeId={store.id} storeSlug={store.slug} market={market} />
-      </Suspense>
+      {selling && <ShopTools store={store} market={market} />}
     </div>
   );
 
@@ -314,18 +332,21 @@ export function StoreMenu({ store, market }: Props) {
           />
         </nav>
       )}
-      <ul className="flex flex-col">
-        <li>
-          <Link href={`${base}/account`} className="flex min-h-12 items-center gap-3">
-            <Icon name="user" /> {m.account.title}
-          </Link>
-        </li>
-        <li>
-          <Link href={`${base}/cart`} className="flex min-h-12 items-center gap-3">
-            <Icon name="bag" /> {m.cart}
-          </Link>
-        </li>
-      </ul>
+      {/* A website (D178 step 5: the online shop off) has no My account or cart to link to. */}
+      {featureOn(store, "shop") && (
+        <ul className="flex flex-col">
+          <li>
+            <Link href={`${base}/account`} className="flex min-h-12 items-center gap-3">
+              <Icon name="user" /> {m.account.title}
+            </Link>
+          </li>
+          <li>
+            <Link href={`${base}/cart`} className="flex min-h-12 items-center gap-3">
+              <Icon name="bag" /> {m.cart}
+            </Link>
+          </li>
+        </ul>
+      )}
       <LocaleChoice store={store} market={market} m={m} list className="mt-auto" />
       {store.markets.length > 1 && (
         <nav aria-label={m.chooseMarket} className="mt-auto">
@@ -381,7 +402,16 @@ export function WithdrawalStrip({ store, market }: Props) {
  * Who sells (required on every page of a web shop, by e-commerce and
  * consumer law), the footer menu and the countries.
  */
-export function StoreFooter({ store, market, legal: legalPages = [] }: Props & { legal?: LegalLink[] }) {
+export function StoreFooter({
+  store,
+  market,
+  legal: legalPages = [],
+  withdrawal = true,
+}: Props & {
+  legal?: LegalLink[];
+  /** Whether the withdrawal link is drawn: always while the online shop is on, else while after-sale is open (D178 step 5). */
+  withdrawal?: boolean;
+}) {
   const m = t(market.lang);
   const footer = storeMenu(store, store.footerMenuId);
   const details = store.details;
@@ -406,8 +436,8 @@ export function StoreFooter({ store, market, legal: legalPages = [] }: Props & {
           <Link href={marketPath(store.slug, market.slug, "/cookies")} className="w-fit text-muted underline">
             {m.cookies}
           </Link>
-          {/* The withdrawal function, always reachable (D153). */}
-          <WithdrawalLink store={store} market={market} />
+          {/* The withdrawal function, always reachable (D153); in a website (D178 step 5) while an order can still be withdrawn from or returned. */}
+          {withdrawal && <WithdrawalLink store={store} market={market} />}
           {/* The store's terms, privacy statement and the like, once the owner has published them (wave 1, 1e). */}
           {legalPages.length > 0 && (
             <nav aria-label={m.terms.legalNav}>
@@ -476,13 +506,18 @@ export function StoreBottomBar({ store, market }: Props) {
           <Icon name="menu" />
           {m.menu}
         </button>
-        <Link href={`${base}/account`} className={item}>
-          <Icon name="user" />
-          {m.account.title}
-        </Link>
-        <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} variant="bar" />}>
-          <CartLink storeId={store.id} storeSlug={store.slug} market={market} variant="bar" />
-        </Suspense>
+        {/* A website (D178 step 5: the online shop off) has no My account or cart to link to. */}
+        {featureOn(store, "shop") && (
+          <>
+            <Link href={`${base}/account`} className={item}>
+              <Icon name="user" />
+              {m.account.title}
+            </Link>
+            <Suspense fallback={<CartLinkShell storeSlug={store.slug} market={market} variant="bar" />}>
+              <CartLink storeId={store.id} storeSlug={store.slug} market={market} variant="bar" />
+            </Suspense>
+          </>
+        )}
       </nav>
     </HidingBottomBar>
   );

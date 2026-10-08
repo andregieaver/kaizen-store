@@ -13,6 +13,7 @@ import { inView } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { termMetaDescription, termMetaTitle, termShare } from "@/lib/term-seo";
 import type { StoreQuery } from "@/lib/store-parts";
+import { featureOn } from "@/lib/store-features";
 import { byName, withDescendants, type TermKind } from "@/lib/taxonomy";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listGridProducts } from "@/server/catalog";
@@ -43,7 +44,8 @@ export async function termStaticParams(kind: TermKind, params: { store: string; 
 async function load(kind: TermKind, params: Params) {
   const { store: storeSlug, market: marketSlug, slug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop) return null;
+  // A website (D178 step 5: the online shop off) has no category or tag pages of products: `missed()` gives the 404, or a manual redirect.
+  if (!shop || !featureOn(shop.store, "shop")) return null;
   const terms = await siteTerms(shop.store.id, "product");
   const term = terms.find((t) => t.kind === kind && t.slug === slug);
   return term ? { ...shop, terms, term } : null;

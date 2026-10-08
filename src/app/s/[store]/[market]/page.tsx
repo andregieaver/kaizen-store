@@ -8,6 +8,7 @@ import { StorePageArticle } from "@/components/store-page-article";
 import { t } from "@/lib/i18n";
 import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
+import { featureOn } from "@/lib/store-features";
 import { storeHomeJsonLd } from "@/lib/structured-data";
 import { campaignNotices } from "@/server/campaign-notices";
 import { listProducts } from "@/server/catalog";
@@ -62,7 +63,9 @@ export default async function MarketHome({ params, searchParams }: Props) {
   if (!loaded) return marketMoved((await params).store, (await params).market);
   const { store, market, frontPage, test, version } = loaded;
   const m = t(market.lang);
-  const [products, notices] = await Promise.all([listProducts(store.id, market), campaignNotices(store.id, market)]);
+  // A website (D178 step 5: the online shop off) lists no products: its front page is the page chosen for it, else its name.
+  const selling = featureOn(store, "shop");
+  const [products, notices] = selling ? await Promise.all([listProducts(store.id, market), campaignNotices(store.id, market)]) : [[], null];
   const origin = storeSiteUrl(store.slug);
   const productUrl = (handle: string) => marketPath(store.slug, market.slug, `/p/${handle}`);
   const jsonLd = (
@@ -95,6 +98,17 @@ export default async function MarketHome({ params, searchParams }: Props) {
         <PageEditLink pageId={frontPage.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
         {/* A test of the front page (D148, phase 10): which version this is, for the exposure. */}
         {test && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={test.id} variant={version} goalBlock={test.goalBlock} />}
+      </>
+    );
+  }
+
+  if (!selling || !notices) {
+    const description = store.seo.description[market.locale];
+    return (
+      <>
+        {jsonLd}
+        <h1 className="mb-6 text-3xl font-heading tracking-tight">{store.name}</h1>
+        {description && <p className="max-w-prose text-muted">{description}</p>}
       </>
     );
   }

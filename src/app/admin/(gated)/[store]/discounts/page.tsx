@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { describeDiscount, discountStatus } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
@@ -22,7 +23,11 @@ const STATUS = {
 
 /** The store's discount codes (D31), newest first, with how often each was used. */
 export default async function DiscountsPage({ params }: PageProps<"/admin/[store]/discounts">) {
-  const { store } = await requirePermission((await params).store, "marketing:read");
+  const gated = await requirePermission((await params).store, "marketing:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const discounts = await listDiscounts(store.id);
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const currencyOf = (marketCode: string) => store.markets.find((m) => m.code === marketCode)?.currency ?? mainCurrency(store);

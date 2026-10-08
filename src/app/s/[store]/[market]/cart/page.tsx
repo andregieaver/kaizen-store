@@ -7,7 +7,7 @@ import { RolePage } from "@/components/role-page";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
-import { countryOffered, marketMoved, resolveAfterSaleShop, resolveShop } from "@/server/shop";
+import { countryOffered, marketMoved, resolveAfterSaleShop, resolveShop, sellingPageOr404 } from "@/server/shop";
 import type { Store } from "@/server/stores";
 
 import { CartContents } from "./cart-contents";
@@ -35,6 +35,8 @@ export default async function CartPage({ params, searchParams }: Props) {
     if (kept && !countryOffered(kept.store, kept.market.code) && kept.store.markets[0]) return <CountryClosed store={kept.store} market={kept.market} />;
     return marketMoved(storeSlug, marketSlug, "/cart");
   }
+  // A website (D178 step 5: the online shop off) has no cart.
+  await sellingPageOr404(shop, "/cart");
   const { store, market } = shop;
   const m = t(market.lang);
 

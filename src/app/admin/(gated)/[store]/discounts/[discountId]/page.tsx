@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { requirePermission } from "@/server/permissions";
 import { getDiscount } from "@/server/discounts";
@@ -14,7 +15,11 @@ export const metadata: Metadata = { title: "Coupon" };
 
 export default async function DiscountPage({ params }: PageProps<"/admin/[store]/discounts/[discountId]">) {
   const { store: slug, discountId } = await params;
-  const { store } = await requirePermission(slug, "marketing:read");
+  const gated = await requirePermission(slug, "marketing:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(discountId).success) notFound();
   const discount = await getDiscount(store.id, discountId);
   if (!discount) notFound();

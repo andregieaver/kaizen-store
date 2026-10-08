@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { t } from "@/lib/i18n";
-import { resolveShop } from "@/server/shop";
+import { resolveSellingShop } from "@/server/shop";
 import {
   addWishlistToCart,
   createWishlist,
@@ -21,7 +21,7 @@ const id = z.uuid();
 const ids = z.array(z.uuid()).max(200);
 
 async function shopFor(storeSlug: string, marketSlug: string) {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   return shop ? { shop, w: t(shop.market.lang).wishlist } : null;
 }
 

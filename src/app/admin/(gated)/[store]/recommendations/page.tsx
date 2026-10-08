@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatMoney } from "@/lib/money";
 import { ENOUGH_VISITORS, percentOf, perVisitor, REPORT_PERIODS, reportDays } from "@/lib/recommendations";
@@ -26,6 +27,9 @@ const KIND_WORDS: Record<RuleKind, string> = { goes_with: "goes with", never_wit
  */
 export default async function RecommendationsPage({ params, searchParams }: PageProps<"/admin/[store]/recommendations">) {
   const current = await requirePermission((await params).store, "marketing:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(current, "shop");
+  if (shopOff) return shopOff;
   const { store } = current;
   const query = await searchParams;
   const days = reportDays((query.days as string | undefined) ?? undefined);

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { describeDelay } from "@/lib/cart-reminders";
 import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
@@ -33,7 +34,11 @@ const tile = "flex flex-col gap-1 rounded-lg border border-border bg-background 
  * reminders and their texts, how they do, and the latest carts.
  */
 export default async function CartRemindersPage({ params }: PageProps<"/admin/[store]/cart-reminders">) {
-  const { store } = await requirePermission((await params).store, "marketing:read");
+  const gated = await requirePermission((await params).store, "marketing:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const [settings, stats, carts, discounts] = await Promise.all([
     getCartReminderSettings(store.id),
     cartReminderStats(store.id),

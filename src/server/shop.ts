@@ -6,9 +6,9 @@ import { splitSiteVersions } from "@/lib/ab-site";
 import { keptChoices, marketChoices } from "@/lib/localization";
 import { movedMarketSlug } from "@/lib/market-move";
 import { findMarket, type Market } from "@/lib/markets";
-import { requirementMet, type FeatureRequirement } from "@/lib/store-features";
+import { featureOn, requirementMet, type FeatureRequirement } from "@/lib/store-features";
 
-import { locationIn } from "./redirect-resolve";
+import { locationIn, missOrRedirect } from "./redirect-resolve";
 import { getOpenStore, templateStoreSlug, type Store } from "./stores";
 
 /**
@@ -112,4 +112,21 @@ export async function resolveFeatureShop(
 ): Promise<Shop | null> {
   const shop = await resolveShop(storeSlug, marketParam);
   return shop && requirementMet(shop.store, feature) ? shop : null;
+}
+
+/**
+ * The online shop's own routes and actions (D178 step 5, `docs/store-features.md` 4e): the cart, checkout, wishlists, search, a product's
+ * pickers. Null while the shop is off (the store is a website), so a stale page's action or a route answers as for an address that is not
+ * there. A page that would move a market (`marketMoved()`) resolves with `resolveShop()` first and asks `sellingPageOr404()` after.
+ */
+export const resolveSellingShop = (storeSlug: string, marketParam: string): Promise<Shop | null> => resolveFeatureShop(storeSlug, marketParam, "shop");
+
+/**
+ * What a page of the online shop (a product, All products, a category or tag, the cart, checkout, wishlists, search) calls once it has its
+ * shop (D178 step 5): while the shop is off, the store's 404, or a manual redirect's target where one names the address (D168's rule: a
+ * lookup only where the request would be a 404). Returns while the shop is on. Called before a page's `<Suspense>`, so the 404 is the
+ * response's status.
+ */
+export async function sellingPageOr404(shop: Shop, path: string, query = ""): Promise<void> {
+  if (!featureOn(shop.store, "shop")) await missOrRedirect(shop, path, query);
 }

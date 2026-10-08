@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { AnswerSection, ChartsSection, OverviewLayout, SectionSkeleton, type OverviewFrame } from "@/components/admin/analytics/overview-sections";
@@ -25,6 +26,9 @@ export const metadata: Metadata = { title: "Analytics" };
 export default async function AnalyticsOverviewPage({ params, searchParams }: PageProps<"/admin/[store]/analytics">) {
   const query = await searchParams;
   const ctx = await analyticsContext((await params).store, query);
+  // Sales analytics are part of the online shop (D178 step 5): hidden while it is off; traffic stays.
+  const shopOff = requireFeature(ctx, "shop");
+  if (shopOff) return shopOff;
   const { store, now } = ctx;
 
   const data = await overviewHead(store, query, now, { sessions: (period) => sessionTotals(store, period), settings: ctx.settings });

@@ -2,10 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
+import { AfterSaleNote } from "@/components/admin/after-sale-gate";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { attentionFor, changeText, hidden, money, totalSales } from "@/lib/control-center";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
+import { featureOn } from "@/lib/store-features";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { controlCenter } from "@/server/control-center";
 import { getSetupProgress } from "@/server/setup";
@@ -29,21 +31,31 @@ export default async function AdminOverview({ params }: Props) {
   const base = `/admin/${store.slug}`;
   // After the member is known, so the clock is read in a request (the page is not prerendered).
   const now = new Date();
+  // A website (D178 step 5: the online shop off) sells nothing: no sales figures, latest orders or selling steps to set up.
+  const selling = featureOn(store, "shop");
   const steps = [
     { done: progress.details, label: "Business details", step: "details" },
-    { done: progress.countries, label: "Countries you sell to", step: "countries" },
-    { done: progress.shipping, label: "Shipping prices for every country", href: "settings/shipping" },
-    { done: progress.paymentsOn, label: "Checkout switched on, so shoppers can pay", href: "settings/payments" },
-    // Real payments only once Kaizen itself is live; test payments need no setup.
-    ...(platformModes().includes("live")
-      ? [{ done: progress.payments, label: "Stripe set up for real payments", href: "settings/payments" }]
+    { done: progress.countries, label: selling ? "Countries you sell to" : "Countries", step: "countries" },
+    ...(selling
+      ? [
+          { done: progress.shipping, label: "Shipping prices for every country", href: "settings/shipping" },
+          { done: progress.paymentsOn, label: "Checkout switched on, so shoppers can pay", href: "settings/payments" },
+          // Real payments only once Kaizen itself is live; test payments need no setup.
+          ...(platformModes().includes("live")
+            ? [{ done: progress.payments, label: "Stripe set up for real payments", href: "settings/payments" }]
+            : []),
+        ]
       : []),
     { done: progress.plan, label: "Choose a plan", href: "billing" },
-    {
-      done: progress.products,
-      label: progress.counts.demoProducts > 0 ? "Replace the demo products" : "Products",
-      step: "products",
-    },
+    ...(selling
+      ? [
+          {
+            done: progress.products,
+            label: progress.counts.demoProducts > 0 ? "Replace the demo products" : "Products",
+            step: "products",
+          },
+        ]
+      : []),
   ];
   const remaining = steps.filter((s) => !s.done).length;
 
@@ -56,14 +68,16 @@ export default async function AdminOverview({ params }: Props) {
         </p>
       )}
       {/* Setup has its own checklist below; what else needs someone is listed here. */}
-      {store.setupCompletedAt && <Attention items={attention} empty="Nothing needs you right now. Every order is sent and stock is fine." />}
+      {/* A website keeps Orders out of the menu, but reachable while an order can still be withdrawn from or returned (D178 step 5). */}
+      <AfterSaleNote store={store} />
+      {store.setupCompletedAt && <Attention items={attention} empty={selling ? "Nothing needs you right now. Every order is sent and stock is fine." : "Nothing needs you right now."} />}
       {/* What Analytics found: its own reports are read after the page is shown, and a failure leaves it out. */}
-      {store.setupCompletedAt && memberCan(current, "analytics:read") && (
+      {store.setupCompletedAt && selling && memberCan(current, "analytics:read") && (
         <Suspense fallback={<HomeAnalyticsAlertsFallback />}>
           <HomeAnalyticsAlerts store={store} base={base} now={now} />
         </Suspense>
       )}
-      {store.setupCompletedAt && !(figures && hidden(figures, "sales") && hidden(figures, "stock")) && (
+      {store.setupCompletedAt && selling && !(figures && hidden(figures, "sales") && hidden(figures, "stock")) && (
         <Section id="week-heading" title="The last 7 days">
           <StatGrid>
             {figures && hidden(figures, "sales") ? null : sales.length === 0 ? <Stat label="Sales" value="–" sub="No sales yet" href={`${base}/orders`} /> : sales.slice(0, 2).map((f) => <Stat key={f.currency} label={`Sales (${f.currency})`} value={money(f.week, f.currency)} sub={changeText(f.week, f.prior)} href={`${base}/orders`} />)}
@@ -75,7 +89,7 @@ export default async function AdminOverview({ params }: Props) {
           </StatGrid>
         </Section>
       )}
-      {store.setupCompletedAt && center.latest.length > 0 && (
+      {store.setupCompletedAt && selling && center.latest.length > 0 && (
         <Section id="latest-heading" title="Latest orders" action={<Link href={`${base}/orders`} className="text-sm underline">All orders</Link>}>
           <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
             {center.latest.map((order) => (

@@ -9,6 +9,7 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { pageExcerpt, pageSlugProblem, RESERVED_STORE_PAGE_SLUGS } from "@/lib/page-content";
 import { PAGE_ROLES, roleAddress } from "@/lib/page-roles";
+import { featureOn } from "@/lib/store-features";
 import { localizePage } from "@/lib/page-translation";
 import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
@@ -106,7 +107,8 @@ export async function StorePageView({ params, searchParams, variant }: { params:
   // The front page (D54) has one address: the market's own.
   if (page.id === store.frontPageId) permanentRedirect(home);
   // So has the All products page (D83): /products.
-  if (page.id === store.productsPageId) permanentRedirect(`${home}/products`);
+  // The All products page is drawn at /products; in a website (D178 step 5: the online shop off) there is none, so it stays at its own address.
+  if (page.id === store.productsPageId && featureOn(store, "shop")) permanentRedirect(`${home}/products`);
   // So have the pages chosen for the blog, search and 404 places (D112).
   // A working page (D113) too: its address is its route's, or none (an order's, a subscription's, the 404 page's).
   const role = PAGE_ROLES.find((r) => page.id === store.pageRoles[r]);

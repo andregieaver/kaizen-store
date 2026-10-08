@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DraftsListView } from "@/components/admin/drafts/drafts-list-view";
 import { isDraftStatus } from "@/lib/draft-status";
 import { listDrafts } from "@/server/draft-orders";
@@ -17,6 +18,9 @@ type Props = PageProps<"/admin/[store]/orders/drafts">;
  */
 export default async function DraftsPage({ params, searchParams }: Props) {
   const member = await requirePermission((await params).store, "orders:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(member, "shop");
+  if (shopOff) return shopOff;
   const { store } = member;
   return (
     <div className="flex flex-col gap-6">

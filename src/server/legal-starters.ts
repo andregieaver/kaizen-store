@@ -4,12 +4,14 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { isTermsMode, termsSettingProblem, type TermsMode } from "@/lib/checkout-terms";
-import { isLegalRole, LEGAL_ROLES, LEGAL_ROLE_COPY, type LegalRole } from "@/lib/legal-roles";
+import { isLegalRole, LEGAL_ROLES, LEGAL_ROLE_COPY, legalRoleNeeded, type LegalRole } from "@/lib/legal-roles";
+import { featureOn } from "@/lib/store-features";
 import { missingFacts } from "@/lib/legal-facts";
 import { isStarterRole, legalStarter, starterLanguageOf, type StarterLanguage, type StarterPage, type StarterRole } from "@/lib/legal-starters";
 import { newPageContent, type PageContent } from "@/lib/page-content";
 import { translationOf, withTranslation } from "@/lib/page-translation";
 
+import { afterSaleOpen } from "./after-sale";
 import { audit, type Membership } from "./auth";
 import { auditChange } from "./audit";
 import { legalFacts } from "./legal-facts";
@@ -150,6 +152,11 @@ export type LegalPageEntry = {
   page: { id: string; title: string; slug: string } | null;
   /** The newest draft starter made for it that is not chosen (not published, or published and not chosen). */
   draft: { id: string; title: string; slug: string; published: boolean } | null;
+  /**
+   * Whether the store needs it now (D178 step 5, `legalRoleNeeded()`): the checkout's terms, policies and withdrawal information only while the
+   * online shop is on (the last two also while an order can still be withdrawn from); privacy, imprint and accessibility always.
+   */
+  needed: boolean;
 };
 
 export type LegalOverview = {
@@ -157,6 +164,8 @@ export type LegalOverview = {
   /** The store's published pages a role can be given: not the front page, All products, or another role's. */
   choosable: { id: string; title: string; slug: string; /** The role it already holds, if any: a page has one place, so it can be given another only after it is let go. */ role: string | null }[];
   termsAtCheckout: TermsMode;
+  /** The online shop is on (D178 step 5): without it there is no checkout to show terms at. */
+  shopOn: boolean;
   /** Facts the store has not given, in the owner's words, for the screen to list before a starter is made. */
   missing: string[];
 };
@@ -187,6 +196,8 @@ export async function legalOverview(member: Membership): Promise<LegalOverview> 
     db().execute<Row>(sql`select terms_at_checkout from commerce.stores where id = ${store.id}::uuid`),
     legalFacts(store),
   ]);
+  const shopOn = featureOn(store, "shop");
+  const afterSale = shopOn || (await afterSaleOpen(store.id));
   const chosenBy = new Map(chosen.map((r) => [String(r.role), r]));
   const madeBy = new Map(made.map((r) => [String(r.role), r]));
   return {
@@ -200,11 +211,13 @@ export async function legalOverview(member: Membership): Promise<LegalOverview> 
         starter: isStarterRole(role),
         page: page ? { id: String(page.id), title: String(page.title), slug: String(page.slug) } : null,
         draft: draft && (!page || String(page.id) !== String(draft.id)) ? { id: String(draft.id), title: String(draft.title), slug: String(draft.slug), published: Boolean(draft.published) } : null,
+        needed: legalRoleNeeded(role, shopOn, afterSale),
       };
     }),
     // A page already holding another role cannot be given a second (one place each); front and All products pages are taken.
     choosable: pages.filter((p) => !p.taken).map((p) => ({ id: String(p.id), title: String(p.title), slug: String(p.slug), role: p.role ? String(p.role) : null })),
     termsAtCheckout: isTermsMode(mode?.terms_at_checkout) ? mode.terms_at_checkout : "link",
+    shopOn,
     missing: missingFacts(facts),
   };
 }

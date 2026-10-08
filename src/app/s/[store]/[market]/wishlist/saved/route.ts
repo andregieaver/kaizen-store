@@ -1,4 +1,4 @@
-import { resolveShop } from "@/server/shop";
+import { resolveSellingShop } from "@/server/shop";
 import { savedProductIds } from "@/server/wishlists";
 
 /**
@@ -8,7 +8,7 @@ import { savedProductIds } from "@/server/wishlists";
  */
 export async function GET(_request: Request, { params }: RouteContext<"/s/[store]/[market]/wishlist/saved">) {
   const { store, market } = await params;
-  const shop = await resolveShop(store, market);
+  const shop = await resolveSellingShop(store, market);
   const products = shop ? await savedProductIds(shop.store.id) : [];
   return Response.json({ products }, { headers: { "Cache-Control": "private, no-store" } });
 }

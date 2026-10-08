@@ -74,13 +74,16 @@ export function AccountAccess({
   market,
   labels,
   initialTab = "sign-in",
+  register = true,
 }: {
   store: string;
   market: string;
   labels: AccessLabels;
   initialTab?: Tab;
+  /** Whether new accounts can be made here: not in a website (D178 step 5), where existing customers only sign in. */
+  register?: boolean;
 }) {
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const [tab, setTab] = useState<Tab>(register ? initialTab : "sign-in");
   const id = useId();
   const tabs = useRef<Record<Tab, HTMLButtonElement | null>>({ "sign-in": null, register: null });
 
@@ -102,6 +105,8 @@ export function AccountAccess({
     setTab(next);
     tabs.current[next]?.focus();
   };
+
+  if (!register) return <AccountSignIn store={store} market={market} labels={labels} />;
 
   return (
     <div className="flex flex-col gap-6">

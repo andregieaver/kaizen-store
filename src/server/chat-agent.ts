@@ -12,6 +12,8 @@ import {
   kaizenTools,
   navigateArgs,
   returnFacts,
+  SHOP_DESTINATIONS,
+  SHOP_TOOLS,
   storeTools,
   systemPrompt,
   type ChatAction,
@@ -20,6 +22,7 @@ import {
   type ChatRequest,
 } from "@/lib/chat";
 import { chatDetails } from "@/lib/custom-fields";
+import { featureOn } from "@/lib/store-features";
 import { cardNotices, noticesFor, noticeText, type CampaignNotice, type CampaignNotices } from "@/lib/campaign-notices";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
@@ -233,6 +236,9 @@ type ToolOutcome = { result: string; action?: ChatAction; products?: ChatProduct
 async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: string, args: Record<string, unknown>, request: ChatRequest): Promise<ToolOutcome> {
   const { store, market } = site;
   const text = (key: string) => (typeof args[key] === "string" ? String(args[key]).trim().slice(0, 200) : "");
+  // A website (D178 step 5: the online shop off) answers from its pages and knowledge only, whatever a model asks.
+  const selling = featureOn(store, "shop");
+  if (!selling && (SHOP_TOOLS as readonly string[]).includes(name)) return { result: json({ error: "This store does not sell online." }) };
   switch (name) {
     case "search_products": {
       const query = text("query");
@@ -328,14 +334,15 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
           address: details.postalAddress,
           countries: store.markets.map((m) => m.name),
           visitorCountry: market.name,
-          sellsTo: store.audience,
-          shipping: shipping
+          sellsTo: selling ? store.audience : null,
+          sellsOnline: selling,
+          shipping: selling && shipping
             ? {
                 cost: formatMoney(shipping.amountMinor, shipping.currency, market.locale),
                 freeOver: shipping.freeOverMinor === null ? null : formatMoney(shipping.freeOverMinor, shipping.currency, market.locale),
               }
             : null,
-          returns: returnFacts(store.returnPolicy, marketPath(store.slug, market.slug, "/withdraw")),
+          returns: selling ? returnFacts(store.returnPolicy, marketPath(store.slug, market.slug, "/withdraw")) : null,
           pages: [...new Map(pages.map(([, page]) => [page.slug, page.title])).entries()].slice(0, 30).map(([slug, title]) => ({ slug, title })),
         }),
       };
@@ -352,6 +359,8 @@ async function navigateStore(site: Extract<ChatSite, { kind: "store" }>, raw: Re
   if (!parsed.success) return { result: json({ error: "Say where to go." }) };
   const { to, handle = "", slug = "", query = "" } = parsed.data;
   const m = t(market.lang);
+  // A website (D178 step 5: the online shop off) has no shop's places to open.
+  if (!featureOn(store, "shop") && (SHOP_DESTINATIONS as readonly string[]).includes(to)) return { result: json({ error: "The agent cannot open that." }) };
   const go = (path: string, label: string): ToolOutcome => {
     const href = marketPath(store.slug, market.slug, path);
     return { result: json({ opened: href }), action: { type: "navigate", href, label } };
@@ -446,7 +455,7 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
     },
     ...request.messages.map((message) => ({ role: message.role, content: message.content }) as ToolChatMessage),
   ];
-  const tools = site.kind === "store" ? storeTools() : kaizenTools();
+  const tools = site.kind === "store" ? storeTools(featureOn(site.store, "shop")) : kaizenTools();
   let action: ChatAction | null = null;
   const products = new Map<string, ChatProduct>();
   for (let round = 0; round <= ROUNDS; round++) {

@@ -43,6 +43,9 @@ export const STORE_SECTIONS: StoreSection[] = [
     icon: "package",
     start: "/orders",
     hub: false,
+    // The online shop's (D178 step 5): while it is off, the orders, returns and invoices stay reachable (not in the menu) as long as an order
+    // can still be withdrawn from or returned (`AFTER_SALE_ADMIN_PATHS`).
+    feature: "shop",
     intro: "Everything that is bought: orders, returns and withdrawals, subscriptions and the emails the store sent about them.",
     groups: [
       {
@@ -70,9 +73,9 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Products",
         items: [
-          item("/products", "Products", "The catalogue: prices, stock, variants, pictures, categories and tags."),
-          item("/inventory", "Inventory", "Stock for each variant and location: on hand, held by checkouts and owed on backorder, with counts, adjustments with a reason, history and files."),
-          item("/product-layouts", "Product layouts", "How a product's page is laid out, for all products, a category, a tag or one product."),
+          item("/products", "Products", "The catalogue: prices, stock, variants, pictures, categories and tags.", { feature: "shop" }),
+          item("/inventory", "Inventory", "Stock for each variant and location: on hand, held by checkouts and owed on backorder, with counts, adjustments with a reason, history and files.", { feature: "shop" }),
+          item("/product-layouts", "Product layouts", "How a product's page is laid out, for all products, a category, a tag or one product.", { feature: "shop" }),
           item("/fields", "Custom fields", "Your own groups of fields for products, pages, customers and more."),
         ],
       },
@@ -89,10 +92,10 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Customers",
         items: [
-          item("/customers", "Customers", "Everyone with an account, their orders and details."),
-          item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers."),
+          item("/customers", "Customers", "Everyone with an account, their orders and details.", { feature: "shop" }),
+          item("/customer-groups", "Customer groups", "Groups with a fixed discount, such as members or resellers.", { feature: "shop" }),
           item("/companies", "Companies", "Company accounts with their employees and a group's discount.", { feature: "business" }),
-          item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it."),
+          item("/wishlists", "Wishlists", "What customers have saved, and what they added to the cart from it.", { feature: "shop" }),
           item("/privacy", "Privacy requests", "People's requests for a copy of their data or for it to be erased, with the one-month clock."),
         ],
       },
@@ -109,11 +112,11 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Marketing",
         items: [
-          item("/campaigns", "Campaigns", "Offers without a code, for a time: a percentage off, buy N pay for M, a free product."),
-          item("/discounts", "Coupons", "Discount codes customers type at checkout."),
-          item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works."),
+          item("/campaigns", "Campaigns", "Offers without a code, for a time: a percentage off, buy N pay for M, a free product.", { feature: "shop" }),
+          item("/discounts", "Coupons", "Discount codes customers type at checkout.", { feature: "shop" }),
+          item("/recommendations", "Recommendations", "What the store suggests to each shopper, and how well it works.", { feature: "shop" }),
           item("/experiments", "A/B tests", "Try two versions of a page on real visitors and keep the one that works better."),
-          item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart."),
+          item("/cart-reminders", "Cart reminders", "Emails to people who left items in their cart.", { feature: "shop" }),
           item("/bonus", "Bonus credits", "Credits customers earn on what they pay and use as a price reduction.", { feature: "bonus" }),
           item("/affiliates", "Referral program", "Customers who refer their friends, and what both get.", { feature: "referrals" }),
         ],
@@ -131,13 +134,13 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Analytics",
         items: [
-          item("/analytics", "Overview", "The store's main figures against the last period and last year, its funnel, best sellers, channels and what needs you today.", { exact: true }),
-          item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left."),
-          item("/analytics/tax", "VAT", "VAT by country and rate, the quarterly OSS and monthly IOSS return data, and how they agree with your invoices and Finance."),
-          item("/analytics/customers", "Customers", "New and returning customers, repeat purchases, lifetime value, segments and cohorts."),
-          item("/analytics/products", "Products", "What sells, what earns, what is refunded, and how fast each product moves."),
-          item("/analytics/inventory", "Inventory", "Stock, its value, how many days it lasts, what is about to run out and what does not sell."),
-          item("/analytics/marketing", "Marketing", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons."),
+          item("/analytics", "Overview", "The store's main figures against the last period and last year, its funnel, best sellers, channels and what needs you today.", { exact: true, feature: "shop" }),
+          item("/analytics/finance", "Finance", "From gross sales to profit: discounts, refunds, costs, fees, marketing and what is left.", { feature: "shop" }),
+          item("/analytics/tax", "VAT", "VAT by country and rate, the quarterly OSS and monthly IOSS return data, and how they agree with your invoices and Finance.", { feature: "shop" }),
+          item("/analytics/customers", "Customers", "New and returning customers, repeat purchases, lifetime value, segments and cohorts.", { feature: "shop" }),
+          item("/analytics/products", "Products", "What sells, what earns, what is refunded, and how fast each product moves.", { feature: "shop" }),
+          item("/analytics/inventory", "Inventory", "Stock, its value, how many days it lasts, what is about to run out and what does not sell.", { feature: "shop" }),
+          item("/analytics/marketing", "Marketing", "Channels, ad spend, cost to win a customer, return on ad spend, discounts and coupons.", { feature: "shop" }),
           item("/analytics/subscriptions", "Subscriptions", "Monthly recurring revenue, how it moves, churn and failed renewals.", { feature: "subscriptions" }),
           item("/analytics/traffic", "Traffic", "Visits, the way from visit to purchase, devices, countries, searches and the busiest hours."),
           item("/analytics/settings", "Analytics settings", "Costs, fees and targets that turn sales into profit, and whether visits are counted."),
@@ -213,13 +216,13 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Selling",
         items: [
-          item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use."),
-          item("/settings/shipping", "Shipping", "The flat rate for each market, free shipping above an amount, and carriers."),
-          item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizen."),
-          item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get."),
+          item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use.", { feature: "shop" }),
+          item("/settings/shipping", "Shipping", "The flat rate for each market, free shipping above an amount, and carriers.", { feature: "shop" }),
+          item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizen.", { feature: "shop" }),
+          item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get.", { feature: "shop" }),
           item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms."),
-          item("/settings/tax", "Tax", "VAT registration and number, OSS and IOSS, and how the store charges VAT."),
-          item("/settings/invoices", "Invoicing", "Switch on invoices, the numbering, the note printed on every invoice and credit note."),
+          item("/settings/tax", "Tax", "VAT registration and number, OSS and IOSS, and how the store charges VAT.", { feature: "shop" }),
+          item("/settings/invoices", "Invoicing", "Switch on invoices, the numbering, the note printed on every invoice and credit note.", { feature: "shop" }),
           item("/integrations", "Integrations", "Connect shipping carriers, Slack, accounting and other services."),
         ],
       },
@@ -235,7 +238,7 @@ export const STORE_SECTIONS: StoreSection[] = [
       {
         heading: "Tools",
         items: [
-          item("/search", "Search", "How the store's search works: keywords, meaning and what shoppers searched for."),
+          item("/search", "Search", "How the store's search works: keywords, meaning and what shoppers searched for.", { feature: "shop" }),
           item("/chat", "Chat agent", "The store's chat agent for shoppers, and the knowledge it answers from."),
           item("/settings/ai", "AI", "The AI provider and models the store uses, or its own key."),
         ],
@@ -267,10 +270,13 @@ export function storeSections(flags: StoreFlags, canOpen?: CanOpen): StoreSectio
   const on = (feature?: FeatureRequirement) => requirementMet(flags, feature);
   const open = (path: string) => !canOpen || canOpen(path);
   return STORE_SECTIONS.filter((s) => on(s.feature))
-    .map((s) => ({
-      ...s,
-      groups: s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.feature) && open(i.path)) })).filter((g) => g.items.length > 0),
-    }))
+    .map((s) => {
+      const groups = s.groups.map((g) => ({ ...g, items: g.items.filter((i) => on(i.feature) && open(i.path)) })).filter((g) => g.items.length > 0);
+      // A section whose main page is hidden opens on the first page it has left (D178 step 5: a website's Customers open on Privacy requests).
+      const left = groups.flatMap((g) => g.items.map((i) => i.path));
+      const start = s.hub || left.length === 0 || left.includes(s.start) ? s.start : left[0];
+      return { ...s, start, groups };
+    })
     .filter((s) => !canOpen || s.groups.length > 0);
 }
 

@@ -59,7 +59,8 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     group: null,
     label: "Online shop",
     words: "Sell online: products with prices, a cart, checkout and orders. Off, the store is a website.",
-    offWords: "Prices, the cart and checkout leave the site, and so does every selling feature below. Orders, invoices and customers stay in the admin.",
+    offWords:
+      "The store becomes a website: products, prices, the cart, checkout and My account leave the site, and Orders, Products, Customers, selling marketing and sales analytics leave the admin, with every selling feature below. Orders stay reachable while one can still be withdrawn from or returned. Nothing is deleted: switch it on and everything is as it was.",
     needs: [],
     setupPath: "/products",
   },
@@ -245,6 +246,41 @@ export function featureCount(source: FeatureSource): { on: number; total: number
 export function missingNeeds(source: FeatureSource, id: FeatureId): FeatureId[] {
   return FEATURES_BY_ID[id].needs.filter((need) => !featureOn(source, need));
 }
+
+// ---------------------------------------------------------------------------
+// Website mode: the online shop switched off (step 5)
+// ---------------------------------------------------------------------------
+
+/**
+ * The admin pages of what was sold that stay reachable while the online shop is off and an order can still be withdrawn from or has a
+ * return open (D178 step 5, the owner's decision, `afterSaleOpen()` in `src/server/after-sale.ts`): the orders, one order with its slips and
+ * the terms it was placed under, the returns queue and a return, and the invoices and credit notes a refund issues. Not in the navigation:
+ * reached by the note on Home and the Features page. Addresses after the store's, as `ADMIN_PAGES` writes them.
+ */
+export const AFTER_SALE_ADMIN_PATHS = [
+  "/orders",
+  "/orders/[orderId]",
+  "/orders/[orderId]/packing-slip",
+  "/orders/[orderId]/terms/[role]",
+  "/returns",
+  "/returns/[returnId]",
+  "/invoices",
+] as const;
+
+/** Whether an admin page (by its `ADMIN_PAGES` path) is one of what was sold, reachable while after-sale is open with the shop off. */
+export const isAfterSaleAdminPath = (path: string): boolean => (AFTER_SALE_ADMIN_PATHS as readonly string[]).includes(path);
+
+/** What is still open after the sale in a store (`afterSaleOpen()`): orders that can still be withdrawn from or returned, and open returns. */
+export type AfterSale = { withdrawable: number; openReturns: number };
+
+/** Whether anything after the sale is still open: Orders stays reachable and the footer keeps the withdrawal link while it is. */
+export const afterSaleIsOpen = (after: AfterSale): boolean => after.withdrawable > 0 || after.openReturns > 0;
+
+/**
+ * What the shopper side shows of the shop's after-sale while the shop is off (D178 step 5): with the shop on, everything as always; off, the
+ * withdrawal function's link and the checkout's legal pages only while after-sale is open.
+ */
+export const showsWithdrawalLink = (source: FeatureSource, afterSaleOpen: boolean): boolean => featureOn(source, "shop") || afterSaleOpen;
 
 // ---------------------------------------------------------------------------
 // What stands in the way of switching a feature off, and what is worth a warning

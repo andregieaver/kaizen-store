@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DeleteReminderButton } from "@/components/admin/delete-reminder-button";
 import { describeDelay } from "@/lib/cart-reminders";
 import { requirePermission } from "@/server/permissions";
@@ -15,7 +16,11 @@ export const metadata: Metadata = { title: "Cart reminder" };
 
 export default async function ReminderPage({ params }: PageProps<"/admin/[store]/cart-reminders/[stepId]">) {
   const { store: slug, stepId } = await params;
-  const { store } = await requirePermission(slug, "marketing:read");
+  const gated = await requirePermission(slug, "marketing:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(stepId).success) notFound();
   const step = await getCartReminderStep(store.id, stepId);
   if (!step) notFound();

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { InventoryView, parseInventoryParams } from "@/components/admin/analytics/inventory-view";
@@ -16,6 +17,9 @@ export const metadata: Metadata = { title: "Inventory analytics" };
 export default async function AnalyticsInventoryPage({ params, searchParams }: PageProps<"/admin/[store]/analytics/inventory">) {
   const query = await searchParams;
   const ctx = await analyticsContext((await params).store, query);
+  // Sales analytics are part of the online shop (D178 step 5): hidden while it is off; traffic stays.
+  const shopOff = requireFeature(ctx, "shop");
+  if (shopOff) return shopOff;
   const { store, now } = ctx;
 
   const [report] = await Promise.all([inventoryReport(store, now)]);

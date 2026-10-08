@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { TermsManager } from "@/components/admin/terms";
 import type { TermSeoSetup } from "@/components/admin/term-seo-fields";
 import { marketPath, storeHref, storeOrigin } from "@/lib/paths";
@@ -17,7 +18,11 @@ export const metadata: Metadata = { title: "Product categories and tags" };
 
 /** The store's product categories and tags (D50): chosen on each product, used in menus and content grids. */
 export default async function ProductTermsPage({ params }: PageProps<"/admin/[store]/products/categories">) {
-  const { store } = await requirePermission((await params).store, "products:read");
+  const gated = await requirePermission((await params).store, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const [terms, fields, gaps] = await Promise.all([
     listTerms({ storeId: store.id, contentType: "product" }),
     termFieldsSetup(store),

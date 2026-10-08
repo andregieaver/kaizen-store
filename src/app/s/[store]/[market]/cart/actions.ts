@@ -20,7 +20,7 @@ import { recordExperimentCart } from "@/server/experiments";
 import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
 import { attributionOf, parseAttribution } from "@/lib/recommendations";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
-import { resolveShop } from "@/server/shop";
+import { resolveSellingShop } from "@/server/shop";
 
 import { applyCreditsForm } from "./bonus";
 
@@ -54,7 +54,7 @@ async function parse(formData: FormData) {
     resourceId: formData.get("resourceId") || null,
   });
   if (!parsed.success) return null;
-  const shop = await resolveShop(parsed.data.store, parsed.data.market);
+  const shop = await resolveSellingShop(parsed.data.store, parsed.data.market);
   return shop
     ? {
         shop: { storeId: shop.store.id, market: shop.market },
@@ -144,7 +144,7 @@ export async function checkoutAction(
   /** Who books, when nothing is paid online (D66). */
   contact: { name: string; email: string; phone: string } | null = null,
 ): Promise<CheckoutState> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { problem: "empty" };
   const cartShop = { storeId: shop.store.id, market: shop.market };
   const cartId = await readCartId(cartShop);
@@ -202,7 +202,7 @@ export async function vatNumberAction(
   typed: string,
   company?: { name: string; number: string } | null,
 ): Promise<VatNumberState> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { outcome: "no_cart" };
   const cartShop = { storeId: shop.store.id, market: shop.market };
   let kept: { name: string; number: string } | null | undefined;
@@ -232,7 +232,7 @@ export async function applyCodeAction(
   _state: CodeState,
   form: FormData,
 ): Promise<CodeState> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   const code = String(form.get("code") ?? "").slice(0, 60);
   if (!shop || !code.trim()) return { tried: null };
   await setCartCode({ storeId: shop.store.id, market: shop.market }, code);
@@ -242,7 +242,7 @@ export async function applyCodeAction(
 
 /** Takes the discount code off the cart. */
 export async function removeCodeAction(storeSlug: string, marketSlug: string): Promise<void> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return;
   await setCartCode({ storeId: shop.store.id, market: shop.market }, null);
   refresh();
@@ -278,7 +278,7 @@ export async function setGiftAction(
   marketSlug: string,
   input: { isGift: boolean; to: string; from: string; message: string },
 ): Promise<GiftActionResult> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop || typeof input !== "object" || input === null) return { ok: false, problems: [] };
   const text = (value: unknown) => (typeof value === "string" ? value.slice(0, GIFT_INPUT_MAX) : "");
   const result = await setCartGift(

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { accountLabel, moneyByCurrency } from "@/components/admin/customer-bar";
 import { Avatar } from "@/components/avatar";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -13,6 +14,9 @@ export const metadata: Metadata = { title: "Customers" };
 /** Everyone who has an account or has bought (D35), most recently active first, with a search. */
 export default async function CustomersPage({ params, searchParams }: PageProps<"/admin/[store]/customers">) {
   const member = await requirePermission((await params).store, "customers:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(member, "shop");
+  if (shopOff) return shopOff;
   const { store } = member;
   const raw = (await searchParams).q;
   const q = typeof raw === "string" ? raw : "";

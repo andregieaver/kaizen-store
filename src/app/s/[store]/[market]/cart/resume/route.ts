@@ -2,7 +2,7 @@ import { connection } from "next/server";
 
 import { marketPath } from "@/lib/paths";
 import { resumeHandoff } from "@/server/cart-handoff";
-import { resolveShop } from "@/server/shop";
+import { resolveSellingShop } from "@/server/shop";
 
 /**
  * Where a cart made on another site (the WordPress plugin, D170) is opened: `?t=` is the one-time secret of the hand-over. It makes the cart this
@@ -12,7 +12,8 @@ import { resolveShop } from "@/server/shop";
 export async function GET(request: Request, { params }: RouteContext<"/s/[store]/[market]/cart/resume">) {
   await connection();
   const { store, market } = await params;
-  const shop = await resolveShop(store, market);
+  // A website (D178 step 5: the online shop off) takes no cart: the link goes to the front page, nothing resumed.
+  const shop = await resolveSellingShop(store, market);
   const headers = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex", "Referrer-Policy": "no-referrer" };
   if (!shop) return new Response(null, { status: 303, headers: { ...headers, Location: "/" } });
   const token = new URL(request.url).searchParams.get("t") ?? "";

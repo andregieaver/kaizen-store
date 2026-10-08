@@ -14,9 +14,10 @@ import { marketPath } from "@/lib/paths";
 import type { StoreRoute } from "@/lib/store-parts";
 import { marketIn } from "./shop";
 import { summarize } from "@/lib/seo";
+import { featureOn } from "@/lib/store-features";
 import { knownIds, withDescendants } from "@/lib/taxonomy";
 
-import { listGridProducts, type GridProduct } from "./catalog";
+import { catalogTag, listGridProducts, type GridProduct } from "./catalog";
 import { fieldsTag } from "./custom-fields";
 import { shownFieldsForItems } from "./field-tiles";
 import { pagesTag } from "./pages";
@@ -122,6 +123,18 @@ export async function storeAndMarket(storeId: string, marketCode: string | null)
   const store = row ? await getOpenStore(String(row.slug)) : null;
   const market = store && marketIn(store, marketCode);
   return store && market ? { store, market } : null;
+}
+
+/**
+ * Whether a page's owner sells online (D178 step 5): Kaizen and a store with the online shop on; a website's grids of products and its search
+ * draw nothing. Cached with the catalogue, which a feature's switch refreshes.
+ */
+export async function ownerSells(owner: string | null): Promise<boolean> {
+  "use cache";
+  if (!owner) return true;
+  cacheTag(catalogTag(owner));
+  const shop = await storeAndMarket(owner, null);
+  return !shop || featureOn(shop.store, "shop");
 }
 
 type Filter = { categories: string[]; tags: string[]; sort: string; limit: number; tileFields: string[] };

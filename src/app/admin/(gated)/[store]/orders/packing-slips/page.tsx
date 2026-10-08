@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { PackingSlipView } from "@/components/admin/orders/packing-slip-view";
 import { PrintArea } from "@/components/admin/print-area";
 import { PrintButton } from "@/components/admin/print-button";
@@ -27,7 +28,11 @@ function idsOf(value: string | string[] | undefined): string[] {
  */
 export default async function PackingSlipsPage({ params, searchParams }: PageProps<"/admin/[store]/orders/packing-slips">) {
   const { store: slug } = await params;
-  const { store } = await requirePermission(slug, "orders:read");
+  const gated = await requirePermission(slug, "orders:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const ids = idsOf((await searchParams).ids);
   const set = await packingSlipData(store.id, ids);
   if (!set.ok) {

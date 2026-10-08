@@ -4,6 +4,7 @@ import { marketPath } from "@/lib/paths";
 import { changeLine } from "@/server/cart";
 import { openReminderLink } from "@/server/cart-reminders";
 import { setCartCode } from "@/server/discounts";
+import { featureOn } from "@/lib/store-features";
 import { resolveAfterSaleShop, resolveShop } from "@/server/shop";
 
 /**
@@ -19,6 +20,8 @@ export async function GET(request: Request, { params }: RouteContext<"/s/[store]
     if (await resolveAfterSaleShop(storeSlug, marketSlug)) redirect(marketPath(storeSlug, marketSlug, "/cart"));
     return new Response("Not found", { status: 404 });
   }
+  // A website (D178 step 5: the online shop off) restores no cart.
+  if (!featureOn(shop.store, "shop")) return new Response("Not found", { status: 404 });
   const cart = { storeId: shop.store.id, market: shop.market };
   const found = token.length <= 64 ? await openReminderLink(shop.store.id, token) : null;
   if (found) {

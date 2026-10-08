@@ -6,7 +6,7 @@ import { formatClock, parseRentalPeriod, rangeCalendar, type RangeCalendar, type
 import { slotWeek, type SlotWeek } from "@/lib/booking-slots";
 import { appointmentSlots } from "@/server/appointments";
 import { rangeDates, rentalTimes } from "@/server/ranges";
-import { resolveShop } from "@/server/shop";
+import { resolveSellingShop } from "@/server/shop";
 
 const input = z.object({
   productId: z.uuid(),
@@ -21,7 +21,7 @@ export async function appointmentWeekAction(
   values: { productId: string; from: string | null; resourceId: string | null },
 ): Promise<SlotWeek | null> {
   const parsed = input.safeParse(values);
-  const shop = parsed.success ? await resolveShop(storeSlug, marketSlug) : null;
+  const shop = parsed.success ? await resolveSellingShop(storeSlug, marketSlug) : null;
   if (!parsed.success || !shop) return null;
   const week = await appointmentSlots(shop.store.id, parsed.data.productId, {
     from: parsed.data.from,
@@ -37,7 +37,7 @@ export async function rangeDatesAction(
   values: { productId: string; from: string | null; period?: RentalPeriod },
 ): Promise<RangeCalendar | null> {
   const parsed = input.pick({ productId: true, from: true }).safeParse(values);
-  const shop = parsed.success ? await resolveShop(storeSlug, marketSlug) : null;
+  const shop = parsed.success ? await resolveSellingShop(storeSlug, marketSlug) : null;
   if (!parsed.success || !shop) return null;
   const month = await rangeDates(shop.store.id, parsed.data.productId, parsed.data.from, Date.now(), parseRentalPeriod(values.period));
   return month && rangeCalendar(month, shop.market.locale);
@@ -55,7 +55,7 @@ export async function rentalTimesAction(
   const parsed = z
     .object({ productId: z.uuid(), date: z.iso.date(), period: z.enum(["half_day", "hour"]) })
     .safeParse(values);
-  const shop = parsed.success ? await resolveShop(storeSlug, marketSlug) : null;
+  const shop = parsed.success ? await resolveSellingShop(storeSlug, marketSlug) : null;
   if (!parsed.success || !shop) return null;
   const times = await rentalTimes(shop.store.id, parsed.data.productId, parsed.data.date, parsed.data.period);
   if (!times) return null;

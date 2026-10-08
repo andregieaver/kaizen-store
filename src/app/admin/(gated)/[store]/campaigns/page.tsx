@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { campaignStatus, describeCampaign } from "@/lib/campaigns";
 import { mainCurrency } from "@/lib/markets";
@@ -23,7 +24,11 @@ const KIND_WORD = { percent: "Percentage off", multi_buy: "Buy more, pay for few
 
 /** The store's campaigns (D114): offers without a code, for a time, and what each has given. */
 export default async function CampaignsPage({ params }: PageProps<"/admin/[store]/campaigns">) {
-  const { store } = await requirePermission((await params).store, "marketing:read");
+  const gated = await requirePermission((await params).store, "marketing:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const campaigns = await listCampaigns(store.id);
   const locale = store.markets[0]?.locale ?? "nb-NO";
   const currencyOf = (marketCode: string) => store.markets.find((m) => m.code === marketCode)?.currency ?? mainCurrency(store);

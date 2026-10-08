@@ -287,13 +287,14 @@ export async function listDrafts(storeId: string, options: { status?: DraftStatu
 /**
  * The market view a draft is in, while the store offers it (D178): its country (Several countries, or the store's own), its currency
  * (Several currencies, or the country's own) and its language (Several languages, or the country's own). A draft in one no longer offered
- * cannot be sent; one already sent stays its order's (after-sale).
+ * cannot be sent; one already sent stays its order's (after-sale). A website (D178 step 5: the online shop off) offers none.
  */
 async function marketOf(store: EmailStore, slug: string): Promise<Market | null> {
   const market = findMarket(store.markets, slug, { locales: store.localization.locales, conversion: (from, to) => conversionFor(store.localization, from, to) });
   if (!market) return null;
   const [row] = await db().execute<Row>(sql`
-    select commerce.market_offered(${store.id}::uuid, ${market.code}, ${market.currency}) as offered, commerce.feature_on(${store.id}::uuid, 'languages') as languages
+    select commerce.market_offered(${store.id}::uuid, ${market.code}, ${market.currency}) and commerce.feature_on(${store.id}::uuid, 'shop') as offered,
+      commerce.feature_on(${store.id}::uuid, 'languages') as languages
   `);
   const ownLanguage = market.lang === market.ownLocale.split("-")[0];
   return row?.offered && (row.languages || ownLanguage) ? market : null;

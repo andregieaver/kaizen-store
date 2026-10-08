@@ -37,7 +37,8 @@ import { WishlistCount } from "./wishlist-heart";
 
 /** Where a header or footer is drawn: a store's, in one of its countries, or Kaizen's. */
 export type SiteContext =
-  | { kind: "store"; store: Store; market: Market; place: "header" | "footer" }
+  /** `withdrawal`: whether the withdrawal link is drawn (D178 step 5: with the online shop off, only while after-sale is open); drawn unless false. */
+  | { kind: "store"; store: Store; market: Market; place: "header" | "footer"; withdrawal?: boolean }
   | { kind: "kaizen"; chrome: PlatformChrome; place: "header" | "footer" };
 
 const ICON_LINK = "flex size-11 items-center justify-center rounded-full hover:bg-current/5";
@@ -63,6 +64,9 @@ export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
     case "colorMode":
       // Only while the store lets visitors choose (D99).
       return store.theme.settings.visitorSwitch;
+    case "withdrawal":
+      // With the online shop off (D178 step 5), only while an order can still be withdrawn from or returned.
+      return ctx.withdrawal !== false;
     default:
       return true;
   }
@@ -264,7 +268,19 @@ function Notice({ text }: { text: string | null }) {
  * header does. A store selling to both kinds of buyer keeps the switch over
  * it unless the header has its own.
  */
-export async function StoreSiteHeader({ store, market, notice, layout }: { store: Store; market: Market; notice: string | null; layout: SiteLayout }) {
+export async function StoreSiteHeader({
+  store,
+  market,
+  notice,
+  layout,
+  withdrawal = true,
+}: {
+  store: Store;
+  market: Market;
+  notice: string | null;
+  layout: SiteLayout;
+  withdrawal?: boolean;
+}) {
   const m = t(market.lang);
   // Blocks taking their content from the store's own custom fields (D120) show it; nothing is read when there are none.
   const content = await bindStoreFields(localizePage(layout.content, market.locale), store, market);
@@ -283,7 +299,7 @@ export async function StoreSiteHeader({ store, market, notice, layout }: { store
       <header className={`site-header border-b border-border ${background}`}>
         <SiteRows
           content={content}
-          ctx={{ kind: "store", store, market, place: "header" }}
+          ctx={{ kind: "store", store, market, place: "header", withdrawal }}
           place={{ pageId: layout.id, owner: store.id, market: market.slug }}
         />
       </header>
@@ -292,13 +308,13 @@ export async function StoreSiteHeader({ store, market, notice, layout }: { store
 }
 
 /** A store's own footer (D80), in its country's language. */
-export async function StoreSiteFooter({ store, market, layout }: { store: Store; market: Market; layout: SiteLayout }) {
+export async function StoreSiteFooter({ store, market, layout, withdrawal = true }: { store: Store; market: Market; layout: SiteLayout; withdrawal?: boolean }) {
   const content = await bindStoreFields(localizePage(layout.content, market.locale), store, market);
   return (
     <footer className="site-footer mt-auto border-t border-border bg-surface/40 text-sm">
       <SiteRows
         content={content}
-        ctx={{ kind: "store", store, market, place: "footer" }}
+        ctx={{ kind: "store", store, market, place: "footer", withdrawal }}
         place={{ pageId: layout.id, owner: store.id, market: market.slug }}
       />
     </footer>

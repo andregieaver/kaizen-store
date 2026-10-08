@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
 import { ROLE_TEMPLATES, canOpenPath, type PermissionHolder } from "./permissions";
-import { FEATURE_IDS, type FeatureRequirement } from "./store-features";
+import { AFTER_SALE_ADMIN_PATHS, FEATURE_IDS, isAfterSaleAdminPath, type FeatureRequirement } from "./store-features";
 import { HOME_PATHS, STORE_SECTIONS, sectionOf, sectionPaths, storeAreas, storeSections, storeTabs } from "./store-nav";
 
 const ROOT = "src/app/admin/(gated)/[store]";
@@ -96,6 +96,35 @@ describe("the store admin's sections (D147)", () => {
     // The sections themselves stay whole for the permissions and the admin map.
     expect(sectionOf("/bonus")?.key).toBe("marketing");
     expect(STORE_SECTIONS.find((s) => s.key === "bookings")).toBeDefined();
+  });
+
+  it("leaves the online shop's sections and pages out of a website, and opens a section on what is left (D178 step 5)", () => {
+    const website = { features: [] as string[] };
+    const tabs = storeTabs("/admin/s", website);
+    expect(tabs.map((t) => t.label)).toEqual(["Home", "Products", "Customers", "Marketing", "Analytics", "Website", "Settings"]);
+    // Orders is not in the menu (reached from Home while an order can still be withdrawn from or returned).
+    expect(tabs.map((t) => t.href)).not.toContain("/admin/s/orders");
+    // A section whose main page is hidden opens on the first page it has left.
+    const href = (label: string) => tabs.find((t) => t.label === label)!.href;
+    expect(href("Products")).toBe("/admin/s/fields");
+    expect(href("Customers")).toBe("/admin/s/privacy");
+    expect(href("Marketing")).toBe("/admin/s/experiments");
+    expect(href("Analytics")).toBe("/admin/s/analytics/traffic");
+    expect(storeTabs("/admin/s", NONE).find((t) => t.label === "Products")!.href).toBe("/admin/s/products");
+    const paths = storeSections(website).flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.path)));
+    for (const path of ["/products", "/inventory", "/product-layouts", "/customers", "/customer-groups", "/wishlists", "/campaigns", "/discounts", "/recommendations", "/cart-reminders", "/analytics", "/analytics/finance", "/analytics/tax", "/settings/payments", "/settings/shipping", "/settings/orders", "/settings/returns", "/settings/tax", "/settings/invoices", "/search"]) {
+      expect(paths, path).not.toContain(path);
+    }
+    for (const path of ["/fields", "/privacy", "/experiments", "/analytics/traffic", "/analytics/settings", "/pages", "/settings/legal", "/settings/features", "/integrations", "/chat"]) {
+      expect(paths, path).toContain(path);
+    }
+    // The pages of what was sold that stay reachable are the shop's in the map and the menu, and are pages the map knows.
+    const known = new Map(ADMIN_PAGES.filter((p) => p.area === "store").map((p) => [p.path, p]));
+    for (const path of AFTER_SALE_ADMIN_PATHS) {
+      expect(known.get(path)?.feature, path).toBe("shop");
+      expect(isAfterSaleAdminPath(path)).toBe(true);
+    }
+    expect(isAfterSaleAdminPath("/orders/drafts")).toBe(false);
   });
 
   it("tags each page behind a feature as the admin map does", () => {

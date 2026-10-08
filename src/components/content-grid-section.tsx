@@ -9,7 +9,7 @@ import type { ContentGridBlock } from "@/lib/page-content";
 import { tileFieldIds } from "@/lib/tile-fields";
 import { getBuyer } from "@/server/b2b";
 import { campaignNoticesAt } from "@/server/campaign-notices";
-import { gridData, gridScope, productItem, storeAndMarket, withTileFields, type GridPlace, type ListingPlace } from "@/server/content-grid";
+import { gridData, gridScope, ownerSells, productItem, storeAndMarket, withTileFields, type GridPlace, type ListingPlace } from "@/server/content-grid";
 import { recommendBlockOf, recommendingGrid, recommendPlaceOf, recommends } from "@/server/recommend-grid";
 import { listingFacets, listingProducts } from "@/server/listing";
 import { siteTerms } from "@/server/taxonomy";
@@ -25,6 +25,8 @@ import { RecommendedGrid } from "./recommended-grid";
  * per request; its grid as set is the prerendered stand-in meanwhile.
  */
 export async function ContentGridSection({ block, place }: { block: ContentGridBlock; place: GridPlace }) {
+  // A grid of products draws nothing in a website (D178 step 5: the online shop off); a grid of pages, articles or the owner's items stays.
+  if (sourceTraits(block.source).products && !(await ownerSells(place.owner))) return null;
   // A grid that recommends (D139) is built with the recommendations for everyone, then follows the shopper's own.
   if (recommends(block, place) && place.owner) return <RecommendingGrid block={block} place={place} owner={place.owner} />;
   const data = await gridData(block, place);

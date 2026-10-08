@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { CartAddTable, WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
 import { listCartAdds } from "@/server/wishlist-admin";
@@ -19,7 +20,11 @@ const FILTERS = [
  * still in the cart, taken out, or left behind.
  */
 export default async function WishlistActivityPage({ params, searchParams }: PageProps<"/admin/[store]/wishlists/activity">) {
-  const { store } = await requirePermission((await params).store, "customers:read");
+  const gated = await requirePermission((await params).store, "customers:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const raw = (await searchParams).show;
   const show = FILTERS.find((f) => f.key === raw)?.key ?? "all";
   const rows = await listCartAdds(store.id, { outcome: show === "all" ? undefined : show });

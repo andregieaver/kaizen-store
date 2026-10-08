@@ -213,6 +213,8 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     days: null,
     on: "store",
     recommendations: true,
+    // The online shop's (D178 step 5): a website sets none of it.
+    feature: "shop",
     purpose: {
       en: "Remembers in this tab which products you looked at, what you searched for and which recommended products you opened, so the store can suggest products that suit you; gone when you close the tab, never joined to who you are.",
       nb: "Husker i denne fanen hvilke produkter du så på, hva du søkte etter og hvilke anbefalte produkter du åpnet, slik at butikken kan foreslå produkter som passer deg; forsvinner når du lukker fanen og kobles aldri til hvem du er.",
@@ -294,6 +296,8 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     category: "necessary",
     days: 30,
     on: "store",
+    // The online shop's (D178 step 5): a website sets none of it.
+    feature: "shop",
     purpose: {
       en: "Keeps your shopping cart while you shop.",
       nb: "Husker handlekurven din mens du handler.",
@@ -322,6 +326,8 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     category: "necessary",
     days: 365,
     on: "store",
+    // The online shop's (D178 step 5): a website sets none of it.
+    feature: "shop",
     purpose: {
       en: "Keeps the products you save to your wishlist.",
       nb: "Husker produktene du lagrer i ønskelisten.",

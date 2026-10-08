@@ -13,6 +13,7 @@ import { localizePage } from "@/lib/page-translation";
 import { marketPath } from "@/lib/paths";
 import { DEFAULT_PRODUCT_LAYOUT } from "@/lib/product-layout";
 import { headerOverlays } from "@/lib/site-layout";
+import { featureOn } from "@/lib/store-features";
 import { schemaPrice, summarize } from "@/lib/seo";
 import { getProduct, listProducts } from "@/server/catalog";
 import { campaignNotices } from "@/server/campaign-notices";
@@ -51,6 +52,8 @@ async function load(params: Props["params"]) {
   const shop = await resolveShop(storeSlug, marketSlug);
   if (!shop) return null;
   const { store, market, ab } = shop;
+  // A website (D178 step 5: the online shop off) has no product pages: the store's 404, or a manual redirect.
+  if (!featureOn(store, "shop")) return null;
   const product = await getProduct(store.id, market, handle);
   return product ? { store, market, product, ab } : null;
 }

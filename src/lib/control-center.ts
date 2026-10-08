@@ -45,6 +45,8 @@ export type StoreFigures = {
    * sent, the latest orders and returns), `stock`, `plan`. Left out of the figures, never shown as zero; absent for the owner.
    */
   hides?: ("sales" | "stock" | "plan")[];
+  /** The store is a website (D178 step 5: the online shop off): no sales, stock or payments to show. */
+  website?: boolean;
   /**
    * What needs attention in the Work area (D122, docs/work.md 6.5), only for a store with the module on: the Work
    * overview's own items (`workOverview().attention`, worded with the store's name and pointing at its Work pages).

@@ -6,7 +6,7 @@ import { RolePage } from "@/components/role-page";
 import { SearchSection } from "@/components/search-section";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
-import { resolveShop } from "@/server/shop";
+import { resolveShop, sellingPageOr404 } from "@/server/shop";
 import { pageShopOrMoved } from "@/server/shop-page";
 
 type Props = PageProps<"/s/[store]/[market]/search">;
@@ -22,7 +22,8 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  */
 export default async function SearchPage({ params, searchParams }: Props) {
   // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
-  await pageShopOrMoved("/search");
+  // Search finds products (D72), so a website (D178 step 5: the online shop off) has none: the 404 before the boundary.
+  await sellingPageOr404(await pageShopOrMoved("/search"), "/search");
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
       <Search params={params} searchParams={searchParams} />

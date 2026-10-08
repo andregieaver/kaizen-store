@@ -132,10 +132,12 @@ export type PublicStore = {
   languageChoice: boolean;
   /** Open, set up and not hidden: listed in sitemaps and llms.txt. */
   indexable: boolean;
+  /** It sells online (D178 step 5: the online shop on); a website has no products, categories, tags or prices to list. */
+  selling: boolean;
   updatedAt: string;
   /** Its front page (D54), shown at each market's own address rather than its page address. */
   frontPageId: string | null;
-  /** The All products page (D83), at /products rather than its own address. */
+  /** The All products page (D83), at /products rather than its own address; none in a website (D178 step 5), where it keeps its own. */
   productsPageId: string | null;
   /** The pages chosen for the blog, search and 404 places (D112): they have places of their own, not page addresses. */
   rolePageIds: string[];
@@ -181,9 +183,10 @@ export async function listPublicStores(): Promise<PublicStore[]> {
       languageChoice,
       // A store template (D175) is a preview, never for search engines: out of every sitemap and llms.txt.
       indexable: !row.starter && Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && markets.length > 0,
+      selling: featureOn(features, "shop"),
       updatedAt: new Date(String(row.updated_at)).toISOString(),
       frontPageId: row.front_page_id ? String(row.front_page_id) : null,
-      productsPageId: row.products_page_id ? String(row.products_page_id) : null,
+      productsPageId: row.products_page_id && featureOn(features, "shop") ? String(row.products_page_id) : null,
       rolePageIds: ((row.role_pages ?? []) as string[]).map(String),
     };
   });
@@ -483,9 +486,10 @@ export async function storeSitemap(slug: string): Promise<string | null> {
   const store = (await listPublicStores()).find((s) => s.slug === slug && s.indexable);
   if (!store) return null;
   const origin = storeSiteUrl(store.slug);
+  // A website (D178 step 5: the online shop off) lists no products, categories or tags.
   const [products, terms, pages, articles] = await Promise.all([
-    listIndexedProducts(store.id),
-    listIndexedTerms(store.id),
+    store.selling ? listIndexedProducts(store.id) : Promise.resolve([]),
+    store.selling ? listIndexedTerms(store.id) : Promise.resolve([]),
     listPublishedPages(store.id),
     listPublishedPages(store.id, "article"),
   ]);
@@ -637,10 +641,12 @@ export async function storeLlms(slug: string): Promise<string | null> {
   const origin = storeSiteUrl(store.slug);
   const m = t(market.lang);
   const home = (code: string) => `${origin}${marketPath(store.slug, code.toLowerCase())}`;
+  // A website (D178 step 5: the online shop off) sells nothing: who it is, its pages and blog, and no products, prices or terms of sale.
+  const selling = featureOn(store, "shop");
   const [products, indexed, shipping, pages, articles] = await Promise.all([
-    listProducts(store.id, market),
-    listIndexedProducts(store.id),
-    Promise.all(store.markets.map((mk) => getShippingFacts(store.id, mk))),
+    selling ? listProducts(store.id, market) : Promise.resolve([]),
+    selling ? listIndexedProducts(store.id) : Promise.resolve([]),
+    selling ? Promise.all(store.markets.map((mk) => getShippingFacts(store.id, mk))) : Promise.resolve([]),
     listPublishedPages(store.id),
     listPublishedPages(store.id, "article"),
   ]);
@@ -653,40 +659,54 @@ export async function storeLlms(slug: string): Promise<string | null> {
     summary: store.seo.description[market.locale] || m.storeSummary(store.name, market.name),
     text: store.seo.llms,
     sections: [
-      {
-        heading: "Shopping here",
-        lines: [
-          `Seller: ${[d.legalName ?? store.name, d.organisationNumber && `organisation number ${d.organisationNumber}`, d.postalAddress?.replace(/\s*\n\s*/g, ", ")].filter(Boolean).join(", ")}.`,
-          ...(d.contactEmail ? [`Contact: ${d.contactEmail}.`] : []),
-          ...store.markets.map((mk, i) => {
-            const rate = shipping[i];
-            const cost = !rate
-              ? "no shipping price set yet"
-              : `shipping ${money(rate.amountMinor, rate.currency)}${rate.freeOverMinor ? `, free from ${money(rate.freeOverMinor, rate.currency)}` : ""}`;
-            return `${mk.name}: prices in ${mk.currency} including VAT, ${cost}. Store: ${home(mk.code)}`;
-          }),
-          "Shoppers have 14 days to change their mind (right of withdrawal), except for products the listing says are excluded.",
-          `To buy: add products to the cart on the product page, then pay by card at checkout (${home(market.code)}/cart).`,
-        ],
-      },
-      {
-        heading: `Products (${market.name}, ${market.currency})`,
-        links: products.map((product) => {
-          const text = byHandle.get(product.handle);
-          const description = text ? summarize(productText(text, market.locale).description, 200) : "";
-          const price = `${product.priceVaries ? "from " : ""}${money(product.price.amountMinor, product.price.currency)}`;
-          return {
-            title: product.title,
-            url: `${home(market.code)}/p/${product.handle}`,
-            note: [price, description].filter(Boolean).join(". "),
-          };
-        }),
-      },
+      // A website (D178 step 5: the online shop off) says who runs it; a shop how to buy and what it sells.
+      ...(selling
+        ? [
+          {
+            heading: "Shopping here",
+            lines: [
+              `Seller: ${[d.legalName ?? store.name, d.organisationNumber && `organisation number ${d.organisationNumber}`, d.postalAddress?.replace(/\s*\n\s*/g, ", ")].filter(Boolean).join(", ")}.`,
+              ...(d.contactEmail ? [`Contact: ${d.contactEmail}.`] : []),
+              ...store.markets.map((mk, i) => {
+                const rate = shipping[i];
+                const cost = !rate
+                  ? "no shipping price set yet"
+                  : `shipping ${money(rate.amountMinor, rate.currency)}${rate.freeOverMinor ? `, free from ${money(rate.freeOverMinor, rate.currency)}` : ""}`;
+                return `${mk.name}: prices in ${mk.currency} including VAT, ${cost}. Store: ${home(mk.code)}`;
+              }),
+              "Shoppers have 14 days to change their mind (right of withdrawal), except for products the listing says are excluded.",
+              `To buy: add products to the cart on the product page, then pay by card at checkout (${home(market.code)}/cart).`,
+            ],
+          },
+          {
+            heading: `Products (${market.name}, ${market.currency})`,
+            links: products.map((product) => {
+              const text = byHandle.get(product.handle);
+              const description = text ? summarize(productText(text, market.locale).description, 200) : "";
+              const price = `${product.priceVaries ? "from " : ""}${money(product.price.amountMinor, product.price.currency)}`;
+              return {
+                title: product.title,
+                url: `${home(market.code)}/p/${product.handle}`,
+                note: [price, description].filter(Boolean).join(". "),
+              };
+            }),
+          },
+          ]
+        : [
+            {
+              heading: "About",
+              lines: [
+                `Run by: ${[d.legalName ?? store.name, d.organisationNumber && `organisation number ${d.organisationNumber}`, d.postalAddress?.replace(/\s*\n\s*/g, ", ")].filter(Boolean).join(", ")}.`,
+                ...(d.contactEmail ? [`Contact: ${d.contactEmail}.`] : []),
+                `Website: ${home(market.code)}`,
+              ],
+            },
+          ]),
       {
         // Its own pages open to AI assistants (D54), in the first market's language.
         heading: "Pages",
         links: pages
-          .filter((page) => page.content.aiAssistants && page.id !== store.frontPageId && page.id !== store.productsPageId && !Object.values(store.pageRoles).includes(page.id))
+          .filter((page) => page.content.aiAssistants && page.id !== store.frontPageId && !(selling && page.id === store.productsPageId) && !Object.values(store.pageRoles).includes(page.id))
           .map((page) => {
             const c = localizePage(page.content, market.locale);
             return { title: c.title, url: `${home(market.code)}/${page.slug}`, note: c.seo.description || pageExcerpt(c, 200) };

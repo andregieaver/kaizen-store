@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { CartContents } from "@/app/s/[store]/[market]/cart/cart-contents";
 import { CartDrawer } from "@/components/cart-drawer";
 import { t } from "@/lib/i18n";
-import { resolveShop } from "@/server/shop";
+import { resolveSellingShop } from "@/server/shop";
 
 /**
  * The cart opened from a page of the store: on phones it slides out over
@@ -11,7 +11,8 @@ import { resolveShop } from "@/server/shop";
  */
 export default async function CartDrawerPage({ params }: { params: Promise<{ store: string; market: string }> }) {
   const { store: storeSlug, market: marketSlug } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  // Nothing to slide out in a website (D178 step 5: the online shop off).
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return null;
   const { store, market } = shop;
   const m = t(market.lang);

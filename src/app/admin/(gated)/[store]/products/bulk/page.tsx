@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { BulkRecent } from "@/components/admin/bulk-recent";
 import { ProductsGrid } from "@/components/admin/products-grid";
 import { DataPageHead, DataSkeleton, Notice } from "@/components/admin/data/page-parts";
@@ -32,7 +33,11 @@ const list = (value: string | string[] | undefined): string[] =>
  * changes, where an undo can be made later.
  */
 export default async function BulkGridPage({ params, searchParams }: Props) {
-  const { store } = await requirePermission((await params).store, "products:read");
+  const gated = await requirePermission((await params).store, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead

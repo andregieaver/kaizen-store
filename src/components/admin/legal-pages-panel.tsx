@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { FeatureOffNote } from "@/components/admin/feature-off";
 import { TERMS_MODES, TERMS_MODE_WORDS, termsSettingNotice, type TermsMode } from "@/lib/checkout-terms";
 import { LEGAL_ROLE_COPY, isLegalRole } from "@/lib/legal-roles";
 import type { LegalOverview } from "@/server/legal-starters";
@@ -68,6 +69,12 @@ export function LegalPagesPanel({
               <span className="text-sm text-muted">{entry.page ? `Chosen: ${entry.page.title}` : "No page chosen"}</span>
             </div>
             <p className="mb-4 text-sm text-muted">{entry.hint}</p>
+            {!entry.needed && (
+              <p role="note" className="mb-4 text-sm">
+                Not needed while the online shop is off: the store sells nothing, so the footer does not link it. What is chosen is kept for when
+                the shop is on again.
+              </p>
+            )}
             <div className="flex flex-wrap items-start gap-6">
               <ActionForm action={actions.setRole.bind(null, entry.role)} className="flex flex-wrap items-center gap-2">
                 <label className="flex items-center gap-2 text-sm">
@@ -117,6 +124,14 @@ export function LegalPagesPanel({
         ))}
       </ul>
 
+      {!overview.shopOn ? (
+        <section aria-labelledby="checkout-heading" className="rounded-lg border border-border bg-background p-5">
+          <h2 id="checkout-heading" className="mb-1 font-medium">
+            At checkout
+          </h2>
+          <FeatureOffNote storeSlug={storeSlug} feature="shop" owner what="What checkout says about the terms" />
+        </section>
+      ) : (
       <section aria-labelledby="checkout-heading" className="rounded-lg border border-border bg-background p-5">
         <h2 id="checkout-heading" className="mb-1 font-medium">
           At checkout
@@ -148,6 +163,7 @@ export function LegalPagesPanel({
           </div>
         </ActionForm>
       </section>
+      )}
     </div>
   );
 }

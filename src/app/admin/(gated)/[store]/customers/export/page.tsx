@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DataPageHead, DataSkeleton, Notice, ProblemAlert } from "@/components/admin/data/page-parts";
 import { ExportSection } from "@/components/admin/data/export-section";
 import { CustomerExportForm } from "@/components/admin/data/export-forms";
@@ -20,7 +21,11 @@ const first = (value: string | string[] | undefined): string | null => (typeof v
  * owner's only. The consent column says `not_recorded`, because Kaizen has no record of a customer's consent to marketing yet, and the page says so.
  */
 export default async function CustomerExportPage({ params, searchParams }: Props) {
-  const { store } = await requireOwnerRole((await params).store);
+  const gated = await requireOwnerRole((await params).store);
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requirePermission } from "@/server/permissions";
 import { listCompanies } from "@/server/companies";
@@ -17,7 +18,11 @@ const card = "flex flex-col gap-3 rounded-lg border border-border bg-background 
 
 export default async function CustomerGroupPage({ params }: PageProps<"/admin/[store]/customer-groups/[groupId]">) {
   const { store: slug, groupId } = await params;
-  const { store } = await requirePermission(slug, "customers:read");
+  const gated = await requirePermission(slug, "customers:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(groupId).success) notFound();
   const group = await getTier(store.id, groupId);
   if (!group) notFound();

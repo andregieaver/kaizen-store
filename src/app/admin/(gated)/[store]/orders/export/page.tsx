@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DataPageHead, DataSkeleton, Notice, ProblemAlert } from "@/components/admin/data/page-parts";
 import { ExportSection } from "@/components/admin/data/export-section";
 import { OrderExportForm } from "@/components/admin/data/export-forms";
@@ -23,7 +24,11 @@ const first = (value: string | string[] | undefined): string | null => (typeof v
  * order's page lands here with its number filled in.
  */
 export default async function OrderExportPage({ params, searchParams }: Props) {
-  const { store } = await requireOwnerRole((await params).store);
+  const gated = await requireOwnerRole((await params).store);
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <div className="flex flex-col gap-6">
       <DataPageHead

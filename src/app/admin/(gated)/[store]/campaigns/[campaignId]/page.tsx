@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { campaignStatus } from "@/lib/campaigns";
 import { requirePermission } from "@/server/permissions";
@@ -17,7 +18,11 @@ const STATUS = { active: "Running now", off: "Switched off", scheduled: "Starts 
 
 export default async function CampaignPage({ params }: PageProps<"/admin/[store]/campaigns/[campaignId]">) {
   const { store: slug, campaignId } = await params;
-  const { store } = await requirePermission(slug, "marketing:read");
+  const gated = await requirePermission(slug, "marketing:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(campaignId).success) notFound();
   const campaign = await getCampaign(store.id, campaignId);
   if (!campaign) notFound();

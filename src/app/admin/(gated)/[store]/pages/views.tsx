@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PageEditor } from "@/components/admin/page-editor";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
@@ -10,7 +11,7 @@ import { TermsManager } from "@/components/admin/terms";
 import { SiteLayoutChoice, SiteLayoutsTable } from "@/components/admin/site-layouts";
 import { LAYOUT_TYPES, termContentOf, type PageType } from "@/lib/page-content";
 import { ROLE_COPY, ROLE_GROUPS, partOfRole, type PageRole } from "@/lib/page-roles";
-import { requirementMet } from "@/lib/store-features";
+import { featureOn, requirementMet } from "@/lib/store-features";
 import { shopPartFeature } from "@/lib/store-parts";
 import type { Term } from "@/lib/taxonomy";
 import { requirePageTypeAccess } from "@/server/permissions";
@@ -59,7 +60,11 @@ const INTRO: Record<PageType, string> = {
 };
 
 export async function StorePagesListView({ type, params, searchParams }: { type: PageType; params: StoreParams; searchParams: Query }) {
-  const { store } = await requirePageTypeAccess((await params).store, type, "read");
+  const gated = await requirePageTypeAccess((await params).store, type, "read");
+  // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
+  const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const copy = PAGE_TYPE_COPY[type];
   const [pages, query] = await Promise.all([listPages(store.id, type), searchParams]);
   const base = storePagesBase(store, type);
@@ -137,7 +142,8 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           pages={pages.filter((p) => p.id !== store.productsPageId && !roleIds.has(p.id) && (p.state !== "draft" || p.id === store.frontPageId))}
         />
       )}
-      {type === "page" && (
+      {/* A website (D178 step 5: the online shop off) has no All products page; one chosen keeps its place for when the shop is on. */}
+      {type === "page" && featureOn(store, "shop") && (
         <ProductsPageForm
           storeSlug={store.slug}
           current={store.productsPageId}
@@ -179,7 +185,11 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
 
 /** A store's page or article categories and tags (D50, D53, D57): chosen in the editor, shown by content grids. */
 export async function StorePageTermsView({ type, params }: { type: PageType; params: StoreParams }) {
-  const { store } = await requirePageTypeAccess((await params).store, type, "read");
+  const gated = await requirePageTypeAccess((await params).store, type, "read");
+  // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
+  const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const copy = PAGE_TYPE_COPY[type];
   const [terms, fields] = await Promise.all([listTerms({ storeId: store.id, contentType: termContentOf(type) }), termFieldsSetup(store)]);
   return (
@@ -209,7 +219,11 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
 }
 
 export async function StoreNewPageView({ type, params }: { type: PageType; params: StoreParams }) {
-  const { store, account } = await requirePageTypeAccess((await params).store, type, "read");
+  const gated = await requirePageTypeAccess((await params).store, type, "read");
+  // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
+  const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
+  if (shopOff) return shopOff;
+  const { store, account } = gated;
   const [saved, terms, gridTerms] = await Promise.all([
     listSavedParts(store.id),
     listTerms({ storeId: store.id, contentType: termContentOf(type) }),
@@ -234,7 +248,11 @@ export async function StoreNewPageView({ type, params }: { type: PageType; param
 /** One of a store's pages or articles in the editor, opened from its list or from the store. */
 export async function StoreEditPageView({ type, params, searchParams }: { type: PageType; params: PageParams; searchParams: Query }) {
   const { store: storeSlug, pageId } = await params;
-  const { store, account } = await requirePageTypeAccess(storeSlug, type, "read");
+  const gated = await requirePageTypeAccess(storeSlug, type, "read");
+  // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
+  const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
+  if (shopOff) return shopOff;
+  const { store, account } = gated;
   const [page, { saved: justSaved }, saved, terms, gridTerms] = await Promise.all([
     z.uuid().safeParse(pageId).success ? getPageForEdit(store.id, pageId, type) : null,
     searchParams,
@@ -303,7 +321,11 @@ export async function StorePreviewPageView({
   searchParams?: Query;
 }) {
   const { store: storeSlug, pageId } = await params;
-  const { store } = await requirePageTypeAccess(storeSlug, type, "read");
+  const gated = await requirePageTypeAccess(storeSlug, type, "read");
+  // Product layouts are part of the online shop (D178 step 5): hidden while it is off.
+  const shopOff = type === "product_layout" ? requireFeature(gated, "shop") : null;
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const page = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, type) : null;
   if (!page) notFound();
   const copy = PAGE_TYPE_COPY[type];
@@ -552,5 +574,7 @@ const LAYOUT_STATES: Record<PageSummary["state"], string> = {
 /** Whether a store's Special pages offer a place (D178): its working page's feature is on, or a page is chosen for it already. */
 function roleOffered(store: { features: readonly string[]; pageRoles: Partial<Record<string, string>> }, role: PageRole): boolean {
   const part = partOfRole(role);
-  return !part || requirementMet(store, shopPartFeature(part)) || Boolean(store.pageRoles[role]);
+  // The search page finds products (D72): a website (the online shop off, D178 step 5) has none.
+  const feature = role === "search" ? "shop" : part ? shopPartFeature(part) : undefined;
+  return requirementMet(store, feature) || Boolean(store.pageRoles[role]);
 }

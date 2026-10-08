@@ -31,7 +31,7 @@ import {
 } from "@/server/customers";
 import { getShopperOrder } from "@/server/orders";
 import { sendPasswordResetCode, sendSignInCode, sendWelcome } from "@/server/shopper-emails";
-import { resolveShop } from "@/server/shop";
+import { resolveSellingShop, resolveShop } from "@/server/shop";
 
 export type SignInState = {
   step: "email" | "code" | "password";
@@ -214,7 +214,8 @@ export async function registerAction(
   _previous: RegisterState,
   form: FormData,
 ): Promise<RegisterState> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  // A website (D178 step 5: the online shop off) opens no new accounts; existing customers still sign in for their orders and data.
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   const name = String(form.get("name") ?? "").trim().slice(0, 200);
   const typed = String(form.get("email") ?? "").trim();
   const state = { email: typed, name, message: null, known: null } satisfies RegisterState;
@@ -282,7 +283,7 @@ export async function checkoutAccountAction(
   marketSlug: string,
   password: string | null,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return { ok: false, message: "" };
   const m = t(shop.market.lang).account;
   const cartId = await readCartId({ storeId: shop.store.id, market: shop.market });
@@ -300,7 +301,7 @@ export async function checkoutSignInAction(
   orderId: string,
   sessionId: string,
 ): Promise<void> {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return;
   const base = marketPath(shop.store.slug, shop.market.slug);
   const order = z.uuid().safeParse(orderId).success ? await getShopperOrder(shop.store.id, orderId, sessionId) : null;

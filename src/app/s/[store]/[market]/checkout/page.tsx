@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { PayRouteGuard } from "@/components/pay-route-guard";
 import { RolePage } from "@/components/role-page";
 import { t } from "@/lib/i18n";
-import { marketMoved, resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop, sellingPageOr404 } from "@/server/shop";
 
 import { Checkout } from "./checkout-section";
 
@@ -25,6 +25,8 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
   const shop = await resolveShop(storeSlug, marketSlug);
   // A country, language or currency the store no longer offers moves to one it does (D178); its cart stays where it was.
   if (!shop) return marketMoved(storeSlug, marketSlug, "/checkout");
+  // A website (D178 step 5: the online shop off) has no checkout.
+  await sellingPageOr404(shop, "/checkout");
   const { store, market } = shop;
   return (
     <>

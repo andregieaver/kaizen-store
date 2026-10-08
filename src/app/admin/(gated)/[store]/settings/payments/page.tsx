@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { accountStage } from "@/lib/stripe-account";
@@ -17,6 +18,9 @@ export default async function PaymentSettingsPage({
   params,
 }: PageProps<"/admin/[store]/settings/payments">) {
   const current = await requireOwnerRole((await params).store);
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(current, "shop");
+  if (shopOff) return shopOff;
   const { account, store } = current;
   const [settings, audit, kaizenInvoices] = await Promise.all([getPaymentSettings(store), recentAudit(store.id), kaizenInvoicingOn(store.id)]);
   const isOwner = memberCan(current, "owner");

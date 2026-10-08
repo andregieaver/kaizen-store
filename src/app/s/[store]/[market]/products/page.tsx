@@ -13,7 +13,7 @@ import { listGridProducts } from "@/server/catalog";
 import { productsPageOf } from "@/server/pages";
 import { placePageForVisitor } from "@/server/role-pages";
 import { storeShareImage, storeShareTags } from "@/server/seo";
-import { marketMoved, resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop, sellingPageOr404 } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/products">;
 
@@ -67,6 +67,8 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   // A country, language or currency the store no longer offers moves to one it does (D178).
   if (!loaded) return marketMoved((await params).store, (await params).market, "/products");
   const { store, market, page, test, version } = loaded;
+  // A website (D178 step 5: the online shop off) has no All products page: the store's 404, or a manual redirect.
+  await sellingPageOr404(loaded, "/products");
   const base = marketPath(store.slug, market.slug);
   const path = `${base}/products`;
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { AfterSaleNote } from "@/components/admin/after-sale-gate";
 import { FeaturesView } from "@/components/admin/features-view";
 import { formatMoney } from "@/lib/money";
 import { FEATURE_GROUPS, featureCount, featureRows, featuresIn } from "@/lib/store-features";
@@ -28,6 +29,8 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
 
   return (
     <div className="flex flex-col gap-6">
+      {/* With the online shop off, what was sold stays reachable while it can still be withdrawn from or returned (D178 step 5). */}
+      <AfterSaleNote store={store} />
       <FeaturesView
         base={`/admin/${store.slug}`}
         owner={owner}

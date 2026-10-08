@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { marketPath } from "@/lib/paths";
 import { recordClick } from "@/server/search-experiment";
-import { resolveShop } from "@/server/shop";
+import { resolveSellingShop } from "@/server/shop";
 
 const HANDLE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -17,7 +17,7 @@ const HANDLE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 export async function GET(request: Request, { params }: RouteContext<"/s/[store]/[market]/search/go">) {
   await connection();
   const { store: storeSlug, market: marketSlug } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveSellingShop(storeSlug, marketSlug);
   if (!shop) return new Response("Not found", { status: 404 });
   const url = new URL(request.url);
   const searchId = url.searchParams.get("s") ?? "";

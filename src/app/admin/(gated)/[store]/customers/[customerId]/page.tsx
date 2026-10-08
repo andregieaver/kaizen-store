@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { CustomerAffiliateSection, showsAffiliate } from "@/components/admin/customer-affiliate";
 import { CustomerBonus, showsBonus } from "@/components/admin/customer-bonus";
@@ -40,6 +41,9 @@ const card = "rounded-lg border border-border bg-background p-5";
 export default async function CustomerPage({ params, searchParams }: PageProps<"/admin/[store]/customers/[customerId]">) {
   const { store: slug, customerId } = await params;
   const member = await requirePermission(slug, "customers:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(member, "shop");
+  if (shopOff) return shopOff;
   const { store } = member;
   const exportParam = (await searchParams).export;
   if (!z.uuid().safeParse(customerId).success) notFound();

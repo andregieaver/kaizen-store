@@ -48,7 +48,7 @@ export function StoreCard({ store }: { store: StoreFigures }) {
         {store.suspended && <span className={warn}>Suspended</span>}
         {!store.open && <span className={warn}>Not open yet</span>}
         {!noPlan && <span className={`${chip} ml-auto`}>{store.plan ? `${store.plan.name}${["past_due", "unpaid"].includes(store.plan.status) ? " · overdue" : ""}` : "No plan"}</span>}
-        <span className={`${store.payments === "setup" ? warn : chip}${noPlan ? " ml-auto" : ""}`}>{PAYMENTS[store.payments]}</span>
+        <span className={`${store.payments === "setup" && !store.website ? warn : chip}${noPlan ? " ml-auto" : ""}`}>{store.website ? "Website" : PAYMENTS[store.payments]}</span>
       </div>
       {noSales && noStock ? null : (
       <div className="grid grid-cols-2 gap-1 sm:grid-cols-[minmax(0,1.7fr)_repeat(3,minmax(0,1fr))]">
@@ -69,12 +69,16 @@ export function StoreCard({ store }: { store: StoreFigures }) {
         <Link href={base} className="font-medium underline">
           Open admin
         </Link>
-        <Link href={`${base}/orders`} className="underline">
-          Orders
-        </Link>
-        <Link href={`${base}/products`} className="underline">
-          Products
-        </Link>
+        {!store.website && (
+          <>
+            <Link href={`${base}/orders`} className="underline">
+              Orders
+            </Link>
+            <Link href={`${base}/products`} className="underline">
+              Products
+            </Link>
+          </>
+        )}
         {store.role === "owner" && (
           <Link href={`${base}/assistant`} className="underline">
             AI manager

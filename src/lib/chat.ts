@@ -84,6 +84,10 @@ export type ChatAgentInput = z.infer<typeof chatAgentInput>;
 
 /** Where the agent may take a visitor, in a store or on Kaizen's site. */
 export const STORE_DESTINATIONS = ["home", "products", "product", "page", "article", "blog", "category", "tag", "search", "cart", "account", "wishlist"] as const;
+/** The places of the online shop (D178 step 5): a website (the shop off) has none of them, so its agent cannot open them. */
+export const SHOP_DESTINATIONS = ["products", "product", "category", "tag", "search", "cart", "account", "wishlist"] as const;
+/** The store's tools that answer from its products, prices and stock (D178 step 5): a website's agent is not given them. */
+export const SHOP_TOOLS = ["search_products", "recommend_products", "get_product"] as const;
 export const KAIZEN_DESTINATIONS = ["home", "page", "article", "blog", "signUp", "signIn"] as const;
 
 export const navigateArgs = z.object({
@@ -112,8 +116,12 @@ export function returnFacts(policy: ReturnPolicyFacts, withdrawPath: string) {
   };
 }
 
-export function storeTools() {
-  return [
+/**
+ * The tools a store's agent is given. A website (D178 step 5: the online shop off) gets no product tools and cannot open the shop's places;
+ * it still answers from the store's pages, articles and knowledge.
+ */
+export function storeTools(selling = true) {
+  const tools = [
     {
       name: "search_products",
       description: "Find the store's products for what the visitor wants. Returns titles, handles, prices and links; the visitor sees them as cards.",
@@ -152,7 +160,7 @@ export function storeTools() {
       parameters: {
         type: "object",
         properties: {
-          to: { type: "string", enum: [...STORE_DESTINATIONS] },
+          to: { type: "string", enum: STORE_DESTINATIONS.filter((to) => selling || !(SHOP_DESTINATIONS as readonly string[]).includes(to)) },
           handle: text("For a product: its handle."),
           slug: text("For a page, article, category or tag: its address."),
           query: text("For a search: what to search for."),
@@ -161,6 +169,7 @@ export function storeTools() {
       },
     },
   ];
+  return selling ? tools : tools.filter((tool) => !(SHOP_TOOLS as readonly string[]).includes(tool.name));
 }
 
 /** The tools Kaizen's own agent is given (no products). */

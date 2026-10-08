@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { featureOn } from "@/lib/store-features";
 import { DRAFT_EXPIRING_DAYS, EDIT_EXPIRING_DAYS, LOW_STOCK_AT, type SalesFigure, type StoreFigures } from "@/lib/control-center";
 import { totalOf } from "@/lib/ai-usage";
 import { can, type PermissionKey } from "@/lib/permissions";
@@ -51,7 +52,7 @@ const idList = (ids: string[]) => sql.join(ids.map((id) => sql`${id}::uuid`), sq
  */
 export async function controlCenter(account: Account, onlyStore?: string): Promise<ControlCenter> {
   const storeRows = await db().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.status, s.setup_completed_at, s.modules, s.time_zone, m.role, m.kind, m.role_id, sr.permissions as role_permissions,
+    select s.id, s.slug, s.name, s.status, s.setup_completed_at, s.modules, s.features, s.time_zone, m.role, m.kind, m.role_id, sr.permissions as role_permissions,
            p.name as plan_name, b.status as billing_status, b.current_period_end, coalesce(b.cancel_at_period_end, false) as cancelling,
            pr.enabled as payments_on, pr.active_mode,
            exists (select 1 from commerce.stripe_accounts a where a.store_id = s.id and a.mode = 'live' and a.card_payments = 'active') as live_ready
@@ -206,6 +207,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     const live = r.active_mode === "live";
     const send = sendBy.get(id);
     const stock = stockBy.get(id);
+    const website = !featureOn(((r.features ?? []) as unknown[]).map(String), "shop");
     return {
       slug: String(r.slug),
       name: String(r.name),
@@ -228,7 +230,11 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       outOfStock: Number(stock?.out ?? 0),
       belowLevel: Number(stock?.below_level ?? 0),
       owedUnits: owedBy.get(id) ?? 0,
-      ...(orderSet.has(id) && productSet.has(id) && billingIds.has(id) ? {} : { hides: [...(orderSet.has(id) ? [] : (["sales"] as const)), ...(productSet.has(id) ? [] : (["stock"] as const)), ...(billingIds.has(id) ? [] : (["plan"] as const))] }),
+      // A website (D178 step 5: the online shop off) has no sales or stock to show: left out, as a figure a role does not open.
+      ...(website ? { website: true } : {}),
+      ...(orderSet.has(id) && productSet.has(id) && billingIds.has(id) && !website
+        ? {}
+        : { hides: [...(orderSet.has(id) && !website ? [] : (["sales"] as const)), ...(productSet.has(id) && !website ? [] : (["stock"] as const)), ...(billingIds.has(id) ? [] : (["plan"] as const))] }),
       ...(workItems.has(id) ? { work: workItems.get(id) } : {}),
       ...(returnItems.has(id) ? { returns: returnItems.get(id) } : {}),
       ...(taxItems.has(id) ? { tax: taxItems.get(id) } : {}),

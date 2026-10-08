@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { OrderSettingsForm } from "@/components/admin/orders/settings-form";
 import { getOrderSettings } from "@/server/order-settings";
 import { memberCan, requirePermission } from "@/server/permissions";
@@ -14,6 +15,9 @@ export const metadata: Metadata = { title: "Orders settings" };
  */
 export default async function OrderSettingsPage({ params }: PageProps<"/admin/[store]/settings/orders">) {
   const member = await requirePermission((await params).store, "settings:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(member, "shop");
+  if (shopOff) return shopOff;
   const settings = await getOrderSettings(member.store.id);
   return (
     <div className="flex flex-col gap-6">

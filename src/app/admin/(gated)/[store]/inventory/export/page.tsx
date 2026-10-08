@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DataSkeleton, Notice, ProblemAlert } from "@/components/admin/data/page-parts";
 import { ExportSection } from "@/components/admin/data/export-section";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
@@ -22,7 +23,11 @@ const first = (value: string | string[] | undefined): string | null => (typeof v
  * (a small store) or followed as a job. `products:read`. Count from it and bring it back with Import stock.
  */
 export default async function StockExportPage({ params, searchParams }: Props) {
-  const { store } = await requirePermission((await params).store, "products:read");
+  const gated = await requirePermission((await params).store, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <div className="flex flex-col gap-6">
       <InventoryHead

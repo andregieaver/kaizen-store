@@ -7,6 +7,7 @@ import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/ad
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
+import { featureOn } from "@/lib/store-features";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
 import { keyAllowedWhenNotOpen, ownerMayReopen } from "@/lib/store-closure";
@@ -41,12 +42,14 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   // In test mode, Kaizen sets up the store's test Stripe account itself, after
   // the page is sent, so test purchases work without any setup (D20).
   // A store that is not open (D171) gets no Stripe set-up from a visit to its admin, nor does a store template (D175), which takes no orders.
-  if (store.status === "active" && !store.starter && store.paymentsTest) {
+  // A website (D178 step 5: the online shop off) takes no payments, so neither is set up.
+  const selling = featureOn(store, "shop");
+  if (store.status === "active" && !store.starter && store.paymentsTest && selling) {
     const ip = await requestIp();
     after(() => ensureTestAccount(store.id, account.id, ip));
   }
   // Payment methods added to Kaizen since the store's accounts were made (D23).
-  if (store.status === "active") after(() => ensureStorePaymentMethods(store.id));
+  if (store.status === "active" && selling) after(() => ensureStorePaymentMethods(store.id));
   const stores = await storesOf(account);
 
   const base = `/admin/${store.slug}`;

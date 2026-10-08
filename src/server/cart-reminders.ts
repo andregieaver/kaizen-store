@@ -316,7 +316,8 @@ export async function sendDueCartReminders(): Promise<ReminderRun> {
     with due as (
       select a.id, step.id as step_id, step.delay_minutes
       from commerce.abandoned_checkouts a
-      join commerce.stores s on s.id = a.store_id and s.cart_reminders and s.status = 'active' and not s.starter
+      -- A website (D178 step 5: the online shop off) reminds nobody of a cart.
+      join commerce.stores s on s.id = a.store_id and s.cart_reminders and s.status = 'active' and not s.starter and commerce.feature_on(s.id, 'shop')
       join lateral (
         select r.id, r.delay_minutes from commerce.cart_reminder_steps r
         where r.store_id = a.store_id and r.active and r.delay_minutes > a.last_delay_minutes

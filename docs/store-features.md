@@ -265,6 +265,70 @@ builder's AI translation needs more than one language as before. Analytics read 
 **Blockers and warnings.** Several countries is blocked while subscriptions or box lists run in another country or a paid order there has goods
 still to send, and warns of the other countries and of open carts there; languages and currencies warn only.
 
+## 4e. Website mode (step 5)
+
+With the online shop (`shop`) off the store is a **website**: its pages, blog, menus, header and footer, forms, cookies and privacy stay; nothing is
+offered or sold. Every selling feature sleeps with it (their own switches are kept). Nothing is deleted, and switching the shop on brings back
+everything as it was.
+
+**One rule for what is offered.** `OFFERED` (`src/server/product-conditions.ts`) asks `commerce.feature_on(p.store_id, 'shop')` first, so every
+shopper-facing product read is empty in a website: the catalogue, a product's page, listings, content grids of products, search, recommendations,
+wishlists, the sitemap's products, categories and tags, llms.txt, WordPress and the chat agent. The cart marks every line unavailable, `changeLine()`
+adds nothing, `placeOrder()` refuses (`unavailable`), a draft order is made and sent in no market (`marketOf()`), and the database refuses any new
+order whoever asks (`orders_store_open()`, reason `orders.shop_off`, migration `store_features_website_rules`; a copied order still copies). No
+renewal or box can be due: switching the shop off waits while subscriptions, box lists or bookings run, and while paid goods wait to be sent.
+
+**Storefront.** The shop's pages (`/p/{handle}`, `/products`, `/category/…`, `/tag/…`, `/cart`, `/checkout`, `/wishlist`, `/search`) call
+`sellingPageOr404()` (`src/server/shop.ts`) once they have their shop, before any `<Suspense>`: the store's 404, or a manual redirect's target where
+one names the address (D168's rule: a lookup only where the request would be a 404). The search page is a 404, not a search of pages: search finds
+products only (D72), and a search of pages and articles would be a new engine (the chat agent's `search_content` already answers from them). The
+shop's actions and routes (cart, checkout, wishlists, type-ahead, a product's pickers, `cart/resume`, `cart/restore`, `search/go`, `wishlist/saved`,
+the cart drawer, registering an account, the checkout's account actions) resolve with `resolveSellingShop()` and refuse. The front page draws the page
+chosen for it (a grid of products in it draws nothing); without one it shows the store's name and description, never a list of products. The All
+products page chosen for `/products` keeps its own address. The standard header, the phone's menu and bottom bar have no search, My account,
+wishlist or cart; menus leave out the shop's links (`shopLink()`: All products, My account, the cart, a product, a category or tag); the notice says
+nothing of payments. Builder parts carry `shop` (part-features, section 4a): the header's and footer's search, account, wishlist and cart, the
+cart, checkout, wishlist, category and tag components and their pieces, a content grid of products (`contentGrid` with a products source) and the
+search component; the order's page and its pieces, My account and its sign-in are `afterSale` (out of the palette, still drawn). The cart, wishlist
+and recommendations' storage are tagged `shop` in `KNOWN_COOKIES`.
+
+**After the sale (the owner's decision).** What was sold stays reachable while it can still matter to a shopper: `afterSaleOf(storeId)`
+(`src/server/after-sale.ts`) counts the orders with a line that can still be withdrawn from or returned, each judged by the withdrawal function's own
+`lineEligibility()` (the 14 days from receipt, the store's own window, sealed and excluded goods, business orders; no rule of its own), and the
+returns not ended (`isEnded()`). An order sent and not recorded as received keeps the right open (`withdrawalWindow()`: the period starts on receipt),
+so recording deliveries is what lets after-sale close. While either count is above zero:
+
+- the admin's Orders, an order with its slips and terms, Returns and a return, and Invoices (`AFTER_SALE_ADMIN_PATHS`) open for members who may read
+  them (`requireShopOrAfterSale()`), out of the menu: Home and the Features page say how many orders and returns are open and link to them
+  (`AfterSaleNote`);
+- the storefront's footer keeps the withdrawal link (`showsWithdrawalLink()`, the standard footer, a footer's *Withdrawal link* part and the strip
+  under a footer without one; `afterSaleOpenCached()`, an hour, refreshed with the features), and the withdrawal information and returns policy stay
+  in the footer's legal links.
+
+When both are zero, those pages show `FeatureOff` and the link goes. Whatever the counts, the after-sale routes open (section 4 point 6): an order's
+page by its key, `/withdraw`, `/returns/{token}`, hosted documents, downloads, a subscription's page and My account for customers the store has
+(their orders and their data, D162; it is not linked and opens no new accounts). Pay links of orders already waiting for payment keep working, as
+the shop's warning says.
+
+**Admin.** Hidden (`feature: "shop"` on the navigation items and `ADMIN_PAGES`, `requireFeature(member, "shop")` on the pages): Orders (the section),
+Products, Inventory, Product layouts, Customers, Customer groups and Wishlists (Privacy requests and erasing a person's data stay: GDPR is a
+website's too), Campaigns, Coupons, Recommendations and Cart reminders (A/B tests stay), the sales analytics (Overview, Finance, VAT, Customers,
+Products, Inventory, Marketing; Traffic and Analytics settings stay), and the selling settings (Payments, Shipping and the shipping carriers, Orders,
+Returns, Tax, Invoicing, Search). A section whose main page is hidden opens on the first page it has left (Customers on Privacy requests). The AI
+manager's selling tools carry `shop` in `TOOL_FEATURES` (and so leave the store's MCP server). Home shows no sales, latest orders or analytics alerts,
+and its checklist no shipping, payments or products; the control center shows the store as a *Website*, without sales or stock. The admin layout sets
+up no Stripe test account or payment methods for a website. Pages: the All products choice and the Special pages of the shop are not offered.
+
+**Legal pages.** `LEGAL_ROLE_NEEDS` (`src/lib/legal-roles.ts`, `legalRoleNeeded()`): the terms of sale, returns and shipping policies and withdrawal
+information need the shop; privacy, imprint and accessibility are always needed. A website's footer links only what it needs (the withdrawal
+information and returns policy while after-sale is open); the Legal pages screen marks the others "Not needed while the online shop is off" (chosen
+pages are kept) and has no checkout setting.
+
+**Outside the store.** The sitemap and llms.txt list no products, categories or tags (llms.txt says who runs the site instead of how to buy, and a
+website's All products page is listed at its own address); WordPress lists no website and answers its routes as for a store that is not there;
+`/api/recommendations` and its events answer 404; the chat agent gets no product tools, cannot open the shop's places and states no shipping or
+return policy; cart reminders and low-stock notices skip a website.
+
 ## 5. Blockers and warnings
 
 Counted by `featureFacts()` (one query, reusing `storeObligations()` of `src/server/store-closure.ts`); the rules are
@@ -316,9 +380,9 @@ The store's own country is `stores.country`'s market, else its first active mark
    server and jobs, with the rules of section 4c (migration `store_features_selling_rules`), and `checkout-kinds.int.test.ts` scenarios.
 4. **Countries and languages** (done): `countries`, `languages` and `currencies` hidden, moved and refused everywhere, with the rules of
    section 4d (migration `store_features_world_rules`), and `checkout-kinds.int.test.ts` scenarios.
-5. **Redirects and website mode**: the storefront with the shop off (no prices, cart or checkout, product pages as
-   content), addresses of a feature that is off answered sensibly (a 404 or a redirect), legal starters following the
-   features. **Decided by the owner:** with the shop off, Orders stays reachable (out of the main menu) while any order can still be withdrawn
-   from or has an open return, and the footer's withdrawal link stays as long; then both disappear. Nothing is deleted.
+5. **Redirects and website mode** (done): the storefront with the shop off (no products, prices, cart or checkout), the shop's addresses the
+   store's 404 through `missOrRedirect()`, legal pages following the features, with the rules of section 4e (migration
+   `store_features_website_rules`). **Decided by the owner:** with the shop off, Orders stays reachable (out of the main menu) while any order can
+   still be withdrawn from or has an open return, and the footer's withdrawal link stays as long; then both disappear. Nothing is deleted.
 6. **Onboarding**: a setup question ("What will you sell?") and store templates choosing features; new stores'
    defaults revisited.

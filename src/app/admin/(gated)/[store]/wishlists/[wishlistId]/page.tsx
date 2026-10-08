@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { CustomerBar, storeCustomerBar } from "@/components/admin/customer-bar";
 import { CartAddTable, variantText } from "@/components/admin/wishlist-admin";
 import { formatMoney } from "@/lib/money";
@@ -21,7 +22,11 @@ const card = "rounded-lg border border-border bg-background p-5";
  */
 export default async function WishlistPage({ params }: PageProps<"/admin/[store]/wishlists/[wishlistId]">) {
   const { store: slug, wishlistId } = await params;
-  const { store } = await requirePermission(slug, "customers:read");
+  const gated = await requirePermission(slug, "customers:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(wishlistId).success) notFound();
   const market = store.markets[0] ?? null;
   const list = await getStoreWishlist(store.id, wishlistId, market);

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { RolePage } from "@/components/role-page";
 import { resolveShop } from "@/server/shop";
+import { sellingPageOr404 } from "@/server/shop";
 import { pageShopOrMoved } from "@/server/shop-page";
 
 import { WishlistSection } from "./wishlist-section";
@@ -18,7 +19,8 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  */
 export default async function WishlistPage({ params, searchParams }: Props) {
   // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
-  await pageShopOrMoved("/wishlist");
+  // A website (D178 step 5: the online shop off) has no wishlists: the 404 before the boundary.
+  await sellingPageOr404(await pageShopOrMoved("/wishlist"), "/wishlist");
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
       <WishlistRoute params={params} searchParams={searchParams} />

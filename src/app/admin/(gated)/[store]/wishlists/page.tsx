@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { moneyByCurrency } from "@/components/admin/customer-bar";
 import { WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
@@ -14,7 +15,11 @@ export const metadata: Metadata = { title: "Wishlists" };
  * much is in them, and how much went to the cart and was bought.
  */
 export default async function WishlistsPage({ params, searchParams }: PageProps<"/admin/[store]/wishlists">) {
-  const { store } = await requirePermission((await params).store, "customers:read");
+  const gated = await requirePermission((await params).store, "customers:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const query = await searchParams;
   const q = typeof query.q === "string" ? query.q : "";
   const customerId = typeof query.customer === "string" && z.uuid().safeParse(query.customer).success ? query.customer : null;

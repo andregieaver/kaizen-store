@@ -22,7 +22,9 @@ import { looksLikeMarket } from "@/lib/redirect-path";
 import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { siteIcons } from "@/lib/site-icons";
 import { footerHasWithdrawal } from "@/lib/site-layout";
+import { featureOn, showsWithdrawalLink } from "@/lib/store-features";
 import { themeAttributes } from "@/lib/theme";
+import { afterSaleOpenCached } from "@/server/after-sale";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
 import { prerenderedShops, resolveAfterSaleShop, resolveShop } from "@/server/shop";
@@ -104,23 +106,29 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
   }
   const { store, market, ab } = shop;
   const m = t(market.lang);
+  // A website (D178 step 5: the online shop off) keeps the withdrawal link, and the checkout's legal pages, while an order can still be
+  // withdrawn from or returned (asked only of a website, cached for an hour).
+  const selling = featureOn(store, "shop");
+  const afterSale = selling || (await afterSaleOpenCached(store.id));
+  const withdrawal = showsWithdrawalLink(store, afterSale);
   // The store's own header and footer built in the page builder (D80), else the standard ones; the visitor's version of them while one is under an A/B test (D148).
   const [header, footer, legalLinks] = await Promise.all([
     siteLayoutForVisitor(store.id, "header", ab),
     siteLayoutForVisitor(store.id, "footer", ab),
-    // The published legal pages, listed in the standard footer (wave 1, 1e).
-    legalLinksFor(store, market),
+    // The published legal pages, listed in the standard footer (wave 1, 1e), as far as the store needs them (D178 step 5).
+    legalLinksFor(store, market, afterSale),
   ]);
   const headerLayout = header.layout;
   const footerLayout = footer.layout;
   const uiTexts = uiTextsFor(market.lang);
   // A store template (D175) says only that it is one: a preview that takes no orders.
+  // A website (D178 step 5) takes no payments, so nothing is said about them.
   const notice = store.starter
     ? m.starterNotice
     : [
       !(store.setupCompletedAt || store.isTemplate) && m.previewNotice,
-      !store.paymentsOn && (store.setupCompletedAt || store.isTemplate) && m.demoNotice,
-      store.paymentsOn && store.paymentsTest && m.testNotice,
+      selling && !store.paymentsOn && (store.setupCompletedAt || store.isTemplate) && m.demoNotice,
+      selling && store.paymentsOn && store.paymentsTest && m.testNotice,
     ]
       .filter(Boolean)
       .join(" ") || null;
@@ -158,7 +166,7 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         </a>
         {/* Shoppers are told when a store is a preview, cannot take payment yet, or takes test payments only. */}
         {headerLayout ? (
-          <StoreSiteHeader store={store} market={market} notice={notice} layout={headerLayout} />
+          <StoreSiteHeader store={store} market={market} notice={notice} layout={headerLayout} withdrawal={withdrawal} />
         ) : (
           <StoreHeader store={store} market={market} notice={notice} />
         )}
@@ -169,9 +177,13 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         >
           {children}
         </main>
-        {footerLayout ? <StoreSiteFooter store={store} market={market} layout={footerLayout} /> : <StoreFooter store={store} market={market} legal={legalLinks} />}
+        {footerLayout ? (
+          <StoreSiteFooter store={store} market={market} layout={footerLayout} withdrawal={withdrawal} />
+        ) : (
+          <StoreFooter store={store} market={market} legal={legalLinks} withdrawal={withdrawal} />
+        )}
         {/* The withdrawal function is always reachable (D153): a footer of the store's own without its link gets the standard one. */}
-        {footerLayout && !footerHasWithdrawal(footerLayout.content) && <WithdrawalStrip store={store} market={market} />}
+        {withdrawal && footerLayout && !footerHasWithdrawal(footerLayout.content) && <WithdrawalStrip store={store} market={market} />}
         {/*
           Phone enhancements, each in its own boundary: React counts
           everything outside boundaries towards a 12.8 kB budget, past which

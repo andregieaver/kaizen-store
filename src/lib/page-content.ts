@@ -815,6 +815,11 @@ export type SitePart = keyof typeof SITE_PARTS;
 /** The site parts that stand behind a store feature (D178), as `PRODUCT_PART_FEATURES` for a header's or footer's parts. */
 export const SITE_PART_FEATURES: Partial<Record<SitePart, FeatureRequirement>> = {
   buyerSwitch: "business",
+  // The online shop's own (D178 step 5): a website has no search of products, My account, wishlists or cart to link to.
+  search: "shop",
+  account: "shop",
+  wishlist: "shop",
+  cart: "shop",
 };
 const STORE_PARTS: readonly SitePart[] = ["search", "wishlist", "cart", "markets", "buyerSwitch", "colorMode", "withdrawal"];
 const KAIZEN_PARTS: readonly SitePart[] = ["signUp"];

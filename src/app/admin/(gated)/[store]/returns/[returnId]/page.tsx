@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { ReturnDetailView, type ReturnDetailActions } from "@/components/admin/returns/detail-view";
 import { previewData, todayIn } from "@/lib/return-admin";
 import { requirePermission } from "@/server/permissions";
@@ -28,7 +29,11 @@ export const metadata: Metadata = { title: "Return" };
 /** One withdrawal or return and everything staff do with it (D153): a thin loader over `ReturnDetailView`. */
 export default async function ReturnPage({ params }: PageProps<"/admin/[store]/returns/[returnId]">) {
   const { store: slug, returnId } = await params;
-  const { store } = await requirePermission(slug, "orders:read");
+  const gated = await requirePermission(slug, "orders:read");
+  // While the online shop is off (D178 step 5), what was sold stays reachable as long as an order can still be withdrawn from or returned.
+  const shopOff = await requireShopOrAfterSale(gated);
+  if (shopOff) return shopOff;
+  const { store } = gated;
   if (!z.uuid().safeParse(returnId).success) notFound();
   const detail = await getReturn(store.id, returnId);
   if (!detail) notFound();

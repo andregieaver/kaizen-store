@@ -16,26 +16,38 @@ import type { FeatureRequirement } from "./store-features";
  */
 export const STORE_PARTS = {
   cart: {
+    feature: "shop",
     name: "Cart",
     hint: "The shopper's cart: its lines, quantities, discount code and the checkout button.",
   },
   checkout: {
+    feature: "shop",
     name: "Checkout",
     hint: "The order summary and the payment form. Without an order to pay, shoppers are sent back to the cart.",
   },
   order: {
+    feature: "shop",
+    // What a shopper already bought keeps its page in a website too (D178 step 5): after-sale.
+    afterSale: true,
     name: "Order confirmation",
     hint: "What the shopper sees after paying: the order, its downloads, bookings and subscription. Its address carries the order.",
   },
   account: {
+    feature: "shop",
+    // What a shopper already bought keeps its page in a website too (D178 step 5): after-sale.
+    afterSale: true,
     name: "My account",
     hint: "The signed-in shopper's orders, subscriptions and details. Signed out, it is the sign-in form.",
   },
   sign_in: {
+    feature: "shop",
+    // What a shopper already bought keeps its page in a website too (D178 step 5): after-sale.
+    afterSale: true,
     name: "Sign-in",
     hint: "The form for signing in or creating an account, shown at My account to shoppers who are not signed in.",
   },
   wishlist: {
+    feature: "shop",
     name: "Wishlists",
     hint: "The shopper's wishlists, ready for the cart.",
   },
@@ -56,10 +68,12 @@ export const STORE_PARTS = {
     hint: "What the site sets in the browser, and the shopper's choices.",
   },
   category: {
+    feature: "shop",
     name: "Category products",
     hint: "A category's name, its own custom fields, its subcategories and its products with Filter and sort. It draws on category pages (/category/…), whichever category the shopper is in.",
   },
   tag: {
+    feature: "shop",
     name: "Tag products",
     hint: "A tag's name, its own custom fields and its products with Filter and sort. It draws on tag pages (/tag/…), whichever tag the shopper is in.",
   },
@@ -85,21 +99,25 @@ export const isStorePart = (value: unknown): value is StorePart => typeof value 
 export const STORE_PIECES = {
   cart_lines: {
     route: "cart",
+    feature: "shop",
     name: "Cart items",
     hint: "The lines in the cart with their pictures, quantities, remove buttons and free gifts. An empty cart says so here, with a link back to the store.",
   },
   cart_gift: {
     route: "cart",
+    feature: "shop",
     name: "Gift message",
     hint: "The tick box and fields for a gift message. Nothing in a store with gift messages switched off.",
   },
   cart_summary: {
     route: "cart",
+    feature: "shop",
     name: "Cart summary",
     hint: "Subtotal, shipping, discounts, VAT and the total, with what a subscription or an appointment adds.",
   },
   cart_code: {
     route: "cart",
+    feature: "shop",
     name: "Discount code",
     hint: "The field for a discount code in the cart.",
   },
@@ -111,21 +129,25 @@ export const STORE_PIECES = {
   },
   cart_checkout: {
     route: "cart",
+    feature: "shop",
     name: "Checkout button",
     hint: "The button that starts the checkout, with the fields and agreements the cart needs first (a company, contact details, digital goods, a subscription).",
   },
   cart_continue: {
     route: "cart",
+    feature: "shop",
     name: "Continue shopping",
     hint: "A link back to the store's front page.",
   },
   checkout_items: {
     route: "checkout",
+    feature: "shop",
     name: "Checkout items",
     hint: "The order's lines, as the shopper is about to pay for them.",
   },
   checkout_code: {
     route: "checkout",
+    feature: "shop",
     name: "Checkout discount code",
     hint: "The field for a discount code at the checkout.",
   },
@@ -137,90 +159,119 @@ export const STORE_PIECES = {
   },
   checkout_delivery: {
     route: "checkout",
+    feature: "shop",
     name: "Checkout delivery",
     hint: "How the order is delivered: the flat rate and, once the shopper gives a postal code, the carrier's services and pickup points. Nothing in a store without a carrier's services switched on.",
   },
   checkout_totals: {
     route: "checkout",
+    feature: "shop",
     name: "Checkout totals",
     hint: "Subtotal, shipping, discounts, VAT and the total, with the company and a subscription's terms.",
   },
   checkout_terms: {
     route: "checkout",
+    feature: "shop",
     name: "Terms at checkout",
     hint: "The sentence that names your terms and privacy statement, with a tick box when you have chosen one under Settings, Legal pages. Put it right above the payment form; without it the standard checkout draws it by the pay button. Nothing when the store shows none.",
   },
   checkout_payment: {
     route: "checkout",
+    feature: "shop",
     name: "Payment form",
     hint: "Contact, delivery and payment, and the button to pay. Keep it: it is how the order gets paid.",
   },
   checkout_back: {
     route: "checkout",
+    feature: "shop",
     name: "Back to cart",
     hint: "A link back to the cart.",
   },
   order_status: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Thank you",
     hint: "The thank-you heading (or that the order was cancelled), the order number and that the payment is being confirmed. Keep it: it also refreshes the page while the payment is confirmed.",
   },
   order_account: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Account created",
     hint: "What became of the account asked for at checkout: created, with a button to it, or already known, with a way to sign in. Nothing when none was asked for.",
   },
   order_bookings: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Bookings",
     hint: "The order's appointments, stays and rentals, to change or cancel while that is allowed.",
   },
   order_parcels: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Parcels",
     hint: "The order's parcels, each with its tracking and what was in it, and what is still to come when the order is sent in parts. Nothing before the first parcel.",
   },
   order_lines: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Order items",
     hint: "The lines the shopper bought.",
   },
   order_totals: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Order totals",
     hint: "Shipping, discounts, the total and its VAT, and the company it was bought for.",
   },
   order_documents: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Invoice and credit notes",
     hint: "The order's invoice and credit notes, each with a link to read it and to download it as a PDF. Nothing for an order without one, and \"Test order: no invoice\" for one paid in test mode.",
   },
   order_subscription: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Subscription",
     hint: "The subscription the order started, with a link to manage it. Nothing for an order without one.",
   },
   order_downloads: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Downloads",
     hint: "The files bought, to download once the order is paid. Nothing for an order without files.",
   },
   order_address: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Delivery address",
     hint: "Where the order is delivered. Nothing for an order that is not shipped.",
   },
   order_terms: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Terms you accepted",
     hint: "The terms and privacy statement the shopper was shown when they ordered, each as a read-only page. Nothing for an order that kept none.",
   },
   order_continue: {
     route: "order",
+    feature: "shop",
+    afterSale: true,
     name: "Continue shopping",
     hint: "A link back to the store's front page.",
   },
-} as const satisfies Record<string, { route: StorePart; name: string; hint: string; feature?: FeatureRequirement }>;
+} as const satisfies Record<string, { route: StorePart; name: string; hint: string; feature?: FeatureRequirement; afterSale?: boolean }>;
 
 export type StorePiece = keyof typeof STORE_PIECES;
 

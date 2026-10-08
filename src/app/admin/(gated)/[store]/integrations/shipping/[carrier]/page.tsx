@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { IntegrationMark } from "@/components/admin/integration-mark";
 import { CHECKOUT_COUNTRIES, CHECKOUT_PRICING } from "@/lib/delivery-options";
@@ -26,6 +27,9 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
 export default async function CarrierPage({ params }: PageProps<"/admin/[store]/integrations/shipping/[carrier]">) {
   const { store: slug, carrier } = await params;
   const current = await requirePermission(slug, "settings:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(current, "shop");
+  if (shopOff) return shopOff;
   const { store } = current;
   const info = carrierInfo(carrier);
   if (!info) notFound();

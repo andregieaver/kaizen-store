@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ReturnSettingsForm } from "@/components/admin/returns/settings-form";
 import { languageName } from "@/lib/localization";
 import { featureOn } from "@/lib/store-features";
@@ -16,6 +17,9 @@ export const metadata: Metadata = { title: "Returns settings" };
  */
 export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[store]/settings/returns">) {
   const current = await requireOwnerRole((await params).store);
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(current, "shop");
+  if (shopOff) return shopOff;
   const { store } = current;
   const [settings, translations] = await Promise.all([getReturnSettings(store.id), getInstructionTranslations(store.id)]);
   const [main, ...others] = store.localization.locales;

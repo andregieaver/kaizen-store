@@ -4,6 +4,7 @@ import { recommendEvents } from "@/lib/recommendations";
 import { visitorKey } from "@/server/chat-agent";
 import { fail, sameSite } from "@/server/chat-route";
 import { recordRecommendEvents, takeRecommendRequest } from "@/server/recommend-events";
+import { featureOn } from "@/lib/store-features";
 import { getOpenStore } from "@/server/stores";
 
 /**
@@ -24,7 +25,8 @@ export async function POST(request: Request) {
   const parsed = recommendEvents.safeParse(body);
   if (!parsed.success) return new Response(null, { status: 400 });
   const store = await getOpenStore(parsed.data.store);
-  if (!store) return fail(404, "No such store.");
+  // A website (D178 step 5: the online shop off) shows no recommendations, so none are counted.
+  if (!store || !featureOn(store, "shop")) return fail(404, "No such store.");
   const address = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
   if (!(await takeRecommendRequest(store.id, visitorKey(address), "report"))) return new Response(null, { status: 429 });
   await recordRecommendEvents(store.id, parsed.data);

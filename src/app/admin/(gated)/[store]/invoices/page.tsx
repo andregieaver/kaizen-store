@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { InvoicesView } from "@/components/admin/invoices/invoices-view";
 import { InvoicesSkeleton } from "@/components/admin/invoices/skeletons";
 import { DOCUMENTS_PER_PAGE, exportProblemOf, parseInvoiceQuery } from "@/lib/invoice-admin";
@@ -21,7 +22,11 @@ type Props = PageProps<"/admin/[store]/invoices">;
  * the CSV need the right to change orders.
  */
 export default async function InvoicesPage({ params, searchParams }: Props) {
-  const { store } = await requirePermission((await params).store, "orders:read");
+  const gated = await requirePermission((await params).store, "orders:read");
+  // While the online shop is off (D178 step 5), what was sold stays reachable as long as an order can still be withdrawn from or returned.
+  const shopOff = await requireShopOrAfterSale(gated);
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <Suspense fallback={<InvoicesSkeleton />}>
       <Documents storeSlug={store.slug} searchParams={searchParams} />

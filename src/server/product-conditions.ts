@@ -19,9 +19,11 @@ export const STORE_AUDIENCE = sql`commerce.store_audience(s.audience, s.features
  * sells to that kind (or to both, where each shopper sees their own kind's). A business-only product is not offered where the store sells
  * to consumers, Sell to businesses switched off included. And it is offered only while what its kind needs is on (D178 step 3,
  * `commerce.kind_offered()`): an appointment needs Appointments, a stay or a rental Stays and rentals, a product sold only as a subscription
- * Subscriptions. Every shopper-facing read of products asks it.
+ * Subscriptions. And nothing is offered while the online shop is off (D178 step 5: the store is a website). Every shopper-facing read of
+ * products asks it.
  */
-export const OFFERED = sql`((p.audience = 'all' or commerce.product_offered(p.store_id, p.audience))
+export const OFFERED = sql`(commerce.feature_on(p.store_id, 'shop')
+  and (p.audience = 'all' or commerce.product_offered(p.store_id, p.audience))
   and ((p.kind = 'goods' and not p.subscription_only) or commerce.kind_offered(p.store_id, p.kind, p.subscription_only)))`;
 
 /**

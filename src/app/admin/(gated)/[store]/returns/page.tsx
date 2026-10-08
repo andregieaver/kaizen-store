@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { ReturnsQueueView } from "@/components/admin/returns/queue-view";
 import { QueueSkeleton } from "@/components/admin/returns/skeletons";
 import { pageNumber } from "@/lib/return-admin";
@@ -20,7 +21,11 @@ const first = (value: string | string[] | undefined) => (Array.isArray(value) ? 
  * for an answer and what acknowledgement was not sent. Every member of the store can work it.
  */
 export default async function ReturnsPage({ params, searchParams }: Props) {
-  const { store } = await requirePermission((await params).store, "orders:read");
+  const gated = await requirePermission((await params).store, "orders:read");
+  // While the online shop is off (D178 step 5), what was sold stays reachable as long as an order can still be withdrawn from or returned.
+  const shopOff = await requireShopOrAfterSale(gated);
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <Suspense fallback={<QueueSkeleton />}>
       <Queue storeSlug={store.slug} searchParams={searchParams} />

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { OwnNumberCheckCard, ReadinessList, TaxProfileForm, TaxWarnings, type OwnNumberCheck } from "@/components/admin/tax-profile-form";
 import { featureOn } from "@/lib/store-features";
 import { TAX_WARNINGS } from "@/lib/tax-profile";
@@ -25,6 +26,9 @@ const regionName = (code: string | null): string | null => {
  */
 export default async function TaxSettingsPage({ params }: PageProps<"/admin/[store]/settings/tax">) {
   const member = await requirePermission((await params).store, "owner");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(member, "shop");
+  if (shopOff) return shopOff;
   const { store } = member;
   const view = await taxProfileView(store.id);
   const canEdit = true;

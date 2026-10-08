@@ -47,5 +47,31 @@ export const LEGAL_ROLE_COPY: Record<LegalRole, { name: string; hint: string }> 
   },
 };
 
+/**
+ * What each legal page is needed for (D178 step 5): the checkout's pages (the terms of sale, the returns and shipping policies, the
+ * withdrawal information) only while the store sells online (`shop`); privacy, imprint and accessibility always, a website included.
+ * `afterSale`: also while the online shop is off and an order can still be withdrawn from or returned, as the footer's withdrawal link.
+ * The store feature is written as its id (no imports here); `src/lib/legal-roles.test.ts` holds it to the registry.
+ */
+export const LEGAL_ROLE_NEEDS: Record<LegalRole, { feature?: "shop"; afterSale?: boolean }> = {
+  terms: { feature: "shop" },
+  privacy: {},
+  returns_policy: { feature: "shop", afterSale: true },
+  shipping_policy: { feature: "shop" },
+  withdrawal_info: { feature: "shop", afterSale: true },
+  imprint: {},
+  accessibility: {},
+};
+
+/**
+ * Whether a store needs (and the footer links) a legal page now: always for privacy, imprint and accessibility; the checkout's while the
+ * online shop is on, and the withdrawal information and returns policy also while after-sale is open with the shop off.
+ */
+export function legalRoleNeeded(role: LegalRole, shopOn: boolean, afterSaleOpen = false): boolean {
+  const needs = LEGAL_ROLE_NEEDS[role];
+  if (!needs.feature || shopOn) return true;
+  return Boolean(needs.afterSale && afterSaleOpen);
+}
+
 /** The two roles checkout names in its terms sentence, in the order the sentence names them. */
 export const CHECKOUT_TERMS_ROLES = ["terms", "privacy"] as const satisfies readonly LegalRole[];

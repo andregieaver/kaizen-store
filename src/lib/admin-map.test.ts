@@ -3,8 +3,23 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ADMIN_PAGES, adminMapText, findPages, matchPath, pageHref, pagesFor, type AdminArea } from "./admin-map";
+import {
+  ADMIN_PAGES,
+  adminMapText as mapTextFor,
+  findPages as findPagesFor,
+  matchPath,
+  pageHref,
+  pagesFor as pagesOf,
+  type AdminArea,
+  type SiteFlags,
+} from "./admin-map";
 import { FEATURE_IDS, featureOn, requirementMet } from "./store-features";
+
+/** A store with the online shop on, as every store starts (D178), unless a test names its features. */
+const shopOn = (flags: SiteFlags = {}): SiteFlags => ({ features: ["shop"], ...flags });
+const findPages = (area: "store" | "platform", query: string, flags?: SiteFlags) => findPagesFor(area, query, shopOn(flags));
+const pagesFor = (area: "store" | "platform", flags?: SiteFlags) => pagesOf(area, shopOn(flags));
+const adminMapText = (area: "store" | "platform", flags?: SiteFlags) => mapTextFor(area, shopOn(flags));
 
 /** Every page.tsx under a folder, as the route after it (`/orders/[orderId]`). */
 function routes(root: string, prefix = ""): string[] {
@@ -137,8 +152,14 @@ describe("the admin map (D103)", () => {
     expect(pagesFor("store", { work: true })).toEqual(expect.arrayContaining(work.filter((p) => p.area === "store")));
     const gated = ADMIN_PAGES.filter((p) => p.feature !== undefined);
     expect(gated.every((p) => p.area === "store")).toBe(true);
-    expect(pagesFor("store", { features: ["shop"] }).filter((p) => p.feature !== undefined)).toEqual([]);
-    expect(pagesFor("store", { features: FEATURE_IDS.filter((id) => featureOn([...FEATURE_IDS], id)) })).toEqual(expect.arrayContaining(gated));
+    expect(pagesFor("store", { features: ["shop"] }).filter((p) => p.feature !== undefined && p.feature !== "shop")).toEqual([]);
+    // A website (D178 step 5: the online shop off) is offered none of the shop's pages: orders, products, customers, sales analytics.
+    const website = pagesFor("store", { features: [] }).map((p) => p.id);
+    for (const id of ["orders", "order", "returns", "invoices", "products", "inventory", "customers", "campaigns", "discounts", "analytics", "payments", "shipping", "tax"]) {
+      expect(website, id).not.toContain(id);
+    }
+    for (const id of ["pages", "articles", "media", "menus", "privacy", "customer.erase", "analytics.traffic", "features", "fields"]) expect(website, id).toContain(id);
+    expect(pagesFor("store", { owner: true, features: FEATURE_IDS.filter((id) => featureOn([...FEATURE_IDS], id)) })).toEqual(expect.arrayContaining(gated));
     for (const id of ["subscriptions", "boxes", "appointments", "bookings", "business", "bonus", "referrals"] as const) {
       const base = id === "referrals" ? ["shop", "bonus"] : ["shop"];
       expect(gated.some((p) => requirementMet([...base, id], p.feature) && !requirementMet(base, p.feature)), id).toBe(true);

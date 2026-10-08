@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { featureOn } from "@/lib/store-features";
 import { t } from "@/lib/i18n";
 import { storeSiteUrl, marketPath } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";
@@ -185,7 +186,8 @@ export async function storesOf(accountId: string): Promise<WpStore[]> {
   const out: WpStore[] = [];
   for (const row of rows) {
     const store = await getStore(String(row.slug));
-    if (!store) continue;
+    // A website (D178 step 5: the online shop off) has nothing for the plugin to show or sell.
+    if (!store || !featureOn(store, "shop")) continue;
     out.push({
       slug: store.slug,
       name: store.name,
@@ -208,7 +210,10 @@ export async function storeFor(accountId: string, slug: string): Promise<Store |
     where m.account_id = ${accountId}::uuid and s.slug = ${slug} and m.disabled_at is null
       and (m.expires_at is null or m.expires_at > now()) and s.status <> 'closed' and not (s.is_template or s.starter)
   `);
-  return row ? getStore(slug) : null;
+  if (!row) return null;
+  const store = await getStore(slug);
+  // A website (D178 step 5: the online shop off) is the plain 404 of a store that is not there: no products, views, quotes or carts.
+  return store && featureOn(store, "shop") ? store : null;
 }
 
 export type WpTerms = { categories: { id: string; name: string; depth: number }[]; tags: { id: string; name: string }[] };

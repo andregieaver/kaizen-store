@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { AnalyticsHeader } from "@/components/admin/analytics/analytics-header";
 import { ExportScope } from "@/components/admin/analytics/export-scope";
 import { parseProductsSort, ProductsView } from "@/components/admin/analytics/products-view";
@@ -17,6 +18,9 @@ export const metadata: Metadata = { title: "Product analytics" };
 export default async function AnalyticsProductsPage({ params, searchParams }: PageProps<"/admin/[store]/analytics/products">) {
   const query = await searchParams;
   const ctx = await analyticsContext((await params).store, query);
+  // Sales analytics are part of the online shop (D178 step 5): hidden while it is off; traffic stays.
+  const shopOff = requireFeature(ctx, "shop");
+  if (shopOff) return shopOff;
   const { store } = ctx;
   const { period, compare } = ctx.params;
   const against = compare.previous ?? compare.lastYear;

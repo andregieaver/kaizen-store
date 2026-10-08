@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { InvoiceNotes, InvoiceReadinessList, InvoiceSettingsForm, SeriesForm } from "@/components/admin/invoices/invoice-settings-form";
 import { getInvoiceSettings, invoiceReadiness, seriesStates } from "@/server/invoice-settings";
 import { requirePermission } from "@/server/permissions";
@@ -14,7 +15,11 @@ export const metadata: Metadata = { title: "Invoicing settings" };
  * it: it changes legal numbering. The wording is for an accountant's eyes and needs review.
  */
 export default async function InvoiceSettingsPage({ params }: PageProps<"/admin/[store]/settings/invoices">) {
-  const { store } = await requirePermission((await params).store, "owner");
+  const gated = await requirePermission((await params).store, "owner");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const base = `/admin/${store.slug}`;
   const [settings, readiness, series] = await Promise.all([getInvoiceSettings(store.id), invoiceReadiness(store.id), seriesStates(store.id)]);
   return (

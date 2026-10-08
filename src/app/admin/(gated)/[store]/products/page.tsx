@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ProductsTable, type BulkTools } from "@/components/admin/products-bulk";
 import { NeedsContentList, NeedsContentNotice } from "@/components/admin/unit-price-gaps-view";
 import { ACTIVE_IMPORT_STATUSES } from "@/lib/data-job";
@@ -18,6 +19,9 @@ type Props = PageProps<"/admin/[store]/products">;
 
 export default async function ProductsPage({ params, searchParams }: Props) {
   const member = await requirePermission((await params).store, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(member, "shop");
+  if (shopOff) return shopOff;
   const { store } = member;
   const canWrite = memberCan(member, "products:write");
   return (

@@ -256,6 +256,8 @@ export async function SignInForm({ store, market, query }: { store: Store; marke
       store={store.slug}
       market={market.slug}
       initialTab={register ? "register" : "sign-in"}
+      // A website (D178 step 5: the online shop off) opens no new accounts; customers it has sign in for their orders and data.
+      register={featureOn(store, "shop")}
       labels={{
         intro: a.signInIntro,
         email: a.email,

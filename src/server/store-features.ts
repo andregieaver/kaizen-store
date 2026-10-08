@@ -19,6 +19,7 @@ import {
 } from "@/lib/store-features";
 
 import { affiliateTag } from "./affiliates";
+import { afterSaleTag } from "./after-sale";
 import { audit, type Membership } from "./auth";
 import { catalogTag } from "./catalog";
 import { pagesTag } from "./pages";
@@ -235,7 +236,8 @@ export async function setFeature(member: Membership, id: FeatureId, on: boolean,
 /**
  * The caches a feature's switch reaches: the store (its admin and storefront, its audience among them), its catalogue (products for
  * businesses only come and go with Sell to businesses), the list of stores, its pages (shop components of a feature), the referral
- * program's storefront read (`affiliateSite()`, with the bonus and referral features) and its cookie list.
+ * program's storefront read (`affiliateSite()`, with the bonus and referral features), its cookie list and whether its after-sale is open
+ * (the online shop's switch, D178 step 5).
  */
 export function refreshFeatureTags(store: { id: string; slug: string }): void {
   refreshTag(storeTag(store.slug));
@@ -244,4 +246,6 @@ export function refreshFeatureTags(store: { id: string; slug: string }): void {
   refreshTag(pagesTag(store.id));
   refreshTag(affiliateTag(store.id));
   refreshTag(cookiesTag(store.id));
+  // What a website keeps of its shop while an order can still be withdrawn from (D178 step 5): the footer's withdrawal link.
+  refreshTag(afterSaleTag(store.id));
 }

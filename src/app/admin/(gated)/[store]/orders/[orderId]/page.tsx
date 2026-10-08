@@ -12,6 +12,7 @@ import {
   RefundForm,
   ResendButton,
 } from "@/components/admin/order-actions";
+import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { OrderAttributionCard, ReferralDiscountRow } from "@/components/admin/order-affiliate";
 import { GiftCard } from "@/components/admin/orders/gift-card";
 import { OrderEditCard } from "@/components/admin/orders/order-edit-card";
@@ -113,6 +114,9 @@ const card = "rounded-lg border border-border bg-background p-5";
 export default async function OrderPage({ params }: PageProps<"/admin/[store]/orders/[orderId]">) {
   const { store: slug, orderId } = await params;
   const member = await requirePermission(slug, "orders:read");
+  // While the online shop is off (D178 step 5), what was sold stays reachable as long as an order can still be withdrawn from or returned.
+  const shopOff = await requireShopOrAfterSale(member);
+  if (shopOff) return shopOff;
   const { store } = member;
   if (!z.uuid().safeParse(orderId).success) notFound();
   const [order, events, downloads, emails, customer, fromWishlists, weekly, attribution, returns, treatment, documents, privacy, archiveFacts, tagChoices] = await Promise.all([

@@ -6,12 +6,16 @@
  * nothing for the part (`StorePartSection`, `sitePartShows()`, `productPartShows()`), the builder's palette leaves it out, and a page that
  * already holds it shows "Switched off – not shown" on the canvas. A later step tags its own parts the same way.
  */
-import { PRODUCT_PART_FEATURES, SITE_PART_FEATURES, type ProductPart, type SitePart } from "./page-content";
+import { sourceTraits } from "./grid-source";
+import { PRODUCT_PART_FEATURES, SITE_PART_FEATURES, type GridSource, type ProductPart, type SitePart } from "./page-content";
 import { requirementMet, type FeatureRequirement, type FeatureSource } from "./store-features";
 import { shopPartAfterSale, shopPartFeature, type ShopPart } from "./store-parts";
 
-/** A block as far as its part goes: a shop component, a site part or a product part (anything else stands behind no feature). */
-type PartBlock = { type: string; part?: unknown };
+/**
+ * A block as far as its part goes: a shop component, a site part or a product part; a content grid of products and the search component
+ * stand behind the online shop (D178 step 5). Anything else stands behind no feature.
+ */
+type PartBlock = { type: string; part?: unknown; source?: unknown };
 
 /** The feature (or features, any of which will do) a block stands behind, or undefined. */
 export function partFeature(block: PartBlock): FeatureRequirement | undefined {
@@ -22,6 +26,11 @@ export function partFeature(block: PartBlock): FeatureRequirement | undefined {
       return SITE_PART_FEATURES[block.part as SitePart];
     case "product":
       return PRODUCT_PART_FEATURES[block.part as ProductPart];
+    // A website (the online shop off) has no products to show in a grid or to search; a grid of pages, articles or the owner's own items stays.
+    case "contentGrid":
+      return block.source && sourceTraits(block.source as GridSource).products ? "shop" : undefined;
+    case "search":
+      return "shop";
     default:
       return undefined;
   }
@@ -43,5 +52,5 @@ export function partDrawsWhenOff(block: PartBlock): boolean {
 
 /** Every feature tag of every part, for the test that holds them to real feature ids. */
 export function allPartFeatureTags(): FeatureRequirement[] {
-  return [...Object.values(SITE_PART_FEATURES), ...Object.values(PRODUCT_PART_FEATURES)].filter((tag): tag is FeatureRequirement => tag !== undefined);
+  return [...Object.values(SITE_PART_FEATURES), ...Object.values(PRODUCT_PART_FEATURES), "shop" as const].filter((tag): tag is FeatureRequirement => tag !== undefined);
 }

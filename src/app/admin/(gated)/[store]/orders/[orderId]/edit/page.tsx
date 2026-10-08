@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { OrderEditEditor } from "@/components/admin/orders/order-edit-editor";
 import type { EditorOrderLine } from "@/lib/order-edit-form";
 import { editSummaryView } from "@/lib/order-edit-view";
@@ -29,6 +30,9 @@ export const metadata: Metadata = { title: "Edit order" };
 export default async function OrderEditPage({ params }: PageProps<"/admin/[store]/orders/[orderId]/edit">) {
   const { store: slug, orderId } = await params;
   const member = await requirePermission(slug, "orders:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(member, "shop");
+  if (shopOff) return shopOff;
   const { store } = member;
   if (!z.uuid().safeParse(orderId).success) notFound();
   const [order, editability] = await Promise.all([getOrderAdmin(store.id, orderId), orderEditability(store.id, orderId)]);

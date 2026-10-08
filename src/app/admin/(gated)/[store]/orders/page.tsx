@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { requireShopOrAfterSale } from "@/components/admin/after-sale-gate";
 import { OrderListView } from "@/components/admin/orders/order-list-view";
 import { tableRowsOf } from "@/lib/order-list-admin";
 import { listOrdersPage, resolveOrderList } from "@/server/order-list";
@@ -22,6 +23,9 @@ type Props = PageProps<"/admin/[store]/orders">;
  */
 export default async function OrdersPage({ params, searchParams }: Props) {
   const member = await requirePermission((await params).store, "orders:read");
+  // While the online shop is off (D178 step 5), what was sold stays reachable as long as an order can still be withdrawn from or returned.
+  const shopOff = await requireShopOrAfterSale(member);
+  if (shopOff) return shopOff;
   const { store } = member;
   return (
     <div className="flex flex-col gap-6">

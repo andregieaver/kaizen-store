@@ -1211,7 +1211,7 @@ function Sidebar({
                 </>
               )}
               <div className="grid grid-cols-2 gap-3">
-                {[...BLOCK_TYPES, ...(search ? (["search"] as const) : []), ...(plans ? (["plans"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
+                {[...BLOCK_TYPES, ...(search && partFeatureOn({ type: "search" }, features) ? (["search"] as const) : []), ...(plans ? (["plans"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
                   <PaletteTile
                     key={type}
                     id={`palette:block:${type}`}
@@ -4633,7 +4633,10 @@ function ContentGridFields({
     <div className="flex flex-col gap-5">
       <Choices
         legend="Show"
-        options={(Object.keys(GRID_CONTENT) as GridContent[]).map((type) => ({ value: type, label: GRID_CONTENT[type] }))}
+        // A website's grids (D178 step 5: the online shop off) show pages, articles or the owner's own items; one of products keeps its choice.
+        options={(Object.keys(GRID_CONTENT) as GridContent[])
+          .filter((type) => type !== "products" || source.type === "products" || partFeatureOn({ type: "contentGrid", source: { type } }, grid.features))
+          .map((type) => ({ value: type, label: GRID_CONTENT[type] }))}
         value={source.type}
         onChange={(type) => onChange(sourceChoice(block, type, own ? { type: "products" } : productsOf(grid.stores[0])))}
       />

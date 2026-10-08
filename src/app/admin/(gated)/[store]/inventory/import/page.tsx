@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DataSkeleton, Notice } from "@/components/admin/data/page-parts";
 import { card, hint, tableShell, td, th } from "@/components/admin/data/ui";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
@@ -27,7 +28,11 @@ type Props = PageProps<"/admin/[store]/inventory/import">;
  * creates a variant or a location and never writes a figure below zero.
  */
 export default async function StockImportPage({ params }: Props) {
-  const { store } = await requirePermission((await params).store, "products:read");
+  const gated = await requirePermission((await params).store, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <div className="flex flex-col gap-6">
       <InventoryHead

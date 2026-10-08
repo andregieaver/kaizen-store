@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requirePermission } from "@/server/permissions";
 import { listTiers } from "@/server/customer-tiers";
@@ -17,7 +18,11 @@ const control = "min-h-10 rounded-md border border-border bg-background px-3 fon
  * company a group so its accounts share the discount.
  */
 export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[store]/customer-groups">) {
-  const { store } = await requirePermission((await params).store, "customers:read");
+  const gated = await requirePermission((await params).store, "customers:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const groups = await listTiers(store.id);
   const base = `/admin/${store.slug}`;
 

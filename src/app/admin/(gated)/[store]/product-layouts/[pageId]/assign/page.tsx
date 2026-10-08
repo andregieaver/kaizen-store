@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { categoryTree } from "@/lib/taxonomy";
 import { requirePermission } from "@/server/permissions";
@@ -21,7 +22,11 @@ export const metadata: Metadata = { title: "Where a layout is used" };
  */
 export default async function AssignLayoutPage({ params }: PageProps<"/admin/[store]/product-layouts/[pageId]/assign">) {
   const { store: storeSlug, pageId } = await params;
-  const { store } = await requirePermission(storeSlug, "products:read");
+  const gated = await requirePermission(storeSlug, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   const layout = z.uuid().safeParse(pageId).success ? await getPageForEdit(store.id, pageId, "product_layout") : null;
   if (!layout) notFound();
   const [terms, uses] = await Promise.all([listTerms({ storeId: store.id, contentType: "product" }), layoutUses(store.id)]);

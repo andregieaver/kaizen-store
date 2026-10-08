@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { requireFeature } from "@/components/admin/feature-off";
 import { DataSkeleton } from "@/components/admin/data/page-parts";
 import { InventoryHead } from "@/components/admin/inventory/inventory-head";
 import { LocationsView } from "@/components/admin/inventory/locations-view";
@@ -21,7 +22,11 @@ type Props = PageProps<"/admin/[store]/inventory/locations">;
  * reactivate one after seeing what stops being for sale. Everyone who can read products sees the list. Read per request.
  */
 export default async function LocationsPage({ params }: Props) {
-  const { store } = await requirePermission((await params).store, "products:read");
+  const gated = await requirePermission((await params).store, "products:read");
+  // Part of the online shop (D178 step 5): hidden while it is off, the store being a website.
+  const shopOff = requireFeature(gated, "shop");
+  if (shopOff) return shopOff;
+  const { store } = gated;
   return (
     <div className="flex flex-col gap-6">
       <InventoryHead

@@ -106,9 +106,9 @@ describe("the activity log", () => {
 describe("the legal pages", () => {
   const overview = (over: Partial<LegalOverview> = {}): LegalOverview => ({
     roles: [
-      { role: "terms", name: "Terms of sale", hint: "h", starter: true, page: { id: "p1", title: "Kjøpsvilkår", slug: "kjopsvilkar" }, draft: null },
-      { role: "privacy", name: "Privacy statement", hint: "h", starter: true, page: null, draft: { id: "p2", title: "Personvern", slug: "personvern", published: false } },
-      { role: "accessibility", name: "Accessibility statement", hint: "h", starter: false, page: null, draft: null },
+      { role: "terms", name: "Terms of sale", hint: "h", starter: true, page: { id: "p1", title: "Kjøpsvilkår", slug: "kjopsvilkar" }, draft: null, needed: true },
+      { role: "privacy", name: "Privacy statement", hint: "h", starter: true, page: null, draft: { id: "p2", title: "Personvern", slug: "personvern", published: false }, needed: true },
+      { role: "accessibility", name: "Accessibility statement", hint: "h", starter: false, page: null, draft: null, needed: true },
     ],
     choosable: [
       { id: "p1", title: "Kjøpsvilkår", slug: "kjopsvilkar", role: "terms" },
@@ -116,11 +116,21 @@ describe("the legal pages", () => {
       { id: "p4", title: "Frakt", slug: "frakt", role: "shipping_policy" },
     ],
     termsAtCheckout: "link",
+    shopOn: true,
     missing: ["The organisation number"],
     ...over,
   });
   const panel = (over: Partial<LegalOverview> = {}) =>
     html(createElement(LegalPagesPanel, { overview: overview(over), storeSlug: "kaffe", actions: { createStarter: action as never, setRole: action as never, setTerms: action } }));
+
+  it("says which pages a website does not need, and has no checkout to set (D178 step 5)", () => {
+    const out = panel({ shopOn: false, roles: overview().roles.map((r) => ({ ...r, needed: r.role !== "terms" })) });
+    expect(out.match(/Not needed while the online shop is off/g)).toHaveLength(1);
+    expect(out).toContain("What checkout says about the terms: Online shop is switched off");
+    expect(out).not.toContain('name="mode"');
+    expect(panel()).not.toContain("Not needed while the online shop is off");
+    expect(panel()).toContain('name="mode"');
+  });
 
   it("opens with the notice that the drafts are not legal advice and need a review", () => {
     const out = panel();
