@@ -9,12 +9,14 @@ import { REDIRECT_HOPS_MAX } from "@/lib/data-limits";
 import { legacyPathOf, parseLegacyRequest } from "@/lib/legacy-path";
 import type { Market } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
-import { encodeAddress, mergeQuery, normalisePath, pathOfTarget } from "@/lib/redirect-path";
+import { encodeAddress, firstSegment, mergeQuery, normalisePath, pathOfTarget } from "@/lib/redirect-path";
+import { MARKET_ROUTES, addressDecision, storePathOf, type StoreAddress } from "@/lib/store-address";
+import { localized } from "@/lib/store-localized";
 import { redirectsTag } from "@/lib/redirects";
 
 import { catalogTag } from "./catalog";
 import { recordNotFound } from "./not-found";
-import { liveOf, remembered } from "./redirect-live";
+import { forgetRemembered, liveOf, remembered } from "./redirect-live";
 import { countHit } from "./redirects";
 import type { Store } from "./stores";
 
@@ -172,24 +174,45 @@ export async function missOrRedirect(shop: { store: Pick<Store, "id" | "slug">; 
 }
 
 // ---------------------------------------------------------------------------
-// An address with no country
+// An address with no country, and the shape of a store's addresses (D181)
 // ---------------------------------------------------------------------------
 
-type StoreFacts = { id: string; slug: string; mainMarket: string; countries: string[] } | null;
+type StoreFacts = { id: string; slug: string; mainMarket: string; address: StoreAddress | null } | null;
 
-/** What the proxy needs of a store: its id, its main market's address and its countries; null for a store that is not open or has no market. Remembered for a few seconds (the proxy does not use `'use cache'`). */
+/** How long an instance keeps a store's facts: a switch of Several countries, languages or currencies reaches other instances within it (`forgetStoreFacts()` for this one). */
+export const FACTS_MS = 10_000;
+
+/**
+ * What the proxy needs of a store: its id, its main market's address and the shape of its addresses (D181), read as `getStore()` reads them
+ * (`localized()`); null for a store that is not open or has no market. Remembered for a few seconds (the proxy does not use `'use cache'`), so a
+ * visitor's request reads the database at most once per store and instance in `FACTS_MS`.
+ */
 async function storeFactsOf(slug: string): Promise<StoreFacts> {
-  return remembered(`${slug}|facts`, async () => {
+  return remembered(factsKey(slug), async () => {
     const [row] = await db().execute<Row>(sql`
-      select s.id, s.slug,
-        (select coalesce(json_agg(lower(m.code) order by (m.code = s.country) desc nulls last, m.created_at, m.code), '[]')
-           from commerce.markets m where m.store_id = s.id and m.active) as countries
+      select s.id, s.slug, s.features, s.locales,
+        (select coalesce(json_agg(json_build_object('currency', c.currency, 'rate', c.rate, 'roundTo', c.round_to) order by c.position, c.currency), '[]')
+           from commerce.store_currencies c where c.store_id = s.id) as currencies,
+        (select coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency, 'defaultLocale', m.default_locale)
+           order by (m.code = s.country) desc nulls last, m.created_at, m.code), '[]')
+           from commerce.markets m where m.store_id = s.id and m.active) as markets,
+        (select coalesce(json_agg(json_build_object('code', a.code, 'currency', a.currency, 'defaultLocale', a.default_locale)
+           order by a.active desc, (a.code = s.country) desc nulls last, a.created_at, a.code), '[]')
+           from commerce.markets a where a.store_id = s.id) as all_markets
       from commerce.stores s where s.slug = ${slug} and s.status = 'active'
     `);
     if (!row) return null;
-    const countries = (row.countries as string[]).map(String);
-    return countries.length === 0 ? null : { id: String(row.id), slug: String(row.slug), mainMarket: countries[0], countries };
-  }, 30_000);
+    const { markets, address } = localized(row);
+    const main = markets[0];
+    return main ? { id: String(row.id), slug: String(row.slug), mainMarket: main.slug, address } : null;
+  }, FACTS_MS);
+}
+
+const factsKey = (slug: string) => `${slug}|facts`;
+
+/** Forgets this instance's facts of a store, after a change to its countries, languages or currencies (other instances within `FACTS_MS`). */
+export function forgetStoreFacts(slug: string): void {
+  forgetRemembered(factsKey(slug));
 }
 
 /** The first market of a store as an address (the country's own view), for the redirect of an address with no country. */
@@ -197,12 +220,44 @@ export async function mainMarketOf(storeSlug: string): Promise<string | null> {
   return (await storeFactsOf(storeSlug))?.mainMarket ?? null;
 }
 
+/** The address to go to in a market, shaped as the proxy's facts say (not as this process last read the store: the two may differ for a few seconds). */
+const locationBy = (facts: NonNullable<StoreFacts>, target: string): string => {
+  const tail = target === "/" ? "" : target.startsWith("/?") || target.startsWith("/#") ? target.slice(1) : target;
+  return encodeAddress(marketPath(facts.slug, facts.mainMarket, tail, facts.address));
+};
+
 export type LegacyAnswer = { location: string } | { miss: { storeId: string; path: string } } | null;
+
+/** What the proxy does with a request for a store's page (D181, D168): move it (308), serve it from another path, count it as missing, or nothing. */
+export type StoreRequestAnswer = { location: string } | { rewrite: string } | { miss: { storeId: string; path: string } } | null;
+
+/**
+ * A request for a store's page, as the proxy sees it (`pathname` as the browser asked, `hostStore` the store whose host it came to): the shape
+ * of its address decides (`addressDecision()`, D181). A store that sells in one country is served without its country and its old addresses
+ * move to the short ones; for a store that sells in several, an address with no country (`/collections/shoes`, an old shop's, or `/p/x` from
+ * when it sold in one) is looked up as a manual redirect (D168), else moved to its own country when it is live there (a working page, a
+ * product, a category or tag, a page or article), else left to the routes (the 404 it was) and returned as a `miss` for the caller to count.
+ * A move is only made for a request that asks for a page (`page`: GET or HEAD): a 308 makes a client replay a POST's body.
+ */
+export async function storeRequestAnswer(pathname: string, search: string, hostStore: string | null, page: boolean): Promise<StoreRequestAnswer> {
+  const request = storePathOf(pathname, hostStore);
+  if (!request) return null;
+  const facts = await storeFactsOf(request.store);
+  if (!facts) return null;
+  const decision = addressDecision(request, facts.address);
+  if (!decision) return null;
+  if ("rewrite" in decision) return decision;
+  if (!page) return null;
+  if ("redirect" in decision) return { location: `${decision.redirect}${search}` };
+  const legacy = parseLegacyRequest(pathname, hostStore);
+  if (!legacy) return null;
+  return legacyAnswerFor(facts, legacy.path, search, { moveLive: true });
+}
 
 /**
  * An address with no country (`/collections/shoes` on a store's own host, or under `/s/{store}/`): a manual redirect from it goes, permanently, to its target
  * in the store's MAIN market, with the request's query string; anything else is left to the routes (the 404 it was) and returned as a `miss` for the caller to
- * count. Used by the proxy (`legacyResponse()`) and by the unknown-market route. Only manual redirects apply here; an address that is not market-less is null.
+ * count. Only manual redirects apply here; an address that is not market-less is null.
  */
 export async function legacyAnswer(pathname: string, search: string, hostStore: string | null): Promise<LegacyAnswer> {
   const request = parseLegacyRequest(pathname, hostStore);
@@ -213,12 +268,21 @@ export async function legacyAnswer(pathname: string, search: string, hostStore: 
 /** The same for a path the market route found to name no market of the store (`legacyPathOf()` of its parts). */
 export async function legacyAnswerOf(storeSlug: string, path: string, search: string): Promise<LegacyAnswer> {
   const facts = await storeFactsOf(storeSlug);
-  if (!facts || isPlaceholder(path)) return null;
+  if (!facts) return null;
+  return legacyAnswerFor(facts, path, search, { moveLive: false });
+}
+
+async function legacyAnswerFor(facts: NonNullable<StoreFacts>, path: string, search: string, { moveLive }: { moveLive: boolean }): Promise<LegacyAnswer> {
+  if (isPlaceholder(path)) return null;
   try {
     const found = await remembered(`${facts.id}|legacy|${path}`, () => resolveMiss(facts.id, null, path, { manualOnly: true }));
     if (found) {
       await countHit(facts.id, found.redirectId);
-      return { location: locationIn(facts.slug, facts.mainMarket, mergeQuery(found.to, search)) };
+      return { location: locationBy(facts, mergeQuery(found.to, search)) };
+    }
+    // An address from when the store sold in one country (D181): the same place in its own country, for good.
+    if (moveLive && (MARKET_ROUTES.includes(firstSegment(path)) || (await remembered(`${facts.id}|live|${path}`, () => liveOf(facts.id, [path]))).has(path))) {
+      return { location: locationBy(facts, `${path}${search}`) };
     }
   } catch (error) {
     console.error("[redirects] a lookup of an address with no country failed:", error instanceof Error ? error.message : error);

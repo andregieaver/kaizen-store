@@ -16,7 +16,7 @@ import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { checkoutLabels } from "@/lib/checkout-labels";
 import { optionLabel, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
-import { marketPath } from "@/lib/paths";
+import { marketPath, marketHome } from "@/lib/paths";
 import { formatMoney } from "@/lib/money";
 import { countryOfVatPrefix } from "@/lib/vat-number";
 import { countryName, vatNumberMessage, vatProblemTexts, vatText } from "@/lib/vat-text";
@@ -106,7 +106,7 @@ type Draw = { store: Store; market: Market; m: Messages; view: Filled };
 const EMPTY_CART = (home: string, m: Messages) => (
   <div className="flex flex-col items-start gap-4">
     <p>{m.emptyCart}</p>
-    <Link href={home} className="underline">
+    <Link href={home || "/"} className="underline">
       {m.continueShopping}
     </Link>
   </div>
@@ -200,7 +200,7 @@ export async function CartCheckout({ store, market, m, drawGift = false }: { sto
 /** A link back to the store (D117). */
 export function CartContinue({ store, market, m }: { store: Store; market: Market; m: Messages }) {
   return (
-    <Link href={marketPath(store.slug, market.slug)} className="underline">
+    <Link href={marketHome(store.slug, market.slug)} className="underline">
       {m.continueShopping}
     </Link>
   );

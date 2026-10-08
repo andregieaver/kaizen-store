@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { t, type Messages } from "@/lib/i18n";
-import { marketPath } from "@/lib/paths";
+import { marketHome } from "@/lib/paths";
 import { resolveAfterSaleShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/download">;
@@ -23,7 +23,7 @@ export default async function DownloadNotice({ params, searchParams }: Props) {
       <Suspense fallback={<p>{m.downloadGone}</p>}>
         <Problem searchParams={searchParams} m={m} />
       </Suspense>
-      <Link href={marketPath(shop.store.slug, shop.market.slug)} className="underline">
+      <Link href={marketHome(shop.store.slug, shop.market.slug)} className="underline">
         {m.continueShopping}
       </Link>
     </div>

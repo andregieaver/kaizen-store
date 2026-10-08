@@ -2,7 +2,7 @@ import "server-only";
 
 import { t } from "@/lib/i18n";
 import { starterPage, type PageRole } from "@/lib/page-roles";
-import { marketPath } from "@/lib/paths";
+import { marketHome } from "@/lib/paths";
 
 import type { Membership } from "./auth";
 import { savePage, setPageRole } from "./pages";
@@ -16,7 +16,7 @@ export async function createRolePage({ account, store }: Membership, role: PageR
   const main = store.localization.locales[0];
   const market = store.markets[0];
   if (!main || !market) return { ok: false, problems: ["The store sells to no country yet."] };
-  const content = starterPage(role, t(main.split("-")[0]), () => crypto.randomUUID(), marketPath(store.slug, market.slug));
+  const content = starterPage(role, t(main.split("-")[0]), () => crypto.randomUUID(), marketHome(store.slug, market.slug));
   // The address is the role's own unless another page has taken it.
   let made: Awaited<ReturnType<typeof savePage>> | null = null;
   for (let n = 1; n <= 5; n++) {

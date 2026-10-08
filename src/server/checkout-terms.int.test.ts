@@ -96,9 +96,9 @@ describe("what the sentence names", () => {
     const s = await live();
     const { pages: named } = await ct.termsPagesFor(s, norway);
     expect(named.map((p) => [p.role, p.title])).toEqual([["terms", "Vilkår"], ["privacy", "Personvern"]]);
-    expect(named[0].href).toBe(`/s/${store.slug}/no/vilkar-${run}`);
+    expect(named[0].href).toBe(`/s/${store.slug}/vilkar-${run}`);
     const english = { ...norway, locale: "en-GB", slug: "no-en" };
-    expect((await ct.termsPagesFor(s, english)).pages[0]).toMatchObject({ title: "Terms", href: `/s/${store.slug}/no-en/vilkar-${run}` });
+    expect((await ct.termsPagesFor(s, english)).pages[0]).toMatchObject({ title: "Terms", href: `/s/${store.slug}/en/vilkar-${run}` });
     expect(await ct.termsDisplayFor(s, norway)).toMatchObject({ mode: "link", kind: "both" });
   });
 

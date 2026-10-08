@@ -23,6 +23,7 @@ import { cleanTranslations, pageLanguages, type PageLanguage } from "@/lib/page-
 import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
 import { isLegalRole, LEGAL_ROLE_COPY, type LegalRole } from "@/lib/legal-roles";
 import { issueCounts, pageIssues, blockingIssues, refusedIssues, themeSetsOf, unacknowledged, type PageIssue } from "@/lib/page-a11y";
+import { reservedChoiceSlugs } from "@/lib/store-address";
 import { parseStoreTheme } from "@/lib/theme";
 
 import { audit, type Account } from "./auth";
@@ -32,6 +33,7 @@ import { GlobalsRefused, globalsIn, lockSavedParts, spreadGlobals } from "./glob
 import { withPageAlts } from "./media-alts";
 import { pageRulesProblem, payPageProblem } from "./page-rules";
 import { scopedTermIds } from "./taxonomy";
+import { getStore } from "./stores";
 import { keepOwnRuleIds } from "./visibility";
 
 /**
@@ -188,6 +190,16 @@ const takenProblem = (slug: string, type: PageType) =>
     : `Another page already has the address /${slug}. Choose another.`;
 
 /**
+ * The page addresses a store's languages and currencies take (D181): a store that sells in one country reads `/en/…` or `/eur/…` as a
+ * choice of language or currency, never as a page, so a page may not be called `en` while the store keeps English.
+ */
+async function choiceSlugsOf(storeId: string): Promise<string[]> {
+  const [row] = await readDb().execute<{ slug: string }>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
+  const store = row ? await getStore(String(row.slug)) : null;
+  return reservedChoiceSlugs(store?.address);
+}
+
+/**
  * Saves the editor's page as the draft, and with `publish` also as what
  * visitors see. A page not yet published takes its draft's address at
  * once; a published page keeps its live address until it is published
@@ -218,7 +230,11 @@ export async function savePage(
   const edits = globalEditsOf(input);
   const parsed = pageInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
-  const slugProblem = pageSlugProblem(parsed.data.slug, reservedPageSlugs(owner, type));
+  const reserved = reservedPageSlugs(owner, type);
+  const choices = owner && type === "page" ? await choiceSlugsOf(owner) : [];
+  const slugProblem =
+    pageSlugProblem(parsed.data.slug, reserved) ??
+    (choices.includes(parsed.data.slug) ? `The address ${parsed.data.slug} is a language or currency of the store's own addresses. Choose another.` : null);
   if (slugProblem) return { ok: false, problems: [slugProblem] };
   const ruleProblem = pageRulesProblem(owner, type, parsed.data, variantOf);
   if (ruleProblem) return { ok: false, problems: [ruleProblem] };

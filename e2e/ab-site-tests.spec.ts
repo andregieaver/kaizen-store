@@ -77,16 +77,16 @@ test("a visitor given version B has its header on every page, at the same addres
   await expect(page.getByRole("heading", { name: "Header A" })).toHaveCount(0);
   // Not a page of its own for search engines, and the real address is the canonical one.
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/s/${t.slug}/no/side$`));
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", new RegExp(`/s/${t.slug}/side$`));
   await expect.poll(async () => (await exposures(t.experiment)).length).toBe(1);
   expect((await exposures(t.experiment))[0]).toMatchObject({ visitor, variant: "b" });
 
   // Another page by a full load, and by a click (the footer's cookies page), keep the version and the address.
-  await page.goto(`/s/${t.slug}/no/cookies`);
+  await page.goto(`/s/${t.slug}/cookies`);
   await expect(page.getByRole("heading", { name: "Header B" })).toBeVisible();
   await page.goto(t.address);
   await page.getByRole("contentinfo").getByRole("link", { name: "Informasjonskapsler" }).click();
-  await expect(page).toHaveURL(`/s/${t.slug}/no/cookies`);
+  await expect(page).toHaveURL(`/s/${t.slug}/cookies`);
   await expect(page.getByRole("heading", { level: 1, name: "Informasjonskapsler" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Header B" })).toBeVisible();
   await page.waitForTimeout(500);
@@ -96,15 +96,15 @@ test("a visitor given version B has its header on every page, at the same addres
 test("the version stays through a server action: adding to the cart", async ({ page, context }) => {
   const t = await headerTest();
   await enrol(context, t, "b");
-  await page.goto(`/s/${t.slug}/no/p/demo-keramikkopp`);
+  await page.goto(`/s/${t.slug}/p/demo-keramikkopp`);
   await expect(page.getByRole("heading", { name: "Header B" })).toBeVisible();
   const variants = page.getByRole("region", { name: "Varianter" });
   await variants.getByRole("button", { name: "Legg i handlekurven" }).click();
   await expect(variants.getByRole("status")).toContainText("Lagt i handlekurven.");
   await expect(page.getByRole("heading", { name: "Header B" })).toBeVisible();
-  await expect(page).toHaveURL(`/s/${t.slug}/no/p/demo-keramikkopp`);
+  await expect(page).toHaveURL(`/s/${t.slug}/p/demo-keramikkopp`);
   // And the cart page, reached by the same visitor, has it too.
-  await page.goto(`/s/${t.slug}/no/cart`);
+  await page.goto(`/s/${t.slug}/cart`);
   await expect(page.getByRole("heading", { name: "Header B" })).toBeVisible();
 });
 
@@ -130,7 +130,7 @@ test("accepting statistics gives a version by itself, kept on every page", async
   await page.reload();
   const first = (await page.getByRole("heading", { name: /Header [AB]/ }).textContent()) ?? "";
   expect(["Header A", "Header B"]).toContain(first);
-  await page.goto(`/s/${t.slug}/no/cookies`);
+  await page.goto(`/s/${t.slug}/cookies`);
   await expect(page.getByRole("heading", { name: first })).toBeVisible();
   await expect.poll(async () => (await exposures(t.experiment)).length).toBe(1);
 });
@@ -167,7 +167,7 @@ async function layoutTest() {
 
 test("a product page has the layout's version for a visitor in it, and only product pages are touched", async ({ page, context }) => {
   const t = await layoutTest();
-  const product = `/s/${t.slug}/no/p/demo-keramikkopp`;
+  const product = `/s/${t.slug}/p/demo-keramikkopp`;
   await enrol(context, t, "b");
   await page.goto(product);
   await expect(page.getByRole("heading", { name: "Layout B" })).toBeVisible();

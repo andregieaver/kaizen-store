@@ -19,6 +19,7 @@ import {
   type FeatureId,
 } from "@/lib/store-features";
 
+import { forgetStoreFacts } from "./redirect-resolve";
 import { affiliateTag } from "./affiliates";
 import { afterSaleTag } from "./after-sale";
 import { audit, type Membership } from "./auth";
@@ -304,6 +305,8 @@ export async function setFeatures(member: Membership, target: readonly FeatureId
  */
 export function refreshFeatureTags(store: { id: string; slug: string }): void {
   refreshTag(storeTag(store.slug));
+  // The shape of its addresses (D181: one country offered or several), as the proxy reads it.
+  forgetStoreFacts(store.slug);
   refreshTag(catalogTag(store.id));
   refreshTag(STORES_TAG);
   refreshTag(pagesTag(store.id));

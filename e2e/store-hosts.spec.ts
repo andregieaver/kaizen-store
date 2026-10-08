@@ -78,7 +78,7 @@ const ran = (page: Page) => page.evaluate(() => (window as unknown as { ran?: st
 
 test("the store's own code is added as far as the shopper allows", async ({ page }) => {
   const slug = await storeWithCode();
-  await page.goto(storeUrl(slug, "/no"));
+  await page.goto(storeUrl(slug, "/"));
 
   // Necessary code runs at once, in the head; the rest waits for consent.
   await expect(page.locator('head meta[name="kaizen-test"]')).toHaveCount(1);
@@ -87,7 +87,7 @@ test("the store's own code is added as far as the shopper allows", async ({ page
 
   // Declining keeps it that way; allowing statistics adds that code, in its place, once.
   await page.getByRole("button", { name: "Avslå alle" }).click();
-  await page.goto(storeUrl(slug, "/no/cookies"));
+  await page.goto(storeUrl(slug, "/cookies"));
   await expect.poll(() => ran(page)).toEqual(["head"]);
   await page.getByRole("button", { name: "Innstillinger for informasjonskapsler" }).click();
   const dialog = page.getByRole("dialog", { name: "Innstillinger for informasjonskapsler" });
@@ -97,22 +97,28 @@ test("the store's own code is added as far as the shopper allows", async ({ page
   expect(await page.evaluate(() => document.body.firstElementChild?.id)).toBe("stats-start");
 
   // A later visit adds what was allowed straight away, still once each.
-  await page.goto(storeUrl(slug, "/no"));
+  await page.goto(storeUrl(slug, "/"));
   await expect.poll(() => ran(page)).toEqual(["head", "statistics"]);
 });
 
 test("a store on a domain of its own is served there, and its other addresses lead there (P8)", async ({ page }) => {
   test.skip(!process.env.E2E_CUSTOM_HOSTS, "needs e2e/hosts-seed.mjs before the build");
   const own = `http://${CUSTOM_HOST}:${new URL(storeUrl("x")).port}`;
-  const response = await page.goto(`${own}/no`);
+  // It sells in its own country alone, so its addresses have no country (D181): `butikk.kari.localhost/om-oss`.
+  const response = await page.goto(`${own}/`);
   expect(response?.status()).toBe(200);
-  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(`${own}/no`);
-  await expect(page.getByRole("link", { name: /Handlekurv/ }).first()).toHaveAttribute("href", "/no/cart");
+  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(own);
+  await expect(page.getByRole("link", { name: /Handlekurv/ }).first()).toHaveAttribute("href", "/cart");
+  expect((await page.goto(`${own}/om-oss`))?.status()).toBe(200);
+  expect(await page.locator("link[rel=canonical]").getAttribute("href")).toBe(`${own}/om-oss`);
 
+  // Its old addresses with the country, and its other addresses, lead there.
+  await page.goto(`${own}/no/om-oss`);
+  await expect(page).toHaveURL(`${own}/om-oss`);
   await page.goto(storeUrl(CUSTOM_STORE, "/no/cart"));
-  await expect(page).toHaveURL(`${own}/no/cart`);
+  await expect(page).toHaveURL(`${own}/cart`);
   await page.goto(`/s/${CUSTOM_STORE}/no`);
-  await expect(page).toHaveURL(`${own}/no`);
+  await expect(page).toHaveURL(`${own}/`);
 });
 
 test("staff who came from the admin get their way back, and the page's editor, on the store's own host", async ({ page }) => {

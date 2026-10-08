@@ -206,7 +206,8 @@ describe("a view of products", () => {
     expect(view.products.length).toBeLessThanOrEqual(6);
     for (const product of view.products) {
       expect(product.url).toMatch(/^https?:\/\/.+\/p\/.+/);
-      expect(product.url).toContain(`/${view.market.slug}/p/${product.handle}`);
+      // The store sells in one country, so its addresses have none (D181).
+      expect(product.url).toContain(`/s/${slug}/p/${product.handle}`);
       expect(product.price.text).toMatch(/\d/);
       expect(product.price.vat_label).not.toBe("");
       expect(product.price.currency).toBe(view.market.currency);
@@ -339,7 +340,7 @@ describe("a product page for the site", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as ProductBody;
     expect(body.product).toMatchObject({ handle: goods[0].handle, cartable: true, reason: null });
-    expect(body.product.url).toContain(`/${body.market.slug}/p/${goods[0].handle}`);
+    expect(body.product.url).toContain(`/s/${slug}/p/${goods[0].handle}`);
     expect(body.product.variants.length).toBeGreaterThan(0);
     for (const variant of body.product.variants) {
       expect(variant.price.text).toMatch(/\d/);
@@ -457,7 +458,7 @@ describe("a cart held on the site", () => {
     const response = await handoffRoute(post(`/api/wordpress/v1/stores/${slug}/cart/handoff`, token, { lines, to: "checkout" }), forStore(slug));
     expect(response.status).toBe(200);
     const made = (await response.json()) as { url: string; lines: { variant_id: string; quantity: number; outcome: string }[] };
-    expect(made.url).toMatch(new RegExp(`/${quote.market.slug}/cart/resume\\?t=kzwh_`));
+    expect(made.url).toMatch(new RegExp(`/s/${slug}/cart/resume\\?t=kzwh_`));
     expect(made.lines.filter((l) => l.outcome === "unavailable").length).toBe(appointment ? 1 : 0);
     const secret = new URL(made.url).searchParams.get("t")!;
     const stored = JSON.stringify(await db().execute<Row>(sql`select * from commerce.carts where handoff_hash is not null`));
@@ -467,7 +468,7 @@ describe("a cart held on the site", () => {
     jar.clear();
     const open = await resumeRoute(new Request(made.url), { params: Promise.resolve({ store: slug, market: quote.market.slug }) } as never);
     expect(open.status).toBe(303);
-    expect(open.headers.get("location")).toBe(`/s/${slug}/${quote.market.slug}/checkout`);
+    expect(open.headers.get("location")).toBe(`/s/${slug}/checkout`);
     expect(open.headers.get("cache-control")).toBe("no-store");
     expect(jar.size).toBe(1);
     const cart = await cartModule.getCart({ storeId: (await stores.getStore(slug))!.id, market: (await stores.getStore(slug))!.markets.find((m) => m.slug === quote.market.slug)! });
@@ -483,7 +484,7 @@ describe("a cart held on the site", () => {
 
     jar.clear();
     const again = await resumeRoute(new Request(made.url), { params: Promise.resolve({ store: slug, market: quote.market.slug }) } as never);
-    expect(again.headers.get("location")).toBe(`/s/${slug}/${quote.market.slug}/cart`);
+    expect(again.headers.get("location")).toBe(`/s/${slug}/cart`);
     expect(jar.size).toBe(0);
   });
 
@@ -499,14 +500,15 @@ describe("a cart held on the site", () => {
     expect(Number((await db().execute<Row>(sql`select count(*) from commerce.carts`))[0].count)).toBe(before);
 
     const secret = new URL(cut.url).searchParams.get("t")!;
-    const market = new URL(cut.url).pathname.split("/")[3];
+    // The route's market: the store's own country, which its short address leaves out (D181).
+    const market = "no";
     jar.clear();
     const wrong = await resumeRoute(new Request(cut.url), { params: Promise.resolve({ store: otherSlug, market }) } as never);
-    expect(wrong.headers.get("location")).toBe(`/s/${otherSlug}/${market}/cart`);
+    expect(wrong.headers.get("location")).toBe(`/s/${otherSlug}/cart`);
     expect(jar.size).toBe(0);
     await db().execute(sql`update commerce.carts set handoff_expires_at = now() - interval '1 second' where handoff_hash is not null`);
     const late = await resumeRoute(new Request(cut.url), { params: Promise.resolve({ store: slug, market }) } as never);
-    expect(late.headers.get("location")).toBe(`/s/${slug}/${market}/cart`);
+    expect(late.headers.get("location")).toBe(`/s/${slug}/cart`);
     expect(jar.size).toBe(0);
     expect(secret.startsWith("kzwh_")).toBe(true);
     const junk = await resumeRoute(new Request(`https://kaizen.test/s/${slug}/${market}/cart/resume?t=nope`), { params: Promise.resolve({ store: slug, market }) } as never);

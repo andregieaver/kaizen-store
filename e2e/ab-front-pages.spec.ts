@@ -67,11 +67,11 @@ async function enrol(context: BrowserContext, t: Setup, version: string) {
   return visitor;
 }
 
-test("a visitor given version B has the front page's version at the market's own address, and is counted once", async ({ page, context }) => {
+test("a visitor given version B has the front page's version at the market's own address (the store's, without the country: D181), and is counted once", async ({ page, context }) => {
   const t = await runTest("forside", "front-heading", "Produkter B", null);
   const visitor = await enrol(context, t, "b");
-  await page.goto(`/s/${t.slug}/no`);
-  await expect(page).toHaveURL(`/s/${t.slug}/no`);
+  await page.goto(`/s/${t.slug}`);
+  await expect(page).toHaveURL(`/s/${t.slug}`);
   await expect(page.getByRole("heading", { name: "Produkter B", level: 1 })).toBeVisible();
   await expect.poll(async () => (await exposures(t.experiment)).length).toBe(1);
   expect((await exposures(t.experiment))[0]).toMatchObject({ visitor, variant: "b" });
@@ -80,18 +80,18 @@ test("a visitor given version B has the front page's version at the market's own
   await page.waitForTimeout(500);
   expect(await exposures(t.experiment)).toHaveLength(1);
   // Other pages are not touched by it.
-  await page.goto(`/s/${t.slug}/no/products`);
+  await page.goto(`/s/${t.slug}/products`);
   await expect(page.getByRole("heading", { name: "Produkter B" })).toHaveCount(0);
 });
 
 test("a visitor in the original, outside the test or without consent has the front page as it is", async ({ page, context }) => {
   const t = await runTest("forside", "front-heading", "Produkter B", null);
   await enrol(context, t, "a");
-  await page.goto(`/s/${t.slug}/no`);
+  await page.goto(`/s/${t.slug}`);
   await expect(page.getByRole("heading", { name: "Produkter", level: 1, exact: true })).toBeVisible();
   await expect.poll(async () => (await exposures(t.experiment)).map((e) => e.variant)).toEqual(["a"]);
   await context.clearCookies();
-  await page.goto(`/s/${t.slug}/no`);
+  await page.goto(`/s/${t.slug}`);
   await expect(page.getByRole("heading", { name: "Produkter", level: 1, exact: true })).toBeVisible();
   expect(await exposures(t.experiment)).toHaveLength(1);
 });
@@ -99,11 +99,11 @@ test("a visitor in the original, outside the test or without consent has the fro
 test("a part of the All products page under test: version B is served at /products", async ({ page, context }) => {
   const t = await runTest("alle-produkter", "products-heading", "Alt vi selger", { id: "products-heading", kind: "block" });
   await enrol(context, t, "b");
-  await page.goto(`/s/${t.slug}/no/products`);
-  await expect(page).toHaveURL(`/s/${t.slug}/no/products`);
+  await page.goto(`/s/${t.slug}/products`);
+  await expect(page).toHaveURL(`/s/${t.slug}/products`);
   await expect(page.getByRole("heading", { name: "Alt vi selger", level: 1 })).toBeVisible();
   await expect.poll(async () => (await exposures(t.experiment)).map((e) => e.variant)).toEqual(["b"]);
   // The front page is not part of this test.
-  await page.goto(`/s/${t.slug}/no`);
+  await page.goto(`/s/${t.slug}`);
   await expect(page.getByRole("heading", { name: "Alt vi selger" })).toHaveCount(0);
 });

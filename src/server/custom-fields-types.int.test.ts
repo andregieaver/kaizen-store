@@ -156,7 +156,8 @@ describe("links and relations", () => {
     expect(await write("product", product.id, changes)).toEqual([]);
     const groups = await fields.shownFieldsFor(store.id, "product", product.id, "nb-NO", "nb", "no");
     const byName = Object.fromEntries(groups[0].fields.map((f) => [f.name, f]));
-    const base = `/s/${store.slug}/no`;
+    // The store sells in its own country alone, so its addresses have none (D181).
+    const base = `/s/${store.slug}`;
     expect(byName.related.links).toEqual([expect.objectContaining({ href: `${base}/p/${product.handle}` })]);
     expect(byName.read.links).toEqual([expect.objectContaining({ label: "Om oss", href: `${base}/typer-side` })]);
     expect(byName.where.links!.map((l) => [l.label, l.href])).toEqual([["Kjøkken", `${base}/category/kjokken`], ["Nytt", `${base}/tag/nytt`]]);

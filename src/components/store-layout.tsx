@@ -6,7 +6,7 @@ import { currencyChoices, currencyName, languageChoices, languageName } from "@/
 import { marketSlug } from "@/lib/market-slug";
 import type { Market } from "@/lib/markets";
 import { linkExists, menuHref, menuLabel, menuTree, shopLink, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
-import { marketPath, storeBase } from "@/lib/paths";
+import { marketHome, marketPath } from "@/lib/paths";
 import { featureOn } from "@/lib/store-features";
 import { darkBehindLogo, type HeaderBackground, type LogoPlace } from "@/lib/theme";
 import { publishedPageNames } from "@/server/pages";
@@ -104,7 +104,7 @@ export function Brand({
 }: Props & { size: "header" | "footer"; place?: LogoPlace; height?: number }) {
   const logo = store.navigation.logo;
   return (
-    <Link href={marketPath(store.slug, market.slug)} className="flex min-w-0 items-center">
+    <Link href={marketHome(store.slug, market.slug)} className="flex min-w-0 items-center">
       {logo ? (
         <LogoPicture
           logo={logo}
@@ -135,11 +135,12 @@ function viewChoices(store: Store, market: Market): { languages: ViewItem[]; cur
       slug: marketSlug(market.code, { lang, currency: market.currency }, own),
       current: lang === market.lang,
     };
-  });
+  }).map((item) => ({ ...item, base: marketPath(store.slug, item.slug) }));
   const currencies = currencyChoices(store.localization, market.nativeCurrency).map((currency) => ({
     key: currency,
     label: currencyName(currency, market.locale),
     slug: marketSlug(market.code, { lang: market.lang, currency }, own),
+    base: marketPath(store.slug, marketSlug(market.code, { lang: market.lang, currency }, own)),
     current: currency === market.currency,
   }));
   return { languages: languages.length > 1 ? languages : [], currencies: currencies.length > 1 ? currencies : [] };
@@ -155,14 +156,14 @@ export function hasViewChoices(store: Store, market: Market): boolean {
 export function LocaleChoice({ store, market, m, className = "", list = false }: Props & { m: Messages; className?: string; list?: boolean }) {
   const { languages, currencies } = viewChoices(store, market);
   if (languages.length === 0 && currencies.length === 0) return null;
-  const prefix = storeBase(store.slug);
+  const here = marketPath(store.slug, market.slug);
   return (
     <div className={`flex ${list ? "flex-col gap-3" : "items-center"} ${className}`}>
       {languages.length > 0 && (
-        <ViewMenu icon={null} summary={market.lang.toUpperCase()} srLabel={m.chooseLanguage} items={languages} prefix={prefix} currentSlug={market.slug} list={list} />
+        <ViewMenu icon={null} summary={market.lang.toUpperCase()} srLabel={m.chooseLanguage} items={languages} here={here} list={list} />
       )}
       {currencies.length > 0 && (
-        <ViewMenu icon={null} summary={market.currency} srLabel={m.chooseCurrency} items={currencies} prefix={prefix} currentSlug={market.slug} list={list} />
+        <ViewMenu icon={null} summary={market.currency} srLabel={m.chooseCurrency} items={currencies} here={here} list={list} />
       )}
     </div>
   );
@@ -182,7 +183,7 @@ export function MarketChoice({ store, market, m, className = "hidden md:block" }
         {store.markets.map((other) => (
           <li key={other.slug}>
             <Link
-              href={marketPath(store.slug, other.slug)}
+              href={marketHome(store.slug, other.slug)}
               hrefLang={other.lang}
               lang={other.lang}
               aria-current={other.code === market.code ? "page" : undefined}
@@ -355,7 +356,7 @@ export function StoreMenu({ store, market }: Props) {
             {store.markets.map((other) => (
               <li key={other.slug}>
                 <Link
-                  href={marketPath(store.slug, other.slug)}
+                  href={marketHome(store.slug, other.slug)}
                   hrefLang={other.lang}
                   lang={other.lang}
                   aria-current={other.code === market.code ? "page" : undefined}
@@ -471,7 +472,7 @@ export function StoreFooter({
               {store.markets.map((other) => (
                 <li key={other.slug}>
                   <Link
-                    href={marketPath(store.slug, other.slug)}
+                    href={marketHome(store.slug, other.slug)}
                     hrefLang={other.lang}
                     lang={other.lang}
                     aria-current={other.code === market.code ? "page" : undefined}
@@ -497,7 +498,7 @@ export function StoreBottomBar({ store, market }: Props) {
   return (
     <HidingBottomBar>
       <nav aria-label={m.shortcuts} className="flex">
-        <Link href={base} className={item}>
+        <Link href={base || "/"} className={item}>
           <Icon name="home" />
           {m.home}
         </Link>

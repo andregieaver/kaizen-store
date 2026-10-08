@@ -57,7 +57,7 @@ async function storeWithMenus(): Promise<string> {
 
 test("a menu's links under a link open below it in the header, and show nested in a menu component", async ({ page }) => {
   const slug = await storeWithMenus();
-  await page.goto(`/s/${slug}/no`);
+  await page.goto(`/s/${slug}`);
   const main = page.getByRole("navigation", { name: "Hovedmeny" });
   await expect(main.getByRole("link", { name: "Utvalg" })).toBeVisible();
   const under = main.getByRole("link", { name: "Skrivesaker" });
@@ -65,12 +65,12 @@ test("a menu's links under a link open below it in the header, and show nested i
   await main.getByRole("link", { name: "Utvalg" }).hover();
   await expect(under).toBeVisible();
   await expect(main.getByRole("link", { name: "Koppen" })).toBeVisible();
-  await expect(under).toHaveAttribute("href", `/s/${slug}/no/p/demo-notatbok`);
+  await expect(under).toHaveAttribute("href", `/s/${slug}/p/demo-notatbok`);
   // A link set to open in a new tab says so.
   await expect(main.getByRole("link", { name: "Kaizen (åpnes i ny fane)" })).toHaveAttribute("target", "_blank");
 
   // On its own page, a menu component shows the same menu, one level under another.
-  await page.goto(`/s/${slug}/no/meny`);
+  await page.goto(`/s/${slug}/meny`);
   const component = page.getByRole("navigation", { name: "Main menu" });
   await expect(component.locator("> ul > li")).toHaveCount(3);
   await expect(component.locator("> ul > li").nth(1).locator("ul ul a")).toHaveText("Koppen");
@@ -85,7 +85,7 @@ test.describe("on a phone", () => {
 
   test("the slide-out menu shows the links under a link beneath it", async ({ page }) => {
     const slug = await storeWithMenus();
-    await page.goto(`/s/${slug}/no`);
+    await page.goto(`/s/${slug}`);
     const drawer = page.getByRole("dialog", { name: "Meny" });
     // A tap before the page has come alive does nothing, so tap again as a shopper would.
     await expect(async () => {
@@ -119,7 +119,7 @@ test("a mega menu opens its links side by side across the header, in columns wit
     await sql.end();
   }
 
-  await page.goto(`/s/${slug}/no`);
+  await page.goto(`/s/${slug}`);
   const main = page.getByRole("navigation", { name: "Hovedmeny" });
   const kopper = main.getByRole("link", { name: "Kopper" });
   await expect(kopper).toBeHidden();
@@ -190,7 +190,7 @@ test("in a header built in the page builder, a mega menu opens along the header'
     await sql.end();
   }
 
-  await page.goto(`/s/${slug}/no`);
+  await page.goto(`/s/${slug}`);
   const top = page.locator("header.site-header");
   await top.getByRole("link", { name: "Produkter" }).hover();
   const kopper = top.getByRole("link", { name: "Kopper" });

@@ -33,22 +33,26 @@ async function ask(request: APIRequestContext, path: string): Promise<{ status: 
 }
 
 test("another country, a language and a currency the store does not offer move to its own country's address, keeping the page", async ({ request }) => {
-  expect(await ask(request, `/s/${slug}/no/p/demo-keramikkopp`)).toMatchObject({ status: 200 });
-  expect(await ask(request, `/s/${slug}/se/p/demo-keramikkopp`)).toEqual({ status: 308, location: `/s/${slug}/no/p/demo-keramikkopp` });
-  expect(await ask(request, `/s/${slug}/no-en`)).toEqual({ status: 308, location: `/s/${slug}/no` });
-  expect(await ask(request, `/s/${slug}/no-eur/products`)).toEqual({ status: 308, location: `/s/${slug}/no/products` });
-  expect(await ask(request, `/s/${slug}/dk-en/category/hjem`)).toEqual({ status: 308, location: `/s/${slug}/no/category/hjem` });
+  // Selling in one country, the store has none in its addresses (D181): its own country's long address moves there too.
+  expect(await ask(request, `/s/${slug}/p/demo-keramikkopp`)).toMatchObject({ status: 200 });
+  expect(await ask(request, `/s/${slug}/no/p/demo-keramikkopp`)).toEqual({ status: 308, location: `/s/${slug}/p/demo-keramikkopp` });
+  expect(await ask(request, `/s/${slug}/se/p/demo-keramikkopp`)).toEqual({ status: 308, location: `/s/${slug}/p/demo-keramikkopp` });
+  expect(await ask(request, `/s/${slug}/no-en`)).toEqual({ status: 308, location: `/s/${slug}` });
+  expect(await ask(request, `/s/${slug}/no-eur/products`)).toEqual({ status: 308, location: `/s/${slug}/products` });
+  expect(await ask(request, `/s/${slug}/dk-en/category/hjem`)).toEqual({ status: 308, location: `/s/${slug}/category/hjem` });
+  // A language or a currency it keeps but does not offer, without the country, moves the same way.
+  expect(await ask(request, `/s/${slug}/en/products`)).toEqual({ status: 308, location: `/s/${slug}/products` });
   // A page that streams its content (My account) moves before it starts, so the move is the response's status.
-  expect(await ask(request, `/s/${slug}/se/account`)).toEqual({ status: 308, location: `/s/${slug}/no/account` });
+  expect(await ask(request, `/s/${slug}/se/account`)).toEqual({ status: 308, location: `/s/${slug}/account` });
   // An address no route matches keeps its path, and is then the 404 it was in the store's own country.
-  expect(await ask(request, `/s/${slug}/se/finnes-ikke`)).toEqual({ status: 308, location: `/s/${slug}/no/finnes-ikke` });
+  expect(await ask(request, `/s/${slug}/se/finnes-ikke`)).toEqual({ status: 308, location: `/s/${slug}/finnes-ikke` });
   // A country, or a language, the store never had is no address of it.
   expect((await ask(request, `/s/${slug}/fi/p/demo-keramikkopp`)).status).toBe(404);
   expect((await ask(request, `/s/${slug}/no-de`)).status).toBe(404);
 });
 
 test("the storefront offers one country, one language and one currency, with no choosers", async ({ page }) => {
-  await page.goto(`/s/${slug}/no`);
+  await page.goto(`/s/${slug}`);
   await expect(page.locator("html")).toHaveAttribute("lang", "nb");
   await expect(page.getByRole("link", { name: "Sverige" })).toHaveCount(0);
   await expect(page.locator('link[rel="alternate"][hreflang]')).toHaveCount(2);
@@ -58,7 +62,7 @@ test("the storefront offers one country, one language and one currency, with no 
 test("a cart in a country no longer offered says so and leads to the store's own country; a withdrawal there still opens", async ({ page }) => {
   await page.goto(`/s/${slug}/se/cart`);
   await expect(page.getByRole("status")).toContainText("Butiken säljer inte längre till Sverige");
-  await expect(page.getByRole("link", { name: "Gå till butiken för Norge" })).toHaveAttribute("href", `/s/${slug}/no`);
+  await expect(page.getByRole("link", { name: "Gå till butiken för Norge" })).toHaveAttribute("href", `/s/${slug}`);
   const withdraw = await page.goto(`/s/${slug}/se/withdraw`);
   expect(withdraw?.status()).toBe(200);
   await expect(page.locator("html")).toHaveAttribute("lang", "sv");

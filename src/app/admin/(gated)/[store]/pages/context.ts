@@ -6,6 +6,7 @@ import { breakpointsOf } from "@/lib/breakpoints";
 import type { PageOwnerContext } from "@/components/admin/page-context";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { t } from "@/lib/i18n";
+import { reservedChoiceSlugs } from "@/lib/store-address";
 import { reservedPageSlugs, type PageType } from "@/lib/page-content";
 import { pageLanguages } from "@/lib/page-translation";
 import { marketPath, storeBase, storeHref, storeOrigin } from "@/lib/paths";
@@ -75,7 +76,8 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     origin: storeOrigin(store.slug) ? "" : siteUrl(),
     // One page in every language the store sells in, its own country's first (D55).
     languages: pageLanguages(store.localization.locales),
-    reserved: reservedPageSlugs(store.id, type),
+    // A language or currency the store keeps is a short address of its own (D181), never a page's.
+    reserved: [...reservedPageSlugs(store.id, type), ...(type === "page" ? reservedChoiceSlugs(store.address) : [])],
     defaultDescription:
       (market && store.seo.description[market.locale]) || (market ? t(market.lang).storeSummary(store.name, market.name) : store.name),
     upload: uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null,

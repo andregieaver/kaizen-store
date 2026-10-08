@@ -19,6 +19,19 @@ const PAY = [
   "/no~abc/order/123",
   "/s/demo/no/cart?utm=1",
   "/s/demo/no/cart/",
+  // A store that sells in one country has none in its addresses (D181): on Kaizen's address, on its own host, in a language and a currency.
+  "/s/kaiza/cart",
+  "/s/kaiza/checkout",
+  "/s/kaiza/order/abc",
+  "/s/kaiza/en/cart",
+  "/s/kaiza/eur/checkout",
+  "/s/kaiza/en-eur/order/abc",
+  "/cart",
+  "/checkout",
+  "/en/cart",
+  "/eur/order/abc",
+  // Not a currency, but the policy on a page that is not one costs nothing, and a stricter pattern could leave a real one unprotected.
+  "/s/demo/nor/cart",
 ];
 const NOT_PAY = [
   "/",
@@ -30,14 +43,11 @@ const NOT_PAY = [
   "/s/demo/no/withdraw",
   "/s/cart",
   "/s/cart/no",
-  "/cart",
-  "/checkout",
   "/blog/cart",
   "/blog/order",
   "/admin/demo/orders",
   "/admin/cart",
   "/s/demo/n/cart",
-  "/s/demo/nor/cart",
   "/api/cart",
   "/s/demo/no/product/cart",
 ];
@@ -108,6 +118,9 @@ describe("the hosted invoices and credit notes (D159)", () => {
     `/s/demo/se/account/documents/crn_${"b".repeat(43)}?print=1`,
     `/no/account/documents/${TOKEN}`,
     `/no~tok_1/account/documents/${TOKEN}/pdf`,
+    `/s/kaiza/account/documents/${TOKEN}`,
+    `/en/account/documents/${TOKEN}`,
+    `/account/documents/${TOKEN}`,
   ];
   const NOT_DOCS = [
     "/s/demo/no",
@@ -116,7 +129,6 @@ describe("the hosted invoices and credit notes (D159)", () => {
     "/s/demo/no/account/orders/abc",
     "/s/demo/no/account/invoice/tok",
     "/s/demo/no/products/account/documents/x",
-    "/account/documents/x",
     "/admin/demo/invoices/abc",
   ];
 
@@ -144,6 +156,8 @@ describe("a draft order's pay link (wave 3, run 2, D173)", () => {
     `/s/demo/no-en-eur/account/pay/${TOKEN}?x=1`,
     `/no/account/pay/${TOKEN}`,
     `/no~tok_1/account/pay/${TOKEN}`,
+    `/s/kaiza/account/pay/${TOKEN}`,
+    `/account/pay/${TOKEN}`,
   ];
   const NOT_LINKS = [
     "/s/demo/no/account/pay",
@@ -151,7 +165,6 @@ describe("a draft order's pay link (wave 3, run 2, D173)", () => {
     "/s/demo/no/account",
     "/s/demo/no/account/payments/x",
     "/s/demo/no/products/account/pay/x",
-    "/account/pay/x",
     "/s/demo/no/pay/x",
     "/admin/demo/orders/drafts",
   ];
@@ -176,6 +189,8 @@ describe("a change's pay link (wave 3, run 3, D174)", () => {
     `/s/demo/no-en-eur/account/change/${TOKEN}?x=1`,
     `/no/account/change/${TOKEN}`,
     `/se~tok_1/account/change/${TOKEN}#top`,
+    `/s/kaiza/account/change/${TOKEN}`,
+    `/account/change/${TOKEN}`,
   ];
   const NOT_LINKS = [
     "/s/demo/no/account/change",
@@ -183,7 +198,6 @@ describe("a change's pay link (wave 3, run 3, D174)", () => {
     "/s/demo/no/account",
     "/s/demo/no/account/changes/x",
     "/s/demo/no/products/account/change/x",
-    "/account/change/x",
     "/s/demo/no/change/x",
     "/admin/demo/orders/x/edit",
   ];

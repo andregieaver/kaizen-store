@@ -173,7 +173,7 @@ async function Details({ store, market, token }: { store: Store; market: Market;
         </section>
       )}
 
-      <Link href={base} className="underline">
+      <Link href={base || "/"} className="underline">
         {m.continueShopping}
       </Link>
     </>

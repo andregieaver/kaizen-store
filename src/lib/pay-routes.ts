@@ -12,30 +12,42 @@ export type PaySegment = (typeof PAY_SEGMENTS)[number];
 
 /**
  * A market in an address: the country with a language and a currency (`no`, `no-en`, `no-eur`, `no-en-eur`, D109) and,
- * while a visitor is in a test of the header, footer or layout, the tokens after `~` (D148). Loose on the tokens on
+ * while a visitor is in a test of the header, footer or layout, the tokens after `~` (D148); or, for a store that sells in one
+ * country (D181), the language and currency alone (`en`, `eur`, `en-eur`; never the platform's `api`). Loose on the tokens on
  * purpose: a market that is not one finds no page, and a stricter pattern here would only leave a real one unprotected.
  */
-export const MARKET_PARAM = "[a-z]{2}(?:-[a-z]{2,3}){0,2}(?:~[a-z0-9_]+)?";
+export const MARKET_PARAM = "(?:[a-z]{2}(?:-[a-z]{2,3}){0,2}|(?!api)[a-z]{3})(?:~[a-z0-9_]+)?";
 
 /**
  * The patterns `next.config.ts` sends the policy on, one for each shape of address: `/s/{store}/{market}/…` and, on a
- * store's own host, `/{market}/…` (which the host routing serves from the same pages). `:path*` is nothing or more.
+ * store's own host, `/{market}/…` (which the host routing serves from the same pages), and both without the market for a
+ * store that sells in one country (D181: `/s/{store}/cart`, `/cart`). Headers are matched on the address as asked, before
+ * the proxy serves a short one from the long one. `:path*` is nothing or more.
  */
 export const PAY_SOURCES: readonly string[] = [
   `/s/:store/:market(${MARKET_PARAM})/:route(cart|checkout|order)/:path*`,
   `/:market(${MARKET_PARAM})/:route(cart|checkout|order)/:path*`,
+  `/s/:store/:route(cart|checkout|order)/:path*`,
+  `/:route(cart|checkout|order)/:path*`,
 ];
 
 const MARKET = new RegExp(`^${MARKET_PARAM}$`);
 
-/** Whether an address (a path, with or without a query) is a store's cart, checkout or order, on either shape of address. */
-export function isPayPath(pathname: string): boolean {
+/**
+ * The parts of a store's address after its market (or where it would be: a store that sells in one country has none in its
+ * address, D181), on every shape of address; empty for a path that is no store's.
+ */
+function afterMarketParts(pathname: string): string[] {
   const segments = pathname.split(/[?#]/)[0].split("/").filter(Boolean);
   const own = segments[0] === "s" ? 2 : 0;
-  const market = segments[own];
-  const route = segments[own + 1];
-  if (own === 2 && segments.length < 4) return false;
-  return market !== undefined && MARKET.test(market) && (PAY_SEGMENTS as readonly string[]).includes(route ?? "");
+  if (own === 2 && segments.length < 3) return [];
+  const rest = segments.slice(own);
+  return rest.length > 0 && MARKET.test(rest[0]) ? rest.slice(1) : rest;
+}
+
+/** Whether an address (a path, with or without a query) is a store's cart, checkout or order, on any shape of address. */
+export function isPayPath(pathname: string): boolean {
+  return (PAY_SEGMENTS as readonly string[]).includes(afterMarketParts(pathname)[0] ?? "");
 }
 
 /**
@@ -67,10 +79,8 @@ export const importsForbidden = (specifier: string): string | undefined =>
  * none of them here, and a document is entered by a full page load like a pay route.
  */
 export function isDocumentPath(pathname: string): boolean {
-  const segments = pathname.split(/[?#]/)[0].split("/").filter(Boolean);
-  const own = segments[0] === "s" ? 2 : 0;
-  const market = segments[own];
-  return market !== undefined && MARKET.test(market) && segments[own + 1] === "account" && segments[own + 2] === "documents" && segments.length > own + 3;
+  const parts = afterMarketParts(pathname);
+  return parts[0] === "account" && parts[1] === "documents" && parts.length > 2;
 }
 
 /**
@@ -79,10 +89,8 @@ export function isDocumentPath(pathname: string): boolean {
  * full page load. It is not a pay route in the policy's sense: no card is typed on it (the button hands the buyer to Stripe's own page), so it needs no policy of its own.
  */
 export function isPayLinkPath(pathname: string): boolean {
-  const segments = pathname.split(/[?#]/)[0].split("/").filter(Boolean);
-  const own = segments[0] === "s" ? 2 : 0;
-  const market = segments[own];
-  return market !== undefined && MARKET.test(market) && segments[own + 1] === "account" && segments[own + 2] === "pay" && segments.length > own + 3;
+  const parts = afterMarketParts(pathname);
+  return parts[0] === "account" && parts[1] === "pay" && parts.length > 2;
 }
 
 /**
@@ -91,10 +99,8 @@ export function isPayLinkPath(pathname: string): boolean {
  * is entered by a full page load. No card is typed on it (the button hands the customer to Stripe's own page), so it is not a pay route in the policy's sense.
  */
 export function isChangeLinkPath(pathname: string): boolean {
-  const segments = pathname.split(/[?#]/)[0].split("/").filter(Boolean);
-  const own = segments[0] === "s" ? 2 : 0;
-  const market = segments[own];
-  return market !== undefined && MARKET.test(market) && segments[own + 1] === "account" && segments[own + 2] === "change" && segments.length > own + 3;
+  const parts = afterMarketParts(pathname);
+  return parts[0] === "account" && parts[1] === "change" && parts.length > 2;
 }
 
 /**

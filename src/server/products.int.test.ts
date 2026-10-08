@@ -77,6 +77,7 @@ async function createStore(slug: string): Promise<Store> {
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
       toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
     ]),
+    address: null,
     ratesAuto: false,
     ratesUpdatedAt: null,
     chosenLocales: [],

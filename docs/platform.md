@@ -29,6 +29,9 @@ otherwise.
 - `supabase/seed.sql` creates the template store, slug `demo`.
 - Storefront: `/s/{store}` (country chooser) and `/s/{store}/{market}/…`,
   served at `{store}.{store domain}/` and `…/{market}/…` once the domain is set (P7).
+  A store that sells in one country has no country in its addresses (`/s/{store}/home`,
+  `{domain}/home`, `/en/home` for a language offered): the proxy serves them from the same
+  `[market]` routes and moves the long ones there (D181, `docs/marketless-addresses.md`).
   `src/server/stores.ts` loads a store and its markets (cached per store);
   `src/server/shop.ts` resolves URL params to a store and market.
 - Admin: `/admin` lists the account's stores; `/admin/{store}/…` is one store,

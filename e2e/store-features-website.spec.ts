@@ -50,26 +50,26 @@ async function status(request: APIRequestContext, path: string): Promise<number>
 
 test("the shop's own addresses are the store's 404", async ({ request }) => {
   for (const path of ["/p/demo-keramikkopp", "/products", "/cart", "/checkout", "/search", "/wishlist", "/category/hjem"]) {
-    expect(await status(request, `/s/${selling}/no${path}`), path).toBe(404);
+    expect(await status(request, `/s/${selling}${path}`), path).toBe(404);
   }
   // What was bought keeps its pages: the withdrawal form opens.
-  expect(await status(request, `/s/${selling}/no/withdraw`)).toBe(200);
+  expect(await status(request, `/s/${selling}/withdraw`)).toBe(200);
 });
 
 test("the front page draws as a website: no products, cart, search or account, and the withdrawal link while an order can be withdrawn from", async ({ page }) => {
-  const response = await page.goto(`/s/${selling}/no`);
+  const response = await page.goto(`/s/${selling}`);
   expect(response?.status()).toBe(200);
   // The front page copied from the template holds a heading over a grid of products: the heading stays, the grid draws nothing.
   await expect(page.getByRole("heading", { name: "Produkter" })).toBeVisible();
   await expect(page.locator('main a[href*="/p/"]')).toHaveCount(0);
-  for (const path of ["/cart", "/search", "/account", "/wishlist"]) await expect(page.locator(`a[href="/s/${selling}/no${path}"]`), path).toHaveCount(0);
-  await expect(page.locator(`footer a[href="/s/${selling}/no/withdraw"]`)).toHaveCount(1);
+  for (const path of ["/cart", "/search", "/account", "/wishlist"]) await expect(page.locator(`a[href="/s/${selling}${path}"]`), path).toHaveCount(0);
+  await expect(page.locator(`footer a[href="/s/${selling}/withdraw"]`)).toHaveCount(1);
 });
 
 test("a website that has sold nothing has no withdrawal link, and without a front page shows its name", async ({ page }) => {
-  await page.goto(`/s/${quiet}/no`);
+  await page.goto(`/s/${quiet}`);
   await expect(page.getByRole("heading", { level: 1, name: "Testbutikk" })).toBeVisible();
   await expect(page.locator('main a[href*="/p/"]')).toHaveCount(0);
-  await expect(page.locator(`a[href="/s/${quiet}/no/withdraw"]`)).toHaveCount(0);
-  await expect(page.locator(`a[href="/s/${quiet}/no/cookies"]`).first()).toBeVisible();
+  await expect(page.locator(`a[href="/s/${quiet}/withdraw"]`)).toHaveCount(0);
+  await expect(page.locator(`a[href="/s/${quiet}/cookies"]`).first()).toBeVisible();
 });

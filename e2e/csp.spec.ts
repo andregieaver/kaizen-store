@@ -115,13 +115,13 @@ test("the consent banner and the chat are on the store's pages and not on the ca
     .getByRole("link", { name: /Handlekurv/ })
     .first()
     .click();
-  await expect(page).toHaveURL(`/s/${slug}/no/cart`);
+  await expect(page).toHaveURL(`/s/${slug}/cart`);
   await expect(page.getByRole("heading", { level: 1, name: "Handlekurv" })).toBeVisible();
   await expect(banner).toHaveCount(0);
   await expect(chat).toHaveCount(0);
   // And on the way back the store's pages have them again.
   await page.getByRole("link", { name: "Fortsett å handle" }).click();
-  await expect(page).toHaveURL(`/s/${slug}/no`);
+  await expect(page).toHaveURL(`/s/${slug}`);
   await expect(banner).toBeVisible();
   expect((await context.cookies()).some((c) => c.name.startsWith("consent_"))).toBe(false);
 });

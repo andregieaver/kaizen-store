@@ -423,9 +423,10 @@ async function storeGroups(store: Pick<Store, "id" | "slug" | "seo">) {
   const groups = storeRobotsGroups(store.seo, base);
   const [pages, articles] = await Promise.all([listPublishedPages(store.id), listPublishedPages(store.id, "article")]);
   const closed = [
-    ...pages.filter((page) => !page.content.aiAssistants).map((page) => ({ allow: false, path: `${base}/*/${page.slug}$` })),
-    ...articles.filter((a) => !a.content.aiAssistants).map((a) => ({ allow: false, path: `${base}/*/blog/${a.slug}$` })),
-  ];
+    ...pages.filter((page) => !page.content.aiAssistants).flatMap((page) => [`${base}/*/${page.slug}$`, `${base}/${page.slug}$`]),
+    ...articles.filter((a) => !a.content.aiAssistants).flatMap((a) => [`${base}/*/blog/${a.slug}$`, `${base}/blog/${a.slug}$`]),
+  ].map((path) => ({ allow: false, path }));
+  // In every market, and without the market for a store that sells in one country (D181).
   if (closed.length > 0) addRules(groups, [...AI_ASSISTANT_BOTS, ...AI_TRAINING_BOTS], closed);
   return groups;
 }
@@ -486,6 +487,8 @@ export async function storeSitemap(slug: string): Promise<string | null> {
   const store = (await listPublicStores()).find((s) => s.slug === slug && s.indexable);
   if (!store) return null;
   const origin = storeSiteUrl(store.slug);
+  // Addresses without the country while the store sells in one (D181), as its pages' own links are.
+  const address = (await getOpenStore(slug))?.address ?? null;
   // A website (D178 step 5: the online shop off) lists no products, categories or tags.
   const [products, terms, pages, articles] = await Promise.all([
     store.selling ? listIndexedProducts(store.id) : Promise.resolve([]),
@@ -519,7 +522,8 @@ export async function storeSitemap(slug: string): Promise<string | null> {
     markets.flatMap((m) =>
       languageChoices(store, m).map((locale) => ({ locale: `${locale.split("-")[0]}-${m.code}`, slug: inView(m, { locale, currency: m.nativeCurrency }).slug })),
     );
-  const versionsOf = (markets: readonly Market[], path: string) => views(markets).map((v) => ({ locale: v.locale, href: `${base}/${v.slug}${path}` }));
+  const versionsOf = (markets: readonly Market[], path: string) =>
+    views(markets).map((v) => ({ locale: v.locale, href: `${origin}${marketPath(store.slug, v.slug, path, address) || "/"}` }));
   const homes = versionsOf(store.markets, "");
   const urls = [
     ...homes.map((home) =>

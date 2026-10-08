@@ -242,14 +242,9 @@ export function renderRobots(groups: RobotsGroups, sitemaps: string[]): string {
 
 /** Where a store's shopper-only pages are: carts, checkout and order pages are not for crawlers. */
 export function storePrivatePaths(base: string): Rule[] {
-  return [
-    { allow: false, path: `${base}/*/cart` },
-    { allow: false, path: `${base}/*/checkout` },
-    { allow: false, path: `${base}/*/order/` },
-    { allow: false, path: `${base}/*/download` },
-    { allow: false, path: `${base}/*/subscription/` },
-    { allow: false, path: `${base}/*/account` },
-  ];
+  const paths = ["/cart", "/checkout", "/order/", "/download", "/subscription/", "/account"];
+  // With the market (`/no/cart`, `/en/cart`) and, for a store that sells in one country, without it (`/cart`, D181).
+  return [...paths.map((path) => ({ allow: false, path: `${base}/*${path}` })), ...paths.map((path) => ({ allow: false, path: `${base}${path}` }))];
 }
 
 /** A store's own rules and AI choices, as groups for the robots.txt it is served under. */

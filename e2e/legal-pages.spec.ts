@@ -65,15 +65,15 @@ test("a legal page is at its own address and in the footer once published, and a
 }) => {
   const { slug } = await storeWithLegalPages();
 
-  await browser.goto(`/s/${slug}/no/kjopsvilkar`);
+  await browser.goto(`/s/${slug}/kjopsvilkar`);
   await expect(browser.getByRole("heading", { level: 1, name: "Slik handler du hos oss" })).toBeVisible();
   // Never redirected away to a role's place: the address is the page's own.
-  await expect(browser).toHaveURL(`/s/${slug}/no/kjopsvilkar`);
+  await expect(browser).toHaveURL(`/s/${slug}/kjopsvilkar`);
 
   // The page and the footer's list of legal pages pass the accessibility scan.
   expect(describeFindings(await violationsOn(browser))).toEqual([]);
   const footer = browser.getByRole("contentinfo").getByRole("navigation", { name: "Juridisk informasjon" });
-  await expect(footer.getByRole("link", { name: "Kjøpsvilkår" })).toHaveAttribute("href", `/s/${slug}/no/kjopsvilkar`);
+  await expect(footer.getByRole("link", { name: "Kjøpsvilkår" })).toHaveAttribute("href", `/s/${slug}/kjopsvilkar`);
   await expect(footer.getByRole("link", { name: "Personvernerklæring" })).toBeVisible();
   await expect(footer.getByRole("link", { name: "Frakt og levering" })).toHaveCount(0);
 
@@ -81,7 +81,7 @@ test("a legal page is at its own address and in the footer once published, and a
   // `src/server/legal-starters.int.test.ts` holds that a published legal page stays in the sitemap's pages and a draft is not one.
 
   // The draft has no page on the site.
-  expect((await request.get(`/s/${slug}/no/frakt`)).status()).toBe(404);
+  expect((await request.get(`/s/${slug}/frakt`)).status()).toBe(404);
 });
 
 test("an order that kept its terms shows them, as shown, behind the order page's own key", async ({ page: browser, request }) => {
@@ -114,7 +114,7 @@ test("an order that kept its terms shows them, as shown, behind the order page's
     await sql.end();
   }
 
-  await browser.goto(`/s/${slug}/no/order/${orderId}?session_id=${key}`);
+  await browser.goto(`/s/${slug}/order/${orderId}?session_id=${key}`);
   const block = browser.getByRole("region", { name: "Vilkår du godtok" });
   await expect(block).toBeVisible();
   await expect(block).toContainText("Du krysset av for disse tekstene da du bestilte");
@@ -122,17 +122,17 @@ test("an order that kept its terms shows them, as shown, behind the order page's
   await block.getByRole("link", { name: "Kjøpsvilkår" }).click();
 
   // The text as it was, read only, with a way back to the order.
-  await expect(browser).toHaveURL(`/s/${slug}/no/order/${orderId}/terms/terms?session_id=${key}`);
+  await expect(browser).toHaveURL(`/s/${slug}/order/${orderId}/terms/terms?session_id=${key}`);
   await expect(browser.getByRole("heading", { level: 1, name: "Kjøpsvilkår" })).toBeVisible();
   await expect(browser.getByText("Slik handler du hos oss")).toBeVisible();
   await expect(browser.getByText("Teksten slik den var da du bestilte")).toBeVisible();
   expect(describeFindings(await violationsOn(browser))).toEqual([]);
   await browser.getByRole("link", { name: "Tilbake til bestillingen" }).click();
-  await expect(browser).toHaveURL(`/s/${slug}/no/order/${orderId}?session_id=${key}`);
+  await expect(browser).toHaveURL(`/s/${slug}/order/${orderId}?session_id=${key}`);
 
   // The order's own key only: the page streams, so a refusal is the store's not-found page in a 200 response, and what matters is that
   // none of the text is in it. With the right key the text is there.
-  const base = `/s/${slug}/no/order/${orderId}/terms`;
+  const base = `/s/${slug}/order/${orderId}/terms`;
   const body = async (path: string) => (await request.get(path)).text();
   expect(await body(`${base}/terms?session_id=${key}`)).toContain("Slik handler du hos oss");
   for (const path of [

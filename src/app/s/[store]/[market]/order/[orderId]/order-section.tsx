@@ -24,7 +24,7 @@ import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";
 import { formatMoney } from "@/lib/money";
-import { marketPath } from "@/lib/paths";
+import { marketPath, marketHome } from "@/lib/paths";
 import { vatText } from "@/lib/vat-text";
 import { fileSize } from "@/lib/file-size";
 import { getCheckoutAccount, type CheckoutAccount } from "@/server/customers";
@@ -468,7 +468,7 @@ function termsBlock({ store, market, order, sessionId, terms, m }: OrderView) {
 
 function continueLink({ store, market, m }: OrderView) {
   return (
-    <Link href={marketPath(store.slug, market.slug)} className="underline">
+    <Link href={marketHome(store.slug, market.slug)} className="underline">
       {m.continueShopping}
     </Link>
   );

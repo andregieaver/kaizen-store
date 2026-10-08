@@ -11,7 +11,7 @@ import { StoreVisits } from "@/components/store-visits";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { liveCustomCode } from "@/lib/custom-code";
 import { t } from "@/lib/i18n";
-import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketHome, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
 import { siteIcons } from "@/lib/site-icons";
 import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
@@ -43,7 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: {
       canonical: base,
       languages: {
-        ...Object.fromEntries(store.markets.map((m) => [m.locale, marketPath(store.slug, m.slug)])),
+        ...Object.fromEntries(store.markets.map((m) => [m.locale, marketHome(store.slug, m.slug)])),
         "x-default": base,
       },
     },

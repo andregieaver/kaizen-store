@@ -141,7 +141,7 @@ export async function recordVisit({ headers: h, body, now = new Date() }: { head
   if (!own) return { recorded: false, reason: "wrong_site" };
 
   // Every country the store had (D178): an order's page in a country no longer offered is still one of its pages.
-  const place = placeOfPath(input.path, store.slug, store.allMarkets.map((m) => m.code));
+  const place = placeOfPath(input.path, store.slug, store.allMarkets.map((m) => m.code), store.address);
   if (!place) return { recorded: false, reason: "unknown_page" };
 
   const channel = classifyChannel({

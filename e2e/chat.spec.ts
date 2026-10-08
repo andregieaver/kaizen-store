@@ -63,7 +63,7 @@ test("a store's chat agent answers, shows products and opens the page for the vi
       });
     });
 
-    await page.goto(`/s/${slug}/no`);
+    await page.goto(`/s/${slug}`);
     const launcher = page.getByRole("button", { name: "Chat med oss: Ingrid, AI-assistent" });
     await launcher.click();
     const chat = page.getByRole("dialog", { name: "Ingrid, AI-assistent" });
@@ -75,10 +75,10 @@ test("a store's chat agent answers, shows products and opens the page for the vi
     await chat.getByRole("textbox", { name: "Skriv en melding" }).fill("Har dere lamper?");
     await chat.getByRole("textbox", { name: "Skriv en melding" }).press("Enter");
     await expect(chat.getByText("Her er bordlampen vår. Jeg har åpnet siden for deg.")).toBeVisible();
-    expect(sent[0]).toMatchObject({ store: slug, market: "no", path: `/s/${slug}/no`, messages: [{ role: "user", content: "Har dere lamper?" }] });
+    expect(sent[0]).toMatchObject({ store: slug, market: "no", path: `/s/${slug}`, messages: [{ role: "user", content: "Har dere lamper?" }] });
 
     // The agent opened the product page, with the chat still open beside it on a large screen.
-    await expect(page).toHaveURL(new RegExp(`/s/${slug}/no/p/demo-bordlampe$`));
+    await expect(page).toHaveURL(new RegExp(`/s/${slug}/p/demo-bordlampe$`));
     await expect(page.getByRole("heading", { level: 1, name: "Demo: Bordlampe" })).toBeVisible();
     await expect(chat).toBeVisible();
     const card = chat.getByRole("link", { name: /Demo: Bordlampe/ });

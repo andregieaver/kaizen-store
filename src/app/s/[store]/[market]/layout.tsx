@@ -19,7 +19,7 @@ import { t } from "@/lib/i18n";
 import { languageChoices } from "@/lib/localization";
 import { inView } from "@/lib/markets";
 import { looksLikeMarket } from "@/lib/redirect-path";
-import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketHome, storeHome, storeSiteUrl } from "@/lib/paths";
 import { siteIcons } from "@/lib/site-icons";
 import { footerHasWithdrawal } from "@/lib/site-layout";
 import { featureOn, showsWithdrawalLink } from "@/lib/store-features";
@@ -55,9 +55,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const title = store.seo.title[market.locale] || store.name;
   const description =
     store.seo.description[market.locale] || t(market.lang).storeSummary(store.name, market.name);
-  const home = marketPath(store.slug, market.slug);
+  const home = marketHome(store.slug, market.slug);
   // The same page in another currency is the same page: its address is the one in the country's own (D109).
-  const canonical = marketPath(store.slug, inView(market, { currency: market.nativeCurrency }).slug);
+  const canonical = marketHome(store.slug, inView(market, { currency: market.nativeCurrency }).slug);
   return {
     metadataBase: new URL(storeSiteUrl(store.slug)),
     title: { default: title, template: `%s · ${store.name}` },
@@ -73,7 +73,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           store.markets.flatMap((m) =>
             languageChoices(store.localization, m).map((locale) => [
               `${locale.split("-")[0]}-${m.code}`,
-              marketPath(store.slug, inView(m, { locale, currency: m.nativeCurrency }).slug),
+              marketHome(store.slug, inView(m, { locale, currency: m.nativeCurrency }).slug),
             ]),
           ),
         ),

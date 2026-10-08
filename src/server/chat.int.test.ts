@@ -143,7 +143,7 @@ describe("the agent", () => {
       connection,
     );
     expect(reply.reply).toBe("Her er bordlampen. Jeg har åpnet siden for deg.");
-    expect(reply.actions).toEqual([{ type: "navigate", href: `/s/${slug}/no/p/demo-bordlampe`, label: expect.any(String) }]);
+    expect(reply.actions).toEqual([{ type: "navigate", href: `/s/${slug}/p/demo-bordlampe`, label: expect.any(String) }]);
     expect(reply.products.map((p) => p.handle)).toContain("demo-bordlampe");
     const lamp = reply.products.find((p) => p.handle === "demo-bordlampe")!;
     expect(lamp.price.currency).toBe("NOK");
@@ -230,7 +230,7 @@ describe("the agent", () => {
       storeReturnWindowDays: 14,
       returnShippingPaidBy: "the customer",
       takesBackGoodsTheLawExcludes: false,
-      withdrawFromContractPage: `/s/${slug}/no/withdraw`,
+      withdrawFromContractPage: `/s/${slug}/withdraw`,
       note: expect.stringContaining("faulty goods are a separate matter"),
     });
     await db().execute(sql`insert into commerce.return_settings (store_id, window_days, who_pays_return, accept_excluded) values (${storeId}::uuid, 45, 'store', true)`);

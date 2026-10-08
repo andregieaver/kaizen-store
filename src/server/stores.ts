@@ -6,8 +6,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { readDb } from "@/db/client";
 import { effectiveAudience, parseStoreAudience, type StoreAudience } from "@/lib/b2b";
 import type { StoreCurrency } from "@/lib/currency";
-import { localizationOf, type Localization } from "@/lib/localization";
-import { offeredMarkets, toMarket, type Market } from "@/lib/markets";
+import type { Localization } from "@/lib/localization";
+import type { Market } from "@/lib/markets";
 import { isTermsMode, type TermsMode } from "@/lib/checkout-terms";
 import { isLegalRole, type LegalRole } from "@/lib/legal-roles";
 import { isPageRole, type PageRole } from "@/lib/page-roles";
@@ -20,6 +20,8 @@ import { parseStoreSeo, type StoreSeo } from "@/lib/seo";
 import { returnPolicyOf, type ReturnPolicyFacts } from "@/lib/structured-data";
 import { featureOn, normaliseFeatures, type FeatureId } from "@/lib/store-features";
 import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
+import { rememberStoreAddress, type StoreAddress } from "@/lib/store-address";
+import { localized } from "@/lib/store-localized";
 
 export type StoreStatus = "active" | "suspended" | "closed";
 
@@ -85,6 +87,11 @@ export type Store = {
    * the currencies shoppers can choose with the rates they are converted at.
    */
   localization: Localization;
+  /**
+   * How the store's addresses are shaped (D181, `src/lib/store-address.ts`): without the country while it sells in one (`marketless`), with
+   * the languages and currencies a short address may name. `marketPath()` reads it (through `storeAddress()`); null for a store with no country.
+   */
+  address: StoreAddress | null;
   /** The rates are kept up to date from the ECB's, and when they last were. */
   ratesAuto: boolean;
   ratesUpdatedAt: string | null;
@@ -144,7 +151,18 @@ const text = (value: unknown): string | null =>
 
 /** A store and its active markets, by slug, or null. */
 export async function getStore(slug: string): Promise<Store | null> {
-  return isStoreSlug(slug) ? loadStore(slug) : null;
+  const store = isStoreSlug(slug) ? await loadStore(slug) : null;
+  // Links to the store's pages are made without the country while it sells in one (D181): `marketPath()` reads what was read here.
+  if (store) rememberStoreAddress(store.slug, store.address);
+  return store;
+}
+
+/**
+ * Reads a store so links to it made after are shaped as its addresses are (D181): for jobs, webhooks and emails that read the store their own
+ * way. A failure leaves the links with their country, which still work (the proxy moves them).
+ */
+export async function knowStoreAddress(slug: string): Promise<void> {
+  await getStore(slug).catch(() => null);
 }
 
 async function loadStore(slug: string): Promise<Store | null> {
@@ -249,36 +267,6 @@ async function loadStore(slug: string): Promise<Store | null> {
     customCode: parseCustomCode(row.custom_code),
     customCss: String(row.custom_css ?? ""),
     ...themed(row.theme),
-  };
-}
-
-/**
- * The markets and what the store offers in languages and currencies, as read from its row and switched by its features (D178): the countries
- * offered (`offeredMarkets()`), and languages and currencies beyond each country's own only while Several languages or currencies is on.
- */
-function localized(row: Row): Pick<Store, "markets" | "keptMarkets" | "allMarkets" | "localization" | "ratesAuto" | "ratesUpdatedAt" | "chosenLocales" | "chosenCurrencies"> {
-  const features = normaliseFeatures(Array.isArray(row.features) ? (row.features as unknown[]).map(String) : []);
-  const keptMarkets = (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(toMarket);
-  const markets = offeredMarkets(keptMarkets, featureOn(features, "countries"));
-  const chosenLocales = ((row.locales ?? []) as string[]).map(String);
-  const chosenCurrencies = ((row.currencies ?? []) as { currency: string; rate: string | number | null; roundTo: number }[]).map((c) => ({
-    currency: String(c.currency).trim(),
-    rate: c.rate === null ? null : Number(c.rate),
-    roundTo: Number(c.roundTo),
-  }));
-  return {
-    markets,
-    keptMarkets,
-    allMarkets: ((row.all_markets ?? []) as { code: string; currency: string; defaultLocale: string }[]).map(toMarket),
-    localization: localizationOf(chosenLocales, chosenCurrencies, markets, {
-      kept: keptMarkets,
-      languages: featureOn(features, "languages"),
-      currencies: featureOn(features, "currencies"),
-    }),
-    ratesAuto: Boolean(row.rates_auto),
-    ratesUpdatedAt: row.rates_updated_at ? new Date(String(row.rates_updated_at)).toISOString() : null,
-    chosenLocales,
-    chosenCurrencies,
   };
 }
 

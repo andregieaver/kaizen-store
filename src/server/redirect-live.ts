@@ -188,6 +188,11 @@ export async function remembered<T>(key: string, load: () => Promise<T>, ms: num
   return value;
 }
 
+/** Forgets one answer this instance remembers. */
+export function forgetRemembered(key: string): void {
+  memory.delete(key);
+}
+
 /** Forgets what this server remembers of a store's redirects (other instances catch up within `MEMORY_MS`). */
 export function forgetRedirects(storeId: string): void {
   for (const key of memory.keys()) if (key.startsWith(`${storeId}|`)) memory.delete(key);

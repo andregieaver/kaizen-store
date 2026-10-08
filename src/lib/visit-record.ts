@@ -3,6 +3,8 @@ import { z } from "zod";
 import { splitSiteVersions } from "./ab-site";
 import { landingKind, type LandingKind } from "./analytics-traffic";
 import { parseMarketSlug } from "./market-slug";
+import { PLATFORM_SEGMENTS } from "./redirect-path";
+import { afterMarket, type StoreAddress } from "./store-address";
 import { RESERVED_ARTICLE_SLUGS, RESERVED_STORE_PAGE_SLUGS } from "./page-content";
 
 /**
@@ -127,14 +129,21 @@ function landingOf(country: string | null, rest: readonly string[]): string {
 /**
  * Which page of the store a path is, or null when it is not one of its pages. On the platform a store's pages are
  * `/s/{store}/…`, on its own host `/{market}/…`; the front door is `/s/{store}` or `/`. A market is one of the store's
- * countries, with its language and currency choices and any A/B versions (`no-en-eur`, `no~…`).
+ * countries, with its language and currency choices and any A/B versions (`no-en-eur`, `no~…`). With `address` saying the store sells
+ * in one country (D181), its addresses have none (`/p/x`, `/en/p/x`), and are read as its own country's.
  */
-export function placeOfPath(path: string, storeSlug: string, marketCodes: readonly string[]): VisitPlace | null {
-  const clean = path.split(/[?#]/, 1)[0];
+export function placeOfPath(path: string, storeSlug: string, marketCodes: readonly string[], address?: StoreAddress | null): VisitPlace | null {
+  let clean = path.split(/[?#]/, 1)[0];
   let segments = clean.split("/").filter((s) => s !== "");
   if (segments[0] === "s") {
     if (segments[1] !== storeSlug) return null;
     segments = segments.slice(2);
+  }
+  // A store that sells in one country has none in its addresses (D181): its page is read as the same page in its own country.
+  if (address?.marketless && !(segments.length > 0 && PLATFORM_SEGMENTS.includes(segments[0].toLowerCase()))) {
+    const { market, rest } = afterMarket(segments, address);
+    segments = [market ?? address.home, ...rest];
+    clean = `/${segments.join("/")}`;
   }
   if (segments.length === 0) return { market: null, kind: "other", handle: null, landing: landingOf(null, []) };
   const choice = parseMarketSlug(splitSiteVersions(segments[0].toLowerCase()).market);

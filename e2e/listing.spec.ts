@@ -26,7 +26,7 @@ async function newStore(): Promise<string> {
 
 test("a shopper filters the store's products by kind, option and price, sorts them, and takes a filter away", async ({ page }) => {
   const slug = await newStore();
-  await page.goto(`/s/${slug}/no/products`);
+  await page.goto(`/s/${slug}/products`);
   await expect(page.getByRole("heading", { level: 1, name: "Alle produkter" })).toBeVisible();
   await expect(page.getByRole("link", { name: /Demo: Hytte/ })).toBeVisible();
 
@@ -51,7 +51,7 @@ test("a shopper filters the store's products by kind, option and price, sorts th
   await expect(cards.first().locator("a").first()).toHaveAttribute("href", /demo-sykkelutleie/);
 
   // A variant's option and a price range, from a fresh start.
-  await page.goto(`/s/${slug}/no/products`);
+  await page.goto(`/s/${slug}/products`);
   await page.getByRole("button", { name: "Filtrer og sorter" }).click();
   await dialog.getByRole("button", { name: /Hvit/ }).click();
   await dialog.getByRole("textbox", { name: /^Til/ }).fill("300");
@@ -62,16 +62,16 @@ test("a shopper filters the store's products by kind, option and price, sorts th
   await expect(page.getByRole("link", { name: "Fjern Farge: Hvit" })).toBeVisible();
 
   // Nothing matches: said so, and the filters can be cleared.
-  await page.goto(`/s/${slug}/no/products?kind=stay&max=100`);
+  await page.goto(`/s/${slug}/products?kind=stay&max=100`);
   await expect(page.getByText("Ingen produkter passer til filtrene.")).toBeVisible();
   await page.getByRole("link", { name: "Fjern alle" }).click();
-  await expect(page).toHaveURL(new RegExp(`/s/${slug}/no/products$`));
+  await expect(page).toHaveURL(new RegExp(`/s/${slug}/products$`));
 });
 
 test("a category's products and search results can be filtered too", async ({ page }) => {
   const slug = await newStore();
   // In Hjem, the lamp is in Belysning below it.
-  await page.goto(`/s/${slug}/no/category/hjem`);
+  await page.goto(`/s/${slug}/category/hjem`);
   await page.getByRole("button", { name: "Filtrer og sorter" }).click();
   const dialog = page.getByRole("dialog", { name: "Filtrer og sorter" });
   await dialog.getByRole("checkbox", { name: /Belysning/ }).check();
@@ -80,7 +80,7 @@ test("a category's products and search results can be filtered too", async ({ pa
   await expect(page.locator("main li a[href*='/p/demo-']")).toHaveCount(1);
 
   // Search results keep their search and their recorded links.
-  await page.goto(`/s/${slug}/no/search?q=demo&sort=priceLow`);
+  await page.goto(`/s/${slug}/search?q=demo&sort=priceLow`);
   const results = page.locator("main li a[href*='/search/go']");
   await expect(results.first()).toHaveAttribute("href", /p=demo-sykkelutleie/);
 });

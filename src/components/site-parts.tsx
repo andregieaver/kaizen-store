@@ -8,7 +8,7 @@ import type { PageBlock, PageContent, SiteBlock } from "@/lib/page-content";
 import { flowRows } from "@/lib/page-modal";
 import { localizePage } from "@/lib/page-translation";
 import { partFeatureOn } from "@/lib/part-features";
-import { marketPath } from "@/lib/paths";
+import { marketPath, marketHome } from "@/lib/paths";
 import { siteBlocks } from "@/lib/site-layout";
 import type { GridPlace } from "@/server/content-grid";
 import { bindStoreFields } from "@/server/field-binding";
@@ -143,7 +143,7 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
             {store.markets.map((other) => (
               <li key={other.slug}>
                 <Link
-                  href={marketPath(store.slug, other.slug)}
+                  href={marketHome(store.slug, other.slug)}
                   hrefLang={other.lang}
                   lang={other.lang}
                   aria-current={other.slug === market.slug ? "page" : undefined}

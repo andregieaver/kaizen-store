@@ -282,7 +282,7 @@ test("the link is in every footer: the standard one, one built in the builder, a
   await page.goto(`/s/${hidden}/no`);
   await expect(link()).toBeVisible();
   await link().click();
-  await expect(page).toHaveURL(`/s/${hidden}/no/withdraw`);
+  await expect(page).toHaveURL(`/s/${hidden}/withdraw`);
   await expect(page.getByRole("heading", { level: 1, name: "Angre avtalen" })).toBeVisible();
 });
 

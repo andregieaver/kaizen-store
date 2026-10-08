@@ -28,7 +28,7 @@ import { documentBlocks, emailsCarryInvoice, recordDocumentDeliveries, type Docu
 import { ensureUi } from "./ui-text";
 import { withdrawBlocks } from "./withdraw-link";
 import { getOrder, type OrderBooking, type OrderView } from "./orders";
-import type { Store } from "./stores";
+import { knowStoreAddress, type Store } from "./stores";
 import { getSubscriptionForOrder, type SubscriptionChange, type SubscriptionView } from "./subscriptions";
 
 type Row = Record<string, unknown>;
@@ -55,6 +55,8 @@ async function storeById(storeId: string): Promise<EmailStore | null> {
     group by s.id
   `);
   if (!row) return null;
+  // Links in the email are shaped as the store's addresses are (D181): without the country while it sells in one.
+  await knowStoreAddress(String(row.slug));
   const text = (value: unknown) => (value === null || value === undefined ? null : String(value));
   const markets = (row.markets as MarketRow[]).map(toMarket);
   return {

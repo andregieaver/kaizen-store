@@ -10,15 +10,23 @@ import type { ReactNode } from "react";
  * the address like the country is. Links lead to the country's front page
  * where JavaScript is off.
  */
-export type ViewItem = { key: string; label: string; slug: string; current: boolean; lang?: string };
+export type ViewItem = {
+  key: string;
+  label: string;
+  /** The market address of the choice (`no-en`), the key it is known by. */
+  slug: string;
+  /** Its front page as a path before the rest of an address (`marketPath()`): empty for a store's own host's front page (D181). */
+  base: string;
+  current: boolean;
+  lang?: string;
+};
 
 export function ViewMenu({
   icon,
   summary,
   srLabel,
   items,
-  prefix,
-  currentSlug,
+  here,
   className,
   list = false,
 }: {
@@ -26,24 +34,22 @@ export function ViewMenu({
   summary: string;
   srLabel: string;
   items: ViewItem[];
-  /** What stands before the market in an address: `/s/{store}`, or nothing on the store's own host. */
-  prefix: string;
-  currentSlug: string;
+  /** The current view's front page as a path before the rest of an address (`marketPath()` of it; empty on a store's own host when it has no country in its addresses, D181). */
+  here: string;
   className?: string;
   /** Shown as a row of links rather than a menu (the footer, the phone menu). */
   list?: boolean;
 }) {
   const router = useRouter();
-  const here = `${prefix}/${currentSlug}`;
   // Read when a link is chosen, not while rendering, so pages stay prerendered.
-  const hrefFor = (slug: string) => {
+  const hrefFor = (base: string) => {
     const path = window.location.pathname;
-    const rest = path === here || path.startsWith(`${here}/`) ? path.slice(here.length) : "";
-    return `${prefix}/${slug}${rest}`;
+    const rest = here === "" ? (path === "/" ? "" : path) : path === here || path.startsWith(`${here}/`) ? path.slice(here.length) : "";
+    return `${base}${rest}` || "/";
   };
   const link = (item: ViewItem, classes: string) => (
     <Link
-      href={`${prefix}/${item.slug}`}
+      href={item.base || "/"}
       lang={item.lang}
       hrefLang={item.lang}
       aria-current={item.current ? "true" : undefined}
@@ -52,7 +58,7 @@ export function ViewMenu({
         // The page the shopper is on, in the choice made, with what is asked of it kept.
         if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
         event.preventDefault();
-        router.push(`${hrefFor(item.slug)}${window.location.search}${window.location.hash}`);
+        router.push(`${hrefFor(item.base)}${window.location.search}${window.location.hash}`);
       }}
     >
       {item.label}

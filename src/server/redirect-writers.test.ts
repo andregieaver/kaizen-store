@@ -3,14 +3,14 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { LEGACY_MATCHER } from "@/lib/legacy-path";
+import { STORE_MATCHER } from "@/lib/store-address";
 
 
 /**
  * Who may touch what (wave 2, second run, D168, `docs/wave-2-redirects.md` 4.3, 5.2, 6.2): a scan of the source, as the other `*.scan.test.ts` files are. The redirects
  * table is written by `src/server/redirects.ts` and the database's triggers only; the 404 report's tables by `src/server/not-found.ts` only (through the one SQL
  * function); no redirect or report module fetches an address, sets a cookie or reads storage; the store routes ask `missOrRedirect()` where they would give a 404; the
- * proxy imports only what it is allowed to; its matcher is the literal of `LEGACY_MATCHER`; and the lookup's cache life is the one the spike found works.
+ * proxy imports only what it is allowed to; its matcher is the literal of `STORE_MATCHER` (D181); and the lookup's cache life is the one the spike found works.
  */
 
 const root = process.cwd();
@@ -126,8 +126,8 @@ describe("the proxy", () => {
     );
   });
 
-  it("has the legacy matcher written out as the literal of `LEGACY_MATCHER` (a matcher cannot use a constant)", () => {
-    expect(source).toContain(JSON.stringify(LEGACY_MATCHER.source));
+  it("has the store matcher written out as the literal of `STORE_MATCHER` (a matcher cannot use a constant)", () => {
+    expect(source).toContain(JSON.stringify(STORE_MATCHER.source));
     expect(source).toContain('key: "kaizen_ab"');
   });
 

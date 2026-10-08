@@ -4,10 +4,8 @@
  * path up as a manual redirect source and sends it, permanently, to the target in the store's MAIN market; a path that has a market never reaches the proxy's
  * branch, so normal shopping is not slowed.
  *
- * `LEGACY_MATCHER` is the proxy's second matcher entry written out as a literal (a matcher is read at build time and cannot use a constant): it keeps the
- * proxy off everything that is not a market-less path (a market's pages, `/`, `/s/{store}` alone, `_next/`, `api/`, `admin/`, `demo/`, `kaizen/` and static
- * files). A test holds the literal to `parseLegacyRequest()` over a table of paths, as the A/B marker's is held. The function is the authority, the matcher
- * only keeps the proxy from being called.
+ * Since D181 the proxy runs for every store page (`STORE_MATCHER` in `store-address.ts`): the shape of a store's addresses decides first
+ * (`addressDecision()`), and only for a store that sells in several countries is a path with no country looked up here.
  */
 import { PLATFORM_SEGMENTS, STATIC_EXTENSIONS, looksLikeMarket, normalisePath } from "./redirect-path";
 
@@ -69,13 +67,3 @@ export function legacyPathOf(rest: readonly string[]): string | null {
   const path = normalisePath(`/${rest.join("/")}`);
   return path === null || path === "/" ? null : path;
 }
-
-/**
- * The proxy's second matcher: every path except `/`, `/s/{store}` alone, a market's pages (a first part of two letters, with a language and a currency, on a
- * store's host or after `/s/{store}/`), `_next/`, `api/`, `admin/`, `demo/`, `kaizen/`, the icon and static files. Case-insensitive, as Next compiles it.
- * Non-capturing groups only.
- */
-export const LEGACY_MATCHER = {
-  source:
-    "/((?!_next/|api/|admin/|demo/|kaizen/|favicon\\.ico|[a-z]{2}(?:-[a-z0-9]{2,8}){0,2}(?:/|$)|s/[^/]+/?$|s/[^/]+/[a-z]{2}(?:-[a-z0-9]{2,8}){0,2}(?:/|$)|.*\\.(?:ico|png|jpg|jpeg|gif|webp|avif|svg|css|js|map|txt|xml|json|woff|woff2|ttf|pdf|csv|zip|mp4|webm)$).+)",
-} as const;

@@ -56,7 +56,7 @@ test("a store's own header and footer show its parts, and the header lies over a
     await sql.end();
   }
 
-  await page.goto(`/s/${slug}/no/sommer`);
+  await page.goto(`/s/${slug}/sommer`);
   const top = page.locator("[data-header-wrap]");
   const bar = page.locator(".site-header");
   await expect(bar.getByRole("heading", { name: "Velkommen inn" })).toBeVisible();
@@ -76,7 +76,7 @@ test("a store's own header and footer show its parts, and the header lies over a
   await expect(bar).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 
   // A page starting without a background keeps the header above it.
-  await page.goto(`/s/${slug}/no/om`);
+  await page.goto(`/s/${slug}/om`);
   await expect(page.getByRole("heading", { name: "Om oss" })).toBeVisible();
   await expect(top).toHaveCSS("position", "sticky");
 });
@@ -110,13 +110,13 @@ test("a header over the front page only stays above other pages, also after visi
   }
 
   const top = page.locator("[data-header-wrap]");
-  await page.goto(`/s/${slug}/no/sommer`);
+  await page.goto(`/s/${slug}/sommer`);
   await expect(page.getByRole("heading", { level: 1, name: "Sommer ved vannet" })).toBeVisible();
   await expect(top).toHaveCSS("position", "sticky");
 
   // To the front page by the logo, in the browser: the header lies over it.
-  await page.locator(".site-header a[href$='/no']").first().click();
-  await expect(page).toHaveURL(new RegExp(`/s/${slug}/no$`));
+  await page.locator(`.site-header a[href='/s/${slug}']`).first().click();
+  await expect(page).toHaveURL(new RegExp(`/s/${slug}$`));
   await expect(page.getByRole("heading", { level: 1, name: "Velkommen" })).toBeVisible();
   await expect(top).toHaveCSS("position", "fixed");
 

@@ -25,7 +25,6 @@ process.env.SETTINGS_ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 const ai = await import("./ai");
 const library = await import("./media-library");
-const stores = await import("./stores");
 
 const run = Date.now().toString(36);
 let storeId: string;
@@ -180,8 +179,8 @@ describe("the media library (D88)", () => {
 
     const uses = (await library.mediaUses(owner(), [mug.id, bike.id])).get(mug.id)!;
     // Each with where to change it and, where visitors see it, its address on the store's site in its main market (D89).
-    const market = (await stores.getStore(storeSlug))!.markets[0];
-    const site = `${siteUrl()}/s/${storeSlug}/${market.slug}`;
+    // Without the country: the store sells in its own alone (D181).
+    const site = `${siteUrl()}/s/${storeSlug}`;
     expect(uses).toEqual(
       expect.arrayContaining([
         {

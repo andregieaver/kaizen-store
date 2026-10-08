@@ -104,13 +104,13 @@ test.describe("on a phone, in a store that opens the cart on adding", () => {
     await page.goto(`/s/${slug}/no/p/demo-handlenett`);
     await page.getByRole("button", { name: "Legg i handlekurven", disabled: false }).first().click();
     await expect(drawer).toBeVisible();
-    await expect(page).toHaveURL(`/s/${slug}/no/cart`);
+    await expect(page).toHaveURL(`/s/${slug}/cart`);
     await expect.poll(onTop).toBe(true);
     await expect.poll(overflowing).toBe(0);
 
     // Out through a link in it and back again: still on top.
     await drawer.getByRole("link", { name: "Demo: Handlenett i lerret" }).click();
-    await expect(page).toHaveURL(`/s/${slug}/no/p/demo-handlenett`);
+    await expect(page).toHaveURL(`/s/${slug}/p/demo-handlenett`);
     await page.goBack();
     await expect(drawer).toBeVisible();
     await expect.poll(onTop).toBe(true);

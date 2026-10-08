@@ -96,8 +96,9 @@ test("a manual redirect is followed from the page routes and the catch-all, in e
 });
 
 test("a miss that is answered 404 is not stuck: a redirect added to the database later is followed", async ({ request }) => {
+  // A store that sells in one country has no country in its addresses (D181).
   const store = await newStore("e2e-later");
-  const path = `/s/${store.slug}/no/senere-${run}`;
+  const path = `/s/${store.slug}/senere-${run}`;
   expect((await ask(request, path)).status).toBe(404);
   await withDb(async (sql) => {
     await sql`insert into commerce.redirects (store_id, kind, source, target, origin) values (${store.id}, 'manual', ${`/senere-${run}`}, '/category/hjem', 'editor')`;
@@ -116,7 +117,7 @@ test("a live page is never redirected, whatever a redirect says", async ({ reque
       insert into commerce.redirects (store_id, kind, source, target, origin)
       values (${store.id}, 'manual', '/p/demo-bordlampe', '/category/hjem', 'editor')`;
   });
-  expect(await ask(request, `/s/${store.slug}/no/p/demo-bordlampe`)).toEqual({ status: 200, location: null });
+  expect(await ask(request, `/s/${store.slug}/p/demo-bordlampe`)).toEqual({ status: 200, location: null });
 });
 
 test("an address with no country (an old shop's) is redirected to the main market by the proxy, and left a 404 without a redirect", async ({ request }) => {
@@ -145,20 +146,21 @@ test("an address whose first part only looks like a country is looked up too, an
   });
   const moved = await ask(request, `/s/${store.slug}/${first}`);
   expect(moved.status).toBe(308);
-  // The store's main market: its own country, whichever the template made first.
-  expect(moved.location).toMatch(new RegExp(`^/s/${store.slug}/(no|se|dk)/category/hjem$`));
+  // The store's own country, which is not in its addresses while it sells in that one alone (D181).
+  expect(moved.location).toBe(`/s/${store.slug}/category/hjem`);
   expect((await ask(request, `/s/${store.slug}/om-ingen`)).status).toBe(404);
 });
 
 test("the 404 report counts what was missing, and never a working page, a token, a probe or a person's address", async ({ request }) => {
   const store = await newStore("e2e-report");
-  const base = `/s/${store.slug}/no`;
+  // Its own country's addresses, which have no country while it sells in that one alone (D181).
+  const base = `/s/${store.slug}`;
   // Refused first, then the one that is counted: a count that is written by the time its response is sent shows the others would have been too.
   for (const path of [`${base}/cart/ikke-${run}`, `${base}/0123456789abcdef0123456789abcdef`, `${base}/wp-login.php`, `${base}/kontakt@example.com`]) {
     expect((await ask(request, path)).status, path).toBe(404);
   }
   expect((await ask(request, `${base}/mangler-${run}`)).status).toBe(404);
-  // An old shop's address with no country, counted by the proxy after its response.
+  // An old shop's address, counted by the route it is served from (its own country's catch-all).
   expect((await ask(request, `/s/${store.slug}/pages/om-${run}`)).status).toBe(404);
 
   await expect
@@ -216,7 +218,8 @@ test("a manual redirect to an address with Nordic, Polish or Greek letters is a 
 });
 
 test("a POST to an address with no country is neither redirected nor counted as a missing page; a GET is", async ({ request }) => {
-  const store = await newStore("e2e-post");
+  // A store that sells in several countries: an address with no country is the proxy's (one that sells in one serves it from its own country, D181).
+  const store = await newStore("e2e-post", ["countries"]);
   const source = `/collections/gamle-post-${run}`;
   await withDb(async (sql) => {
     await sql`insert into commerce.redirects (store_id, kind, source, target, origin) values (${store.id}, 'manual', ${source}, '/category/hjem', 'editor')`;

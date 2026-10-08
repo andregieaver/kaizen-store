@@ -108,7 +108,7 @@ describe("what the site itself knows", () => {
     expect(facts.mediaWithoutAlt).toEqual({ missing: 1, total: 2 });
     expect(facts.pagesWithBlockingIssues).toBeGreaterThanOrEqual(1);
     expect(facts.countries[0]).toBe("NO");
-    expect(facts.siteAddresses[0]).toMatch(new RegExp(`/s/${store.slug}/no$`));
+    expect(facts.siteAddresses[0]).toMatch(new RegExp(`/s/${store.slug}$`));
     expect(facts.languages).toEqual(expect.arrayContaining(["Norwegian Bokmål", "English"]));
   });
 });

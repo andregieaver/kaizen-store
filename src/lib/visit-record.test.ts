@@ -37,6 +37,18 @@ describe("placeOfPath", () => {
     expect(placeOfPath("/s/demo/no", "demo", markets)).toEqual({ market: "NO", kind: "other", handle: null, landing: "/no" });
   });
 
+  it("reads the address of a store that sells in one country, which has none (D181), as its own country's", () => {
+    const address = { home: "no", marketless: true, languages: ["en"], currencies: ["eur"], keptLanguages: [], keptCurrencies: [], countries: ["no"] };
+    expect(placeOfPath("/s/demo/p/blue-mug", "demo", ["NO"], address)).toEqual({ market: "NO", kind: "product", handle: "blue-mug", landing: "/no/p/blue-mug" });
+    expect(placeOfPath("/en/cart", "demo", ["NO"], address)).toMatchObject({ market: "NO", kind: "cart" });
+    expect(placeOfPath("/", "demo", ["NO"], address)).toEqual({ market: "NO", kind: "other", handle: null, landing: "/no" });
+    expect(placeOfPath("/om-oss", "demo", ["NO"], address)?.landing).toBe("/no/om-oss");
+    // The platform's own routes are no page of the store's.
+    expect(placeOfPath("/admin/anything", "demo", ["NO"], address)).toBeNull();
+    // Without the shape the same path is no page of the store's.
+    expect(placeOfPath("/s/demo/p/blue-mug", "demo", ["NO"])).toBeNull();
+  });
+
   it("reads a market with language, currency and A/B versions as its country", () => {
     expect(placeOfPath("/s/demo/no-en-eur/cart", "demo", markets)?.market).toBe("NO");
     expect(placeOfPath("/s/demo/no~0a1b2c3db/cart", "demo", markets)).toMatchObject({ market: "NO", kind: "cart" });

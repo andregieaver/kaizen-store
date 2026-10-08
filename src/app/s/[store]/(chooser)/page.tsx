@@ -6,12 +6,13 @@ import { Suspense } from "react";
 import { codeFromSearch } from "@/lib/affiliates";
 import { t } from "@/lib/i18n";
 import { marketForCountry, type Market } from "@/lib/markets";
-import { marketPath } from "@/lib/paths";
+import { marketPath, marketHome } from "@/lib/paths";
 import { affiliateSite } from "@/server/affiliates";
 import { getOpenStore } from "@/server/stores";
 
 /**
- * A store's front door. With one market it goes straight there; with several
+ * A store's front door. With one market it goes straight there (a store that sells in one country is served its country's front page here
+ * by the proxy, D181, and never reaches it); with several
  * it suggests one from the visitor's country but never redirects, so visitors
  * choose and search engines see every market.
  */
@@ -19,7 +20,9 @@ export default async function Chooser({ params, searchParams }: PageProps<"/s/[s
   const store = await getOpenStore((await params).store);
   if (!store || store.markets.length === 0) notFound();
   if (store.markets.length === 1) {
-    const target = marketPath(store.slug, store.markets[0].slug);
+    // The long address: a store that sells in one country is served here only while the proxy has not yet read that it does (D181), and the
+    // long address is served then, where the short one would come back here.
+    const target = marketPath(store.slug, store.markets[0].slug, "", null);
     // A friend's referral link (D131) keeps its code through the redirect, which needs the address: only while the store's
     // program is on, so every other front door is still redirected as before.
     if (!(await affiliateSite(store.id)).on) redirect(target);
@@ -51,7 +54,7 @@ export default async function Chooser({ params, searchParams }: PageProps<"/s/[s
         {store.markets.map((market) => (
           <li key={market.slug}>
             <Link
-              href={marketPath(store.slug, market.slug)}
+              href={marketHome(store.slug, market.slug)}
               hrefLang={market.lang}
               lang={market.lang}
               className="block rounded-lg border border-border px-4 py-3 font-medium hover:bg-surface"
@@ -81,7 +84,7 @@ async function Suggestion({ storeSlug, markets }: { storeSlug: string; markets: 
   if (!market) return null;
   return (
     <p lang={market.lang}>
-      <Link href={marketPath(storeSlug, market.slug)} className="underline">
+      <Link href={marketHome(storeSlug, market.slug)} className="underline">
         {t(market.lang).products} · {market.name}
       </Link>
     </p>

@@ -14,6 +14,7 @@ import { enabledLanguages } from "@/server/languages";
 import { fetchRatesNow, saveCurrencies, saveLanguages, type CurrencyInput } from "@/server/localization";
 import type { SaveResult } from "@/server/settings";
 import { STORES_TAG } from "@/server/seo";
+import { forgetStoreFacts } from "@/server/redirect-resolve";
 import { storeTag } from "@/server/stores";
 
 // What a store offers is read by its layouts, catalogue and emails, so a
@@ -26,6 +27,8 @@ async function asOwner(storeSlug: string): Promise<Membership | FormState> {
 function done(member: Membership, result: SaveResult, success: string): FormState {
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(storeTag(member.store.slug));
+  // The shape of its addresses (D181), as the proxy reads it.
+  forgetStoreFacts(member.store.slug);
   updateTag(catalogTag(member.store.id));
   updateTag(STORES_TAG);
   refresh();

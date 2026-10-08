@@ -94,11 +94,13 @@ describe("the headers sent with it", () => {
     expect(payHeaders(env, false).some((h) => h.key === "Content-Security-Policy")).toBe(false);
   });
 
-  it("is sent on both shapes of address", () => {
+  it("is sent on every shape of address: with the market and, for a store that sells in one country, without it (D181)", () => {
     const entries = payRouteHeaders(env);
-    expect(entries).toHaveLength(2);
-    expect(entries[0].source.startsWith("/s/:store/")).toBe(true);
+    expect(entries).toHaveLength(4);
+    expect(entries[0].source.startsWith("/s/:store/:market(")).toBe(true);
     expect(entries[1].source.startsWith("/:market(")).toBe(true);
+    expect(entries[2].source.startsWith("/s/:store/:route(")).toBe(true);
+    expect(entries[3].source.startsWith("/:route(")).toBe(true);
     for (const entry of entries) expect(entry.headers[0].value).toBe(checkoutCsp(env));
   });
 });

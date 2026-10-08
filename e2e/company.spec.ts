@@ -38,7 +38,7 @@ async function companyStore(): Promise<{ id: string; base: string }> {
       values (${`${slug}@example.com`}, 'Kari', 'Karis Firma') returning id`;
     const [{ id }] = await db`select commerce.approve_access_request(${request.id}, ${slug}, 'Karis Firma', null) as id`;
     await db`update commerce.stores set features = features || array['business'] where id = ${id}`;
-    return { id: String(id), base: `/s/${slug}/no` };
+    return { id: String(id), base: `/s/${slug}` };
   } finally {
     await db.end();
   }

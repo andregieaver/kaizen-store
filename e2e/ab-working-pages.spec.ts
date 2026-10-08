@@ -98,8 +98,8 @@ async function enrol(context: BrowserContext, t: Setup, version: string) {
 test("a visitor given version B has the cart page's row changed, at the cart's own address, and is counted once", async ({ page, context }) => {
   const t = await cartTest();
   const visitor = await enrol(context, t, "b");
-  await page.goto(`/s/${t.slug}/no/cart`);
-  await expect(page).toHaveURL(`/s/${t.slug}/no/cart`);
+  await page.goto(`/s/${t.slug}/cart`);
+  await expect(page).toHaveURL(`/s/${t.slug}/cart`);
   await expect(page.getByRole("heading", { name: "Fri frakt B" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Fri frakt A" })).toHaveCount(0);
   await expect.poll(async () => (await exposures(t.experiment)).length).toBe(1);
@@ -114,11 +114,11 @@ test("a visitor given version B has the cart page's row changed, at the cart's o
 test("a visitor in the original, outside the test or without consent has the cart page as it is", async ({ page, context }) => {
   const t = await cartTest();
   await enrol(context, t, "a");
-  await page.goto(`/s/${t.slug}/no/cart`);
+  await page.goto(`/s/${t.slug}/cart`);
   await expect(page.getByRole("heading", { name: "Fri frakt A" })).toBeVisible();
   await expect.poll(async () => (await exposures(t.experiment)).map((e) => e.variant)).toEqual(["a"]);
   await context.clearCookies();
-  await page.goto(`/s/${t.slug}/no/cart`);
+  await page.goto(`/s/${t.slug}/cart`);
   await expect(page.getByRole("heading", { name: "Fri frakt A" })).toBeVisible();
   expect(await exposures(t.experiment)).toHaveLength(1);
 });

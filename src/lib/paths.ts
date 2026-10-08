@@ -1,4 +1,5 @@
 import { siteUrl } from "./site";
+import { addressSegment, storeAddress, type StoreAddress } from "./store-address";
 
 /**
  * Where stores live (P2, P7). Once `NEXT_PUBLIC_STORE_DOMAIN` is set (e.g.
@@ -67,9 +68,20 @@ export function storeHome(storeSlug: string): string {
   return storeBase(storeSlug) || "/";
 }
 
-/** A path inside one market of a store, e.g. `marketPath("demo", "no", "/cart")`. */
-export function marketPath(storeSlug: string, marketSlug: string, path = ""): string {
-  return `${storeBase(storeSlug)}/${marketSlug}${path}`;
+/**
+ * A path inside one market of a store, e.g. `marketPath("demo", "no", "/cart")`. A store that sells in one country has no country in its
+ * addresses (D181, `src/lib/store-address.ts`): `marketPath("kaiza", "no", "/cart")` is `/s/kaiza/cart`, and `no-en` is `/s/kaiza/en/cart`.
+ * The market's front page on a store's own host is then empty: `marketHome()` where an address cannot be. `address` is the store's shape
+ * as this process last read it (`getStore()`), or as the caller knows it (the proxy's facts).
+ */
+export function marketPath(storeSlug: string, marketSlug: string, path = "", address: StoreAddress | null | undefined = storeAddress(storeSlug)): string {
+  const segment = addressSegment(address, marketSlug);
+  return `${storeBase(storeSlug)}${segment ? `/${segment}` : ""}${path}`;
+}
+
+/** A market's front page as a link: `marketPath()`, or `/` where that is empty (a store that sells in one country, on its own host). */
+export function marketHome(storeSlug: string, marketSlug: string): string {
+  return marketPath(storeSlug, marketSlug) || "/";
 }
 
 /**

@@ -70,7 +70,7 @@ async function invoiceOf(orderId: string): Promise<{ document_number: string; pu
   }
 }
 
-const orderPage = (f: Fixture) => `/s/${f.slug}/no/order/${f.orderId}?session_id=${f.key}`;
+const orderPage = (f: Fixture) => `/s/${f.slug}/order/${f.orderId}?session_id=${f.key}`;
 const cookieNames = async (page: Page) => (await page.context().cookies()).map((c) => c.name).sort();
 
 test("a shopper finds the invoice on the order page, reads it, and downloads it as a PDF that holds its number and its total", async ({ page, browser }) => {
@@ -85,7 +85,7 @@ test("a shopper finds the invoice on the order page, reads it, and downloads it 
 
   // The hosted page: the invoice in the order's language, with the seller, the buyer, the VAT per rate and the total.
   await documents.getByRole("link", { name: /^Vis/ }).click();
-  await expect(page).toHaveURL(new RegExp(`/s/${f.slug}/no/account/documents/inv_[A-Za-z0-9_-]{43}$`));
+  await expect(page).toHaveURL(new RegExp(`/s/${f.slug}/account/documents/inv_[A-Za-z0-9_-]{43}$`));
   await expect(page.getByRole("heading", { level: 1, name: "Faktura F-1" })).toBeVisible();
   const document = page.getByRole("article", { name: "Faktura F-1" });
   await expect(document).toContainText("Fakturabutikk AS");
@@ -133,7 +133,7 @@ test("the PDF route answers with a PDF, and a token that is not this store's, or
   const invoice = (await invoiceOf(f.orderId))!;
   const theirs = (await invoiceOf(other.orderId))!;
 
-  const response = await request.get(`/s/${f.slug}/no/account/documents/${invoice.public_token}/pdf`, { maxRedirects: 0 });
+  const response = await request.get(`/s/${f.slug}/account/documents/${invoice.public_token}/pdf`, { maxRedirects: 0 });
   expect(response.status()).toBe(200);
   expect(response.headers()["content-type"]).toBe("application/pdf");
   expect(response.headers()["content-disposition"]).toContain('filename="F-1.pdf"');
@@ -144,11 +144,11 @@ test("the PDF route answers with a PDF, and a token that is not this store's, or
   // Another store's token, and nothing that looks like one: the PDF route answers 404, and the page (which streams, so its status line is
   // sent before the lookup, as Work's hosted invoice) draws no document and is not indexed.
   for (const token of [theirs.public_token, "inv_short", "crn_" + "x".repeat(43), "not-a-token"]) {
-    await page.goto(`/s/${f.slug}/no/account/documents/${token}`);
+    await page.goto(`/s/${f.slug}/account/documents/${token}`);
     await expect(page.getByRole("article"), token).toHaveCount(0);
     await expect(page.getByText("Ullgenser"), token).toHaveCount(0);
     await expect(page.locator('meta[name="robots"]').first(), token).toHaveAttribute("content", /noindex/);
-    expect((await request.get(`/s/${f.slug}/no/account/documents/${token}/pdf`, { maxRedirects: 0 })).status(), token).toBe(404);
+    expect((await request.get(`/s/${f.slug}/account/documents/${token}/pdf`, { maxRedirects: 0 })).status(), token).toBe(404);
   }
 });
 
@@ -161,7 +161,7 @@ test("where the PDF cannot be made, the hosted page opens the browser's own prin
       (window as unknown as { printed: number }).printed += 1;
     };
   });
-  await page.goto(`/s/${f.slug}/no/account/documents/${invoice.public_token}?print=1`);
+  await page.goto(`/s/${f.slug}/account/documents/${invoice.public_token}?print=1`);
   await expect.poll(() => page.evaluate(() => (window as unknown as { printed: number }).printed)).toBe(1);
   await expect(page).toHaveURL(new RegExp(`/documents/${invoice.public_token}$`));
   // A reload does not print again; the button does.

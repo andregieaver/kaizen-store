@@ -6,7 +6,7 @@ import { PayRouteGuard } from "@/components/pay-route-guard";
 import { RolePage } from "@/components/role-page";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
-import { marketPath } from "@/lib/paths";
+import { marketHome } from "@/lib/paths";
 import { countryOffered, marketMoved, resolveAfterSaleShop, resolveShop, sellingPageOr404 } from "@/server/shop";
 import type { Store } from "@/server/stores";
 
@@ -64,7 +64,7 @@ function CountryClosed({ store, market }: { store: Store; market: Market }) {
       <h1 className="text-3xl font-heading tracking-tight">{m.cart}</h1>
       <p role="status">{m.cartCountryClosed(names.of(market.code) ?? market.name)}</p>
       <p>
-        <Link href={marketPath(store.slug, home.slug)} hrefLang={home.lang} className="underline">
+        <Link href={marketHome(store.slug, home.slug)} hrefLang={home.lang} className="underline">
           {m.cartGoHome(names.of(home.code) ?? home.name)}
         </Link>
       </p>

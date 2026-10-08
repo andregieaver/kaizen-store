@@ -8,6 +8,7 @@ import { catalogTag } from "@/server/catalog";
 import { pagesTag } from "@/server/pages";
 import { STORES_TAG } from "@/server/seo";
 import { setMarkets } from "@/server/setup";
+import { forgetStoreFacts } from "@/server/redirect-resolve";
 import { storeTag } from "@/server/stores";
 
 /**
@@ -24,6 +25,8 @@ export async function saveCountriesSettingsAction(storeSlug: string, _state: For
   const result = await setMarkets(owner, codes);
   if (!result.ok) return { status: "error", messages: result.problems };
   updateTag(storeTag(owner.store.slug));
+  // The shape of its addresses (D181), as the proxy reads it.
+  forgetStoreFacts(owner.store.slug);
   updateTag(catalogTag(owner.store.id));
   updateTag(pagesTag(owner.store.id));
   updateTag(STORES_TAG);

@@ -42,7 +42,7 @@ test("a store template's storefront is a preview: a notice, noindex and no check
 
   // The checkout needs an order waiting for payment, which a template never has: back to the cart.
   await page.goto(`/s/${slug}/no/checkout`);
-  await expect(page).toHaveURL(new RegExp(`/s/${slug}/no/cart$`));
+  await expect(page).toHaveURL(new RegExp(`/s/${slug}/cart$`));
 });
 
 test("a store template is in no sitemap", async ({ request }) => {

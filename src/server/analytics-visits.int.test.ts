@@ -220,7 +220,8 @@ describe("recording a page view", () => {
       [page("/search"), `/${m}/search`],
       [page("/blog/our-story"), `/${m}/blog/our-story`],
       [page("/category/mugs"), `/${m}/category/mugs`],
-      [`/s/${slug}`, "/"],
+      // A store that sells in one country has no country chooser: its front door is its own country's front page (D181).
+      [`/s/${slug}`, `/${m}`],
     ];
     for (const [path, expected] of cases) {
       await db().execute(sql`delete from commerce.visits where store_id = ${storeId}::uuid`);

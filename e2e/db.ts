@@ -9,8 +9,10 @@ export function testDb() {
 
 /**
  * A new store (approved as the platform does) with one published page at
- * `/s/{slug}/no/{page}` made of the given components, one row each, for
- * testing components as the site shows them. Returns the page's address.
+ * `/s/{slug}/{page}` made of the given components, one row each, for
+ * testing components as the site shows them. Returns the page's address: a
+ * new store sells in its own country alone, so it has no country in its
+ * addresses (D181; `/s/{slug}/no/{page}` moves there).
  */
 export async function storePageWith(name: string, blocks: postgres.JSONValue[], page = "side"): Promise<string> {
   const slug = `${name}-${Date.now().toString(36)}`;
@@ -42,7 +44,7 @@ export async function storePageWith(name: string, blocks: postgres.JSONValue[], 
   } finally {
     await sql.end();
   }
-  return `/s/${slug}/no/${page}`;
+  return `/s/${slug}/${page}`;
 }
 
 /**
