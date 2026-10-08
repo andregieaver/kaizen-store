@@ -88,6 +88,10 @@ describe("a version that differs in the part only", () => {
     expect(partChanges(p.content, version, { kind: "row", id: p.second.id })).toBe("outside");
     // The page's own title and address differ by design.
     expect(partChanges(p.content, { ...version, title: "Home (B)", slug: "ab-1234-b" }, { kind: "block", id: p.h1.id })).toBe("ok");
+    // So do its own title's translations: a translation saving drops on the original (equal to its title) stays on the version's "Home (B)".
+    expect(partChanges(p.content, { ...version, title: "Home (B)", translations: { "da-DK": { title: "Home" } } }, { kind: "block", id: p.h1.id })).toBe("ok");
+    // A translation of a block outside the part is outside.
+    expect(partChanges(p.content, { ...version, translations: { "da-DK": { [`block.${p.h2.id}.text`]: "Vores historie" } } }, { kind: "block", id: p.h1.id })).toBe("outside");
     // A part taken away, or added elsewhere.
     expect(partChanges(p.content, { ...p.content, rows: [p.content.rows[1]] }, { kind: "row", id: p.hero.id })).toBe("missing");
     expect(partChanges(p.content, { ...p.content, rows: [...p.content.rows, newRow("1", id)] }, { kind: "row", id: p.hero.id })).toBe("outside");

@@ -5,7 +5,7 @@ import { Suspense } from "react";
 
 import { t, type Messages } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/download">;
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
 /** Where a download link that no longer works lands (D24). */
 export default async function DownloadNotice({ params, searchParams }: Props) {
   const { store, market } = await params;
-  const shop = await resolveShop(store, market);
+  const shop = await resolveAfterSaleShop(store, market);
   if (!shop) notFound();
   const m = t(shop.market.lang);
   return (

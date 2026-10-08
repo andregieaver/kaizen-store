@@ -6,6 +6,7 @@ import { RolePage } from "@/components/role-page";
 import { inView, isNative } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
 import { resolveShop } from "@/server/shop";
+import { pageShopOrMoved } from "@/server/shop-page";
 
 import { DeliveriesSection } from "./deliveries-section";
 
@@ -17,7 +18,9 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * The shopper's weekly delivery (D102): the store's own page for it (D113),
  * built in the page builder, where one is chosen; else the standard page.
  */
-export default function DeliveriesPage({ params, searchParams }: Props) {
+export default async function DeliveriesPage({ params, searchParams }: Props) {
+  // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
+  await pageShopOrMoved("/deliveries");
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
       <DeliveriesRoute params={params} searchParams={searchParams} />

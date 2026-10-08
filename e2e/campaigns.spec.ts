@@ -13,6 +13,8 @@ async function storeWithCampaigns(campaigns: (storeId: string, sql: ReturnType<t
   try {
     const [request] = await sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Ola', 'Kampanjebutikk') returning id`;
     const [{ id }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Kampanjebutikk', null) as id`;
+    // A new store sells in its own country alone (D178): these tests also shop in Sweden.
+    await sql`update commerce.stores set features = features || array['countries'] where id = ${id}`;
     await campaigns(String(id), sql);
   } finally {
     await sql.end();

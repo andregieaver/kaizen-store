@@ -20,7 +20,7 @@ import {
   type WithdrawState,
 } from "@/lib/withdraw-form";
 import { getCustomer } from "@/server/customers";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 import {
   DELAY_FLOOR_MS,
   confirmWithdrawal,
@@ -58,7 +58,7 @@ export async function withdrawAction(storeSlug: string, marketSlug: string, prev
   const intent = String(form.get(FIELD.intent) ?? "");
 
   const again = (patch: Partial<Omit<FormState, "phase">> = {}): FormState => ({ ...emptyForm(values, orderKey), ...patch, serial });
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop || !isIntent(intent)) return again({ notice: "failed" });
   const { store } = shop;
 

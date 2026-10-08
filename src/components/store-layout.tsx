@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { t, type Messages } from "@/lib/i18n";
-import { currencyChoices, currencyName, languageName } from "@/lib/localization";
+import { currencyChoices, currencyName, languageChoices, languageName } from "@/lib/localization";
 import { marketSlug } from "@/lib/market-slug";
 import type { Market } from "@/lib/markets";
 import { linkExists, menuHref, menuLabel, menuTree, termNames, type MenuEntry, type MenuNode } from "@/lib/navigation";
@@ -120,7 +120,7 @@ export function Brand({
 /** The languages and currencies a shopper in this country can choose, as links that keep the other choice (D109). */
 function viewChoices(store: Store, market: Market): { languages: ViewItem[]; currencies: ViewItem[] } {
   const own = { lang: market.ownLocale.split("-")[0], currency: market.nativeCurrency };
-  const languages = store.localization.locales.map((locale) => {
+  const languages = languageChoices(store.localization, market).map((locale) => {
     const lang = locale.split("-")[0];
     return {
       key: locale,
@@ -137,6 +137,12 @@ function viewChoices(store: Store, market: Market): { languages: ViewItem[]; cur
     current: currency === market.currency,
   }));
   return { languages: languages.length > 1 ? languages : [], currencies: currencies.length > 1 ? currencies : [] };
+}
+
+/** Whether a shopper in this country has a language or a currency to choose (D109, D178). */
+export function hasViewChoices(store: Store, market: Market): boolean {
+  const { languages, currencies } = viewChoices(store, market);
+  return languages.length > 0 || currencies.length > 0;
 }
 
 /** The language and currency choices (D109): each a menu, or with `list` a row of links. */

@@ -32,6 +32,8 @@ beforeAll(async () => {
     select commerce.approve_access_request(${String(request.id)}::uuid, ${`checkout-${run}`}, 'Test', null) as id
   `);
   storeId = String(store.id);
+  // The template's countries, languages and currencies, as before D178 step 4 (a new store starts in its own country alone).
+  await db().execute(sql`update commerce.stores set features = features || array['countries', 'languages', 'currencies'] where id = ${storeId}::uuid`);
 });
 
 afterAll(async () => {

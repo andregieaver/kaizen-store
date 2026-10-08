@@ -635,7 +635,9 @@ async function saveAppointment(tx: Tx, storeId: string, productId: string, input
       location_id = excluded.location_id, payment = excluded.payment, deposit_percent = excluded.deposit_percent,
       cancel_hours = excluded.cancel_hours, no_show_percent = excluded.no_show_percent,
       check_in_time = excluded.check_in_time, check_out_time = excluded.check_out_time,
-      min_nights = excluded.min_nights, max_nights = excluded.max_nights, booking_fee = excluded.booking_fee
+      min_nights = excluded.min_nights, max_nights = excluded.max_nights,
+      -- The fee of a country the editor does not show (not offered now, D178) is kept as it was.
+      booking_fee = (coalesce(commerce.appointment_settings.booking_fee, '{}'::jsonb) - ${marketCodes(context.markets)}) || excluded.booking_fee
   `);
   if (a.resourceIds.length > 0) {
     await tx.execute(sql`
@@ -1158,7 +1160,7 @@ async function savePlans(
           update commerce.selling_plans set
             interval = ${plan.interval}, interval_count = ${plan.intervalCount},
             discount_percent = ${plan.discountPercent}, trial_days = ${plan.trialDays},
-            signup_fee = ${JSON.stringify(fees)}::jsonb, min_cycles = ${plan.minCycles},
+            signup_fee = (coalesce(signup_fee, '{}'::jsonb) - ${marketCodes(markets)}) || ${JSON.stringify(fees)}::jsonb, min_cycles = ${plan.minCycles},
             position = ${position}, active = true
           where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and id = ${plan.id}::uuid
           returning id
@@ -1180,6 +1182,11 @@ async function savePlans(
     where store_id = ${storeId}::uuid and product_id = ${productId}::uuid and active
       ${kept.length > 0 ? sql`and id not in (${sql.join(kept.map((id) => sql`${id}::uuid`), sql`, `)})` : sql``}
   `);
+}
+
+/** The codes of the markets the editor shows, as a SQL text array: what a per-country JSON value is rewritten for, the rest kept (D178). */
+function marketCodes(markets: readonly { code: string }[]) {
+  return sql`array[${sql.join(markets.map((m) => sql`${m.code}`), sql`, `)}]::text[]`;
 }
 
 /**

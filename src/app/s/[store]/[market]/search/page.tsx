@@ -7,6 +7,7 @@ import { SearchSection } from "@/components/search-section";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { resolveShop } from "@/server/shop";
+import { pageShopOrMoved } from "@/server/shop-page";
 
 type Props = PageProps<"/s/[store]/[market]/search">;
 
@@ -19,7 +20,9 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * built in the page builder with a Search component, where one is chosen;
  * else the standard page, a heading over the search (`SearchSection`).
  */
-export default function SearchPage({ params, searchParams }: Props) {
+export default async function SearchPage({ params, searchParams }: Props) {
+  // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
+  await pageShopOrMoved("/search");
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
       <Search params={params} searchParams={searchParams} />

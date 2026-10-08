@@ -178,6 +178,12 @@ export async function saveDiscount(
   const existing = id ? await getDiscount(store.id, id) : null;
   if (id && !existing) return { ok: false, problems: ["The code no longer exists."] };
   if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
+  // A country the store keeps but does not offer now (Several countries off, D178) is not in the editor: its amounts are kept as they were.
+  if (existing) {
+    const hidden = (code: string) => !store.markets.some((m) => m.code === code);
+    if (d.kind === "fixed") for (const [code, minor] of Object.entries(existing.amounts)) if (hidden(code)) amounts[code] ??= minor;
+    for (const [code, minor] of Object.entries(existing.minSubtotals)) if (hidden(code)) minSubtotals[code] ??= minor;
+  }
 
   const values = {
     code: d.code,

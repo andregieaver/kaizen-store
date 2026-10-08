@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { CustomFieldGroups } from "@/components/custom-fields-view";
@@ -8,6 +7,7 @@ import { ProductGrid, ProductListingFor } from "@/components/product-listing";
 import { RolePage } from "@/components/role-page";
 import { groupsToShow } from "@/lib/field-parts";
 import { t } from "@/lib/i18n";
+import { languageChoices } from "@/lib/localization";
 import type { Market } from "@/lib/markets";
 import { inView } from "@/lib/markets";
 import { marketPath } from "@/lib/paths";
@@ -19,7 +19,7 @@ import { listGridProducts } from "@/server/catalog";
 import { shownFieldsFor } from "@/server/custom-fields";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { listIndexedTerms, storeShareImage, storeShareTags } from "@/server/seo";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
 
@@ -68,7 +68,7 @@ export async function termMetadata(kind: TermKind, params: Params): Promise<Meta
   const indexed = (await listIndexedTerms(store.id)).find((x) => x.kind === kind && x.slug === term.slug);
   const markets = store.markets.filter((m) => m.code === market.code || (indexed?.markets.includes(m.code) ?? false));
   const views = markets.flatMap((m) =>
-    store.localization.locales.map((locale) => ({ key: `${locale.split("-")[0]}-${m.code}`, href: path(inView(m, { locale, currency: m.nativeCurrency })) })),
+    languageChoices(store.localization, m).map((locale) => ({ key: `${locale.split("-")[0]}-${m.code}`, href: path(inView(m, { locale, currency: m.nativeCurrency })) })),
   );
   return {
     title: typeof ownTitle === "string" ? term.name : ownTitle,
@@ -96,7 +96,8 @@ export async function termMetadata(kind: TermKind, params: Params): Promise<Meta
 async function missed(kind: TermKind, params: Params): Promise<never> {
   const { store: storeSlug, market: marketSlug, slug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop) notFound();
+  // A country, language or currency the store no longer offers moves to one it does (D178).
+  if (!shop) return marketMoved(storeSlug, marketSlug, `/${kind}/${slug}`);
   return missOrRedirect(shop, `/${kind}/${slug}`);
 }
 

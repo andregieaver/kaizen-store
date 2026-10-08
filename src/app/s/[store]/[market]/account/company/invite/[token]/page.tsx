@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { AcceptForm } from "@/components/company-forms";
 import { t } from "@/lib/i18n";
 import { previewInvite } from "@/server/companies";
-import { resolveFeatureShop } from "@/server/shop";
+import { marketMoved, resolveFeatureShop, resolveShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/account/company/invite/[token]">;
 
@@ -31,7 +31,11 @@ async function Invite({ params }: { params: Props["params"] }) {
   const { store: storeSlug, market: marketSlug, token } = await params;
   // Company accounts are part of selling to businesses (D178): not there while it is switched off.
   const shop = await resolveFeatureShop(storeSlug, marketSlug, "business");
-  if (!shop) notFound();
+  if (!shop) {
+    // A country, language or currency the store no longer offers moves to one it does (D178): the token is in the address, so after the boundary.
+    if (!(await resolveShop(storeSlug, marketSlug))) return marketMoved(storeSlug, marketSlug, `/account/company/invite/${token}`);
+    notFound();
+  }
   const { store, market } = shop;
   const m = t(market.lang).companyAccount;
   const preview = await previewInvite(store.id, token);

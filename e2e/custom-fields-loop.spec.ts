@@ -74,7 +74,8 @@ async function arrange() {
       await sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Ola', 'Sløyfebutikk') returning id`;
     const [{ id }] =
       await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Sløyfebutikk', null) as id`;
-    await sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'] where id = ${id}`;
+    // Sweden is a country of its own (D178: Several countries on), in Swedish.
+    await sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'], features = features || array['countries'] where id = ${id}`;
     const field = (
       fieldId: string,
       name: string,

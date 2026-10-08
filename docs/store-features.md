@@ -197,6 +197,74 @@ link, staff cancelling a booking or marking a no-show, and the DAC7 report's fil
 
 The AI manager's `store_overview` names the features that are on; `list_bookings` lists each kind while its feature is on.
 
+## 4d. The Countries and languages group (step 4)
+
+**The store's own country, defined once.** `homeMarket(store)` (`src/lib/markets.ts`) and `commerce.home_market()` in SQL: the active market of
+`stores.country`, else the first active one in the order `getStore()` lists them (`created_at`, then the code). `getStore()` lists it first in
+`markets` and `keptMarkets`, so everything that took `store.markets[0]` as the main market (the main currency, `marketIn(store, null)`, the
+redirect resolver's main market, the chooser's language, the analytics' currency, the products list's price column) means it. `clone_store()` now
+copies the template's markets in the template's order, its own country first: they were all made in one instant, so a new store with no country yet
+took Denmark (by code) for its own, and with Several countries off by default that would have been the only country it offered.
+
+**What `getStore()` gives.** `store.markets` is the countries **offered**: every active market while Several countries is on, else the store's own
+alone (`offeredMarkets()`); `store.keptMarkets` every active market the owner keeps (the Countries page, a switch's facts); `store.allMarkets` every
+market the store ever had, active or not (after-sale links). `store.localization` (`localizationOf()`, `src/lib/localization.ts`) follows the
+features: `locales` are the languages in use (Several languages on: the store's chosen ones and each offered country's own; off: the main language,
+which everything is written in first, and each offered country's own), `keptLocales` every language the store keeps texts in, `currencies` the ones
+offered (off: each offered country's own only), `rates` the rate of every currency the store keeps, offered or not (the analytics convert past orders
+with them), and `languageChoice`/`currencyChoice` whether a shopper may see a country in another language or currency than its own (`offers()`,
+`currencyChoices()`, `languageChoices()`, `marketChoices()`). So with Several currencies off a Norwegian shopper is not offered Swedish kronor even
+when Sweden is a country of the store (D109 offered every country's own currency to every country).
+
+**Addresses.** `resolveShop()` finds only an offered market view. A page that finds none calls `marketMoved()` (a page whose content streams
+calls `pageShopOrMoved()`, `src/server/shop-page.ts`, before its `<Suspense>` boundary, from the root parameters, so the move is the response's
+status; the two pages with a token in the address, an invitation and a sign-in link, move inside the boundary, where the token is known): the same path in the market that offers the most of what the address asked
+(`movedMarketSlug()`, `src/lib/market-move.ts`, pure and tested): a country not offered (Several countries off, or taken off the store's list) goes to
+the store's own country, keeping a language and a currency it offers there; a language or a currency not offered is dropped (`no-en` → `no`,
+`no-eur` → `no`, `se-en-eur` → `no-en-eur` with only the countries off). The answer is always an offered address, so a move never loops; a country
+the store never had is the 404 it was. It is a 308, decided from the cached store alone (D168's rule: only where the request would be a 404; the
+market layout draws the not-offered market's chrome so the page can decide). The query string is kept where the route reads it (D168's limit:
+a prerendered page has none). The proxy is unchanged: it never sees an address with a market.
+
+**After-sale stays.** `resolveAfterSaleShop()` opens a country, language or currency no longer offered, offered or retired (`allMarkets`, the kept
+languages, any currency with a rate), for what a shopper already bought: an order and its terms, `/withdraw`, `/returns/{token}`, a hosted invoice or
+credit note (`/account/documents/{token}` and its PDF), a Work invoice (`/account/invoice/{token}`), `/download` and its link, `/subscription/{token}`,
+`/unsubscribe/{token}` and My account's order. Paying a draft order (`/account/pay/{token}`) and a change (`/account/change/{token}`) are not
+after-sale: they sell, and are a 404 in a market not offered. `marketIn()` finds such a market for the parts of an after-sale page;
+`offeredMarketIn()` (WordPress) does not. Emails keep their links: they lead to the market the order was placed in.
+
+**The cart and checkout.** `commerce.market_offered(store, country, currency)` is the one rule: an active market, offered (Several countries on or
+the store's own), in its own currency or (Several currencies on) another. `getCart()` marks every line of a cart in a market not offered
+`unavailable` (so `cartSummary()` charges nothing), `sellableQuantity()` adds nothing there (the cart and the WordPress handoff), and `placeOrder()`
+refuses it (`unavailable`): they agree (`checkout-kinds.int.test.ts`, kroner and euro). A cart is the country's whatever it is shown in, so a cart
+in euro with Several currencies off is the same cart in kroner at the country's own address. The cart page of a country no longer offered says so
+(`m.cartCountryClosed`) and links to the store's own country; a cart reminder's link leads there. A draft order is made, priced and sent only in
+an offered country, language and currency (`marketOf()` in `src/server/draft-orders.ts`; a new draft starts in the store's own country); the
+editor offers each country's own language and currency only while the features are off (`draftMarketOptions()`).
+
+**Storefront.** The header's and footer's country lists and `MarketChoice` follow `store.markets`; `LocaleChoice` offers a language only with
+`languageChoice` and a currency only with `currencyChoice`; the builder's *Countries* site part shows whichever of the three has more than one choice
+(with one country, its list display is the languages and currencies). hreflang (the market layout, product, category and tag pages), Open Graph
+`alternateLocale`, the sitemap and llms.txt (`listPublicStores()`) list the offered countries in the languages each is shown in.
+
+**Admin.** Settings, *Countries* (`/admin/{store}/settings/countries`, `settings:write`; the Features page's *Set up* for Several countries) shows the
+store's own country and, with the feature on, the list to sell to; with it off, the one country it sells in (choosing the same one changes nothing;
+another makes it the only one on the list, the others keeping their prices and settings) and the countries kept for when it is on again
+(`setMarkets()`, shared with the setup wizard, `CountriesForm`). Everything per country follows `store.markets`: product price columns, shipping,
+payments, campaigns' and A/B tests' countries, the draft order's country, the legal starters' country list, the SEO page's front-page texts.
+**Nothing is lost on a save**: a save writes the countries and languages it shows and keeps the others' values as they were (product prices,
+booking fees and sign-up fees, discount codes' amounts and minimums, campaigns' thresholds and countries, shipping rates; menu labels, term SEO,
+the store's SEO texts, return instructions, cart reminder texts, media alt texts). Languages and currencies (`/settings/localization`): each
+section is a `FeatureOffNote` while its feature is off and its actions refuse; a kept country's own language and currency stay required.
+*Translate the store* is tagged `["languages", "countries"]` (more than one language comes with either) and says so when only one remains; the
+builder's AI translation needs more than one language as before. Analytics read past orders as they were (every country, every rate kept).
+
+**AI.** `store_overview.countries`, the chat agent's `store_info.countries` and the AI manager's context list the offered countries;
+`create_campaign` and `create_draft_order` refuse another (`saveCampaign()`, `createDraft()`).
+
+**Blockers and warnings.** Several countries is blocked while subscriptions or box lists run in another country or a paid order there has goods
+still to send, and warns of the other countries and of open carts there; languages and currencies warn only.
+
 ## 5. Blockers and warnings
 
 Counted by `featureFacts()` (one query, reusing `storeObligations()` of `src/server/store-closure.ts`); the rules are
@@ -209,14 +277,14 @@ pure (`featureBlockers()`, `featureWarnings()` in `src/lib/store-features.ts`).
 | `boxes` | box lists active or paused; box orders waiting to be sent and paid | delivery days kept |
 | `appointments` | appointments held or confirmed that have not ended | appointment products no longer bookable |
 | `bookings` | stays and rentals held or confirmed that have not ended; hosts' commissions not paid out | stay and rental products; hosts |
-| `countries` | subscriptions or box lists in another country than the store's own | other countries no longer offered |
-| `languages` | — | languages besides the main one hidden (translations kept) |
+| `countries` | subscriptions or box lists in another country than the store's own; paid orders with goods still to send there | other countries no longer offered; open carts there |
+| `languages` | — | languages besides each country's own hidden (translations kept) |
 | `currencies` | — | extra currencies no longer offered |
 | `business` | — | open carts with a VAT number; products for businesses only; company accounts |
 | `bonus` | — | customers holding credits and what they hold (in the program's currency), and that their expiry dates move on by the pause; the referral program going to sleep |
 | `referrals` | — | referrers whose links stop giving discounts; rewards still pending (still decided as usual: they were earned while it was on) |
 
-The store's own country is `stores.country`'s market, else its first active market (as `getStore()` orders them).
+The store's own country is `stores.country`'s market, else its first active market (as `getStore()` orders them): `commerce.home_market()`.
 
 ## 6. The Features page
 
@@ -246,10 +314,11 @@ The store's own country is `stores.country`'s market, else its first active mark
    rules of section 4b (migration `store_features_customers_rules`).
 3. **The Selling group** (done): `subscriptions`, `boxes`, `appointments` and `bookings` hidden and refused everywhere, admin, storefront,
    server and jobs, with the rules of section 4c (migration `store_features_selling_rules`), and `checkout-kinds.int.test.ts` scenarios.
-4. **Countries and languages**: `countries`, `languages` and `currencies`: currency and language choosers, other markets, sitemap and
-   feeds, the server refusing them.
+4. **Countries and languages** (done): `countries`, `languages` and `currencies` hidden, moved and refused everywhere, with the rules of
+   section 4d (migration `store_features_world_rules`), and `checkout-kinds.int.test.ts` scenarios.
 5. **Redirects and website mode**: the storefront with the shop off (no prices, cart or checkout, product pages as
    content), addresses of a feature that is off answered sensibly (a 404 or a redirect), legal starters following the
-   features.
+   features. **Decided by the owner:** with the shop off, Orders stays reachable (out of the main menu) while any order can still be withdrawn
+   from or has an open return, and the footer's withdrawal link stays as long; then both disappear. Nothing is deleted.
 6. **Onboarding**: a setup question ("What will you sell?") and store templates choosing features; new stores'
    defaults revisited.

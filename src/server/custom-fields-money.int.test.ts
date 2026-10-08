@@ -45,7 +45,7 @@ beforeAll(async () => {
   const [owner] = await db().execute<Row>(
     sql`select id, email from commerce.accounts where email = ${`${name}@example.com`}`,
   );
-  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'] where slug = ${name}`);
+  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'], features = features || array['countries', 'languages', 'currencies'] where slug = ${name}`);
   const [id] = await db().execute<Row>(sql`select id from commerce.stores where slug = ${name}`);
   // The store converts between kroner and kronor at rates it set; the Danish krone has none.
   await db().execute(sql`

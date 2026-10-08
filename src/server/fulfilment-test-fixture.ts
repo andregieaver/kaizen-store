@@ -41,7 +41,8 @@ export async function fxStore(label: string, options: { invoicing?: boolean; /**
     insert into commerce.payment_providers (store_id, provider, enabled, active_mode) values (${storeId}::uuid, 'stripe', true, ${mode}::commerce.payment_mode)
     on conflict (store_id, provider) do update set enabled = true, active_mode = ${mode}::commerce.payment_mode
   `);
-  await db().execute(sql`update commerce.stores set contact_email = ${`butikk-${slug}@example.com`} where id = ${storeId}::uuid`);
+  // NOK and EUR, and the template's other countries (D178: a new store sells in its own country and currency until these are on).
+  await db().execute(sql`update commerce.stores set contact_email = ${`butikk-${slug}@example.com`}, features = features || array['countries', 'currencies'] where id = ${storeId}::uuid`);
   await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 500 where store_id = ${storeId}::uuid`);
   await db().execute(sql`
     insert into commerce.store_currencies (store_id, currency, rate, round_to, position)

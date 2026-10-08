@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}));
 const resolveShop = vi.fn();
 const findDocumentByToken = vi.fn();
 const ensureDocumentPdf = vi.fn();
-vi.mock("@/server/shop", () => ({ resolveShop: (...a: unknown[]) => resolveShop(...a) }));
+vi.mock("@/server/shop", () => ({ resolveAfterSaleShop: (...a: unknown[]) => resolveShop(...a) }));
 vi.mock("@/server/invoices", () => ({ findDocumentByToken: (...a: unknown[]) => findDocumentByToken(...a) }));
 vi.mock("@/server/invoice-pdf", () => ({ ensureDocumentPdf: (...a: unknown[]) => ensureDocumentPdf(...a) }));
 

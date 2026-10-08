@@ -40,7 +40,8 @@ test("a tag lists its products in the market's language, and unknown ones are no
 
 test("a category's own search title and description are used in its language only, with hreflang alternates and its own canonical (D168)", async ({ page }) => {
   // The store is made for the test, so the category's text is in place before anything about it is cached.
-  const store = await testStore("e2e-term-seo");
+  // Sweden and Denmark are countries of the store (D178: Several countries on), for the alternates.
+  const store = await testStore("e2e-term-seo", ["countries"]);
   const sql = testDb();
   try {
     await sql`

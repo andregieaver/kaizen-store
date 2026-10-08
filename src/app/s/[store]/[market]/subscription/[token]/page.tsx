@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { RolePage } from "@/components/role-page";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 import { SubscriptionSection } from "./subscription-section";
 
@@ -26,7 +26,7 @@ export default function SubscriptionPage({ params, searchParams }: Props) {
 
 async function Subscription({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { store: storeSlug, market: marketSlug, token } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) notFound();
   const { store, market } = shop;
   return (

@@ -61,6 +61,8 @@ const readOnly: PermissionHolder = { role: "admin", permissions: ROLE_TEMPLATES.
 async function paymentsStore(label: string): Promise<TestStore> {
   const store = await newPlainStore(label);
   await db().execute(sql`update commerce.payment_providers set enabled = true, active_mode = 'test' where store_id = ${store.storeId}::uuid`);
+  // The template's countries, languages and currencies, as before D178 step 4 (a new store starts in its own country alone).
+  await db().execute(sql`update commerce.stores set features = features || array['countries', 'languages', 'currencies'] where id = ${store.storeId}::uuid`);
   await db().execute(sql`
     insert into commerce.store_currencies (store_id, currency, rate, round_to, position)
     values (${store.storeId}::uuid, 'NOK', 11.5, 1, 0), (${store.storeId}::uuid, 'EUR', 1, 1, 1) on conflict do nothing

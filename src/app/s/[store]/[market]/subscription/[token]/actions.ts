@@ -4,7 +4,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import { readContentsForm } from "@/lib/subscription-form";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 import { sendSubscriptionChanged } from "@/server/shopper-emails";
 import {
   changeSubscription,
@@ -17,7 +17,7 @@ import {
 export type SubscriptionActionState = { failed: boolean; problem?: ChangeProblem; saved?: boolean };
 
 async function find(storeSlug: string, marketSlug: string, token: string) {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   const subscription = shop && /^[0-9a-f]{64}$/.test(token) ? await getSubscriptionByToken(shop.store.id, token) : null;
   return shop && subscription ? { storeId: shop.store.id, subscription } : null;
 }

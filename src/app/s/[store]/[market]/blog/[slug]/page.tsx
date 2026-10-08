@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, permanentRedirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
 import { ArticleView } from "@/components/article-view";
 import { JsonLdScript } from "@/components/json-ld";
@@ -14,7 +14,7 @@ import { bindForPlace } from "@/server/field-binding";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/blog/[slug]">;
 
@@ -82,7 +82,8 @@ export default async function StoreArticlePage({ params }: Props) {
     // An address that was an article's, or a manual redirect's source, goes on for good; anything else is the store's 404 (wave 2, D168).
     const { store: storeSlug, market: marketSlug, slug } = await params;
     const shop = await resolveShop(storeSlug, marketSlug);
-    if (!shop) notFound();
+    // A country, language or currency the store no longer offers moves to one it does (D178).
+    if (!shop) return marketMoved(storeSlug, marketSlug, `/blog/${slug}`);
     return missOrRedirect(shop, `/blog/${slug}`);
   }
   const { store, market, found } = loaded;

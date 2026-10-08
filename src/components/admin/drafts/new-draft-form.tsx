@@ -48,7 +48,7 @@ export function NewDraftForm({ options, action, defaultCountry }: { options: Dra
         <label className="flex flex-col gap-1 text-sm font-medium">
           Language
           <select name="lang" value={lang} onChange={(event) => setLang(event.target.value)} className={field}>
-            {options.languages.map((l) => (
+            {current.languages.map((l) => (
               <option key={l.lang} value={l.lang}>
                 {l.name}
               </option>

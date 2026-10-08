@@ -7,7 +7,7 @@ import { HostedInvoice } from "@/components/work/hosted-invoice";
 import { marketPath } from "@/lib/paths";
 import { isInvoiceToken } from "@/lib/work-email";
 import { printableState } from "@/lib/work-invoice-print";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 import { creditNoteDocumentData, findInvoiceByToken, invoiceDocumentData } from "@/server/work-invoices";
 
 type Props = PageProps<"/s/[store]/[market]/account/invoice/[token]">;
@@ -32,7 +32,7 @@ export default function HostedInvoicePage({ params, searchParams }: Props) {
 
 async function Hosted({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { store: storeSlug, market: marketSlug, token } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop || !isInvoiceToken(token)) notFound();
   const { store, market } = shop;
   const found = await findInvoiceByToken(token);

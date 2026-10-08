@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { PayRouteGuard } from "@/components/pay-route-guard";
 import { RolePage } from "@/components/role-page";
 import { t } from "@/lib/i18n";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 
 import { Checkout } from "./checkout-section";
 
@@ -24,7 +23,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CheckoutPage({ params, searchParams }: Props) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop) notFound();
+  // A country, language or currency the store no longer offers moves to one it does (D178); its cart stays where it was.
+  if (!shop) return marketMoved(storeSlug, marketSlug, "/checkout");
   const { store, market } = shop;
   return (
     <>

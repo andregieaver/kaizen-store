@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { PayRouteGuard } from "@/components/pay-route-guard";
 import { RolePage } from "@/components/role-page";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 import { OrderDetails } from "./order-section";
 
@@ -27,7 +27,7 @@ export default function OrderPage({ params, searchParams }: Props) {
 
 async function Order({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { store: storeSlug, market: marketSlug, orderId } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) notFound();
   const { store, market } = shop;
   return (

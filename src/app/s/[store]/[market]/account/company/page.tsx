@@ -12,6 +12,7 @@ import { getCustomer } from "@/server/customers";
 import { memberDiscountFor } from "@/server/customer-tiers";
 import { db } from "@/db/client";
 import { resolveFeatureShop } from "@/server/shop";
+import { pageShopOrMoved } from "@/server/shop-page";
 
 import { leaveCompanyAction, removeEmployeeAction, revokeInviteAction } from "./actions";
 
@@ -25,7 +26,9 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * removes an employee at any time. An employee sees their company and can
  * leave it.
  */
-export default function CompanyPage({ params }: Props) {
+export default async function CompanyPage({ params }: Props) {
+  // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
+  await pageShopOrMoved("/account/company");
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>

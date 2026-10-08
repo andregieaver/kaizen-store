@@ -8,6 +8,7 @@ import { marketPath } from "@/lib/paths";
 import { shopperBonus } from "@/server/bonus";
 import { getCustomer, listCustomerOrders } from "@/server/customers";
 import { resolveShop } from "@/server/shop";
+import { pageShopOrMoved } from "@/server/shop-page";
 
 type Props = PageProps<"/s/[store]/[market]/account/bonus">;
 
@@ -18,7 +19,9 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * account (like My company): signed out, or in a store without the program, it is My account's own page instead. The
  * customer only ever sees their own credits: the id comes from their session, never from the address.
  */
-export default function AccountBonusPage({ params }: Props) {
+export default async function AccountBonusPage({ params }: Props) {
+  // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
+  await pageShopOrMoved("/account/bonus");
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>

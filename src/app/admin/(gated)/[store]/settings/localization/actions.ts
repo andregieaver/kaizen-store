@@ -6,6 +6,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { parseRate, stepMinor } from "@/lib/currency";
 import { isOfferable, languageOptions } from "@/lib/localization";
 import { OFFERABLE_CURRENCIES } from "@/lib/money";
+import { featureOffText, featureOn } from "@/lib/store-features";
 import { type Membership } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
@@ -35,6 +36,8 @@ function done(member: Membership, result: SaveResult, success: string): FormStat
 export async function saveLanguagesAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
+  // The languages are hidden while Several languages is off (D178): a stale page changes nothing.
+  if (!featureOn(owner.store, "languages")) return { status: "error", messages: [featureOffText("languages")] };
   const locales: string[] = [];
   const offered = await enabledLanguages();
   for (const { lang, locales: variants } of languageOptions(offered)) {
@@ -59,7 +62,9 @@ export async function saveLanguagesAction(storeSlug: string, _state: FormState, 
 export async function saveCurrenciesAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
-  const natives = new Set(owner.store.markets.map((market) => market.nativeCurrency));
+  // The currencies are hidden while Several currencies is off (D178): a stale page changes nothing, and the rates are kept as they are.
+  if (!featureOn(owner.store, "currencies")) return { status: "error", messages: [featureOffText("currencies")] };
+  const natives = new Set(owner.store.keptMarkets.map((market) => market.nativeCurrency));
   const rows: CurrencyInput[] = [];
   const problems: string[] = [];
   for (const currency of OFFERABLE_CURRENCIES) {
@@ -78,5 +83,6 @@ export async function saveCurrenciesAction(storeSlug: string, _state: FormState,
 export async function fetchRatesAction(storeSlug: string): Promise<FormState> {
   const owner = await asOwner(storeSlug);
   if (!("store" in owner)) return owner;
+  if (!featureOn(owner.store, "currencies")) return { status: "error", messages: [featureOffText("currencies")] };
   return done(owner, await fetchRatesNow(owner), "Rates updated.");
 }

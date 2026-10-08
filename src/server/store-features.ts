@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { homeMarket } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import {
   FEATURES_BY_ID,
@@ -45,13 +46,8 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
   const obligations = await storeObligations(storeId, executor);
   const [row] = await executor.execute<Row>(sql`
     with s as (select id, country, locales from commerce.stores where id = ${storeId}::uuid),
-    home as (
-      select coalesce(
-        (select m.code from commerce.markets m, s where m.store_id = s.id and m.active
-          order by (m.code = s.country) desc nulls last, m.created_at, m.code limit 1),
-        (select country from s)
-      ) as code
-    ),
+    -- The store's own country (D178: \`home_market()\`), or its business's country before it has a market.
+    home as (select coalesce(commerce.home_market(${storeId}::uuid), (select country from s)) as code),
     held as (
       select p.kind, count(*)::int as n from commerce.bookings b
       join commerce.products p on p.store_id = b.store_id and p.id = b.product_id
@@ -83,11 +79,25 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
       (select count(*)::int from commerce.hosts h where h.store_id = ${storeId}::uuid and h.disabled_at is null) as hosts,
       (select count(*)::int from commerce.host_commissions c where c.store_id = ${storeId}::uuid and c.status = 'pending' and c.amount_minor > c.reversed_minor) as unpaid_host_commissions,
       (select count(*)::int from commerce.markets m, home where m.store_id = ${storeId}::uuid and m.active and m.code is distinct from home.code) as other_countries,
-      (select greatest(count(distinct split_part(l, '-', 1)) - 1, 0)::int from (
+      -- Paid orders with goods still to send to another country (real payments, as \`storeObligations()\` counts them), and open carts there.
+      (select count(*)::int from commerce.orders o, home
+        where o.store_id = ${storeId}::uuid and o.status = 'paid' and o.copied_from is null and o.market_code is distinct from home.code
+          and exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical' and not l.gift)
+          and not coalesce((select bool_and(p.test_mode) from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id), false)
+      ) as foreign_unsent,
+      (select count(*)::int from commerce.carts c, home
+        where c.store_id = ${storeId}::uuid and c.status = 'open' and c.expires_at > now() and c.market_code is distinct from home.code
+          and exists (select 1 from commerce.cart_lines cl where cl.store_id = c.store_id and cl.cart_id = c.id)
+      ) as foreign_carts,
+      -- Languages besides each active country's own (D178: what Several languages adds, and what is hidden while it is off).
+      (select count(distinct split_part(l, '-', 1))::int from (
         select unnest(s.locales) as l from s
         union all
         select unnest(m.locales) from commerce.markets m where m.store_id = ${storeId}::uuid and m.active
-      ) langs) as other_languages,
+      ) langs
+      where split_part(l, '-', 1) not in (
+        select split_part(m.default_locale, '-', 1) from commerce.markets m where m.store_id = ${storeId}::uuid and m.active
+      )) as other_languages,
       (select count(*)::int from commerce.store_currencies c where c.store_id = ${storeId}::uuid
         and c.currency not in (select m.currency from commerce.markets m where m.store_id = c.store_id and m.active)) as extra_currencies,
       (select count(*)::int from commerce.carts c where c.store_id = ${storeId}::uuid and c.status = 'open' and coalesce(c.vat_number, '') <> '') as business_carts,
@@ -120,6 +130,8 @@ export async function featureFacts(storeId: string, executor: Executor = db()): 
     units: n(row?.units),
     hosts: n(row?.hosts),
     otherCountries: n(row?.other_countries),
+    foreignUnsent: n(row?.foreign_unsent),
+    foreignCarts: n(row?.foreign_carts),
     otherLanguages: n(row?.other_languages),
     extraCurrencies: n(row?.extra_currencies),
     businessCarts: n(row?.business_carts),
@@ -167,7 +179,7 @@ export async function setFeature(member: Membership, id: FeatureId, on: boolean,
   const feature = FEATURES_BY_ID[id];
   if (!feature) return { ok: false, problems: ["There is no such feature."] };
   const { store, account } = member;
-  const locale = store.markets[0]?.locale ?? "en";
+  const locale = homeMarket(store)?.locale ?? "en";
 
   const outcome = await db().transaction(async (tx): Promise<SetFeatureResult & { before?: FeatureId[] }> => {
     const [row] = await tx.execute<Row>(sql`select features from commerce.stores where id = ${store.id}::uuid for update`);

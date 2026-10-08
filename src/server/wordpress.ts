@@ -32,7 +32,7 @@ import { wordpressPrice, type WordpressPrice } from "@/lib/wordpress-view";
 import { listGridProducts } from "./catalog";
 import { cardCarts, type CardCart } from "./wordpress-shop";
 import { gridScope } from "./content-grid";
-import { marketIn } from "./shop";
+import { offeredMarketIn } from "./shop";
 import { getStore, type Store } from "./stores";
 import { currentTerms } from "./taxonomy";
 import { OFFERED } from "./product-conditions";
@@ -243,7 +243,7 @@ const absolute = (url: string) => (url.startsWith("/") ? `${siteUrl()}${url}` : 
  * to show, so the view is empty). The same read as a content grid (D51), so a price, a reduction and a unit price are the shop's own.
  */
 export async function viewOf(store: Store, view: ViewQuery): Promise<WpView | null> {
-  const market = marketIn(store, view.market || null);
+  const market = offeredMarketIn(store, view.market || null);
   if (!market) return null;
   const marketOut: WpMarket = { slug: market.slug, country: market.code, name: market.name, currency: market.currency, language: market.lang };
   const base = { store: { slug: store.slug, name: store.name }, market: marketOut, shop_url: storeSiteUrl(store.slug) + (marketPath(store.slug, market.slug) || "/") };

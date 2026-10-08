@@ -43,31 +43,99 @@ export function effectiveCurrencies(chosen: readonly StoreCurrency[], markets: r
 }
 
 export type Localization = {
-  /** The store's languages, main first. */
+  /**
+   * The store's languages in use, main first: what editors show tabs for and what is translated. With Several languages off (D178) the main
+   * language and each offered country's own; translations of the others are kept (`keptLocales`).
+   */
   locales: string[];
+  /** Every language the store keeps texts in, whatever its features: what a save must not drop. */
+  keptLocales: string[];
+  /** The currencies offered: each offered country's own and, with Several currencies on, those the store chose. */
   currencies: StoreCurrency[];
+  /** The rate of every currency the store keeps (offered or not), so amounts of past orders still convert (analytics). */
   rates: Rates;
+  /** A shopper may see a country in another of the store's languages than its own (Several languages on, D178). */
+  languageChoice: boolean;
+  /** A shopper may see a country's amounts in another currency than its own (Several currencies on, D178). */
+  currencyChoice: boolean;
 };
 
-export function localizationOf(chosenLocales: readonly string[], chosenCurrencies: readonly StoreCurrency[], markets: readonly Market[]): Localization {
-  const currencies = effectiveCurrencies(chosenCurrencies, markets);
-  return { locales: effectiveLocales(chosenLocales, markets), currencies, rates: toRates(currencies) };
+/** What the store's features allow (D178): the countries it keeps besides those offered, and whether languages and currencies are chosen. */
+export type LocalizationOptions = {
+  /** Every active market the owner keeps, the offered ones among them; the offered ones when left out. */
+  kept?: readonly Market[];
+  /** Several languages is on (true when left out). */
+  languages?: boolean;
+  /** Several currencies is on (true when left out). */
+  currencies?: boolean;
+};
+
+/**
+ * What a store offers in languages and currencies, from what it chose and the markets it offers. With Several languages off a country is
+ * shown in its own language only and the store's languages are its main one and its countries' own; with Several currencies off a country's
+ * amounts are in its own currency only. Rates are kept for every currency the store has, offered or not.
+ */
+export function localizationOf(
+  chosenLocales: readonly string[],
+  chosenCurrencies: readonly StoreCurrency[],
+  markets: readonly Market[],
+  options: LocalizationOptions = {},
+): Localization {
+  const kept = options.kept ?? markets;
+  const languages = options.languages !== false;
+  const currencyChoice = options.currencies !== false;
+  const natives = new Set(markets.map((market) => market.nativeCurrency));
+  const currencies = effectiveCurrencies(currencyChoice ? chosenCurrencies : chosenCurrencies.filter((c) => natives.has(c.currency)), markets);
+  return {
+    // The main language is what everything is written in first, so it stays when the others are hidden.
+    locales: languages ? effectiveLocales(chosenLocales, markets) : mergeLocales(chosenLocales.slice(0, 1), markets.map((market) => market.ownLocale)),
+    keptLocales: effectiveLocales(chosenLocales, kept),
+    currencies,
+    rates: toRates(effectiveCurrencies(chosenCurrencies, kept)),
+    languageChoice: languages,
+    currencyChoice,
+  };
 }
 
+type Offering = Pick<Localization, "currencies" | "rates"> & { currencyChoice?: boolean };
+
 /** Whether a country whose own currency is `native` may be shown in `currency`. */
-export function offers(localization: Pick<Localization, "currencies" | "rates">, native: string, currency: string): boolean {
+export function offers(localization: Offering, native: string, currency: string): boolean {
   if (native === currency) return true;
+  if (localization.currencyChoice === false) return false;
   return localization.currencies.some((c) => c.currency === currency) && canConvert(native, currency, localization.rates);
 }
 
 /** The currencies a shopper in a country can choose: its own first, then the others the store can convert to. */
-export function currencyChoices(localization: Pick<Localization, "currencies" | "rates">, native: string): string[] {
+export function currencyChoices(localization: Offering, native: string): string[] {
   return [native, ...localization.currencies.map((c) => c.currency).filter((c) => c !== native && offers(localization, native, c))];
 }
 
 /** How a country's own currency converts into another the store offers, or null when it cannot be shown in it. */
-export function conversionFor(localization: Pick<Localization, "currencies" | "rates">, native: string, currency: string): { factor: number; step: number } | null {
+export function conversionFor(localization: Offering, native: string, currency: string): { factor: number; step: number } | null {
   return offers(localization, native, currency) ? conversionFactor(native, currency, localization.rates) : null;
+}
+
+/** The languages a shopper in a country can choose (D109, D178): every language the store is in, or only the country's own. */
+export function languageChoices(localization: Pick<Localization, "locales" | "languageChoice">, market: Pick<Market, "ownLocale">): string[] {
+  return localization.languageChoice ? localization.locales : [market.ownLocale];
+}
+
+/** What an address may ask of a country (`findMarket()`'s choices): the languages and currencies offered now. */
+export function marketChoices(localization: Localization): { locales: readonly string[]; conversion: (native: string, currency: string) => { factor: number; step: number } | null } {
+  return {
+    // With Several languages off no language but a country's own is asked for: its bare address has it.
+    locales: localization.languageChoice ? localization.locales : [],
+    conversion: (native, currency) => conversionFor(localization, native, currency),
+  };
+}
+
+/**
+ * What an address of something already sold may ask (D178): every language the store keeps and every currency it has a rate for, offered or
+ * not, so an order's page, its documents and its links open in the language and currency it was bought in.
+ */
+export function keptChoices(localization: Localization): { locales: readonly string[]; conversion: (native: string, currency: string) => { factor: number; step: number } | null } {
+  return { locales: localization.keptLocales, conversion: (native, currency) => conversionFactor(native, currency, localization.rates) };
 }
 
 /** A language's name in itself, as a shopper looks for it: "norsk bokmål", "English". */

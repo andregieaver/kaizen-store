@@ -36,7 +36,7 @@ beforeAll(async () => {
   const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Oversett', null) as id`);
   storeId = String(store.id);
   // Norwegian first, English added: nothing has an English text yet.
-  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE', 'da-DK', 'en-GB'] where id = ${storeId}::uuid`);
+  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE', 'da-DK', 'en-GB'], features = features || array['countries', 'languages', 'currencies'] where id = ${storeId}::uuid`);
   const [account] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`tr-${run}@example.com`}`);
   member = { account: { id: String(account.id), email: String(account.email), name: "Kari", platformAdmin: false }, role: "owner", store: (await getStore(slug))! };
 });

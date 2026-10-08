@@ -716,7 +716,9 @@ function AltTextForm({
         event.preventDefault();
         start(async () => {
           const { [main]: alt = "", ...translations } = texts;
-          const outcome = await actions.describe(item.id, { alt, translations });
+          // A language the store keeps but does not show now (D178) keeps its text.
+          const hidden = Object.fromEntries(Object.entries(item.altTranslations).filter(([locale]) => !languages.some((l) => l.locale === locale)));
+          const outcome = await actions.describe(item.id, { alt, translations: { ...hidden, ...translations } });
           setStatus(outcome.ok ? { text: "Alt text saved." } : { text: "The alt text could not be saved.", problem: true });
           if (outcome.ok) {
             setSource(Object.values(texts).some((text) => text.trim()) ? "staff" : null);

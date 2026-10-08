@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { BusinessDetailsFields } from "@/components/admin/business-details-fields";
+import { CountriesForm } from "@/components/admin/countries-form";
 import { SetupFrame } from "@/components/admin/setup-frame";
 import { StripeAccountPanel } from "@/components/admin/stripe-account-panel";
 import { storeBase, storeHref } from "@/lib/paths";
@@ -18,7 +19,7 @@ import {
 } from "@/server/setup";
 import { listCountries } from "@/server/stores";
 
-import { FEATURES_BY_ID, kindFeature, kindOffered } from "@/lib/store-features";
+import { FEATURES_BY_ID, featureOn, kindFeature, kindOffered } from "@/lib/store-features";
 import {
   openStoreAction,
   removeDemoProductsAction,
@@ -123,37 +124,21 @@ async function DetailsStep({ member }: { member: Membership }) {
 async function CountriesStep({ member }: { member: Membership }) {
   const { store } = member;
   const countries = await listCountries();
-  const active = new Set(store.markets.map((m) => m.code));
+  const several = featureOn(store, "countries");
   return (
-    <ActionForm action={saveCountriesAction.bind(null, store.slug)} className="flex flex-col gap-4">
-      <fieldset>
-        <legend className="mb-3 text-sm font-medium">Countries you sell to</legend>
-        <ul className="grid gap-2 sm:grid-cols-2">
-          {countries.map((country) => (
-            <li key={country.code}>
-              <label className="flex min-h-10 items-center gap-3 rounded-md border border-border px-3 text-sm has-[:checked]:border-foreground">
-                <input
-                  type="checkbox"
-                  name="country"
-                  value={country.code}
-                  defaultChecked={active.has(country.code)}
-                  className="size-4"
-                />
-                <span className="flex-1">{country.name}</span>
-                <span className="text-muted">{country.currency}</span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </fieldset>
-      <p className="text-sm text-muted">
-        A product shows in a country once it has a price there. The demo products have prices for
-        Norway, Sweden and Denmark.
-      </p>
-      <div>
-        <SubmitButton>Save and continue</SubmitButton>
-      </div>
-    </ActionForm>
+    <CountriesForm
+      action={saveCountriesAction.bind(null, store.slug)}
+      countries={countries}
+      chosen={store.keptMarkets.map((m) => m.code)}
+      several={several}
+      submitLabel="Save and continue"
+      note={
+        <p className="text-sm text-muted">
+          A product shows in a country once it has a price there. The demo products have prices for Norway, Sweden and Denmark.
+          {!several && " To sell in more than one country, switch on Several countries under Settings, Features."}
+        </p>
+      }
+    />
   );
 }
 

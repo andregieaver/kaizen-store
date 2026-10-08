@@ -47,9 +47,10 @@ export async function storePageWith(name: string, blocks: postgres.JSONValue[], 
 
 /**
  * A new store (approved as the platform does) with the template's demo catalogue, its categories and its markets, and no page of its own: nothing about it is
- * cached before the test's first request, so a test can change its rows with SQL first. Returns its slug and id.
+ * cached before the test's first request, so a test can change its rows with SQL first. Returns its slug and id. `features` are switched on besides the
+ * shop (D178), such as `countries` for a test in another country than Norway.
  */
-export async function testStore(name: string): Promise<{ slug: string; id: string }> {
+export async function testStore(name: string, features: string[] = []): Promise<{ slug: string; id: string }> {
   const slug = `${name}-${Date.now().toString(36)}`;
   const sql = testDb();
   try {
@@ -57,6 +58,8 @@ export async function testStore(name: string): Promise<{ slug: string; id: strin
       insert into commerce.access_requests (email, name, store_name)
       values (${`${slug}@example.com`}, 'Test', 'Testbutikk') returning id`;
     const [{ id }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Testbutikk', null) as id`;
+    // A new store starts with the shop alone (D178); a test that needs more switches it on here, before anything of the store is cached.
+    if (features.length > 0) await sql`update commerce.stores set features = features || ${features}::text[] where id = ${id}`;
     return { slug, id };
   } finally {
     await sql.end();

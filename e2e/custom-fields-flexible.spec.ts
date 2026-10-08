@@ -32,7 +32,8 @@ async function arrange() {
       await sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Ola', 'Feltbutikk') returning id`;
     const [{ id }] =
       await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Feltbutikk', null) as id`;
-    await sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'] where id = ${id}`;
+    // Sweden is a country of its own (D178: Several countries on), in Swedish.
+    await sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'], features = features || array['countries'] where id = ${id}`;
     // The store converts kroner and kronor at rates it set (D109): 1 EUR is 11.5 NOK and 11.2 SEK.
     await sql`
       insert into commerce.store_currencies (store_id, currency, rate, round_to, position)

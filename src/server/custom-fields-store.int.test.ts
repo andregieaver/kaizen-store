@@ -57,7 +57,7 @@ const setupStore = async (name: string) => {
   const [owner] = await db().execute<Row>(
     sql`select id, email from commerce.accounts where email = ${`${name}@example.com`}`,
   );
-  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'] where slug = ${name}`);
+  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'], features = features || array['countries', 'languages', 'currencies'] where slug = ${name}`);
   const made = (await getStore(name))!;
   return {
     store: made,

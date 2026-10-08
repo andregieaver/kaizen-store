@@ -36,7 +36,7 @@ export async function changeLink(options: ChangeOptions = {}): Promise<ChangeFix
   const state = options.state ?? "awaiting_payment";
   const market = options.market ?? "NO";
   const m = MARKETS[market];
-  const store = await testStore("endring");
+  const store = await testStore("endring", ["countries"]);
   const db = testDb();
   const token = randomBytes(32).toString("base64url");
   const hash = createHash("sha256").update(token).digest("base64url");
@@ -132,7 +132,7 @@ export type ParcelFixture = { slug: string; storeId: string; orderId: string; ke
  */
 export async function paidGoodsOrder(market: keyof typeof MARKETS = "NO"): Promise<ParcelFixture> {
   const m = MARKETS[market];
-  const store = await testStore("pakker");
+  const store = await testStore("pakker", ["countries"]);
   const db = testDb();
   const number = `PS-${Date.now().toString(36).toUpperCase()}`;
   const key = `cs_e2e_${number.toLowerCase()}`;

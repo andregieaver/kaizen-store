@@ -98,7 +98,7 @@ beforeAll(async () => {
   const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${storeSlug}, 'Olas Butikk', null) as id`);
   storeId = String(store.id);
   // Norway first, as a store in Norway has it.
-  await db().execute(sql`update commerce.stores set country = 'NO' where id = ${storeId}::uuid`);
+  await db().execute(sql`update commerce.stores set country = 'NO', features = features || array['countries', 'languages', 'currencies'] where id = ${storeId}::uuid`);
   const [account] = await db().execute<Row>(sql`select id from commerce.accounts where email = ${`${storeSlug}@example.com`}`);
   accountId = String(account.id);
   const form = new FormData();

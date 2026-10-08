@@ -9,7 +9,7 @@ import { t } from "@/lib/i18n";
 import { isLegalRole } from "@/lib/legal-roles";
 import { marketPath } from "@/lib/paths";
 import { snapshotForOrder } from "@/server/checkout-terms";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/order/[orderId]/terms/[role]">;
 
@@ -31,7 +31,7 @@ export default function OrderTermsPage({ params, searchParams }: Props) {
 
 async function Snapshot({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { store: storeSlug, market: marketSlug, orderId, role } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) notFound();
   const { store, market } = shop;
   const key = (await searchParams).session_id;

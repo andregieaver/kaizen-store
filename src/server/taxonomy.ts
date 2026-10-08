@@ -124,7 +124,8 @@ async function checkedSeo(scope: TermScope, raw: TermSeo | undefined): Promise<{
   const [row] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${scope.storeId}::uuid`);
   const store = row ? await getStore(String(row.slug)) : null;
   if (!store) return { ok: false, problems: ["This store could not be found."] };
-  const parsed = termSeoInput(store.localization.locales).safeParse(raw);
+  // Every language the store keeps texts in (D178): the editor sends back a hidden language's texts as they were.
+  const parsed = termSeoInput(store.localization.keptLocales).safeParse(raw);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   return { ok: true, seo: parsed.data };
 }

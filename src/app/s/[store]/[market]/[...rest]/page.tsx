@@ -1,7 +1,6 @@
-import { notFound } from "next/navigation";
 
 import { missOrRedirect } from "@/server/redirect-resolve";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/[...rest]">;
 
@@ -20,6 +19,7 @@ export function generateStaticParams() {
 export default async function MissingPage({ params }: Props) {
   const { store: storeSlug, market: marketSlug, rest } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop) notFound();
+  // A country, language or currency the store no longer offers moves to one it does, the rest of the address kept (D178).
+  if (!shop) return marketMoved(storeSlug, marketSlug, `/${rest.join("/")}`);
   return missOrRedirect(shop, `/${rest.join("/")}`);
 }

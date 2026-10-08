@@ -109,14 +109,14 @@ export const STORE_FEATURES: readonly StoreFeature[] = [
     words: "Sell in more countries than your own, each with its own prices, shipping and address.",
     offWords: "Only your own country is offered. The other countries' prices and settings are kept for when you switch it on again.",
     needs: [],
-    setupPath: "/setup/countries",
+    setupPath: "/settings/countries",
   },
   {
     id: "languages",
     group: "world",
     label: "Several languages",
     words: "Show the store in more than one language, with translations of products, pages and emails.",
-    offWords: "The store is shown in its main language only. Translations are kept for when you switch it on again.",
+    offWords: "Each country is shown in its own language only. Translations are kept for when you switch it on again.",
     needs: [],
     setupPath: "/settings/localization",
   },
@@ -278,9 +278,11 @@ export type FeatureFacts = {
   stayProducts: number;
   units: number;
   hosts: number;
-  /** Active countries besides the store's own. */
+  /** Active countries besides the store's own, paid orders with goods still to send there, and open carts there with something in them. */
   otherCountries: number;
-  /** Languages besides the main one. */
+  foreignUnsent: number;
+  foreignCarts: number;
+  /** Languages besides each active country's own. */
   otherLanguages: number;
   /** Currencies offered besides the countries' own. */
   extraCurrencies: number;
@@ -318,6 +320,8 @@ export const NO_FACTS: FeatureFacts = {
   units: 0,
   hosts: 0,
   otherCountries: 0,
+  foreignUnsent: 0,
+  foreignCarts: 0,
   otherLanguages: 0,
   extraCurrencies: 0,
   businessCarts: 0,
@@ -366,7 +370,8 @@ function stayBlockers(f: FeatureFacts): FeatureBlocker[] {
 
 /**
  * What stops a feature being switched off: customers who would be hit (running subscriptions and box lists, bookings to come, goods paid
- * for and not sent). Empty: nothing stands in the way. Bonus, referrals, business, currencies and languages are never blocked, only warned of.
+ * for and not sent, in another country for Several countries). Empty: nothing stands in the way. Bonus, referrals, business, currencies and
+ * languages are never blocked, only warned of.
  */
 export function featureBlockers(id: FeatureId, f: FeatureFacts): FeatureBlocker[] {
   switch (id) {
@@ -387,6 +392,7 @@ export function featureBlockers(id: FeatureId, f: FeatureFacts): FeatureBlocker[
       const out: FeatureBlocker[] = [];
       if (f.foreignSubscriptions > 0) out.push({ text: `${many(f.foreignSubscriptions, "subscription runs", "subscriptions run")} in another country. Cancel ${them(f.foreignSubscriptions)} first.`, path: "/subscriptions" });
       if (f.foreignBoxes > 0) out.push({ text: `${many(f.foreignBoxes, "subscription box list is", "subscription box lists are")} for another country. Cancel ${them(f.foreignBoxes)} first.`, path: "/deliveries" });
+      if (f.foreignUnsent > 0) out.push({ text: `${many(f.foreignUnsent, "paid order has", "paid orders have")} goods still to send to another country. Send or refund ${them(f.foreignUnsent)} first.`, path: "/orders" });
       return out;
     }
     default:
@@ -417,10 +423,11 @@ export function featureWarnings(id: FeatureId, f: FeatureFacts, features: Featur
       if (f.hosts > 0) out.push(`${many(f.hosts, "host", "hosts")} can no longer list stays and rentals in the store.`);
       break;
     case "countries":
-      if (f.otherCountries > 0) out.push(`${many(f.otherCountries, "country besides your own is", "countries besides your own are")} no longer offered to shoppers.`);
+      if (f.otherCountries > 0) out.push(`${many(f.otherCountries, "country besides your own is", "countries besides your own are")} no longer offered to shoppers. ${f.otherCountries === 1 ? "Its" : "Their"} addresses lead to your own country, and orders already placed there keep their pages and links.`);
+      if (f.foreignCarts > 0) out.push(`${many(f.foreignCarts, "open cart is", "open carts are")} in another country. ${f.foreignCarts === 1 ? "It" : "They"} can no longer be ordered.`);
       break;
     case "languages":
-      if (f.otherLanguages > 0) out.push(`${many(f.otherLanguages, "language besides the main one is", "languages besides the main one are")} no longer shown. Translations are kept.`);
+      if (f.otherLanguages > 0) out.push(`${many(f.otherLanguages, "language besides your countries' own is", "languages besides your countries' own are")} no longer shown to shoppers. Translations are kept.`);
       break;
     case "currencies":
       if (f.extraCurrencies > 0) out.push(`${many(f.extraCurrencies, "extra currency is", "extra currencies are")} no longer offered. Open carts are shown in their country's own currency.`);

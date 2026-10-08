@@ -137,8 +137,15 @@ export async function saveStoreSeoAction(
 ): Promise<FormState> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { status: "error", messages: [NO_ACCESS] };
-  const locales = member.store.localization.locales;
-  const result = await saveStoreSeo(member, seoFromForm(formData, locales));
+  const { locales, keptLocales } = member.store.localization;
+  // The texts of a language the page does not show (Several languages or countries off, D178) are kept as they are.
+  const { seo } = member.store;
+  for (const locale of keptLocales.filter((l) => !locales.includes(l))) {
+    formData.set(`title:${locale}`, seo.title[locale] ?? "");
+    formData.set(`description:${locale}`, seo.description[locale] ?? "");
+    formData.set(`imageAlt:${locale}`, seo.image?.alt[locale] ?? "");
+  }
+  const result = await saveStoreSeo(member, seoFromForm(formData, keptLocales));
   if (result.ok) {
     updateTag(storeTag(member.store.slug));
     updateTag(STORES_TAG);

@@ -164,7 +164,8 @@ export const STORE_SECTIONS: StoreSection[] = [
           item("/headers", "Headers", "Headers built from components; choose the one the store shows."),
           item("/footers", "Footers", "Footers built from components; choose the one the store shows."),
           item("/settings/design", "Design", "The store's look: template, colours, fonts, buttons and corners."),
-          item("/translate", "Translate the store", "Have AI suggest translations of the whole store, and read them before they are used."),
+          // More than one language comes with Several languages or with countries of different languages (D178); the page says when there is one.
+          item("/translate", "Translate the store", "Have AI suggest translations of the whole store, and read them before they are used.", { feature: ["languages", "countries"] }),
         ],
       },
     ],
@@ -203,6 +204,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/settings/company", "Company", "The business details, places and contact information shoppers and invoices show."),
           item("/settings/domains", "Domains", "The addresses the store is reached at."),
+          item("/settings/countries", "Countries", "The countries the store sells to, and its own country."),
           item("/settings/localization", "Languages and currencies", "The languages and currencies the store offers, and the exchange rates."),
           item("/settings/features", "Features", "Switch the online shop and the store's features on or off: subscriptions, bookings, countries, languages, selling to businesses and more."),
           item("/settings/close", "Close store", "Stop sales and take the shop off the web. Nothing is deleted, and you can reopen it for thirty days."),

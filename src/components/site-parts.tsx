@@ -24,7 +24,7 @@ import { PageRowView, rowShows } from "./page-article";
 import { MotionSupport } from "./motion-support";
 import { BUILT_IN, Brand as KaizenBrand } from "./platform-layout";
 import { HidingHeader } from "./store-chrome";
-import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice, WithdrawalLink } from "./store-layout";
+import { HEADER_BACKGROUND, Brand as StoreBrand, LocaleChoice, MarketChoice, WithdrawalLink, hasViewChoices } from "./store-layout";
 import { WishlistCount } from "./wishlist-heart";
 
 /**
@@ -56,7 +56,8 @@ export function sitePartShows(block: SiteBlock, ctx: SiteContext): boolean {
     case "signUp":
       return false;
     case "markets":
-      return store.markets.length > 1;
+      // Countries, languages or currencies (D109): whichever have more than one choice here (D178: with one country, the languages and currencies still).
+      return store.markets.length > 1 || hasViewChoices(store, ctx.market);
     case "buyerSwitch":
       return store.audience === "both";
     case "colorMode":
@@ -130,6 +131,8 @@ function StorePart({ block, ctx }: { block: SiteBlock; ctx: Extract<SiteContext,
         </Suspense>
       );
     case "markets":
+      // With one country offered (D178) the list is of the languages and currencies, where there is a choice of them.
+      if (block.display === "list" && store.markets.length < 2) return <LocaleChoice store={store} market={market} m={m} list />;
       return block.display === "list" ? (
         <nav aria-label={m.chooseMarket}>
           <ul className={column ? "flex flex-col gap-1" : "flex flex-wrap gap-x-4 gap-y-1"}>

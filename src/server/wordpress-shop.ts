@@ -16,7 +16,7 @@ import { priceVat } from "@/lib/pricing";
 
 import { getProduct, getVariantStock } from "./catalog";
 import { createHandoffCart } from "./cart-handoff";
-import { marketIn } from "./shop";
+import { offeredMarketIn } from "./shop";
 import type { Store } from "./stores";
 import { OFFERED } from "./product-conditions";
 
@@ -103,7 +103,7 @@ const viewInStore = (lang: string) => VIEW_IN_STORE[lang.slice(0, 2).toLowerCase
  * (null when the store is not open or the product is not there). Read as the storefront's own product page reads it (`getProduct()`).
  */
 export async function productPageOf(store: Store, marketRef: string | null, handle: string): Promise<WpProductPage | null> {
-  const market = marketIn(store, marketRef);
+  const market = offeredMarketIn(store, marketRef);
   if (!market || store.status !== "active" || !/^[a-z0-9][a-z0-9-]{0,98}$/i.test(handle)) return null;
   const detail = await getProduct(store.id, market, handle);
   if (!detail) return null;
@@ -178,7 +178,7 @@ export type WpQuote = {
  * such and left out of the subtotal, and a quantity above the stock is counted at the stock, as the cart would cut it.
  */
 export async function quoteCart(store: Store, marketRef: string | null, lines: CartLineInput[]): Promise<WpQuote | null> {
-  const market = marketIn(store, marketRef);
+  const market = offeredMarketIn(store, marketRef);
   if (!market || store.status !== "active") return null;
   const origin = storeSiteUrl(store.slug);
   const ids = lines.map((l) => l.variantId);
@@ -251,7 +251,7 @@ export type WpHandoff = { ok: true; url: string; lines: { variant_id: string; qu
 
 /** Makes the cart in the store and gives the one-time address that opens it (`createHandoffCart()`), on the store's own host. */
 export async function handoffCart(store: Store, marketRef: string | null, lines: CartLineInput[], to: "cart" | "checkout"): Promise<WpHandoff> {
-  const market = marketIn(store, marketRef);
+  const market = offeredMarketIn(store, marketRef);
   if (!market || store.status !== "active") return { ok: false, reason: "no_such_market" };
   const made = await createHandoffCart({ storeId: store.id, market }, lines, to);
   if (!made.ok) return { ok: false, reason: "nothing_to_buy" };

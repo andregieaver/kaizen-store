@@ -87,6 +87,8 @@ describe("the platform's languages", () => {
     const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`lg-${Date.now().toString(36)}@example.com`}, 'K', 'Sprak') returning id`);
     const slug = `lg-${Date.now().toString(36)}`;
     const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Sprak', null) as id`);
+    // The template's countries, languages and currencies, as before D178 step 4 (a new store starts in its own country alone).
+    await db().execute(sql`update commerce.stores set features = features || array['countries', 'languages', 'currencies'] where id = ${String(store.id)}::uuid`);
     const [acc] = await db().execute<Row>(sql`select a.id, a.email from commerce.accounts a join commerce.store_members m on m.account_id = a.id where m.store_id = ${String(store.id)}::uuid limit 1`);
     const member = { account: { id: String(acc.id), email: String(acc.email), name: "K", platformAdmin: false }, role: "owner" as const, store: (await getStore(slug))! };
     const asMember = async () => ({ ...member, store: (await getStore(slug))! });

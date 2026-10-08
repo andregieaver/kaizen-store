@@ -93,6 +93,13 @@ describe("what blocks switching a feature off, and what is confirmed", () => {
     expect(featureBlockers("appointments", { ...NO_FACTS, futureAppointments: 1, futureStays: 4 })).toHaveLength(1);
     expect(featureBlockers("bookings", { ...NO_FACTS, futureStays: 1, unpaidHostCommissions: 1 }).map((b) => b.path)).toEqual(["/bookings/stays", "/hosts"]);
     expect(featureBlockers("countries", { ...NO_FACTS, foreignSubscriptions: 1, foreignBoxes: 1, runningSubscriptions: 5 })).toHaveLength(2);
+    // Goods paid for and still to send to another country block too (D178 step 4); paid orders at home do not.
+    expect(featureBlockers("countries", { ...NO_FACTS, foreignUnsent: 2, paidUnshipped: 7 })).toEqual([{ text: expect.stringContaining("2 paid orders have goods still to send to another country"), path: "/orders" }]);
+    // Open carts in another country are warned of.
+    expect(featureWarnings("countries", { ...NO_FACTS, otherCountries: 2, foreignCarts: 3 }, ["shop", "countries"], () => "")).toEqual([
+      expect.stringContaining("2 countries besides your own are no longer offered"),
+      expect.stringContaining("3 open carts are in another country"),
+    ]);
     const shop = featureBlockers("shop", { ...NO_FACTS, paidUnshipped: 1, runningSubscriptions: 1, runningBoxes: 1, futureAppointments: 1, futureStays: 1 });
     expect(shop.map((b) => b.path)).toEqual(["/orders", "/subscriptions", "/deliveries", "/bookings", "/bookings/stays"]);
     expect(featureBlockers("shop", NO_FACTS)).toEqual([]);

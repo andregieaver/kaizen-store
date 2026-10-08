@@ -38,7 +38,8 @@ async function payLink(options: Options = {}): Promise<Fixture> {
   const state = options.state ?? "sent";
   const market = options.market ?? "NO";
   const m = MARKETS[market];
-  const store = await testStore("paylink");
+  // Sweden and Denmark are countries of the store (D178: Several countries on).
+  const store = await testStore("paylink", ["countries"]);
   const db = testDb();
   const token = randomBytes(32).toString("base64url");
   const hash = createHash("sha256").update(token).digest("hex");

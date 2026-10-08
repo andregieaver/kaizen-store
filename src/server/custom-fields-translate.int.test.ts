@@ -119,7 +119,7 @@ beforeAll(async () => {
   await db().execute<Row>(
     sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Felt', null)`,
   );
-  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'] where slug = ${slug}`);
+  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'], features = features || array['countries', 'languages', 'currencies'] where slug = ${slug}`);
   store = (await getStore(slug))!;
   const [owner] = await db().execute<Row>(
     sql`select id, email from commerce.accounts where email = ${`${slug}@example.com`}`,

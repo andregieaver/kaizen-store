@@ -40,7 +40,7 @@ beforeAll(async () => {
   `);
   await db().execute(sql`
     update commerce.stores set country = 'NO', legal_name = 'Kaizen Keramikk AS', organisation_number = '999 888 777', contact_email = 'butikk@keramikk.example',
-      postal_address = 'Storgata 1, 0155 Oslo', locales = array['nb-NO', 'en-GB'] where id = ${store.id}::uuid
+      postal_address = 'Storgata 1, 0155 Oslo', locales = array['nb-NO', 'en-GB'], features = features || array['countries', 'languages', 'currencies'] where id = ${store.id}::uuid
   `);
   await reload();
 });

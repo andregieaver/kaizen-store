@@ -72,6 +72,8 @@ async function makeStore(name: string): Promise<{ id: string; slug: string; acco
   const email = `${name}-${run}@example.com`;
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${email}, 'Kari', ${name}) returning id`);
   const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${storeSlug}, ${name}, null) as id`);
+  // The template's countries, languages and currencies, as before D178 step 4 (a new store starts in its own country alone).
+  await db().execute(sql`update commerce.stores set features = features || array['countries', 'languages', 'currencies'] where id = ${String(store.id)}::uuid`);
   const [row] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${email}`);
   const account: Account = { id: String(row.id), email: String(row.email), name: "Kari", platformAdmin: false };
   members.byStore.set(storeSlug, { account, storeId: String(store.id) });

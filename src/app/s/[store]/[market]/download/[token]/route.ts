@@ -1,7 +1,7 @@
 import { marketPath } from "@/lib/paths";
 import { signedDownloadUrl } from "@/server/media";
 import { returnDownload, takeDownload } from "@/server/orders";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 const TOKEN = /^[0-9a-f]{64}$/;
 
@@ -13,7 +13,7 @@ const TOKEN = /^[0-9a-f]{64}$/;
  */
 export async function GET(_request: Request, { params }: RouteContext<"/s/[store]/[market]/download/[token]">) {
   const { store: storeSlug, market: marketSlug, token } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop || !TOKEN.test(token)) return new Response("Not found", { status: 404 });
   const notice = (problem: "gone" | "failed") =>
     new Response(null, {

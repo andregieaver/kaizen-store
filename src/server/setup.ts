@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { featureOn } from "@/lib/store-features";
 
 import { audit, type Membership } from "./auth";
 import { getPaymentSettings, type SaveResult } from "./settings";
@@ -69,7 +70,7 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
   ]);
   const d = store.details;
   const details = Boolean(d.legalName && d.contactEmail && d.postalAddress && d.country);
-  const countries = store.markets.length > 0;
+  const countries = store.keptMarkets.length > 0;
   const demoProducts = Number(counts?.demo ?? 0);
   const ownProducts = Number(counts?.own ?? 0);
   return {
@@ -78,7 +79,7 @@ export async function getSetupProgress(store: Store): Promise<SetupProgress> {
     // Test payments need no setup (D20): this is the store's real, live account.
     payments: payments.accounts.live?.cardPayments === "active",
     paymentsOn: payments.stripe.enabled,
-    shipping: Number(shippingRow?.priced ?? 0) >= store.markets.length && store.markets.length > 0,
+    shipping: Number(shippingRow?.priced ?? 0) >= store.keptMarkets.length && store.keptMarkets.length > 0,
     products: ownProducts > 0 || demoProducts === 0,
     plan: Boolean(planRow),
     readyToOpen: details && countries,
@@ -113,13 +114,21 @@ export async function saveStoreDetails(
 /**
  * Makes exactly these countries the store's active markets. Countries sold
  * to before keep their settings and prices, and come back as they were if
- * switched on again.
+ * switched on again. With Several countries off (D178) the store sells in
+ * one country: choosing the one it already sells in changes nothing (the
+ * other countries it keeps for when the feature is on again stay as they
+ * are), choosing another makes that the only one on the list.
  */
 export async function setMarkets(
   { account, store }: Membership,
   codes: string[],
 ): Promise<SaveResult> {
+  codes = [...new Set(codes)];
   if (codes.length === 0) return { ok: false, problems: ["Choose at least one country."] };
+  if (!featureOn(store, "countries")) {
+    if (codes.length > 1) return { ok: false, problems: ["Several countries is switched off under Settings, Features: choose one country, or switch it on first."] };
+    if (codes[0] === store.keptMarkets[0]?.code) return { ok: true, note: "Nothing changed." };
+  }
 
   const known = await db().execute<Row>(sql`
     select code from commerce.countries

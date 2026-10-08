@@ -78,6 +78,8 @@ test.beforeAll(async () => {
     const [request] = await sql`
       insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Test', 'Testbutikk') returning id`;
     const [{ id }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Testbutikk', null) as id`;
+    // A new store sells in its own country alone (D178): the Swedish storefront needs Several countries.
+    await sql`update commerce.stores set features = features || array['countries'] where id = ${id}`;
     const swedish = {
       "sv-SE": {
         "block.grid.i1.title": "Fjordtur på svenska",

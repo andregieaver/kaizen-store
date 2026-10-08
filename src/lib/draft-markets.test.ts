@@ -48,3 +48,15 @@ describe("the markets a draft can be made in", () => {
     expect(draftMarketChoice(options, "not a slug")).toBeNull();
   });
 });
+
+describe("the markets a draft can be made in with the Countries and languages features off (D178)", () => {
+  it("offers each country in its own language and currency only", () => {
+    const options = draftMarketOptions(markets, { ...localization, languageChoice: false, currencyChoice: false });
+    expect(options.countries[0].languages.map((l) => l.lang)).toEqual(["nb"]);
+    expect(options.countries[1].languages.map((l) => l.lang)).toEqual(["sv"]);
+    expect(options.countries[0].currencies).toEqual(["NOK"]);
+    expect(draftMarketSlug(options, { country: "NO", lang: "nb", currency: "NOK" })).toBe("no");
+    expect(draftMarketSlug(options, { country: "NO", lang: "en", currency: "NOK" })).toBeNull();
+    expect(draftMarketSlug(options, { country: "NO", lang: "nb", currency: "EUR" })).toBeNull();
+  });
+});

@@ -3,7 +3,7 @@ import { invoiceFileName } from "@/lib/invoice-eligibility";
 import { marketPath } from "@/lib/paths";
 import { ensureDocumentPdf } from "@/server/invoice-pdf";
 import { findDocumentByToken } from "@/server/invoices";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 /**
  * The PDF of a hosted invoice or credit note (D159, `docs/wave-1b-invoices.md` 2.2 point 5). The token is the whole access: a token of another
@@ -15,7 +15,7 @@ import { resolveShop } from "@/server/shop";
  */
 export async function GET(_request: Request, { params }: RouteContext<"/s/[store]/[market]/account/documents/[token]/pdf">) {
   const { store: storeSlug, market: marketSlug, token } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop || !isDocumentToken(token)) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   const found = await findDocumentByToken(shop.store.id, token);
   if (!found) return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });

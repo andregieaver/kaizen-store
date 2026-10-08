@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { previewSignInLink } from "@/server/companies";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 
 import { signInWithLinkAction } from "./actions";
 
@@ -31,7 +30,8 @@ export default function SignInLinkPage({ params }: Props) {
 async function SignInLink({ params }: { params: Props["params"] }) {
   const { store: storeSlug, market: marketSlug, token } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop) notFound();
+  // A country, language or currency the store no longer offers moves to one it does (D178): the token is in the address, so after the boundary.
+  if (!shop) return marketMoved(storeSlug, marketSlug, `/account/sign-in/${token}`);
   const { store, market } = shop;
   const m = t(market.lang).companyAccount;
   const link = await previewSignInLink(store.id, token);

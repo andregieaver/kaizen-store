@@ -122,6 +122,20 @@ export function findMarket(
   return showMarket({ code: own.code, currency: own.nativeCurrency, defaultLocale: own.ownLocale }, { locale, currency, conversion });
 }
 
+/**
+ * The store's own country (D178): the active market of its country (`stores.country`), else its first active one. `getStore()` lists it
+ * first, in `markets` and `keptMarkets` alike, and the database says the same (`commerce.home_market()`). With Several countries off it is the
+ * only country offered.
+ */
+export function homeMarket<M>(store: { markets: readonly M[] }): M | undefined {
+  return store.markets[0];
+}
+
+/** The countries offered (D178): every active market while Several countries is on, else the store's own alone. */
+export function offeredMarkets<M>(kept: readonly M[], severalCountries: boolean): M[] {
+  return severalCountries ? [...kept] : kept.slice(0, 1);
+}
+
 /** The currency a store's own country keeps its prices in, which its markets list first; euro for a store with no country yet. */
 export const mainCurrency = (store: { markets: readonly Pick<Market, "nativeCurrency">[] }): string => store.markets[0]?.nativeCurrency ?? "EUR";
 

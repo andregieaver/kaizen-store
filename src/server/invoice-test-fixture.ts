@@ -56,7 +56,8 @@ export async function makeStore(label: string, o: FixtureOptions = {}): Promise<
     values (${storeId}::uuid, ${o.mode ?? "live"}, ${account}, 'active', false)
   `);
   await db().execute(sql`update commerce.payment_providers set enabled = true, active_mode = ${o.mode ?? "live"} where store_id = ${storeId}::uuid`);
-  await db().execute(sql`update commerce.stores set contact_email = ${`butikk-${slug}@example.com`} where id = ${storeId}::uuid`);
+  // Orders in euro and in the template's other countries (D178: a new store sells in its own country and currency until these are on).
+  await db().execute(sql`update commerce.stores set contact_email = ${`butikk-${slug}@example.com`}, features = features || array['countries', 'currencies'] where id = ${storeId}::uuid`);
   if (o.sellerDetails !== false) {
     await db().execute(sql`
       update commerce.stores set legal_name = 'Fixture AS', organisation_number = '923456789', postal_address = 'Storgata 1\n0155 Oslo', country = 'NO' where id = ${storeId}::uuid

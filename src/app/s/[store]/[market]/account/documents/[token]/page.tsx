@@ -11,7 +11,7 @@ import { isDocumentToken } from "@/lib/document-token";
 import { marketPath } from "@/lib/paths";
 import { documentFileName } from "@/lib/work-invoice-print";
 import { findDocumentByToken } from "@/server/invoices";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/account/documents/[token]">;
 
@@ -41,7 +41,7 @@ export default function HostedDocumentPage({ params, searchParams }: Props) {
 
 async function Hosted({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { store: storeSlug, market: marketSlug, token } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop || !isDocumentToken(token)) notFound();
   const { store, market } = shop;
   const found = await findDocumentByToken(store.id, token);

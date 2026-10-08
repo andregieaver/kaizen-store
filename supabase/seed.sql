@@ -314,6 +314,9 @@ BEGIN
   UPDATE commerce.stores SET locales = ARRAY['nb-NO', 'sv-SE', 'da-DK', 'en-GB'] WHERE id = v_store;
   INSERT INTO commerce.store_currencies (store_id, currency, rate, round_to, position) VALUES
     (v_store, 'NOK', 11.6, 1, 0), (v_store, 'SEK', 11.0, 1, 1), (v_store, 'DKK', 7.46, 1, 2), (v_store, 'EUR', 1, 1, 3);
+  -- It sells in three countries, in four languages and four currencies (D178), as the features the backfill gave production's template.
+  -- A store made from it starts with the shop alone, so it serves its own country in its own language and currency until switched on.
+  UPDATE commerce.stores SET features = features || ARRAY['countries', 'languages', 'currencies'] WHERE id = v_store;
 END;
 $$;
 

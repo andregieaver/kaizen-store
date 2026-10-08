@@ -351,7 +351,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
             <label className="flex flex-col gap-1 text-sm font-medium">
               Language
               <select value={choice.lang} onChange={(e) => setMarket({ ...choice, lang: e.target.value })} className={field}>
-                {marketOptions.languages.map((l) => (
+                {(country?.languages ?? []).map((l) => (
                   <option key={l.lang} value={l.lang}>
                     {l.name}
                   </option>

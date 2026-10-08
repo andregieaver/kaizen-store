@@ -5,14 +5,14 @@ import { z } from "zod";
 
 import { cancelOwnBooking, moveOwnBooking, type ChangeOutcome, type ShopperAccess } from "@/server/booking-changes";
 import { getCustomer } from "@/server/customers";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 /**
  * The shopper changing their own booking (D66): from the order page, which
  * its key opens, or from My account, signed in.
  */
 async function access(storeSlug: string, marketSlug: string, sessionId: string | null) {
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) return null;
   if (sessionId) return { storeId: shop.store.id, who: { sessionId } as ShopperAccess };
   const customer = await getCustomer(shop.store.id);

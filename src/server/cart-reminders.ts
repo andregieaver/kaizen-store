@@ -135,7 +135,8 @@ export async function saveCartReminderStep(
     ? await db().execute<Row>(sql`
         update commerce.cart_reminder_steps
         set delay_minutes = ${step.delayMinutes}, active = ${step.active}, discount_code_id = ${step.discountCodeId}::uuid,
-            content = ${JSON.stringify(content)}::jsonb, updated_at = now()
+            -- The texts of a language the store does not show now (D178) are kept as they were.
+            content = (content - ${sql`array[${sql.join(locales.map((l) => sql`${l}`), sql`, `)}]::text[]`}) || ${JSON.stringify(content)}::jsonb, updated_at = now()
         where store_id = ${store.id}::uuid and id = ${id}::uuid
         returning id
       `)

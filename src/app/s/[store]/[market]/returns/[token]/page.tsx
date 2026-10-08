@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { ReturnStatusView } from "@/components/withdraw/return-status-view";
 import { t } from "@/lib/i18n";
 import { getShopperReturn } from "@/server/returns";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/returns/[token]">;
 
@@ -28,7 +28,7 @@ export default function ReturnStatusPage({ params }: Props) {
 
 async function ReturnStatus({ params }: { params: Props["params"] }) {
   const { store: storeSlug, market: marketSlug, token } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) notFound();
   const { store, market } = shop;
   const ret = await getShopperReturn(store.id, token);

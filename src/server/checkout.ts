@@ -202,7 +202,8 @@ export async function placeOrder(
         case when ${STORE_AUDIENCE} <> 'consumers' then c.company_name end as company_name,
         case when ${STORE_AUDIENCE} <> 'consumers' then c.organisation_number end as organisation_number,
         c.bonus_request_minor, c.affiliate_code, c.is_gift, c.gift_to, c.gift_from, c.gift_message,
-        coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on
+        coalesce((select os.gift_messages from commerce.order_settings os where os.store_id = c.store_id), false) as gift_on,
+        commerce.market_offered(c.store_id, c.market_code, ${market.currency}) as offered
       from commerce.carts c
       join commerce.stores s on s.id = c.store_id
       where c.store_id = ${storeId}::uuid and c.id = ${cartId}::uuid and c.market_code = ${market.code}
@@ -210,6 +211,8 @@ export async function placeOrder(
       for update of c
     `);
     if (!cart) return { ok: false, problem: "empty" };
+    // A country or a currency the store no longer offers (D178) sells nothing: the cart's lines are unavailable there, as the cart shows them.
+    if (!cart.offered) return { ok: false, problem: "unavailable" };
     // Bonus credits (D130) are taken under the customer's lock, so two checkouts cannot both spend the same credits; the
     // same lock keeps a friend's first order (D131) from being placed twice with the welcome discount at once.
     if (customerId) {

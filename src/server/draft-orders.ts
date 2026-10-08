@@ -284,8 +284,25 @@ export async function listDrafts(storeId: string, options: { status?: DraftStatu
 // The market of a draft, and its variants
 // ---------------------------------------------------------------------------------------------------------------------
 
+/**
+ * The market view a draft is in, while the store offers it (D178): its country (Several countries, or the store's own), its currency
+ * (Several currencies, or the country's own) and its language (Several languages, or the country's own). A draft in one no longer offered
+ * cannot be sent; one already sent stays its order's (after-sale).
+ */
 async function marketOf(store: EmailStore, slug: string): Promise<Market | null> {
-  return findMarket(store.markets, slug, { locales: store.localization.locales, conversion: (from, to) => conversionFor(store.localization, from, to) });
+  const market = findMarket(store.markets, slug, { locales: store.localization.locales, conversion: (from, to) => conversionFor(store.localization, from, to) });
+  if (!market) return null;
+  const [row] = await db().execute<Row>(sql`
+    select commerce.market_offered(${store.id}::uuid, ${market.code}, ${market.currency}) as offered, commerce.feature_on(${store.id}::uuid, 'languages') as languages
+  `);
+  const ownLanguage = market.lang === market.ownLocale.split("-")[0];
+  return row?.offered && (row.languages || ownLanguage) ? market : null;
+}
+
+/** The store's own country in its own language and currency (D178: `commerce.home_market()`), where a new draft starts. */
+async function homeMarketOf(store: EmailStore): Promise<Market | null> {
+  const [row] = await db().execute<Row>(sql`select commerce.home_market(${store.id}::uuid) as code`);
+  return row?.code ? (store.markets.find((m) => m.code === String(row.code)) ?? null) : null;
 }
 
 /** What a goods line needs of its variant, read for the draft's market. */
@@ -570,7 +587,7 @@ export type CreateDraftResult = { ok: true; draft: DraftView } | { ok: false; pr
 export async function createDraft(storeId: string, actor: OrderActor, options: { marketSlug?: string } = {}): Promise<CreateDraftResult> {
   const store = await storeById(storeId);
   if (!store) return { ok: false, problem: "market" };
-  const market = options.marketSlug ? await marketOf(store, options.marketSlug) : store.markets[0];
+  const market = options.marketSlug ? await marketOf(store, options.marketSlug) : await homeMarketOf(store);
   if (!market) return { ok: false, problem: "market" };
   const id = await db().transaction(async (tx) => {
     // The store's settings row is the lock of the open count and of the counter: two staff making a draft at once take turns.

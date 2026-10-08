@@ -11,7 +11,8 @@ import { testDb, testStore } from "./db";
 
 /** A new store with the template's demo catalogue and gift messages switched on or off. */
 async function giftStore(on: boolean): Promise<{ slug: string; id: string }> {
-  const store = await testStore(on ? "gift" : "nogift");
+  // Sweden is a country of the store (D178: Several countries on), for the box in Swedish.
+  const store = await testStore(on ? "gift" : "nogift", ["countries"]);
   const sql = testDb();
   try {
     await sql`

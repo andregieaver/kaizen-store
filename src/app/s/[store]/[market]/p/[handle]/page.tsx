@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AbMarker } from "@/components/ab/ab-marker";
@@ -23,7 +22,7 @@ import { productLayoutForVisitor } from "@/server/product-layouts";
 import { getRecommendSettings } from "@/server/recommend-settings";
 import { siteLayoutFor } from "@/server/site-layouts";
 import { listIndexedProducts, storeShareImage, storeShareTags } from "@/server/seo";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/p/[handle]">;
 
@@ -110,7 +109,8 @@ export default async function ProductPage({ params }: Props) {
     // An old handle of a product that was renamed goes to its current page for good; anything else is the store's 404 (wave 2, D168).
     const { store: storeSlug, market: marketSlug, handle } = await params;
     const shop = await resolveShop(storeSlug, marketSlug);
-    if (!shop) notFound();
+    // A country, language or currency the store no longer offers moves to one it does (D178).
+    if (!shop) return marketMoved(storeSlug, marketSlug, `/p/${handle}`);
     return missOrRedirect(shop, `/p/${handle}`);
   }
   const { store, market, product, ab } = loaded;

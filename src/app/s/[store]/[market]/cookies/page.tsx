@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { RolePage } from "@/components/role-page";
 import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 
 import { CookiesSection } from "./cookies-section";
 
@@ -24,7 +23,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function StoreCookiesPage({ params, searchParams }: Props) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop) notFound();
+  // A country, language or currency the store no longer offers moves to one it does (D178).
+  if (!shop) return marketMoved(storeSlug, marketSlug, "/cookies");
   const { store, market } = shop;
   return (
     <RolePage store={store} market={market} role="cookies" route={{ part: "cookies", query: searchParams }}>

@@ -12,6 +12,7 @@ import { shopperPrivacyText } from "@/lib/privacy-text";
 import { getCustomer } from "@/server/customers";
 import { shopperPrivacyState } from "@/server/privacy-shopper";
 import { resolveShop } from "@/server/shop";
+import { pageShopOrMoved } from "@/server/shop-page";
 
 import { confirmStepUpAction, requestStepUpCodeAction } from "./actions";
 
@@ -26,7 +27,9 @@ const NOTICES: readonly PrivacyNotice[] = ["stale", "too_large", "busy", "failed
  * fresh sign-in (a code emailed to the address on file, or the password, within ten minutes); a session that is older shows only "Confirm it
  * is you". The shopper is the one in this browser's session, never a value from the address. Signed out, this is My account's page instead.
  */
-export default function PrivacyPage({ params, searchParams }: Props) {
+export default async function PrivacyPage({ params, searchParams }: Props) {
+  // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
+  await pageShopOrMoved("/account/privacy");
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>

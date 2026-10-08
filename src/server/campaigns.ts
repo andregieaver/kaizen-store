@@ -113,9 +113,14 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const c = parsed.data;
   const problems: string[] = [];
+  const existing = id ? await getCampaign(store.id, id) : null;
+  if (id && !existing) return { ok: false, problems: ["The campaign no longer exists."] };
+  // A country the store keeps but does not offer now (Several countries off, D178) is not in the editor: what the campaign says of it is kept.
+  const hidden = (code: string) => !store.markets.some((m) => m.code === code) && store.keptMarkets.some((m) => m.code === code);
 
   const thresholds: Record<string, number> = {};
   if (c.kind === "gift") {
+    for (const [code, minor] of Object.entries(existing?.thresholds ?? {})) if (hidden(code)) thresholds[code] = minor;
     for (const market of store.markets) {
       const text = c.thresholds[market.code] ?? "";
       if (!text) continue;
@@ -123,7 +128,7 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
       if (minor === null || minor <= 0) problems.push(`The amount for ${market.name} is not a valid amount.`);
       else thresholds[market.code] = minor;
     }
-    if (Object.keys(thresholds).length === 0 && problems.length === 0) problems.push("Say what the basket must come to, in at least one country's currency.");
+    if (!store.markets.some((m) => thresholds[m.code] !== undefined) && problems.length === 0) problems.push("Say what the basket must come to, in at least one country's currency.");
   }
   const startsAt = osloTime(c.startsAt);
   const endsAt = osloTime(c.endsAt);
@@ -131,8 +136,9 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
 
   const productIds = c.scope === "all" ? [] : [...new Set(c.productIds)];
   const termIds = c.scope === "all" ? [] : [...new Set(c.termIds)];
+  // Only the countries offered (D178: the store's own alone with Several countries off), and those the campaign already named that are kept.
   const markets = [...new Set(c.markets)];
-  const unknown = markets.filter((code) => !store.markets.some((m) => m.code === code));
+  const unknown = markets.filter((code) => !store.markets.some((m) => m.code === code) && !(hidden(code) && existing?.markets.includes(code)));
   if (unknown.length > 0) problems.push(`The store does not sell to ${unknown.join(", ")}.`);
   const tierIds = [...new Set(c.tierIds)];
   if (tierIds.length > 0) {
@@ -167,7 +173,6 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
       problems.push("Only goods you ship yourself can be given: not downloads, appointments, stays, rentals, subscriptions or a host's listings.");
     }
   }
-  if (id && !(await getCampaign(store.id, id))) return { ok: false, problems: ["The campaign no longer exists."] };
   if (problems.length > 0) return { ok: false, problems: [...new Set(problems)] };
 
   const values = {
@@ -180,7 +185,8 @@ export async function saveCampaign({ account, store }: Membership, id: string | 
     productIds: JSON.stringify(productIds),
     termIds: JSON.stringify(termIds),
     tierIds: JSON.stringify(tierIds),
-    markets: JSON.stringify(markets.length === store.markets.length ? [] : markets),
+    // Every country the store keeps is everywhere: an empty list. A list of the countries offered while others are kept stays a list (D178).
+    markets: JSON.stringify(store.keptMarkets.every((m) => markets.includes(m.code)) ? [] : markets),
     stacks: c.kind !== "gift" && c.stacks,
   };
   const [row] = id

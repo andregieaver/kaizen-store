@@ -9,6 +9,7 @@ import { marketPath } from "@/lib/paths";
 import { shopperReferrals } from "@/server/affiliates";
 import { getCustomer } from "@/server/customers";
 import { resolveShop } from "@/server/shop";
+import { pageShopOrMoved } from "@/server/shop-page";
 
 type Props = PageProps<"/s/[store]/[market]/account/referrals">;
 
@@ -19,7 +20,9 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * (like My bonus credits): signed out, or in a store without the program, it is My account's own page instead. The first
  * visit makes the customer's code; the id comes from their session, never from the address.
  */
-export default function AccountReferralsPage({ params }: Props) {
+export default async function AccountReferralsPage({ params }: Props) {
+  // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
+  await pageShopOrMoved("/account/referrals");
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>

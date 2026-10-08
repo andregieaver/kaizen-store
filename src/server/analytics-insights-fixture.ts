@@ -33,8 +33,10 @@ export async function makeStore(name: string, visitCounting: boolean): Promise<S
   const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Test', 'Test') returning id`);
   await db().execute(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Test', null)`);
   if (visitCounting) await db().execute(sql`update commerce.stores set visit_counting = true where slug = ${slug}`);
-  // A new store starts with the shop alone (D178): Subscriptions on, so its subscriptions page and files are there to read.
-  await db().execute(sql`update commerce.stores set features = features || array['subscriptions'] where slug = ${slug}`);
+  // A new store starts with the shop alone (D178): Subscriptions on, so its subscriptions page and files are there to read, and the template's
+  // countries. Denmark is its own country, as the figures below were written for (a store with no country of its own took the first of the
+  // template's countries by code until new stores kept the template's order).
+  await db().execute(sql`update commerce.stores set features = features || array['subscriptions', 'countries'], country = 'DK' where slug = ${slug}`);
   return (await getStore(slug)) as Store;
 }
 

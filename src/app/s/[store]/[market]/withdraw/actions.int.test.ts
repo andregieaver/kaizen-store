@@ -17,7 +17,7 @@ let store: Pick<Store, "id" | "slug" | "timeZone">;
 let signedIn: { id: string; email: string; name: string } | null = null;
 
 vi.mock("@/server/shop", () => ({
-  resolveShop: async (slug: string) => (slug === store.slug ? { store, market: { slug: "no", code: "NO", lang: "nb", locale: "nb-NO" }, ab: {} } : null),
+  resolveAfterSaleShop: async (slug: string) => (slug === store.slug ? { store, market: { slug: "no", code: "NO", lang: "nb", locale: "nb-NO" }, ab: {} } : null),
 }));
 vi.mock("@/server/customers", async (original) => ({ ...(await original<typeof import("@/server/customers")>()), getCustomer: async () => signedIn }));
 

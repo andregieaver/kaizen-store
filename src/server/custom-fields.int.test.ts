@@ -54,7 +54,7 @@ async function makeStore(name: string): Promise<{ store: Store; member: Membersh
     sql`select id, email from commerce.accounts where email = ${`${name}@example.com`}`,
   );
   // Norwegian first, then Swedish: the languages the texts below are written in.
-  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'] where slug = ${name}`);
+  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'], features = features || array['countries', 'languages', 'currencies'] where slug = ${name}`);
   const found = (await getStore(name))!;
   return {
     store: found,

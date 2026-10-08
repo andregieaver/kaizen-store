@@ -140,7 +140,9 @@ export async function writeAltText(
   const complete = locales.every((locale) => texts[locale]);
   // Staff may have written one meanwhile: theirs stays unless asked to replace it.
   const saved = await db().execute<Row>(sql`
-    update commerce.media set alt = ${alt}, alt_translations = ${JSON.stringify(translations)}::jsonb, alt_source = 'ai',
+    update commerce.media set alt = ${alt},
+      -- A language the store keeps but does not show now (D178) keeps its text.
+      alt_translations = (alt_translations - array[${sql.join(locales.map((locale) => sql`${locale}`), sql`, `)}]::text[]) || ${JSON.stringify(translations)}::jsonb, alt_source = 'ai',
       alt_written_at = now(), alt_tried_at = ${complete ? null : sql`now()`}, updated_at = now()
     where id = ${id}::uuid and (${Boolean(options.replace)} or alt_source is distinct from 'staff')
     returning id

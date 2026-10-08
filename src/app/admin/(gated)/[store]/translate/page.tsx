@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { StoreTranslator } from "@/components/admin/store-translator";
 import { pageLanguages } from "@/lib/page-translation";
+import { featureOn } from "@/lib/store-features";
 import { aiFor } from "@/server/ai";
 import { requirePermission } from "@/server/permissions";
 import { translationCoverage } from "@/server/store-translate";
@@ -29,8 +30,18 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
       </div>
       {languages.length < 2 ? (
         <p className="rounded-lg border border-border bg-background p-5 text-sm">
-          The store has only one language. Add another under{" "}
-          <Link href={`/admin/${store.slug}/settings/localization`} className="underline">Languages and currencies</Link>.
+          {featureOn(store, "languages") ? (
+            <>
+              The store has only one language. Add another under{" "}
+              <Link href={`/admin/${store.slug}/settings/localization`} className="underline">Languages and currencies</Link>.
+            </>
+          ) : (
+            // D178: the store's other languages are hidden, their translations kept.
+            <>
+              The store is shown in one language: Several languages is switched off under{" "}
+              <Link href={`/admin/${store.slug}/settings/features`} className="underline">Features</Link>. Translations already made are kept.
+            </>
+          )}
         </p>
       ) : !connection?.textModel ? (
         <p className="rounded-lg border border-border bg-background p-5 text-sm">

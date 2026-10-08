@@ -128,6 +128,8 @@ beforeAll(async () => {
   const [req] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`ab-${run}@example.com`}, 'Test', 'Test') returning id`);
   const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(req.id)}::uuid, ${`ab-${run}`}, 'Test', null) as id`);
   storeId = String(created.id);
+  // The template's countries, languages and currencies, as before D178 step 4 (a new store starts in its own country alone).
+  await db().execute(sql`update commerce.stores set features = features || array['countries', 'languages', 'currencies'] where id = ${storeId}::uuid`);
   const [slug] = await db().execute<Row>(sql`select slug from commerce.stores where id = ${storeId}::uuid`);
   const found = await stores.getOpenStore(String(slug.slug));
   if (!found) throw new Error("The test store is not open.");

@@ -29,7 +29,7 @@ async function swedishStore(): Promise<string> {
       values (${`${slug}@example.com`}, 'Kari', 'Karis Firma') returning id`;
     const [{ id }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Karis Firma', null) as id`;
     // Sell to businesses on (D178): a new store starts with the shop alone.
-    await sql`update commerce.stores set audience = 'businesses', country = 'SE', features = features || array['business'] where id = ${id}`;
+    await sql`update commerce.stores set audience = 'businesses', country = 'SE', features = features || array['business', 'countries'] where id = ${id}`;
     const [check] = await sql`
       insert into commerce.vat_checks (store_id, purpose, number, country_prefix, status, source)
       values (${id}, 'seller', ${SELLER}, 'SE', 'valid', 'vies') returning id`;

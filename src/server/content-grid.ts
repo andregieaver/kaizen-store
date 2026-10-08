@@ -280,7 +280,9 @@ export async function listGridStores(): Promise<GridStore[]> {
       coalesce(json_agg(json_build_object('code', m.code, 'currency', m.currency) order by m.code)
         filter (where m.code is not null), '[]') as markets
     from commerce.stores s
+    -- The countries it offers (D178: its own alone with Several countries off).
     left join commerce.markets m on m.store_id = s.id and m.active
+      and (commerce.feature_on(s.id, 'countries') or m.code = commerce.home_market(s.id))
     where s.status = 'active' and not s.starter
     group by s.id, s.name, s.is_template
     order by s.is_template desc, lower(s.name)

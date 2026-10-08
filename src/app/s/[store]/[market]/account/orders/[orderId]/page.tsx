@@ -29,7 +29,7 @@ import { getOrderDocuments } from "@/server/invoices";
 import { getOrderAdmin } from "@/server/order-admin";
 import { getOrderDownloads } from "@/server/orders";
 import { listOrderReturns } from "@/server/returns";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 import { getSubscriptionForOrder } from "@/server/subscriptions";
 
 type Props = PageProps<"/s/[store]/[market]/account/orders/[orderId]">;
@@ -49,7 +49,7 @@ export default function AccountOrderPage({ params }: Props) {
 
 async function AccountOrder({ params }: { params: Props["params"] }) {
   const { store: storeSlug, market: marketSlug, orderId } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) notFound();
   const { store, market } = shop;
   const base = marketPath(store.slug, market.slug);

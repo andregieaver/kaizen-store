@@ -39,7 +39,7 @@ beforeAll(async () => {
   `);
   storeId = String(store.id);
   // A new store starts with the shop alone (D178): these tests book its demo appointment, stay and rental.
-  await db().execute(sql`update commerce.stores set features = features || array['appointments', 'bookings'] where id = ${storeId}::uuid`);
+  await db().execute(sql`update commerce.stores set features = features || array['appointments', 'bookings', 'countries', 'languages', 'currencies'] where id = ${storeId}::uuid`);
   // The demo cabin every new store is copied with: 1 450 kr a night, +30 % in high summer, +20 % on Friday and
   // Saturday nights, and 500 kr final cleaning (D70).
   const [row] = await db().execute<Row>(sql`

@@ -77,7 +77,8 @@ beforeAll(async () => {
   const [store] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Fix', null) as id`);
   storeId = String(store.id);
   await db().execute(sql`insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due) values (${storeId}::uuid, 'test', ${`acct_fix${run}`}, 'active', false)`);
-  await db().execute(sql`update commerce.stores set contact_email = ${`butikk-${slug}@example.com`} where id = ${storeId}::uuid`);
+  // The template's countries, languages and currencies, as before D178 step 4 (a new store starts in its own country alone).
+  await db().execute(sql`update commerce.stores set contact_email = ${`butikk-${slug}@example.com`}, features = features || array['countries', 'languages', 'currencies'] where id = ${storeId}::uuid`);
   await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 500 where store_id = ${storeId}::uuid`);
   await db().execute(sql`
     insert into commerce.store_currencies (store_id, currency, rate, round_to, position)

@@ -35,6 +35,8 @@ beforeAll(async () => {
     select ${store.id}::uuid, code, currency, default_locale, locales, true from commerce.countries where code in ('NO', 'SE')
     on conflict do nothing
   `);
+  // The template's countries, languages and currencies, as before D178 step 4 (a new store starts in its own country alone).
+  await db().execute(sql`update commerce.stores set features = features || array['countries', 'languages', 'currencies'] where id = ${store.id}::uuid`);
   member = await membershipOf(store.slug, store.account, "owner");
 });
 

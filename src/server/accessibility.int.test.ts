@@ -37,7 +37,8 @@ beforeAll(async () => {
     insert into commerce.markets (store_id, code, currency, default_locale, locales, active)
     select ${store.id}::uuid, code, currency, default_locale, locales, true from commerce.countries where code in ('NO') on conflict do nothing
   `);
-  await db().execute(sql`update commerce.stores set country = 'NO', locales = array['nb-NO', 'en-GB'], contact_email = 'butikk@example.com', name = 'Keramikken' where id = ${store.id}::uuid`);
+  // Norwegian and English (D178: Several languages on).
+  await db().execute(sql`update commerce.stores set country = 'NO', locales = array['nb-NO', 'en-GB'], features = features || array['languages'], contact_email = 'butikk@example.com', name = 'Keramikken' where id = ${store.id}::uuid`);
   owner = await membershipOf(store.slug, store.account, "owner");
 });
 

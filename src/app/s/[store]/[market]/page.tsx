@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 
 import { AbMarker } from "@/components/ab/ab-marker";
 import { JsonLdScript } from "@/components/json-ld";
@@ -15,7 +14,7 @@ import { listProducts } from "@/server/catalog";
 import { listPublishedPages } from "@/server/pages";
 import { placePageForVisitor } from "@/server/role-pages";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]">;
 
@@ -59,7 +58,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function MarketHome({ params, searchParams }: Props) {
   const loaded = await load(params);
-  if (!loaded) notFound();
+  // A country, language or currency the store no longer offers moves to one it does (D178).
+  if (!loaded) return marketMoved((await params).store, (await params).market);
   const { store, market, frontPage, test, version } = loaded;
   const m = t(market.lang);
   const [products, notices] = await Promise.all([listProducts(store.id, market), campaignNotices(store.id, market)]);

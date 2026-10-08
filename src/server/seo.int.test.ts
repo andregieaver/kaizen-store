@@ -39,7 +39,8 @@ beforeAll(async () => {
     values (${`seo-${run}@example.com`}, 'Kari', 'Kopp') returning id
   `);
   await db().execute(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Kopp', null)`);
-  await db().execute(sql`update commerce.stores set setup_completed_at = now(), country = 'NO' where slug = ${slug}`);
+  // It sells in Norway, Sweden and Denmark (D178: Several countries on), each in its own language.
+  await db().execute(sql`update commerce.stores set setup_completed_at = now(), country = 'NO', features = features || array['countries'] where slug = ${slug}`);
   const [account] = await db().execute<Row>(sql`
     select id, email from commerce.accounts where lower(email) = ${`seo-${run}@example.com`}
   `);

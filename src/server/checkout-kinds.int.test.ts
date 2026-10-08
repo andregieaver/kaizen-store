@@ -151,9 +151,10 @@ beforeAll(async () => {
   `);
   storeId = String(store.id);
   // A new store starts with the shop alone (D178): these tests book its demo appointment, stay and rental, sell subscriptions, sell to
-  // companies (the store sells to both private shoppers and businesses), and use bonus credits and a friend's welcome discount.
+  // companies (the store sells to both private shoppers and businesses), use bonus credits and a friend's welcome discount, and sell in
+  // several countries and, shown in euro, in several currencies.
   await db().execute(sql`
-    update commerce.stores set features = features || array['subscriptions', 'appointments', 'bookings', 'business', 'bonus', 'referrals'], audience = 'both'
+    update commerce.stores set features = features || array['subscriptions', 'appointments', 'bookings', 'business', 'bonus', 'referrals', 'countries', 'currencies'], audience = 'both'
     where id = ${storeId}::uuid
   `);
   await db().execute(sql`
@@ -216,7 +217,7 @@ beforeAll(async () => {
   member = {
     account: { id: String(owner.id), email: `owner-${slug}@example.com`, name: "Owner", platformAdmin: false },
     role: "owner",
-    store: { id: storeId, slug, markets: [no] } as unknown as Store,
+    store: { id: storeId, slug, markets: [no], keptMarkets: [no], allMarkets: [no] } as unknown as Store,
   };
 });
 
@@ -2938,3 +2939,99 @@ describe("checkout with the Selling features switched off (D178)", () => {
     }
   });
 });
+
+/**
+ * The Countries and languages features switched off (D178 step 4, `docs/store-features.md` 4d): with Several currencies off a country is sold in
+ * its own currency only, so the euro view of Norway is no longer offered; with Several countries off the store sells in its own country only.
+ * A cart in a view or country no longer offered is kept but unavailable, as checkout refuses it (`commerce.market_offered()`); the store's own
+ * country in its own currency sells as before, the cart and the order agreeing; and switching each back on brings the other back as it was.
+ */
+describe("checkout with the Countries and languages features switched off (D178)", () => {
+  const features = async (change: { off?: string[]; on?: string[] }) => {
+    for (const id of change.off ?? []) await db().execute(sql`update commerce.stores set features = array_remove(features, ${id}) where id = ${storeId}::uuid`);
+    for (const id of change.on ?? []) await db().execute(sql`update commerce.stores set features = array_remove(features, ${id}) || array[${id}] where id = ${storeId}::uuid`);
+  };
+  const sweden = toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" });
+  /** The cart of the country shown (a cart is the country's, whatever its language and currency). */
+  const cartOf = () => jar.get(`cart_${storeId}_${view.code.toLowerCase()}`)!;
+
+  /** The cart in this view, filled, and its checkout held to it to the minor unit: total, VAT and what Stripe is asked for. */
+  async function place(market: typeof no, fill: () => Promise<void>) {
+    jar.clear();
+    view = market;
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    await fill();
+    const cart = await getCart(shop());
+    expect(cart.lines.map((l) => l.status)).toEqual(cart.lines.map(() => "ok"));
+    const summary = await cartSummary(shop(), cart);
+    const started = await startCheckout({ ...shop(), storeSlug: slug }, cartOf(), origin, "Frakt", {}, { customerId: null });
+    expect(started).toMatchObject({ ok: true });
+    const open = (await getOpenCheckout(storeId, cartOf()))!;
+    const order = (await getOrder(storeId, open.orderId))!;
+    expect({ total: order.totalMinor, vat: order.taxMinor, currency: order.currency }).toEqual({ total: summary.total, vat: summary.vat, currency: market.currency });
+    expect(chargedNow(fake.created.at(-1)!.params)).toBe(summary.dueNowMinor);
+    await expectUnitPrices(cart, order, { euro: market === noInEuro });
+    return { cart, summary, order };
+  }
+
+  beforeAll(async () => {
+    await db().execute(sql`update commerce.inventory_levels set on_hand = on_hand + 500 where store_id = ${storeId}::uuid`);
+  });
+  afterAll(async () => {
+    await features({ on: ["countries", "currencies"] });
+  });
+
+  it("refuses the euro view of Norway with Several currencies off, a euro cart included, and sells in kroner; back on, euro sells again", async () => {
+    jar.clear();
+    view = noInEuro;
+    await add("DEMO-MUG-WHITE", 2);
+    await features({ off: ["currencies"] });
+    try {
+      // The cart is the country's: in euro it is unavailable, and nothing more can be put in it in euro.
+      const stale = await getCart(shop());
+      expect(stale.lines.map((l) => l.status)).toEqual(["unavailable"]);
+      expect(await cartSummary(shop(), stale)).toMatchObject({ payable: [], subtotal: 0 });
+      expect(await changeLine(shop(), variant["DEMO-NOTEBOOK-LINED"], 1, "add")).toMatchObject({ outcome: "unavailable" });
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartOf(), origin, "Frakt", {}, { customerId: null })).toMatchObject({ ok: false, problem: "unavailable" });
+      // In kroner the same cart sells, and the cart and the order agree.
+      const placed = await place(no, async () => {
+        await add("DEMO-MUG-WHITE", 2);
+        await add("DEMO-NOTEBOOK-LINED", 1);
+      });
+      expect(placed.order.currency).toBe("NOK");
+    } finally {
+      await features({ on: ["currencies"] });
+    }
+    const placed = await place(noInEuro, async () => {
+      await add("DEMO-MUG-WHITE", 1);
+    });
+    expect(placed.order.currency).toBe("EUR");
+  });
+
+  it("refuses Sweden with Several countries off, a Swedish cart included, sells in Norway, and sells in Sweden again once it is on", async () => {
+    jar.clear();
+    view = sweden;
+    await add("DEMO-MUG-BLACK", 1);
+    await features({ off: ["countries"] });
+    try {
+      const stale = await getCart(shop());
+      expect(stale.lines.map((l) => l.status)).toEqual(["unavailable"]);
+      expect(await changeLine(shop(), variant["DEMO-NOTEBOOK-LINED"], 1, "add")).toMatchObject({ outcome: "unavailable" });
+      expect(await startCheckout({ ...shop(), storeSlug: slug }, cartOf(), origin, "Frakt", {}, { customerId: null })).toMatchObject({ ok: false, problem: "unavailable" });
+      // Norway, the store's own country, in kroner and (Several currencies on) in euro.
+      await place(no, async () => {
+        await add("DEMO-MUG-BLACK", 1);
+      });
+      await place(noInEuro, async () => {
+        await add("DEMO-MUG-BLACK", 1);
+      });
+    } finally {
+      await features({ on: ["countries"] });
+    }
+    const placed = await place(sweden, async () => {
+      await add("DEMO-MUG-BLACK", 1);
+    });
+    expect(placed.order).toMatchObject({ currency: "SEK" });
+  });
+});
+

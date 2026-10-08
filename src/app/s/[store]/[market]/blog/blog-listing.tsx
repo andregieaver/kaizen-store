@@ -13,7 +13,7 @@ import { adminOrigin, marketPath } from "@/lib/paths";
 import { byName, type Term, type TermKind } from "@/lib/taxonomy";
 import { gridData } from "@/server/content-grid";
 import { pageForRole } from "@/server/pages";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 import type { Store } from "@/server/stores";
 import { siteTerms } from "@/server/taxonomy";
 
@@ -83,7 +83,8 @@ export async function blogMetadata(params: ShopParams): Promise<Metadata> {
 export async function StoreBlog({ params }: { params: ShopParams }) {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop) notFound();
+  // A country, language or currency the store no longer offers moves to one it does (D178).
+  if (!shop) return marketMoved(storeSlug, marketSlug, "/blog");
   const { store, market } = shop;
   // The store's own blog page (D112), built in the page builder, where one is chosen; else the standard list.
   const page = await pageForRole(store, "blog");
@@ -137,7 +138,12 @@ export async function blogTermMetadata(kind: TermKind, params: Params): Promise<
 
 export async function StoreBlogTerm({ kind, params }: { kind: TermKind; params: Params }) {
   const loaded = await loadTerm(kind, params);
-  if (!loaded) notFound();
+  if (!loaded) {
+    // A country, language or currency the store no longer offers moves to one it does (D178).
+    const { store: storeSlug, market: marketSlug, slug } = await params;
+    if (!(await resolveShop(storeSlug, marketSlug))) return marketMoved(storeSlug, marketSlug, `/blog/${kind}/${slug}`);
+    notFound();
+  }
   const { store, market, terms, term } = loaded;
   const m = t(market.lang);
   const grid = listing(term.id, kind === "category" ? { categories: [term.id] } : { tags: [term.id] });

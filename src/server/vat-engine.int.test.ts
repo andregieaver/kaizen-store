@@ -210,9 +210,9 @@ beforeAll(async () => {
   const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${slug}, 'Test', null) as id`);
   storeId = String(created.id);
   // A store selling to businesses as well as private shoppers (D178: Sell to businesses on; the bonus program for the credits scenario;
-  // Subscriptions for the subscription scenario).
+  // Subscriptions for the subscription scenario; several countries, and Denmark shown in euro).
   await db().execute(sql`
-    update commerce.stores set country = 'SE', audience = 'both', features = features || array['business', 'bonus', 'subscriptions'] where id = ${storeId}::uuid
+    update commerce.stores set country = 'SE', audience = 'both', features = features || array['business', 'bonus', 'subscriptions', 'countries', 'currencies'] where id = ${storeId}::uuid
   `);
   await db().execute(sql`
     insert into commerce.stripe_accounts (store_id, mode, account_id, card_payments, requirements_due)
@@ -256,7 +256,7 @@ beforeAll(async () => {
   member = {
     account: { id: String(owner.id), email: `owner-${slug}@example.com`, name: "Owner", platformAdmin: false },
     role: "owner",
-    store: { id: storeId, slug, markets: [se] } as unknown as Store,
+    store: { id: storeId, slug, markets: [se], keptMarkets: [se] } as unknown as Store,
   };
   // A Swedish store, registered for VAT, whose number VIES has said is valid.
   const saved = await saveTaxProfile(member, {

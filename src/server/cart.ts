@@ -172,7 +172,8 @@ export async function getCart(shop: Shop): Promise<Cart> {
       coalesce(tl.title, tf.title) as title,
       coalesce(m.thumbnail_url, m.url) as image_url, coalesce(nullif(m.alt ->> ${market.locale}, ''), commerce.media_alt(m.url, ${market.locale}), '') as image_alt,
       cp.amount_minor,
-      (p.status = 'active' and v.active and ${bookable} and ${OFFERED}) as sellable,
+      -- Only in a country and currency the store offers now (D178: Several countries and currencies).
+      (p.status = 'active' and v.active and ${bookable} and ${OFFERED} and commerce.market_offered(c.store_id, c.market_code, ${market.currency})) as sellable,
       va.in_stock, va.raw_available, va.stock_policy, va.backorder_days
     from commerce.cart_lines cl
     join commerce.carts c on c.store_id = cl.store_id and c.id = cl.cart_id
@@ -471,6 +472,8 @@ export async function sellableQuantity(
     join commerce.prices pr
       on pr.variant_id = v.id and pr.market_code = ${market.code} and pr.valid_to is null
     where v.store_id = ${storeId}::uuid and v.id = ${variantId}::uuid and v.active
+      -- Sold only in a country and currency the store offers now (D178: Several countries and currencies).
+      and commerce.market_offered(v.store_id, ${market.code}, ${market.currency})
       -- Appointments, stays and rentals are booked for a time (D65, D67), and goods have none.
       and (p.kind = 'goods') = ${booking === null}
       -- A product is offered only where the store sells to its kind (D178: never a business-only one where it sells to consumers, Sell to

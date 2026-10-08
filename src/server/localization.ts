@@ -52,7 +52,8 @@ export async function saveLanguages(
   if (unknown.length > 0) problems.push(`Not a language the store can offer: ${unknown.join(", ")}.`);
   const languages = unique.map(languageOf);
   if (new Set(languages).size !== languages.length) problems.push("Choose one variant of each language.");
-  for (const market of store.markets) {
+  // Every country the store keeps, offered or not (D178): a country kept for when Several countries is on again keeps its language.
+  for (const market of store.keptMarkets) {
     const own = marketLocales[market.code] ?? market.ownLocale;
     if (!unique.some((locale) => languageOf(locale) === languageOf(own))) {
       problems.push(`${market.name} shows ${own} by default, so the store needs that language. Change the country's language first.`);
@@ -95,7 +96,8 @@ export async function saveCurrencies(
   rows: CurrencyInput[],
   ratesAuto: boolean,
 ): Promise<SaveResult> {
-  const natives = new Set(store.markets.map((market) => market.nativeCurrency));
+  // Each country's own currency stays, the countries kept but not offered (D178) included: their orders' amounts convert with its rate.
+  const natives = new Set(store.keptMarkets.map((market) => market.nativeCurrency));
   const byCurrency = new Map<string, CurrencyInput>();
   for (const row of rows) if (isCurrency(row.currency)) byCurrency.set(row.currency, row);
   for (const native of natives) if (!byCurrency.has(native)) byCurrency.set(native, { currency: native, rate: native === "EUR" ? 1 : null, roundTo: defaultRoundTo(native) });

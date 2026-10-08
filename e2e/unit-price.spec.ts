@@ -21,6 +21,8 @@ async function storeWithMeasures(): Promise<{ slug: string }> {
   try {
     const [request] = await sql`insert into commerce.access_requests (email, name, store_name) values (${`${slug}@example.com`}, 'Ola', 'Enhetsbutikk') returning id`;
     const [{ id }] = await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Enhetsbutikk', null) as id`;
+    // Sweden, English and euro (D178: Several countries, languages and currencies on).
+    await sql`update commerce.stores set features = features || array['countries', 'languages', 'currencies'] where id = ${id}`;
     // The mug was dearer 40 days ago (299,00), so 249,00 is a genuine reduction with a 30-day reference (Omnibus), as the demo store's is.
     await sql`
       insert into commerce.prices (store_id, variant_id, market_code, currency, amount_minor, valid_from, valid_to)

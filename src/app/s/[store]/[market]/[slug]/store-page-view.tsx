@@ -16,7 +16,7 @@ import { experimentOfPage } from "@/server/experiments";
 import { findPublishedPage, type PublishedPage } from "@/server/pages";
 import { missOrRedirect } from "@/server/redirect-resolve";
 import { storeFacts, storeShareImage, storeShareTags } from "@/server/seo";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 
 export type StorePageParams = Promise<{ store: string; market: string; slug: string }>;
 export type StorePageQuery = Promise<Record<string, string | string[] | undefined>>;
@@ -94,7 +94,8 @@ export async function StorePageView({ params, searchParams, variant }: { params:
     // A manual redirect's source, or the old address of a product that was moved here, goes on for good; anything else is the store's 404 (wave 2, D168).
     const { store: storeSlug, market: marketSlug, slug } = await params;
     const shop = await resolveShop(storeSlug, marketSlug);
-    if (!shop) notFound();
+    // A country, language or currency the store no longer offers moves to one it does (D178).
+    if (!shop) return marketMoved(storeSlug, marketSlug, `/${slug}`);
     return missOrRedirect(shop, `/${slug}`);
   }
   const { store, market, found } = loaded;

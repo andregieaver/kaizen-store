@@ -49,7 +49,7 @@ export default async function AnalyticsTrafficPage({ params, searchParams }: Pag
           description="Where visitors drop out on the way to a purchase, which devices and countries sell, what shoppers search for and when the store is busiest. Refunds and returns are at the bottom."
         />
         <TrafficView base={ctx.base} currency={currency} locale={locale} timeZone={store.timeZone} traffic={traffic} geo={geo} search={search} time={time} />
-        <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.markets.map((m) => [m.code, m.name]))} />
+        <RefundsView currency={currency} locale={locale} report={refunds} marketNames={Object.fromEntries(store.allMarkets.map((m) => [m.code, m.name]))} />
         <ReturnsView currency={currency} locale={locale} report={returns} queueHref={`${ctx.base}/returns?overdue=1`} />
       </div>
     </ExportScope>

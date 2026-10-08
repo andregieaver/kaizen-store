@@ -45,7 +45,8 @@ async function storeWithFields(): Promise<{ slug: string; pageSlug: string }> {
     const [{ id }] =
       await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Feltbutikk', null) as id`;
     // Norwegian is the store's main language, Swedish its other.
-    await sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'] where id = ${id}`;
+    // Sweden is a country of its own (D178: Several countries on), in Swedish.
+    await sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'], features = features || array['countries'] where id = ${id}`;
     const group = async (name: string, groupSlug: string, entities: string[], fields: unknown[], sort: number) => {
       const [row] = await sql`
         insert into commerce.field_groups (store_id, name, slug, entities, location, fields, sort)

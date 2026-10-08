@@ -65,6 +65,14 @@ async function createStore(slug: string): Promise<Store> {
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
       toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
     ],
+    keptMarkets: [
+      toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
+      toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
+    ],
+    allMarkets: [
+      toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
+      toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),
+    ],
     localization: localizationOf([], [], [
       toMarket({ code: "NO", currency: "NOK", defaultLocale: "nb-NO" }),
       toMarket({ code: "SE", currency: "SEK", defaultLocale: "sv-SE" }),

@@ -4,6 +4,7 @@ import { Suspense } from "react";
 
 import { RolePage } from "@/components/role-page";
 import { resolveShop } from "@/server/shop";
+import { pageShopOrMoved } from "@/server/shop-page";
 import { getCustomer } from "@/server/customers";
 
 import { AccountSection } from "./account-section";
@@ -19,7 +20,9 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * signed in (the sign-in page), one for My account (which, signed out, is the
  * sign-in form); else the standard page.
  */
-export default function AccountPage({ params, searchParams }: Props) {
+export default async function AccountPage({ params, searchParams }: Props) {
+  // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
+  await pageShopOrMoved("/account");
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>
       <AccountRoute params={params} searchParams={searchParams} />

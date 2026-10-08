@@ -7,9 +7,9 @@ import type { z } from "zod";
 
 import { db, readDb } from "@/db/client";
 import { t } from "@/lib/i18n";
-import { effectiveLocales } from "@/lib/localization";
+import { languageChoices, localizationOf } from "@/lib/localization";
 import { LEGAL_ROLES } from "@/lib/legal-roles";
-import { inView, shown, toMarket, type Market } from "@/lib/markets";
+import { inView, offeredMarkets, shown, toMarket, type Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { marketPath, storeBase, storeDomain, storeSiteUrl } from "@/lib/paths";
 import { pageExcerpt } from "@/lib/page-content";
@@ -33,6 +33,7 @@ import {
 } from "@/lib/seo";
 import { siteUrl } from "@/lib/site";
 import type { ShippingFacts, StoreFacts } from "@/lib/structured-data";
+import { featureOn, normaliseFeatures } from "@/lib/store-features";
 import { parseTermSeo, type TermSeo } from "@/lib/term-seo";
 
 import { audit, type Account, type Membership } from "./auth";
@@ -125,8 +126,10 @@ export type PublicStore = {
   name: string;
   seo: StoreSeo;
   markets: Market[];
-  /** The store's languages (D109), main first. */
+  /** The store's languages in use (D109), main first. */
   locales: string[];
+  /** A country is shown in the store's other languages too (Several languages on, D178); else in its own only. */
+  languageChoice: boolean;
   /** Open, set up and not hidden: listed in sitemaps and llms.txt. */
   indexable: boolean;
   updatedAt: string;
@@ -147,7 +150,7 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   cacheLife("hours");
   cacheTag(STORES_TAG);
   const rows = await readDb().execute<Row>(sql`
-    select s.id, s.slug, s.name, s.seo, s.locales, s.is_template, s.starter, s.setup_completed_at, s.front_page_id, s.products_page_id,
+    select s.id, s.slug, s.name, s.seo, s.locales, s.features, s.is_template, s.starter, s.setup_completed_at, s.front_page_id, s.products_page_id,
       -- The legal pages (wave 1, 1e) keep their own address and stay in the sitemap once published: only D112's roles are left out.
       (select coalesce(array_agg(r.page_id), '{}') from commerce.page_roles r where r.store_id = s.id and r.role <> all(${LEGAL_ROLE_LIST}::text[])) as role_pages,
       greatest(s.created_at, s.setup_completed_at,
@@ -163,14 +166,19 @@ export async function listPublicStores(): Promise<PublicStore[]> {
   `);
   return rows.map((row) => {
     const seo = parseStoreSeo(row.seo);
-    const markets = (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(toMarket);
+    // The countries and languages offered (D178): the store's own country alone with Several countries off, each in its own language with
+    // Several languages off.
+    const features = normaliseFeatures(((row.features ?? []) as unknown[]).map(String));
+    const markets = offeredMarkets((row.markets as { code: string; currency: string; defaultLocale: string }[]).map(toMarket), featureOn(features, "countries"));
+    const { locales, languageChoice } = localizationOf(((row.locales ?? []) as string[]).map(String), [], markets, { languages: featureOn(features, "languages") });
     return {
       id: String(row.id),
       slug: String(row.slug),
       name: String(row.name),
       seo,
       markets,
-      locales: effectiveLocales(((row.locales ?? []) as string[]).map(String), markets),
+      locales,
+      languageChoice,
       // A store template (D175) is a preview, never for search engines: out of every sitemap and llms.txt.
       indexable: !row.starter && Boolean(row.is_template || row.setup_completed_at) && !seo.hidden && markets.length > 0,
       updatedAt: new Date(String(row.updated_at)).toISOString(),
@@ -344,7 +352,7 @@ export function storeShareTags(
       type: "website",
       siteName: store.name,
       locale: ogLocale(market.locale),
-      alternateLocale: store.localization.locales.filter((locale) => locale.split("-")[0] !== market.lang).map((locale) => ogLocale(`${locale.split("-")[0]}-${market.code}`)),
+      alternateLocale: languageChoices(store.localization, market).filter((locale) => locale.split("-")[0] !== market.lang).map((locale) => ogLocale(`${locale.split("-")[0]}-${market.code}`)),
       url: page.url,
       title: page.title,
       description: page.description,
@@ -502,10 +510,10 @@ export async function storeSitemap(slug: string): Promise<string | null> {
       .filter(Boolean)
       .join("");
 
-  // Every country in every language the store is in (D109); a currency is not another page.
+  // Every country offered in every language it is shown in (D109, D178); a currency is not another page.
   const views = (markets: readonly Market[]) =>
     markets.flatMap((m) =>
-      store.locales.map((locale) => ({ locale: `${locale.split("-")[0]}-${m.code}`, slug: inView(m, { locale, currency: m.nativeCurrency }).slug })),
+      languageChoices(store, m).map((locale) => ({ locale: `${locale.split("-")[0]}-${m.code}`, slug: inView(m, { locale, currency: m.nativeCurrency }).slug })),
     );
   const versionsOf = (markets: readonly Market[], path: string) => views(markets).map((v) => ({ locale: v.locale, href: `${base}/${v.slug}${path}` }));
   const homes = versionsOf(store.markets, "");

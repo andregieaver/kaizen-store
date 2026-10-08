@@ -149,6 +149,18 @@ function translationsOutside(translations: PageContent["translations"], ids: Rea
 }
 
 /**
+ * The texts in other languages of the page's rows outside a part, to compare an original with a version: the page's own title and search
+ * texts are left out, as its title and address are (a version's own title, "… (B)", can make a translation equal to the original's title
+ * one that saving keeps).
+ */
+const rowTranslationsOutside = (translations: PageContent["translations"], ids: ReadonlySet<string>) =>
+  Object.fromEntries(
+    Object.entries(translationsOutside(translations, ids))
+      .map(([locale, texts]) => [locale, Object.fromEntries(Object.entries(texts).filter(([key]) => key.startsWith("block.")))] as const)
+      .filter(([, texts]) => Object.keys(texts).length > 0),
+  );
+
+/**
  * Whether a modal (D121) opens only by itself, at a time or on exit intent. A modal that a link or a class opens is opened from
  * elsewhere on the site, which a version cannot be allowed to break, so only one that opens by itself may be left out.
  */
@@ -181,7 +193,7 @@ export function partChanges(original: PageContent, version: PageContent, target:
   if (a && leavesOutModal(original, version, target)) {
     if (canon(withoutRow(original.rows, target.id)) !== canon(version.rows)) return "outside";
     const ids = new Set(idsWithin(a.kind, a.node));
-    return canon(translationsOutside(original.translations, ids)) === canon(translationsOutside(version.translations, ids)) ? "ok" : "outside";
+    return canon(rowTranslationsOutside(original.translations, ids)) === canon(rowTranslationsOutside(version.translations, ids)) ? "ok" : "outside";
   }
   const b = findPart(version.rows, target.id);
   if (!a || !b || a.kind !== target.kind || b.kind !== target.kind) return "missing";
@@ -193,7 +205,7 @@ export function partChanges(original: PageContent, version: PageContent, target:
   const merged = replacePart(version.rows, target, a.node);
   if (!merged || canon(merged) !== canon(original.rows)) return "outside";
   const ids = new Set([...idsWithin(a.kind, a.node), ...idsWithin(b.kind, b.node)]);
-  return canon(translationsOutside(original.translations, ids)) === canon(translationsOutside(version.translations, ids)) ? "ok" : "outside";
+  return canon(rowTranslationsOutside(original.translations, ids)) === canon(rowTranslationsOutside(version.translations, ids)) ? "ok" : "outside";
 }
 
 /**

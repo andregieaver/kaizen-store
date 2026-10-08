@@ -44,7 +44,7 @@ beforeAll(async () => {
   const [owner] = await db().execute<Row>(
     sql`select id, email from commerce.accounts where email = ${`${name}@example.com`}`,
   );
-  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'] where slug = ${name}`);
+  await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'sv-SE'], features = features || array['countries', 'languages', 'currencies'] where slug = ${name}`);
   store = (await getStore(name))!;
   member = {
     account: { id: String(owner.id), email: String(owner.email), name: "F", platformAdmin: false },

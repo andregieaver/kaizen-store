@@ -74,7 +74,7 @@ describe("the Features page (D178)", () => {
     expect(out).toContain("Needs the online shop. Its switch is kept for when that is on.");
     expect(switchOf(out, "countries")).not.toContain(DISABLED);
     expect(switchOf(out, "languages")).not.toContain(DISABLED);
-    expect(out).toContain('href="/admin/kaffe/setup/countries"');
+    expect(out).toContain('href="/admin/kaffe/settings/countries"');
   });
 
   it("says what is in use", () => {

@@ -155,6 +155,10 @@ describe("switching features (D178)", () => {
     expect(await features.setFeature(await owner(), "languages", true)).toMatchObject({ ok: true, features: ["languages"] });
     expect(await features.setFeature(await owner(), "boxes", true)).toMatchObject({ ok: false, problems: [expect.stringContaining("needs the online shop")] });
     expect(await features.setFeature(await owner(), "shop", true)).toMatchObject({ ok: true, features: ["shop", "languages"] });
+    // Each country's own language stays shown: only English, which the store chose besides them, is hidden, and that is confirmed (D178 step 4).
+    expect(await features.storeFeatureWarnings(store.id, "languages", ["shop", "languages"])).toEqual([]);
+    await db().execute(sql`update commerce.stores set locales = array['nb-NO', 'en-GB'] where id = ${store.id}::uuid`);
+    expect(await features.storeFeatureWarnings(store.id, "languages", ["shop", "languages"])).toEqual([expect.stringContaining("1 language besides your countries' own is no longer shown")]);
     expect(await features.setFeature(await owner(), "languages", false)).toMatchObject({ ok: false, needsConfirmation: true });
     expect(await features.setFeature(await owner(), "languages", false, { confirmed: true })).toMatchObject({ ok: true });
   });

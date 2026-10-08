@@ -65,7 +65,8 @@ async function OrderListBody({ storeSlug, searchParams }: { storeSlug: string; s
   ]);
   const locale = store.markets[0]?.locale ?? "en";
   const canWrite = memberCan(member, "orders:write");
-  const markets = [...new Map(store.markets.map((m) => [m.code, { code: m.code, name: m.name }])).values()];
+  // Every country the store had, so past orders in a country no longer offered (D178) can still be found by it.
+  const markets = [...new Map(store.allMarkets.map((m) => [m.code, { code: m.code, name: m.name }])).values()];
   return (
     <OrderListView
       slug={store.slug}

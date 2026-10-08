@@ -485,10 +485,15 @@ const PAGES: readonly AdminPage[] = [
   }),
 
   // Store: store settings --------------------------------------------------------------------
+  store("countries", "/settings/countries", "Countries", "Store", "The countries the store sells to and its own country (the business's country when it sells there, else the first); with Several countries off, the one country it sells in, the others kept with their prices and settings.", {
+    keywords: ["markets", "country", "sell abroad", "international", "home country", "several countries"],
+    tasks: ["Sell in another country", "Stop selling to a country"],
+  }),
   store("localization", "/settings/localization", "Languages and currencies", "Store", "The languages and currencies the store offers, each country's language, and the rates amounts are converted at.", {
     keywords: ["translate", "euro", "exchange rate", "multilingual", "language", "currency", "ECB"],
   }),
   store("translate", "/translate", "Translate the store", "Store", "Translate products, menus, pages and articles into another language with AI, reading and keeping each text before it is saved.", {
+    feature: ["languages", "countries"],
     keywords: ["translation", "language", "AI", "multilingual", "products", "legal"],
     tasks: ["Translate the store into English", "Find what is not translated yet"],
   }),

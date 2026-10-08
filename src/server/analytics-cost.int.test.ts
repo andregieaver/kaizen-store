@@ -62,7 +62,7 @@ beforeAll(async () => {
     select commerce.approve_access_request(${String(request.id)}::uuid, ${`cost-${run}`}, 'Test', null) as id
   `);
   // A new store starts with the shop alone (D178): these tests sell subscriptions, as an owner switches them on under Features.
-  await db().execute(sql`update commerce.stores set features = features || array['subscriptions']::text[] where slug = ${`cost-${run}`}`);
+  await db().execute(sql`update commerce.stores set features = features || array['subscriptions', 'countries', 'languages', 'currencies']::text[] where slug = ${`cost-${run}`}`);
   storeId = String(store.id);
   const rows = await db().execute<Row>(sql`select id, sku from commerce.product_variants where store_id = ${storeId}::uuid`);
   for (const row of rows) variant[String(row.sku)] = String(row.id);
@@ -72,7 +72,7 @@ beforeAll(async () => {
   member = {
     account: { id: String(owner.id), email: `owner-cost-${run}@example.com`, name: "Owner", platformAdmin: false },
     role: "owner",
-    store: { id: storeId, slug: `cost-${run}`, markets: [no] } as unknown as Store,
+    store: { id: storeId, slug: `cost-${run}`, markets: [no], keptMarkets: [no] } as unknown as Store,
   };
   await setCost("DEMO-MUG-WHITE", 3_000);
   await setCost("DEMO-NOTEBOOK-LINED", 1_200);

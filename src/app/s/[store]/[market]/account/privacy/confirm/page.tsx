@@ -14,6 +14,7 @@ import { shopperBonus } from "@/server/bonus";
 import { getCustomer } from "@/server/customers";
 import { shopperErasurePlan, shopperPrivacyState } from "@/server/privacy-shopper";
 import { resolveShop } from "@/server/shop";
+import { pageShopOrMoved } from "@/server/shop-page";
 
 import { confirmStepUpAction, deleteAccountAction, requestStepUpCodeAction } from "../actions";
 
@@ -26,7 +27,9 @@ export const metadata: Metadata = { robots: { index: false, follow: false } };
  * sign-in, so an older session sees "Confirm it is you" here first. The same address is the result once the account is gone: the session
  * has ended by then, so the counts it needs (how many orders are kept, and the day) are in the address, with no name, email or address.
  */
-export default function DeleteAccountPage({ params, searchParams }: Props) {
+export default async function DeleteAccountPage({ params, searchParams }: Props) {
+  // A country, language or currency the store no longer offers moves to one it does before the boundary, as a 308 (D178).
+  await pageShopOrMoved("/account/privacy/confirm");
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-8">
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-surface" />}>

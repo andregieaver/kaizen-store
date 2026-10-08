@@ -6,7 +6,7 @@ import { t } from "@/lib/i18n";
 import { marketPath } from "@/lib/paths";
 import { emptyForm, orderInfoOf } from "@/lib/withdraw-form";
 import { getCustomer } from "@/server/customers";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 import { lookupWithdrawableOrder } from "@/server/withdrawals";
 
 import { WithdrawFlow } from "./withdraw-flow";
@@ -36,7 +36,7 @@ export default function WithdrawPage({ params, searchParams }: Props) {
 
 async function Withdraw({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { store: storeSlug, market: marketSlug } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) notFound();
   const { store, market } = shop;
   const m = t(market.lang).returns;

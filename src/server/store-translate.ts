@@ -232,7 +232,9 @@ export async function applyTranslations(member: Membership, to: string, accepted
       }
       // The other languages' texts are kept: only this language's is replaced.
       const kept = await getInstructionTranslations(store.id);
-      const result = await saveInstructionTranslations(store.id, { ...kept, [to]: text }, store.localization.locales.slice(1), member.account.id);
+      // Every language the store keeps besides the main one, those not shown now (D178) included.
+      const others = store.localization.keptLocales.filter((locale) => locale !== store.localization.locales[0]);
+      const result = await saveInstructionTranslations(store.id, { ...kept, [to]: text }, others, member.account.id);
       if (result.ok) saved += 1;
       else skipped.push(`${unit.title}: ${result.problems[0]}`);
     } else if (unit.scope === "fields") {

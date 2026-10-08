@@ -43,7 +43,7 @@ beforeAll(async () => {
   member = {
     account: { id: String(owner.id), email: String(owner.email), name: "K", platformAdmin: false },
     role: "owner",
-    store: { id: storeId, slug, markets: [no] } as unknown as Store,
+    store: { id: storeId, slug, markets: [no], keptMarkets: [no], allMarkets: [no] } as unknown as Store,
   };
   signedIn.member = member;
   const find = async (sku: string) => {

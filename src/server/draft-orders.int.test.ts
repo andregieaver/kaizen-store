@@ -115,10 +115,11 @@ beforeEach(() => {
 
 const actorOf = (store: TestStore) => staffActor(store.accountId);
 
-/** A store with Stripe on in test mode (the draft's pay link opens a session), euro offered, and plenty of stock. */
+/** A store with Stripe on in test mode (the draft's pay link opens a session), euro and the template's other countries offered (D178), and plenty of stock. */
 async function paymentsStore(label: string): Promise<TestStore> {
   const store = await newPlainStore(label);
   await db().execute(sql`update commerce.payment_providers set enabled = true, active_mode = 'test' where store_id = ${store.storeId}::uuid`);
+  await db().execute(sql`update commerce.stores set features = features || array['countries', 'currencies'] where id = ${store.storeId}::uuid`);
   await db().execute(sql`
     insert into commerce.store_currencies (store_id, currency, rate, round_to, position)
     values (${store.storeId}::uuid, 'NOK', 11.5, 1, 0), (${store.storeId}::uuid, 'EUR', 1, 1, 1) on conflict do nothing

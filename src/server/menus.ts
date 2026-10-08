@@ -101,7 +101,8 @@ export async function saveStoreMenu({ account, store }: Membership, id: string |
   const parsed = menuInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error.issues) };
   const { name, items } = parsed.data;
-  const locales = store.localization.locales;
+  // Every language the store keeps texts in (D178: a label in a language not shown now is kept, not dropped).
+  const locales = store.localization.keptLocales;
 
   const handles = [...new Set(items.flatMap((i) => (i.link.kind === "product" ? [i.link.handle] : [])))];
   const titles = new Map<string, Record<string, string>>();

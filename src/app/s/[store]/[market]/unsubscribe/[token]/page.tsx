@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { t } from "@/lib/i18n";
-import { resolveShop } from "@/server/shop";
+import { resolveAfterSaleShop } from "@/server/shop";
 
 import { unsubscribeAction } from "./actions";
 
@@ -27,7 +27,7 @@ export default function UnsubscribePage({ params, searchParams }: Props) {
 
 async function Unsubscribe({ params, searchParams }: Pick<Props, "params" | "searchParams">) {
   const { store: storeSlug, market: marketSlug, token } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  const shop = await resolveAfterSaleShop(storeSlug, marketSlug);
   if (!shop) notFound();
   const m = t(shop.market.lang);
   const query = await searchParams;

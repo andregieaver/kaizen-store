@@ -18,7 +18,7 @@ async function newStore(): Promise<string> {
     await sql`select commerce.approve_access_request(${request.id}, ${slug}, 'Siris Butikk', null)`;
     // A new store starts with the shop alone (D178): stays and rentals are switched on, as an owner would under Features, so the
     // demo cabin and bike are offered and can be filtered.
-    await sql`update commerce.stores set features = array['shop', 'bookings'] where slug = ${slug}`;
+    await sql`update commerce.stores set features = array['shop', 'bookings', 'countries'] where slug = ${slug}`;
   } finally {
     await sql.end();
   }

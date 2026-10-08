@@ -38,7 +38,8 @@ async function ask(request: APIRequestContext, path: string): Promise<{ status: 
 }
 
 test("a renamed product's old addresses go straight to the current one for good, in every market; a product no longer sold is a 404", async ({ request }) => {
-  const store = await newStore("e2e-rn-product");
+  // Every market of the store (D178: Several countries on).
+  const store = await newStore("e2e-rn-product", ["countries"]);
   await withDb(async (sql) => {
     // Renamed twice: each old address must reach the current page in one response, never a chain.
     await sql`update commerce.products set handle = ${`kopp-a-${run}`} where store_id = ${store.id} and handle = 'demo-keramikkopp'`;
@@ -60,7 +61,8 @@ test("a renamed product's old addresses go straight to the current one for good,
 });
 
 test("a renamed category's and tag's old addresses redirect for good; an address that never existed stays a 404", async ({ request }) => {
-  const store = await newStore("e2e-rn-term");
+  // Sweden and Denmark are countries of the store (D178: Several countries on).
+  const store = await newStore("e2e-rn-term", ["countries"]);
   await withDb(async (sql) => {
     await sql`update commerce.terms set slug = ${`hjem-${run}`} where store_id = ${store.id} and kind = 'category' and slug = 'hjem'`;
     await sql`update commerce.terms set slug = ${`nyhet-${run}`} where store_id = ${store.id} and kind = 'tag' and slug = 'nyhet'`;
@@ -74,7 +76,7 @@ test("a renamed category's and tag's old addresses redirect for good; an address
 });
 
 test("a manual redirect is followed from the page routes and the catch-all, in every market, with the target's own query kept", async ({ request }) => {
-  const store = await newStore("e2e-manual");
+  const store = await newStore("e2e-manual", ["countries"]);
   await withDb(async (sql) => {
     await sql`
       insert into commerce.redirects (store_id, kind, source, target, origin) values
@@ -175,7 +177,8 @@ test("the 404 report counts what was missing, and never a working page, a token,
 });
 
 test("a manual redirect to an address with Nordic, Polish or Greek letters is a 308 with a pure ASCII Location, never a 500 (the market routes and the proxy)", async ({ request }) => {
-  const store = await newStore("e2e-unicode");
+  // Norway and Sweden (D178: Several countries on).
+  const store = await newStore("e2e-unicode", ["countries"]);
   const cases = [
     { from: `/gammel-ost-${run}`, to: "/search?q=blå", location: "/search?q=bl%C3%A5" },
     { from: `/gammel-pl-${run}`, to: "/pages/zażółć", location: "/pages/za%C5%BC%C3%B3%C5%82%C4%87" },

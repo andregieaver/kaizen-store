@@ -380,7 +380,8 @@ const BUILDERS: Record<string, (x: Run) => Promise<Built>> = {
   },
   "traffic.refund_markets": async (x) => {
     const r = await refunds(x);
-    const names = Object.fromEntries(x.ctx.store.markets.map((m) => [m.code, m.name]));
+    // Every country the store had: past orders keep their country's name (D178).
+    const names = Object.fromEntries(x.ctx.store.allMarkets.map((m) => [m.code, m.name]));
     return { rows: r.markets.map((m) => ({ market: marketName(names, m.market), value: m.valueMinor, refunds: m.refunds, orders: m.orders, revenue: m.revenueMinor, rate: m.rate })), leftOut: left(r) };
   },
   "traffic.refund_reasons": async (x) => {

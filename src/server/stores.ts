@@ -7,7 +7,7 @@ import { readDb } from "@/db/client";
 import { effectiveAudience, parseStoreAudience, type StoreAudience } from "@/lib/b2b";
 import type { StoreCurrency } from "@/lib/currency";
 import { localizationOf, type Localization } from "@/lib/localization";
-import { toMarket, type Market } from "@/lib/markets";
+import { offeredMarkets, toMarket, type Market } from "@/lib/markets";
 import { isTermsMode, type TermsMode } from "@/lib/checkout-terms";
 import { isLegalRole, type LegalRole } from "@/lib/legal-roles";
 import { isPageRole, type PageRole } from "@/lib/page-roles";
@@ -70,8 +70,15 @@ export type Store = {
   timeZone: string;
   /** Hours before an appointment its reminder goes (D65); 0 sends none. */
   bookingReminderHours: number;
-  /** Active markets, the store's own country first, each as its country is shown by default. */
+  /**
+   * The countries offered (D178), each as it is shown by default: every active market while Several countries is on, else the store's own
+   * alone. The store's own country (`homeMarket()`) is first. Read this everywhere a country is offered, listed or chosen.
+   */
   markets: Market[];
+  /** Every active market the owner keeps, the store's own first, offered or not (the Countries page, the facts of a switch). */
+  keptMarkets: Market[];
+  /** Every market the store has had, active or not: an order's after-sale links open in its own country, offered or not (D178). */
+  allMarkets: Market[];
   /**
    * The languages and currencies it offers, whatever its countries (D109):
    * the languages (main first) products, pages and emails are written in, and
@@ -180,6 +187,11 @@ async function loadStore(slug: string): Promise<Store | null> {
         '[]'
       ) as markets,
       (
+        select coalesce(json_agg(json_build_object('code', a.code, 'currency', a.currency, 'defaultLocale', a.default_locale)
+          order by a.active desc, (a.code = s.country) desc nulls last, a.created_at, a.code), '[]')
+        from commerce.markets a where a.store_id = s.id
+      ) as all_markets,
+      (
         select coalesce(json_agg(json_build_object('id', mn.id, 'name', mn.name, 'items', mn.items) order by mn.name), '[]')
         from commerce.menus mn where mn.store_id = s.id
       ) as menus
@@ -240,9 +252,14 @@ async function loadStore(slug: string): Promise<Store | null> {
   };
 }
 
-/** The markets and what the store offers in languages and currencies, as read from its row. */
-function localized(row: Row): Pick<Store, "markets" | "localization" | "ratesAuto" | "ratesUpdatedAt" | "chosenLocales" | "chosenCurrencies"> {
-  const markets = (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(toMarket);
+/**
+ * The markets and what the store offers in languages and currencies, as read from its row and switched by its features (D178): the countries
+ * offered (`offeredMarkets()`), and languages and currencies beyond each country's own only while Several languages or currencies is on.
+ */
+function localized(row: Row): Pick<Store, "markets" | "keptMarkets" | "allMarkets" | "localization" | "ratesAuto" | "ratesUpdatedAt" | "chosenLocales" | "chosenCurrencies"> {
+  const features = normaliseFeatures(Array.isArray(row.features) ? (row.features as unknown[]).map(String) : []);
+  const keptMarkets = (row.markets as { code: string; currency: string; defaultLocale: string }[]).map(toMarket);
+  const markets = offeredMarkets(keptMarkets, featureOn(features, "countries"));
   const chosenLocales = ((row.locales ?? []) as string[]).map(String);
   const chosenCurrencies = ((row.currencies ?? []) as { currency: string; rate: string | number | null; roundTo: number }[]).map((c) => ({
     currency: String(c.currency).trim(),
@@ -251,7 +268,13 @@ function localized(row: Row): Pick<Store, "markets" | "localization" | "ratesAut
   }));
   return {
     markets,
-    localization: localizationOf(chosenLocales, chosenCurrencies, markets),
+    keptMarkets,
+    allMarkets: ((row.all_markets ?? []) as { code: string; currency: string; defaultLocale: string }[]).map(toMarket),
+    localization: localizationOf(chosenLocales, chosenCurrencies, markets, {
+      kept: keptMarkets,
+      languages: featureOn(features, "languages"),
+      currencies: featureOn(features, "currencies"),
+    }),
     ratesAuto: Boolean(row.rates_auto),
     ratesUpdatedAt: row.rates_updated_at ? new Date(String(row.rates_updated_at)).toISOString() : null,
     chosenLocales,

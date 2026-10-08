@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { AbMarker } from "@/components/ab/ab-marker";
@@ -14,7 +13,7 @@ import { listGridProducts } from "@/server/catalog";
 import { productsPageOf } from "@/server/pages";
 import { placePageForVisitor } from "@/server/role-pages";
 import { storeShareImage, storeShareTags } from "@/server/seo";
-import { resolveShop } from "@/server/shop";
+import { marketMoved, resolveShop } from "@/server/shop";
 
 type Props = PageProps<"/s/[store]/[market]/products">;
 
@@ -65,7 +64,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function ProductsPage({ params, searchParams }: Props) {
   const loaded = await load(params);
-  if (!loaded) notFound();
+  // A country, language or currency the store no longer offers moves to one it does (D178).
+  if (!loaded) return marketMoved((await params).store, (await params).market, "/products");
   const { store, market, page, test, version } = loaded;
   const base = marketPath(store.slug, market.slug);
   const path = `${base}/products`;

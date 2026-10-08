@@ -16,6 +16,7 @@ import { UiTexts } from "@/components/ui-texts";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { buyerScript } from "@/lib/b2b";
 import { t } from "@/lib/i18n";
+import { languageChoices } from "@/lib/localization";
 import { inView } from "@/lib/markets";
 import { looksLikeMarket } from "@/lib/redirect-path";
 import { adminOrigin, marketPath, storeHome, storeSiteUrl } from "@/lib/paths";
@@ -24,7 +25,7 @@ import { footerHasWithdrawal } from "@/lib/site-layout";
 import { themeAttributes } from "@/lib/theme";
 import { siteFontStyle } from "@/server/fonts";
 import { storeShareImage, storeShareTags, verificationTags } from "@/server/seo";
-import { prerenderedShops, resolveShop } from "@/server/shop";
+import { prerenderedShops, resolveAfterSaleShop, resolveShop } from "@/server/shop";
 import { legalLinksFor } from "@/server/legal-links";
 import { siteLayoutForVisitor } from "@/server/site-layouts";
 import { uiTextsFor } from "@/server/ui-text";
@@ -43,7 +44,11 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { store: storeSlug, market: marketSlug } = await params;
   const shop = await resolveShop(storeSlug, marketSlug);
-  if (!shop) return {};
+  if (!shop) {
+    // A country, language or currency no longer offered (D178): only what was bought opens here, never for search engines.
+    const kept = await resolveAfterSaleShop(storeSlug, marketSlug);
+    return kept ? { title: { default: kept.store.name, template: `%s · ${kept.store.name}` }, robots: { index: false }, icons: siteIcons(kept.store.navigation.favicon) } : {};
+  }
   const { store, market, ab } = shop;
   const title = store.seo.title[market.locale] || store.name;
   const description =
@@ -61,10 +66,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: {
       canonical,
       languages: {
-        // Every country in every language the store is in (D109).
+        // Every country offered in every language a shopper can see it in (D109; D178: its own only with Several languages off).
         ...Object.fromEntries(
           store.markets.flatMap((m) =>
-            store.localization.locales.map((locale) => [
+            languageChoices(store.localization, m).map((locale) => [
               `${locale.split("-")[0]}-${m.code}`,
               marketPath(store.slug, inView(m, { locale, currency: m.nativeCurrency }).slug),
             ]),
@@ -88,7 +93,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function MarketLayout({ children, drawer, params }: Props) {
   const { store: storeSlug, market: marketSlug } = await params;
-  const shop = await resolveShop(storeSlug, marketSlug);
+  // A country, language or currency the store no longer offers (D178) is still drawn here: its page moves to one offered (`marketMoved()`), or,
+  // for what a shopper already bought (an order, a withdrawal, a document), opens as it was bought (`resolveAfterSaleShop()`).
+  const shop = (await resolveShop(storeSlug, marketSlug)) ?? (await resolveAfterSaleShop(storeSlug, marketSlug));
   if (!shop) {
     // A first part that only looks like a market (`/om-oss`, an old shop's page) may be a manual redirect's source (wave 2, D168); the proxy leaves it to this layout.
     const moved = looksLikeMarket(marketSlug) ? await legacyLocation(storeSlug, marketSlug) : null;

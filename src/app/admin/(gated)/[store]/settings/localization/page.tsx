@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { FeatureOffNote } from "@/components/admin/feature-off";
 import { ROUND_STEPS } from "@/lib/currency";
 import { currencyName, languageName, languageOptions } from "@/lib/localization";
 import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
 import { OFFERABLE_CURRENCIES, minorUnitDigits } from "@/lib/money";
+import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { enabledLanguages } from "@/server/languages";
 import { uiCounts } from "@/server/ui-text";
@@ -20,6 +22,9 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
   const { store } = current;
   const owner = memberCan(current, "owner");
   const { localization, markets } = store;
+  // Several languages and Several currencies (D178): each section is there while its feature is on; what was chosen is kept while off.
+  const languagesOn = featureOn(store, "languages");
+  const currenciesOn = featureOn(store, "currencies");
   const [languages, counts] = await Promise.all([enabledLanguages(), uiCounts()]);
   const catalogSize = fullCatalog().length;
   /** Where a language's interface text (buttons, cart, checkout, emails) stands. */
@@ -31,8 +36,9 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
     return `Interface ${share} % translated${c.reviewed >= c.translated ? ", reviewed" : ", not yet reviewed"}`;
   };
   const main = localization.locales[0];
-  const ownLanguages = new Set(markets.map((market) => market.ownLocale.split("-")[0]));
-  const natives = new Set(markets.map((market) => market.nativeCurrency));
+  // Every country the store keeps, offered or not, keeps its language and currency.
+  const ownLanguages = new Set(store.keptMarkets.map((market) => market.ownLocale.split("-")[0]));
+  const natives = new Set(store.keptMarkets.map((market) => market.nativeCurrency));
   const offered = new Set(localization.currencies.map((c) => c.currency));
   const currencyOf = new Map(localization.currencies.map((c) => [c.currency, c]));
   // The countries' own first, then the offered ones, then the rest.
@@ -59,6 +65,9 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
           Products, pages, menus and emails can be written in each language. The main language is the one you write in
           first; the others are translations. A language a country shows by default cannot be removed.
         </p>
+        {!languagesOn ? (
+          <FeatureOffNote storeSlug={store.slug} feature="languages" owner={owner} what="Languages besides each country's own" />
+        ) : (
         <ActionForm action={saveLanguagesAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <table className="w-full rounded-lg border border-border bg-background text-left text-sm">
             <thead>
@@ -143,6 +152,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
           </ul>
           {owner && <div><SubmitButton>Save languages</SubmitButton></div>}
         </ActionForm>
+        )}
       </section>
 
       <section className="flex flex-col gap-4" aria-labelledby="currencies">
@@ -152,6 +162,10 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
           rate, and so does each country&apos;s own, before amounts can be shown in it. Converted amounts are rounded to
           the step you choose. Subscriptions and subscription boxes are only in a country&apos;s own currency.
         </p>
+        {!currenciesOn ? (
+          <FeatureOffNote storeSlug={store.slug} feature="currencies" owner={owner} what="Currencies besides each country's own" />
+        ) : (
+        <>
         <ActionForm action={saveCurrenciesAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <table className="w-full rounded-lg border border-border bg-background text-left text-sm">
             <thead>
@@ -224,6 +238,8 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
           <ActionForm action={fetchRatesAction.bind(null, store.slug)}>
             <SubmitButton>Fetch the ECB&apos;s rates now</SubmitButton>
           </ActionForm>
+        )}
+        </>
         )}
       </section>
     </div>

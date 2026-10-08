@@ -7,7 +7,7 @@ import type { ReturnAddress } from "@/lib/withdrawal";
 import { audit } from "@/server/auth";
 import { checkOwnerRole } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
-import { saveInstructionTranslations, saveReturnSettings } from "@/server/return-settings";
+import { getInstructionTranslations, saveInstructionTranslations, saveReturnSettings } from "@/server/return-settings";
 import { storeTag } from "@/server/stores";
 
 const text = (form: FormData, name: string): string => String(form.get(name) ?? "").trim();
@@ -40,12 +40,18 @@ export async function saveReturnSettingsAction(storeSlug: string, _previous: For
   );
   if (!saved.ok) return { status: "error", messages: saved.problems };
 
-  // The instructions in the store's other languages: only those it offers.
-  const others = member.store.localization.locales.slice(1);
+  // The instructions in the store's other languages: those it shows now from the form, and those it keeps but does not show (D178) as they were.
+  const { locales, keptLocales } = member.store.localization;
+  const others = locales.slice(1);
+  const hidden = keptLocales.filter((locale) => !locales.includes(locale));
+  const before: Record<string, string> = hidden.length > 0 ? await getInstructionTranslations(member.store.id) : {};
   const translated = await saveInstructionTranslations(
     member.store.id,
-    Object.fromEntries(others.map((locale) => [locale, text(form, `instructions:${locale}`)])),
-    others,
+    {
+      ...Object.fromEntries(hidden.flatMap((locale) => (before[locale] ? [[locale, before[locale]]] : []))),
+      ...Object.fromEntries(others.map((locale) => [locale, text(form, `instructions:${locale}`)])),
+    },
+    [...others, ...hidden],
     member.account.id,
   );
   if (!translated.ok) return { status: "error", messages: translated.problems };
