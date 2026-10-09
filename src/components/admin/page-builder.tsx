@@ -3971,6 +3971,38 @@ function ImageFields({
           <span className="text-xs font-normal text-muted">Leave it empty only if the picture is decoration.</span>
         </label>
       )}
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${id}-href`} className="text-sm font-medium">
+          Link <span className="font-normal text-muted">(optional)</span>
+        </label>
+        <input
+          id={`${id}-href`}
+          value={block.href ?? ""}
+          maxLength={2000}
+          spellCheck={false}
+          placeholder="https://… or /about"
+          aria-invalid={Boolean(block.href?.trim() && !isLinkAddress(block.href.trim()))}
+          aria-describedby={`${id}-href-hint`}
+          onChange={(event) => onChange({ ...block, href: event.target.value || undefined })}
+          className="min-h-10 rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-red-700"
+        />
+        <span
+          id={`${id}-href-hint`}
+          className={`text-xs ${block.href?.trim() && !isLinkAddress(block.href.trim()) ? "text-red-700 dark:text-red-400" : "text-muted"}`}
+        >
+          {block.href?.trim() && !isLinkAddress(block.href.trim())
+            ? "Use a web address (https://…), a page on the site (/about), an anchor (#contact), mailto: or tel:."
+            : "Makes the picture a link. Describe the picture above, or the link has no name for screen readers."}
+        </span>
+      </div>
+      {block.href?.trim() && (
+        <Check
+          label="Open in a new tab"
+          hint="Screen readers are told it opens a new tab."
+          checked={Boolean(block.newTab)}
+          onChange={(newTab) => onChange({ ...block, newTab: newTab || undefined })}
+        />
+      )}
       <label htmlFor={`${id}-caption`} className="flex flex-col gap-1 text-sm font-medium">
         <span>
           Caption <span className="font-normal text-muted">(optional, shown under the picture)</span>

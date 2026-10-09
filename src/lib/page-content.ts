@@ -553,6 +553,9 @@ export type ImageBlock = PartBase & Bindable & {
   type: "image";
   image: { url: string; width: number; height: number; alt: string } | null;
   caption: string;
+  /** Where the picture leads when pressed (a web address, a page like /about, #anchor, mailto: or tel:); none for a plain picture. */
+  href?: string;
+  newTab?: boolean;
   shape?: ImageShape;
   /** The widest it is drawn, in pixels. Left out: the picture's own width (for a crop, the crop's own width). Never enlarges. */
   maxWidth?: number;
@@ -2196,6 +2199,13 @@ const imageBlock = z.object({
     })
     .nullable(),
   caption: z.string().trim().max(ALT_MAX, `Keep a caption under ${ALT_MAX} characters.`).default(""),
+  href: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine((href) => href === "" || isLinkAddress(href), "A picture's link must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.")
+    .optional(),
+  newTab: z.boolean().optional(),
   shape: z.enum(Object.keys(IMAGE_SHAPES) as [ImageShape, ...ImageShape[]]).optional(),
   maxWidth: pictureWidth,
   align: textAlign,

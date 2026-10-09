@@ -188,8 +188,9 @@ function sanitizeBlock(block: PageBlock, from: ForeignStore, trusted: boolean): 
     case "richText":
       return { ...without(block, ["bind"]), doc: editDoc(block.doc, href) } as PageBlock;
     case "heading":
-    case "image":
       return without(block, ["bind"]) as PageBlock;
+    case "image":
+      return { ...without(block, ["bind"]), ...(block.href && { href: href(block.href) }) } as PageBlock;
     case "button":
       return { ...without(block, ["bind"]), href: href(block.href) };
     case "dualButton":

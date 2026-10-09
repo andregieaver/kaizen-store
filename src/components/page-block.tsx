@@ -25,6 +25,7 @@ import {
   type VideoBlock,
   type TestimonialsBlock,
   testimonialShows,
+  isLinkAddress,
 } from "@/lib/page-content";
 
 import { faqJsonLd } from "@/lib/seo";
@@ -132,16 +133,31 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       // the column, so the picture shrinks to a narrower column or a phone, keeping its shape, and the caption stays under it.
       const size = imageDisplaySize(block);
       if (!block.image || !size) return null;
+      const picture = (
+        <Image
+          src={block.image.url}
+          alt={block.image.alt}
+          width={size.width}
+          height={size.height}
+          unoptimized
+          className={`h-auto max-w-full ${block.shape ? SHAPES[block.shape] : "rounded-lg"}`}
+        />
+      );
+      const href = block.href?.trim() ?? "";
       return (
         <figure>
-          <Image
-            src={block.image.url}
-            alt={block.image.alt}
-            width={size.width}
-            height={size.height}
-            unoptimized
-            className={`h-auto max-w-full ${block.shape ? SHAPES[block.shape] : "rounded-lg"}`}
-          />
+          {href !== "" && isLinkAddress(href) ? (
+            <a
+              href={href}
+              className="inline-block max-w-full focus-visible:outline-2"
+              {...(block.newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+            >
+              {picture}
+              {block.newTab && <span className="sr-only"> (opens in a new tab)</span>}
+            </a>
+          ) : (
+            picture
+          )}
           {block.caption && (
             <figcaption className="mt-2 text-sm text-muted [overflow-wrap:anywhere]">
               <Inline text={block.caption} links />
