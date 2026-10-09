@@ -675,14 +675,21 @@ export type GridColumns = { mobile: number; tablet: number; desktop: number };
 export const GRID_ELEMENTS = { image: "Picture", heading: "Heading", excerpt: "Excerpt", price: "Price", button: "Button" } as const;
 export type GridElement = keyof typeof GRID_ELEMENTS;
 /** A tile's own box: background, padding, border, corners and shadow. */
+/** A card's content space as four sides, or none when it is zero everywhere. */
+export function contentSides(padding: number | Sides | undefined): Sides | null {
+  if (padding === undefined) return null;
+  const sides = typeof padding === "number" ? { top: padding, right: padding, bottom: padding, left: padding } : padding;
+  return sides.top + sides.right + sides.bottom + sides.left > 0 ? sides : null;
+}
+
 export type GridTile = {
   background?: Color;
   /** The card's text colour: its words, and (through the muted colour) its secondary words. */
   color?: Color;
   /** Space inside the card, around the picture and the words. */
   padding?: number;
-  /** Space around the words only (not the picture), so a picture can reach the card's edge while the words keep clear of it. */
-  contentPadding?: number;
+  /** Space around the words only (not the picture), so a picture can reach the card's edge while the words keep clear of it: one number for every side, or each side's. */
+  contentPadding?: number | Sides;
   border?: Border;
   radius?: number;
   shadow?: Shadow;
@@ -2360,7 +2367,7 @@ const contentGridBlock = z
       background: color.optional(),
       color: color.optional(),
       padding: z.number().int().min(0).max(SPACING_MAX).optional(),
-      contentPadding: z.number().int().min(0).max(SPACING_MAX).optional(),
+      contentPadding: z.union([z.number().int().min(0).max(SPACING_MAX), z.object({ top: side, right: side, bottom: side, left: side })]).optional(),
       border: partBase.border,
       radius: partBase.radius,
       shadow: partBase.shadow,

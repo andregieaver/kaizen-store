@@ -172,6 +172,7 @@ import {
   type SitePart,
   type ColumnJustify,
   type PageType,
+  contentSides,
 } from "@/lib/page-content";
 import { applyPageLayout, isBlankPage, type ApplyMode } from "@/lib/page-layout-apply";
 import { hasMotion, type BackgroundMotion, type EnterMotion } from "@/lib/motion";
@@ -5689,12 +5690,12 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
           max={SPACING_MAX}
           onChange={(padding) => onChange({ tile: mergeOptional(tile, { padding: padding || undefined }) })}
         />
-        <NumberField
-          label="Space around the card's words"
+        <SidesFields
+          legend="Space around the card's words"
           hint="padding of the text under the picture, in pixels"
-          value={tile?.contentPadding ?? 0}
+          value={contentSides(tile?.contentPadding) ?? { top: 0, right: 0, bottom: 0, left: 0 }}
           max={SPACING_MAX}
-          onChange={(contentPadding) => onChange({ tile: mergeOptional(tile, { contentPadding: contentPadding || undefined }) })}
+          onChange={(sides) => onChange({ tile: mergeOptional(tile, { contentPadding: contentSides(sides) ? sides : undefined }) })}
         />
         <FrameFields what="Card" value={tile ?? {}} onChange={(patch) => onChange({ tile: mergeOptional(tile, patch) })} />
       </div>

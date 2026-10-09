@@ -24,16 +24,18 @@ describe("a grid's cards, drawn", () => {
     expect(out).toContain("padding:12px");
   });
 
-  it("keep the picture at the card's edge and the words clear of it when the words have their own space", () => {
+  it("put the words in a box of their own with the space chosen, the picture outside it", () => {
     const out = html({ contentPadding: 16 });
-    expect(out).toContain("--tile-content:16px");
-    expect(out).toContain("[&amp;&gt;:not([data-tile-media])]:px-(--tile-content)");
-    expect(out).toContain('data-tile-media=""');
+    expect(out).toContain("data-tile-body");
+    expect(out).toContain("padding:16px 16px 16px 16px");
+    expect(out.indexOf("<img")).toBeLessThan(out.indexOf("data-tile-body"));
+    // Each side on its own.
+    expect(html({ contentPadding: { top: 4, right: 8, bottom: 12, left: 16 } })).toContain("padding:4px 8px 12px 16px");
   });
 
   it("draw nothing extra without them", () => {
     const out = html(undefined);
-    expect(out).not.toContain("--tile-content");
+    expect(out).not.toContain("data-tile-body");
     expect(out).not.toContain("--color-muted");
   });
 });

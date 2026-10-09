@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { audienceClass } from "@/lib/b2b";
 import { snapAttribute } from "@/lib/carousel-settings";
@@ -10,7 +10,7 @@ import { familyClassOf, textRoles } from "@/lib/typography";
 import { t } from "@/lib/i18n";
 import { inlinePlain } from "@/lib/inline-text";
 import { sourceTraits } from "@/lib/grid-source";
-import { frameStyle, gridImageShape, type ContentGridBlock } from "@/lib/page-content";
+import { contentSides, frameStyle, gridImageShape, type ContentGridBlock, type Sides } from "@/lib/page-content";
 import { gridListStyle } from "@/lib/part-css";
 import { carouselAnywhere } from "@/lib/responsive";
 
@@ -58,7 +58,6 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
     ...(tile?.padding && { padding: `${tile.padding}px` }),
     // The card's text colour also sets the muted colour its excerpts and dates use, inside it only.
     ...(tile?.color && ({ color: tile.color, "--color-muted": tile.color } as CSSProperties)),
-    ...(tile?.contentPadding && ({ "--tile-content": `${tile.contentPadding}px` } as CSSProperties)),
   };
   // A carousel at some sizes is drawn as one, and laid out as a grid where it is not (D179, the part stylesheet).
   const carousel = carouselAnywhere(block);
@@ -82,12 +81,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
           key={item.id}
           data-item-id={item.id}
           style={tileStyle}
-          className={`flex min-w-0 flex-col gap-3 ${tile?.radius ? "overflow-hidden" : ""} ${
-            // Space around the words only: every part but the picture keeps clear of the card's sides, the last of its bottom, a first one without a picture of its top.
-            tile?.contentPadding
-              ? "[&>:first-child:not([data-tile-media])]:pt-(--tile-content) [&>:last-child:not([data-tile-media])]:pb-(--tile-content) [&>:not([data-tile-media])]:px-(--tile-content)"
-              : ""
-          } ${themed && !tile ? "product-card relative" : ""} ${
+          className={`flex min-w-0 flex-col gap-3 ${tile?.radius ? "overflow-hidden" : ""} ${themed && !tile ? "product-card relative" : ""} ${
             item.audience ? audienceClass(item.audience) : ""
           }`}
         >
@@ -102,9 +96,9 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
               // Without a heading or a button to link, the picture is the item's link for everyone (a logo strip, picture-only cards).
               only={item.href !== "" && !(block.show.heading && item.title) && !block.show.button}
               fallbackName={plain(item.title || item.buttonLabel || label)}
-              mark={Boolean(tile?.contentPadding)}
             />
           )}
+          <TileBody padding={tile?.contentPadding}>
           {item.badge && !(block.show.image && item.image) && <ItemBadge text={item.badge} />}
           {block.show.heading && item.title && (
             <Heading
@@ -179,11 +173,26 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
               </a>
             </div>
           )}
+          </TileBody>
         </li>
       ))}
     </ul>
   );
   return carousel ? <Carousel settings={block.carousel}>{list}</Carousel> : list;
+}
+
+/**
+ * What is under a card's picture: its words, button and price. With a space of its own (`contentPadding`, one number or the four sides) they
+ * sit in one box that has it, so the picture can reach the card's edge; without, they are the card's own children, as they always were.
+ */
+function TileBody({ padding, children }: { padding: number | Sides | undefined; children: ReactNode }) {
+  const sides = contentSides(padding);
+  if (!sides) return <>{children}</>;
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-3" data-tile-body="" style={{ padding: `${sides.top}px ${sides.right}px ${sides.bottom}px ${sides.left}px` }}>
+      {children}
+    </div>
+  );
 }
 
 /** What names an item for a screen reader: its title, else the description of the picture the tile shows. */
@@ -207,7 +216,6 @@ function TileImage({
   m,
   only,
   fallbackName,
-  mark,
 }: {
   item: GridData["items"][number];
   image: { url: string; alt: string; width?: number; height?: number };
@@ -217,31 +225,28 @@ function TileImage({
   m: ReturnType<typeof t>;
   only: boolean;
   fallbackName: string;
-  /** Marks the picture for the card's `contentPadding`, which keeps it at the card's edge. */
-  mark: boolean;
 }) {
   const picture =
     item.href === "" ? (
-      <TilePicture image={image} alt={image.alt} shape={shape} mark={mark} />
+      <TilePicture image={image} alt={image.alt} shape={shape} />
     ) : only ? (
       <a
         href={item.href}
         // The picture's own description names the link; without one, the item's title (or the button's words) does.
         aria-label={image.alt.trim() === "" ? fallbackName : undefined}
         className="relative z-[2] block focus-visible:outline-2"
-        data-tile-media={mark ? "" : undefined}
         {...externalAttributes(item)}
       >
-        <TilePicture image={image} alt={image.alt} shape={shape} mark={mark} />
+        <TilePicture image={image} alt={image.alt} shape={shape} />
       </a>
     ) : (
-      <a href={item.href} tabIndex={-1} aria-hidden className="relative z-[2] block" data-tile-media={mark ? "" : undefined} {...externalAttributes(item)}>
+      <a href={item.href} tabIndex={-1} aria-hidden className="relative z-[2] block" {...externalAttributes(item)}>
         {isProduct && <CampaignBadge notices={noticesFor(notices, item.id)} m={m} />}
-        <TilePicture image={image} alt="" shape={shape} mark={mark} />
+        <TilePicture image={image} alt="" shape={shape} />
       </a>
     );
   return item.badge ? (
-    <div className="relative" data-tile-media={mark ? "" : undefined}>
+    <div className="relative">
       {picture}
       <ItemBadge text={item.badge} over />
     </div>
@@ -251,7 +256,7 @@ function TileImage({
 }
 
 /** A tile's picture, at its own size when the item has one (custom items, D155), else the usual 800 by 600. */
-function TilePicture({ image, alt, shape, mark }: { image: { url: string; width?: number; height?: number }; alt: string; shape: ReturnType<typeof gridImageShape>; mark: boolean }) {
+function TilePicture({ image, alt, shape }: { image: { url: string; width?: number; height?: number }; alt: string; shape: ReturnType<typeof gridImageShape> }) {
   return (
     <Image
       src={image.url}
@@ -259,7 +264,6 @@ function TilePicture({ image, alt, shape, mark }: { image: { url: string; width?
       width={image.width ?? 800}
       height={image.height ?? 600}
       unoptimized
-      data-tile-media={mark ? "" : undefined}
       className={`h-auto w-full bg-surface ${
         shape === "original" ? "rounded-lg" : shape === "theme" ? "product-card-image rounded-lg object-cover" : SHAPES[shape]
       }`}
