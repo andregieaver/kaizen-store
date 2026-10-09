@@ -165,7 +165,7 @@ function ModalSettings({
         <legend className="mb-1 text-sm font-medium">Opens when</legend>
         <Check
           label="A button or link is pressed"
-          hint={`Give a button the action Opens a modal, or link any text, menu item or button to ${modalHash(modal.key)}.`}
+          hint={`Give a button the action Opens a modal, or link any text, menu item or button to ${modalHash(modal.key)}. It opens on the pages that have this modal: one built in a page is on that page only, so build it in the footer or header to open it from every page.`}
           checked={Boolean(triggers.button)}
           onChange={(button) => setTriggers({ button: button || undefined })}
         />

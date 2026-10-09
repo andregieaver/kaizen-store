@@ -49,6 +49,7 @@ describe("a row's Modal setting", () => {
       "Opens when",
       "A button or link is pressed",
       "Give a button the action Opens a modal, or link any text, menu item or button to #modal-newsletter.",
+      "one built in a page is on that page only, so build it in the footer or header to open it from every page.",
       "An element with a class is pressed",
       "Add the class to any button, image or text with Advanced → CSS classes.",
       "Class name",
