@@ -629,7 +629,8 @@ export type GridContent = keyof typeof GRID_CONTENT;
  * own pages (D53) they are the store's products in the shopper's market.
  */
 export type GridSource =
-  | { type: "pages" }
+  /** `parent`: only the pages nested directly under that address (`projects`), or `@this` for the page the grid is on. */
+  | { type: "pages"; parent?: string }
   | { type: "articles" }
   /** Items the owner writes by hand (D155): they live in the block (`ContentGridBlock.items`), as testimonials' do. */
   | { type: "custom" }
@@ -643,7 +644,12 @@ export type GridRecommend = { mix: { upsell: boolean; crossSell: boolean; comple
 export const DEFAULT_GRID_RECOMMEND: GridRecommend = { mix: { upsell: true, crossSell: true, complement: true }, explain: true };
 /** A grid's source with only what moves between stores: no store or market, the recommendation options kept. */
 export const ownProducts = (source: GridSource): GridSource =>
-  source.type === "products" ? { type: "products", ...(source.recommend && { recommend: source.recommend }) } : source;
+  source.type === "products"
+    ? { type: "products", ...(source.recommend && { recommend: source.recommend }) }
+    : // Another owner's parent page is not this one's; "the page it is on" moves with the grid.
+      source.type === "pages" && source.parent !== "@this"
+      ? { type: "pages" }
+      : source;
 export const GRID_SORTS = {
   newest: "Newest first",
   oldest: "Oldest first",
@@ -2268,7 +2274,14 @@ const contentGridBlock = z
   source: z.discriminatedUnion(
     "type",
     [
-      z.object({ type: z.literal("pages") }),
+      z.object({
+        type: z.literal("pages"),
+        parent: z
+          .union([z.literal("@this"), z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*){0,2}$/).max(240)], {
+            error: "Choose the parent page whose pages the grid shows.",
+          })
+          .optional(),
+      }),
       z.object({ type: z.literal("articles") }),
       z.object({ type: z.literal("custom") }),
       z.object({

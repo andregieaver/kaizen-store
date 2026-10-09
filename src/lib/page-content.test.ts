@@ -26,6 +26,7 @@ import {
   newPageContent,
   pageExcerpt,
   pageFonts,
+  ownProducts,
   pageInput,
   pageSlugFromTitle,
   pageSlugProblem,
@@ -797,5 +798,30 @@ describe("nested page addresses", () => {
     expect(pageSegment("a/b/c")).toBe("c");
     expect(joinPagePath("", "x")).toBe("x");
     expect(joinPagePath("a/b", "c")).toBe("a/b/c");
+  });
+});
+
+describe("a grid of the pages under one", () => {
+  const grid = (source: object) => ({ ...newBlock("contentGrid", () => "g1"), source });
+  const ok = (source: object) =>
+    pageInput.safeParse({
+      ...newPageContent(),
+      title: "T",
+      slug: "t",
+      rows: [{ id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [grid(source)] }] }],
+    }).success;
+
+  it("names a parent's address or the page it is on, and no other string", () => {
+    expect(ok({ type: "pages", parent: "projects" })).toBe(true);
+    expect(ok({ type: "pages", parent: "projects/2026" })).toBe(true);
+    expect(ok({ type: "pages", parent: "@this" })).toBe(true);
+    expect(ok({ type: "pages" })).toBe(true);
+    expect(ok({ type: "pages", parent: "Projects" })).toBe(false);
+    expect(ok({ type: "pages", parent: "@other" })).toBe(false);
+  });
+
+  it("keeps 'the page it is on' when moved to another store, and drops a named parent", () => {
+    expect(ownProducts({ type: "pages", parent: "@this" })).toEqual({ type: "pages", parent: "@this" });
+    expect(ownProducts({ type: "pages", parent: "projects" })).toEqual({ type: "pages" });
   });
 });

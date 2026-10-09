@@ -448,6 +448,7 @@ export function PageEditor({
           pageId: saved?.id ?? null,
           owner: context.owner,
           pageTerms: context.type === "page" ? terms : (gridTerms.page ?? []),
+          pageChoices: context.parents ?? [],
           articleTerms: context.type === "article" ? terms : (gridTerms.article ?? []),
           stores: context.gridStores,
           menus: context.menus,

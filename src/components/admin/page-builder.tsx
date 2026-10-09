@@ -458,6 +458,8 @@ export type GridContext = {
   pageId: string | null;
   owner: string | null;
   pageTerms: Term[];
+  /** The owner's pages, for a grid that shows the pages under one (D185). */
+  pageChoices?: readonly { slug: string; title: string }[];
   /** The owner's article categories and tags (D57), for a grid of articles. */
   articleTerms: Term[];
   stores: GridStore[];
@@ -5400,6 +5402,34 @@ function ContentGridFields({
             </div>
           </div>
         ))}
+      {source.type === "pages" && (
+        <div className="flex flex-col gap-1 border-t border-border pt-4">
+          <label htmlFor={`${id}-parent`} className="text-sm font-medium">
+            Only pages under
+          </label>
+          <select
+            id={`${id}-parent`}
+            value={source.parent ?? ""}
+            onChange={(event) => onChange({ source: event.target.value ? { type: "pages", parent: event.target.value } : { type: "pages" } })}
+            className={gridField}
+          >
+            <option value="">Any page</option>
+            <option value="@this">The page this grid is on</option>
+            {source.parent && source.parent !== "@this" && !(grid.pageChoices ?? []).some((p) => p.slug === source.parent) && (
+              <option value={source.parent}>/{source.parent}</option>
+            )}
+            {(grid.pageChoices ?? []).map((p) => (
+              <option key={p.slug} value={p.slug}>
+                {p.title} (/{p.slug})
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted">
+            Shows the pages nested directly under the one chosen, such as the projects under Projects. Nothing is shown while the grid is
+            not on a page of its own.
+          </p>
+        </div>
+      )}
       {traits.terms && (
       <div className="flex flex-col gap-2 border-t border-border pt-4">
         <p className="text-sm font-medium">Only these</p>

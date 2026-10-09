@@ -1852,6 +1852,23 @@ describe("pages", () => {
     expect((await redirects("work")).map((r) => r.page_id)).toEqual([parent]);
   });
 
+  it("finds the pages directly under a parent, as a grid of them does", async () => {
+    for (const slug of ["docs", "docs/a", "docs/b", "docs/a/deep", "docsx/c"]) await page(slug);
+    const under = async (parent: string) =>
+      (
+        await db.query<{ slug: string }>(
+          `select p.slug from commerce.pages p
+           where p.store_id is null and (
+             left(p.slug, length($1::text) + 1) = $1::text || '/'
+             and position('/' in substr(p.slug, length($1::text) + 2)) = 0)
+           order by p.slug`,
+          [parent],
+        )
+      ).rows.map((r) => r.slug);
+    expect(await under("docs")).toEqual(["docs/a", "docs/b"]);
+    expect(await under("docs/a")).toEqual(["docs/a/deep"]);
+  });
+
   it("keeps a store's routes from its pages, as the app's list does (D53)", async () => {
     for (const slug of RESERVED_STORE_PAGE_SLUGS) {
       await expect(page(slug, store)).rejects.toThrow(/pages_store_slug_not_reserved/);

@@ -78,7 +78,7 @@ export async function gridData(block: ContentGridBlock, place: GridPlace): Promi
   // Every source is answered here, so a new one is a compile error until it is.
   switch (source.type) {
     case "pages":
-      return gridPages(place.owner, place.market ?? null, filter, place.pageId);
+      return gridPages(place.owner, place.market ?? null, { ...filter, ...(source.parent && { parent: source.parent }) }, place.pageId);
     case "articles":
       // The owner's blog articles (D57), newest first unless chosen.
       return gridPages(place.owner, place.market ?? null, filter, place.pageId, "article");
@@ -142,7 +142,7 @@ export async function ownerSells(owner: string | null): Promise<boolean> {
   return !shop || featureOn(shop.store, "shop");
 }
 
-type Filter = { categories: string[]; tags: string[]; sort: string; limit: number; tileFields: string[] };
+type Filter = { categories: string[]; tags: string[]; sort: string; limit: number; tileFields: string[]; parent?: string };
 
 /**
  * The items with the custom fields the grid's tiles show (D120): one batch read
@@ -209,11 +209,25 @@ async function gridPages(
     filter.sort === "oldest"
       ? sql`coalesce(p.first_published_at, p.published_at), p.slug`
       : sql`coalesce(p.first_published_at, p.published_at) desc, p.slug`;
+  // Pages nested directly under a parent (D185): a named one, or the page the grid is on; with none to be found, nothing.
+  let parent: string | null = null;
+  if (type === "page" && filter.parent) {
+    if (filter.parent === "@this") {
+      const [own] = exclude
+        ? await readDb().execute<Row>(sql`select slug from commerce.pages where id = ${exclude}::uuid and store_id is not distinct from ${owner}::uuid`)
+        : [];
+      if (!own) return { items: [], ...language };
+      parent = String(own.slug);
+    } else parent = filter.parent;
+  }
   const rows = await readDb().execute<Row>(sql`
     select p.id, p.slug, p.published, coalesce(p.first_published_at, p.published_at) as first_published_at
     from commerce.pages p
     where p.store_id is not distinct from ${owner}::uuid and p.type = ${type} and p.published_at is not null
       and (${exclude}::uuid is null or p.id <> ${exclude}::uuid)
+      and (${parent}::text is null or (
+        left(p.slug, length(${parent}::text) + 1) = ${parent}::text || '/'
+        and position('/' in substr(p.slug, length(${parent}::text) + 2)) = 0))
       and ${matches("categories", categories)}
       and ${matches("tags", tags)}
     order by ${dated && filter.sort !== "title" ? articleOrder : order}
