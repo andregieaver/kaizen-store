@@ -266,11 +266,14 @@ export function PartBackground({
   firstRow,
   preview,
   fixed = false,
+  align = "middle",
 }: {
   background: RowBackground | undefined;
   motion?: BackgroundMotion;
   firstRow?: boolean;
   preview?: boolean;
+  /** Which part of a picture or video shows where it is cut to fit: its top, middle or bottom (D184). */
+  align?: "top" | "middle" | "bottom";
   /** The picture, video or gradient stays where it is on the screen while the page scrolls, and what is over it moves (D184). */
   fixed?: boolean;
 }) {
@@ -280,7 +283,9 @@ export function PartBackground({
   const fx = backgroundFx(fixed ? undefined : motion, { firstRow, preview });
   const layered = Object.keys(fx.attrs).length > 0;
   const blur = background.blur ?? 0;
-  const media = cx(fixed ? "fixed object-cover" : "absolute object-cover", blur ? "max-w-none" : "inset-0 size-full");
+  // Written out whole so Tailwind finds each class.
+  const anchor = align === "top" ? "object-top" : align === "bottom" ? "object-bottom" : "";
+  const media = cx(fixed ? "fixed object-cover" : "absolute object-cover", anchor, blur ? "max-w-none" : "inset-0 size-full");
   const still = background.type === "image" ? background.image : background.poster;
   const picture = still && (
     <Image src={still.url} alt="" width={still.width} height={still.height} unoptimized className={media} style={blurredMedia(blur)} />

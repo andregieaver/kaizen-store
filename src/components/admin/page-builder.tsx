@@ -2290,7 +2290,7 @@ function RowItem({
       {row.modal && <ModalBar row={row} lang={actions.lang} />}
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
         <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
-          <PartBackground background={row.background} fixed={row.backgroundFixed} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
+          <PartBackground background={row.background} fixed={row.backgroundFixed} align={row.backgroundAlign} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
           <div className={rowInnerClass(row, "canvas")} style={rowInnerStyle(row, "canvas")}>
             {resizable && widthLimited && row.width === "full" && (
               <RowWidthHandles inset={24} value={contentMax} label={name} onWidth={setWidth} onReset={resetWidth} />
@@ -3467,6 +3467,8 @@ function Dialogs({
                     onBackdropBlur={(backdropBlur) => onRows((current) => patchRow(current, row.id, { backdropBlur }))}
                     fixed={row.backgroundFixed}
                     onFixed={(backgroundFixed) => onRows((current) => patchRow(current, row.id, { backgroundFixed: backgroundFixed || undefined }))}
+                    align={row.backgroundAlign}
+                    onAlign={(backgroundAlign) => onRows((current) => patchRow(current, row.id, { backgroundAlign }))}
                     target="row"
                     motion={row.backgroundMotion}
                     onMotion={(backgroundMotion) => onRows((current) => patchRow(current, row.id, { backgroundMotion }))}
@@ -4022,7 +4024,12 @@ function BackgroundFields({
   mark,
   fixed,
   onFixed,
+  align,
+  onAlign,
 }: {
+  /** Which part of a picture or video shows where it is cut to fit, for a fixed background (D184). */
+  align?: "top" | "middle" | "bottom";
+  onAlign?: (align: "top" | "middle" | "bottom" | undefined) => void;
   /** Rows alone can fix a picture, video or gradient to the screen (D184); given, the choice is offered. */
   fixed?: boolean;
   onFixed?: (fixed: boolean) => void;
@@ -4188,6 +4195,19 @@ function BackgroundFields({
           onChange={onFixed}
         />
       )}
+      {onAlign && fixed && (value?.type === "image" || value?.type === "video") && (
+        <Choices
+          legend="Background position"
+          hint="which part of the picture shows where it is cut to fit the screen"
+          options={[
+            { value: "top", label: "Top" },
+            { value: "middle", label: "Middle" },
+            { value: "bottom", label: "Bottom" },
+          ]}
+          value={align ?? "middle"}
+          onChange={(next) => onAlign(next === "middle" ? undefined : next)}
+        />
+      )}
       {/* A picture, video or gradient can move; a colour cannot. */}
       {backgroundMoves(value) && !fixed && <BackgroundMotionFields target={target} value={motion} onChange={onMotion} />}
     </div>
@@ -4338,7 +4358,7 @@ function RowHeightField({ row, onChange }: { row: PageRow; onChange: (patch: Row
     <div className={`flex flex-col gap-1 ${inheritedClass(sizeSource(row, size, "height"), size)}`}>
       <div className="flex flex-wrap items-center gap-1">
         <label htmlFor={id} className="text-sm font-medium">
-          Height <span className="font-normal text-muted">(% of the screen's height, {ROW_HEIGHT_VH.min} to {ROW_HEIGHT_VH.max})</span>
+          Height <span className="font-normal text-muted">(% of the screen&apos;s height, {ROW_HEIGHT_VH.min} to {ROW_HEIGHT_VH.max})</span>
         </label>
         <SizeMark part={row} field="height" label="Height" onPatch={back} />
       </div>

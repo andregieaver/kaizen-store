@@ -325,6 +325,9 @@ export const SPACING_MAX = 240;
  * the sides. A row set to 0 keeps 0.
  */
 export const ROW_PADDING: Sides = { top: 20, right: 20, bottom: 20, left: 20 };
+/** Where a picture or video background is anchored when it is cut to fit (D184). */
+export const BACKGROUND_ALIGNS = ["top", "middle", "bottom"] as const;
+export type BackgroundAlign = (typeof BACKGROUND_ALIGNS)[number];
 /** A row's height as a share of the screen's, in per cent (D184). */
 export const ROW_HEIGHT_VH = { min: 5, max: 300 } as const;
 /** How wide a row's content may be made, in pixels (`PageRow.contentMax`, the theme's `layout.maxWidth`). */
@@ -1490,6 +1493,8 @@ export type PageRow = PartBase & {
   height?: number;
   /** The background stays where it is on the screen while the page scrolls, and the row's content moves over it (D184). */
   backgroundFixed?: boolean;
+  /** Which part of a picture or video background shows where it is cut to fit (D184): its top, middle (the default) or bottom. */
+  backgroundAlign?: BackgroundAlign;
   /** At least as tall as the screen. */
   fullHeight?: boolean;
   /**
@@ -2791,6 +2796,7 @@ export const pageRowSchema = z.preprocess(upgradeRow, z
     contentMax: contentMaxWidth.optional(),
     height: rowHeightVh.optional(),
     backgroundFixed: z.boolean().optional(),
+    backgroundAlign: z.enum(BACKGROUND_ALIGNS).optional(),
     fullHeight: z.boolean().optional(),
     stack: z.boolean().optional(),
     reverse: z.boolean().optional(),

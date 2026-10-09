@@ -206,7 +206,7 @@ function RowMarkup({
     <div className={row.width === "full" || inPanel ? undefined : `mx-auto w-full max-w-(--content-width) ${rowWidthStyle(row).className}`.trim()}>
       <div id={box.id} className={box.className} style={{ ...box.style, ...rowFx.style }} {...rowFx.attrs}>
         <FontLinks families={partFonts(row)} />
-        <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} fixed={row.backgroundFixed} />
+        <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} fixed={row.backgroundFixed} align={row.backgroundAlign} />
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
             {row.columns.map((column, columnIndex) => {

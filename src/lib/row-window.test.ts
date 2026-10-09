@@ -51,6 +51,14 @@ describe("a fixed background", () => {
     expect(html(picture, false)).not.toContain("clip-path");
   });
 
+  it("shows the top, middle or bottom of a fixed picture", () => {
+    expect(renderToString(createElement(PartBackground, { background: picture as never, fixed: true, align: "top" }))).toContain("object-top");
+    expect(renderToString(createElement(PartBackground, { background: picture as never, fixed: true, align: "bottom" }))).toContain("object-bottom");
+    const middle = renderToString(createElement(PartBackground, { background: picture as never, fixed: true, align: "middle" }));
+    expect(middle).not.toContain("object-top");
+    expect(middle).not.toContain("object-bottom");
+  });
+
   it("keeps its gradient's layer fixed in a frame that is no container", () => {
     const fixed = html(gradient, true);
     expect(fixed).toContain("fixed inset-0");
