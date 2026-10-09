@@ -14,7 +14,7 @@ import {
 import { fontClass } from "@/lib/fonts";
 import type { BackgroundMotion } from "@/lib/motion";
 import { backgroundFx } from "@/lib/motion-attrs";
-import { blockStyle, clipsAnywhere, columnStyle, inlineNowrap, panelStyle, partClass, rowGridStyle, rowStyle, type PartsMode } from "@/lib/part-css";
+import { blockStyle, clipsAnywhere, columnStyle, inlineNowrap, panelStyle, partClass, rowGridStyle, rowStyle, rowWidthStyle, type PartsMode } from "@/lib/part-css";
 import { SIZES } from "@/lib/breakpoints";
 import { valueAt } from "@/lib/responsive";
 import { summarize } from "@/lib/seo";
@@ -76,10 +76,37 @@ export function modalPanelClass(row: PageRow): string {
   return panelStyle(row).className;
 }
 
-/** Inside the row: in a full-width row, what it holds keeps to the content's width unless set to spread. */
+/**
+ * Inside the row: in a full-width row, what it holds keeps to the content's width unless set to spread. On the canvas the
+ * same, in the room the content width leaves (`rowInnerStyle()`), and the frame the resize handles sit in (D182).
+ */
 export function rowInnerClass(row: PageRow, mode: PartsMode): string {
   const keep = row.width === "full" && row.contentWidth !== "full";
-  return cx("flex flex-1 flex-col", keep && (mode === "site" ? "mx-auto w-full max-w-(--content-width)" : "px-6"));
+  return cx(
+    "flex flex-1 flex-col",
+    keep && (mode === "site" ? `mx-auto w-full max-w-(--content-width) ${rowWidthStyle(row).className}` : `relative mx-auto w-full px-6 ${rowWidthStyle(row).className}`),
+  );
+}
+
+/** What the canvas adds to a full-width row's inside (its content width, as the site's `max-w-(--content-width)`; the canvas's room is 3rem in from its edges). */
+export function rowInnerStyle(row: PageRow, mode: PartsMode): CSSProperties | undefined {
+  const keep = row.width === "full" && row.contentWidth !== "full";
+  return mode === "canvas" && keep ? { maxWidth: "calc(var(--content-width, 64rem) + 3rem)" } : undefined;
+}
+
+/**
+ * The canvas's band around a row, where it is pointed at (D44): a full-width row reaches the canvas's edges; any other
+ * is as wide as its content may be (the theme's, or its own, D182), centred, with a margin of room for its tools.
+ */
+export function rowFrame(row: PageRow): { className: string; style: CSSProperties | undefined } {
+  if (row.width === "full") return { className: "-mx-6 -my-4 py-4", style: undefined };
+  return {
+    className: cx("-my-4 px-4 py-4", rowWidthStyle(row).className),
+    style: {
+      width: "min(calc(100% + 2rem), calc(var(--content-width, 64rem) + 2rem))",
+      marginInline: "max(-1rem, calc((100% - var(--content-width, 64rem) - 2rem) / 2))",
+    },
+  };
 }
 
 /** The row's columns: side by side by its layout, or stacked where it stacks (Small unless set, D179; last first when reversed). */

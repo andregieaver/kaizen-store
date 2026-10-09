@@ -179,3 +179,59 @@ export function railColumns(leftFolded: boolean, rightFolded: boolean): string {
   if (rightFolded) return "lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_2.75rem]";
   return "lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)]";
 }
+
+/**
+ * The header of an open sidebar that holds more than one thing (the page builder's Building blocks and Theme): the
+ * choices as tabs where its name would be, and the button that folds it. The panels are the caller's, each told by
+ * `aria-controls`.
+ */
+export function RailTabsHeader<K extends string>({
+  side,
+  label,
+  controls,
+  onFold,
+  tabs,
+  value,
+  onChange,
+}: {
+  side: RailSide;
+  /** What the sidebar is called when it is folded or unfolded. */
+  label: string;
+  controls: string;
+  onFold: () => void;
+  tabs: readonly { key: K; label: string; panel: string }[];
+  value: K;
+  onChange: (key: K) => void;
+}) {
+  const select = (index: number) => {
+    const next = tabs[(index + tabs.length) % tabs.length];
+    onChange(next.key);
+    document.getElementById(`${controls}-head-${next.key}`)?.focus();
+  };
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div role="tablist" aria-label={label} className="flex items-center gap-4">
+        {tabs.map((tab, index) => (
+          <button
+            key={tab.key}
+            id={`${controls}-head-${tab.key}`}
+            type="button"
+            role="tab"
+            aria-selected={value === tab.key}
+            aria-controls={tab.panel}
+            tabIndex={value === tab.key ? 0 : -1}
+            onClick={() => onChange(tab.key)}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowRight") select(index + 1);
+              if (event.key === "ArrowLeft") select(index - 1);
+            }}
+            className="min-h-9 border-b-2 border-transparent text-xs font-medium tracking-wide text-muted uppercase aria-selected:border-foreground aria-selected:text-foreground"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <FoldButton side={side} label={label} controls={controls} onFold={onFold} />
+    </div>
+  );
+}

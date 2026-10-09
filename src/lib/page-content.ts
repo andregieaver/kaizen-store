@@ -325,6 +325,11 @@ export const SPACING_MAX = 240;
  * the sides. A row set to 0 keeps 0.
  */
 export const ROW_PADDING: Sides = { top: 20, right: 20, bottom: 20, left: 20 };
+/** How wide a row's content may be made, in pixels (`PageRow.contentMax`, the theme's `layout.maxWidth`). */
+export const CONTENT_MAX_MIN = 320;
+export const CONTENT_MAX_MAX = 3200;
+/** A column's share is a whole number up to this; dragging the edges between columns makes shares of 100 (a percent each). */
+export const COLUMN_SHARE_MAX = 100;
 /** A row's spacing as drawn: its own, with the default padding where it has none. */
 export const rowSpacing = (style: Spacing | undefined): Spacing => ({ ...style, padding: style?.padding ?? ROW_PADDING });
 
@@ -413,6 +418,8 @@ export type PartSizeSettings = {
   order?: number;
   align?: TextAlign;
   maxWidth?: number | null;
+  /** A row's content width in pixels, over the theme's (null: the theme's, though a larger size sets one). */
+  contentMax?: number | null;
   /** A grid's columns. */
   columns?: number;
   /** A grid shown as a grid or as a carousel. */
@@ -1466,6 +1473,8 @@ export type PageRow = PartBase & {
   width?: "content" | "full";
   /** In a full-width row, whether what is in it keeps to the content's width (the default) or spreads too. */
   contentWidth?: "content" | "full";
+  /** How wide the row's content may be, in pixels (per size in `at`); the theme's content width unless set. */
+  contentMax?: number;
   /** At least as tall as the screen. */
   fullHeight?: boolean;
   /**
@@ -1742,7 +1751,11 @@ export const gridImageShape = (block: Pick<ContentGridBlock, "imageShape" | "sou
   block.imageShape ?? (sourceTraits(block.source).products ? "theme" : "landscape");
 
 /** The Google Fonts families a row, column or block uses (D59): its typography's, at every size and for every kind of text (D179). */
-export const partFonts = (part: PageRow | PageColumn | PageBlock): string[] => typographyFamilies(part);
+export const partFonts = (part: PageRow | PageColumn | PageBlock): string[] => {
+  // A rich text drawn with the theme's paragraphs, headings and lists (D182) also uses the families those name.
+  const inner = Object.values((part as { themeInner?: Record<string, ThemeElement> }).themeInner ?? {});
+  return inner.length > 0 ? [...new Set([...typographyFamilies(part), ...inner.flatMap((element) => typographyFamilies(element))])] : typographyFamilies(part);
+};
 /** The families a block uses. */
 export const blockFonts = (block: PageBlock): string[] => partFonts(block);
 
@@ -1919,8 +1932,14 @@ const gridColumnCount = z.number().int().min(1, "A grid has at least one column.
 /** Pixels between a row's columns or a grid's tiles. */
 const partGap = z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space at ${GRID_GAP_MAX} pixels or less.`).optional();
 
-/** A column's share of its row and its place among the others (D179). */
-const columnShare = z.number().int().min(0).max(12, "A column's share is 0 to 12.").optional();
+/** A column's share of its row and its place among the others (D179); dragging its edge in the canvas gives shares of 100. */
+const columnShare = z.number().int().min(0).max(COLUMN_SHARE_MAX, `A column's share is 0 to ${COLUMN_SHARE_MAX}.`).optional();
+/** How wide a row's content may be (`PageRow.contentMax`), in pixels. */
+const contentMaxWidth = z
+  .number()
+  .int("A width is whole pixels.")
+  .min(CONTENT_MAX_MIN, `Make the content at least ${CONTENT_MAX_MIN} pixels wide.`)
+  .max(CONTENT_MAX_MAX, `Keep the content at most ${CONTENT_MAX_MAX} pixels wide.`);
 const columnOrder = z.number().int().min(-12).max(12, "A column's place is -12 to 12.").optional();
 
 /** What a part may set at a smaller size (D179): the same rules as its own settings, each optional. */
@@ -1939,6 +1958,7 @@ const sizeSettings = z.object({
   order: columnOrder,
   align: textAlign,
   maxWidth: pictureWidth.or(z.null()),
+  contentMax: contentMaxWidth.or(z.null()).optional(),
   columns: gridColumnCount.optional(),
   display: z.enum(["grid", "carousel"]).optional(),
   typography: typographyAtSchema,
@@ -1965,6 +1985,37 @@ const visibility = z
     // Always is what nothing set means (D179 phase 4), so it is not stored.
     const show = value?.show === "always" ? undefined : value?.show;
     const kept: Visibility = { ...(hideAt.length > 0 && { hideAt }), ...(show !== undefined && { show }) };
+    return Object.keys(kept).length > 0 ? kept : undefined;
+  });
+
+/**
+ * What the theme says for a kind of element (`ThemeSettings.elements`, `src/lib/theme-elements.ts`): the settings of a part
+ * that make sense for every row, heading, paragraph, list or button of a store, each at the sizes a part can set them at.
+ */
+export type ThemeElement = {
+  style?: Spacing;
+  border?: Border;
+  radius?: number;
+  shadow?: Shadow;
+  /** A row's colour behind it. */
+  background?: ColorBackground;
+  at?: SizeOverrides;
+  typography?: TypographyGroups;
+};
+
+/** Settings left out are none; an element with nothing set is left out. */
+export const themeElementSchema = z
+  .object({
+    style: spacing,
+    border: borderSchema,
+    radius: radiusSchema,
+    shadow: shadowSchema,
+    background: colorBackground.optional(),
+    at: sizeOverrides,
+    typography: typographyGroupsSchema,
+  })
+  .transform((value) => {
+    const kept = Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined)) as ThemeElement;
     return Object.keys(kept).length > 0 ? kept : undefined;
   });
 
@@ -2715,6 +2766,7 @@ export const pageRowSchema = z.preprocess(upgradeRow, z
     columns: z.array(pageColumnSchema),
     width: z.enum(["content", "full"]).optional(),
     contentWidth: z.enum(["content", "full"]).optional(),
+    contentMax: contentMaxWidth.optional(),
     fullHeight: z.boolean().optional(),
     stack: z.boolean().optional(),
     reverse: z.boolean().optional(),

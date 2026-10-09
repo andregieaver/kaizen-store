@@ -22,7 +22,7 @@ import type { Store } from "@/server/stores";
 
 import { startFieldFileUploadAction } from "../fields/actions";
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
-import { installStoreFontAction } from "../settings/design/actions";
+import { installStoreFontAction, saveThemeTabAction } from "../settings/design/actions";
 import {
   createStorePageTermAction,
   createStorePartAction,
@@ -89,7 +89,12 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     standardMenus: { header: store.headerMenuId, footer: store.footerMenuId },
     menusHref: `/admin/${store.slug}/menus`,
     plans: null,
-    theme: { css: themeCss(store.theme.settings, "[data-theme-canvas]"), attributes: themeAttributes(store.theme.settings), breakpoints: breakpointsOf(store.theme.settings) },
+    theme: {
+      css: themeCss(store.theme.settings, "[data-theme-canvas]"),
+      attributes: themeAttributes(store.theme.settings),
+      breakpoints: breakpointsOf(store.theme.settings),
+      settings: store.theme.settings,
+    },
     // Templates shared between stores and the marketplace (D125), bound to the store.
     // What the page checker needs (wave 1, 1e): the theme's colours, and the page chosen for the checkout.
     check: { theme: themeSetsOf(store.theme.settings), checkoutPageId: store.pageRoles.checkout ?? null },
@@ -126,6 +131,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       linkTargets: bind(storeLinkTargetsAction),
       visibilityChoices: bind(storeVisibilityChoicesAction),
       installFont: bind(installStoreFontAction),
+      saveThemeTab: bind(saveThemeTabAction),
       saveSiteCss: bind(saveStoreCssAction),
       translate: bind(translateStorePageAction),
     },

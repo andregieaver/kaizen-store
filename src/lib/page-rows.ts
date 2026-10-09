@@ -14,7 +14,9 @@ import {
   type RowLayout,
   type Spacing,
 } from "./page-content";
+import type { Size } from "./breakpoints";
 import { copyWithUses } from "./global-parts";
+import { clearAt, setAt } from "./responsive";
 import { modalDomId, slugifyKey, uniqueKey } from "./page-modal";
 import { isShopPart, type ShopPart } from "./store-parts";
 
@@ -159,11 +161,61 @@ export function removeRow(rows: PageRow[], rowId: string): PageRow[] {
  * fewer, the blocks of the columns that go move to the new last column,
  * so nothing written is lost.
  */
+/** A column without the shares it was given by hand, at any size. */
+function withoutShares(column: PageColumn): PageColumn {
+  const { width: _width, at, ...rest } = column;
+  void _width;
+  if (!at) return rest as PageColumn;
+  const sizes = Object.fromEntries(
+    Object.entries(at).flatMap(([size, settings]) => {
+      const { width: _share, ...others } = settings ?? {};
+      void _share;
+      return Object.keys(others).length > 0 ? [[size, others]] : [];
+    }),
+  );
+  return (Object.keys(sizes).length > 0 ? { ...rest, at: sizes } : rest) as PageColumn;
+}
+
+/**
+ * A row's columns' shares at a size, as dragging the edges between them sets them: one whole number a column (of 100),
+ * written the way the column's own field would (`setAt()`: at Extra large the column's own, below it an override where it
+ * differs from the size above). The shares of a row that does not have that many columns are not set.
+ */
+export function setColumnShares(rows: PageRow[], rowId: string, size: Size, shares: readonly number[]): PageRow[] {
+  return rows.map((row) =>
+    row.id !== rowId || row.columns.length !== shares.length
+      ? row
+      : { ...row, columns: row.columns.map((column, i) => ({ ...column, ...setAt(column, size, { width: shares[i] }) })) },
+  );
+}
+
+/** Gives the layout's shares back at a size: every column's own share there is taken away (at Extra large, the column's own). */
+export function clearColumnShares(rows: PageRow[], rowId: string, size: Size): PageRow[] {
+  return rows.map((row) => {
+    if (row.id !== rowId) return row;
+    return {
+      ...row,
+      columns: row.columns.map((column) => {
+        if (size === "xl") {
+          const { width: _width, ...rest } = column;
+          void _width;
+          return rest as PageColumn;
+        }
+        const { at } = clearAt(column, size, "width");
+        const { at: _at, ...rest } = column;
+        void _at;
+        return (at ? { ...rest, at } : rest) as PageColumn;
+      }),
+    };
+  });
+}
+
 export function setRowLayout(rows: PageRow[], rowId: string, layout: RowLayout, id: NewId): PageRow[] {
   return rows.map((row) => {
     if (row.id !== rowId || row.layout === layout) return row;
     const count = ROW_LAYOUTS[layout].widths.length;
-    const kept = row.columns.slice(0, count).map((c) => ({ ...c, blocks: [...c.blocks] }));
+    // A new layout brings its own shares: what dragging the columns' edges set belongs to the old one.
+    const kept = row.columns.slice(0, count).map((c) => ({ ...withoutShares(c), blocks: [...c.blocks] }));
     const dropped = row.columns.slice(count).flatMap((c) => c.blocks);
     while (kept.length < count) kept.push({ id: id(), blocks: [] });
     kept[count - 1].blocks.push(...dropped);

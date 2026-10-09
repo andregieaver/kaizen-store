@@ -578,6 +578,18 @@ export function ThemeEditor({
 
           <Section title="Layout">
             <Choice legend="Page width" options={CONTENT_WIDTHS} value={settings.layout.width} onChange={(width) => set({ layout: { ...settings.layout, width } })} />
+            {settings.layout.maxWidth !== undefined && (
+              <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
+                The page builder&apos;s Theme tab sets the content width to {settings.layout.maxWidth} pixels, which is used instead of this choice.
+                <button
+                  type="button"
+                  onClick={() => set({ layout: { ...settings.layout, maxWidth: undefined } })}
+                  className="min-h-9 rounded-md border border-border px-3 text-foreground"
+                >
+                  Use this choice
+                </button>
+              </p>
+            )}
             <Choice legend="Header" options={HEADER_ALIGNS} value={settings.layout.headerAlign} onChange={(headerAlign) => set({ layout: { ...settings.layout, headerAlign } })} />
             <Choice
               legend="Header background"

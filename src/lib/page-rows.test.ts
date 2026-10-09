@@ -18,6 +18,8 @@ import {
   moveColumn,
   moveColumnTo,
   moveRow,
+  setColumnShares,
+  clearColumnShares,
   newBlock,
   newRow,
   patchBlock,
@@ -328,5 +330,40 @@ describe("a picture's own size survives editing (D151)", () => {
     // A copy of its own: editing the copy's position leaves the original's as it was.
     copy.at!.md!.align = "left";
     expect(imageOf(duplicated, blockId).at).toEqual({ md: { align: "center" } });
+  });
+});
+
+describe("columns' shares set by dragging their edges (D182)", () => {
+  const rowOf = (): PageRow => ({ id: "r", type: "row", layout: "2", columns: [{ id: "a", blocks: [] }, { id: "b", blocks: [] }] });
+  const widths = (row: PageRow) => row.columns.map((c) => c.width);
+  const smWidths = (row: PageRow) => row.columns.map((c) => c.at?.sm?.width);
+
+  it("writes every column's share at Extra large as its own, and below it as an override where it differs", () => {
+    const xl = setColumnShares([rowOf()], "r", "xl", [30, 70])[0];
+    expect(widths(xl)).toEqual([30, 70]);
+    // Equal to what Medium inherits: no override.
+    expect(setColumnShares([xl], "r", "md", [30, 70])[0].columns.every((c) => !c.at)).toBe(true);
+    expect(smWidths(setColumnShares([xl], "r", "sm", [50, 50])[0])).toEqual([50, 50]);
+  });
+
+  it("ignores a row that does not have that many columns", () => {
+    const rows = [rowOf()];
+    expect(setColumnShares(rows, "r", "xl", [100])[0]).toBe(rows[0]);
+  });
+
+  it("gives the layout's shares back at a size", () => {
+    const rows = setColumnShares(setColumnShares([rowOf()], "r", "xl", [30, 70]), "r", "sm", [50, 50]);
+    const sm = clearColumnShares(rows, "r", "sm")[0];
+    expect(widths(sm)).toEqual([30, 70]);
+    expect(sm.columns.every((c) => !c.at)).toBe(true);
+    expect(widths(clearColumnShares(rows, "r", "xl")[0])).toEqual([undefined, undefined]);
+  });
+
+  it("belong to the layout they were made for, and go when the row's layout is changed", () => {
+    const rows = setColumnShares(setColumnShares([rowOf()], "r", "xl", [30, 70]), "r", "sm", [50, 50]);
+    let n = 0;
+    const next = setRowLayout(rows, "r", "3", () => `n${++n}`)[0];
+    expect(next.columns).toHaveLength(3);
+    expect(next.columns.every((c) => c.width === undefined && !c.at)).toBe(true);
   });
 });

@@ -2,6 +2,8 @@
 
 import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, SIZE_LABELS, type Breakpoints, type Size } from "@/lib/breakpoints";
 import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
+import { themeCss, themeTabValue, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTabValue } from "@/lib/theme";
+import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
 import {
   carouselAnywhere,
   carouselAt,
@@ -62,9 +64,10 @@ import { FontLinks } from "@/components/font-links";
 import { PageBlockView } from "@/components/page-block";
 import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
-import { PartBackground, blockBox, columnBox, rowBox, rowGrid, rowInnerClass } from "@/components/page-parts";
+import { PartBackground, blockBox, columnBox, rowBox, rowFrame, rowGrid, rowInnerClass, rowInnerStyle } from "@/components/page-parts";
+import { ColumnDividers, RowWidthHandles } from "./row-resize";
 import { ModalFields, ModalPicker } from "./modal-fields";
-import { FoldButton, Rail, RailHeader, railColumns, useFolded } from "./builder-rails";
+import { FoldButton, Rail, RailHeader, RailTabsHeader, railColumns, useFolded } from "./builder-rails";
 import { TemplatesModal } from "./templates-modal";
 import { SharingBadge, SharingChoice, SharingSelect } from "./templates-sharing";
 import { TemplatesTab } from "./templates-tab";
@@ -104,6 +107,9 @@ import {
   IMAGE_SHAPES,
   RADIUS_MAX,
   ROW_PADDING,
+  CONTENT_MAX_MAX,
+  CONTENT_MAX_MIN,
+  COLUMN_SHARE_MAX,
   SHADOWS,
   SPACING_MAX,
   blockFonts,
@@ -192,6 +198,8 @@ import {
   removeColumn,
   removeRow,
   setRowLayout,
+  setColumnShares,
+  clearColumnShares,
   partOf,
   patchBlock,
   patchColumn,
@@ -225,6 +233,7 @@ import {
   ResponsiveToggle,
   SizeEditContext,
   SizeMark,
+  SizeSwitch,
   VisibilityFields,
   inheritedClass,
   useSizeEdit,
@@ -265,6 +274,7 @@ import { ImageSizeFields } from "./image-size-fields";
 import { ImageUploadButton, type Upload } from "./image-upload";
 import { VideoUploadButton, type StartVideo } from "./video-upload";
 import type { PageOwnerContext } from "./page-context";
+import { FloatingPanel as SettingsPanel } from "./floating-panel";
 import { Modal } from "./modal";
 import { RichTextEditor } from "./rich-text-editor";
 import { DisplayBadge, DisplayFields, DisplayLegend, showPatch, type DisplaySetup } from "./display-fields";
@@ -497,6 +507,12 @@ export type BuilderFonts = {
   theme: { css: string; attributes: Record<string, string>; /** Where its screen sizes start (D179), for the canvas's part rules. */ breakpoints?: Breakpoints } | null;
 };
 
+/** What the Theme tab needs (D182): the store's theme, and how to save what the tab holds of it. */
+export type ThemeTabContext = {
+  settings: ThemeSettings;
+  save: (payload: string) => Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }>;
+};
+
 export function PageBuilder({
   rows,
   onRows,
@@ -521,7 +537,10 @@ export function PageBuilder({
   lang,
   onTestPart,
   checks = null,
+  themeTab = null,
 }: {
+  /** The Theme tab beside Building blocks (D182): a store's theme for rows, headings, text, lists and buttons; null on Kaizen's own pages. */
+  themeTab?: ThemeTabContext | null;
   /** The page checker's tab (wave 1, 1e): how many problems it found and its panel; null where there is none (a translated view). */
   checks?: { count: number; panel: ReactNode } | null;
   /** Offers "A/B test this" on a row, column or component (D148); undefined where the page cannot be tested (not a published store page). */
@@ -595,6 +614,12 @@ export function PageBuilder({
   const [motionOn, setMotionOn] = useState(false);
   const [motionRun, setMotionRun] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
+  // The theme the Theme tab edits (D182): what it holds, what is saved, and the canvas drawn with it before it is saved.
+  const [themeValue, setThemeValue] = useState<ThemeTabValue | null>(() => (themeTab ? themeTabValue(themeTab.settings) : null));
+  const [themeSaved, setThemeSaved] = useState<ThemeTabValue | null>(themeValue);
+  const themeNow = useMemo(() => (themeTab && themeValue ? withThemeTab(themeTab.settings, themeValue) : null), [themeTab, themeValue]);
+  const shownRows = useMemo(() => themedRows(rows, themeValue?.elements), [rows, themeValue]);
+  const canvasTheme = fonts.theme && themeNow ? { ...fonts.theme, css: themeCss(themeNow, "[data-theme-canvas]") } : fonts.theme;
   // Responsive editing (D179 phase 2): the size edited and the canvas at it; null is Extra large, the canvas as wide as it can be.
   const breakpoints = fonts.theme?.breakpoints ?? DEFAULT_BREAKPOINTS;
   const room = useCallback(() => canvasRef.current?.clientWidth ?? 0, []);
@@ -908,6 +933,22 @@ export function PageBuilder({
             onOpenSaved={(partId) => setDialog({ kind: "edit-saved", partId })}
             onUseLayout={(part) => placeSaved(part)}
             checks={checks}
+            themePanel={
+              themeTab && themeValue && themeSaved ? (
+                <ThemePanel
+                  value={themeValue}
+                  saved={themeSaved}
+                  settings={themeTab.settings}
+                  onChange={setThemeValue}
+                  onSave={async () => {
+                    const result = await themeTab.save(JSON.stringify(themeValue));
+                    if (result.ok) setThemeSaved(themeValue);
+                    return result.ok ? null : result.problems;
+                  }}
+                  install={fonts.install}
+                />
+              ) : null
+            }
             templates={templates && { actions: templates, controller, use: templateUse, source, onSource: setSource, onBrowse: () => setBrowsing({ kind: "all" }), onPreview: openPreview }}
             onShared={(id, sharing) => setParts(parts.map((p) => (p.id === id ? { ...p, sharing } : p)))}
             rowsFull={rowsFull}
@@ -957,17 +998,17 @@ export function PageBuilder({
           >
             <FontLinks families={siteFontFamilies(fonts.site)} />
             {/* The families the rows' and columns' typography uses (D179); the blocks' come with each block. */}
-            <FontLinks families={pageFonts({ rows })} />
-            {fonts.theme && <style>{fonts.theme.css}</style>}
+            <FontLinks families={pageFonts({ rows: shownRows })} />
+            {canvasTheme && <style>{canvasTheme.css}</style>}
             {/* What the parts' settings say at each screen size (D179), measured against the canvas (`kz-page`), not the window. */}
-            <CanvasPartStyles rows={rows} breakpoints={breakpoints} hideHidden={hideHidden} />
+            <CanvasPartStyles rows={shownRows} source={rows} breakpoints={breakpoints} hideHidden={hideHidden} />
             {/* Owners' own CSS (D100), kept inside the canvas so it never reaches the admin; its width queries follow the canvas (D179). */}
             <ScopedCss css={css} root="[data-custom-css]" container={PAGE_CONTAINER} />
             <Canvas
               view={responsive.view}
               // Switching the preview on starts every entrance again; off, the canvas is drawn plain.
               key={motionOn ? `motion-${motionRun}` : "plain"}
-              rows={rows}
+              rows={shownRows}
               dragging={dragging}
               target={target}
               actions={actions}
@@ -1129,6 +1170,7 @@ function Sidebar({
   onUseLayout,
   templates,
   checks,
+  themePanel,
   onShared,
   rowsFull,
   blocksFull,
@@ -1136,6 +1178,8 @@ function Sidebar({
   id: string;
   /** The Checks tab (wave 1, 1e), or null. */
   checks: { count: number; panel: ReactNode } | null;
+  /** The Theme tab beside Building blocks (D182): the store's theme settings for rows, text and buttons; null where there is none (Kaizen's own pages). */
+  themePanel: ReactNode | null;
   /** Folded away, leaving a rail (D125). */
   hidden: boolean;
   onFold: () => void;
@@ -1170,6 +1214,9 @@ function Sidebar({
   blocksFull: boolean;
 }) {
   const id = useId();
+  // The sidebar shows the building blocks or, where the store has a theme to edit here, the theme (D182).
+  const [mode, setMode] = useState<"blocks" | "theme">("blocks");
+  const showing = themePanel ? mode : "blocks";
   const tabs = [...TABS, ...(templates ? [TEMPLATES_TAB] : []), ...(checks ? [CHECKS_TAB] : [])];
   const select = (index: number) => {
     const next = tabs[(index + tabs.length) % tabs.length].key;
@@ -1184,8 +1231,29 @@ function Sidebar({
       className="flex min-w-0 flex-col rounded-lg border border-border bg-background lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
     >
       <div className="border-b border-border px-4 py-1.5">
-        <RailHeader side="left" label="building blocks" controls={panelId} onFold={onFold} />
+        {themePanel ? (
+          <RailTabsHeader
+            side="left"
+            label="building blocks"
+            controls={panelId}
+            onFold={onFold}
+            tabs={[
+              { key: "blocks", label: "Building blocks", panel: `${id}-blocks` },
+              { key: "theme", label: "Theme", panel: `${id}-theme` },
+            ]}
+            value={showing}
+            onChange={setMode}
+          />
+        ) : (
+          <RailHeader side="left" label="building blocks" controls={panelId} onFold={onFold} />
+        )}
       </div>
+      {themePanel && (
+        <div id={`${id}-theme`} role="tabpanel" hidden={showing !== "theme"} className="flex flex-col gap-4 p-4">
+          {themePanel}
+        </div>
+      )}
+      <div id={`${id}-blocks`} role={themePanel ? "tabpanel" : undefined} hidden={showing !== "blocks"} className="flex flex-col">
       <div role="tablist" aria-label="Building blocks" className={`grid border-b border-border ${tabs.length >= 5 ? "grid-cols-5" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-3"}`}>
         {tabs.map((t, index) => (
           <button
@@ -1360,6 +1428,7 @@ function Sidebar({
           )}
         </div>
       ))}
+      </div>
     </aside>
   );
 }
@@ -1953,12 +2022,12 @@ function Canvas({
 
 /** Below the last row: where a row dropped goes last, and what an empty page says. */
 /** The canvas's part stylesheet (D179): container queries against the canvas, worked out again only when the rows change. */
-function CanvasPartStyles({ rows, breakpoints, hideHidden }: { rows: PageRow[]; breakpoints: Breakpoints; hideHidden: boolean }) {
+function CanvasPartStyles({ rows, source, breakpoints, hideHidden }: { rows: PageRow[]; /** The page's own rows, which the parts hidden at a size are read from. */ source: PageRow[]; breakpoints: Breakpoints; hideHidden: boolean }) {
   // With the parts hidden at a size: faded with their eye there, or left out (D179).
   const css = useMemo(
     () =>
-      [breakpointClassCss(breakpoints, "container"), partCss(rows, "canvas", breakpoints), canvasHiddenCss(rows, breakpoints, hideHidden)].filter(Boolean).join("\n"),
-    [rows, breakpoints, hideHidden],
+      [breakpointClassCss(breakpoints, "container"), partCss(rows, "canvas", breakpoints), canvasHiddenCss(source, breakpoints, hideHidden)].filter(Boolean).join("\n"),
+    [rows, source, breakpoints, hideHidden],
   );
   return css ? <style>{css}</style> : null;
 }
@@ -2151,6 +2220,25 @@ function RowItem({
   const box = rowBox(row, "canvas");
   const grid = rowGrid(row);
   const fx = canvasFx(actions.motionPreview, row.motion, "row", { firstRow: first });
+  const frame = rowFrame(row);
+  // Resizing (D182): dragging the row's side edges sets how wide its content may be, the edges between its columns how it is shared.
+  const { size } = useSizeEdit();
+  const resizable = !row.modal && !actions.translating;
+  const widthLimited = row.width !== "full" || row.contentWidth !== "full";
+  const contentMax = valueAt(row, "contentMax", size) ?? null;
+  const sideBySide = !stackAt(row, size) && row.columns.length > 1;
+  // The page's own row (the canvas draws it with the theme under it), so only what the person set is written.
+  const ownRow = (rows: PageRow[]) => rows.find((r) => r.id === row.id);
+  const setWidth = (px: number) =>
+    actions.onRows((rows) => {
+      const own = ownRow(rows);
+      return own ? patchRow(rows, row.id, setAt(own, size, { contentMax: px })) : rows;
+    });
+  const resetWidth = () =>
+    actions.onRows((rows) => {
+      const own = ownRow(rows);
+      return own ? patchRow(rows, row.id, size === "xl" ? { contentMax: undefined } : clearAt(own, size, "contentMax")) : rows;
+    });
 
   return (
     <li
@@ -2161,9 +2249,9 @@ function RowItem({
       {...markAttributes(row)}
       tabIndex={0}
       aria-label={`${name}, ${ROW_LAYOUTS[row.layout].label.toLowerCase()}`}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
+      style={{ ...frame.style, transform: CSS.Translate.toString(transform), transition }}
       // A full-width row reaches the canvas's edges; its band for pointing is then above and below only.
-      className={`${row.width === "full" ? "-mx-6 -my-4 py-4" : "-m-4 p-4"} ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""}`}
+      className={`${frame.className} ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""}`}
     >
       {!actions.translating && (
       <Tools
@@ -2191,6 +2279,9 @@ function RowItem({
       />
       )}
       <Line at={line} />
+      {resizable && widthLimited && row.width !== "full" && (
+        <RowWidthHandles inset={16} value={contentMax} label={name} onWidth={setWidth} onReset={resetWidth} />
+      )}
       <HiddenBadge hideAt={row.visibility?.hideAt} />
       <DisplayBadge show={row.visibility?.show} />
       {/* A modal's row stays in the page here (D121): badged, with a preview of the real modal. */}
@@ -2198,8 +2289,11 @@ function RowItem({
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
         <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
           <PartBackground background={row.background} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
-          <div className={rowInnerClass(row, "canvas")}>
-            <div className={grid.className} style={grid.style}>
+          <div className={rowInnerClass(row, "canvas")} style={rowInnerStyle(row, "canvas")}>
+            {resizable && widthLimited && row.width === "full" && (
+              <RowWidthHandles inset={24} value={contentMax} label={name} onWidth={setWidth} onReset={resetWidth} />
+            )}
+            <div className={`relative ${grid.className}`} style={grid.style}>
               {row.columns.map((column, index) => (
                 <ColumnItem
                   key={column.id}
@@ -2212,6 +2306,16 @@ function RowItem({
                   actions={actions}
                 />
               ))}
+              {/* After the columns, so their places (`:nth-child`) are what they were. */}
+              {resizable && sideBySide && (
+                <ColumnDividers
+                  count={row.columns.length}
+                  signature={row.columns.map((c) => valueAt(c, "width", size) ?? "").join(",") + `|${size}|${valueAt(row, "gap", size) ?? ""}`}
+                  label={name}
+                  onShares={(shares) => actions.onRows((rows) => setColumnShares(rows, row.id, size, shares))}
+                  onReset={() => actions.onRows((rows) => clearColumnShares(rows, row.id, size))}
+                />
+              )}
             </div>
           </div>
         </div>
@@ -2747,7 +2851,7 @@ function Dialogs({
 
   return (
     <>
-      <Modal
+      <SettingsPanel
         open={block?.type === "richText"}
         onClose={onClose}
         title="Edit rich text"
@@ -2793,9 +2897,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "image"}
         onClose={onClose}
         title="Image"
@@ -2842,9 +2946,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "heading"}
         onClose={onClose}
         title="Heading"
@@ -2886,9 +2990,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "button"}
         onClose={onClose}
         title="Button"
@@ -2931,10 +3035,10 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
       {/* The newer components, each described in `BLOCK_EDITORS`. */}
-      <Modal
+      <SettingsPanel
         open={Boolean(editor)}
         onClose={onClose}
         title={editor?.title ?? ""}
@@ -2966,9 +3070,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "product"}
         onClose={onClose}
         title={block?.type === "product" ? PRODUCT_PARTS[block.part] : "Product"}
@@ -2999,9 +3103,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "site"}
         onClose={onClose}
         title={block?.type === "site" ? SITE_PARTS[block.part] : "Site"}
@@ -3030,9 +3134,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "menu"}
         onClose={onClose}
         title="Menu"
@@ -3073,9 +3177,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "plans"}
         onClose={onClose}
         title="Plans"
@@ -3110,9 +3214,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "search"}
         onClose={onClose}
         title="Search"
@@ -3148,9 +3252,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "storePart"}
         onClose={onClose}
         title="Shop page"
@@ -3211,9 +3315,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={block?.type === "contentGrid"}
         onClose={onClose}
         title="Content grid"
@@ -3253,9 +3357,9 @@ function Dialogs({
             advanced={advancedFields({ kind: "block", id: block.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
-      <Modal
+      <SettingsPanel
         open={Boolean(row)}
         onClose={onClose}
         title={column ? "Column" : "Row"}
@@ -3374,7 +3478,7 @@ function Dialogs({
             advanced={advancedFields({ kind: "row", id: row.id })}
           />
         )}
-      </Modal>
+      </SettingsPanel>
 
       <Modal
         open={dialog?.kind === "delete"}
@@ -4166,6 +4270,7 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
         value={row.contentWidth ?? "content"}
         onChange={(contentWidth) => onChange({ contentWidth: contentWidth === "full" ? contentWidth : undefined })}
       />
+      <ContentMaxField row={row} onChange={onChange} />
       <Check
         label="As tall as the screen"
         hint="At least the height of the browser window."
@@ -4189,6 +4294,55 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
         value={row.align ?? "top"}
         onChange={(align) => onChange({ align: align === "top" ? undefined : align })}
       />
+    </div>
+  );
+}
+
+/**
+ * How wide a row's content may be, in pixels, at the size edited (D182): over the theme's content width, which a row takes where it sets
+ * none. Dragging the row's side edges on the canvas sets it too. Where the row spreads, there is no limit to set.
+ */
+function ContentMaxField({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+  const { size } = useSizeEdit();
+  const id = useId();
+  const value = valueAt(row, "contentMax", size) ?? null;
+  const limited = row.width !== "full" || row.contentWidth !== "full";
+  // What is typed until it is a width the row can have.
+  const [draft, setDraft] = useState<string | null>(null);
+  const back = (patch: { at: PageRow["at"] }) => onChange(patch);
+  return (
+    <div className={`flex flex-col gap-1 ${inheritedClass(sizeSource(row, size, "contentMax"), size)}`}>
+      <div className="flex flex-wrap items-center gap-1">
+        <label htmlFor={id} className="text-sm font-medium">
+          Max content width <span className="font-normal text-muted">(in pixels, {CONTENT_MAX_MIN} to {CONTENT_MAX_MAX})</span>
+        </label>
+        <SizeMark part={row} field="contentMax" label="Max content width" onPatch={back} />
+      </div>
+      <input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={CONTENT_MAX_MIN}
+        max={CONTENT_MAX_MAX}
+        disabled={!limited}
+        placeholder="The theme's"
+        aria-describedby={`${id}-hint`}
+        value={draft ?? value ?? ""}
+        onChange={(event) => {
+          const next = event.target.value;
+          setDraft(next);
+          const number = Math.round(Number(next));
+          if (next === "") onChange(setAt(row, size, { contentMax: undefined }));
+          else if (number >= CONTENT_MAX_MIN && number <= CONTENT_MAX_MAX) onChange(setAt(row, size, { contentMax: number }));
+        }}
+        onBlur={() => setDraft(null)}
+        className="min-h-10 w-32 rounded-md border border-border bg-background px-2 text-sm disabled:opacity-50"
+      />
+      <p id={`${id}-hint`} className="text-xs text-muted">
+        {limited
+          ? "Empty keeps to the theme's content width. You can also drag the row's side edges on the page."
+          : "This row spreads over the whole width, so it has no content width. Choose a content width above to set one."}
+      </p>
     </div>
   );
 }
@@ -4258,7 +4412,7 @@ function ColumnSizeFields({ column, row, onChange }: { column: PageColumn; row: 
         label="Share of the row"
         hint={`the layout gives ${layoutWidth}; 0 is as wide as what it holds`}
         value={width ?? layoutWidth}
-        max={12}
+        max={COLUMN_SHARE_MAX}
         mark={<SizeMark part={column} field="width" label="Share of the row" onPatch={back} />}
         muted={inheritedClass(sizeSource(column, size, "width"), size)}
         onChange={(share) => onChange(sizedOrDefault("width", share, layoutWidth))}
@@ -6483,5 +6637,289 @@ function ProductStandIn({ block }: { block: ProductBlock }) {
       </span>
       {body}
     </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The Theme tab (D182)
+// ---------------------------------------------------------------------------
+
+/** The content widths a theme chooses between, in pixels (`theme.ts`' Narrow, Normal and Wide in rem). */
+const PRESET_WIDTHS = { narrow: 896, normal: 1024, wide: 1280 } as const;
+
+const withElement = (value: ThemeTabValue, key: ThemeElementKey, element: ThemeTabValue["elements"][ThemeElementKey]): ThemeTabValue => {
+  const elements = { ...value.elements };
+  if (element) elements[key] = element;
+  else delete elements[key];
+  return { ...value, elements };
+};
+
+/**
+ * The theme's settings for a store's rows, headings, paragraphs, lists and buttons, and its content width and body
+ * background, in the page builder's sidebar beside the building blocks. What is set here is the store's look for all of
+ * its pages (a part's own setting wins where it sets one); it is drawn on the canvas at once and kept with Save.
+ */
+function ThemePanel({
+  value,
+  saved,
+  settings,
+  onChange,
+  onSave,
+  install,
+}: {
+  value: ThemeTabValue;
+  saved: ThemeTabValue;
+  settings: ThemeSettings;
+  onChange: (value: ThemeTabValue) => void;
+  /** Saves it; the problems that stopped it, or null once saved. */
+  onSave: () => Promise<string[] | null>;
+  install: InstallFont;
+}) {
+  const { size } = useSizeEdit();
+  const [busy, setBusy] = useState(false);
+  const [problems, setProblems] = useState<string[]>([]);
+  const [done, setDone] = useState(false);
+  const dirty = JSON.stringify(value) !== JSON.stringify(saved);
+  const preset = PRESET_WIDTHS[settings.layout.width];
+  const showLight = settings.mode !== "dark" || settings.visitorSwitch;
+  const showDark = settings.mode !== "light" || settings.visitorSwitch;
+
+  const save = async () => {
+    const checked = themeElementsSchema.safeParse(value.elements);
+    if (!checked.success) {
+      setProblems([...new Set(checked.error.issues.map((issue) => issue.message))]);
+      setDone(false);
+      return;
+    }
+    setBusy(true);
+    setProblems([]);
+    setDone(false);
+    try {
+      const failed = await onSave();
+      if (failed) setProblems(failed);
+      else setDone(true);
+    } catch {
+      setProblems(["The theme could not be saved. Changing it needs access to the website settings."]);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const change = (next: ThemeTabValue) => {
+    setDone(false);
+    onChange(next);
+  };
+
+  return (
+    <div className="flex flex-col gap-4" data-theme-panel="">
+      <p className="text-xs text-muted">
+        The store&apos;s look for every page: what rows, headings, text and buttons are unless a component of a page says otherwise. The
+        page shows it as you change it; Save keeps it.
+      </p>
+      <div className="flex items-center gap-1 text-sm">
+        <SizeSwitch label="Theme" />
+        <span className="text-muted">Edited at {SIZE_LABELS[size]}</span>
+      </div>
+
+      <fieldset className="flex flex-col gap-4 rounded-md border border-border p-3">
+        <legend className="px-1 text-sm font-medium">Page</legend>
+        <ContentWidthField value={value.maxWidth} presetWidth={preset} onChange={(maxWidth) => change({ ...value, maxWidth })} />
+        {showLight && (
+          <ColorField
+            label={settings.mode === "light" || !showDark ? "Body background" : "Body background, light"}
+            value={value.background.light}
+            onChange={(light) => change({ ...value, background: { ...value.background, light } })}
+          />
+        )}
+        {showDark && (
+          <ColorField
+            label={showLight ? "Body background, dark" : "Body background"}
+            value={value.background.dark}
+            onChange={(dark) => change({ ...value, background: { ...value.background, dark } })}
+          />
+        )}
+      </fieldset>
+
+      <div className="flex flex-col gap-2">
+        {THEME_ELEMENT_KEYS.map((key) => (
+          <ThemeElementSection
+            key={key}
+            elementKey={key}
+            element={value.elements[key]}
+            onChange={(element) => change(withElement(value, key, element))}
+            install={install}
+          />
+        ))}
+      </div>
+
+      <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-col gap-2 border-t border-border bg-background px-4 py-3">
+        {problems.length > 0 && (
+          <ul role="alert" className="list-disc pl-5 text-sm text-red-700 dark:text-red-400">
+            {problems.map((problem) => (
+              <li key={problem}>{problem}</li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={save}
+            disabled={busy || !dirty}
+            aria-busy={busy}
+            className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+          >
+            {busy ? "Saving…" : "Save theme"}
+          </button>
+          <button
+            type="button"
+            onClick={() => change(structuredClone(saved))}
+            disabled={busy || !dirty}
+            className="min-h-10 rounded-md border border-border px-4 text-sm disabled:opacity-50"
+          >
+            Undo changes
+          </button>
+          <span role="status" className="text-sm text-muted">
+            {dirty ? "Not saved yet." : done ? "Saved. Every page of the store uses it." : ""}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** The content's largest width in pixels, for every row that sets none of its own; empty is the theme's Narrow, Normal or Wide. */
+function ContentWidthField({ value, presetWidth, onChange }: { value: number | null; presetWidth: number; onChange: (value: number | null) => void }) {
+  const id = useId();
+  const [text, setText] = useState(value === null ? "" : String(value));
+  const invalid = text !== "" && !(Number(text) >= CONTENT_MAX_MIN && Number(text) <= CONTENT_MAX_MAX);
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-sm font-medium">
+        Max content width <span className="font-normal text-muted">(in pixels, {CONTENT_MAX_MIN} to {CONTENT_MAX_MAX})</span>
+      </label>
+      <input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={CONTENT_MAX_MIN}
+        max={CONTENT_MAX_MAX}
+        placeholder={String(presetWidth)}
+        value={text}
+        aria-invalid={invalid}
+        aria-describedby={`${id}-hint`}
+        onChange={(event) => {
+          const next = event.target.value;
+          setText(next);
+          const number = Math.round(Number(next));
+          if (next === "") onChange(null);
+          else if (number >= CONTENT_MAX_MIN && number <= CONTENT_MAX_MAX) onChange(number);
+        }}
+        className="min-h-10 w-32 rounded-md border border-border bg-background px-2 text-sm"
+      />
+      <p id={`${id}-hint`} className="text-xs text-muted">
+        Rows, the header and the footer keep to it. Left empty it is the theme&apos;s {presetWidth} pixels. A row can set its own.
+      </p>
+    </div>
+  );
+}
+
+/** One element of the theme (a row, a heading level, paragraphs, lists or buttons) in a folding section; its fields are made when it is opened. */
+function ThemeElementSection({
+  elementKey,
+  element,
+  onChange,
+  install,
+}: {
+  elementKey: ThemeElementKey;
+  element: ThemeTabValue["elements"][ThemeElementKey];
+  onChange: (element: ThemeTabValue["elements"][ThemeElementKey]) => void;
+  install: InstallFont;
+}) {
+  const [open, setOpen] = useState(false);
+  const { name, hint } = THEME_ELEMENT_LABELS[elementKey];
+  return (
+    <details onToggle={(event) => setOpen(event.currentTarget.open)} className="rounded-md border border-border" data-theme-element={elementKey}>
+      <summary className="flex min-h-10 cursor-pointer items-center justify-between gap-2 px-3 text-sm font-medium">
+        {name}
+        {element && <span className="rounded bg-surface px-1.5 py-0.5 text-xs font-normal text-muted">Set</span>}
+      </summary>
+      {open && (
+        <div className="flex flex-col gap-4 border-t border-border p-3">
+          <p className="text-xs text-muted">{hint}</p>
+          <ThemeElementFields elementKey={elementKey} element={element} onChange={onChange} install={install} />
+          {element && (
+            <button type="button" onClick={() => onChange(undefined)} className="min-h-9 self-start rounded-md border border-border px-3 text-sm">
+              Clear {name}
+            </button>
+          )}
+        </div>
+      )}
+    </details>
+  );
+}
+
+/**
+ * An element's fields: the same Typography, spacing, border, corners and shadow as the part it stands for has (a heading's, a
+ * row's), each at the screen size being edited, and a row's colour. The element is edited as a part of that kind.
+ */
+function ThemeElementFields({
+  elementKey,
+  element,
+  onChange,
+  install,
+}: {
+  elementKey: ThemeElementKey;
+  element: ThemeTabValue["elements"][ThemeElementKey];
+  onChange: (element: ThemeTabValue["elements"][ThemeElementKey]) => void;
+  install: InstallFont;
+}) {
+  const { size } = useSizeEdit();
+  const part = elementAsPart(elementKey, element);
+  const asPart = part as unknown as PartBase;
+  const patch = (changes: Partial<PartBase>) => onChange(elementFromPart({ ...part, ...changes }));
+  const sizedPatch = (changes: Partial<PartBase>) => patch(setAt(asPart, size, changes));
+  const row = elementKey === "row";
+  const heading = elementKey.startsWith("h") && elementKey.length === 2;
+  const background = element?.background;
+  return (
+    <>
+      <TypographyFields
+        part={part}
+        familyDefault={heading ? "The site's heading font" : "The site's body font"}
+        install={install}
+        onChange={(changes) => patch(changes as Partial<PartBase>)}
+      />
+      <SpacingFields
+        value={spacingAt(asPart, size)}
+        defaults={row ? { padding: ROW_PADDING } : undefined}
+        sized={{ part: asPart, onPatch: patch }}
+        onChange={(style) => {
+          const own = style.margin || style.padding ? style : undefined;
+          if (size === "xl") patch({ style: own });
+          else sizedPatch({ style });
+        }}
+      />
+      <FrameFields value={viewAt(asPart, size)} sized={{ part: asPart, onPatch: patch }} onChange={sizedPatch} />
+      {row &&
+        (size === "xl" ? (
+          <div className="flex flex-col gap-4 border-t border-border pt-4">
+            <ColorField
+              label="Background colour"
+              value={background?.color}
+              placeholder="None"
+              onChange={(color) => patch({ background: { type: "color", color, ...(background?.opacity !== undefined && { opacity: background.opacity }) } } as Partial<PartBase>)}
+              onClear={() => patch({ background: undefined } as Partial<PartBase>)}
+              opacity={
+                background
+                  ? { value: background.opacity, onChange: (opacity) => patch({ background: { ...background, opacity } } as Partial<PartBase>) }
+                  : undefined
+              }
+            />
+          </div>
+        ) : (
+          <div className="border-t border-border pt-4">
+            <BackgroundAtSize key={size} part={asPart as unknown as PageRow} size={size} onChange={sizedPatch} onPatch={patch} />
+          </div>
+        ))}
+    </>
   );
 }

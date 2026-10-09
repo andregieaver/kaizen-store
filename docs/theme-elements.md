@@ -1,0 +1,33 @@
+# Theme elements, content width and resizing in the page builder (D182)
+
+Asked for by the owner, after Beaver Builder's global settings, row and column drag handles and floating settings panel.
+
+## What it is
+
+1. **A Theme tab** beside Building blocks in the page builder's left sidebar, for a store's own pages, articles, headers, footers and product layouts (not Kaizen's own pages, which have no theme). It edits, on `stores.theme`:
+   - **Elements** (`ThemeSettings.elements`, `src/lib/theme-elements.ts`): Row, H1 to H6, P, UL/OL and Button. Each holds what a part of that kind can hold: its Typography (the same panel as a heading's: family, weight, size, line height, alignment, letter spacing, transform, decoration, style, variant, shadow, colour and opacity), margin and padding, border, corners and shadow, per screen size; a row also its colour.
+   - **Max content width** (`ThemeSettings.layout.maxWidth`, pixels): over the Narrow, Normal and Wide choice in Design. It is the `--content-width` the rows, header, footer and store layout read.
+   - **Body background**: the palette's background of the light and the dark colour set (`light.background`, `dark.background`), the same colours Design edits.
+2. **A row's own max content width** (`PageRow.contentMax`, pixels, per screen size in `at.contentMax`; `null` at a size gives the theme's back): in the row's settings, General tab.
+3. **Resizing on the canvas**: a row's two side edges change its content width (both edges move, the content stays in the middle; steps of 8 px, Shift for free; double-click or Delete gives the theme's width back). The edges between side-by-side columns change how the row's width is shared (`PartSizeSettings.width`, the column share, now 0 to 100 instead of 0 to 12; a drag gives every column a share of 100, at least 5 each, double-click or Delete gives the layout's shares back). Both write at the screen size being edited (D179), and work with the arrow keys. Choosing another row layout drops shares set by hand.
+4. **A floating settings panel** (`FloatingPanel`, `src/components/admin/floating-panel.tsx`): the row, column and component settings are no longer a centred modal dialog. They open in a panel that is moved by its title bar (or its move button and the arrow keys) and resized from any edge or corner; the canvas behind stays in use (pressing another part opens its settings in the panel); its place and size are kept in the browser (`localStorage`, `kaizen-builder-settings-panel`), kept inside the window, and fall back to the default place when storage is blocked. Pickers opened from it (fonts, media) are still modal dialogs over it. Other dialogs (save as, delete, translate) stay modal.
+
+## How the theme meets a page
+
+The theme is laid *under* the parts before they are drawn (`themedRows()`), never saved into the page:
+
+- For each part, at every screen size: the part's own setting where it has one anywhere on the way up from the size, else the element's (`layerUnder()`). The part rules (`src/lib/part-css.ts`) are written from the result, so a part's settings and the theme's meet in one place and the cascade never has to choose. A heading's size by its level is the default only where neither the part nor the theme sets one.
+- A **heading** component takes the element of its level, a **button** and the buttons of a **dual button** the Button element (a dual button takes only its text), a **row** the Row element.
+- A **rich text**'s own paragraphs, headings and lists are not parts: they take the elements as `themeInner` on the block, written with the rich text's own class (`& .rich-text p`) so they win over the site's `.rich-text` rules, without the settings the block, its column or its row set themselves (a direct rule would beat the inherited one). Spacing is written whole, zero included.
+- The site does this in `PageRowView` for a store's rows (`themeElementsFor(owner)`, cached with the store); the canvas does it with the unsaved value, so the page shows a change as it is made. Kaizen's own pages have no theme.
+- A row's content width is a custom property on the element that carries `max-w-(--content-width)` (`rowWidthStyle()`), so owner CSS can still override it.
+
+## Saving
+
+`saveThemeTabAction` (needs `website:write`) changes only what the tab edits (`withThemeTab()`: elements, content width, both body backgrounds); the rest of the theme, which Design may be editing, stays as it is. Fonts named by elements are installed first (`themeFontFamilies()`). Design profiles carry the elements and the width with the rest of the theme's settings; the Design page says when a content width in pixels is used instead of its Narrow, Normal or Wide choice.
+
+## Known limits
+
+- A theme element's text settings on a *rich text's inner elements* give way to anything the block, column or row sets for the same property, but the page checker (`pageIssues()`) does not yet read theme colours when it checks contrast.
+- Design profiles' own workspaces edit the look through Design; they have no Theme tab.
+- The canvas draws a non-full row at its content width (the theme's, or its own) as the site does.

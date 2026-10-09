@@ -423,6 +423,8 @@ export function PageEditor({
         upload={upload}
         startVideo={context.startVideo}
         fonts={{ ...context.fonts, install: context.actions.installFont, theme: context.theme }}
+        // The Theme tab (D182): a store's own pages only.
+        themeTab={context.theme?.settings && context.actions.saveThemeTab ? { settings: context.theme.settings, save: context.actions.saveThemeTab } : null}
         grid={{
           pageId: saved?.id ?? null,
           owner: context.owner,

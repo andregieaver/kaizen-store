@@ -16,6 +16,7 @@ import {
 } from "./page-content";
 import { carouselAnywhere, carouselAt, hiddenAt, neverStacks, spacingAt, stackAt, valueAt } from "./responsive";
 import { colourCss } from "./colour";
+import { INNER_KEYS, INNER_SELECTORS, type ThemedBlock } from "./theme-elements";
 import { colourCssAt, familyClassOf, familyStack, headingDefaultSize, textRoles, typographyAt, typographyDecl, typographyValueAt } from "./typography";
 
 /**
@@ -217,6 +218,28 @@ export function rowGridStyle(row: PageRow): ElementStyle {
   return named([grid, ...order], "-g");
 }
 
+/**
+ * How wide a row's content may be where the row sets it (`contentMax`, per size): the content width the row's own element
+ * takes in place of the theme's (a custom property the element's `max-w-(--content-width)` reads, as a picture's width is).
+ * None where it sets none: the theme's (`ThemeSettings.layout`) applies.
+ */
+export function rowWidthStyle(row: PageRow): ElementStyle {
+  return named(
+    [
+      {
+        selector: "&",
+        important: false,
+        where: true,
+        sizes: perSize((size) => {
+          const width = valueAt(row, "contentMax", size);
+          return width ? { "--content-width": `${width}px` } : ({} as Decl);
+        }),
+      },
+    ],
+    "-w",
+  );
+}
+
 /** Whether a row's or column's corners clip a picture, video or gradient behind it: rounded at some size. */
 export const clipsAnywhere = (part: PageRow | PageColumn): boolean =>
   SIZES.some((size) => Boolean(valueAt(part, "radius", size))) &&
@@ -336,6 +359,50 @@ export function typographyRules(part: PartBase & { type?: string; part?: string;
 // Blocks
 // ---------------------------------------------------------------------------
 
+/** A margin or padding the theme sets for an element inside a rich text: every side written, zero too, over the site's own spacing. */
+function innerSpacing(spacing: Spacing): Decl {
+  const out: Decl = {};
+  for (const kind of ["margin", "padding"] as const) {
+    const sides = spacing[kind];
+    if (sides) for (const side of SIDES) out[`${kind}-${side}`] = `${sides[side]}px`;
+  }
+  return out;
+}
+
+/**
+ * The theme's paragraphs, headings and lists inside a rich text (`themedRows()` lays them under the block as
+ * `themeInner`): the element's text, spacing and frame by size, written with the rich text's own class so they win over
+ * the site's `.rich-text` rules, and without what the block, its column or its row set themselves (left out already).
+ */
+function themeInnerRules(block: PageBlock): PartRule[] {
+  const inner = (block as ThemedBlock).themeInner;
+  if (block.type !== "richText" || !inner) return [];
+  const rules: PartRule[] = [];
+  for (const key of INNER_KEYS) {
+    const element = inner[key];
+    if (!element) continue;
+    const selector = INNER_SELECTORS[key].replace("&", "& .rich-text");
+    rules.push({
+      selector,
+      important: false,
+      where: false,
+      sizes: perSize((size) => {
+        const settings = typographyAt(element, "text", size);
+        const color = colourCssAt(element, { role: "text" }, size);
+        return {
+          ...typographyDecl(settings),
+          ...(settings.family ? { "font-family": familyStack(settings.family) } : {}),
+          ...(settings.align ? { "text-align": settings.align } : {}),
+          ...(color ? { color } : {}),
+          ...innerSpacing(spacingAt(element, size)),
+          ...frameAt(element as PartBase, size),
+        };
+      }),
+    });
+  }
+  return rules;
+}
+
 /** Related products' columns by size (D79) unless set: two on Small, four above. */
 const RELATED_COLUMNS: Record<Size, number> = { xl: 4, lg: 4, md: 4, sm: 2 };
 
@@ -372,6 +439,7 @@ export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
     rules.push({ selector: "& [data-button-frame]", important: true, where: true, sizes: perSize((size) => frameAt(block, size)) });
   }
   rules.push(...typographyRules(block));
+  rules.push(...themeInnerRules(block));
   // A component's Position (D48): a button, a menu, a picture, a site component (text alignment is typography, above).
   if ("align" in block || (block.at && SMALLER_SIZES.some((s) => block.at?.[s]?.align))) {
     rules.push({
@@ -469,7 +537,7 @@ export function partRules(rows: PageRow[], mode: PartsMode): PartRule[] {
   const out: PartRule[] = [];
   for (const row of rows) {
     const panel = mode === "site" && Boolean(row.modal);
-    out.push(...rowStyle(row, panel, mode).rules, ...rowGridStyle(row).rules);
+    out.push(...rowStyle(row, panel, mode).rules, ...rowGridStyle(row).rules, ...rowWidthStyle(row).rules);
     if (row.modal) out.push(...panelStyle(row).rules);
     // The canvas also previews a modal in its panel (`ModalBar`).
     if (row.modal && mode === "canvas") out.push(...rowStyle(row, true, mode).rules);

@@ -6,6 +6,9 @@ import { withoutBindings } from "@/lib/field-binding";
 import { t } from "@/lib/i18n";
 import { blockTarget, motionNeeds, partFx } from "@/lib/motion-attrs";
 import { flowRows } from "@/lib/page-modal";
+import { rowWidthStyle } from "@/lib/part-css";
+import { themedRows } from "@/lib/theme-elements";
+import { themeElementsFor } from "@/server/theme-elements";
 import type { GridPlace } from "@/server/content-grid";
 import { placeLang } from "@/server/place-lang";
 
@@ -105,13 +108,7 @@ export const rowShows = (row: PageRow) =>
  * footer's rows (D80), whose site components `renderBlock` draws. A modal's
  * row (D121) is taken out of the page's flow and drawn in a dialog.
  */
-export function PageRowView({
-  row,
-  place,
-  renderBlock,
-  inAdmin = false,
-  first = false,
-}: {
+export function PageRowView(props: {
   row: PageRow;
   place: GridPlace;
   renderBlock?: (block: PageBlock) => ReactNode;
@@ -120,6 +117,22 @@ export function PageRowView({
   /** The first row in the flow of what is drawn (D128): its entrances play by CSS at once, without waiting for scripts. */
   first?: boolean;
 }) {
+  // A store's row is drawn with its theme laid under it (D182: what its Theme tab says for rows, headings, text and buttons).
+  return props.place.owner ? <ThemedRowView {...props} /> : <RowView {...props} />;
+}
+
+async function ThemedRowView({ row, ...rest }: Parameters<typeof PageRowView>[0]) {
+  const [themed] = themedRows([row], await themeElementsFor(rest.place.owner));
+  return <RowView row={themed} {...rest} />;
+}
+
+function RowView({
+  row,
+  place,
+  renderBlock,
+  inAdmin = false,
+  first = false,
+}: Parameters<typeof PageRowView>[0]) {
   return (
     <>
       {/* What the row's settings say at each screen size (D179). */}
@@ -190,7 +203,7 @@ function RowMarkup({
   // Motion (D128): a row's effects, its columns' (which take the row's entrance when it staggers them) and its blocks'.
   const rowFx = partFx(row.motion, "row", { firstRow: first });
   return (
-    <div className={row.width === "full" || inPanel ? undefined : "mx-auto w-full max-w-(--content-width)"}>
+    <div className={row.width === "full" || inPanel ? undefined : `mx-auto w-full max-w-(--content-width) ${rowWidthStyle(row).className}`.trim()}>
       <div id={box.id} className={box.className} style={{ ...box.style, ...rowFx.style }} {...rowFx.attrs}>
         <FontLinks families={partFonts(row)} />
         <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} />

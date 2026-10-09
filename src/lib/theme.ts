@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { DEFAULT_BREAKPOINTS, breakpointsSchema, type Breakpoints } from "./breakpoints";
 import { fontFamily, type SiteFonts } from "./fonts";
+import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./page-content";
+import { themeElementsSchema, type ThemeElements } from "./theme-elements";
 
 /**
  * Store design themes (D60): every style setting of a storefront, the
@@ -78,13 +80,19 @@ export type ThemeSettings = {
   headings: { weight: HeadingWeight; case: HeadingCase };
   buttons: { style: ButtonStyle; corners: ButtonCorners };
   corners: { cards: CardCorners; fields: FieldCorners };
-  layout: { width: ContentWidth; headerAlign: HeaderAlign; headerBackground: HeaderBackground };
+  /** `maxWidth`: the content's width in pixels, over the choice `width` (the page builder's Theme tab). */
+  layout: { width: ContentWidth; maxWidth?: number; headerAlign: HeaderAlign; headerBackground: HeaderBackground };
   productCards: { image: CardImage; style: CardStyle; align: CardAlign };
   /**
    * Where the screen sizes start (D179, `src/lib/breakpoints.ts`): the part rules of every page, header, footer and
    * layout are written for them. The defaults keep pages saved before as they were.
    */
   breakpoints?: Breakpoints;
+  /**
+   * What the page builder's Theme tab says for every row, heading, paragraph, list and button of the store's pages
+   * (D182, `src/lib/theme-elements.ts`): typography, spacing, frame and, for rows, colour and content width.
+   */
+  elements?: ThemeElements;
 };
 
 const keys = <T extends Record<string, unknown>>(record: T) => Object.keys(record) as [keyof T & string, ...(keyof T & string)[]];
@@ -103,6 +111,7 @@ export const themeSettingsSchema = z.object({
   corners: z.object({ cards: z.enum(keys(CARD_CORNERS)), fields: z.enum(keys(FIELD_CORNERS)) }),
   layout: z.object({
     width: z.enum(keys(CONTENT_WIDTHS)),
+    maxWidth: z.number().int().min(CONTENT_MAX_MIN).max(CONTENT_MAX_MAX).optional(),
     headerAlign: z.enum(keys(HEADER_ALIGNS)),
     headerBackground: z.enum(keys(HEADER_BACKGROUNDS)),
   }),
@@ -112,6 +121,7 @@ export const themeSettingsSchema = z.object({
     align: z.enum(keys(CARD_ALIGNS)),
   }),
   breakpoints: breakpointsSchema.optional(),
+  elements: themeElementsSchema.optional(),
 }) satisfies z.ZodType<ThemeSettings, unknown>;
 
 // ---------------------------------------------------------------------------
@@ -313,7 +323,7 @@ export function themeCss(settings: ThemeSettings, selector: string, preview?: "l
     `--button-radius: ${BUTTON_RADIUS[settings.buttons.corners]}`,
     `--radius-lg: ${CARD_RADIUS[settings.corners.cards]}`,
     `--radius-md: ${FIELD_RADIUS[settings.corners.fields]}`,
-    `--content-width: ${WIDTH[settings.layout.width]}`,
+    `--content-width: ${settings.layout.maxWidth ? `${settings.layout.maxWidth}px` : WIDTH[settings.layout.width]}`,
     `--card-aspect: ${ASPECT[settings.productCards.image]}`,
     `--heading-weight: ${HEADING_WEIGHTS[settings.headings.weight]}`,
   ].join("; ");
@@ -342,6 +352,37 @@ export function themeAttributes(settings: ThemeSettings): Record<string, string>
     "data-card-style": settings.productCards.style,
     "data-card-align": settings.productCards.align,
     ...(settings.mode !== "auto" && { "data-color-mode": settings.mode }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The page builder's Theme tab (D182)
+// ---------------------------------------------------------------------------
+
+/**
+ * What the page builder's Theme tab edits of a theme (`src/lib/theme-elements.ts`): the elements, the content width in
+ * pixels over the Narrow, Normal and Wide choice (null: the choice), and the body background of each colour set.
+ */
+export type ThemeTabValue = { elements: ThemeElements; maxWidth: number | null; background: { light: string; dark: string } };
+
+export const themeTabValue = (settings: ThemeSettings): ThemeTabValue => ({
+  elements: structuredClone(settings.elements ?? {}),
+  maxWidth: settings.layout.maxWidth ?? null,
+  background: { light: settings.light.background, dark: settings.dark.background },
+});
+
+/** The theme with the tab's value in it, and nothing else changed. */
+export function withThemeTab(settings: ThemeSettings, value: ThemeTabValue): ThemeSettings {
+  const { elements: _before, ...rest } = settings;
+  void _before;
+  const { maxWidth: _width, ...layout } = settings.layout;
+  void _width;
+  return {
+    ...rest,
+    layout: { ...layout, ...(value.maxWidth !== null && { maxWidth: value.maxWidth }) },
+    light: { ...settings.light, background: value.background.light },
+    dark: { ...settings.dark, background: value.background.dark },
+    ...(Object.keys(value.elements).length > 0 && { elements: value.elements }),
   };
 }
 

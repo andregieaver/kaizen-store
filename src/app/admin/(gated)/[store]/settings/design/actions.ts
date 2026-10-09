@@ -10,7 +10,7 @@ import { setOpenCartOnAdd } from "@/server/cart";
 import { applyDesignPreset, designTags, restoreDesignLook } from "@/server/design-presets";
 import { installFont } from "@/server/fonts";
 import { storeTag } from "@/server/stores";
-import { deleteSavedTheme, saveSavedTheme, saveStoreTheme } from "@/server/themes";
+import { deleteSavedTheme, saveSavedTheme, saveStoreTheme, saveThemeTab } from "@/server/themes";
 
 const read = (payload: string): unknown => {
   try {
@@ -25,6 +25,17 @@ export async function saveThemeAction(storeSlug: string, payload: string) {
   const member = await requirePermission(storeSlug, "website:write");
   const result = await saveStoreTheme(member.account, member.store.id, read(payload));
   // Every storefront page draws the theme from the store's layout.
+  if (result.ok) updateTag(storeTag(member.store.slug));
+  return result;
+}
+
+/**
+ * Puts what the page builder's Theme tab holds on the store (D182): the elements, the content width and the body background, and
+ * nothing else of the theme.
+ */
+export async function saveThemeTabAction(storeSlug: string, payload: string) {
+  const member = await requirePermission(storeSlug, "website:write");
+  const result = await saveThemeTab(member.account, member.store, read(payload));
   if (result.ok) updateTag(storeTag(member.store.slug));
   return result;
 }

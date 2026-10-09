@@ -15,6 +15,7 @@ import type { TemplateActions } from "@/lib/templates";
 import type { VisibilityChoices } from "@/lib/visibility";
 import type { Term, TermKind } from "@/lib/taxonomy";
 import type { StandardMenus } from "@/lib/site-layout";
+import type { StoreTheme, ThemeSettings } from "@/lib/theme";
 import type { GridStore } from "@/server/content-grid";
 import type { ItemLinkTargets } from "@/server/link-targets";
 import type { PlanChoice } from "@/lib/plan-offer";
@@ -91,7 +92,14 @@ export type PageOwnerContext = {
     startFile: StartFieldFile | null;
   } | null;
   /** A store's theme for the canvas (D60): CSS for `[data-theme-canvas]` and its attributes; null for Kaizen. */
-  theme: { css: string; attributes: Record<string, string>; /** Where its screen sizes start (D179), for the canvas's part rules. */ breakpoints?: Breakpoints } | null;
+  theme: {
+    css: string;
+    attributes: Record<string, string>;
+    /** Where its screen sizes start (D179), for the canvas's part rules. */
+    breakpoints?: Breakpoints;
+    /** The theme's settings, for the builder's Theme tab (D182), which edits the elements, content width and body background of a store's own theme. */
+    settings?: ThemeSettings;
+  } | null;
   /** Templates shared between stores and the marketplace (D125); null on Kaizen's own pages. */
   templates: TemplateActions | null;
   /**
@@ -135,6 +143,8 @@ export type PageOwnerContext = {
      * workspace (whose ids would not reach a store).
      */
     visibilityChoices?: () => Promise<VisibilityChoices>;
+    /** Saves what the builder's Theme tab holds (D182: the JSON of `ThemeTabValue`) on the store's theme; absent where the pages are not a store's own. */
+    saveThemeTab?: (payload: string) => Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }>;
     /** Saves the owner's CSS for every page (D100); it is live at once. */
     saveSiteCss: (css: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
     /** Copies a Google Fonts family to Kaizen before a block uses it (D59). */

@@ -440,3 +440,25 @@ dialog[data-page-modal] > .page-modal-panel {
   outline-style: dashed;
   outline-color: rgb(217 119 6 / 0.6);
 }
+
+/*
+ * The page builder's resize handles (D182): a row's side edges and the edges between its columns show while the row is
+ * pointed at or holds the focus, or while one is dragged; they are the builder's alone.
+ */
+[data-resize-handle] {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+[data-builder-item]:is(:hover, :focus-within) [data-resize-handle],
+[data-resize-handle]:focus-visible,
+[data-resize-handle][data-active] {
+  opacity: 1;
+}
+[data-builder-dragging] [data-resize-handle] {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-resize-handle] {
+    transition: none;
+  }
+}

@@ -94,6 +94,7 @@ export const SIZE_KEYS = [
   "order",
   "align",
   "maxWidth",
+  "contentMax",
   "columns",
   "display",
 ] as const satisfies readonly (keyof PartSizeSettings)[];
@@ -104,7 +105,7 @@ export type SizeField = Exclude<SizeKey, "style"> | "margin" | "padding";
 const isSizeKey = (key: string): key is SizeKey => (SIZE_KEYS as readonly string[]).includes(key);
 
 /** Settings that can be "none" at a size though a larger size sets them: stored as `null` there. */
-const NONE_AT_SIZE: ReadonlySet<SizeKey> = new Set(["border", "shadow", "background", "backdropBlur", "maxWidth"]);
+const NONE_AT_SIZE: ReadonlySet<SizeKey> = new Set(["border", "shadow", "background", "backdropBlur", "maxWidth", "contentMax"]);
 
 /** What a setting is where nothing sets it, at a size: a row stacks on Small only (a dual button nowhere); nothing is reversed; a grid is a grid; text starts on the left. */
 function fallbackAt(part: object, key: SizeKey, size: Size): unknown {

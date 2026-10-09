@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { CSS_MAX, cssProblem } from "./custom-css";
-import { siteFontFamilies } from "./fonts";
 import {
   PAGE_TITLE_MAX,
   ROWS_MAX,
@@ -14,6 +13,7 @@ import {
 } from "./page-content";
 import type { PageLayout } from "./page-layout";
 import { slugify } from "./slug";
+import { themeFontFamilies } from "./theme-elements";
 import { isStarterPicture, starterChoice } from "./store-starters";
 import {
   isStorageUrl,
@@ -231,7 +231,7 @@ export function layoutForStore(
 /** Every font family a snapshot needs installed: the theme's heading and body, and the layouts' blocks' own (D59). */
 export function snapshotFonts(snapshot: DesignSnapshot): string[] {
   const layouts = [snapshot.header, snapshot.footer, snapshot.productLayout].filter((l): l is DesignLayout => l !== null);
-  return [...new Set([...siteFontFamilies(snapshot.theme.settings.fonts), ...layouts.flatMap((layout) => pageFonts(layout))])];
+  return [...new Set([...themeFontFamilies(snapshot.theme.settings), ...layouts.flatMap((layout) => pageFonts(layout))])];
 }
 
 const asLayout = (layout: DesignLayout, kind: DesignLayoutKind): PageLayout => ({ pageType: LAYOUT_PAGE_TYPE[kind], rows: layout.rows, css: layout.css });

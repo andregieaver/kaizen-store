@@ -4,8 +4,9 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { siteFontFamilies } from "@/lib/fonts";
-import { storeThemeInput, THEME_TEMPLATE_KEYS, themeSettingsSchema, type StoreTheme, type ThemeSettings, type ThemeTemplate } from "@/lib/theme";
+import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "@/lib/page-content";
+import { storeThemeInput, THEME_TEMPLATE_KEYS, themeSettingsSchema, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTemplate } from "@/lib/theme";
+import { themeElementsSchema, themeFontFamilies } from "@/lib/theme-elements";
 
 import { audit, type Account } from "./auth";
 import { findFont, installFonts } from "./fonts";
@@ -25,7 +26,7 @@ const problemsOf = (error: z.ZodError) => [...new Set(error.issues.map((i) => i.
 
 /** A theme's fonts must be in Google Fonts, and are installed before any page uses them. */
 async function readyFonts(settings: ThemeSettings): Promise<string[]> {
-  const families = siteFontFamilies(settings.fonts);
+  const families = themeFontFamilies(settings);
   const unknown = families.filter((family) => !findFont(family));
   if (unknown.length > 0) return unknown.map((family) => `${family} is not in Google Fonts.`);
   const installed = await installFonts(families);
@@ -68,6 +69,31 @@ export async function saveStoreTheme(
   await db().execute(sql`update commerce.stores set theme = ${JSON.stringify(theme)}::jsonb where id = ${storeId}::uuid`);
   await audit(account.id, storeId, "store.theme_updated", { base: theme.base, savedId: theme.savedId });
   return { ok: true, theme };
+}
+
+const hexColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase());
+
+/** What the page builder's Theme tab sends (D182): the elements, the content width and the body background. */
+const themeTabInput = z.object({
+  elements: themeElementsSchema.optional(),
+  maxWidth: z.number().int().min(CONTENT_MAX_MIN).max(CONTENT_MAX_MAX).nullable(),
+  background: z.object({ light: hexColour, dark: hexColour }),
+});
+
+/**
+ * Saves what the page builder's Theme tab holds and nothing else of the theme (the rest of it, being edited in Design at the same time,
+ * stays as it is): the elements, the content width and the body background of both colour sets.
+ */
+export async function saveThemeTab(
+  account: Account,
+  store: { id: string; theme: StoreTheme },
+  input: unknown,
+): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
+  const parsed = themeTabInput.safeParse(input);
+  if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
+  const { elements, maxWidth, background } = parsed.data;
+  const settings = withThemeTab(store.theme.settings, { elements: elements ?? {}, maxWidth, background });
+  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings });
 }
 
 const savedThemeInput = z.object({
