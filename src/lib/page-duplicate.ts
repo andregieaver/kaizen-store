@@ -16,6 +16,13 @@ export function copyTitle(title: string): string {
 
 /** The first free address for a copy of `slug`, given the addresses the owner's pages already use. */
 export function copySlug(slug: string, taken: ReadonlySet<string>): string {
+  // A nested page's copy stays under the same parent: only its own part gets the suffix.
+  const at = slug.lastIndexOf("/");
+  if (at >= 0) {
+    const parent = slug.slice(0, at + 1);
+    const own = copySlug(slug.slice(at + 1), new Set([...taken].filter((t) => t.startsWith(parent)).map((t) => t.slice(parent.length)).filter((t) => !t.includes("/"))));
+    return parent + own;
+  }
   // A copy of a copy adds to the original's address, not to `about-copy-copy`.
   const base = slug.replace(/-copy(?:-\d+)?$/, "") || slug;
   for (let n = 1; n < 10_000; n++) {

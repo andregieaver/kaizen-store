@@ -4694,16 +4694,20 @@ export const pages = commerce.table(
     unique("pages_store_id_key").on(t.storeId, t.id),
     index("pages_created_by_idx").on(t.createdBy),
     index("pages_updated_by_idx").on(t.updatedBy),
-    check("pages_slug_format", sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$' and length(${t.slug}) <= 80`),
+    // A page's address may be nested under another page's (`projects/project-a`, at most four parts, each at most 80 characters); only pages nest.
+    check(
+      "pages_slug_format",
+      sql`${t.slug} ~ '^[a-z0-9]+(?:-[a-z0-9]+)*(?:/[a-z0-9]+(?:-[a-z0-9]+)*){0,3}$' and length(${t.slug}) <= 240 and ${t.slug} !~ '[^/]{81}' and (${t.type} = 'page' or position('/' in ${t.slug}) = 0)`,
+    ),
     // The platform's own routes at the root of the site (category and tag listings: D50).
     check(
       "pages_slug_not_reserved",
-      sql`${t.storeId} is not null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'admin', 'api', 'app', 'auth', 'blog', 'category', 'cookies', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'tag', 'unsubscribe', 'www')`,
+      sql`${t.storeId} is not null or ${t.type} <> 'page' or split_part(${t.slug}, '/', 1) not in ('account', 'admin', 'api', 'app', 'auth', 'blog', 'category', 'cookies', 'forgot-password', 'help', 'mail', 'platform', 'robots', 's', 'setup', 'sign-in', 'sign-up', 'sitemap', 'status', 'stores', 'support', 'tag', 'unsubscribe', 'www')`,
     ),
     // A store's own routes inside each of its markets (D53).
     check(
       "pages_store_slug_not_reserved",
-      sql`${t.storeId} is null or ${t.type} <> 'page' or ${t.slug} not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'returns', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist', 'withdraw')`,
+      sql`${t.storeId} is null or ${t.type} <> 'page' or split_part(${t.slug}, '/', 1) not in ('account', 'blog', 'cart', 'category', 'checkout', 'cookies', 'deliveries', 'download', 'order', 'p', 'products', 'returns', 'search', 'subscription', 'tag', 'unsubscribe', 'wishlist', 'withdraw')`,
     ),
     // The blog's own routes (D57): /blog/category/…, /blog/tag/… and pages of the list.
     check("pages_article_slug_not_reserved", sql`${t.type} <> 'article' or ${t.slug} not in ('category', 'page', 'tag')`),

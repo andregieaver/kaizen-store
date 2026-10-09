@@ -1807,6 +1807,51 @@ describe("pages", () => {
     await expect(page("admin", store)).resolves.toBeDefined();
   });
 
+  it("nests pages by address, under any first part that is not a route, at most four deep", async () => {
+    await expect(page("projects/project-a")).resolves.toBeDefined();
+    await expect(page("projects/project-a/notes/deep")).resolves.toBeDefined();
+    for (const slug of ["a/b/c/d/e", "a//b", "/a", "a/", "a/B", `a/${"x".repeat(81)}`]) {
+      await expect(page(slug)).rejects.toThrow(/pages_slug_format/);
+    }
+    // The first part is the one that must not be a route.
+    await expect(page("admin/x")).rejects.toThrow(/pages_slug_not_reserved/);
+    await expect(page("products/x", store)).rejects.toThrow(/pages_store_slug_not_reserved/);
+    await expect(page("x/admin", store)).resolves.toBeDefined();
+  });
+
+  it("moves the pages nested under a page with it, leaving a redirect for each published one", async () => {
+    const withSlug = (slug: string) => JSON.stringify({ title: "T", slug });
+    const mk = async (slug: string, live: boolean) => {
+      const row = await one<{ id: string }>(
+        "insert into commerce.pages (store_id, slug, draft, published, published_at) values (null, $1, $2, $3, $4) returning id",
+        [slug, withSlug(slug), live ? withSlug(slug) : null, live ? new Date().toISOString() : null],
+      );
+      return row.id;
+    };
+    const parent = await mk("work", true);
+    const live = await mk("work/one", true);
+    const draftOnly = await mk("work/two", false);
+    const other = await mk("worker/x", true);
+    // What `savePage` runs when the parent's address changes from `work` to `projects`.
+    await db.query("update commerce.pages set slug = 'projects' where id = $1", [parent]);
+    await db.query(
+      `update commerce.pages c set
+         slug = $1::text || substr(c.slug, length($2::text) + 1),
+         draft = jsonb_set(c.draft, '{slug}', to_jsonb($1::text || substr(c.slug, length($2::text) + 1))),
+         published = case when c.published is null then null
+           else jsonb_set(c.published, '{slug}', to_jsonb($1::text || substr(c.slug, length($2::text) + 1))) end
+       where c.store_id is null and c.type = 'page' and left(c.slug, length($2::text) + 1) = $2::text || '/'`,
+      ["projects", "work"],
+    );
+    const slugs = async (id: string) => (await one<{ slug: string; d: string }>("select slug, draft ->> 'slug' as d from commerce.pages where id = $1", [id]));
+    expect(await slugs(live)).toEqual({ slug: "projects/one", d: "projects/one" });
+    expect(await slugs(draftOnly)).toEqual({ slug: "projects/two", d: "projects/two" });
+    // Another page that only starts with the same letters stays.
+    expect((await slugs(other)).slug).toBe("worker/x");
+    expect((await redirects("work/one")).map((r) => r.page_id)).toEqual([live]);
+    expect((await redirects("work")).map((r) => r.page_id)).toEqual([parent]);
+  });
+
   it("keeps a store's routes from its pages, as the app's list does (D53)", async () => {
     for (const slug of RESERVED_STORE_PAGE_SLUGS) {
       await expect(page(slug, store)).rejects.toThrow(/pages_store_slug_not_reserved/);

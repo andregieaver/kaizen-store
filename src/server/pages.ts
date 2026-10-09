@@ -234,7 +234,8 @@ export async function savePage(
   const choices = owner && type === "page" ? await choiceSlugsOf(owner) : [];
   const slugProblem =
     pageSlugProblem(parsed.data.slug, reserved) ??
-    (choices.includes(parsed.data.slug) ? `The address ${parsed.data.slug} is a language or currency of the store's own addresses. Choose another.` : null);
+    (type !== "page" && parsed.data.slug.includes("/") ? "Only pages can be nested under another page." : null) ??
+    (choices.includes(parsed.data.slug.split("/")[0]) ? `The address ${parsed.data.slug} is a language or currency of the store's own addresses. Choose another.` : null);
   if (slugProblem) return { ok: false, problems: [slugProblem] };
   const ruleProblem = pageRulesProblem(owner, type, parsed.data, variantOf);
   if (ruleProblem) return { ok: false, problems: [ruleProblem] };
@@ -324,7 +325,7 @@ export async function savePage(
       }
 
       const [row] = await tx.execute<Row>(sql`
-        select published_at is not null as live from commerce.pages
+        select published_at is not null as live, slug as old_slug from commerce.pages
         where id = ${id}::uuid and ${ownedBy(owner, type)}
         for update
       `);
@@ -341,6 +342,18 @@ export async function savePage(
           updated_at = now(), updated_by = ${account.id}::uuid
         where id = ${id}::uuid
       `);
+      // Pages nested under it follow it to its new address; each published one leaves a redirect from the old (a rule in the database).
+      const from = String(row.old_slug);
+      if (type === "page" && moveAddress && from !== content.slug) {
+        await tx.execute(sql`
+          update commerce.pages c set
+            slug = ${content.slug}::text || substr(c.slug, length(${from}::text) + 1),
+            draft = jsonb_set(c.draft, '{slug}', to_jsonb(${content.slug}::text || substr(c.slug, length(${from}::text) + 1))),
+            published = case when c.published is null then null
+              else jsonb_set(c.published, '{slug}', to_jsonb(${content.slug}::text || substr(c.slug, length(${from}::text) + 1))) end
+          where ${ownedBy(owner, "page")} and left(c.slug, length(${from}::text) + 1) = ${from}::text || '/'
+        `);
+      }
       return { ok: true, id };
     });
   } catch (error) {

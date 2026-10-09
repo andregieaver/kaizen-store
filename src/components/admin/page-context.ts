@@ -59,6 +59,8 @@ export type PageOwnerContext = {
   languages: PageLanguage[];
   /** Addresses the owner's pages cannot take. */
   reserved: readonly string[];
+  /** The owner's pages, for choosing a parent to nest a page under (`/projects/project-a`); only pages nest. */
+  parents?: readonly { slug: string; title: string }[];
   /** The owner's own description: the last fallback for a page without text. */
   defaultDescription: string;
   /** Uploads a picture; null where uploads are not set up. */

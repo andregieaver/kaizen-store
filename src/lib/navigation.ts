@@ -99,8 +99,9 @@ export const menuLinkSchema = z.discriminatedUnion("kind", [
     slug: z
       .string()
       .trim()
-      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Choose a page for each page link.")
-      .max(80),
+      // A page's address may be nested (`projects/project-a`).
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/, "Choose a page for each page link.")
+      .max(240),
   }),
   z.object({ kind: z.literal("category"), slug: termSlug("category") }),
   z.object({ kind: z.literal("tag"), slug: termSlug("tag") }),

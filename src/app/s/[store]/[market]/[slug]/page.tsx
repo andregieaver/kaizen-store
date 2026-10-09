@@ -19,7 +19,8 @@ export async function generateStaticParams({ params }: { params: { store: string
   const shop = await resolveShop(params.store, params.market);
   const pages = shop ? await listPublishedPages(shop.store.id) : [];
   // Cache Components needs at least one entry; "_" simply renders a 404.
-  return pages.length > 0 ? pages.map((page) => ({ slug: page.slug })) : [{ slug: "_" }];
+  const top = pages.filter((page) => !page.slug.includes("/"));
+  return top.length > 0 ? top.map((page) => ({ slug: page.slug })) : [{ slug: "_" }];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

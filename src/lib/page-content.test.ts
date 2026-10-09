@@ -6,6 +6,9 @@ import {
   IMAGE_SHAPE_RATIO,
   IMAGE_WIDTH_MAX,
   IMAGE_WIDTH_MIN,
+  joinPagePath,
+  pageParentPath,
+  pageSegment,
   RESERVED_PAGE_SLUGS,
   RESERVED_STORE_PAGE_SLUGS,
   reservedPageSlugs,
@@ -772,5 +775,27 @@ describe("fonts per component (D59)", () => {
     const parsed = pageInput.safeParse(page([{ id: "t", type: "richText", doc: doc(p("Hi")), font: 'Lora"; } body { color: red' }]));
     expect(parsed.success).toBe(false);
     expect(parsed.error?.issues.map((i) => i.message)).toContain("Choose a font from the list.");
+  });
+});
+
+describe("nested page addresses", () => {
+  it("are parts joined by a slash, each well formed, at most four deep", () => {
+    expect(pageSlugProblem("projects/project-a")).toBeNull();
+    expect(pageSlugProblem("a/b/c/d")).toBeNull();
+    for (const bad of ["a/b/c/d/e", "a//b", "/a", "a/", "a/B", "a/b--c"]) expect(pageSlugProblem(bad)).not.toBeNull();
+  });
+
+  it("are checked against the routes by their first part only", () => {
+    expect(pageSlugProblem("admin/x")).toMatch(/used by Kaizen/);
+    expect(pageSlugProblem("x/admin")).toBeNull();
+    expect(pageSlugProblem("products/x", RESERVED_STORE_PAGE_SLUGS)).toMatch(/used by the store/);
+  });
+
+  it("split into a parent and an own part, and join again", () => {
+    expect(pageParentPath("projects/project-a")).toBe("projects");
+    expect(pageParentPath("projects")).toBe("");
+    expect(pageSegment("a/b/c")).toBe("c");
+    expect(joinPagePath("", "x")).toBe("x");
+    expect(joinPagePath("a/b", "c")).toBe("a/b/c");
   });
 });

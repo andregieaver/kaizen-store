@@ -7,22 +7,25 @@ import { PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
 import { findPublishedPage, listPublishedPages } from "@/server/pages";
 import { platformRoleOf } from "@/server/platform-roles";
 
-type Props = PageProps<"/[slug]">;
+type Props = {
+  params: Promise<{ slug: string; sub: string[] }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
-/**
- * Kaizen's own pages (D42), prerendered when the site is built so their
- * content is plain HTML; pages published later are rendered on first visit
- * and then cached until the next change.
- */
+/** Kaizen's pages nested under another (`/projects/project-a`), drawn like any other (`[slug]/page.tsx`). */
 export async function generateStaticParams() {
   const pages = await listPublishedPages();
+  const nested = pages.filter((page) => page.slug.includes("/")).map((page) => {
+    const [slug, ...sub] = page.slug.split("/");
+    return { slug, sub };
+  });
   // Cache Components needs at least one entry; "_" simply renders a 404.
-  const top = pages.filter((page) => !page.slug.includes("/"));
-  return top.length > 0 ? top.map((page) => ({ slug: page.slug })) : [{ slug: "_" }];
+  return nested.length > 0 ? nested : [{ slug: "_", sub: ["_"] }];
 }
 
 async function load(params: Props["params"]) {
-  const { slug } = await params;
+  const { slug: first, sub } = await params;
+  const slug = [first, ...sub.map(decodeURIComponent)].join("/");
   return pageSlugProblem(slug) === null ? findPublishedPage(null, slug) : null;
 }
 
@@ -32,13 +35,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return platformPageMetadata(found.page, `/${found.page.slug}`);
 }
 
-export default async function PlatformPage({ params, searchParams }: Props) {
+export default async function NestedPlatformPage({ params, searchParams }: Props) {
   const found = await load(params);
   if (!found) notFound();
-  // A page that moved: its old address leads to the new one for good.
   if ("redirect" in found) permanentRedirect(`/${found.redirect}`);
   const { page } = found;
-  // A page chosen for a place of its own (D143) has the place's address: the front page's `/`, the blog's `/blog`; the 404 page has none.
   const role = await platformRoleOf(page.id);
   if (role) {
     const address = PLATFORM_ROLE_COPY[role].address;

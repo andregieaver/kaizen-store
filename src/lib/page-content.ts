@@ -45,6 +45,9 @@ import type { FeatureRequirement } from "./store-features";
 
 export const PAGE_TITLE_MAX = 200;
 export const PAGE_SLUG_MAX = 80;
+/** A page's whole address (parents and own part, `projects/project-a`), and how deep pages may nest. */
+export const PAGE_PATH_MAX = 240;
+export const PAGE_DEPTH_MAX = 4;
 export const ALT_MAX = 300;
 export const AUTHOR_MAX = 100;
 export const BLOCKS_MAX = 100;
@@ -1847,26 +1850,50 @@ export const reservedPageSlugs = (storeId: string | null, type: PageType = "page
 /** Product layouts (D79), headers and footers (D80) have no address on the site: their name's own is only a key. */
 const NO_RESERVED_SLUGS: readonly string[] = [];
 
-/** Why an address is not well formed, or null. */
+/** Why an address is not well formed, or null. A page's address is its parents' and its own part, joined by `/` (`projects/project-a`). */
 function slugFormatProblem(slug: string): string | null {
   if (slug.length === 0) return "Give the page an address.";
-  if (slug.length > PAGE_SLUG_MAX) return `Keep the address under ${PAGE_SLUG_MAX} characters.`;
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
-    return "An address is lowercase letters and digits, with single hyphens between words.";
+  if (slug.length > PAGE_PATH_MAX) return `Keep the address under ${PAGE_PATH_MAX} characters.`;
+  const parts = slug.split("/");
+  if (parts.length > PAGE_DEPTH_MAX) return `Pages nest at most ${PAGE_DEPTH_MAX} levels deep.`;
+  for (const part of parts) {
+    if (part.length === 0) return "An address cannot have an empty part.";
+    if (part.length > PAGE_SLUG_MAX) return `Keep each part of the address under ${PAGE_SLUG_MAX} characters.`;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(part)) {
+      return "An address is lowercase letters and digits, with single hyphens between words.";
+    }
   }
   return null;
+}
+
+/** The parent part of a nested address (`projects` of `projects/project-a`); empty for a page at the top. */
+export function pageParentPath(slug: string): string {
+  const at = slug.lastIndexOf("/");
+  return at < 0 ? "" : slug.slice(0, at);
+}
+
+/** A page's own part of its address (`project-a` of `projects/project-a`). */
+export function pageSegment(slug: string): string {
+  return slug.slice(slug.lastIndexOf("/") + 1);
+}
+
+/** A parent's address and a page's own part, joined. */
+export function joinPagePath(parent: string, segment: string): string {
+  return parent ? `${parent}/${segment}` : segment;
 }
 
 /** Why an address cannot be used, or null if it is fine; `reserved` is the owner's (Kaizen's by default). */
 export function pageSlugProblem(slug: string, reserved: readonly string[] = RESERVED_PAGE_SLUGS): string | null {
   const problem = slugFormatProblem(slug);
   if (problem) return problem;
-  if (reserved.includes(slug)) {
+  // Only the first part is the platform's: `products/x` would be under a working page's address.
+  const first = slug.split("/")[0];
+  if (reserved.includes(first)) {
     return reserved === RESERVED_PAGE_SLUGS
-      ? `The address /${slug} is used by Kaizen itself. Choose another.`
+      ? `The address /${first} is used by Kaizen itself. Choose another.`
       : reserved === RESERVED_ARTICLE_SLUGS
-        ? `The address blog/${slug} is used by the blog itself. Choose another.`
-        : `The address ${slug} is used by the store itself. Choose another.`;
+        ? `The address blog/${first} is used by the blog itself. Choose another.`
+        : `The address ${first} is used by the store itself. Choose another.`;
   }
   return null;
 }

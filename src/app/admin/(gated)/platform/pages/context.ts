@@ -1,3 +1,4 @@
+import { listMenuPages } from "@/server/pages";
 import "server-only";
 
 import { platformSwatches } from "@/lib/colour";
@@ -47,6 +48,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     origin: siteUrl(),
     languages: pageLanguages(["en"]),
     reserved: reservedPageSlugs(null, type),
+    // The pages a new or edited page can be nested under (`/projects/project-a`).
+    parents: type === "page" ? (await listMenuPages(null, "page")).map(({ slug, title }) => ({ slug, title })) : [],
     defaultDescription: PLATFORM_DEFAULTS.description,
     upload: uploadsEnabled() ? uploadPlatformImageAction : null,
     startVideo: uploadsEnabled() ? startPlatformVideoUploadAction : null,

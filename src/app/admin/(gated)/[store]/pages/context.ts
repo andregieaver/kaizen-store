@@ -1,3 +1,4 @@
+import { listMenuPages } from "@/server/pages";
 import "server-only";
 
 import { themeSwatches } from "@/lib/colour";
@@ -78,6 +79,8 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     languages: pageLanguages(store.localization.locales),
     // A language or currency the store keeps is a short address of its own (D181), never a page's.
     reserved: [...reservedPageSlugs(store.id, type), ...(type === "page" ? reservedChoiceSlugs(store.address) : [])],
+    // The pages a new or edited page can be nested under (`/projects/project-a`).
+    parents: type === "page" ? (await listMenuPages(store.id, "page")).map(({ slug, title }) => ({ slug, title })) : [],
     defaultDescription:
       (market && store.seo.description[market.locale]) || (market ? t(market.lang).storeSummary(store.name, market.name) : store.name),
     upload: uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null,

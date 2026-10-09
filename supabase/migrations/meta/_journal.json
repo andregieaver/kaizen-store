@@ -2129,6 +2129,13 @@
       "when": 1791442106003,
       "tag": "20261008064825_store_features_website_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 304,
+      "version": "7",
+      "when": 1791569456636,
+      "tag": "20261009181056_page_paths",
+      "breakpoints": true
     }
   ]
 }

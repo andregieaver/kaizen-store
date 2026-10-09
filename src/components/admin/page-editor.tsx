@@ -15,6 +15,9 @@ import {
   AUTHOR_MAX,
   LAYOUT_TYPES,
   PAGE_SLUG_MAX,
+  joinPagePath,
+  pageParentPath,
+  pageSegment,
   PAGE_TITLE_MAX,
   newPageContent,
   pageExcerpt,
@@ -123,6 +126,9 @@ export function PageEditor({
 }) {
   const { actions, origin, defaultDescription, upload, reserved, adminBase, siteBase } = context;
   const [terms, setTerms] = useState(initialTerms);
+  // The address a title makes, kept under the page's parent; the platform's reserved addresses are only for the top level.
+  const slugFromTitle = (title: string, current = "") =>
+    joinPagePath(pageParentPath(current), pageSlugFromTitle(title, pageParentPath(current) ? [] : reserved));
   const router = useRouter();
   const [saved, setSaved] = useState<EditablePage | null>(page);
   // What is being edited: a page, or an article in the blog (D57), which starts with its writer as author.
@@ -484,7 +490,11 @@ export function PageEditor({
                   onChange={(event) => {
                     const title = event.target.value;
                     // The address is one for all languages, made from the main title.
-                    change(slugFollows && !translating ? { title, slug: pageSlugFromTitle(title, reserved) } : { title });
+                    change(
+                      slugFollows && !translating
+                        ? { title, slug: slugFromTitle(title, content.slug) }
+                        : { title },
+                    );
                   }}
                   placeholder={
                     context.type === "article"
@@ -519,13 +529,15 @@ export function PageEditor({
                 origin={origin}
                 siteBase={siteBase}
                 reserved={reserved}
+                parents={context.type === "page" ? (context.parents ?? []) : []}
+                own={saved?.slug ?? null}
                 onChange={(slug) => {
                   setSlugFollows(false);
                   change({ slug });
                 }}
                 onFollow={() => {
                   setSlugFollows(!liveSlug);
-                  change({ slug: pageSlugFromTitle(content.title, reserved) });
+                  change({ slug: slugFromTitle(content.title, content.slug) });
                 }}
               />
               )}
@@ -883,10 +895,15 @@ function SlugField({
   origin,
   siteBase,
   reserved,
+  parents,
+  own,
   onChange,
   onFollow,
 }: {
   slug: string;
+  /** The owner's pages this one can be nested under (`projects`), and this page's own saved address, which it cannot be nested under. */
+  parents: readonly { slug: string; title: string }[];
+  own: string | null;
   follows: boolean;
   origin: string;
   siteBase: string;
@@ -896,21 +913,47 @@ function SlugField({
 }) {
   const id = useId();
   const problem = slug ? pageSlugProblem(slug, reserved) : null;
+  const parent = pageParentPath(slug);
+  // Not under itself or a page nested under it; a parent that has since been deleted stays chosen until it is changed.
+  const choices = parents.filter((p) => own === null || (p.slug !== own && !p.slug.startsWith(`${own}/`)));
+  const known = parent === "" || choices.some((p) => p.slug === parent);
+  const parentId = `${id}-parent`;
   return (
     <div className="flex flex-col gap-1">
+      {(choices.length > 0 || parent !== "") && (
+        <div className="mb-1 flex flex-col gap-1">
+          <label htmlFor={parentId} className="text-sm font-medium">
+            Parent page
+          </label>
+          <select
+            id={parentId}
+            value={parent}
+            onChange={(event) => onChange(joinPagePath(event.target.value, pageSegment(slug)))}
+            className="min-h-10 rounded-md border border-border bg-transparent px-2 text-sm"
+          >
+            <option value="">None (top level)</option>
+            {!known && <option value={parent}>/{parent}</option>}
+            {choices.map((p) => (
+              <option key={p.slug} value={p.slug}>
+                {p.title} (/{p.slug})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <label htmlFor={id} className="text-sm font-medium">
         Address
       </label>
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center rounded-md border border-border focus-within:outline-2">
           <span aria-hidden className="shrink-0 pl-3 text-sm text-muted">
-            /
+            /{parent ? `${parent}/` : ""}
           </span>
           <input
             id={id}
-            value={slug}
+            value={pageSegment(slug)}
             maxLength={PAGE_SLUG_MAX}
-            onChange={(event) => onChange(event.target.value.toLowerCase().replace(/\s+/g, "-"))}
+            onChange={(event) => onChange(joinPagePath(parent, event.target.value.toLowerCase().replace(/[\s/]+/g, "-")))}
             spellCheck={false}
             aria-invalid={problem ? true : undefined}
             aria-describedby={`${id}-hint`}

@@ -43,3 +43,11 @@ describe("copySlug", () => {
     expect(copySlug(slug, new Set([slug]))).not.toMatch(/--/);
   });
 });
+
+describe("a nested page's copy", () => {
+  it("stays under its parent and takes the first free suffix there", () => {
+    expect(copySlug("projects/project-a", new Set(["projects/project-a"]))).toBe("projects/project-a-copy");
+    expect(copySlug("projects/project-a", new Set(["project-a-copy"]))).toBe("projects/project-a-copy");
+    expect(copySlug("projects/project-a-copy", new Set(["projects/project-a-copy", "projects/project-a-copy-2"]))).toBe("projects/project-a-copy-3");
+  });
+});
