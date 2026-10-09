@@ -5626,9 +5626,9 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
         <ButtonLookFields look={block.button ?? {}} onChange={(patch) => onChange({ button: mergeOptional(block.button, patch) })} />
       </div>
       <div className="flex flex-col gap-4 border-t border-border pt-4">
-        <p className="text-sm font-medium">Tiles</p>
+        <p className="text-sm font-medium">Cards</p>
         <NumberField
-          label="Space between tiles"
+          label="Space between cards"
           hint={`in pixels, up to ${GRID_GAP_MAX}`}
           value={valueAt(block, "gap", size) ?? block.gap}
           max={GRID_GAP_MAX}
@@ -5637,20 +5637,34 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
           onChange={(gap) => onChange(setAt(block, size, { gap }))}
         />
         <OptionalColor
-          label="Tile background"
+          label="Card background"
           hint="Otherwise none."
           value={tile?.background}
           fallback="#f5f5f4"
           onChange={(background) => onChange({ tile: mergeOptional(tile, { background }) })}
         />
+        <OptionalColor
+          label="Card text colour"
+          hint="Otherwise the page's."
+          value={tile?.color}
+          fallback="#111827"
+          onChange={(color) => onChange({ tile: mergeOptional(tile, { color }) })}
+        />
         <NumberField
-          label="Space inside each tile"
-          hint="padding, in pixels"
+          label="Space inside each card"
+          hint="padding around the picture and the words, in pixels"
           value={tile?.padding ?? 0}
           max={SPACING_MAX}
           onChange={(padding) => onChange({ tile: mergeOptional(tile, { padding: padding || undefined }) })}
         />
-        <FrameFields what="Tile" value={tile ?? {}} onChange={(patch) => onChange({ tile: mergeOptional(tile, patch) })} />
+        <NumberField
+          label="Space around the card's words"
+          hint="padding of the text under the picture, in pixels"
+          value={tile?.contentPadding ?? 0}
+          max={SPACING_MAX}
+          onChange={(contentPadding) => onChange({ tile: mergeOptional(tile, { contentPadding: contentPadding || undefined }) })}
+        />
+        <FrameFields what="Card" value={tile ?? {}} onChange={(patch) => onChange({ tile: mergeOptional(tile, patch) })} />
       </div>
     </div>
   );

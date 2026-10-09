@@ -672,7 +672,18 @@ export type GridColumns = { mobile: number; tablet: number; desktop: number };
 export const GRID_ELEMENTS = { image: "Picture", heading: "Heading", excerpt: "Excerpt", price: "Price", button: "Button" } as const;
 export type GridElement = keyof typeof GRID_ELEMENTS;
 /** A tile's own box: background, padding, border, corners and shadow. */
-export type GridTile = { background?: Color; padding?: number; border?: Border; radius?: number; shadow?: Shadow };
+export type GridTile = {
+  background?: Color;
+  /** The card's text colour: its words, and (through the muted colour) its secondary words. */
+  color?: Color;
+  /** Space inside the card, around the picture and the words. */
+  padding?: number;
+  /** Space around the words only (not the picture), so a picture can reach the card's edge while the words keep clear of it. */
+  contentPadding?: number;
+  border?: Border;
+  radius?: number;
+  shadow?: Shadow;
+};
 
 /** Custom grid items (D155): the most one grid holds, beyond `ITEMS_MAX` because a copied grid can be large; still one block. */
 export const CUSTOM_ITEMS_MAX = 60;
@@ -2337,7 +2348,9 @@ const contentGridBlock = z
   tile: z
     .object({
       background: color.optional(),
+      color: color.optional(),
       padding: z.number().int().min(0).max(SPACING_MAX).optional(),
+      contentPadding: z.number().int().min(0).max(SPACING_MAX).optional(),
       border: partBase.border,
       radius: partBase.radius,
       shadow: partBase.shadow,
