@@ -173,8 +173,9 @@ describe("saving a product", () => {
         safetyInformation: "Varm.",
         seoTitle: "Håndlaget kopp i steingods",
         seoDescription: "",
+        excerpt: "",
       },
-      { locale: "sv-SE", title: "", description: "", safetyInformation: "", seoTitle: "", seoDescription: "" },
+      { locale: "sv-SE", title: "", description: "", safetyInformation: "", seoTitle: "", seoDescription: "", excerpt: "" },
     ]);
     expect(saved?.variants.map((v) => [v.sku, v.prices, v.stock])).toEqual([
       [`K-HVIT-${run}`, { NO: "249,00" }, 5],
