@@ -1387,6 +1387,8 @@ export const productTranslations = commerce.table(
     /** Title and description for search results and shares; empty uses the listing's own. */
     seoTitle: text("seo_title").notNull().default(""),
     seoDescription: text("seo_description").notNull().default(""),
+    /** A short text of its own for lists and content grids; empty uses the start of the description. */
+    excerpt: text("excerpt").notNull().default(""),
     /** The keyword search document (S1): title and description, stemmed in the translation's language. */
     search: tsvector("search").generatedAlwaysAs(
       (): ReturnType<typeof sql> => sql`commerce.product_search_doc(locale, title, description)`,

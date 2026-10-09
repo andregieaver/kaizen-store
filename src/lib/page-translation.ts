@@ -195,6 +195,8 @@ export function mapTexts(content: PageContent, visit: Visit): PageContent {
   return {
     ...content,
     title: str("title", content.title, 200),
+    // Visited even when empty, so another language can have one; never stored as an empty text.
+    excerpt: str("excerpt", content.excerpt ?? "", 300) || undefined,
     seo: { title: str("seo.title", content.seo.title, 70), description: str("seo.description", content.seo.description, 160) },
     thumbnail: content.thumbnail && { ...content.thumbnail, alt: str("thumbnail.alt", content.thumbnail.alt, 300) },
     rows: content.rows.map((row) => ({ ...row, columns: row.columns.map(column) })),
@@ -205,6 +207,7 @@ export function mapTexts(content: PageContent, visit: Visit): PageContent {
 export function pageTextLabels(content: PageContent): Map<string, string> {
   const labels = new Map<string, string>([
     ["title", "Title"],
+    ["excerpt", "Excerpt"],
     ["seo.title", "Search title"],
     ["seo.description", "Search description"],
     ["thumbnail.alt", "Description of the picture"],

@@ -377,7 +377,7 @@ export async function variantStockOf(
   );
 }
 
-export type GridProduct = ProductSummary & { description: string };
+export type GridProduct = ProductSummary & { description: string; /** Its own short text, when it has one (else a tile summarises the description). */ excerpt?: string };
 
 /**
  * Active products with a price in the market for a content grid (D51):
@@ -422,6 +422,7 @@ export async function listGridProducts(
       p.handle,
       coalesce(tl.title, tf.title) as title,
       coalesce(nullif(tl.description, ''), tf.description, '') as description,
+      coalesce(nullif(tl.excerpt, ''), tf.excerpt, '') as excerpt,
       coalesce(m.thumbnail_url, m.url) as image_url,
       coalesce(nullif(m.alt ->> ${locale}, ''), commerce.media_alt(m.url, ${locale}), '') as image_alt,
       pr.min_amount,
@@ -439,7 +440,7 @@ export async function listGridProducts(
     left join commerce.product_translations tl
       on tl.product_id = p.id and tl.locale = ${locale}
     left join lateral (
-      select title, description from commerce.product_translations
+      select title, description, excerpt from commerce.product_translations
       where product_id = p.id order by locale limit 1
     ) tf on true
     left join lateral (
@@ -473,6 +474,7 @@ export async function listGridProducts(
       handle: str(row.handle),
       title: str(row.title),
       description: str(row.description),
+      excerpt: str(row.excerpt),
       image: row.image_url ? { url: str(row.image_url), alt: str(row.image_alt) } : null,
       // Kept in the country's own currency; shown in the one chosen (D109).
       price:

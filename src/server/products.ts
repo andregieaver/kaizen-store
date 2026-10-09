@@ -190,6 +190,7 @@ export function emptyProduct(context: EditorContext): ProductInput {
       safetyInformation: "",
       seoTitle: "",
       seoDescription: "",
+      excerpt: "",
     })),
     media: [],
     options: [],
@@ -348,7 +349,7 @@ export async function getProductForEdit(
 
   const [translations, media, schemes, variants, prices, files, plans, termRows, [appointment], resources, seasons] = await Promise.all([
     db().execute<Row>(sql`
-      select locale, title, description, safety_information, seo_title, seo_description
+      select locale, title, description, safety_information, seo_title, seo_description, excerpt
       from commerce.product_translations where product_id = ${productId}::uuid
     `),
     db().execute<Row>(sql`
@@ -444,6 +445,7 @@ export async function getProductForEdit(
         safetyInformation: String(t?.safety_information ?? ""),
         seoTitle: String(t?.seo_title ?? ""),
         seoDescription: String(t?.seo_description ?? ""),
+        excerpt: String(t?.excerpt ?? ""),
       };
     }),
     media: media.map((m) => {
@@ -896,13 +898,14 @@ async function saveTranslations(
     if (t?.title) {
       await tx.execute(sql`
         insert into commerce.product_translations
-          (store_id, product_id, locale, title, description, safety_information, seo_title, seo_description)
+          (store_id, product_id, locale, title, description, safety_information, seo_title, seo_description, excerpt)
         values (${storeId}::uuid, ${productId}::uuid, ${locale}, ${t.title}, ${t.description}, ${t.safetyInformation},
-                ${t.seoTitle}, ${t.seoDescription})
+                ${t.seoTitle}, ${t.seoDescription}, ${t.excerpt})
         on conflict (product_id, locale) do update set
           title = excluded.title, description = excluded.description,
           safety_information = excluded.safety_information,
-          seo_title = excluded.seo_title, seo_description = excluded.seo_description
+          seo_title = excluded.seo_title, seo_description = excluded.seo_description,
+          excerpt = excluded.excerpt
       `);
     } else {
       // No title in this language: shoppers there see the primary language.

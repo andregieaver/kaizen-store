@@ -25,7 +25,7 @@ import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
 import { displaysProblem, publicRows, showSchema, type Show } from "./visibility";
 import { foldTypography, typographyAtSchema, typographyFamilies, typographyGroupsSchema, type TypographyGroups, type TypographyGroupsAt } from "./typography";
 import { SIZES, type Size, type SmallerSize } from "./breakpoints";
-import { DESCRIPTION_MAX, TITLE_MAX, summarize } from "./seo";
+import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
 import { SHOP_PART_KEYS, type ShopPart } from "./store-parts";
 import { termIdsSchema } from "./taxonomy";
@@ -45,6 +45,7 @@ import type { FeatureRequirement } from "./store-features";
 
 export const PAGE_TITLE_MAX = 200;
 export const PAGE_SLUG_MAX = 80;
+export { EXCERPT_FIELD_MAX };
 /** A page's whole address (parents and own part, `projects/project-a`), and how deep pages may nest. */
 export const PAGE_PATH_MAX = 240;
 export const PAGE_DEPTH_MAX = 4;
@@ -1713,6 +1714,8 @@ export type PageContent = {
   slug: string;
   /** Shown at the top of the page, in lists and when the page is shared. */
   thumbnail: PageThumbnail | null;
+  /** A short text of its own for lists and content grids (a tile's excerpt); empty uses the search description, then the start of the content. */
+  excerpt?: string;
   /** Search texts; empty uses the title and the start of the content. */
   seo: { title: string; description: string };
   /** Search engines may list it (else `noindex`, and left out of the sitemap). */
@@ -2889,6 +2892,7 @@ export const pageInput = z.preprocess(
           alt: z.string().trim().max(ALT_MAX, `Keep the picture's description under ${ALT_MAX} characters.`),
         })
         .nullable(),
+      excerpt: z.string().trim().max(EXCERPT_FIELD_MAX, `Keep the excerpt under ${EXCERPT_FIELD_MAX} characters.`).optional(),
       seo: z.object({
         title: z.string().trim().max(TITLE_MAX, `Keep the search title under ${TITLE_MAX} characters.`),
         description: z

@@ -2136,6 +2136,20 @@
       "when": 1791569456636,
       "tag": "20261009181056_page_paths",
       "breakpoints": true
+    },
+    {
+      "idx": 305,
+      "version": "7",
+      "when": 1791572506312,
+      "tag": "20261009190146_product_excerpt",
+      "breakpoints": true
+    },
+    {
+      "idx": 306,
+      "version": "7",
+      "when": 1791572514784,
+      "tag": "20261009190154_product_excerpt_copy",
+      "breakpoints": true
     }
   ]
 }

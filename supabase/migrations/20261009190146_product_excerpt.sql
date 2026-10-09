@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."product_translations" ADD COLUMN "excerpt" text DEFAULT '' NOT NULL;

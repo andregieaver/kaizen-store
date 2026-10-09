@@ -53,7 +53,7 @@ import {
 } from "@/lib/product-input";
 import { backorderMayPassAgreed, BACKORDER_DAYS_MAX, BACKORDER_DAYS_MIN, BACKORDER_LONG_HINT, THRESHOLD_MAX } from "@/lib/inventory";
 import type { ProductFacts, WriteRequest, WrittenText } from "@/lib/product-writing";
-import { summarize } from "@/lib/seo";
+import { EXCERPT_FIELD_MAX, summarize } from "@/lib/seo";
 import {
   MAX_DISCOUNT_PERCENT,
   MAX_INTERVAL_COUNT,
@@ -502,6 +502,7 @@ function TextSection({
     safetyInformation: "",
     seoTitle: "",
     seoDescription: "",
+    excerpt: "",
   };
   const isPrimary = locale === context.primaryLocale;
   const primaryText = product.translations.find((t) => t.locale === context.primaryLocale);
@@ -520,7 +521,7 @@ function TextSection({
   });
 
   const setField = (
-    field: "title" | "description" | "safetyInformation" | "seoTitle" | "seoDescription",
+    field: "title" | "description" | "safetyInformation" | "seoTitle" | "seoDescription" | "excerpt",
     value: string,
   ) =>
     update((p) => {
@@ -638,6 +639,20 @@ function TextSection({
             <span className={hint}>If you change the address of a product that has been published, the old address redirects to the new one.</span>
           </label>
         )}
+        <label className={label}>
+          Excerpt
+          <textarea
+            value={current.excerpt}
+            maxLength={EXCERPT_FIELD_MAX}
+            rows={3}
+            onChange={(e) => setField("excerpt", e.target.value)}
+            className={`${input} py-2`}
+          />
+          <span className={hint}>
+            A short text for lists. Shown on a content grid&apos;s tiles when <em>Excerpt</em> is ticked there; empty uses the start of the
+            description.
+          </span>
+        </label>
         <div className="flex flex-col gap-2 border-t border-border pt-4">
           <h3 className="text-sm font-medium">In search results and shares</h3>
           <p className="text-sm text-muted">

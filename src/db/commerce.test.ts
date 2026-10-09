@@ -2426,6 +2426,11 @@ describe("categories and tags (D50)", () => {
     const parent = await term({ store: storeId, type: "product", slug: "lighting" });
     const nested = await term({ store: storeId, type: "product", slug: "desk-lamps", parent: parent.id });
     await assign(nested.id);
+    await db.query(
+      `insert into commerce.product_translations (store_id, product_id, locale, title, excerpt) values ($1, $2, 'nb-NO', 'Lampe', 'Kort tekst')
+       on conflict (product_id, locale) do update set excerpt = excluded.excerpt`,
+      [storeId, productId],
+    );
     const owner = await createAccount("terms-owner@example.com");
     const { id: copy } = await one<{ id: string }>("select commerce.clone_store($1, 'terms-copy', 'Copy', $2) as id", [
       storeId,
@@ -2439,6 +2444,10 @@ describe("categories and tags (D50)", () => {
     );
     expect(copied.rows).toContainEqual({ slug: "desk-lamps", parent: "lighting", products: 1 });
     expect(copied.rows).toContainEqual({ slug: "lamps", parent: null, products: 1 });
+    // A product's excerpt is copied with its other texts.
+    expect(
+      (await db.query<{ excerpt: string }>("select excerpt from commerce.product_translations where store_id = $1 and locale = 'nb-NO'", [copy])).rows,
+    ).toContainEqual({ excerpt: "Kort tekst" });
     // Deleting a category takes it off its products.
     await db.query("delete from commerce.terms where id = $1", [own.id]);
     expect(

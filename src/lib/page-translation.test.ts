@@ -47,6 +47,7 @@ describe("a page's texts in other languages (D55)", () => {
     const texts = pageTexts(page());
     expect([...texts.keys()]).toEqual([
       "title",
+      "excerpt",
       "seo.title",
       "seo.description",
       "column.c1.label",

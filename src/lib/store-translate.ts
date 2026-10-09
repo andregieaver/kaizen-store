@@ -61,6 +61,7 @@ export const PRODUCT_FIELDS = [
   { key: "title", label: "Title", max: 200, legal: false },
   { key: "description", label: "Description", max: 10_000, legal: false },
   { key: "safetyInformation", label: "Safety information", max: 5_000, legal: true },
+  { key: "excerpt", label: "Excerpt", max: 300, legal: false },
   { key: "seoTitle", label: "Search title", max: TITLE_MAX, legal: false },
   { key: "seoDescription", label: "Search description", max: DESCRIPTION_MAX, legal: false },
 ] as const;

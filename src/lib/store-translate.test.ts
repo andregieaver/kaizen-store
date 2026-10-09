@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import { fitsItem, globalKey, isLegalPage, menuUnit, productUnits, returnInstructionsUnit, RETURN_INSTRUCTIONS_UNIT, SCOPE_WORDS, TERM_FIELDS, TRANSLATE_SCOPES, termUnit, unitItems, type ProductTexts } from "./store-translate";
 import { MAX_INSTRUCTIONS } from "./withdrawal";
 
-const source: ProductTexts = { title: "Keramikkopp", description: "En kopp.", safetyInformation: "Ikke for barn.", seoTitle: "", seoDescription: "" };
-const none: ProductTexts = { title: "", description: "", safetyInformation: "", seoTitle: "", seoDescription: "" };
+const source: ProductTexts = { title: "Keramikkopp", description: "En kopp.", safetyInformation: "Ikke for barn.", seoTitle: "", seoDescription: "", excerpt: "" };
+const none: ProductTexts = { title: "", description: "", safetyInformation: "", seoTitle: "", seoDescription: "", excerpt: "" };
 
 describe("a product's units", () => {
   it("take the texts with words, and the safety information apart as a legal unit", () => {

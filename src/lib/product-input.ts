@@ -7,7 +7,7 @@ import { policyProblem, stockPolicyFields } from "./inventory";
 import { minorUnitDigits } from "./money";
 import { isPictureAddress } from "./picture-address";
 import { BASES, UNITS, baseFits, measureProblem, parseMeasureAmount, type Base, type Unit } from "./unit-price";
-import { DESCRIPTION_MAX, TITLE_MAX } from "./seo";
+import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX } from "./seo";
 import { termIdsSchema } from "./taxonomy";
 import { VAT_CATEGORY_CODE } from "./vat";
 import {
@@ -239,6 +239,8 @@ export const productInput = z.object({
         /** For search results and shares; empty uses the title and description. */
         seoTitle: text(TITLE_MAX).default(""),
         seoDescription: text(DESCRIPTION_MAX).default(""),
+        /** A short text for lists and content grids; empty uses the start of the description. */
+        excerpt: text(EXCERPT_FIELD_MAX).default(""),
       }),
     )
     .min(1),

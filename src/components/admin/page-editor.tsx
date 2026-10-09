@@ -14,6 +14,7 @@ import {
   ALT_MAX,
   AUTHOR_MAX,
   LAYOUT_TYPES,
+  EXCERPT_FIELD_MAX,
   PAGE_SLUG_MAX,
   joinPagePath,
   pageParentPath,
@@ -676,6 +677,27 @@ export function PageEditor({
                   <span className={hint}>In {main.name}: {content.thumbnail?.alt || "no description"}</span>
                 </label>
               </section>
+            )}
+            {!layout && (
+            <section aria-labelledby="excerpt-heading" className={card}>
+              <h2 id="excerpt-heading" className="font-medium">
+                Excerpt
+              </h2>
+              <label className={label}>
+                A short text for lists
+                <textarea
+                  value={view.excerpt ?? ""}
+                  maxLength={EXCERPT_FIELD_MAX}
+                  rows={3}
+                  onChange={(event) => change({ excerpt: event.target.value || undefined })}
+                  className={`${input} py-2`}
+                />
+                <span className={hint}>
+                  Shown on a content grid&apos;s tiles when <em>Excerpt</em> is ticked there. Empty uses the search description, then the start
+                  of the text.
+                </span>
+              </label>
+            </section>
             )}
             {!layout && (
             <section aria-labelledby="search-heading" className={card}>

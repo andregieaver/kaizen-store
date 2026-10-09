@@ -67,7 +67,7 @@ export function blank(ctx: ProductCsvContext): ProductInput {
   return {
     handle: "",
     status: "draft",
-    translations: ctx.locales.map((locale) => ({ locale, title: "", description: "", safetyInformation: "", seoTitle: "", seoDescription: "" })),
+    translations: ctx.locales.map((locale) => ({ locale, title: "", description: "", safetyInformation: "", seoTitle: "", seoDescription: "", excerpt: "" })),
     media: [],
     options: [],
     variants: [
@@ -114,9 +114,9 @@ export function boot(ctx: ProductCsvContext, over: Partial<StoredProduct> = {}):
     handle: "winter-boot",
     status: "active",
     translations: [
-      { locale: "nb-NO", title: "Vinterstøvel", description: "Varm og solid.\nFor kalde dager.", safetyInformation: "Bruk med sokker.", seoTitle: "Vinterstøvel", seoDescription: "Kjøp vinterstøvel" },
-      { locale: "sv-SE", title: "Vinterkänga", description: "Varm.", safetyInformation: "", seoTitle: "", seoDescription: "" },
-      { locale: "en-GB", title: "Winter boot", description: "Warm, with a \"lining\", and commas.", safetyInformation: "", seoTitle: "", seoDescription: "" },
+      { locale: "nb-NO", title: "Vinterstøvel", description: "Varm og solid.\nFor kalde dager.", safetyInformation: "Bruk med sokker.", seoTitle: "Vinterstøvel", seoDescription: "Kjøp vinterstøvel", excerpt: "" },
+      { locale: "sv-SE", title: "Vinterkänga", description: "Varm.", safetyInformation: "", seoTitle: "", seoDescription: "", excerpt: "" },
+      { locale: "en-GB", title: "Winter boot", description: "Warm, with a \"lining\", and commas.", safetyInformation: "", seoTitle: "", seoDescription: "", excerpt: "" },
     ],
     media: [
       { url: "https://store.example/p/1.webp", thumbnailUrl: "https://store.example/p/1t.webp", alt: "Side view" },

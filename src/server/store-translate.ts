@@ -56,14 +56,15 @@ const mainText = (row: Row, prefix = ""): ProductTexts => ({
   safetyInformation: String(row[`${prefix}safety`] ?? ""),
   seoTitle: String(row[`${prefix}seo_title`] ?? ""),
   seoDescription: String(row[`${prefix}seo_description`] ?? ""),
+  excerpt: String(row[`${prefix}excerpt`] ?? ""),
 });
 
 async function productWork(storeId: string, from: string, to: string, mode: TranslateMode): Promise<Unit[]> {
   const rows = await db().execute<Row>(sql`
     select p.id,
-      m.title, m.description, m.safety_information as safety, m.seo_title, m.seo_description,
+      m.title, m.description, m.safety_information as safety, m.seo_title, m.seo_description, m.excerpt,
       t.product_id is not null as has_target,
-      t.title as t_title, t.description as t_description, t.safety_information as t_safety, t.seo_title as t_seo_title, t.seo_description as t_seo_description
+      t.title as t_title, t.description as t_description, t.safety_information as t_safety, t.seo_title as t_seo_title, t.seo_description as t_seo_description, t.excerpt as t_excerpt
     from commerce.products p
     join commerce.product_translations m on m.product_id = p.id and m.locale = ${from}
     left join commerce.product_translations t on t.product_id = p.id and t.locale = ${to}
@@ -261,7 +262,7 @@ export async function applyTranslations(member: Membership, to: string, accepted
 
 async function writeProduct(storeId: string, productId: string, from: string, to: string, texts: Partial<ProductTexts>): Promise<boolean> {
   const [existing] = await db().execute<Row>(sql`
-    select t.title, t.description, t.safety_information as safety, t.seo_title, t.seo_description
+    select t.title, t.description, t.safety_information as safety, t.seo_title, t.seo_description, t.excerpt
     from commerce.product_translations t where t.product_id = ${productId}::uuid and t.store_id = ${storeId}::uuid and t.locale = ${to}
   `);
   const [source] = await db().execute<Row>(sql`
@@ -273,11 +274,11 @@ async function writeProduct(storeId: string, productId: string, from: string, to
   // A translation needs a title, so the rest of it cannot be kept without one.
   if (next.title.trim() === "") return false;
   await db().execute(sql`
-    insert into commerce.product_translations (store_id, product_id, locale, title, description, safety_information, seo_title, seo_description)
-    values (${storeId}::uuid, ${productId}::uuid, ${to}, ${next.title}, ${next.description}, ${next.safetyInformation}, ${next.seoTitle}, ${next.seoDescription})
+    insert into commerce.product_translations (store_id, product_id, locale, title, description, safety_information, seo_title, seo_description, excerpt)
+    values (${storeId}::uuid, ${productId}::uuid, ${to}, ${next.title}, ${next.description}, ${next.safetyInformation}, ${next.seoTitle}, ${next.seoDescription}, ${next.excerpt})
     on conflict (product_id, locale) do update set
       title = excluded.title, description = excluded.description, safety_information = excluded.safety_information,
-      seo_title = excluded.seo_title, seo_description = excluded.seo_description
+      seo_title = excluded.seo_title, seo_description = excluded.seo_description, excerpt = excluded.excerpt
   `);
   return true;
 }

@@ -361,3 +361,6 @@ export function seoFromForm(form: FormData, locales: readonly string[]): unknown
     verification: { google: field("google"), bing: field("bing") },
   };
 }
+
+/** The longest excerpt written by hand, on a page, an article or a product. */
+export const EXCERPT_FIELD_MAX = 300;
