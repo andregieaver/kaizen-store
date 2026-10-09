@@ -19,6 +19,7 @@ import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
+import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
 import { RichTextEditor } from "./rich-text-editor";
 import { SizeMark, inheritedClass, useSizeEdit } from "./responsive-edit";
@@ -312,6 +313,10 @@ export function NumberField({
         />
         {unit && <span className="text-sm text-muted">{unit}</span>}
       </div>
+      {/* A field in pixels has a slider with the value over its thumb (D183). */}
+      {unit && /^(px|pixels)$/.test(unit) && max > min && (
+        <PixelRange value={value} min={min} max={max} step={max - min > 400 ? 4 : 1} label={`${label}, slider`} onChange={onChange} className="max-w-64" />
+      )}
     </div>
   );
 }

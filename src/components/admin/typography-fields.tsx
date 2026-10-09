@@ -37,6 +37,7 @@ import {
 import type { SizeOverrides } from "@/lib/page-content";
 
 import { ColorField, fieldClass } from "./block-fields";
+import { PixelRange } from "./pixel-range";
 import { FontPicker, type InstallFont } from "./font-picker";
 import { SizeSwitch, inheritedClass, sizeNote, useSizeEdit } from "./responsive-edit";
 
@@ -468,6 +469,7 @@ function ShadowFields({ value, onChange, mark, muted }: { value: TextShadow | un
         />
         <span className="font-normal text-muted">px</span>
       </span>
+      <PixelRange value={shadow[key]} min={min} max={max} disabled={!value} label={`Shadow ${label}, slider`} onChange={(next) => onChange({ ...shadow, [key]: next })} className="w-28" />
     </label>
   );
   return (

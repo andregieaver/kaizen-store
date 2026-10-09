@@ -66,6 +66,7 @@ import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowFrame, rowGrid, rowInnerClass, rowInnerStyle } from "@/components/page-parts";
 import { ColumnDividers, RowWidthHandles } from "./row-resize";
+import { PixelRange } from "./pixel-range";
 import { ModalFields, ModalPicker } from "./modal-fields";
 import { FoldButton, Rail, RailHeader, RailTabsHeader, railColumns, useFolded } from "./builder-rails";
 import { TemplatesModal } from "./templates-modal";
@@ -3863,6 +3864,14 @@ function SpacingFields({
                   onChange={(event) => set(kind, side, event.target.value)}
                   className="min-h-10 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground"
                 />
+                <PixelRange
+                  value={value?.[kind]?.[side] ?? defaults?.[kind]?.[side] ?? 0}
+                  min={0}
+                  max={SPACING_MAX}
+                  step={2}
+                  label={`${kind === "margin" ? "Margin" : "Padding"} ${side}, slider`}
+                  onChange={(next) => set(kind, side, String(next))}
+                />
               </label>
             ))}
           </div>
@@ -4338,6 +4347,19 @@ function ContentMaxField({ row, onChange }: { row: PageRow; onChange: (patch: Ro
         onBlur={() => setDraft(null)}
         className="min-h-10 w-32 rounded-md border border-border bg-background px-2 text-sm disabled:opacity-50"
       />
+      <PixelRange
+        value={value ?? 1024}
+        min={CONTENT_MAX_MIN}
+        max={CONTENT_MAX_MAX}
+        step={8}
+        disabled={!limited}
+        label="Max content width, slider"
+        onChange={(next) => {
+          setDraft(null);
+          onChange(setAt(row, size, { contentMax: next }));
+        }}
+        className="max-w-64"
+      />
       <p id={`${id}-hint`} className="text-xs text-muted">
         {limited
           ? "Empty keeps to the theme's content width. You can also drag the row's side edges on the page."
@@ -4708,6 +4730,7 @@ function SidesFields({
               }
               className="min-h-10 w-full rounded-md border border-border bg-background px-2 text-sm text-foreground"
             />
+            <PixelRange value={value[side]} min={0} max={max} label={`${legend} ${side}, slider`} onChange={(next) => onChange({ ...value, [side]: next })} />
           </label>
         ))}
       </div>
@@ -4754,6 +4777,9 @@ function NumberField({
         onChange={(event) => onChange(Math.max(min, Math.min(max, Math.round(Number(event.target.value) || 0))))}
         className="min-h-10 w-28 rounded-md border border-border bg-background px-2 text-sm"
       />
+      {/pixel/i.test(hint) && max > min && (
+        <PixelRange value={value} min={min} max={max} step={max - min > 400 ? 4 : 1} label={`${label}, slider`} onChange={onChange} className="max-w-64" />
+      )}
     </div>
   );
 }
@@ -6814,6 +6840,18 @@ function ContentWidthField({ value, presetWidth, onChange }: { value: number | n
           else if (number >= CONTENT_MAX_MIN && number <= CONTENT_MAX_MAX) onChange(number);
         }}
         className="min-h-10 w-32 rounded-md border border-border bg-background px-2 text-sm"
+      />
+      <PixelRange
+        value={value ?? presetWidth}
+        min={CONTENT_MAX_MIN}
+        max={CONTENT_MAX_MAX}
+        step={8}
+        label="Max content width, slider"
+        onChange={(next) => {
+          setText(String(next));
+          onChange(next);
+        }}
+        className="max-w-64"
       />
       <p id={`${id}-hint`} className="text-xs text-muted">
         Rows, the header and the footer keep to it. Left empty it is the theme&apos;s {presetWidth} pixels. A row can set its own.

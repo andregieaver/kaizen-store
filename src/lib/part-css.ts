@@ -336,6 +336,30 @@ export function typographyRules(part: PartBase & { type?: string; part?: string;
         sizes: perSize((size) => (colourCssAt(part, def, size) ? { color: "inherit" } : ({} as Decl))),
       });
     }
+    if (part.type === "heading" && def.role === "text") {
+      // A heading's weight is also written with the part's class, so no rule of the site's or the owner's with a weight of its own
+      // for headings (`.font-heading`, `h1 { … }`, a family's stylesheet) can leave it lighter than the builder shows.
+      rules.push({
+        selector: def.selector,
+        important: false,
+        where: false,
+        sizes: perSize((size) => {
+          const weight = typographyValueAt(part, def.role, "weight", size);
+          return weight === undefined ? ({} as Decl) : { "font-weight": String(weight) };
+        }),
+      });
+    }
+    if (def.selector === "&" && part.type !== undefined && part.type !== "row") {
+      // A component's pieces that carry a weight class of their own (`font-medium`, `font-semibold`, `font-heading`) would never
+      // take a weight inherited from the component; a weight set on it is theirs too. The kinds of text that have an element of
+      // their own (titles, names, buttons) come later in the sheet and keep theirs.
+      rules.push({
+        selector: '& [class*="font-"]',
+        important: false,
+        where: true,
+        sizes: perSize((size) => (typographyValueAt(part, def.role, "weight", size) !== undefined ? { "font-weight": "inherit" } : ({} as Decl))),
+      });
+    }
     if (part.type === "richText" && def.role === "text") {
       // The site's own weight for a rich text's headings (`.rich-text h2`) is a rule on the element, which a weight inherited
       // from the text would never beat: a weight set is theirs too.
