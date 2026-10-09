@@ -315,6 +315,9 @@ type DragData =
 const dataOf = (item: Active | Over | null): DragData | null => (item?.data.current as DragData | undefined) ?? null;
 const movesRows = (data: DragData | null) =>
   data?.kind === "palette-row" || data?.kind === "row" || (data?.kind === "saved" && data.part === "row");
+/** A component: from the palette, on the page, or a saved one. */
+const movesBlock = (data: DragData | null) =>
+  data?.kind === "palette-block" || data?.kind === "block" || (data?.kind === "saved" && data.part === "block");
 /** A column on the page, or a saved one on its way to the page. */
 const movesColumn = (data: DragData | null) => data?.kind === "column" || (data?.kind === "saved" && data.part === "column");
 
@@ -332,7 +335,8 @@ const collision: CollisionDetection = (args) => {
     if (active?.kind === "column") return data.kind === "column" || data.kind === "row";
     // A saved column can also start a row of its own, last.
     if (movesColumn(active)) return data.kind === "column" || data.kind === "row" || data.kind === "canvas-end";
-    return data.kind === "block" || data.kind === "column";
+    // A component can also start a row of its own: on a row's edge, between rows, or after the last.
+    return data.kind === "block" || data.kind === "column" || data.kind === "row" || data.kind === "canvas-end";
   });
   const within = pointerWithin({ ...args, droppableContainers: targets });
   if (within.length > 0) {
@@ -660,8 +664,9 @@ export function PageBuilder({
   const addRow = (layout: RowLayout, index = rows.length) => {
     if (!rowsFull) onRows((current) => insertRow(current, newRow(layout, newId), index));
   };
-  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart | ShopPart) => {
+  const addBlock = (type: BlockType, columnId: string | null, index = Number.MAX_SAFE_INTEGER, part?: ProductPart | SitePart | ShopPart, rowIndex?: number) => {
     if (blocksFull) return;
+    if (columnId === null && rowIndex !== undefined && rowsFull) return;
     const made = newBlock(type, newId, part);
     // A header or footer has no page of its own: its Custom fields component shows the store's (D120).
     const block: PageBlock = siteParts && made.type === "customField" ? { ...made, source: "store" } : made;
@@ -669,10 +674,10 @@ export function PageBuilder({
       if (columnId && current.some((r) => r.columns.some((c) => c.id === columnId))) {
         return insertBlock(current, columnId, block, index);
       }
-      // No column chosen yet: a new one-column row at the end.
+      // No column chosen: a new one-column row to hold it, where it was dropped, else at the end.
       const row = newRow("1", newId);
       row.columns[0].blocks.push(block);
-      return insertRow(current, row, current.length);
+      return insertRow(current, row, rowIndex ?? current.length);
     });
     // A new text block opens for writing straight away.
     setDialog({ kind: "edit-block", blockId: block.id });
@@ -687,7 +692,7 @@ export function PageBuilder({
    */
   const placeSaved = (
     saved: SavedPart,
-    place: { index?: number; rowId?: string; columnIndex?: number; columnId?: string | null; blockIndex?: number } = {},
+    place: { index?: number; rowId?: string; columnIndex?: number; columnId?: string | null; blockIndex?: number; blockRow?: number } = {},
     foreign = false,
   ) => {
     // A page layout (D127) is placed as a whole, by asking how (`applyLayout`), never as a row, column or component.
@@ -718,7 +723,7 @@ export function PageBuilder({
         }
         const row = newRow("1", newId);
         row.columns[0].blocks.push(block);
-        return insertRow(current, row, current.length);
+        return insertRow(current, row, place.blockRow ?? current.length);
       });
     }
   };
@@ -765,6 +770,13 @@ export function PageBuilder({
     setTarget((current) => (current?.id === next?.id && current?.after === next?.after ? current : next));
   };
 
+  /** Where a new row goes for a drop on a row (before it, or after when the pointer is in its lower half) or below the last. */
+  const dropRow = (to: DragData, after: boolean): number => {
+    if (to.kind !== "row") return rows.length;
+    const index = rows.findIndex((r) => r.id === to.rowId);
+    return index < 0 ? rows.length : index + (after ? 1 : 0);
+  };
+
   const onDragEnd = (end: DragEndEvent) => {
     const { active, over } = end;
     setDragging(null);
@@ -793,6 +805,9 @@ export function PageBuilder({
         const place = to.kind === "block" ? findBlock(rows, to.blockId) : null;
         placeSaved(part, { columnId: to.columnId, blockIndex: place ? place.index + (after ? 1 : 0) : undefined });
         setLastColumn(to.columnId);
+      } else if (to.kind === "row" || to.kind === "canvas-end") {
+        // Outside any column: a row of its own for it.
+        placeSaved(part, { columnId: null, blockRow: dropRow(to, after) });
       }
       return;
     }
@@ -824,6 +839,21 @@ export function PageBuilder({
       return;
     }
 
+    // A component dropped outside every column, on a row's edge, between rows or below the last, gets a row of its own.
+    if (to.kind === "row" || to.kind === "canvas-end") {
+      const rowIndex = dropRow(to, after);
+      if (from.kind === "palette-block") addBlock(from.type, null, Number.MAX_SAFE_INTEGER, from.part, rowIndex);
+      else if (from.kind === "block" && !rowsFull) {
+        onRows((current) => {
+          const place = findBlock(current, from.blockId);
+          if (!place) return current;
+          const row = newRow("1", newId);
+          row.columns[0].blocks.push(place.block);
+          return insertRow(removeBlock(current, from.blockId), row, rowIndex);
+        });
+      }
+      return;
+    }
     if (to.kind !== "column" && to.kind !== "block") return;
     const columnId = to.columnId;
     const place = to.kind === "block" ? findBlock(rows, to.blockId) : null;
@@ -2004,7 +2034,7 @@ function Canvas({
             ))}
           </ol>
         </SortableContext>
-        <CanvasEnd empty={rows.length === 0} active={movesRows(dragging)} onStartFromLayout={onStartFromLayout} />
+        <CanvasEnd empty={rows.length === 0} active={movesRows(dragging) || movesBlock(dragging)} onStartFromLayout={onStartFromLayout} />
         {blank && rows.length > 0 && onStartFromLayout && <StartFromLayout onStart={onStartFromLayout} />}
       </div>
     </section>
@@ -2058,7 +2088,7 @@ function CanvasEnd({
           {onStartFromLayout && <StartFromLayout onStart={onStartFromLayout} />}
         </div>
       ) : (
-        "Drop the row here to put it last."
+        "Drop here to put it last, in a row of its own."
       )}
     </div>
   );
