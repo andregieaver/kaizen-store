@@ -31,6 +31,7 @@ import {
 } from "@/lib/motion-edit";
 import type { GradientBackground } from "@/lib/page-content";
 import { Check, ColorField, Choices, smallButton } from "./block-fields";
+import { SavedGradients } from "./colour-library";
 import { EffectPicker, Setting } from "./motion-fields";
 
 /**
@@ -50,8 +51,33 @@ export function GradientFields({
   const [revision, setRevision] = useState(0);
   const angle = value.angle ?? GRADIENT_ANGLE_DEFAULT;
   const styles = Object.keys(GRADIENT_STYLES) as GradientStyle[];
+  const opacityId = useId();
+  const opacity = value.opacity ?? 100;
+  const setOpacity = (next: number) => {
+    const { opacity: _old, ...rest } = value;
+    void _old;
+    onChange(next >= 100 ? rest : { ...rest, opacity: Math.max(0, Math.round(next)) });
+  };
   return (
     <div className="flex flex-col gap-4">
+      {/* The store's saved gradients (D183): using one copies it in, keeping this one's overlay and opacity. */}
+      <SavedGradients
+        label="Gradient"
+        current={value}
+        onPick={(saved) => {
+          setRevision((n) => n + 1);
+          onChange({
+            type: "gradient",
+            style: saved.style,
+            colors: [...saved.colors],
+            ...(saved.angle !== undefined && { angle: saved.angle }),
+            ...(saved.flow !== undefined && { flow: saved.flow }),
+            ...(saved.grain && { grain: true }),
+            ...(value.opacity !== undefined && { opacity: value.opacity }),
+            ...(value.overlay !== undefined && { overlay: value.overlay }),
+          });
+        }}
+      />
       <Choices
         legend="Style"
         hint={GRADIENT_STYLES[value.style].hint}
@@ -140,6 +166,60 @@ export function GradientFields({
         checked={Boolean(value.grain)}
         onChange={(grain) => onChange(setGradientGrain(value, grain))}
       />
+      <div className="flex flex-col gap-1">
+        <label htmlFor={opacityId} className="text-sm font-medium">
+          Gradient opacity
+        </label>
+        <div className="flex min-h-10 items-center gap-3">
+          <input
+            id={opacityId}
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={opacity}
+            aria-valuetext={`${opacity}%`}
+            onChange={(event) => setOpacity(Number(event.target.value))}
+            className="w-48 accent-foreground"
+          />
+          <output htmlFor={opacityId} className="w-12 text-sm tabular-nums">
+            {opacity}%
+          </output>
+        </div>
+        <p className="text-xs text-muted">Less than 100 lets what is behind the gradient (a colour, the page) show through.</p>
+      </div>
+      <Check
+        label="Colour over the gradient"
+        hint="A colour laid over it, to calm it or make text on it easier to read."
+        checked={Boolean(value.overlay)}
+        onChange={(on) => onChange({ ...value, overlay: on ? { color: "#000000", opacity: 30 } : null })}
+      />
+      {value.overlay && (
+        <div className="flex flex-wrap items-end gap-6 pl-7">
+          <ColorField label="Overlay colour" value={value.overlay.color} onChange={(color) => onChange({ ...value, overlay: { color, opacity: value.overlay?.opacity ?? 30 } })} />
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${opacityId}-overlay`} className="text-sm font-medium">
+              Overlay opacity
+            </label>
+            <div className="flex min-h-10 items-center gap-3">
+              <input
+                id={`${opacityId}-overlay`}
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={value.overlay.opacity}
+                aria-valuetext={`${value.overlay.opacity}%`}
+                onChange={(event) => onChange({ ...value, overlay: { color: value.overlay?.color ?? "#000000", opacity: Number(event.target.value) } })}
+                className="w-48 accent-foreground"
+              />
+              <output htmlFor={`${opacityId}-overlay`} className="w-12 text-sm tabular-nums">
+                {value.overlay.opacity}%
+              </output>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

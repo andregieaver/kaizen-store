@@ -33,15 +33,15 @@ describe("the Typography panel", () => {
     }
     // Normal, Tt, TT and tt.
     for (const transform of ["Tt", "TT", "tt"]) expect(html).toContain(`>${transform}</button>`);
-    // A device icon by each of the thirteen settings (D180's colour and opacity among them).
-    expect(html.match(/data-size-switch=""/g)).toHaveLength(13);
+    // A device icon by each of the fourteen settings (D180's colour and opacity among them).
+    expect(html.match(/data-size-switch=""/g)).toHaveLength(14);
     for (const unit of ["px", "em", "rem", "%", "vw"]) expect(html).toContain(`<option value="${unit}">`);
   });
 
   it("gives a component with several kinds of text a group each, and none to a component without text", () => {
     const html = panel({ id: "a", type: "accordion", items: [] });
     for (const group of ["Text", "Titles", "Texts"]) expect(html).toContain(`${group}`);
-    expect(html.match(/data-size-switch=""/g)).toHaveLength(39);
+    expect(html.match(/data-size-switch=""/g)).toHaveLength(42);
     expect(panel({ id: "s", type: "separator" })).toBe("");
   });
 

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { DEFAULT_BREAKPOINTS, breakpointsSchema, type Breakpoints } from "./breakpoints";
 import { fontFamily, type SiteFonts } from "./fonts";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./page-content";
+import { colourLibrarySchema, type ColourLibrary } from "./colour-library";
 import { themeElementsSchema, type ThemeElements } from "./theme-elements";
 
 /**
@@ -93,6 +94,8 @@ export type ThemeSettings = {
    * (D182, `src/lib/theme-elements.ts`): typography, spacing, frame and, for rows, colour and content width.
    */
   elements?: ThemeElements;
+  /** The store's saved colours and gradients (D183), offered in the page builder's colour fields and gradient editors; copied into a part when used. */
+  library?: ColourLibrary;
 };
 
 const keys = <T extends Record<string, unknown>>(record: T) => Object.keys(record) as [keyof T & string, ...(keyof T & string)[]];
@@ -122,6 +125,7 @@ export const themeSettingsSchema = z.object({
   }),
   breakpoints: breakpointsSchema.optional(),
   elements: themeElementsSchema.optional(),
+  library: colourLibrarySchema.optional(),
 }) satisfies z.ZodType<ThemeSettings, unknown>;
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,8 @@ import { createContext, useContext, useId, useState, type ReactNode } from "reac
 
 import { HEX6, type ColourSwatch } from "@/lib/colour";
 
+import { SavedColours } from "./colour-library";
+
 /**
  * The one colour field (D180, `docs/text-colour.md`), after Beaver Builder's: a swatch that opens the browser's picker, the
  * colour typed as `#rrggbb`, a × that takes it away (where the caller allows none), an optional opacity slider (0–100, solid
@@ -115,6 +117,7 @@ export function ColorField(props: Always | Maybe) {
           ))}
         </div>
       )}
+      {!noSwatches && <SavedColours label={label} value={value} onPick={set} />}
     </div>
   );
 }

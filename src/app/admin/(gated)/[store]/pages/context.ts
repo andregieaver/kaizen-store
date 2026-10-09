@@ -22,7 +22,7 @@ import type { Store } from "@/server/stores";
 
 import { startFieldFileUploadAction } from "../fields/actions";
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
-import { installStoreFontAction, saveThemeTabAction } from "../settings/design/actions";
+import { installStoreFontAction, saveLibraryAction, saveThemeTabAction } from "../settings/design/actions";
 import {
   createStorePageTermAction,
   createStorePartAction,
@@ -132,6 +132,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
       visibilityChoices: bind(storeVisibilityChoicesAction),
       installFont: bind(installStoreFontAction),
       saveThemeTab: bind(saveThemeTabAction),
+      saveLibrary: bind(saveLibraryAction),
       saveSiteCss: bind(saveStoreCssAction),
       translate: bind(translateStorePageAction),
     },

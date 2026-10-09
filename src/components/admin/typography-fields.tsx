@@ -21,6 +21,7 @@ import {
   TEXT_VARIANTS,
   TEXT_WEIGHTS,
   TEXT_WEIGHT_VALUES,
+  TEXT_GRADIENT_COLORS,
   clearTypographyAt,
   textRoles,
   typographyAt,
@@ -28,6 +29,7 @@ import {
   typographySource,
   type Measure,
   type RoleDef,
+  type TextGradient,
   type TextRole,
   type TextShadow,
   type Typography,
@@ -38,6 +40,7 @@ import type { SizeOverrides } from "@/lib/page-content";
 
 import { ColorField, fieldClass } from "./block-fields";
 import { PixelRange } from "./pixel-range";
+import { SavedGradients, newTextGradient, textGradientOf } from "./colour-library";
 import { FontPicker, type InstallFont } from "./font-picker";
 import { SizeSwitch, inheritedClass, sizeNote, useSizeEdit } from "./responsive-edit";
 
@@ -125,6 +128,12 @@ function RoleFields({ part, def, onChange, install, familyDefault }: { part: Par
           onChange={(color) => set("color", color)}
           onClear={() => set("color", undefined)}
           opacity={{ value: shown.opacity, onChange: (opacity) => set("opacity", opacity), ...field("opacity", "Opacity") }}
+        />
+        <GradientText
+          value={shown.gradient ?? undefined}
+          onChange={(gradient) => set("gradient", gradient)}
+          mark={field("gradient", "Gradient text").mark}
+          muted={field("gradient", "Gradient text").muted}
         />
         <FontPicker
           label="Family"
@@ -440,6 +449,93 @@ function ButtonsField({
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Letters filled with a gradient (D183): on or off, two to four colours at an angle, and the store's saved gradients to start from or add to. */
+function GradientText({ value, onChange, mark, muted }: { value: TextGradient | undefined; onChange: (gradient: TextGradient | undefined) => void; mark: ReactNode; muted: string }) {
+  const id = useId();
+  // A colour field keeps what is typed in it, so when colours come or go the fields start again.
+  const [revision, setRevision] = useState(0);
+  const gradient = value ?? newTextGradient();
+  const colours = gradient.colors;
+  return (
+    <div className={`flex flex-col gap-3 ${muted}`}>
+      <div className="flex flex-wrap items-center gap-1">
+        <label className="flex items-center gap-2 text-sm font-medium" htmlFor={id}>
+          <input id={id} type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked ? gradient : undefined)} className="size-4" />
+          Gradient text
+        </label>
+        {mark}
+      </div>
+      {value && (
+        <div className="flex flex-col gap-3 pl-6">
+          <p className="text-xs text-muted">The letters are filled with these colours, over the text colour.</p>
+          <div className="h-6 rounded border border-border" aria-hidden style={{ backgroundImage: `linear-gradient(${gradient.angle}deg, ${colours.join(", ")})` }} />
+          <SavedGradients
+            label="Text gradient"
+            current={{ style: "shift", colors: colours, angle: gradient.angle }}
+            onPick={(saved) => {
+              setRevision((n) => n + 1);
+              onChange(textGradientOf(saved));
+            }}
+          />
+          <ul className="flex flex-wrap items-end gap-3">
+            {colours.map((colour, index) => (
+              <li key={`${revision}-${index}`} className="flex items-end gap-2">
+                <ColorField
+                  label={`Colour ${index + 1}`}
+                  value={colour}
+                  noSwatches={false}
+                  onChange={(next) => onChange({ ...gradient, colors: colours.map((c, i) => (i === index ? next : c)) })}
+                />
+                <button
+                  type="button"
+                  disabled={colours.length <= TEXT_GRADIENT_COLORS.min}
+                  onClick={() => {
+                    setRevision((n) => n + 1);
+                    onChange({ ...gradient, colors: colours.filter((_, i) => i !== index) });
+                  }}
+                  aria-label={`Remove colour ${index + 1}`}
+                  className="min-h-10 rounded-md border border-border px-2 text-xs hover:bg-surface disabled:opacity-50"
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div>
+            <button
+              type="button"
+              disabled={colours.length >= TEXT_GRADIENT_COLORS.max}
+              onClick={() => {
+                setRevision((n) => n + 1);
+                onChange({ ...gradient, colors: [...colours, colours[colours.length - 1]] });
+              }}
+              className="min-h-9 rounded-md border border-border px-3 text-xs hover:bg-surface disabled:opacity-50"
+            >
+              Add a colour
+            </button>
+          </div>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Angle
+            <span className="flex items-center gap-3 font-normal">
+              <input
+                type="range"
+                min={0}
+                max={360}
+                step={5}
+                value={gradient.angle}
+                aria-valuetext={`${gradient.angle} degrees`}
+                onChange={(event) => onChange({ ...gradient, angle: Number(event.target.value) })}
+                className="w-48 accent-foreground"
+              />
+              <output className="w-12 tabular-nums">{gradient.angle}°</output>
+            </span>
+          </label>
+        </div>
+      )}
     </div>
   );
 }

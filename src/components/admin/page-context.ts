@@ -144,6 +144,7 @@ export type PageOwnerContext = {
      */
     visibilityChoices?: () => Promise<VisibilityChoices>;
     /** Saves what the builder's Theme tab holds (D182: the JSON of `ThemeTabValue`) on the store's theme; absent where the pages are not a store's own. */
+    saveLibrary?: (payload: string) => Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }>;
     saveThemeTab?: (payload: string) => Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }>;
     /** Saves the owner's CSS for every page (D100); it is live at once. */
     saveSiteCss: (css: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;

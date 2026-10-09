@@ -296,6 +296,14 @@ export function typographyRules(part: PartBase & { type?: string; part?: string;
         const decl = typographyDecl(settings);
         if (part.type === "heading" && def.role === "text" && !decl["font-size"]) decl["font-size"] = headingDefaultSize(part.level ?? 2, size);
         if (def.align === "self" && settings.align) decl["text-align"] = settings.align;
+        if (settings.gradient) {
+          // A gradient fills the letters across the width of the words, not of the whole column: the element fits its text and sits
+          // where the text is aligned.
+          decl.width = "fit-content";
+          decl["max-width"] = "100%";
+          if (settings.align === "center") decl["margin-inline"] = "auto";
+          else if (settings.align === "right") decl["margin-left"] = "auto";
+        }
         return decl;
       }),
     });

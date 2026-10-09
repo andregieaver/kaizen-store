@@ -462,6 +462,10 @@ export type GradientBackground = {
   flow?: GradientFlow;
   /** A fine noise over it. */
   grain?: boolean;
+  /** How solid the gradient is, 0 to 100 (D183); solid unless set, so what is behind the part shows through. */
+  opacity?: number;
+  /** A colour over the gradient, as a picture takes one (D183). */
+  overlay?: { color: Color; opacity: number } | null;
 };
 /** How soft a background picture or video may be drawn, in pixels. */
 export const BLUR_MAX = 100;
@@ -2065,6 +2069,8 @@ const gradientBackground = z.object({
   angle: z.number().int().min(0).max(360).optional(),
   flow: z.enum(Object.keys(GRADIENT_FLOWS) as [GradientFlow, ...GradientFlow[]]).optional(),
   grain: z.boolean().optional(),
+  opacity: z.number().int().min(0).max(99).optional(),
+  overlay: overlay.optional(),
 });
 const videoBackground = z.object({
   type: z.literal("video"),

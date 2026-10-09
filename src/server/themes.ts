@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "@/lib/page-content";
 import { storeThemeInput, THEME_TEMPLATE_KEYS, themeSettingsSchema, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTemplate } from "@/lib/theme";
+import { colourLibrarySchema } from "@/lib/colour-library";
 import { themeElementsSchema, themeFontFamilies } from "@/lib/theme-elements";
 
 import { audit, type Account } from "./auth";
@@ -93,6 +94,21 @@ export async function saveThemeTab(
   if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
   const { elements, maxWidth, background } = parsed.data;
   const settings = withThemeTab(store.theme.settings, { elements: elements ?? {}, maxWidth, background });
+  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings });
+}
+
+/** Saves the store's saved colours and gradients (D183) and nothing else of the theme. */
+export async function saveThemeLibrary(
+  account: Account,
+  store: { id: string; theme: StoreTheme },
+  input: unknown,
+): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
+  const parsed = colourLibrarySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
+  const { library: _before, ...rest } = store.theme.settings;
+  void _before;
+  const empty = parsed.data.colours.length === 0 && parsed.data.gradients.length === 0;
+  const settings = { ...rest, ...(!empty && { library: parsed.data }) };
   return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings });
 }
 

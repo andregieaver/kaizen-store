@@ -65,6 +65,11 @@ export type TextStyle = keyof typeof TEXT_STYLES;
 export const TEXT_VARIANTS = { normal: "Normal", "small-caps": "Small capitals" } as const;
 export type TextVariant = keyof typeof TEXT_VARIANTS;
 
+/** Colours that fill the letters (D183): a straight gradient at an angle, in degrees. */
+export type TextGradient = { colors: string[]; angle: number };
+export const TEXT_GRADIENT_COLORS = { min: 2, max: 4 } as const;
+export const TEXT_GRADIENT_ANGLE_DEFAULT = 90;
+
 export type Measure<U extends string> = { value: number; unit: U };
 /** A shadow behind the letters: its colour and how far it falls and how soft it is, in pixels. */
 export type TextShadow = { color: string; x: number; y: number; blur: number };
@@ -83,6 +88,8 @@ export type Typography = {
   style?: TextStyle;
   variant?: TextVariant;
   textShadow?: TextShadow;
+  /** Its letters filled with a gradient (D183), two to four colours at an angle; over its colour. */
+  gradient?: TextGradient;
   /** Its colour (D180, `docs/text-colour.md`), `#rrggbb`; the inherited one unless set. */
   color?: string;
   /** How solid its colour is, 0 to 100 (solid unless set); it acts on a colour set here or inherited from a larger size. */
@@ -101,12 +108,13 @@ export const TYPOGRAPHY_KEYS = [
   "style",
   "variant",
   "textShadow",
+  "gradient",
   "color",
   "opacity",
 ] as const satisfies readonly TypographyKey[];
 
 /** At a smaller size: the same, and a shadow can be none there (`null`) though a larger size has one. */
-export type TypographyOverride = Omit<Typography, "textShadow"> & { textShadow?: TextShadow | null };
+export type TypographyOverride = Omit<Typography, "textShadow" | "gradient"> & { textShadow?: TextShadow | null; gradient?: TextGradient | null };
 
 /** The kinds of text a part can have, each with its own settings. */
 export const TEXT_ROLES = [
@@ -168,6 +176,11 @@ const shadowSchema = z.object({
   blur: z.number().int("A shadow's blur is whole pixels.").min(0).max(SHADOW_BLUR_MAX),
 });
 
+const gradientSchema = z.object({
+  colors: z.array(hex).min(TEXT_GRADIENT_COLORS.min).max(TEXT_GRADIENT_COLORS.max),
+  angle: z.number().int().min(0).max(360),
+});
+
 const typographyShape = {
   family: fontFamily.optional(),
   weight: z
@@ -210,9 +223,9 @@ const groups = <T extends z.ZodType>(one: T) =>
     });
 
 /** A part's typography (Extra large). */
-export const typographyGroupsSchema = groups(z.object({ ...typographyShape, textShadow: shadowSchema.optional() }));
+export const typographyGroupsSchema = groups(z.object({ ...typographyShape, textShadow: shadowSchema.optional(), gradient: gradientSchema.optional() }));
 /** A smaller size's: the same, and a shadow can be none there. */
-export const typographyAtSchema = groups(z.object({ ...typographyShape, textShadow: shadowSchema.nullable().optional() }));
+export const typographyAtSchema = groups(z.object({ ...typographyShape, textShadow: shadowSchema.nullable().optional(), gradient: gradientSchema.nullable().optional() }));
 
 // ---------------------------------------------------------------------------
 // Reading at a size
@@ -507,6 +520,16 @@ export function typographyDecl(t: TypographyOverride): Decl {
   if (t.decoration) out["text-decoration-line"] = t.decoration;
   if (t.style) out["font-style"] = t.style;
   if (t.variant) out["font-variant-caps"] = t.variant;
+  if (t.gradient === null) {
+    // Taken away at a size where a larger one has it: the letters take their colour again.
+    out["background-image"] = "none";
+    out["-webkit-text-fill-color"] = "currentcolor";
+  } else if (t.gradient) {
+    out["background-image"] = `linear-gradient(${t.gradient.angle}deg, ${t.gradient.colors.join(", ")})`;
+    out["-webkit-background-clip"] = "text";
+    out["background-clip"] = "text";
+    out["-webkit-text-fill-color"] = "transparent";
+  }
   if (t.textShadow === null) out["text-shadow"] = "none";
   else if (t.textShadow) out["text-shadow"] = `${t.textShadow.x}px ${t.textShadow.y}px ${t.textShadow.blur}px ${t.textShadow.color}`;
   return out;
@@ -823,7 +846,7 @@ export function typographyPatch<K extends TypographyKey>(part: Editable, size: S
   const inherited = typographyInherited(part, role, key, size);
   let next: unknown = value;
   if (same(value, inherited)) next = undefined;
-  else if (value === undefined) next = key === "textShadow" && inherited ? null : undefined;
+  else if (value === undefined) next = (key === "textShadow" || key === "gradient") && inherited ? null : undefined;
   return { at: withSizeGroup(part.at, size, role, key, next) };
 }
 

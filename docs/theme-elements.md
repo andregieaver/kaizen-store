@@ -31,3 +31,10 @@ The theme is laid *under* the parts before they are drawn (`themedRows()`), neve
 - A theme element's text settings on a *rich text's inner elements* give way to anything the block, column or row sets for the same property, but the page checker (`pageIssues()`) does not yet read theme colours when it checks contrast.
 - Design profiles' own workspaces edit the look through Design; they have no Theme tab.
 - The canvas draws a non-full row at its content width (the theme's, or its own) as the site does.
+
+## Saved colours and gradients, text gradients, gradient overlay, pixel sliders (D183)
+
+- **Saved colours and gradients** (`ThemeSettings.library`, `src/lib/colour-library.ts`, `ColourLibraryProvider` in `src/components/admin/colour-library.tsx`): named, up to 40 colours and 20 gradients per store, kept on the theme by `saveLibraryAction` (anyone who may edit pages; nothing else of the theme is touched). Every `ColorField` (text, background, border, overlay, shadow colours) shows them under the theme's swatches with a *Save colour…* button; a gradient editor (a background's, and a text's) shows saved gradients with *Save gradient…*. **Using one is a copy**: the value is written into the part, so editing or deleting a saved one never changes a page. Not offered on Kaizen's own pages (no theme).
+- **Text gradient** (`Typography.gradient`: two to four colours and an angle, per kind of text, per screen size, `null` at a size takes it away): drawn by `typographyDecl()` as `background-image` clipped to the text with a transparent fill, over the text colour; the element fits its words (`width: fit-content`, placed by the text's alignment) so the colours run across the words, not the column.
+- **A gradient background's opacity and overlay** (`GradientBackground.opacity` 0–99, solid unless set; `overlay` colour and opacity as a picture's): the gradient layer is see-through by its opacity, the overlay is a layer over it (`GradientLayer`).
+- **Pixel sliders** (`PixelRange`): every pixel field of the builder has a slider with the value over its thumb, beside the number field, which still takes any value in the field's own limits.

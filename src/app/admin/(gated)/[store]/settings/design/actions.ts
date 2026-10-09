@@ -10,7 +10,7 @@ import { setOpenCartOnAdd } from "@/server/cart";
 import { applyDesignPreset, designTags, restoreDesignLook } from "@/server/design-presets";
 import { installFont } from "@/server/fonts";
 import { storeTag } from "@/server/stores";
-import { deleteSavedTheme, saveSavedTheme, saveStoreTheme, saveThemeTab } from "@/server/themes";
+import { deleteSavedTheme, saveSavedTheme, saveStoreTheme, saveThemeLibrary, saveThemeTab } from "@/server/themes";
 
 const read = (payload: string): unknown => {
   try {
@@ -36,6 +36,15 @@ export async function saveThemeAction(storeSlug: string, payload: string) {
 export async function saveThemeTabAction(storeSlug: string, payload: string) {
   const member = await requirePermission(storeSlug, "website:write");
   const result = await saveThemeTab(member.account, member.store, read(payload));
+  if (result.ok) updateTag(storeTag(member.store.slug));
+  return result;
+}
+
+/** Saves the store's saved colours and gradients (D183), from the page builder's colour fields; nothing else of the theme. */
+export async function saveLibraryAction(storeSlug: string, payload: string) {
+  // The builder's own pages use them, so whoever may edit pages may keep them; the theme is changed only in this one part.
+  const member = await requireAnyPermission(storeSlug, BUILDER_WRITE);
+  const result = await saveThemeLibrary(member.account, member.store, read(payload));
   if (result.ok) updateTag(storeTag(member.store.slug));
   return result;
 }

@@ -202,20 +202,33 @@ function GradientLayer({ gradient, motion, firstRow, preview }: { gradient: Grad
   if (!vars) return null;
   const fx = backgroundFx(motion, { firstRow, preview });
   return (
-    <div aria-hidden className={BACKGROUND_FRAME} data-fx-bgroot="" data-fx-gradient="" data-fx-flow={gradient.flow ?? "slow"} style={vars}>
-      <div data-fx-layer="" {...fx.attrs} style={fx.style}>
-        <div data-fx-grad={gradient.style}>
-          {gradient.style === "aurora" && (
-            <>
-              <span data-fx-blob="1" />
-              <span data-fx-blob="2" />
-              <span data-fx-blob="3" />
-            </>
-          )}
+    <>
+      <div
+        aria-hidden
+        className={BACKGROUND_FRAME}
+        data-fx-bgroot=""
+        data-fx-gradient=""
+        data-fx-flow={gradient.flow ?? "slow"}
+        // How solid it is (D183): what is behind the part shows through the rest.
+        style={{ ...vars, ...(gradient.opacity !== undefined && gradient.opacity < 100 && { opacity: gradient.opacity / 100 }) }}
+      >
+        <div data-fx-layer="" {...fx.attrs} style={fx.style}>
+          <div data-fx-grad={gradient.style}>
+            {gradient.style === "aurora" && (
+              <>
+                <span data-fx-blob="1" />
+                <span data-fx-blob="2" />
+                <span data-fx-blob="3" />
+              </>
+            )}
+          </div>
         </div>
+        {gradient.grain && <div data-fx-grain="" />}
       </div>
-      {gradient.grain && <div data-fx-grain="" />}
-    </div>
+      {gradient.overlay && (
+        <div aria-hidden className="absolute inset-0 -z-10" style={{ backgroundColor: gradient.overlay.color, opacity: gradient.overlay.opacity / 100 }} />
+      )}
+    </>
   );
 }
 
