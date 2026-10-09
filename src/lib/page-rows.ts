@@ -1,9 +1,13 @@
 import {
   EMPTY_DOC,
+  LINE_COLUMNS_MAX,
   PRODUCT_PARTS,
   ROW_LAYOUTS,
+  ROW_LINES_MAX,
   SITE_PARTS,
+  columnLines,
   pageParts,
+  rowLayouts,
   type BlockType,
   type PartBase,
   type PageBlock,
@@ -156,11 +160,6 @@ export function removeRow(rows: PageRow[], rowId: string): PageRow[] {
   return rows.filter((r) => r.id !== rowId);
 }
 
-/**
- * Gives a row another layout. Columns are kept in order; when there are
- * fewer, the blocks of the columns that go move to the new last column,
- * so nothing written is lost.
- */
 /** A column without the shares it was given by hand, at any size. */
 function withoutShares(column: PageColumn): PageColumn {
   const { width: _width, at, ...rest } = column;
@@ -177,50 +176,152 @@ function withoutShares(column: PageColumn): PageColumn {
 }
 
 /**
- * A row's columns' shares at a size, as dragging the edges between them sets them: one whole number a column (of 100),
- * written the way the column's own field would (`setAt()`: at Extra large the column's own, below it an override where it
- * differs from the size above). The shares of a row that does not have that many columns are not set.
+ * One line of a row's columns (D187): the layout that shares its width, and its columns. A row is one line, or several, one under
+ * another (Beaver Builder's column groups); every edit of its columns below works on a line, so the lines it does not touch keep
+ * the layout and the shares they had.
  */
-export function setColumnShares(rows: PageRow[], rowId: string, size: Size, shares: readonly number[]): PageRow[] {
-  return rows.map((row) =>
-    row.id !== rowId || row.columns.length !== shares.length
-      ? row
-      : { ...row, columns: row.columns.map((column, i) => ({ ...column, ...setAt(column, size, { width: shares[i] }) })) },
-  );
+export type RowLine = { layout: RowLayout; columns: PageColumn[] };
+
+/** A row's lines, as its layouts divide its columns. */
+export function linesOf(row: PageRow): RowLine[] {
+  const columns = columnLines(row);
+  return rowLayouts(row).map((layout, i) => ({ layout, columns: columns[i] ?? [] }));
 }
 
-/** Gives the layout's shares back at a size: every column's own share there is taken away (at Extra large, the column's own). */
-export function clearColumnShares(rows: PageRow[], rowId: string, size: Size): PageRow[] {
+/**
+ * A row from its lines: the first line's layout is the row's `layout`, the others' its `moreLines`. A line with no columns is
+ * gone, and a row with none is nothing (null).
+ */
+function rowOf(row: PageRow, lines: RowLine[]): PageRow | null {
+  const kept = lines.filter((line) => line.columns.length > 0);
+  if (kept.length === 0) return null;
+  const { moreLines: _more, ...rest } = row;
+  void _more;
+  return { ...rest, layout: kept[0].layout, columns: kept.flatMap((line) => line.columns), ...(kept.length > 1 && { moreLines: kept.slice(1).map((line) => line.layout) }) };
+}
+
+/** Columns that share the width of their line evenly: any share they were given by hand, at any size, is taken back. */
+const evenLine = (columns: PageColumn[]): RowLine => ({ layout: equalLayout(columns.length), columns: columns.map(withoutShares) });
+
+/** Where a column is in its row: its line, and its place in that line. */
+export function locateColumn(row: PageRow, columnId: string): { line: number; index: number } | null {
+  const lines = linesOf(row);
+  for (let line = 0; line < lines.length; line += 1) {
+    const index = lines[line].columns.findIndex((c) => c.id === columnId);
+    if (index >= 0) return { line, index };
+  }
+  return null;
+}
+
+/**
+ * Where a column goes in a row (D187): beside the others of a line, at `index` among them, or alone on a new line, at `newLine`
+ * among the row's lines (0 above them all). A place counts the lines as they are now.
+ */
+export type ColumnSpot = { rowId: string; line: number; index: number } | { rowId: string; newLine: number };
+
+/** The spot at a place among all of a row's columns (a place between two lines belongs to the end of the first), for the edits that still count that way. */
+export function spotAtIndex(row: PageRow, index: number): ColumnSpot {
+  const lines = linesOf(row);
+  let start = 0;
+  for (let line = 0; line < lines.length; line += 1) {
+    const end = start + lines[line].columns.length;
+    if (index <= end || line === lines.length - 1) return { rowId: row.id, line, index: clamp(index - start, lines[line].columns.length) };
+    start = end;
+  }
+  return { rowId: row.id, line: 0, index: 0 };
+}
+
+/** The lines with a column put at a spot; null where it cannot go: a line holds six columns, a row six lines. */
+function placeInLines(lines: RowLine[], spot: ColumnSpot, column: PageColumn): RowLine[] | null {
+  if ("newLine" in spot) {
+    if (lines.length >= ROW_LINES_MAX) return null;
+    const next = [...lines];
+    next.splice(clamp(spot.newLine, lines.length), 0, { layout: "1", columns: [column] });
+    return next;
+  }
+  const at = clamp(spot.line, lines.length - 1);
+  const line = lines[at];
+  if (!line || line.columns.length >= LINE_COLUMNS_MAX) return null;
+  const columns = [...line.columns];
+  columns.splice(clamp(spot.index, columns.length), 0, column);
+  return lines.map((l, i) => (i === at ? evenLine(columns) : l));
+}
+
+/**
+ * A row's columns' shares in one of its lines at a size, as dragging the edges between them sets them: one whole number a
+ * column (of 100), written the way the column's own field would (`setAt()`: at Extra large the column's own, below it an
+ * override where it differs from the size above). The shares of a line that does not have that many columns are not set.
+ */
+export function setLineShares(rows: PageRow[], rowId: string, lineIndex: number, size: Size, shares: readonly number[]): PageRow[] {
   return rows.map((row) => {
     if (row.id !== rowId) return row;
-    return {
-      ...row,
-      columns: row.columns.map((column) => {
-        if (size === "xl") {
-          const { width: _width, ...rest } = column;
-          void _width;
-          return rest as PageColumn;
-        }
-        const { at } = clearAt(column, size, "width");
-        const { at: _at, ...rest } = column;
-        void _at;
-        return (at ? { ...rest, at } : rest) as PageColumn;
-      }),
-    };
+    const lines = linesOf(row);
+    const line = lines[lineIndex];
+    if (!line || line.columns.length !== shares.length) return row;
+    const next = lines.map((l, i) =>
+      i === lineIndex ? { ...l, columns: l.columns.map((column, j) => ({ ...column, ...setAt(column, size, { width: shares[j] }) })) } : l,
+    );
+    return rowOf(row, next) ?? row;
   });
 }
 
-export function setRowLayout(rows: PageRow[], rowId: string, layout: RowLayout, id: NewId): PageRow[] {
+/** The shares of a row's first line (all of a row of one line). */
+export function setColumnShares(rows: PageRow[], rowId: string, size: Size, shares: readonly number[]): PageRow[] {
+  return setLineShares(rows, rowId, 0, size, shares);
+}
+
+/** A column without the share it was given at a size (at Extra large, the column's own). */
+function withoutShareAt(column: PageColumn, size: Size): PageColumn {
+  if (size === "xl") {
+    const { width: _width, ...rest } = column;
+    void _width;
+    return rest as PageColumn;
+  }
+  const { at } = clearAt(column, size, "width");
+  const { at: _at, ...rest } = column;
+  void _at;
+  return (at ? { ...rest, at } : rest) as PageColumn;
+}
+
+/** Gives the layout's shares back to a line at a size: every column's own share there is taken away. */
+export function clearLineShares(rows: PageRow[], rowId: string, lineIndex: number, size: Size): PageRow[] {
   return rows.map((row) => {
-    if (row.id !== rowId || row.layout === layout) return row;
+    if (row.id !== rowId) return row;
+    const lines = linesOf(row);
+    if (!lines[lineIndex]) return row;
+    const next = lines.map((l, i) => (i === lineIndex ? { ...l, columns: l.columns.map((column) => withoutShareAt(column, size)) } : l));
+    return rowOf(row, next) ?? row;
+  });
+}
+
+/** Gives the layout's shares back at a size to every line of a row. */
+export function clearColumnShares(rows: PageRow[], rowId: string, size: Size): PageRow[] {
+  return rows.map((row) => (row.id === rowId ? { ...row, columns: row.columns.map((column) => withoutShareAt(column, size)) } : row));
+}
+
+/**
+ * Gives one of a row's lines another layout. Its columns are kept in order; when there are fewer, the blocks of the columns
+ * that go move to the new last column, so nothing written is lost. The other lines are as they were.
+ */
+export function setLineLayout(rows: PageRow[], rowId: string, lineIndex: number, layout: RowLayout, id: NewId): PageRow[] {
+  return rows.map((row) => {
+    if (row.id !== rowId) return row;
+    const lines = linesOf(row);
+    const line = lines[lineIndex];
+    if (!line || line.layout === layout) return row;
     const count = ROW_LAYOUTS[layout].widths.length;
     // A new layout brings its own shares: what dragging the columns' edges set belongs to the old one.
-    const kept = row.columns.slice(0, count).map((c) => ({ ...withoutShares(c), blocks: [...c.blocks] }));
-    const dropped = row.columns.slice(count).flatMap((c) => c.blocks);
+    const kept = line.columns.slice(0, count).map((c) => ({ ...withoutShares(c), blocks: [...c.blocks] }));
+    const dropped = line.columns.slice(count).flatMap((c) => c.blocks);
     while (kept.length < count) kept.push({ id: id(), blocks: [] });
     kept[count - 1].blocks.push(...dropped);
-    return { ...row, layout, columns: kept };
+    return rowOf(row, lines.map((l, i) => (i === lineIndex ? { layout, columns: kept } : l))) ?? row;
   });
+}
+
+/** Gives a row's first line (its only one, mostly) another layout. */
+export function setRowLayout(rows: PageRow[], rowId: string, layout: RowLayout, id: NewId): PageRow[] {
+  return setLineLayout(rows, rowId, 0, layout, id);
 }
 
 function mapColumn(rows: PageRow[], columnId: string, change: (blocks: PageBlock[]) => PageBlock[]): PageRow[] {
@@ -359,81 +460,145 @@ function findColumn(rows: PageRow[], columnId: string): { row: PageRow; index: n
   return null;
 }
 
-/** Whether a column can be copied: a row takes at most six columns. */
+/** Whether a column can be copied: a line holds at most six columns. */
 export function canDuplicateColumn(rows: PageRow[], columnId: string): boolean {
   const found = findColumn(rows, columnId);
-  return Boolean(found && found.row.columns.length < 6);
+  const place = found ? locateColumn(found.row, columnId) : null;
+  return Boolean(found && place && linesOf(found.row)[place.line].columns.length < LINE_COLUMNS_MAX);
 }
 
 /**
- * A copy of the column right after it. The row gets one more column, so its
- * columns become equal (a sidebar layout has a set number of columns).
+ * A copy of the column right after it, in its line. The line gets one more column, so its columns become equal (a sidebar
+ * layout has a set number of columns).
  */
 export function duplicateColumn(rows: PageRow[], columnId: string, id: NewId): PageRow[] {
   const found = findColumn(rows, columnId);
-  if (!found || found.row.columns.length >= 6) return rows;
-  const columns = [...found.row.columns];
-  columns.splice(found.index + 1, 0, copyColumn(columns[found.index], id, htmlIds(rows)));
-  return rows.map((r) => (r.id === found.row.id ? { ...r, layout: equalLayout(columns.length), columns } : r));
+  const place = found ? locateColumn(found.row, columnId) : null;
+  if (!found || !place) return rows;
+  const lines = linesOf(found.row);
+  if (lines[place.line].columns.length >= LINE_COLUMNS_MAX) return rows;
+  const columns = [...lines[place.line].columns];
+  columns.splice(place.index + 1, 0, copyColumn(columns[place.index], id, htmlIds(rows)));
+  const next = rowOf(found.row, lines.map((l, i) => (i === place.line ? evenLine(columns) : l)));
+  return next ? rows.map((r) => (r.id === found.row.id ? next : r)) : rows;
 }
 
-/** Takes a column and its blocks out; the rest become equal. A row keeps at least one column. */
+/** Takes a column and its blocks out; the rest of its line become equal, or the line goes if it was alone. A row keeps at least one column. */
 export function removeColumn(rows: PageRow[], columnId: string): PageRow[] {
   const found = findColumn(rows, columnId);
-  if (!found || found.row.columns.length <= 1) return rows;
-  const columns = found.row.columns.filter((c) => c.id !== columnId);
-  return rows.map((r) => (r.id === found.row.id ? { ...r, layout: equalLayout(columns.length), columns } : r));
+  const place = found ? locateColumn(found.row, columnId) : null;
+  if (!found || !place || found.row.columns.length <= 1) return rows;
+  const lines = linesOf(found.row).flatMap((line, i): RowLine[] => {
+    if (i !== place.line) return [line];
+    const rest = line.columns.filter((c) => c.id !== columnId);
+    return rest.length === 0 ? [] : [evenLine(rest)];
+  });
+  const next = rowOf(found.row, lines);
+  return next ? rows.map((r) => (r.id === found.row.id ? next : r)) : rows;
 }
 
-/** Moves a column within its row; widths stay with the places, so it takes the width of its new place. */
+/** Moves a column within its line; widths stay with the places, so it takes the width of its new place. */
 export function moveColumn(rows: PageRow[], columnId: string, to: number): PageRow[] {
   const found = findColumn(rows, columnId);
-  if (!found) return rows;
-  const columns = [...found.row.columns];
-  const [column] = columns.splice(found.index, 1);
-  columns.splice(clamp(to, columns.length), 0, column);
-  return rows.map((r) => (r.id === found.row.id ? { ...r, columns } : r));
+  const place = found ? locateColumn(found.row, columnId) : null;
+  if (!found || !place) return rows;
+  return moveColumnAt(rows, columnId, { rowId: found.row.id, line: place.line, index: to });
 }
 
 /**
- * Moves a column, with all its blocks, to `index` among another row's
- * columns (or its own: then as `moveColumn`, keeping the layout). The
- * target row's columns become equal, one more of them; the row it left
- * becomes equal with one fewer, or goes if that was its only column. A row
- * already holding six columns takes no more.
+ * Moves a column, with all its blocks, to a spot (D187): beside the columns of a line of any row, or alone on a new line.
+ * Within its own line it only changes its place, and the layout and shares stay. From a line to another, both lines share their
+ * width evenly again, the one it left going if it was alone, and the row it left going if that was its only column. A line
+ * already holding six columns takes no more, nor a row with six lines another; the rows are then as they were.
  */
-export function moveColumnTo(rows: PageRow[], columnId: string, rowId: string, index: number): PageRow[] {
+export function moveColumnAt(rows: PageRow[], columnId: string, spot: ColumnSpot): PageRow[] {
   const found = findColumn(rows, columnId);
-  const target = rows.find((r) => r.id === rowId);
-  if (!found || !target) return rows;
-  if (found.row.id === rowId) return moveColumn(rows, columnId, index);
-  if (target.columns.length >= 6) return rows;
-  const column = found.row.columns[found.index];
+  const target = rows.find((r) => r.id === spot.rowId);
+  const place = found ? locateColumn(found.row, columnId) : null;
+  if (!found || !target || !place) return rows;
+  const fromLines = linesOf(found.row);
+  const column = fromLines[place.line].columns[place.index];
+  const sameRow = found.row.id === target.id;
+
+  // Within its own line the column only changes its place.
+  if (sameRow && "line" in spot && spot.line === place.line) {
+    const columns = [...fromLines[place.line].columns];
+    columns.splice(place.index, 1);
+    columns.splice(clamp(spot.index, columns.length), 0, column);
+    const next = rowOf(found.row, fromLines.map((l, i) => (i === place.line ? { ...l, columns } : l)));
+    return next ? rows.map((r) => (r.id === found.row.id ? next : r)) : rows;
+  }
+
+  // Taken out of its line: that line is shared evenly again, or goes if it was alone.
+  const rest = fromLines[place.line].columns.filter((c) => c.id !== columnId);
+  const gone = rest.length === 0;
+  const left = fromLines.flatMap((line, i): RowLine[] => (i !== place.line ? [line] : gone ? [] : [evenLine(rest)]));
+  // The spot counts the lines as they were; where its own line is gone, those under it have moved up one.
+  let at: ColumnSpot = spot;
+  if (sameRow && gone) {
+    if ("newLine" in spot && spot.newLine > place.line) at = { rowId: spot.rowId, newLine: spot.newLine - 1 };
+    else if ("line" in spot && spot.line > place.line) at = { rowId: spot.rowId, line: spot.line - 1, index: spot.index };
+  }
+  const placed = placeInLines(sameRow ? left : linesOf(target), at, column);
+  if (!placed) return rows;
   return rows.flatMap((row) => {
-    if (row.id === found.row.id) {
-      const columns = row.columns.filter((c) => c.id !== columnId);
-      return columns.length === 0 ? [] : [{ ...row, layout: equalLayout(columns.length), columns }];
+    if (row.id === found.row.id && !sameRow) {
+      const next = rowOf(row, left);
+      return next ? [next] : [];
     }
-    if (row.id === rowId) {
-      const columns = [...row.columns];
-      columns.splice(clamp(index, columns.length), 0, column);
-      return [{ ...row, layout: equalLayout(columns.length), columns }];
+    if (row.id === target.id) {
+      const next = rowOf(row, placed);
+      return next ? [next] : [];
     }
     return [row];
   });
 }
 
 /**
- * Puts a column into a row at `index`; the row's columns become equal, one
- * more of them. A row already holding six columns takes no more.
+ * Moves a column, with all its blocks, to `index` among another row's columns (or its own: then within its line, keeping the
+ * layout). The line it joins is the one holding that place (the last, for a place past the end).
  */
+export function moveColumnTo(rows: PageRow[], columnId: string, rowId: string, index: number): PageRow[] {
+  const found = findColumn(rows, columnId);
+  const target = rows.find((r) => r.id === rowId);
+  if (!found || !target) return rows;
+  if (found.row.id === rowId) return moveColumn(rows, columnId, index);
+  return moveColumnAt(rows, columnId, spotAtIndex(target, index));
+}
+
+/**
+ * Puts a column at a spot (D187): the line it joins shares its width evenly again, one more column in it, or it is alone on a
+ * new line. A line holding six columns takes no more, nor a row with six lines another.
+ */
+export function insertColumnAt(rows: PageRow[], spot: ColumnSpot, column: PageColumn): PageRow[] {
+  const row = rows.find((r) => r.id === spot.rowId);
+  if (!row) return rows;
+  const lines = placeInLines(linesOf(row), spot, column);
+  const next = lines ? rowOf(row, lines) : null;
+  return next ? rows.map((r) => (r.id === row.id ? next : r)) : rows;
+}
+
+/** Puts a column into a row at `index` among all its columns, in the line that holds that place: as `insertColumnAt()`. */
 export function insertColumn(rows: PageRow[], rowId: string, column: PageColumn, index: number): PageRow[] {
-  return rows.map((row) => {
-    if (row.id !== rowId || row.columns.length >= 6) return row;
-    const columns = [...row.columns];
-    columns.splice(clamp(index, columns.length), 0, column);
-    return { ...row, layout: equalLayout(columns.length), columns };
-  });
+  const row = rows.find((r) => r.id === rowId);
+  return row ? insertColumnAt(rows, spotAtIndex(row, index), column) : rows;
+}
+
+/**
+ * A new empty column for the Column tile pressed rather than dragged (D187): after the column last pointed at, in its line;
+ * else last in the page's last row; a full line gives it a line of its own under; with no row at all, a row of its own.
+ */
+export function addColumn(rows: PageRow[], near: string | null, id: NewId): PageRow[] {
+  const column: PageColumn = { id: id(), blocks: [] };
+  const found = near ? findColumn(rows, near) : null;
+  const row = found?.row ?? rows[rows.length - 1];
+  if (!row) return [{ ...newRow("1", id), columns: [column] }];
+  const place = found ? locateColumn(row, near!) : null;
+  const lines = linesOf(row);
+  const line = place?.line ?? lines.length - 1;
+  const index = place ? place.index + 1 : lines[line].columns.length;
+  if (lines[line].columns.length >= LINE_COLUMNS_MAX) return insertColumnAt(rows, { rowId: row.id, newLine: line + 1 }, column);
+  return insertColumnAt(rows, { rowId: row.id, line, index }, column);
 }
 
 /** A row, a column or a block, by id: what a settings dialog is for. */

@@ -3,7 +3,9 @@ import {
   ROW_LAYOUTS,
   ROW_PADDING,
   SHADOWS,
+  columnLines,
   imageDisplaySize,
+  rowLayouts,
   type Border,
   type ContentGridBlock,
   type PageBlock,
@@ -183,41 +185,73 @@ const trackOf = (width: number) => (width === 0 ? "minmax(0, max-content)" : `mi
 
 /**
  * The row's columns: one under another where it stacks (on Small unless set; the last first where reversed), else side by
- * side in its layout's widths; 32 px apart unless set.
+ * side in its layout's widths; 32 px apart unless set. A row of several lines of columns (D187) draws each line in a box of
+ * its own, one under another: the box of a line is the grid, or the stack, as the row itself is when it has one line.
  */
 export function rowGridStyle(row: PageRow): ElementStyle {
   const align = row.align ?? "top";
-  const widths: readonly number[] = ROW_LAYOUTS[row.layout].widths;
+  const layouts = rowLayouts(row);
+  const lines = columnLines(row);
+  const gapOf = (size: Size) => {
+    const gap = valueAt(row, "gap", size);
+    return gap === undefined ? "2rem" : `${gap}px`;
+  };
+  /** One line's columns, side by side in its layout's widths or stacked. */
+  const arrange = (out: Decl, size: Size, line: PageColumn[], widths: readonly number[]) => {
+    if (stackAt(row, size)) {
+      out.display = "flex";
+      out["flex-direction"] = valueAt(row, "reverse", size) ? "column-reverse" : "column";
+    } else {
+      out.display = "grid";
+      out["grid-template-columns"] = line.map((column, i) => trackOf(valueAt(column, "width", size) ?? widths[i] ?? 1)).join(" ");
+      out["align-items"] = row.equalHeight ? "stretch" : ITEMS[align];
+    }
+  };
   const grid: PartRule = {
     selector: "&",
     important: false,
     where: true,
     sizes: perSize((size) => {
-      const gap = valueAt(row, "gap", size);
-      const out: Decl = { gap: gap === undefined ? "2rem" : `${gap}px` };
-      if (stackAt(row, size)) {
+      const out: Decl = { gap: gapOf(size) };
+      if (lines.length > 1) {
+        // The lines one under another (the last first where the row stacks reversed); each is arranged by its own rule below.
         out.display = "flex";
-        out["flex-direction"] = valueAt(row, "reverse", size) ? "column-reverse" : "column";
+        out["flex-direction"] = stackAt(row, size) && valueAt(row, "reverse", size) ? "column-reverse" : "column";
         out["justify-content"] = JUSTIFY[align];
       } else {
-        out.display = "grid";
-        out["grid-template-columns"] = row.columns.map((column, i) => trackOf(valueAt(column, "width", size) ?? widths[i] ?? 1)).join(" ");
-        out["align-items"] = row.equalHeight ? "stretch" : ITEMS[align];
+        arrange(out, size, lines[0], ROW_LAYOUTS[layouts[0]].widths);
+        if (stackAt(row, size)) out["justify-content"] = JUSTIFY[align];
       }
       return out;
     }),
   };
-  // A column's place among the others, where set (D179).
-  const order: PartRule[] = row.columns.map((column, i) => ({
-    selector: `& > :nth-child(${i + 1})`,
-    important: false,
-    where: true,
-    sizes: perSize((size) => {
-      const value = valueAt(column, "order", size);
-      return value === undefined ? ({} as Decl) : { order: String(value) };
-    }),
-  }));
-  return named([grid, ...order], "-g");
+  // A line's own box, in a row of several (D187).
+  const lineRules: PartRule[] =
+    lines.length > 1
+      ? lines.map((line, l) => ({
+          selector: `& > :nth-child(${l + 1})`,
+          important: false,
+          where: true,
+          sizes: perSize((size) => {
+            const out: Decl = { gap: gapOf(size) };
+            arrange(out, size, line, ROW_LAYOUTS[layouts[l]].widths);
+            return out;
+          }),
+        }))
+      : [];
+  // A column's place among the others of its line, where set (D179).
+  const order: PartRule[] = lines.flatMap((line, l) =>
+    line.map((column, i) => ({
+      selector: lines.length > 1 ? `& > :nth-child(${l + 1}) > :nth-child(${i + 1})` : `& > :nth-child(${i + 1})`,
+      important: false,
+      where: true,
+      sizes: perSize((size) => {
+        const value = valueAt(column, "order", size);
+        return value === undefined ? ({} as Decl) : { order: String(value) };
+      }),
+    })),
+  );
+  return named([grid, ...lineRules, ...order], "-g");
 }
 
 /**

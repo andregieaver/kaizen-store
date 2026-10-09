@@ -16,7 +16,7 @@ import {
 import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { t } from "@/lib/i18n";
-import { blockHasContent, blockOwnContent, type PageBlock, type PageRow } from "@/lib/page-content";
+import { blockHasContent, blockOwnContent, columnLines, type PageBlock, type PageColumn, type PageRow } from "@/lib/page-content";
 import { modalSummary } from "@/lib/page-modal";
 
 /**
@@ -60,27 +60,31 @@ export function ModalBar({ row, lang }: { row: PageRow; lang: string | undefined
 function PreviewRow({ row, lang }: { row: PageRow; lang: string | undefined }) {
   const box = rowBox(row, "canvas", true);
   const grid = rowGrid(row);
+  const lines = columnLines(row);
+  const renderColumn = (column: PageColumn) => {
+    const col = columnBox(column, row, "canvas");
+    return (
+      <div key={column.id} className={col.className} style={col.style}>
+        <PartBackground background={column.background} />
+        {column.blocks.map((block) => {
+          const b = blockBox(block, "canvas");
+          return (
+            <div key={block.id} className={b.className || undefined} style={b.style}>
+              <PreviewBlock block={block} lang={lang} />
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
   return (
     <div className={box.className} style={box.style}>
       <PartBackground background={row.background} />
       <div className={rowInnerClass(row, "canvas")}>
         <div className={grid.className} style={grid.style}>
-          {row.columns.map((column) => {
-            const col = columnBox(column, row, "canvas");
-            return (
-              <div key={column.id} className={col.className} style={col.style}>
-                <PartBackground background={column.background} />
-                {column.blocks.map((block) => {
-                  const b = blockBox(block, "canvas");
-                  return (
-                    <div key={block.id} className={b.className || undefined} style={b.style}>
-                      <PreviewBlock block={block} lang={lang} />
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+          {lines.length === 1
+            ? row.columns.map(renderColumn)
+            : lines.map((line, l) => <div key={line[0]?.id ?? l}>{line.map(renderColumn)}</div>)}
         </div>
       </div>
     </div>

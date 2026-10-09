@@ -43,6 +43,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Fragment,
   useCallback,
   useEffect,
   useEffectEvent,
@@ -85,9 +86,11 @@ import { AnimationFields, MotionFields } from "./motion-fields";
 import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
 import {
   BLOCKS_MAX,
+  LINE_COLUMNS_MAX,
   ROW_LAYOUTS,
   ROW_LAYOUT_KEYS,
   ROWS_MAX,
+  rowLayouts,
   BACKDROP_BLUR_MAX,
   BLUR_MAX,
   BORDER_MAX,
@@ -181,28 +184,33 @@ import { PIECE_GROUPS, STORE_PART_KEYS, STORE_PARTS, piecesOf, shopPartCopy, typ
 import { partDrawsWhenOff, partFeature, partFeatureOn } from "@/lib/part-features";
 import { requirementLabel } from "@/lib/store-features";
 import {
+  type ColumnSpot,
   copyBlock,
   copyColumn,
   copyRow,
   duplicateBlock,
+  addColumn,
   duplicateColumn,
   duplicateRow,
   findBlock,
   htmlIds,
   insertBlock,
   insertColumn,
+  insertColumnAt,
   insertRow,
   moveBlock,
-  moveColumnTo,
+  linesOf,
+  locateColumn,
+  moveColumnAt,
   moveRow,
   newBlock,
   newRow,
   removeBlock,
   removeColumn,
   removeRow,
-  setRowLayout,
-  setColumnShares,
-  clearColumnShares,
+  setLineLayout,
+  setLineShares,
+  clearLineShares,
   partOf,
   patchBlock,
   patchColumn,
@@ -309,8 +317,11 @@ type DragData =
   | { kind: "palette-block"; type: BlockType; part?: ProductPart | SitePart | ShopPart }
   | { kind: "row"; rowId: string }
   | { kind: "block"; blockId: string; columnId: string }
-  | { kind: "column"; columnId: string; rowId: string }
+  | { kind: "palette-column" }
+  | { kind: "column"; columnId: string; rowId: string; line: number }
   | { kind: "saved"; partId: string; part: SavedPartKind }
+  /** The place for a column on a line of its own in a row (D187): above the first line, between two, or under the last (`at` counts the lines as they are). */
+  | { kind: "line"; rowId: string; at: number }
   | { kind: "canvas-end" };
 
 const dataOf = (item: Active | Over | null): DragData | null => (item?.data.current as DragData | undefined) ?? null;
@@ -320,7 +331,8 @@ const movesRows = (data: DragData | null) =>
 const movesBlock = (data: DragData | null) =>
   data?.kind === "palette-block" || data?.kind === "block" || (data?.kind === "saved" && data.part === "block");
 /** A column on the page, or a saved one on its way to the page. */
-const movesColumn = (data: DragData | null) => data?.kind === "column" || (data?.kind === "saved" && data.part === "column");
+const movesColumn = (data: DragData | null) =>
+  data?.kind === "column" || data?.kind === "palette-column" || (data?.kind === "saved" && data.part === "column");
 
 /**
  * Rows land between rows; components and blocks land in columns, before or
@@ -333,9 +345,10 @@ const collision: CollisionDetection = (args) => {
     const data = container.data.current as DragData | undefined;
     if (container.id === args.active.id || !data) return false;
     if (movesRows(active)) return data.kind === "row" || data.kind === "canvas-end";
-    if (active?.kind === "column") return data.kind === "column" || data.kind === "row";
-    // A saved column can also start a row of its own, last.
-    if (movesColumn(active)) return data.kind === "column" || data.kind === "row" || data.kind === "canvas-end";
+    // A column lands beside another, last in a row, or on a line of its own (D187).
+    if (active?.kind === "column") return data.kind === "column" || data.kind === "row" || data.kind === "line";
+    // A new column (the sidebar's, or a saved one) can also start a row of its own, last.
+    if (movesColumn(active)) return data.kind === "column" || data.kind === "row" || data.kind === "line" || data.kind === "canvas-end";
     // A component can also start a row of its own: on a row's edge, between rows, or after the last.
     return data.kind === "block" || data.kind === "column" || data.kind === "row" || data.kind === "canvas-end";
   });
@@ -343,13 +356,14 @@ const collision: CollisionDetection = (args) => {
   if (within.length > 0) {
     // The innermost says where: a block rather than its column, a column rather than its row.
     const kindOf = (hit: (typeof within)[number]) => (hit.data?.droppableContainer.data.current as DragData | undefined)?.kind;
-    for (const kind of ["block", "column", "row"] as const) {
+    for (const kind of ["line", "block", "column", "row"] as const) {
       const hit = within.find((h) => kindOf(h) === kind);
       if (hit) return [hit];
     }
     return within;
   }
-  return closestCenter({ ...args, droppableContainers: targets });
+  // Away from every place, the nearest one counts, but never a line's thin strip: a new line is asked for by pointing at it.
+  return closestCenter({ ...args, droppableContainers: targets.filter((container) => (container.data.current as DragData | undefined)?.kind !== "line") });
 };
 
 type Move = { active: Active; over: Over | null; activatorEvent: Event; delta: { x: number; y: number } };
@@ -695,7 +709,7 @@ export function PageBuilder({
    */
   const placeSaved = (
     saved: SavedPart,
-    place: { index?: number; rowId?: string; columnIndex?: number; columnId?: string | null; blockIndex?: number; blockRow?: number } = {},
+    place: { index?: number; rowId?: string; columnIndex?: number; spot?: ColumnSpot; columnId?: string | null; blockIndex?: number; blockRow?: number } = {},
     foreign = false,
   ) => {
     // A page layout (D127) is placed as a whole, by asking how (`applyLayout`), never as a row, column or component.
@@ -714,6 +728,7 @@ export function PageBuilder({
     } else if (part.kind === "column") {
       const column = copy(part.content, (c) => copyColumn(c, newId, htmlIds(rows)));
       onRows((current) => {
+        if (place.spot) return insertColumnAt(current, place.spot, column);
         if (place.rowId) return insertColumn(current, place.rowId, column, place.columnIndex ?? Number.MAX_SAFE_INTEGER);
         return insertRow(current, { id: newId(), type: "row", layout: "1", columns: [column] }, current.length);
       });
@@ -760,11 +775,11 @@ export function PageBuilder({
     const { active, over } = move;
     const data = dataOf(over);
     const from = dataOf(active);
-    // A column shows where it lands beside another row's columns; in its own row they make room.
+    // A column shows where it lands beside another line's columns; in its own line they make room.
     const next = !over
       ? null
       : movesColumn(from)
-        ? data?.kind === "column" && (from?.kind !== "column" || data.rowId !== from.rowId)
+        ? data?.kind === "column" && (from?.kind !== "column" || data.rowId !== from.rowId || data.line !== from.line)
           ? { id: String(over.id), after: below(move, over, "x") }
           : null
         : data?.kind === "row" || data?.kind === "block"
@@ -778,6 +793,27 @@ export function PageBuilder({
     if (to.kind !== "row") return rows.length;
     const index = rows.findIndex((r) => r.id === to.rowId);
     return index < 0 ? rows.length : index + (after ? 1 : 0);
+  };
+
+  /**
+   * Where a column dropped on `to` goes (D187): on a line of its own where the drop was on a line's strip; beside the column it was
+   * dropped on (before it, or after it where the pointer is in its right half), in that column's line; last in the row's last line
+   * where the drop was on the row itself. `own` is the column being moved, which takes the place of the one it is over in its own line.
+   */
+  const columnSpotFor = (to: DragData, end: DragEndEvent, over: NonNullable<DragEndEvent["over"]>, own: { columnId: string; rowId: string; line: number } | null): ColumnSpot | null => {
+    if (to.kind === "line") return { rowId: to.rowId, newLine: to.at };
+    if (to.kind === "row") {
+      const row = rows.find((r) => r.id === to.rowId);
+      if (!row) return null;
+      const lines = linesOf(row);
+      return { rowId: row.id, line: lines.length - 1, index: Number.MAX_SAFE_INTEGER };
+    }
+    if (to.kind !== "column") return null;
+    const row = rows.find((r) => r.id === to.rowId);
+    const place = row ? locateColumn(row, to.columnId) : null;
+    if (!row || !place) return null;
+    const sameLine = own !== null && own.rowId === row.id && own.line === place.line;
+    return { rowId: row.id, line: place.line, index: sameLine ? place.index : place.index + (below(end, over, "x") ? 1 : 0) };
   };
 
   const onDragEnd = (end: DragEndEvent) => {
@@ -798,11 +834,9 @@ export function PageBuilder({
         if (index >= 0) placeSaved(part, { index: to.kind === "row" && after ? index + 1 : index });
       } else if (part.kind === "column") {
         if (to.kind === "canvas-end") placeSaved(part);
-        else if (to.kind === "row") placeSaved(part, { rowId: to.rowId });
-        else if (to.kind === "column") {
-          const row = rows.find((r) => r.id === to.rowId);
-          const index = row?.columns.findIndex((c) => c.id === to.columnId) ?? -1;
-          if (row && index >= 0) placeSaved(part, { rowId: row.id, columnIndex: index + (below(end, over, "x") ? 1 : 0) });
+        else {
+          const spot = columnSpotFor(to, end, over, null);
+          if (spot) placeSaved(part, { spot });
         }
       } else if (to.kind === "column" || to.kind === "block") {
         const place = to.kind === "block" ? findBlock(rows, to.blockId) : null;
@@ -825,20 +859,21 @@ export function PageBuilder({
       return;
     }
 
-    if (from.kind === "column") {
-      // Onto a row, outside its columns: last in that row.
-      if (to.kind === "row") {
-        const row = rows.find((r) => r.id === to.rowId);
-        if (row) onRows((current) => moveColumnTo(current, from.columnId, row.id, row.columns.length));
+    // A new column from the sidebar goes where a moved one would (D187): beside the columns of a line, last in a row, or on a line of its own.
+    if (from.kind === "palette-column") {
+      if (to.kind === "canvas-end") {
+        // At the end of the page: a row of its own, with the one column.
+        if (!rowsFull) onRows((current) => insertRow(current, newRow("1", newId), current.length));
         return;
       }
-      if (to.kind !== "column") return;
-      const row = rows.find((r) => r.id === to.rowId);
-      const index = row?.columns.findIndex((c) => c.id === to.columnId) ?? -1;
-      if (!row || index < 0) return;
-      // In its own row a column takes the place of the one it is over; elsewhere it goes beside it.
-      const place = to.rowId === from.rowId ? index : index + (below(end, over, "x") ? 1 : 0);
-      onRows((current) => moveColumnTo(current, from.columnId, row.id, place));
+      const spot = columnSpotFor(to, end, over, null);
+      if (spot) onRows((current) => insertColumnAt(current, spot, { id: newId(), blocks: [] }));
+      return;
+    }
+
+    if (from.kind === "column") {
+      const spot = columnSpotFor(to, end, over, { columnId: from.columnId, rowId: from.rowId, line: from.line });
+      if (spot) onRows((current) => moveColumnAt(current, from.columnId, spot));
       return;
     }
 
@@ -877,6 +912,13 @@ export function PageBuilder({
     const key = String(id);
     const row = rows.findIndex((r) => r.id === key);
     if (row >= 0) return `row ${row + 1}`;
+    if (key === "palette:column") return "a new column";
+    // A line's strip is named by its row: `line:{row}:{place}` (D187).
+    const strip = /^line:(.+):(\d+)$/.exec(key);
+    if (strip) {
+      const at = rows.findIndex((r) => r.id === strip[1]);
+      return at >= 0 ? `a new line in row ${at + 1}` : "a new line";
+    }
     for (const [r, each] of rows.entries()) {
       const column = each.columns.findIndex((c) => `column:${c.id}` === key);
       if (column >= 0) return `row ${r + 1}, column ${column + 1}`;
@@ -952,6 +994,7 @@ export function PageBuilder({
             tab={tab}
             onTab={setTab}
             onAddRow={(layout) => addRow(layout)}
+            onAddColumn={() => onRows((current) => addColumn(current, lastColumn, newId))}
             onAddBlock={(type, part) => addBlock(type, lastColumn, Number.MAX_SAFE_INTEGER, part)}
             productParts={productParts}
             siteParts={siteParts && siteParts.filter((part) => partFeatureOn({ type: "site", part }, grid.features))}
@@ -1069,6 +1112,8 @@ export function PageBuilder({
         <DragOverlay dropAnimation={null}>
           {dragging?.kind === "palette-row" ? (
             <Tile label={ROW_LAYOUTS[dragging.layout].label} preview={<LayoutPreview layout={dragging.layout} />} lifted />
+          ) : dragging?.kind === "palette-column" ? (
+            <Tile label="Column" preview={<LayoutPreview layout="1" />} lifted />
           ) : dragging?.kind === "palette-block" ? (
             <Tile
               label={
@@ -1191,6 +1236,7 @@ function Sidebar({
   tab,
   onTab: setTab,
   onAddRow,
+  onAddColumn,
   onAddBlock,
   productParts,
   siteParts,
@@ -1221,6 +1267,8 @@ function Sidebar({
   tab: Tab;
   onTab: (tab: Tab) => void;
   onAddRow: (layout: RowLayout) => void;
+  /** Adds an empty column beside the one last pointed at, or last in the page (D187). */
+  onAddColumn: () => void;
   onAddBlock: (type: BlockType, part?: ProductPart | SitePart | ShopPart) => void;
   productParts: boolean;
   /** A header or footer (D80): the site parts its owner has. */
@@ -1420,7 +1468,7 @@ function Sidebar({
             <>
               <p className="text-xs text-muted">
                 Drag a row onto the page, or press it to add it at the end. Each row holds its columns side by side;
-                on phones they stack.
+                on phones they stack. A row can have several lines of columns.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {ROW_LAYOUT_KEYS.map((layout) => (
@@ -1434,6 +1482,14 @@ function Sidebar({
                     disabled={rowsFull}
                   />
                 ))}
+              </div>
+              <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Column</h3>
+              <p className="text-xs text-muted">
+                Drag a column into a row, in among its columns, or under them on a line of its own. The columns of the line then share its
+                width evenly again. Pressed, it is added beside the column you last pointed at.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <PaletteTile id="palette:column" data={{ kind: "palette-column" }} label="Column" preview={<LayoutPreview layout="1" />} onAdd={onAddColumn} disabled={false} />
               </div>
             </>
           )}
@@ -2228,6 +2284,10 @@ const markAttributes = (part: PageRow | PageColumn | PageBlock) => ({
   ...(part.local && { "data-builder-local": "" }),
 });
 
+/** What a row's layout is called where it is named for a screen reader: its one layout, or how many lines of columns it has (D187). */
+const rowLayoutLabel = (row: PageRow): string =>
+  row.moreLines ? `${row.moreLines.length + 1} lines of columns` : ROW_LAYOUTS[row.layout].label.toLowerCase();
+
 function RowItem({
   row,
   name,
@@ -2261,7 +2321,11 @@ function RowItem({
   const resizable = !row.modal && !actions.translating;
   const widthLimited = row.width !== "full" || row.contentWidth !== "full";
   const contentMax = valueAt(row, "contentMax", size) ?? null;
-  const sideBySide = !stackAt(row, size) && row.columns.length > 1;
+  const sideBySide = !stackAt(row, size);
+  // The columns by line (D187): a row of one line holds its columns in its grid; with more, each line is a box of its own.
+  const lines = linesOf(row);
+  const dragColumn = movesColumn(dragging);
+  const gapPx = valueAt(row, "gap", size) ?? 32;
   // The page's own row (the canvas draws it with the theme under it), so only what the person set is written.
   const ownRow = (rows: PageRow[]) => rows.find((r) => r.id === row.id);
   const setWidth = (px: number) =>
@@ -2283,7 +2347,7 @@ function RowItem({
       data-builder-modal={row.modal ? "" : undefined}
       {...markAttributes(row)}
       tabIndex={0}
-      aria-label={`${name}, ${ROW_LAYOUTS[row.layout].label.toLowerCase()}`}
+      aria-label={`${name}, ${rowLayoutLabel(row)}`}
       style={{ ...frame.style, transform: CSS.Translate.toString(transform), transition }}
       // A full-width row reaches the canvas's edges; its band for pointing is then above and below only.
       className={`${frame.className} ${isDragging ? "z-30 bg-background opacity-80 shadow-xl" : ""}`}
@@ -2321,41 +2385,82 @@ function RowItem({
       <DisplayBadge show={row.visibility?.show} />
       {/* A modal's row stays in the page here (D121): badged, with a preview of the real modal. */}
       {row.modal && <ModalBar row={row} lang={actions.lang} />}
-      <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
-        <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
-          <PartBackground background={row.background} fixed={row.backgroundFixed} align={row.backgroundAlign} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
-          <div className={rowInnerClass(row, "canvas")} style={rowInnerStyle(row, "canvas")}>
-            {resizable && widthLimited && row.width === "full" && (
-              <RowWidthHandles inset={24} value={contentMax} label={name} onWidth={setWidth} onReset={resetWidth} />
-            )}
-            <div className={`relative ${grid.className}`} style={grid.style}>
-              {row.columns.map((column, index) => (
-                <ColumnItem
-                  key={column.id}
-                  column={column}
-                  row={row}
-                  index={index}
-                  name={`${name}, column ${index + 1}`}
-                  dragging={dragging}
-                  target={target}
-                  actions={actions}
-                />
-              ))}
-              {/* After the columns, so their places (`:nth-child`) are what they were. */}
-              {resizable && sideBySide && (
-                <ColumnDividers
-                  count={row.columns.length}
-                  signature={row.columns.map((c) => valueAt(c, "width", size) ?? "").join(",") + `|${size}|${valueAt(row, "gap", size) ?? ""}`}
-                  label={name}
-                  onShares={(shares) => actions.onRows((rows) => setColumnShares(rows, row.id, size, shares))}
-                  onReset={() => actions.onRows((rows) => clearColumnShares(rows, row.id, size))}
-                />
-              )}
-            </div>
+      <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
+        <PartBackground background={row.background} fixed={row.backgroundFixed} align={row.backgroundAlign} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
+        <div className={rowInnerClass(row, "canvas")} style={rowInnerStyle(row, "canvas")}>
+          {resizable && widthLimited && row.width === "full" && (
+            <RowWidthHandles inset={24} value={contentMax} label={name} onWidth={setWidth} onReset={resetWidth} />
+          )}
+          <div className={`relative ${grid.className}`} style={grid.style}>
+            {lines.map((line, l) => {
+              const offset = lines.slice(0, l).reduce((n, earlier) => n + earlier.columns.length, 0);
+              const content = (
+                <SortableContext items={line.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
+                  {line.columns.map((column, i) => (
+                    <ColumnItem
+                      key={column.id}
+                      column={column}
+                      row={row}
+                      index={offset + i}
+                      lineIndex={l}
+                      lineCount={line.columns.length}
+                      name={`${name}, column ${offset + i + 1}`}
+                      dragging={dragging}
+                      target={target}
+                      actions={actions}
+                    />
+                  ))}
+                  {/* After the columns, so their places (`:nth-child`) are what they were. */}
+                  {resizable && sideBySide && line.columns.length > 1 && (
+                    <ColumnDividers
+                      count={line.columns.length}
+                      signature={line.columns.map((c) => valueAt(c, "width", size) ?? "").join(",") + `|${size}|${valueAt(row, "gap", size) ?? ""}`}
+                      label={lines.length > 1 ? `${name}, line ${l + 1}` : name}
+                      onShares={(shares) => actions.onRows((rows) => setLineShares(rows, row.id, l, size, shares))}
+                      onReset={() => actions.onRows((rows) => clearLineShares(rows, row.id, l, size))}
+                    />
+                  )}
+                  {/* While a column is dragged: where it can go on a line of its own, above the first line, between two, or under the last. */}
+                  {dragColumn && l === 0 && <NewLineZone rowId={row.id} at={0} place="before" height={20} />}
+                  {dragColumn && <NewLineZone rowId={row.id} at={l + 1} place="after" height={l === lines.length - 1 ? 20 : Math.min(Math.max(gapPx, 16), 48)} />}
+                </SortableContext>
+              );
+              return lines.length === 1 ? (
+                <Fragment key={l}>{content}</Fragment>
+              ) : (
+                <div key={line.columns[0]?.id ?? l} className="relative" data-builder-line={l}>
+                  {content}
+                </div>
+              );
+            })}
           </div>
         </div>
-      </SortableContext>
+      </div>
     </li>
+  );
+}
+
+/**
+ * Where a column dropped on it goes on a line of its own (D187): above the first line, between two, or under the last. It is drawn
+ * only while a column is dragged, over the room around the lines (never taking any), and shows where it would put the column.
+ */
+function NewLineZone({ rowId, at, place, height }: { rowId: string; at: number; place: "before" | "after"; height: number }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `line:${rowId}:${at}`, data: { kind: "line", rowId, at } satisfies DragData });
+  return (
+    <div
+      ref={setNodeRef}
+      aria-hidden
+      data-builder-newline={at}
+      style={{ height }}
+      className={`absolute inset-x-0 z-20 flex items-center ${place === "before" ? "bottom-full" : "top-full"}`}
+    >
+      <span className={`block w-full ${isOver ? "h-1 rounded bg-blue-600" : "border-t-2 border-dashed border-blue-400/70"}`} />
+      {isOver && (
+        <span className="absolute left-1/2 -translate-x-1/2 rounded bg-blue-600 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-white shadow">
+          New line
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -2363,6 +2468,8 @@ function ColumnItem({
   column,
   row,
   index,
+  lineIndex,
+  lineCount,
   name,
   dragging,
   target,
@@ -2372,6 +2479,9 @@ function ColumnItem({
   row: PageRow;
   /** Its place in the row, for a row's stagger (D128). */
   index: number;
+  /** Its line in the row (D187), and how many columns that line holds. */
+  lineIndex: number;
+  lineCount: number;
   name: string;
   dragging: DragData | null;
   target: { id: string; after: boolean } | null;
@@ -2383,7 +2493,7 @@ function ColumnItem({
   const fx = canvasFx(actions.motionPreview, column.motion, "column", { index, parentStagger: row.motion?.enter?.stagger, parentEnter: row.motion?.enter });
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, isOver } = useSortable({
     id: `column:${column.id}`,
-    data: { kind: "column", columnId: column.id, rowId } satisfies DragData,
+    data: { kind: "column", columnId: column.id, rowId, line: lineIndex } satisfies DragData,
     disabled: actions.translating,
   });
   const droppingBlock = dragging?.kind === "palette-block" || dragging?.kind === "block";
@@ -2442,7 +2552,7 @@ function ColumnItem({
         onEdit={() => actions.open({ kind: "edit-row", rowId, columnId: column.id })}
         editLabel="Settings"
         onDuplicate={() => actions.onRows((rows) => duplicateColumn(rows, column.id, newId))}
-        duplicateDisabled={count >= 6}
+        duplicateDisabled={lineCount >= LINE_COLUMNS_MAX}
         onTest={actions.onTest ? () => actions.onTest!({ kind: "column", id: column.id }) : undefined}
         onDelete={() =>
           columnHasText(column) ? actions.open({ kind: "delete", what: `${name.toLowerCase()} and its text`, run: remove }) : remove()
@@ -2779,7 +2889,7 @@ function Dialogs({
   const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
   const savedPart = dialog?.kind === "edit-saved" ? parts.find((p) => p.id === dialog.partId) : null;
   const layoutChoice = (row: PageRow) => (
-    <LayoutChoice value={row.layout} onChange={(layout) => onRows((current) => setRowLayout(current, row.id, layout, newId))} />
+    <RowLayoutChoice row={row} onLayout={(line, layout) => onRows((current) => setLineLayout(current, row.id, line, layout, newId))} />
   );
   /** The id and classes of the row, column or block a dialog is for (D48). */
   const advancedFields = (target: Styled) => {
@@ -4574,8 +4684,10 @@ function RowSizeFields({ row, onChange }: { row: PageRow; onChange: (patch: RowP
 /** A column's share of its row and its place among the others, at the size edited (D179); the layout's until set. */
 function ColumnSizeFields({ column, row, onChange }: { column: PageColumn; row: PageRow; onChange: (patch: ColumnPatch) => void }) {
   const { size } = useSizeEdit();
-  const index = row.columns.findIndex((c) => c.id === column.id);
-  const layoutWidth: number = ROW_LAYOUTS[row.layout].widths[index] ?? 1;
+  // Its share in its own line's layout (D187): a row of one line has the one.
+  const place = locateColumn(row, column.id);
+  const layoutWidth: number = place ? (ROW_LAYOUTS[linesOf(row)[place.line].layout].widths[place.index] ?? 1) : 1;
+  const ofWhat = row.moreLines ? "its line" : "the row";
   const back = (patch: { at: PageColumn["at"] }) => onChange(patch);
   const width = valueAt(column, "width", size);
   const order = valueAt(column, "order", size);
@@ -4587,17 +4699,17 @@ function ColumnSizeFields({ column, row, onChange }: { column: PageColumn; row: 
   return (
     <div className="flex flex-col gap-4 border-t border-border pt-4">
       <NumberField
-        label="Share of the row"
+        label={`Share of ${ofWhat}`}
         hint={`the layout gives ${layoutWidth}; 0 is as wide as what it holds`}
         value={width ?? layoutWidth}
         max={COLUMN_SHARE_MAX}
-        mark={<SizeMark part={column} field="width" label="Share of the row" onPatch={back} />}
+        mark={<SizeMark part={column} field="width" label={`Share of ${ofWhat}`} onPatch={back} />}
         muted={inheritedClass(sizeSource(column, size, "width"), size)}
         onChange={(share) => onChange(sizedOrDefault("width", share, layoutWidth))}
       />
       <NumberField
         label="Place"
-        hint="lower comes first, where columns are side by side or one under another"
+        hint="lower comes first, where columns are side by side or one under another (within a line)"
         value={order ?? 0}
         min={-12}
         max={12}
@@ -5703,10 +5815,29 @@ function GridStyleFields({ block, onChange }: { block: ContentGridBlock; onChang
   );
 }
 
-/** The nine layouts to choose from, as pictures. */
-function LayoutChoice({ value, onChange }: { value: RowLayout; onChange: (layout: RowLayout) => void }) {
+/** A row's layout: one choice for its line, or one for each of its lines of columns (D187). */
+function RowLayoutChoice({ row, onLayout }: { row: PageRow; onLayout: (line: number, layout: RowLayout) => void }) {
+  const layouts = rowLayouts(row);
+  if (layouts.length === 1) return <LayoutChoice value={row.layout} onChange={(layout) => onLayout(0, layout)} />;
   return (
-    <div role="radiogroup" aria-label="Layout" className="grid grid-cols-3 gap-3">
+    <div className="flex flex-col gap-4">
+      {layouts.map((layout, i) => (
+        <div key={i} className="flex flex-col gap-2">
+          <p className="text-sm font-medium">Line {i + 1}</p>
+          <LayoutChoice label={`Layout of line ${i + 1}`} value={layout} onChange={(next) => onLayout(i, next)} />
+        </div>
+      ))}
+      <p className="text-xs text-muted">
+        A line of columns has its own layout. Drag a column onto another line, or into the space between lines, to move it.
+      </p>
+    </div>
+  );
+}
+
+/** The nine layouts to choose from, as pictures. */
+function LayoutChoice({ value, onChange, label = "Layout" }: { value: RowLayout; onChange: (layout: RowLayout) => void; label?: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="grid grid-cols-3 gap-3">
       {ROW_LAYOUT_KEYS.map((layout) => (
         <button
           key={layout}
@@ -6015,7 +6146,7 @@ function SavedPartDialog({
         {part.kind === "row" && (
           <div className="flex flex-col gap-2">
             <p className="text-sm font-medium">Layout</p>
-            <LayoutChoice value={row.layout} onChange={(layout) => change((r) => setRowLayout(r, row.id, layout, newId))} />
+            <RowLayoutChoice row={row} onLayout={(line, layout) => change((r) => setLineLayout(r, row.id, line, layout, newId))} />
           </div>
         )}
         {row.columns.map((column, index) => (

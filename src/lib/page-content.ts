@@ -313,6 +313,9 @@ export const ROW_LAYOUTS = {
 
 export type RowLayout = keyof typeof ROW_LAYOUTS;
 export const ROW_LAYOUT_KEYS = Object.keys(ROW_LAYOUTS) as [RowLayout, ...RowLayout[]];
+/** A line of a row's columns holds at most this many (the widest layout's), and a row at most this many lines (D187). */
+export const LINE_COLUMNS_MAX = 6;
+export const ROW_LINES_MAX = 6;
 
 // ---------------------------------------------------------------------------
 // Pages
@@ -1509,8 +1512,15 @@ export type VerticalAlign = "top" | "middle" | "bottom";
 export type PageRow = PartBase & {
   id: string;
   type: "row";
+  /** The layout of the row's first line of columns (its only line unless `moreLines` has others). */
   layout: RowLayout;
   columns: PageColumn[];
+  /**
+   * The layouts of the lines of columns under the first (D187, as Beaver Builder's column groups): a row's columns are one line,
+   * or several, each with a layout of its own that divides its width. `columns` holds them all, line after line, each line the
+   * number of columns its layout has. None for a row of one line, which is how rows were always.
+   */
+  moreLines?: RowLayout[];
   /** The row's own width: the content's (the default) or the whole screen's (D48). */
   width?: "content" | "full";
   /** In a full-width row, whether what is in it keeps to the content's width (the default) or spreads too. */
@@ -1552,6 +1562,27 @@ export type PageRow = PartBase & {
    */
   modal?: RowModal;
 };
+
+/** The layouts of a row's lines of columns: its own, then those of the lines under it (D187). */
+export const rowLayouts = (row: Pick<PageRow, "layout" | "moreLines">): RowLayout[] => [row.layout, ...(row.moreLines ?? [])];
+
+/** How many columns lines with these layouts hold. */
+export const columnsOfLayouts = (layouts: readonly RowLayout[]): number => layouts.reduce((sum, layout) => sum + ROW_LAYOUTS[layout].widths.length, 0);
+
+/**
+ * A row's columns by line, as its layouts divide them (D187). A row of one line is all its columns; where the columns do not
+ * match the layouts (never in a saved page), the last line takes what is left, so nothing is left out.
+ */
+export function columnLines(row: Pick<PageRow, "layout" | "moreLines" | "columns">): PageColumn[][] {
+  const layouts = rowLayouts(row);
+  let at = 0;
+  return layouts.map((layout, i) => {
+    const count = ROW_LAYOUTS[layout].widths.length;
+    const line = i === layouts.length - 1 ? row.columns.slice(at) : row.columns.slice(at, at + count);
+    at += count;
+    return line;
+  });
+}
 
 /** Whether a rich-text document holds nothing but empty paragraphs. */
 export function richTextIsEmpty(doc: RichTextDoc): boolean {
@@ -2864,6 +2895,7 @@ export const pageRowSchema = z.preprocess(upgradeRow, z
     type: z.literal("row"),
     layout: z.enum(ROW_LAYOUT_KEYS, "A row has an unknown layout."),
     columns: z.array(pageColumnSchema),
+    moreLines: z.array(z.enum(ROW_LAYOUT_KEYS, "A row has an unknown layout.")).min(1).max(ROW_LINES_MAX - 1, `A row has at most ${ROW_LINES_MAX} lines of columns.`).optional(),
     width: z.enum(["content", "full"]).optional(),
     contentWidth: z.enum(["content", "full"]).optional(),
     contentMax: contentMaxWidth.optional(),
@@ -2882,7 +2914,7 @@ export const pageRowSchema = z.preprocess(upgradeRow, z
     modal: rowModalSchema.optional(),
     ...partBase,
   })
-  .refine((r) => r.columns.length === ROW_LAYOUTS[r.layout].widths.length, {
+  .refine((r) => r.columns.length === columnsOfLayouts(rowLayouts(r)), {
     message: "A row has the wrong number of columns for its layout. Reload the page and try again.",
   }));
 

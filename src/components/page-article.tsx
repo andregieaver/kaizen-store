@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 
-import { blockFonts, blockShowsUnbound, partFonts, type PageBlock, type PageContent, type PageRow } from "@/lib/page-content";
+import { blockFonts, blockShowsUnbound, columnLines, partFonts, type PageBlock, type PageColumn, type PageContent, type PageRow } from "@/lib/page-content";
 
 import { withoutBindings } from "@/lib/field-binding";
 import { t } from "@/lib/i18n";
@@ -202,6 +202,71 @@ function RowMarkup({
   const grid = rowGrid(row);
   // Motion (D128): a row's effects, its columns' (which take the row's entrance when it staggers them) and its blocks'.
   const rowFx = partFx(row.motion, "row", { firstRow: first });
+  const lines = columnLines(row);
+  const renderColumn = (column: PageColumn, columnIndex: number) => {
+    const col = columnBox(column, row, "site");
+    const colFx = partFx(column.motion, "column", {
+      firstRow: first,
+      index: columnIndex,
+      parentStagger: row.motion?.enter?.stagger,
+      parentEnter: row.motion?.enter,
+    });
+    return (
+      <VisiblePart key={column.id} show={column.visibility?.show} place={place} preview={preview}>
+      <div id={col.id} className={col.className} style={{ ...col.style, ...colFx.style }} {...colFx.attrs}>
+        <FontLinks families={partFonts(column)} />
+        <PartBackground background={column.background} motion={column.backgroundMotion} firstRow={first} />
+        <ColumnLinkCover column={column} />
+        {column.blocks.filter(blockShowsUnbound).map((block, blockIndex) => {
+          const b = blockBox(block, "site");
+          const fx = partFx(block.motion, blockTarget(block), {
+            firstRow: first,
+            image: block.type === "image",
+            index: blockIndex,
+            parentStagger: column.motion?.enter?.stagger,
+            parentEnter: column.motion?.enter,
+          });
+          // A product or site component with nothing to show leaves no space behind (D79, D80).
+          const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;
+          if (own === null) return null;
+          return (
+            <VisiblePart key={block.id} show={block.visibility?.show} place={place} preview={preview}>
+            <div id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs}>
+              <FontLinks families={blockFonts(block)} />
+              {own !== undefined ? (
+                own
+              ) : block.type === "contentGrid" ? (
+                <ContentGridSection block={block} place={place} />
+              ) : block.type === "menu" ? (
+                <MenuSection block={block} place={place} />
+              ) : block.type === "search" ? (
+                <SearchSection place={place} results={block.results !== false} />
+              ) : block.type === "plans" ? (
+                <PlansSection block={block} />
+              ) : block.type === "customField" ? (
+                <CustomFieldSection block={block} place={place} />
+              ) : block.type === "fieldLoop" ? (
+                <FieldLoopSection block={block} place={place} />
+              ) : block.type === "storePart" ? (
+                <StorePartSection block={block} place={place} />
+              ) : block.type === "emailForm" || block.type === "newsletter" ? (
+                <FormSection block={block} place={place} />
+              ) : block.type === "testimonials" && block.source === "google" ? (
+                // Asked of Google as the page is shown (never kept): the rest of the page does not wait.
+                <Suspense fallback={null}>
+                  <GoogleReviewsSection block={block} place={place} />
+                </Suspense>
+              ) : (
+                <PageBlockView block={block} />
+              )}
+            </div>
+            </VisiblePart>
+          );
+        })}
+      </div>
+      </VisiblePart>
+    );
+  };
   return (
     <div className={row.width === "full" || inPanel ? undefined : `mx-auto w-full max-w-(--content-width) ${rowWidthStyle(row).className}`.trim()}>
       <div id={box.id} className={box.className} style={{ ...box.style, ...rowFx.style }} {...rowFx.attrs}>
@@ -209,70 +274,12 @@ function RowMarkup({
         <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} fixed={row.backgroundFixed} align={row.backgroundAlign} />
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
-            {row.columns.map((column, columnIndex) => {
-              const col = columnBox(column, row, "site");
-              const colFx = partFx(column.motion, "column", {
-                firstRow: first,
-                index: columnIndex,
-                parentStagger: row.motion?.enter?.stagger,
-                parentEnter: row.motion?.enter,
-              });
-              return (
-                <VisiblePart key={column.id} show={column.visibility?.show} place={place} preview={preview}>
-                <div id={col.id} className={col.className} style={{ ...col.style, ...colFx.style }} {...colFx.attrs}>
-                  <FontLinks families={partFonts(column)} />
-                  <PartBackground background={column.background} motion={column.backgroundMotion} firstRow={first} />
-                  <ColumnLinkCover column={column} />
-                  {column.blocks.filter(blockShowsUnbound).map((block, blockIndex) => {
-                    const b = blockBox(block, "site");
-                    const fx = partFx(block.motion, blockTarget(block), {
-                      firstRow: first,
-                      image: block.type === "image",
-                      index: blockIndex,
-                      parentStagger: column.motion?.enter?.stagger,
-                      parentEnter: column.motion?.enter,
-                    });
-                    // A product or site component with nothing to show leaves no space behind (D79, D80).
-                    const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;
-                    if (own === null) return null;
-                    return (
-                      <VisiblePart key={block.id} show={block.visibility?.show} place={place} preview={preview}>
-                      <div id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs}>
-                        <FontLinks families={blockFonts(block)} />
-                        {own !== undefined ? (
-                          own
-                        ) : block.type === "contentGrid" ? (
-                          <ContentGridSection block={block} place={place} />
-                        ) : block.type === "menu" ? (
-                          <MenuSection block={block} place={place} />
-                        ) : block.type === "search" ? (
-                          <SearchSection place={place} results={block.results !== false} />
-                        ) : block.type === "plans" ? (
-                          <PlansSection block={block} />
-                        ) : block.type === "customField" ? (
-                          <CustomFieldSection block={block} place={place} />
-                        ) : block.type === "fieldLoop" ? (
-                          <FieldLoopSection block={block} place={place} />
-                        ) : block.type === "storePart" ? (
-                          <StorePartSection block={block} place={place} />
-                        ) : block.type === "emailForm" || block.type === "newsletter" ? (
-                          <FormSection block={block} place={place} />
-                        ) : block.type === "testimonials" && block.source === "google" ? (
-                          // Asked of Google as the page is shown (never kept): the rest of the page does not wait.
-                          <Suspense fallback={null}>
-                            <GoogleReviewsSection block={block} place={place} />
-                          </Suspense>
-                        ) : (
-                          <PageBlockView block={block} />
-                        )}
-                      </div>
-                      </VisiblePart>
-                    );
-                  })}
-                </div>
-                </VisiblePart>
-              );
-            })}
+            {lines.length === 1
+              ? row.columns.map(renderColumn)
+              : // A row of several lines (D187): each line is a box of its own in the row's grid.
+                lines.map((line, l) => (
+                  <div key={line[0]?.id ?? l}>{line.map((column, i) => renderColumn(column, lines.slice(0, l).reduce((n, earlier) => n + earlier.length, 0) + i))}</div>
+                ))}
           </div>
         </div>
       </div>
