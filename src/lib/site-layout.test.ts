@@ -61,9 +61,9 @@ describe("headers and footers (D80)", () => {
       { id: "l", type: "site", part: "logo" },
       { id: "b", type: "site", part: "business" },
     ]);
-    expect(siteLayoutProblem("store", "footer", withoutCookies)).toMatch(/business details, the cookies link and the withdrawal link/);
-    // Kaizen's own site sells nothing to consumers: its footer needs the first two only.
-    expect(siteLayoutProblem(null, "footer", withBlocks(defaultFooter(null), [{ id: "l", type: "site", part: "logo" }]))).toMatch(/business details and the cookies link/);
+    // What the law asks is a warning in the page checker (`footer_legal`), never a reason not to save (D183).
+    expect(siteLayoutProblem("store", "footer", withoutCookies)).toBeNull();
+    expect(siteLayoutProblem(null, "footer", withBlocks(defaultFooter(null), [{ id: "l", type: "site", part: "logo" }]))).toBeNull();
     // A header needs neither.
     expect(siteLayoutProblem("store", "header", withBlocks(defaultHeader("store"), [{ id: "l", type: "site", part: "logo" }]))).toBeNull();
   });
@@ -81,14 +81,14 @@ describe("headers and footers (D80)", () => {
       { id: "b", type: "site", part: "business" },
       { id: "c", type: "site", part: "cookies" },
     ];
-    // A footer without it is refused when saved, and shown with the standard link under it when it is already saved.
+    // A footer without it is saved (the checker warns), and shown with the standard link under it.
     const without = withBlocks(defaultFooter("store"), base);
-    expect(siteLayoutProblem("store", "footer", without)).toMatch(/withdrawal link/);
+    expect(siteLayoutProblem("store", "footer", without)).toBeNull();
     expect(footerHasWithdrawal(without)).toBe(false);
 
     // With it, it counts only if every visitor gets it: not hidden on phones.
     const hidden = withBlocks(defaultFooter("store"), [...base, { id: "w", type: "site", part: "withdrawal", visibility: { hideAt: ["sm"] } }]);
-    expect(siteLayoutProblem("store", "footer", hidden)).toMatch(/shown on phones too/);
+    expect(siteLayoutProblem("store", "footer", hidden)).toBeNull();
     expect(footerHasWithdrawal(hidden)).toBe(false);
     const shown = withBlocks(defaultFooter("store"), [...base, { id: "w", type: "site", part: "withdrawal" }]);
     expect(siteLayoutProblem("store", "footer", shown)).toBeNull();

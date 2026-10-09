@@ -272,11 +272,11 @@ export function PageEditor({
   const checkout = context.check?.checkoutPageId != null && saved?.id === context.check.checkoutPageId;
   const issues = useMemo<PageIssue[] | null>(() => {
     try {
-      return pageIssues(content, { ...(context.check && { theme: { sets: context.check.theme } }), checkout });
+      return pageIssues(content, { ...(context.check && { theme: { sets: context.check.theme } }), checkout, ...(shape === "footer" && { footer: { storeId: context.owner } }) });
     } catch {
       return null;
     }
-  }, [content, context.check, checkout]);
+  }, [content, context.check, checkout, shape, context.owner]);
 
   const submit = (publish: boolean, acknowledged?: string[]) =>
     startBusy(async () => {

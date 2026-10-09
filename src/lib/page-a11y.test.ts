@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { PageBlock, PageColumn, PageContent, PageRow, RichTextDoc } from "./page-content";
+import { newPageContent, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc } from "./page-content";
 import {
   ALT_ADVISED_MAX,
   LEGAL_NOTICE_CLASS,
@@ -45,7 +45,7 @@ describe("the rules", () => {
     }
     const blocking = PAGE_ISSUE_RULES.filter((r) => RULE_SEVERITY[r] === "blocking");
     expect(blocking.sort()).toEqual(["contrast", "empty_link", "heading_empty", "image_alt", "legal_notice", "pay_page_block", "placeholder"].sort());
-    expect(PAGE_ISSUE_RULES.filter((r) => RULE_SEVERITY[r] === "warning").sort()).toEqual(["alt_long", "heading_order", "link_text_generic"]);
+    expect(PAGE_ISSUE_RULES.filter((r) => RULE_SEVERITY[r] === "warning").sort()).toEqual(["alt_long", "footer_legal", "heading_order", "link_text_generic"]);
   });
 });
 
@@ -420,5 +420,26 @@ describe("what publishing makes of the list", () => {
   it("finds nothing wrong with an empty page, or one that is fine", () => {
     expect(pageIssues({ title: "x", rows: [] })).toEqual([]);
     expect(pageIssues(one(heading(1, "Welcome"), text(doc(h(2, "Shipping"), para("We ship in two days. ", undefined), para("Details in our shipping policy", "/shipping"))), image("A parcel"), button("See the shop", "/shop")))).toEqual([]);
+  });
+});
+
+describe("a footer missing what the law asks (D183)", () => {
+  const content = { title: "Footer", rows: [] };
+
+  it("warns, naming what is missing, and is never blocking", () => {
+    const issues = pageIssues(content, { footer: { storeId: "s" } });
+    const legal = issues.filter((i) => i.rule === "footer_legal");
+    expect(legal).toHaveLength(1);
+    expect(legal[0].severity).toBe("warning");
+    expect(legal[0].message).toContain("business details");
+    expect(legal[0].message).toContain("cookies link");
+    expect(legal[0].message).toContain("withdrawal link");
+    expect(pageIssues(content, { footer: { storeId: null } })[0].message).not.toContain("withdrawal");
+    expect(pageIssues(content)).toEqual([]);
+  });
+
+  it("is saved anyway", async () => {
+    const { siteLayoutProblem } = await import("./site-layout");
+    expect(siteLayoutProblem("s", "footer", { ...newPageContent(), rows: [] })).toBeNull();
   });
 });

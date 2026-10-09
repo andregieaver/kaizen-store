@@ -18,6 +18,7 @@ import { blend } from "./colour";
 import { inlinePlain } from "./inline-text";
 import { contrastRatio } from "./theme";
 import type { PageBlock, PageColumn, PageContent, PageRow, RichTextDoc, BlockNode, InlineNode } from "./page-content";
+import { footerHasWithdrawal, footerRequired, siteBlocks } from "./site-layout";
 import { localizePage } from "./page-translation";
 import { valueAt } from "./responsive";
 import { colourAt, textRoles, type RoleDef } from "./typography";
@@ -33,6 +34,7 @@ export const PAGE_ISSUE_RULES = [
   "placeholder",
   "legal_notice",
   "pay_page_block",
+  "footer_legal",
 ] as const;
 export type PageIssueRule = (typeof PAGE_ISSUE_RULES)[number];
 export type IssueSeverity = "blocking" | "warning";
@@ -49,6 +51,7 @@ export const RULE_SEVERITY: Record<PageIssueRule, IssueSeverity> = {
   placeholder: "blocking",
   legal_notice: "blocking",
   pay_page_block: "blocking",
+  footer_legal: "warning",
 };
 
 /** What the owner is told each rule found, in a few words (the title of a group in the tab). */
@@ -63,6 +66,7 @@ export const RULE_TITLE: Record<PageIssueRule, string> = {
   placeholder: "Text still to fill in",
   legal_notice: "Draft notice still on the page",
   pay_page_block: "Not allowed on the checkout page",
+  footer_legal: "Footer missing what the law asks",
 };
 
 export type PageIssue = {
@@ -85,6 +89,8 @@ export type CheckContext = {
   theme?: { sets: readonly ThemeSet[] };
   /** The page is the one chosen for the checkout: what the payment policy would break is refused (`pay_page_block`). */
   checkout?: boolean;
+  /** The page is a footer (of the store, or Kaizen's with null): what the law asks to be in it and is missing is a warning (`footer_legal`), never a reason not to save. */
+  footer?: { storeId: string | null };
 };
 
 /** The longest alt text before it is a warning; a convention, not a WCAG rule. */
@@ -260,6 +266,19 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
     issues.push({ rule, severity: RULE_SEVERITY[rule], blockId: place.blockId, rowId: place.rowId, columnId: place.columnId, where, message });
 
   if (PLACEHOLDER.test(content.title)) add("placeholder", { rowId: null, columnId: null, blockId: null }, "Title", "The page's title has text still to fill in ([[…]]).");
+
+  if (context.footer) {
+    const parts = siteBlocks(content);
+    const names: Record<string, string> = { business: "the business details", cookies: "the cookies link", withdrawal: "the withdrawal link" };
+    const missing = footerRequired(context.footer.storeId)
+      .filter((name) => !parts.some((block) => block.part === name))
+      .map((name) => names[name]);
+    // The site adds the withdrawal link under a footer without it, but only a link in the footer itself, shown at every size, counts here.
+    if (context.footer.storeId !== null && !missing.includes(names.withdrawal) && !footerHasWithdrawal(content)) missing.push("the withdrawal link shown at every screen size");
+    if (missing.length > 0) {
+      add("footer_legal", { rowId: null, columnId: null, blockId: null }, "Footer", `The law asks a footer to show ${missing.join(", ")}. It can be saved without, but is missing: add the components from Building blocks.`);
+    }
+  }
 
   let lastLevel = 0;
   let h1 = 0;

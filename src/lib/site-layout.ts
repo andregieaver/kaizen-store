@@ -139,15 +139,7 @@ export function siteLayoutProblem(storeId: string | null, type: PageType, conten
   const offered = sitePartsFor(storeId);
   const foreign = parts.find((block) => !offered.includes(block.part));
   if (foreign) return storeId === null ? "Kaizen's site has no cart, wishlist, search, countries or buyer switch." : "A store's site has no Start your store button.";
-  if (type === "footer") {
-    const missing = footerRequired(storeId).filter((name) => !parts.some((block) => block.part === name));
-    if (missing.length > 0) {
-      return storeId === null
-        ? "A footer shows the business details and the cookies link, as the law asks. Add the missing components."
-        : "A footer shows the business details, the cookies link and the withdrawal link, as the law asks. Add the missing components.";
-    }
-    if (storeId !== null && !footerHasWithdrawal(content)) return "The withdrawal link must be in the footer itself and shown on phones too, as the law asks.";
-  }
+  // What the law asks of a footer (business details, cookies link, withdrawal link) is a warning in the page checker, never a reason not to save.
   return null;
 }
 
