@@ -183,7 +183,7 @@ html[data-admin] :is(h1, h2, h3) {
   letter-spacing: -0.018em;
   text-wrap: balance;
 }
-html[data-admin] h1 {
+html[data-admin] h1:not(:is([data-theme-canvas], [data-theme-preview]) *) {
   font-weight: 650;
 }
 html[data-admin] :is(table, [data-tabular]) {

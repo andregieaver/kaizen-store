@@ -320,12 +320,33 @@ export function typographyRules(part: PartBase & { type?: string; part?: string;
         where: true,
         sizes: perSize((size) => (typographyValueAt(part, def.role, "size", size) ? { "font-size": "inherit" } : ({} as Decl))),
       });
+      // A weight set is the weight of all it draws: its links and pieces carry weights of their own (`font-medium`), which
+      // a weight inherited from the part would never beat.
+      rules.push({
+        selector: "& *",
+        important: false,
+        where: true,
+        sizes: perSize((size) => (typographyValueAt(part, def.role, "weight", size) !== undefined ? { "font-weight": "inherit" } : ({} as Decl))),
+      });
       // And a colour set is the colour of all it draws but its buttons, which keep theirs on their own fill.
       rules.push({
         selector: `& :not(${FLATTEN_KEEPS})`,
         important: true,
         where: true,
         sizes: perSize((size) => (colourCssAt(part, def, size) ? { color: "inherit" } : ({} as Decl))),
+      });
+    }
+    if (part.type === "richText" && def.role === "text") {
+      // The site's own weight for a rich text's headings (`.rich-text h2`) is a rule on the element, which a weight inherited
+      // from the text would never beat: a weight set is theirs too.
+      rules.push({
+        selector: "& .rich-text :is(h1, h2, h3, h4, h5, h6)",
+        important: false,
+        where: false,
+        sizes: perSize((size) => {
+          const weight = typographyValueAt(part, def.role, "weight", size);
+          return weight === undefined ? ({} as Decl) : { "font-weight": String(weight) };
+        }),
       });
     }
     if (def.align === "box") {
