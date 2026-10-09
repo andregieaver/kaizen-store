@@ -13,6 +13,7 @@ export function BackgroundVideo({
   className,
   style,
   layer,
+  clipped = false,
 }: {
   src: string;
   poster: string | undefined;
@@ -20,6 +21,8 @@ export function BackgroundVideo({
   style: CSSProperties | undefined;
   /** Motion (D128): the video sits on a layer that moves with the scroll or by itself, inside its frame. */
   layer?: { attrs: Record<string, string>; style: CSSProperties };
+  /** A fixed background (D184): the frame clips the video, which stays on the screen, to the row's window. */
+  clipped?: boolean;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
 
@@ -54,7 +57,7 @@ export function BackgroundVideo({
     />
   );
   return (
-    <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]" {...(layer ? { "data-fx-bgroot": "" } : {})}>
+    <div aria-hidden className={`absolute inset-0 -z-10 overflow-hidden [border-radius:inherit] ${clipped ? "[clip-path:inset(0)]" : ""}`} {...(layer ? { "data-fx-bgroot": "" } : {})}>
       {layer ? (
         <div data-fx-layer="" {...layer.attrs} style={layer.style}>
           {video}

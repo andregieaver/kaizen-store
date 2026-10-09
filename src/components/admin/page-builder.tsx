@@ -111,6 +111,7 @@ import {
   CONTENT_MAX_MAX,
   CONTENT_MAX_MIN,
   COLUMN_SHARE_MAX,
+  ROW_HEIGHT_VH,
   SHADOWS,
   SPACING_MAX,
   blockFonts,
@@ -2289,7 +2290,7 @@ function RowItem({
       {row.modal && <ModalBar row={row} lang={actions.lang} />}
       <SortableContext items={row.columns.map((c) => `column:${c.id}`)} strategy={horizontalListSortingStrategy}>
         <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
-          <PartBackground background={row.background} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
+          <PartBackground background={row.background} fixed={row.backgroundFixed} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
           <div className={rowInnerClass(row, "canvas")} style={rowInnerStyle(row, "canvas")}>
             {resizable && widthLimited && row.width === "full" && (
               <RowWidthHandles inset={24} value={contentMax} label={name} onWidth={setWidth} onReset={resetWidth} />
@@ -3464,6 +3465,8 @@ function Dialogs({
                     onChange={(background) => onRows((current) => patchRow(current, row.id, { background }))}
                     backdropBlur={row.backdropBlur}
                     onBackdropBlur={(backdropBlur) => onRows((current) => patchRow(current, row.id, { backdropBlur }))}
+                    fixed={row.backgroundFixed}
+                    onFixed={(backgroundFixed) => onRows((current) => patchRow(current, row.id, { backgroundFixed: backgroundFixed || undefined }))}
                     target="row"
                     motion={row.backgroundMotion}
                     onMotion={(backgroundMotion) => onRows((current) => patchRow(current, row.id, { backgroundMotion }))}
@@ -4017,7 +4020,12 @@ function BackgroundFields({
   motion,
   onMotion,
   mark,
+  fixed,
+  onFixed,
 }: {
+  /** Rows alone can fix a picture, video or gradient to the screen (D184); given, the choice is offered. */
+  fixed?: boolean;
+  onFixed?: (fixed: boolean) => void;
   value: RowBackground | undefined;
   upload: Upload | null;
   /** Given for rows, which alone take a video; null where uploads are not set up. */
@@ -4172,8 +4180,16 @@ function BackgroundFields({
           <GradientFields value={value} onChange={onChange} />
         </div>
       )}
+      {onFixed && backgroundMoves(value) && (
+        <Check
+          label="Fixed background"
+          hint="The background stays where it is on the screen while the page scrolls, and the row's content moves over it. The row is a window onto it: give it a height as a share of the screen's. A fixed background does not move with effects."
+          checked={Boolean(fixed)}
+          onChange={onFixed}
+        />
+      )}
       {/* A picture, video or gradient can move; a colour cannot. */}
-      {backgroundMoves(value) && <BackgroundMotionFields target={target} value={motion} onChange={onMotion} />}
+      {backgroundMoves(value) && !fixed && <BackgroundMotionFields target={target} value={motion} onChange={onMotion} />}
     </div>
   );
 }
@@ -4280,6 +4296,7 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
         onChange={(contentWidth) => onChange({ contentWidth: contentWidth === "full" ? contentWidth : undefined })}
       />
       <ContentMaxField row={row} onChange={onChange} />
+      <RowHeightField row={row} onChange={onChange} />
       <Check
         label="As tall as the screen"
         hint="At least the height of the browser window."
@@ -4303,6 +4320,60 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
         value={row.align ?? "top"}
         onChange={(align) => onChange({ align: align === "top" ? undefined : align })}
       />
+    </div>
+  );
+}
+
+/**
+ * A row's height as a share of the screen's, at the size edited (D184): at least that tall. With a fixed background (and a
+ * background of full screen height) it is the window that shows part of the background as the page scrolls.
+ */
+function RowHeightField({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+  const { size } = useSizeEdit();
+  const id = useId();
+  const value = valueAt(row, "height", size) ?? null;
+  const [draft, setDraft] = useState<string | null>(null);
+  const back = (patch: { at: PageRow["at"] }) => onChange(patch);
+  return (
+    <div className={`flex flex-col gap-1 ${inheritedClass(sizeSource(row, size, "height"), size)}`}>
+      <div className="flex flex-wrap items-center gap-1">
+        <label htmlFor={id} className="text-sm font-medium">
+          Height <span className="font-normal text-muted">(% of the screen's height, {ROW_HEIGHT_VH.min} to {ROW_HEIGHT_VH.max})</span>
+        </label>
+        <SizeMark part={row} field="height" label="Height" onPatch={back} />
+      </div>
+      <input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={ROW_HEIGHT_VH.min}
+        max={ROW_HEIGHT_VH.max}
+        placeholder="As tall as its content"
+        value={draft ?? value ?? ""}
+        onChange={(event) => {
+          const next = event.target.value;
+          setDraft(next);
+          const number = Math.round(Number(next));
+          if (next === "") onChange(setAt(row, size, { height: undefined }));
+          else if (number >= ROW_HEIGHT_VH.min && number <= ROW_HEIGHT_VH.max) onChange(setAt(row, size, { height: number }));
+        }}
+        onBlur={() => setDraft(null)}
+        className="min-h-10 w-40 rounded-md border border-border bg-background px-2 text-sm"
+      />
+      <PixelRange
+        value={value ?? 100}
+        min={ROW_HEIGHT_VH.min}
+        max={100}
+        step={5}
+        unit="vh"
+        label="Height, slider"
+        onChange={(next) => {
+          setDraft(null);
+          onChange(setAt(row, size, { height: next }));
+        }}
+        className="max-w-64"
+      />
+      <p className="text-xs text-muted">At least this tall; taller if its content is. Empty: as tall as its content.</p>
     </div>
   );
 }

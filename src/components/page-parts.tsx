@@ -178,6 +178,8 @@ const blurredMedia = (blur: number): CSSProperties | undefined =>
     : undefined;
 
 const HEX = /^#[0-9a-f]{6}$/i;
+/** A fixed background (D184): its frame clips the layer that stays on the screen, so only the row's window of it shows. */
+const FIXED_FRAME = "[clip-path:inset(0)]";
 const BACKGROUND_FRAME = "absolute inset-0 -z-10 overflow-hidden [border-radius:inherit]";
 
 /** A gradient's colours as custom properties, from the colours the page holds (only `#rrggbb`, whatever else is dropped). */
@@ -197,22 +199,39 @@ function gradientVars(gradient: GradientBackground): CSSProperties | null {
 }
 
 /** Colours that move, drawn with CSS alone (motion.css): no picture to load, behind the part's content like any background. */
-function GradientLayer({ gradient, motion, firstRow, preview }: { gradient: GradientBackground; motion?: BackgroundMotion; firstRow?: boolean; preview?: boolean }) {
+function GradientLayer({
+  gradient,
+  motion,
+  firstRow,
+  preview,
+  fixed = false,
+}: {
+  gradient: GradientBackground;
+  motion?: BackgroundMotion;
+  firstRow?: boolean;
+  preview?: boolean;
+  fixed?: boolean;
+}) {
   const vars = gradientVars(gradient);
   if (!vars) return null;
-  const fx = backgroundFx(motion, { firstRow, preview });
+  // A fixed background (D184) stays still on the screen, so it does not move with the scroll; its colours still flow.
+  const fx = backgroundFx(fixed ? undefined : motion, { firstRow, preview });
   return (
     <>
       <div
         aria-hidden
-        className={BACKGROUND_FRAME}
+        className={cx(BACKGROUND_FRAME, fixed && FIXED_FRAME)}
         data-fx-bgroot=""
         data-fx-gradient=""
         data-fx-flow={gradient.flow ?? "slow"}
-        // How solid it is (D183): what is behind the part shows through the rest.
-        style={{ ...vars, ...(gradient.opacity !== undefined && gradient.opacity < 100 && { opacity: gradient.opacity / 100 }) }}
+        // How solid it is (D183): what is behind the part shows through the rest. A fixed one's frame is no container (that would hold the fixed layer in it): its layer is.
+        style={{
+          ...vars,
+          ...(gradient.opacity !== undefined && gradient.opacity < 100 && { opacity: gradient.opacity / 100 }),
+          ...(fixed && { containerType: "normal" }),
+        }}
       >
-        <div data-fx-layer="" {...fx.attrs} style={fx.style}>
+        <div data-fx-layer="" {...fx.attrs} className={fixed ? "fixed inset-0" : undefined} style={{ ...fx.style, ...(fixed && { containerType: "size" }) }}>
           <div data-fx-grad={gradient.style}>
             {gradient.style === "aurora" && (
               <>
@@ -246,25 +265,29 @@ export function PartBackground({
   motion,
   firstRow,
   preview,
+  fixed = false,
 }: {
   background: RowBackground | undefined;
   motion?: BackgroundMotion;
   firstRow?: boolean;
   preview?: boolean;
+  /** The picture, video or gradient stays where it is on the screen while the page scrolls, and what is over it moves (D184). */
+  fixed?: boolean;
 }) {
-  if (background?.type === "gradient") return <GradientLayer gradient={background} motion={motion} firstRow={firstRow} preview={preview} />;
+  if (background?.type === "gradient") return <GradientLayer gradient={background} motion={motion} firstRow={firstRow} preview={preview} fixed={fixed} />;
   if (background?.type !== "image" && background?.type !== "video") return null;
-  const fx = backgroundFx(motion, { firstRow, preview });
+  // A fixed one is not moved by the scroll or by effects: a layer that moves would hold it in the row.
+  const fx = backgroundFx(fixed ? undefined : motion, { firstRow, preview });
   const layered = Object.keys(fx.attrs).length > 0;
   const blur = background.blur ?? 0;
-  const media = cx("absolute object-cover", blur ? "max-w-none" : "inset-0 size-full");
+  const media = cx(fixed ? "fixed object-cover" : "absolute object-cover", blur ? "max-w-none" : "inset-0 size-full");
   const still = background.type === "image" ? background.image : background.poster;
   const picture = still && (
     <Image src={still.url} alt="" width={still.width} height={still.height} unoptimized className={media} style={blurredMedia(blur)} />
   );
   return (
     <>
-      <div aria-hidden className={BACKGROUND_FRAME} {...(layered ? { "data-fx-bgroot": "" } : {})}>
+      <div aria-hidden className={cx(BACKGROUND_FRAME, fixed && FIXED_FRAME)} {...(layered ? { "data-fx-bgroot": "" } : {})}>
         {layered ? (
           <div data-fx-layer="" {...fx.attrs} style={fx.style}>
             {picture}
@@ -280,6 +303,7 @@ export function PartBackground({
           className={media}
           style={blurredMedia(blur)}
           layer={layered ? fx : undefined}
+          clipped={fixed}
         />
       )}
       {background.overlay && (

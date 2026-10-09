@@ -264,6 +264,8 @@ export async function savePage(
           },
         }
       : { overlay: undefined }),
+    // A footer's reveal (D184); only footers have it.
+    footerReveal: shape === "footer" && parsed.data.footerReveal ? true : undefined,
     // Only articles have an author (D57).
     ...(type === "article" && author ? { author } : {}),
   };

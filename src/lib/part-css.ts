@@ -163,6 +163,8 @@ export function rowStyle(row: PageRow, inPanel = false, mode: PartsMode = "site"
         const spacing = spacingAt(row, size);
         return {
           ...spacingDecl({ ...spacing, padding: spacing.padding ?? ROW_PADDING }, inPanel),
+          // At least this share of the screen's height (D184): with a fixed background, a window onto it.
+          ...(valueAt(row, "height", size) ? { "min-height": `${valueAt(row, "height", size)}vh` } : {}),
           ...(inPanel ? {} : frameAt(row, size)),
           ...colorDecl(row, size),
         };

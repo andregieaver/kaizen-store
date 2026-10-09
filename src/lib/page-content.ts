@@ -325,6 +325,8 @@ export const SPACING_MAX = 240;
  * the sides. A row set to 0 keeps 0.
  */
 export const ROW_PADDING: Sides = { top: 20, right: 20, bottom: 20, left: 20 };
+/** A row's height as a share of the screen's, in per cent (D184). */
+export const ROW_HEIGHT_VH = { min: 5, max: 300 } as const;
 /** How wide a row's content may be made, in pixels (`PageRow.contentMax`, the theme's `layout.maxWidth`). */
 export const CONTENT_MAX_MIN = 320;
 export const CONTENT_MAX_MAX = 3200;
@@ -420,6 +422,8 @@ export type PartSizeSettings = {
   maxWidth?: number | null;
   /** A row's content width in pixels, over the theme's (null: the theme's, though a larger size sets one). */
   contentMax?: number | null;
+  /** A row's height as a share of the screen's, in per cent (D184); at least that tall. null: as tall as its content. */
+  height?: number | null;
   /** A grid's columns. */
   columns?: number;
   /** A grid shown as a grid or as a carousel. */
@@ -1479,6 +1483,13 @@ export type PageRow = PartBase & {
   contentWidth?: "content" | "full";
   /** How wide the row's content may be, in pixels (per size in `at`); the theme's content width unless set. */
   contentMax?: number;
+  /**
+   * At least this tall, as a per cent of the screen's height (D184, per size in `at`): with a fixed background, a window
+   * onto it.
+   */
+  height?: number;
+  /** The background stays where it is on the screen while the page scrolls, and the row's content moves over it (D184). */
+  backgroundFixed?: boolean;
   /** At least as tall as the screen. */
   fullHeight?: boolean;
   /**
@@ -1703,6 +1714,8 @@ export type PageContent = {
   rows: PageRow[];
   /** A header's place over the page (D80); only headers have one. */
   overlay?: HeaderOverlay;
+  /** A footer is revealed from under the page as it scrolls (D184); only footers have it. */
+  footerReveal?: boolean;
   /**
    * Its texts in the owner's other languages (D55), by locale: only those
    * that differ from the page's own (`src/lib/page-translation.ts`).
@@ -1938,6 +1951,8 @@ const partGap = z.number().int().min(0).max(GRID_GAP_MAX, `Keep the space at ${G
 
 /** A column's share of its row and its place among the others (D179); dragging its edge in the canvas gives shares of 100. */
 const columnShare = z.number().int().min(0).max(COLUMN_SHARE_MAX, `A column's share is 0 to ${COLUMN_SHARE_MAX}.`).optional();
+/** A row's height in per cent of the screen's (`PageRow.height`). */
+const rowHeightVh = z.number().int("A height is whole per cents.").min(ROW_HEIGHT_VH.min, `Make a row at least ${ROW_HEIGHT_VH.min}% of the screen high.`).max(ROW_HEIGHT_VH.max, `Keep a row at most ${ROW_HEIGHT_VH.max}% of the screen high.`);
 /** How wide a row's content may be (`PageRow.contentMax`), in pixels. */
 const contentMaxWidth = z
   .number()
@@ -1963,6 +1978,7 @@ const sizeSettings = z.object({
   align: textAlign,
   maxWidth: pictureWidth.or(z.null()),
   contentMax: contentMaxWidth.or(z.null()).optional(),
+  height: rowHeightVh.or(z.null()).optional(),
   columns: gridColumnCount.optional(),
   display: z.enum(["grid", "carousel"]).optional(),
   typography: typographyAtSchema,
@@ -2773,6 +2789,8 @@ export const pageRowSchema = z.preprocess(upgradeRow, z
     width: z.enum(["content", "full"]).optional(),
     contentWidth: z.enum(["content", "full"]).optional(),
     contentMax: contentMaxWidth.optional(),
+    height: rowHeightVh.optional(),
+    backgroundFixed: z.boolean().optional(),
     fullHeight: z.boolean().optional(),
     stack: z.boolean().optional(),
     reverse: z.boolean().optional(),
@@ -2837,6 +2855,7 @@ export const pageInput = z.preprocess(
       ...termIdsSchema.shape,
       author: z.string().trim().max(AUTHOR_MAX, `Keep the author's name under ${AUTHOR_MAX} characters.`).optional(),
       rows: z.array(pageRowSchema).max(ROWS_MAX, `A page takes at most ${ROWS_MAX} rows.`),
+      footerReveal: z.boolean().optional(),
       overlay: z
         .object({
           where: z.enum(["everywhere", "front", "terms"]),

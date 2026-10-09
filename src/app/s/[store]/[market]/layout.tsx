@@ -173,7 +173,10 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         {/* A store's page (D54) spans the window: its rows keep to this width themselves. */}
         <main
           id="main"
-          className="mx-auto w-full max-w-(--content-width) flex-1 px-4 py-8 has-[>.store-page]:max-w-none has-[>.store-page]:p-0"
+          // A footer revealed on scroll (D184) lies under the page, which covers it.
+          className={`mx-auto w-full max-w-(--content-width) flex-1 px-4 py-8 has-[>.store-page]:max-w-none has-[>.store-page]:p-0 ${
+            footerLayout?.content.footerReveal ? "relative z-10 bg-background" : ""
+          }`}
         >
           {children}
         </main>

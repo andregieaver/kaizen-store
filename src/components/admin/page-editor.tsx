@@ -536,6 +536,26 @@ export function PageEditor({
                 </p>
               )}
             </section>
+            {!translating && context.type === "footer" && (
+              <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4">
+                <h2 className="font-medium">Reveal on scroll</h2>
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(content.footerReveal)}
+                    onChange={(event) => change({ footerReveal: event.target.checked || undefined })}
+                    className="mt-0.5 size-4"
+                  />
+                  <span>
+                    Fixed footer
+                    <span className="block text-xs text-muted">
+                      The footer stays at the bottom of the screen, under the page, and is revealed as the page scrolls away. Where the page
+                      is too short to cover it, the footer is where it always is.
+                    </span>
+                  </span>
+                </label>
+              </section>
+            )}
             {!translating && context.type === "header" && (
               <HeaderOverlayFields
                 value={content.overlay}
