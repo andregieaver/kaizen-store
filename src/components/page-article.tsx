@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 
-import { blockFonts, blockShowsUnbound, columnLines, partFonts, type PageBlock, type PageColumn, type PageContent, type PageRow } from "@/lib/page-content";
+import { blockFonts, blockShowsUnbound, columnLines, partFonts, rowShows, type PageBlock, type PageColumn, type PageContent, type PageRow } from "@/lib/page-content";
 
 import { withoutBindings } from "@/lib/field-binding";
 import { t } from "@/lib/i18n";
@@ -98,10 +98,6 @@ export const pageRoomClass = (content: Pick<PageContent, "rows">, top: string, b
 
 /** Whether every visitor sees a part (its display is Always, D179 phase 4). */
 const seenByAll = (part: { visibility?: { show?: unknown } }) => part.visibility?.show === undefined || part.visibility.show === "always";
-
-/** A row shows when something in it does, or it has a background of its own. */
-export const rowShows = (row: PageRow) =>
-  Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockShowsUnbound));
 
 /**
  * One row on the site, with its columns and blocks; also a header's or

@@ -1,6 +1,6 @@
 import {
-  blockShowsUnbound,
   newPageContent,
+  rowShows,
   sitePartsFor,
   type PageBlock,
   type PageColumn,
@@ -153,9 +153,9 @@ export type OverlayPage = { front: boolean; categories: string[]; tags: string[]
  */
 export function headerOverlays(overlay: HeaderOverlay | undefined, page: OverlayPage): boolean {
   if (!overlay) return false;
-  // The first row the page shows (as `rowShows` finds it on the site).
+  // The first row the page shows (`rowShows`, as on the site).
   // A modal (D121) is not in the page's flow: it is never the row the header lies over.
-  const first = page.rows.find((row) => !row.modal && (Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockShowsUnbound))));
+  const first = page.rows.find((row) => !row.modal && rowShows(row));
   if (!first?.background) return false;
   if (overlay.where === "everywhere") return true;
   if (overlay.where === "front") return page.front;

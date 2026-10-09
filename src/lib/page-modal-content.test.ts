@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { newPageContent, pageExcerpt, pageInput, repeatedHtmlId, type PageContent, type PageRow } from "./page-content";
+import { newPageContent, pageExcerpt, pageInput, repeatedHtmlId, rowShows, type PageBlock, type PageContent, type PageRow } from "./page-content";
 import { modalDomId, type RowModal } from "./page-modal";
 import { duplicateRow, htmlIds, copyRow, patchRow } from "./page-rows";
 import { headerOverlays } from "./site-layout";
@@ -119,6 +119,40 @@ describe("a page with modal rows", () => {
     expect(at([row("m", "Modal", { modal: modal(), background }), row("hero", "Hero", { background })])).toBe(true);
     expect(at([row("m", "Modal", { modal: modal(), background }), row("plain", "Plain")])).toBe(false);
     expect(at([row("m", "Modal", { modal: modal(), background })])).toBe(false);
+  });
+});
+
+describe("a modal row that nothing in shows", () => {
+  // A new newsletter or email form has no address to send to: the site leaves it out (D93), and a row of nothing else with it.
+  const newsletter = (recipients: string[]): PageBlock => ({
+    id: "n",
+    type: "newsletter",
+    recipients,
+    placeholder: "",
+    submitLabel: "",
+    successMessage: "",
+    consent: "",
+  });
+  const only = (block: PageBlock, extra: Partial<PageRow> = {}): PageRow => ({
+    id: "m",
+    type: "row",
+    layout: "1",
+    columns: [{ id: "m-c", blocks: [block] }],
+    modal: modal({ key: "newsletter", triggers: { button: true } }),
+    ...extra,
+  });
+
+  it("is not on the site: a form with nobody to send to leaves the row, and so the modal, out", () => {
+    expect(rowShows(only(newsletter([])))).toBe(false);
+    expect(rowShows(only(newsletter(["owner@example.com"])))).toBe(true);
+  });
+
+  it("is on the site once anything else in it shows, or the row has a background of its own", () => {
+    const heading: PageBlock = { id: "h", type: "heading", text: "Join us", level: 2 };
+    const both: PageRow = { ...only(newsletter([])), columns: [{ id: "m-c", blocks: [heading, newsletter([])] }] };
+    expect(rowShows(both)).toBe(true);
+    expect(rowShows(only(newsletter([]), { background: { type: "color", color: "#123456" } }))).toBe(true);
+    expect(rowShows({ ...only(newsletter([])), columns: [{ id: "m-c", blocks: [newsletter([])], background: { type: "color", color: "#123456" } }] })).toBe(true);
   });
 });
 

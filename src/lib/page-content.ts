@@ -1611,6 +1611,15 @@ export function blockShowsUnbound(block: PageBlock): boolean {
   return bind ? Boolean(bind.fallback) && blockOwnContent(block) : blockOwnContent(block);
 }
 
+/**
+ * Whether a row is drawn on the site: something in it shows, or it has a
+ * background of its own. A row with nothing to show is left out of the page,
+ * a modal's row (D121) too: its dialog is not there for a link or a class to
+ * open (a row whose only component is a form with no address to send to).
+ */
+export const rowShows = (row: PageRow): boolean =>
+  Boolean(row.background) || row.columns.some((c) => c.background || c.blocks.some(blockShowsUnbound));
+
 /** Whether a block has content of its own, whatever it is bound to. */
 export function blockOwnContent(block: PageBlock): boolean {
   switch (block.type) {

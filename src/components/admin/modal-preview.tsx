@@ -16,8 +16,8 @@ import {
 import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { t } from "@/lib/i18n";
-import { blockHasContent, blockOwnContent, columnLines, type PageBlock, type PageColumn, type PageRow } from "@/lib/page-content";
-import { modalSummary } from "@/lib/page-modal";
+import { blockHasContent, blockOwnContent, columnLines, rowShows, type PageBlock, type PageColumn, type PageRow } from "@/lib/page-content";
+import { MODAL_LEFT_OUT, modalSummary } from "@/lib/page-modal";
 
 /**
  * A modal's row on the builder's canvas (D121): it stays in the page, where
@@ -41,6 +41,12 @@ export function ModalBar({ row, lang }: { row: PageRow; lang: string | undefined
         >
           Preview
         </button>
+        {/* The preview below draws the form as it would look; the site leaves the row out when nothing in it shows. */}
+        {!rowShows(row) && (
+          <p data-modal-left-out className="basis-full font-medium">
+            {MODAL_LEFT_OUT}
+          </p>
+        )}
       </div>
       <PageModal
         config={modal}

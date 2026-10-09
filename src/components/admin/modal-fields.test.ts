@@ -92,10 +92,40 @@ describe("a row's Modal setting", () => {
   });
 });
 
-describe("a button's Opens a modal", () => {
-  const picker = (rows: PageRow[], href: string) =>
-    renderToString(createElement(ModalPicker, { rows, href, onPick: () => {} })).replace(/<!-- -->/g, "");
+const picker = (rows: PageRow[], href: string) =>
+  renderToString(createElement(ModalPicker, { rows, href, onPick: () => {} })).replace(/<!-- -->/g, "");
 
+/** A modal row whose only component is a newsletter form: shown on the site only once it has an address to send to. */
+const formRow = (recipients: string[]): PageRow => ({
+  id: "m",
+  type: "row",
+  layout: "1",
+  columns: [
+    {
+      id: "m-c",
+      blocks: [{ id: "n", type: "newsletter", recipients, placeholder: "", submitLabel: "", successMessage: "", consent: "" }],
+    },
+  ],
+  modal: newModal("newsletter"),
+});
+
+describe("a modal that nothing in shows on the site", () => {
+  it("says so in its settings, and not once the form has an address", () => {
+    const out = fields(formRow([]));
+    expect(out).toContain("Not on your site yet");
+    expect(out).toContain("no link or class can open it");
+    expect(out).toContain("under Send to");
+    expect(fields(formRow(["owner@example.com"]))).not.toContain("Not on your site yet");
+  });
+
+  it("says so beside a button's choice of it", () => {
+    const out = picker([formRow([])], "#modal-newsletter");
+    expect(out).toContain("That modal is not on the site yet");
+    expect(picker([formRow(["owner@example.com"])], "#modal-newsletter")).not.toContain("not on the site yet");
+  });
+});
+
+describe("a button's Opens a modal", () => {
   it("lists the page's modals by name, and the one the address names is chosen", () => {
     const rows = [row("a", { ...newModal("promo"), name: "Promo" }), row("b", newModal("newsletter")), row("c")];
     const out = picker(rows, "#modal-newsletter");

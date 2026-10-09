@@ -282,6 +282,17 @@ export function triggerWords(triggers: ModalTriggers): string[] {
   ].filter((word): word is string => Boolean(word));
 }
 
+/**
+ * What the builder says when nothing in a modal's row shows on the site (`rowShows()`): the row is left out of the
+ * page like any row with nothing to show, so the modal is not there for a link or a class to open. Mostly a row
+ * whose only component is a newsletter or email form that has no address to send to yet.
+ */
+export const MODAL_LEFT_OUT =
+  "Not on your site yet: nothing in this row is shown there, so the modal is left out and no link or class can open it. A newsletter or email form is shown only once it has an address under Send to: add one, or put a heading or some text in the modal too.";
+/** The short form, beside a button's choice of modal. */
+export const MODAL_LEFT_OUT_SHORT =
+  "That modal is not on the site yet: nothing in its row is shown there (a form needs an address under Send to), so this link cannot open it.";
+
 /** The badge on a modal row in the builder's canvas. */
 export function modalSummary(modal: RowModal): string {
   const ways = triggerWords(modal.triggers);

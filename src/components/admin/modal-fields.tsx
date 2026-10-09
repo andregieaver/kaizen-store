@@ -8,6 +8,8 @@ import {
   MODAL_DAYS_MIN,
   MODAL_FREQUENCIES,
   MODAL_KEY_MAX,
+  MODAL_LEFT_OUT,
+  MODAL_LEFT_OUT_SHORT,
   MODAL_NAME_MAX,
   MODAL_OVERLAYS,
   MODAL_POSITIONS,
@@ -30,7 +32,7 @@ import {
   type ModalTriggers,
   type RowModal,
 } from "@/lib/page-modal";
-import type { PageRow } from "@/lib/page-content";
+import { rowShows, type PageRow } from "@/lib/page-content";
 import type { RowPatch } from "@/lib/page-rows";
 
 import { Check, Choices, NumberField, TextField, fieldClass, smallButton } from "./block-fields";
@@ -78,7 +80,7 @@ export function ModalFields({
           </span>
         </label>
       </div>
-      {modal && <ModalSettings modal={modal} otherKeys={otherKeys} set={set} />}
+      {modal && <ModalSettings modal={modal} otherKeys={otherKeys} set={set} onSite={rowShows(row)} />}
     </div>
   );
 }
@@ -87,10 +89,13 @@ function ModalSettings({
   modal,
   otherKeys,
   set,
+  onSite,
 }: {
   modal: RowModal;
   otherKeys: string[];
   set: (patch: Partial<RowModal>) => void;
+  /** Whether anything in the row shows on the site: else the modal is left out of it. */
+  onSite: boolean;
 }) {
   const problems = modalProblems(modal);
   const keyId = useId();
@@ -115,6 +120,14 @@ function ModalSettings({
 
   return (
     <div className="flex flex-col gap-5 pl-7">
+      {!onSite && (
+        <p
+          data-modal-left-out
+          className="rounded-md border border-red-700 p-3 text-sm text-red-700 dark:text-red-400"
+        >
+          {MODAL_LEFT_OUT}
+        </p>
+      )}
       <TextField
         label="Name"
         value={modal.name ?? ""}
@@ -338,6 +351,7 @@ export function ModalPicker({ rows, href, onPick }: { rows: PageRow[]; href: str
   const modals = modalRows(rows).flatMap((row) => (row.modal ? [row.modal] : []));
   const chosen = keyFromHash(href.trim());
   const current = modals.find((modal) => modal.key === chosen);
+  const leftOut = modalRows(rows).some((row) => row.modal?.key === chosen && !rowShows(row));
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-sm font-medium">
@@ -359,13 +373,15 @@ export function ModalPicker({ rows, href, onPick }: { rows: PageRow[]; href: str
         ))}
       </select>
       <span
-        className={`text-xs ${current && !current.triggers.button ? "text-red-700 dark:text-red-400" : "text-muted"}`}
+        className={`text-xs ${(current && !current.triggers.button) || leftOut ? "text-red-700 dark:text-red-400" : "text-muted"}`}
       >
         {current && !current.triggers.button
           ? "That modal is not set to open from a button or link: switch that on in its row's settings."
-          : chosen && !current
-            ? `No modal on this page has the address name ${chosen}; a modal in the footer or header may.`
-            : "Sets the address to #modal-… of a modal built as a row on this page. For one in the footer or header, type its address above."}
+          : leftOut
+            ? MODAL_LEFT_OUT_SHORT
+            : chosen && !current
+              ? `No modal on this page has the address name ${chosen}; a modal in the footer or header may.`
+              : "Sets the address to #modal-… of a modal built as a row on this page. For one in the footer or header, type its address above."}
       </span>
     </div>
   );
