@@ -309,15 +309,16 @@ export async function StoreSiteHeader({
 
 /**
  * A footer revealed on scroll (D184): it sticks to the bottom of the screen under the page (which covers it, see the layouts), so
- * the page's end lifts off it. Where the page is too short to reach it, it never has to stick and is where it always is.
+ * the page's end lifts off it. `FooterRevealGuard` pins it only where the page is a screen tall; a short page shows it where it always is, and on phones it
+ * stops above the bottom bar.
  */
-const revealed = (content: Pick<PageContent, "footerReveal">) => (content.footerReveal ? "sticky bottom-0 z-0" : "");
+const revealed = (content: Pick<PageContent, "footerReveal">) => (content.footerReveal ? "footer-reveal" : "");
 
 /** A store's own footer (D80), in its country's language. */
 export async function StoreSiteFooter({ store, market, layout, withdrawal = true }: { store: Store; market: Market; layout: SiteLayout; withdrawal?: boolean }) {
   const content = await bindStoreFields(localizePage(layout.content, market.locale), store, market);
   return (
-    <footer className={`site-footer mt-auto border-t border-border bg-surface/40 text-sm ${revealed(content)}`}>
+    <footer data-reveal={content.footerReveal ? "" : undefined} className={`site-footer mt-auto border-t border-border bg-surface/40 text-sm ${revealed(content)}`}>
       <SiteRows
         content={content}
         ctx={{ kind: "store", store, market, place: "footer", withdrawal }}
@@ -342,7 +343,7 @@ export function KaizenSiteHeader({ chrome, layout }: { chrome: PlatformChrome; l
 /** Kaizen's own footer (D80). */
 export function KaizenSiteFooter({ chrome, layout }: { chrome: PlatformChrome; layout: SiteLayout }) {
   return (
-    <footer className={`site-footer mt-auto border-t border-border bg-surface/40 text-sm ${revealed(layout.content)}`}>
+    <footer data-reveal={layout.content.footerReveal ? "" : undefined} className={`site-footer mt-auto border-t border-border bg-surface/40 text-sm ${revealed(layout.content)}`}>
       <SiteRows content={layout.content} ctx={{ kind: "kaizen", chrome, place: "footer" }} place={{ pageId: layout.id, owner: null }} />
     </footer>
   );

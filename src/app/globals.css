@@ -462,3 +462,16 @@ dialog[data-page-modal] > .page-modal-panel {
     transition: none;
   }
 }
+
+/* A footer revealed on scroll (D184): pinned under the page only where `FooterRevealGuard` finds the page a screen tall. On phones it
+   stops above the bottom bar (the body's last 4rem). */
+html[data-footer-reveal] .footer-reveal {
+  position: sticky;
+  bottom: calc(4rem + env(safe-area-inset-bottom));
+  z-index: 0;
+}
+@media (min-width: 768px) {
+  html[data-footer-reveal] .footer-reveal {
+    bottom: 0;
+  }
+}

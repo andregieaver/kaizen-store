@@ -1,3 +1,4 @@
+import { FooterRevealGuard } from "@/components/footer-reveal";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
@@ -180,6 +181,7 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         >
           {children}
         </main>
+        {footerLayout?.content.footerReveal && <FooterRevealGuard />}
         {footerLayout ? (
           <StoreSiteFooter store={store} market={market} layout={footerLayout} withdrawal={withdrawal} />
         ) : (
