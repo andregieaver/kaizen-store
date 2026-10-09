@@ -11,7 +11,11 @@ const noop = () => {};
 const upload = async () => ({ ok: true as const, url: "x" });
 const button = (list: Parameters<typeof MediaPickerProvider>[0]["list"], uploads = true) =>
   renderToString(
-    createElement(MediaPickerProvider, { list, children: createElement(ImageUploadButton, { upload: uploads ? upload : null, label: "Upload picture", onUploaded: noop }) }),
+    createElement(
+      MediaPickerProvider,
+      { list } as unknown as Parameters<typeof MediaPickerProvider>[0],
+      createElement(ImageUploadButton, { upload: uploads ? upload : null, label: "Upload picture", onUploaded: noop }),
+    ),
   );
 
 describe("a picture field", () => {
