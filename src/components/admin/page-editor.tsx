@@ -65,6 +65,7 @@ import type { Upload } from "./image-upload";
 import type { PageOwnerContext, PageSaveState } from "./page-context";
 import { ColourLibraryProvider } from "./colour-library";
 import { ColourSwatches } from "./colour-field";
+import { LibraryButton, MediaPickerProvider } from "./media-picker";
 import { ColorField, newId, PageBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
@@ -401,6 +402,7 @@ export function PageEditor({
   return (
     // Every colour field offers the theme's colours (D180).
     <ColourSwatches value={context.colours}>
+    <MediaPickerProvider list={context.media}>
     {/* The store's saved colours and gradients (D183), kept on its theme; none on Kaizen's own pages. */}
     <ColourLibraryProvider
       initial={context.theme?.settings?.library}
@@ -908,6 +910,7 @@ export function PageEditor({
       </div>
     </div>
     </ColourLibraryProvider>
+    </MediaPickerProvider>
     </ColourSwatches>
   );
 }
@@ -1109,6 +1112,7 @@ function ThumbnailField({
         ) : (
           <p className="text-muted">Uploads are not set up on this server.</p>
         )}
+        <LibraryButton onPicked={(picture) => onChange({ url: picture.url, width: picture.width, height: picture.height, alt: value?.alt || picture.alt })} />
         {value && (
           <button type="button" onClick={() => onChange(null)} className="rounded-md px-3 py-2 underline">
             Remove

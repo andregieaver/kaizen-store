@@ -8,6 +8,7 @@ import { writeAltText, writeAltTexts, type AltResult, type AltRun } from "@/serv
 import { audit } from "@/server/auth";
 import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
+import { pickerPictures } from "@/server/media-library";
 import { MEDIA_DELETE_MAX, deleteMedia, deleteMediaMany, describeMedia, measureMedia } from "@/server/media-library";
 import { pagesTag } from "@/server/pages";
 
@@ -80,4 +81,10 @@ export async function measureMediaAction(storeSlug: string, mediaId: string, wid
   const { store } = await requirePermission(storeSlug, "website:write");
   if (!id.safeParse(mediaId).success) return;
   await measureMedia({ storeId: store.id, storeSlug: store.slug }, mediaId, width, height);
+}
+
+/** The store's pictures for an editor's picker (D88): choosing one needs only that the person can read the website. */
+export async function pickMediaAction(storeSlug: string, query: { q: string; limit: number }) {
+  const { store } = await requirePermission(storeSlug, "website:read");
+  return pickerPictures({ storeId: store.id, storeSlug: store.slug }, { q: String(query?.q ?? ""), limit: Number(query?.limit) });
 }

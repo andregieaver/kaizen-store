@@ -1,3 +1,4 @@
+import type { PickerList } from "@/lib/media-picker";
 import type { Breakpoints } from "@/lib/breakpoints";
 import type { ColourSwatch } from "@/lib/colour";
 import type { CSSProperties } from "react";
@@ -63,6 +64,8 @@ export type PageOwnerContext = {
   parents?: readonly { slug: string; title: string }[];
   /** The owner's own description: the last fallback for a page without text. */
   defaultDescription: string;
+  /** Lists the owner's media library for choosing a picture there instead of uploading one (D88); absent where an editor has none. */
+  media?: PickerList;
   /** Uploads a picture; null where uploads are not set up. */
   upload: Upload | null;
   /** Starts a row's background video upload from the browser; null where uploads are not set up. */

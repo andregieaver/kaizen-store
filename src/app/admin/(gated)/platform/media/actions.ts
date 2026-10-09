@@ -6,6 +6,7 @@ import { z } from "zod";
 import { altTextsInput, altRunInput } from "@/lib/alt-text";
 import { writeAltText, writeAltTexts, type AltResult, type AltRun } from "@/server/alt-texts";
 import { audit, requirePlatformAdmin } from "@/server/auth";
+import { pickerPictures } from "@/server/media-library";
 import { MEDIA_DELETE_MAX, deleteMedia, deleteMediaMany, describeMedia, measureMedia } from "@/server/media-library";
 import { pagesTag } from "@/server/pages";
 
@@ -69,4 +70,10 @@ export async function measurePlatformMediaAction(mediaId: string, width: number,
   await requirePlatformAdmin();
   if (!id.safeParse(mediaId).success) return;
   await measureMedia(KAIZEN, mediaId, width, height);
+}
+
+/** Kaizen's pictures for an editor's picker (D88). */
+export async function pickPlatformMediaAction(query: { q: string; limit: number }) {
+  await requirePlatformAdmin();
+  return pickerPictures(KAIZEN, { q: String(query?.q ?? ""), limit: Number(query?.limit) });
 }

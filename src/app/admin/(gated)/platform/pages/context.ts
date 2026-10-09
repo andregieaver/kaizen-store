@@ -1,3 +1,4 @@
+import { pickPlatformMediaAction } from "../media/actions";
 import { listMenuPages } from "@/server/pages";
 import "server-only";
 
@@ -52,6 +53,7 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     parents: (await listMenuPages(null, "page")).map(({ slug, title }) => ({ slug, title })),
     defaultDescription: PLATFORM_DEFAULTS.description,
     upload: uploadsEnabled() ? uploadPlatformImageAction : null,
+    media: pickPlatformMediaAction,
     startVideo: uploadsEnabled() ? startPlatformVideoUploadAction : null,
     gridStores,
     fonts: { site: fonts, style: siteFontStyle(fonts) },

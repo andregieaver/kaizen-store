@@ -1,3 +1,4 @@
+import { pickMediaAction } from "../media/actions";
 import { listMenuPages } from "@/server/pages";
 import "server-only";
 
@@ -84,6 +85,7 @@ export async function storePageContext(store: Store, type: PageType = "page", au
     defaultDescription:
       (market && store.seo.description[market.locale]) || (market ? t(market.lang).storeSummary(store.name, market.name) : store.name),
     upload: uploadsEnabled() ? uploadImageAction.bind(null, store.slug) : null,
+    media: pickMediaAction.bind(null, store.slug),
     startVideo: uploadsEnabled() ? startVideoUploadAction.bind(null, store.slug) : null,
     // A store's grids show its own products.
     gridStores: [],

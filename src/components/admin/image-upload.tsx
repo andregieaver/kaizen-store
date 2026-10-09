@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { shrinkImage } from "@/lib/image-resize";
 
+import { LibraryButton } from "./media-picker";
+
 export type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { ok: false; problem: string }>;
 
 export type Uploaded = { url: string; width: number; height: number };
@@ -61,9 +63,12 @@ export function ImageUploadButton({
     }
   };
 
-  if (!upload) return <p className="text-sm text-muted">Uploads are not set up on this server.</p>;
+  // A library to choose from (D88) works without uploads being set up.
+  const library = <LibraryButton onPicked={(picture) => onUploaded({ url: picture.url, width: picture.width, height: picture.height })} />;
+  if (!upload) return <div className="flex flex-col gap-2"><p className="text-sm text-muted">Uploads are not set up on this server.</p>{library}</div>;
   return (
     <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2">
       <label className="w-fit cursor-pointer rounded-md border border-border px-3 py-2 text-sm focus-within:outline-2">
         {busy ? "Uploading …" : label}
         <input
@@ -77,6 +82,8 @@ export function ImageUploadButton({
           }}
         />
       </label>
+      {library}
+      </div>
       {problem && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-400">
           {problem}

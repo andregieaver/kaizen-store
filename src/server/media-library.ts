@@ -1,3 +1,4 @@
+import { PICKER_MOST, PICKER_PAGE, type PickerPicture } from "@/lib/media-picker";
 import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
@@ -751,4 +752,22 @@ export async function refreshMediaEmbeddings(): Promise<{ sites: number; embedde
     }
   }
   return { sites: owners.length, embedded };
+}
+
+/** The library's pictures as an editor's picker takes them (D88): newest first or found by words, with the small copy and the main-language alt text. */
+export async function pickerPictures(owner: MediaOwner, query: { q: string; limit: number }): Promise<{ items: PickerPicture[]; total: number }> {
+  const limit = Math.min(Math.max(Math.floor(query.limit) || PICKER_PAGE, 1), PICKER_MOST);
+  const { items, total } = await listMedia(owner, { q: query.q.trim().slice(0, 200), kind: "image", sort: "newest", limit, view: "grid" });
+  return {
+    total,
+    items: items.map((item) => ({
+      id: item.id,
+      url: item.url,
+      thumbnailUrl: item.thumbnailUrl,
+      fileName: item.fileName,
+      width: item.width,
+      height: item.height,
+      alt: item.alt,
+    })),
+  };
 }

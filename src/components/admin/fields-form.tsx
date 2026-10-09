@@ -34,6 +34,7 @@ import { shrinkImage } from "@/lib/image-resize";
 
 import { FileField, LinkField, RelationField } from "./field-pickers";
 import { editableSubs, ownView, rowLimits, rowsNeeded, withCell, type FieldFileUploader } from "./fields-form-helpers";
+import { LibraryButton } from "./media-picker";
 import { RichTextEditor } from "./rich-text-editor";
 
 export type { FieldFileUploader };
@@ -1253,6 +1254,7 @@ function PictureField({
         label={value ? "Change picture" : "Choose picture"}
         onFile={choose}
       />
+      <LibraryButton onPicked={(picture) => onChange({ url: picture.url, thumbnailUrl: picture.thumbnailUrl, alt: value?.alt || picture.alt })} />
       {!upload && <p className="text-xs text-muted">Uploads are not set up on this server.</p>}
       {problem && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-400">
@@ -1352,7 +1354,13 @@ function GalleryField({
         </ul>
       )}
       {value.length < most && (
-        <PictureButton busy={busy > 0} disabled={!upload} label="Add pictures" multiple onFiles={add} />
+        <div className="flex flex-wrap items-center gap-2">
+          <PictureButton busy={busy > 0} disabled={!upload} label="Add pictures" multiple onFiles={add} />
+          <LibraryButton
+            label="Add from the library"
+            onPicked={(picture) => onChange([...value, { url: picture.url, thumbnailUrl: picture.thumbnailUrl, alt: picture.alt }])}
+          />
+        </div>
       )}
       {value.length >= most && <p className="text-xs text-muted">The gallery is full ({most} pictures).</p>}
       {problem && (
