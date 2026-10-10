@@ -13,6 +13,7 @@
  * else its row's, as the browser passes it down. A passing check does not make a page accessible: it finds some of the
  * problems, the ones a machine can see.
  */
+import { withoutIcons } from "./table-icons";
 import { SIZES, SIZE_LABELS, type Size } from "./breakpoints";
 import { blend } from "./colour";
 import { inlinePlain } from "./inline-text";
@@ -501,7 +502,7 @@ function blockWords(block: PageBlock): string[] {
     case "iconList":
       return block.items.map((item) => item.text);
     case "table":
-      return [block.caption ?? "", ...block.rows.flat(), ...(block.sections ?? []).filter((s): s is string => Boolean(s))];
+      return [block.caption ?? "", ...block.rows.flat().map((cell) => withoutIcons(cell, true)), ...(block.sections ?? []).filter((s): s is string => Boolean(s))];
     case "video":
       return [block.title];
     case "html":

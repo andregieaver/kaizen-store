@@ -1,8 +1,32 @@
 import { Fragment, type CSSProperties } from "react";
 
 import { Inline } from "@/components/inline-text";
+import { ICONS } from "@/lib/icons";
 import { inlinePlain } from "@/lib/inline-text";
 import type { TableBlock } from "@/lib/page-content";
+import { cellParts, withoutIcons } from "@/lib/table-icons";
+
+import { ListIcon } from "./list-icon";
+
+/** A cell's words with its icons drawn in their places (D201); an icon is named for screen readers. */
+function Cell({ text, color }: { text: string; color?: string }) {
+  const parts = cellParts(text);
+  if (!parts.some((part) => "icon" in part)) return <Inline text={text} />;
+  return (
+    <>
+      {parts.map((part, index) =>
+        "icon" in part ? (
+          <span key={index} className="inline-flex align-text-bottom" {...(color && { style: { color } })}>
+            <ListIcon name={part.icon} className="size-[1.15em]" />
+            <span className="sr-only">{ICONS[part.icon]}</span>
+          </span>
+        ) : (
+          <Inline key={index} text={part.text} />
+        ),
+      )}
+    </>
+  );
+}
 
 /** A row's text and background colours as a style, none when neither is set (`#rrggbb` only, checked on save). */
 function colours(color?: string, background?: string): CSSProperties | undefined {
@@ -33,7 +57,7 @@ export function TableView({ block }: { block: TableBlock }) {
   const sectionRow = (r: number, title: string) => (
     <tr key={`s${r}`} className={stack ? "block kzb-md-table-row" : ""}>
       <th scope="colgroup" colSpan={first.length} style={sectionStyle} className={`border-b-2 border-t-2 border-border bg-surface px-3 py-2 text-left font-semibold ${cell}`}>
-        {title ? <Inline text={title} /> : <span className="sr-only">Section</span>}
+        {title ? <Cell text={title} color={block.iconColor} /> : <span className="sr-only">Section</span>}
       </th>
     </tr>
   );
@@ -48,7 +72,7 @@ export function TableView({ block }: { block: TableBlock }) {
           <tr className={stack ? "block kzb-md-table-row" : ""} style={headerStyle}>
             {header.map((text, c) => (
               <th key={c} scope="col" className={`border-b-2 border-border px-3 py-2 font-semibold ${cell}`}>
-                <Inline text={text} />
+                <Cell text={text} color={block.iconColor} />
               </th>
             ))}
           </tr>
@@ -65,7 +89,7 @@ export function TableView({ block }: { block: TableBlock }) {
               {title !== null && sectionRow(r, title)}
               <tr className={`border-b border-border ${row} ${shaded && !stripeStyle?.backgroundColor ? "bg-surface" : ""}`} style={shaded ? stripeStyle : undefined}>
                 {cells.map((text, c) => {
-                  const label = header ? inlinePlain(header[c] ?? "") : "";
+                  const label = header ? withoutIcons(inlinePlain(header[c] ?? ""), true) : "";
                   const content = (
                     <>
                       {/* Stacked, the value is named by its column. */}
@@ -74,7 +98,7 @@ export function TableView({ block }: { block: TableBlock }) {
                           {label}
                         </span>
                       )}
-                      <Inline text={text} />
+                      <Cell text={text} color={block.iconColor} />
                     </>
                   );
                   return block.rowHeaders && c === 0 ? (

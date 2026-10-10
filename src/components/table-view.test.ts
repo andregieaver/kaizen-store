@@ -85,3 +85,20 @@ describe("a table's colours and section dividers (D197)", () => {
     expect(html.indexOf("Big sizes")).toBeGreaterThan(html.indexOf("Small"));
   });
 });
+
+describe("icons in a table's cells (D201)", () => {
+  it("draws an icon where its token is, named for screen readers, in the chosen colour", () => {
+    const html = draw(block({ rows: [["Feature", "Free"], ["Search", "{{check}}"], ["Chat", "{{x}} No"]], iconColor: "#16a34a" }));
+    expect(html).toContain("<svg");
+    expect(html).toContain("color:#16a34a");
+    expect(html).toContain('<span class="sr-only">Tick</span>');
+    expect(html).toContain('<span class="sr-only">Cross</span>');
+    expect(html).not.toContain("{{check}}");
+    expect(html).toContain("No");
+  });
+
+  it("leaves a cell without icons as it was", () => {
+    const html = draw(block());
+    expect(html).not.toContain("<svg");
+  });
+});

@@ -23,6 +23,7 @@ import { menuLinkSchema, type MenuLink } from "./navigation";
 import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
 import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
 import { displaysProblem, publicRows, showSchema, type Show } from "./visibility";
+import { withoutIcons } from "./table-icons";
 import { foldTypography, textGradientSchema, typographyAtSchema, typographyFamilies, typographyGroupsSchema, type TextGradient, type TypographyGroups, type TypographyGroupsAt } from "./typography";
 import { SIZES, type Size, type SmallerSize } from "./breakpoints";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX, summarize } from "./seo";
@@ -1402,6 +1403,8 @@ export type TableBlock = PartBase & {
   /** The section dividers' text and background colours (`#rrggbb`). */
   sectionColor?: string;
   sectionBackground?: string;
+  /** The icons in cells (`{{check}}`, D201): their colour (`#rrggbb`), the text's unless set. */
+  iconColor?: string;
 };
 
 /** A table that shows: some cell has words. */
@@ -1755,7 +1758,7 @@ export function blockText(block: PageBlock): string {
         .map((item) => inlinePlain(item.text))
         .join(" ");
     case "table":
-      return [block.caption && inlinePlain(block.caption), ...block.rows.map((row) => row.map(inlinePlain).filter(Boolean).join(" "))].filter(Boolean).join(" ");
+      return [block.caption && inlinePlain(block.caption), ...block.rows.map((row) => row.map((cell) => withoutIcons(inlinePlain(cell), true)).filter(Boolean).join(" "))].filter(Boolean).join(" ");
     case "testimonials":
       // Google's reviews are Google's words, not the page's.
       if (block.source === "google") return "";
@@ -2843,6 +2846,7 @@ const tableBlock = z.object({
   stripeBackground: tableColour,
   sectionColor: tableColour,
   sectionBackground: tableColour,
+  iconColor: tableColour,
   sections: z.array(z.string().trim().max(200, "Keep a section title under 200 characters.").nullable()).max(TABLE_ROWS_MAX).optional(),
   ...partBase,
 });

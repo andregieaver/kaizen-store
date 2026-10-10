@@ -3,7 +3,7 @@
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Fragment, createContext, useContext, useId, useState, type ReactNode } from "react";
+import { Fragment, createContext, useContext, useId, useRef, useState, type ReactNode } from "react";
 
 import type { ButtonLook } from "@/components/page-block";
 import { ListIcon } from "@/components/list-icon";
@@ -19,6 +19,7 @@ import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
+import { iconToken } from "@/lib/table-icons";
 import { addColumn, addRowTo, moveRow, removeColumn, removeRowFrom, setCell, setSection, type TableData } from "@/lib/table-edit";
 
 import { PixelRange } from "./pixel-range";
@@ -1478,6 +1479,17 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
   const setTable = (next: TableData) => onChange({ rows: next.rows, sections: next.sections });
   const table: TableData = { rows, sections: block.sections };
   const isHeader = (r: number) => Boolean(block.header) && r === 0;
+  // The cell last typed in: an icon from the palette goes into it, at the cursor (D201).
+  const lastCell = useRef<{ r: number; c: number; input: HTMLInputElement } | null>(null);
+  const putIcon = (name: IconName) => {
+    const at = lastCell.current;
+    const r = at ? Math.min(at.r, rows.length - 1) : rows.length - 1;
+    const c = at ? Math.min(at.c, columns - 1) : 0;
+    const text = rows[r]?.[c] ?? "";
+    const pos = at && at.input.isConnected ? (at.input.selectionStart ?? text.length) : text.length;
+    const next = `${text.slice(0, pos)}${iconToken(name)}${text.slice(pos)}`;
+    if (next.length <= TABLE_CELL_MAX) set(setCell(rows, r, c, next));
+  };
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
   // Rows are dragged by their handle; a divider goes with the row under it, and a header stays first.
   const dropped = ({ active, over }: DragEndEvent) => {
@@ -1541,6 +1553,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                       maxLength={TABLE_CELL_MAX}
                       aria-label={block.header && r === 0 ? `Heading of column ${c + 1}` : `Row ${r + 1}, column ${c + 1}`}
                       className={`h-8 w-32 rounded border border-border bg-background px-2 ${block.header && r === 0 ? "font-semibold" : ""}`}
+                      onFocus={(event) => (lastCell.current = { r, c, input: event.currentTarget })}
                       onChange={(event) => set(setCell(rows, r, c, event.target.value))}
                     />
                   </td>
@@ -1588,7 +1601,35 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
         Up to {TABLE_ROWS_MAX} rows and {TABLE_COLUMNS_MAX} columns. Cells take the same simple markup as headings (bold, line breaks). The ― button
         puts a section divider, with a title if you like, above a row.
       </p>
+      <TableIconPalette onPick={putIcon} />
     </>
+  );
+}
+
+/** The icons that can go in a cell (D201): the common ones as buttons, the rest from a list; each puts `{{name}}` in the cell last typed in. */
+const TABLE_ICONS: IconName[] = ["check", "x", "minus", "plus", "circleCheck", "circleAlert", "star", "heart", "thumbsUp", "info"];
+function TableIconPalette({ onPick }: { onPick: (name: IconName) => void }) {
+  return (
+    <fieldset className="flex flex-col gap-2">
+      <legend className="text-sm font-medium">Icons in cells</legend>
+      <p className="text-xs text-muted">Click in a cell, then press an icon to put it there, with or without words. In the text it is written like {"{{check}}"}.</p>
+      <div className="flex flex-wrap items-center gap-1">
+        {TABLE_ICONS.map((name) => (
+          // The press keeps the focus in the cell, so the icon goes where the cursor is.
+          <button key={name} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onPick(name)} aria-label={`Put ${ICONS[name]} in the cell`} title={ICONS[name]} className="flex size-9 items-center justify-center rounded border border-border hover:bg-background">
+            <ListIcon name={name} className="size-5" />
+          </button>
+        ))}
+        <select aria-label="More icons" value="" onChange={(event) => event.target.value && onPick(event.target.value as IconName)} className="h-9 rounded border border-border bg-background px-2 text-sm">
+          <option value="">More…</option>
+          {(Object.keys(ICONS) as IconName[]).map((name) => (
+            <option key={name} value={name}>
+              {ICONS[name]}
+            </option>
+          ))}
+        </select>
+      </div>
+    </fieldset>
   );
 }
 
@@ -1624,6 +1665,7 @@ function TableStyleFields({ block, onChange }: BlockEditorProps<TableBlock>) {
       </p>
       <Check label="First column names the row" hint="Bold, and read out as the row's heading." checked={Boolean(block.rowHeaders)} onChange={(rowHeaders) => onChange({ rowHeaders: rowHeaders || undefined })} />
       <Check label="Shade every other row" checked={Boolean(block.striped)} onChange={(striped) => onChange({ striped: striped || undefined })} />
+      <OptionalColor label="Icon colour" hint="The cell's text colour unless chosen." value={block.iconColor} fallback="#16a34a" onChange={(iconColor) => onChange({ iconColor })} />
       {block.header && (
         <>
           <OptionalColor label="Header text colour" hint="The page's text colour unless chosen." value={block.headerColor} fallback="#111111" onChange={(headerColor) => onChange({ headerColor })} />
