@@ -145,7 +145,7 @@ jobs:
         run: node scripts/db-setup.mjs --seed && node e2e/hosts-seed.mjs
       - run: pnpm build
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm exec playwright test e2e/store-hosts.spec.ts
+      - run: pnpm exec playwright test e2e/store-hosts.spec.ts e2e/inline-edit-hosts.spec.ts
         env:
           E2E_CUSTOM_HOSTS: "1"
 

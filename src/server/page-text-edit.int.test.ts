@@ -8,7 +8,14 @@ import { blockWords, locateBlock } from "@/lib/inline-edit";
 import type { Account } from "./auth";
 
 // Who is asking and whether a test is running are set by each test; everything else of these modules is real.
-const asked = vi.hoisted(() => ({ member: null as unknown, account: null as unknown, running: null as { id: string; name: string } | null, kinds: [] as unknown[][] }));
+const asked = vi.hoisted(() => ({
+  member: null as unknown,
+  pass: null as unknown,
+  account: null as unknown,
+  running: null as { id: string; name: string } | null,
+  kinds: [] as unknown[][],
+  passKinds: [] as unknown[][],
+}));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {} }));
@@ -18,6 +25,11 @@ vi.mock("./permissions", async (original) => ({
   checkPageTypeAccess: async (...args: unknown[]) => {
     asked.kinds.push(args);
     return asked.member;
+  },
+  // The pass the admin gave the browser on a store's own domain (D193): asked when there is no sign-in.
+  checkPassPageTypeAccess: async (...args: unknown[]) => {
+    asked.passKinds.push(args);
+    return asked.pass;
   },
 }));
 vi.mock("./experiment-admin", async (original) => {
@@ -92,9 +104,11 @@ beforeAll(async () => {
 
 afterEach(() => {
   asked.member = null;
+  asked.pass = null;
   asked.account = null;
   asked.running = null;
   asked.kinds = [];
+  asked.passKinds = [];
 });
 
 afterAll(async () => {
@@ -251,6 +265,29 @@ describe("who may edit, and where", () => {
     expect(saved).toMatchObject({ ok: false, status: 409, code: "running_test" });
     expect(saved.ok === false && saved.message).toContain("Headline test");
     expect(words((await stored(id)).published, "heading-1")).toBe("Welcome");
+  });
+
+  it("lets the member behind an editing pass change the page on the store's own domain, where no sign-in is seen", async () => {
+    const store = await makeStore("pass");
+    const other = await makeStore("pass2");
+    const id = await pages.savePage(admin, store.id, null, content(`pass-${run}`), { publish: true }).then((r) => (r.ok ? r.id : Promise.reject(new Error("not saved"))));
+    const before = await stored(id);
+    const rev = revOf(before.published!, "heading-1");
+
+    // The sign-in is asked first; the pass only when there is none.
+    asked.pass = { account: admin, store: { id: other.id, slug: other.slug } };
+    expect(await edit.savePageText({ store: store.slug, page: id, block: "heading-1", rev, edit: { kind: "heading", text: "Another store's pass" } })).toMatchObject({ ok: false, status: 403 });
+    expect(words((await stored(id)).published, "heading-1")).toBe("Welcome");
+
+    asked.pass = { account: admin, store: { id: store.id, slug: store.slug } };
+    expect(await edit.readPageText({ store: store.slug, page: id, block: "heading-1" })).toMatchObject({ ok: true, text: "Welcome" });
+    const saved = await edit.savePageText({ store: store.slug, page: id, block: "heading-1", rev, edit: { kind: "heading", text: "Changed from the store's own domain" } });
+    expect(saved).toEqual({ ok: true, draftKept: false });
+    expect(asked.kinds.at(-1)).toEqual([store.slug, "page", "write"]);
+    expect(asked.passKinds.at(-1)).toEqual([store.slug, "page", "write"]);
+    expect(words((await stored(id)).published, "heading-1")).toBe("Changed from the store's own domain");
+    const [entry] = await db().execute<Row>(sql`select action, account_id from commerce.audit_log where target_id = ${id} and action like '%_text_edited'`);
+    expect(entry).toMatchObject({ action: "store.page_text_edited", account_id: admin.id });
   });
 
   it("edits an article as a page, asked for its own kind, and leaves a version made for a test to the test", async () => {

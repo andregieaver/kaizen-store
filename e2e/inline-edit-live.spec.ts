@@ -77,3 +77,32 @@ test("the editing route refuses a request with no session, and one from another 
   const malformed = await request.get(`/api/platform/editor/text?store=${store}&page=not-a-page&block=h1`);
   expect(malformed.status()).toBe(400);
 });
+
+test("the pass for a store's own domain is not given to anyone without the admin's word (D193)", async ({ page, request }) => {
+  const { url, store } = await arranged();
+  await page.goto(url);
+
+  // Nothing says someone may edit without a session or a pass.
+  const probe = await request.get(`/api/platform/editor?store=${store}`);
+  expect(await probe.json()).toEqual({ editor: false });
+
+  // The admin's route: a link that is not right is refused, and while stores share the admin's address (no store domain in this
+  // run) there is no pass to give: they are edited with the admin's own sign-in.
+  expect((await request.get(`/api/platform/editor/grant?store=${store}&to=//elsewhere.example/`, { maxRedirects: 0 })).status()).toBe(400);
+  expect((await request.get(`/api/platform/editor/grant?store=${store}&to=${encodeURIComponent("/api/platform/editor/text")}`, { maxRedirects: 0 })).status()).toBe(400);
+  expect((await request.get(`/api/platform/editor/grant?store=${store}&to=%2F`, { maxRedirects: 0 })).status()).toBe(404);
+
+  // The store's host takes only the admin's token: made up, empty or altered tokens set nothing.
+  for (const pass of ["", "x.y", "not-a-token", `${"a".repeat(80)}.${"b".repeat(43)}`]) {
+    const entered = await request.get(`/api/platform/editor/enter?pass=${encodeURIComponent(pass)}&to=%2F`, { maxRedirects: 0 });
+    expect(entered.status()).toBe(400);
+    expect(entered.headers()["set-cookie"]).toBeUndefined();
+  }
+
+  // "Done editing" ends a pass on the host that asks, and only the site's own pages may ask.
+  const left = await request.post("/api/platform/editor/leave");
+  expect(left.status()).toBe(200);
+  expect(left.headers()["set-cookie"] ?? "").toMatch(/kaizen_edit=;/);
+  const foreign = await request.post("/api/platform/editor/leave", { headers: { Origin: "https://elsewhere.example" } });
+  expect(foreign.status()).toBe(403);
+});

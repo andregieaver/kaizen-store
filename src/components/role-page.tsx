@@ -45,7 +45,11 @@ export async function RolePage({
   const holds = route ? pageBlocks(content).flatMap((block): ShopPart[] => (block.type === "storePart" ? [block.part] : [])) : undefined;
   return (
     <>
-      <StorePageArticle content={content} place={{ ...place, pageId: page.id, owner: store.id, market: market.slug, route: route && { ...route, holds } }} />
+      <StorePageArticle
+        content={content}
+        place={{ ...place, pageId: page.id, owner: store.id, market: market.slug, route: route && { ...route, holds } }}
+        editable={!route && market.locale === store.localization.locales[0]}
+      />
       <PageEditLink
         pageId={page.id}
         store={store.slug}

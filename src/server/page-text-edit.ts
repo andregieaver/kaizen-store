@@ -11,8 +11,8 @@ import { pageInput, parsePageContent, type PageContent, type PageType, type Rich
 import { audit, getAccount, type Account } from "./auth";
 import { runningTestOf } from "./experiment-admin";
 import { pagesTag } from "./pages";
-import { checkPageTypeAccess } from "./permissions";
-import { refreshTag } from "./refresh";
+import { checkPageTypeAccess, checkPassPageTypeAccess } from "./permissions";
+import { refreshTagNow } from "./refresh";
 
 /**
  * Editing a page's words on the live site (D192): signed-in staff who may change the website press a heading or a text on the page
@@ -59,7 +59,8 @@ async function authorise(store: string | null, row: Row): Promise<{ account: Acc
     const account = await getAccount();
     return account?.platformAdmin && row.store_id === null ? { account, owner: null } : null;
   }
-  const member = await checkPageTypeAccess(store, type, "write");
+  // The admin's own sign-in, else the pass it gave the browser on the store's own domain (D193).
+  const member = (await checkPageTypeAccess(store, type, "write")) ?? (await checkPassPageTypeAccess(store, type, "write"));
   return member && member.store.id === String(row.store_id) ? { account: member.account, owner: member.store.id } : null;
 }
 
@@ -153,8 +154,8 @@ export async function applyPageText(input: {
     { label: outcome.title, page, slug: outcome.slug, block, kind: edit.kind, draftKept: outcome.draftKept },
     { target: { type: "page", id: page } },
   );
-  // The storefront's cached pages, menus and grids that draw this page.
-  refreshTag(pagesTag(owner));
+  // The storefront's cached pages, menus and grids that draw this page: at once, as the person is looking at the page they changed.
+  refreshTagNow(pagesTag(owner));
   return { ok: true, draftKept: outcome.draftKept };
 }
 

@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { cleanHeadingText } from "@/lib/inline-edit";
 import { cleanRichText } from "@/lib/page-content";
-import { sameSite } from "@/server/chat-route";
+import { sameSite } from "@/lib/same-site";
 import { readPageText, savePageText } from "@/server/page-text-edit";
 
 /**

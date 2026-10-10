@@ -45,6 +45,7 @@ export function PageArticle({
   titled = false,
   renderBlock,
   inAdmin = false,
+  editable = false,
 }: {
   content: PageContent;
   /** Where the page is shown: for its content grids (D51, D53). */
@@ -55,6 +56,11 @@ export function PageArticle({
   renderBlock?: (block: PageBlock) => ReactNode;
   /** Shown in the admin (a preview), which draws the page's own CSS (D100) itself, kept inside the preview. */
   inAdmin?: boolean;
+  /**
+   * A page or an article of its own that signed-in staff may change the words of where they stand (D192): its article carries the page's id
+   * and its headings and texts their kind and id. Only where `PageEditLink` is drawn beside it; a layout, a header or a 404 page has no use for them.
+   */
+  editable?: boolean;
 }) {
   // A preview draws what the blocks hold; a block still bound to a field is drawn only if it keeps its own content (D118).
   const content = inAdmin ? withoutBindings(given) : given;
@@ -74,12 +80,12 @@ export function PageArticle({
   const motion = motionNeeds(rows);
   return (
     // The page's id, for the signed-in staff's "Edit text" (D192), which finds the headings and texts it may edit inside it.
-    <article className="flex flex-col gap-8" {...(motion.any ? { "data-fx-clip": "" } : {})} {...(!inAdmin && place.pageId ? { "data-kz-page": place.pageId } : {})}>
+    <article className="flex flex-col gap-8" {...(motion.any ? { "data-fx-clip": "" } : {})} {...(editable && !inAdmin && place.pageId ? { "data-kz-page": place.pageId } : {})}>
       {/* The page's own CSS (D100), for the whole page. */}
       {!inAdmin && <CustomCss css={content.css} name={`page-${place.pageId ?? "layout"}`} />}
       {!hasMainHeading && !titled && <h1 className="sr-only">{content.title}</h1>}
       {rows.map((row) => (
-        <PageRowView key={row.id} row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} first={row === first} />
+        <PageRowView key={row.id} row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} first={row === first} editable={editable} />
       ))}
       <MotionSupport needs={motion} />
     </article>
@@ -114,6 +120,8 @@ export function PageRowView(props: {
   inAdmin?: boolean;
   /** The first row in the flow of what is drawn (D128): its entrances play by CSS at once, without waiting for scripts. */
   first?: boolean;
+  /** Its headings and texts are marked for the staff's "Edit text" (D192): `PageArticle`'s. */
+  editable?: boolean;
 }) {
   // A store's row is drawn with its theme laid under it (D182: what its Theme tab says for rows, headings, text and buttons).
   return props.place.owner ? <ThemedRowView {...props} /> : <RowView {...props} />;
@@ -130,6 +138,7 @@ function RowView({
   renderBlock,
   inAdmin = false,
   first = false,
+  editable = false,
 }: Parameters<typeof PageRowView>[0]) {
   return (
     <>
@@ -140,7 +149,7 @@ function RowView({
         {row.modal ? (
           <ModalRow row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />
         ) : (
-          <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} preview={inAdmin} />
+          <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} preview={inAdmin} editable={editable} />
         )}
       </VisiblePart>
     </>
@@ -187,6 +196,7 @@ function RowMarkup({
   inPanel = false,
   first = false,
   preview = false,
+  editable = false,
 }: {
   row: PageRow;
   place: GridPlace;
@@ -195,6 +205,8 @@ function RowMarkup({
   first?: boolean;
   /** The admin's preview: every part but a Never one is drawn (`VisiblePart`). */
   preview?: boolean;
+  /** Mark its headings and texts for the staff's "Edit text" (D192). */
+  editable?: boolean;
 }) {
   const box = rowBox(row, "site", inPanel);
   const grid = rowGrid(row);
@@ -228,10 +240,10 @@ function RowMarkup({
           const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;
           if (own === null) return null;
           // A heading or text of the page's own that signed-in staff may edit where it stands (D192): marked for them, never on a preview.
-          const editable = !preview && place.pageId ? inlineMarkOf({ row, column, block }, inPanel) : null;
+          const mark = editable && !preview && place.pageId ? inlineMarkOf({ row, column, block }, inPanel) : null;
           return (
             <VisiblePart key={block.id} show={block.visibility?.show} place={place} preview={preview}>
-            <div id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs} {...(editable && { "data-kz-edit": editable, "data-kz-block": block.id })}>
+            <div id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs} {...(mark && { "data-kz-edit": mark, "data-kz-block": block.id })}>
               <FontLinks families={blockFonts(block)} />
               {own !== undefined ? (
                 own

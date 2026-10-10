@@ -66,7 +66,7 @@ export async function PlatformPageView({
           publishedAt: page.publishedAt,
         })}
       />
-      <PageArticle content={c} place={{ pageId: page.id, owner: null, query }} />
+      <PageArticle content={c} place={{ pageId: page.id, owner: null, query }} editable />
       <PageEditLink pageId={page.id} />
     </main>
   );

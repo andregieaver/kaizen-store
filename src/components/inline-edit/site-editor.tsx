@@ -34,6 +34,10 @@ type Session = {
 
 const ENDPOINT = "/api/platform/editor/text";
 
+/** What is said when the server refuses: its own words, and for "not allowed" that the editing may have run out (D193: a pass lasts half an hour). */
+const refusal = (status: number, message?: string): string | undefined =>
+  status === 403 ? "You cannot edit this page, or your editing has run out. Press Done editing, then Edit text, to start again." : message;
+
 export default function SiteTextEditor({ pageId, store, onNotice }: { pageId: string; store?: string; onNotice: (text: string) => void }) {
   const router = useRouter();
   const [session, setSession] = useState<Session | null>(null);
@@ -62,7 +66,7 @@ export default function SiteTextEditor({ pageId, store, onNotice }: { pageId: st
       const response = await fetch(`${ENDPOINT}?${params}`, { cache: "no-store" });
       const found = (await response.json().catch(() => null)) as Fetched | null;
       if (!found || !found.ok) {
-        onNotice(found?.message ?? "This text cannot be edited here.");
+        onNotice(refusal(response.status, found?.message) ?? "This text cannot be edited here.");
         return;
       }
       // The heading as the page draws it, so it is edited in the same element and classes.
@@ -146,7 +150,7 @@ export default function SiteTextEditor({ pageId, store, onNotice }: { pageId: st
         onNotice(body.draftKept ? "Saved. The draft in the page builder has other words for this and keeps them." : "Saved.");
         router.refresh();
       } else {
-        setMessage(body?.message ?? "It could not be saved. Try again.");
+        setMessage(refusal(response.status, body?.message) ?? "It could not be saved. Try again.");
       }
     } catch {
       setMessage("It could not be saved. Check the connection and try again.");

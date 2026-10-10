@@ -65,6 +65,10 @@ describe("cookie consent (D58)", () => {
       "kaizen_life_link",
       "kaizen_slack_connect",
     ]);
+    // The pass staff are given to change words on a store's own domain (D193) is known and necessary, and not declared to visitors, who are never given it.
+    expect(knownCookie("kaizen_edit")).toMatchObject({ category: "necessary", staff: true });
+    expect(declaredCookies("store", {}, { buyers: true, chat: true, colorMode: true, modals: true, affiliate: true, recommendations: true, experiments: true }).map((c) => c.name)).not.toContain("kaizen_edit");
+    expect(declaredCookies("platform", {}).map((c) => c.name)).not.toContain("kaizen_edit");
     // A visitor's light or dark only in stores that let them choose (D99).
     expect(declaredCookies("store", {}, { colorMode: true }).map((c) => c.name)).toContain("color_mode_…");
     expect(knownCookie("color_mode_3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c")?.category).toBe("necessary");

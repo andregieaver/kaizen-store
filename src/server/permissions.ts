@@ -6,6 +6,7 @@ import { can, pageTypeKey, type Access, type PermissionKey } from "@/lib/permiss
 import { allowedWhenNotOpen } from "@/lib/store-closure";
 
 import { getMembership, holderOf, requireMember, type Membership } from "./auth";
+import { passMember } from "./edit-pass";
 
 /**
  * Who may do what in a store's admin (wave 1, 1f, docs/wave-1-trust.md 2.7): the one place the rule lives. Every store admin
@@ -77,6 +78,22 @@ export async function requirePageTypeAccess(storeSlug: string, type: unknown, ac
 export async function checkPageTypeAccess(storeSlug: string, type: unknown, access: Access): Promise<Membership | null> {
   const key = pageTypeKey(type, access);
   return key ? checkPermission(storeSlug, key) : null;
+}
+
+/**
+ * For the routes that change a page's words on a store's own domain, where the admin's session is out of reach (D193): the member behind the
+ * request's editing pass when they hold the key, else null. The pass is the admin's word for a person a few minutes ago; they are looked
+ * up again here, so a member whose access has ended holds no key.
+ */
+export async function checkPassPermission(storeSlug: string, key: PermissionKey): Promise<Membership | null> {
+  const member = await passMember(storeSlug);
+  return member && memberCan(member, key) ? member : null;
+}
+
+/** The same for the kind of page (`checkPageTypeAccess()`'s, by an editing pass). */
+export async function checkPassPageTypeAccess(storeSlug: string, type: unknown, access: Access): Promise<Membership | null> {
+  const key = pageTypeKey(type, access);
+  return key ? checkPassPermission(storeSlug, key) : null;
 }
 
 /** For what only the owner may do: payments, plans, the team, the rules of returns. */

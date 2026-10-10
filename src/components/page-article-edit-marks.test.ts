@@ -25,12 +25,13 @@ const para = (id: string, words: string): PageBlock => ({
 const heading = (id: string, text: string, extra: Partial<PageBlock> = {}) => ({ id, type: "heading", text, level: 2, ...extra }) as PageBlock;
 const row = (id: string, blocks: PageBlock[], extra: Partial<PageRow> = {}): PageRow => ({ id, type: "row", layout: "1", columns: [{ id: `${id}-c`, blocks }], ...extra });
 const page = (...rows: PageRow[]): PageContent => ({ ...newPageContent(), title: "Page", rows });
-const draw = (content: PageContent, over: { pageId?: string | null; preview?: boolean } = {}) =>
+const draw = (content: PageContent, over: { pageId?: string | null; preview?: boolean; editable?: boolean } = {}) =>
   renderToString(
     createElement(PageArticle, {
       content,
       place: { pageId: over.pageId === undefined ? PAGE : over.pageId, owner: null },
       inAdmin: over.preview ?? false,
+      editable: over.editable ?? true,
     }),
   );
 
@@ -75,7 +76,13 @@ describe("a page on the live site", () => {
     expect(html).not.toMatch(/data-kz-edit/);
   });
 
-  it("marks nothing on a preview in the admin, nor without a page of its own (a header, a product's page)", () => {
+  it("marks nothing where the page does not say staff edit its words in place: a header, a footer, a product's layout, a 404 page", () => {
+    const html = draw(content, { editable: false });
+    expect(html).not.toMatch(/data-kz-(edit|page|block)/);
+    expect(html).toContain("Welcome");
+  });
+
+  it("marks nothing on a preview in the admin, nor without a page of its own", () => {
     expect(draw(content, { preview: true })).not.toMatch(/data-kz-(edit|page)/);
     const bare = draw(content, { pageId: null });
     expect(bare).not.toMatch(/data-kz-edit/);

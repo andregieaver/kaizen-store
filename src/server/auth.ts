@@ -276,6 +276,37 @@ export async function listClosedStores(account: Account): Promise<{ slug: string
 /** A store's member, held at their second step, or nobody: what `loadMembership()` found. */
 type MembershipState = { state: "none" } | { state: "held"; assurance: Assurance } | { state: "ok"; membership: Membership };
 
+/**
+ * The member's row for a store, or null: not a member, disabled, a collaborator whose access has ended (`expires_at`, whether or not the daily
+ * job has marked it yet), or a starter store that is not a store template's working store. Read each time, never from a cache: a security
+ * decision is not stale for an hour.
+ */
+async function memberRow(storeId: string, accountId: string): Promise<Row | null> {
+  const [row] = await db().execute<Row>(sql`
+    select m.role, m.kind, m.expires_at, m.role_id, r.name as role_name, r.permissions, s.require_two_step
+    from commerce.store_members m
+    join commerce.stores s on s.id = m.store_id
+    left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
+    where m.store_id = ${storeId}::uuid and m.account_id = ${accountId}::uuid
+      and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
+      -- A starter store is worked in only while it is a store template's working store (D177): a template's frozen copy, a design
+      -- profile's workspace and the store of a deleted template are the platform's, edited from its own pages or not at all.
+      and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
+  `);
+  return row ?? null;
+}
+
+const membershipFrom = (account: Account, store: Store, row: Row): Membership => ({
+  account,
+  store,
+  role: row.role as Role,
+  kind: row.kind === "collaborator" ? "collaborator" : "staff",
+  expiresAt: row.expires_at ? new Date(String(row.expires_at)) : null,
+  roleId: row.role_id ? String(row.role_id) : null,
+  roleName: row.role_name ? String(row.role_name) : null,
+  permissions: row.role_id ? ((row.permissions ?? []) as string[]).map(String) : null,
+});
+
 const loadMembership = cache(async (storeSlug: string): Promise<MembershipState> => {
   const session = await readSession();
   if (!session) return { state: "none" };
@@ -285,36 +316,32 @@ const loadMembership = cache(async (storeSlug: string): Promise<MembershipState>
   if (!store) return { state: "none" };
 
   // The store's requirement for two-step is read here, never from the cached store: a security decision is not stale for an hour.
-  // A collaborator whose access has ended is not a member (`expires_at`), whether or not the daily job has marked it yet.
-  const [row] = await db().execute<Row>(sql`
-    select m.role, m.kind, m.expires_at, m.role_id, r.name as role_name, r.permissions, s.require_two_step
-    from commerce.store_members m
-    join commerce.stores s on s.id = m.store_id
-    left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
-    where m.store_id = ${store.id}::uuid and m.account_id = ${session.account.id}::uuid
-      and m.disabled_at is null and (m.expires_at is null or m.expires_at > now())
-      -- A starter store is worked in only while it is a store template's working store (D177): a template's frozen copy, a design
-      -- profile's workspace and the store of a deleted template are the platform's, edited from its own pages or not at all.
-      and (not s.starter or exists (select 1 from commerce.store_starters st where st.store_id = s.id))
-  `);
+  const row = await memberRow(store.id, session.account.id);
   if (!row) return { state: "none" };
 
   const assurance = assuranceFor(session, Boolean(row.require_two_step));
   if (!mayUseAdmin(assurance)) return { state: "held", assurance };
-  return {
-    state: "ok",
-    membership: {
-      account: session.account,
-      store,
-      role: row.role as Role,
-      kind: row.kind === "collaborator" ? "collaborator" : "staff",
-      expiresAt: row.expires_at ? new Date(String(row.expires_at)) : null,
-      roleId: row.role_id ? String(row.role_id) : null,
-      roleName: row.role_name ? String(row.role_name) : null,
-      permissions: row.role_id ? ((row.permissions ?? []) as string[]).map(String) : null,
-    },
-  };
+  return { state: "ok", membership: membershipFrom(session.account, store, row) };
 });
+
+/**
+ * The membership of the account an editing pass names (D193), or null: the same row a session's would be, read for an account that the
+ * admin vouched for a little while ago instead of one signed in now (`src/lib/edit-grant.ts`). It is the pass's own check each time
+ * it is used: an account that is disabled, a member whose access has ended or was taken away, is no one. What the second step stood at
+ * when the pass was given is not asked again: the admin gives a pass only to a person it let in (`getMembership()`), and it ends in
+ * minutes.
+ */
+export async function passMembership(storeSlug: string, accountId: string): Promise<Membership | null> {
+  const store = await getStore(storeSlug);
+  if (!store) return null;
+  const [person] = await db().execute<Row>(sql`
+    select id, email, name, platform_admin, avatar_path, color_mode from commerce.accounts
+    where id = ${accountId}::uuid and disabled_at is null
+  `);
+  if (!person) return null;
+  const row = await memberRow(store.id, accountId);
+  return row ? membershipFrom(toAccount(person), store, row) : null;
+}
 
 /**
  * The signed-in account's membership of a store, or null: also null for a member held at their second step by the store's

@@ -22,16 +22,8 @@ export type ChatContext = { site: ChatSite; storeId: string | null; agent: ChatA
 export const fail = (status: number, message: string) =>
   Response.json({ error: message }, { status, headers: { "Cache-Control": "no-store" } });
 
-/** A request from another site is refused: the chat is for the site's own visitors. */
-export function sameSite(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  if (!origin) return request.headers.get("sec-fetch-site") !== "cross-site";
-  try {
-    return new URL(origin).host === (request.headers.get("x-forwarded-host") ?? request.headers.get("host"));
-  } catch {
-    return false;
-  }
-}
+// A request from another site is refused: the chat is for the site's own visitors (kept here for the routes that import it from here).
+export { sameSite } from "@/lib/same-site";
 
 /** The site, its agent and AI, and the checked conversation; else the response to give. */
 export async function chatContext(raw: unknown): Promise<ChatContext | Response> {

@@ -149,6 +149,11 @@ export type KnownCookie = {
   recommendations?: boolean;
   /** Set only in stores with a running A/B test (D148). */
   experiments?: boolean;
+  /**
+   * Set only for signed-in staff, by something they press (D193): known, so a scan that meets it calls it necessary, but never part
+   * of what a visitor's cookie page declares, as no visitor is given it.
+   */
+  staff?: boolean;
 };
 
 /**
@@ -410,6 +415,22 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // Only for signed-in staff who press "Edit text" on a store's own domain, where the admin's sign-in cannot be seen (D193); closed to scripts.
+    name: "kaizen_edit",
+    pattern: /^kaizen_edit$/,
+    provider: "Kaizen",
+    category: "necessary",
+    days: null,
+    on: "store",
+    staff: true,
+    purpose: {
+      en: "Lets a store's own signed-in staff change the words of a page they are looking at, for half an hour after the admin gave them the pass.",
+      nb: "Lar butikkens egne innloggede ansatte endre ordene på en side de ser på, i en halvtime etter at administrasjonen ga dem tilgang.",
+      sv: "Låter butikens egna inloggade medarbetare ändra orden på en sida de tittar på, i en halvtimme efter att administrationen gav dem tillgång.",
+      da: "Lader butikkens egne loggede ansatte ændre ordene på en side, de ser på, i en halv time, efter at administrationen gav dem adgang.",
+    },
+  },
+  {
     name: "__stripe_mid, __stripe_sid",
     pattern: /^__stripe_(mid|sid)$/,
     provider: "Stripe",
@@ -535,6 +556,7 @@ export function declaredCookies(
       (!cookie.affiliate || affiliate) &&
       (!cookie.recommendations || recommendations) &&
       (!cookie.experiments || experiments) &&
+      !cookie.staff &&
       (!cookie.referrals || referrals) &&
       (cookie.tool ? Boolean(tracking[cookie.tool]) : cookie.provider !== "Stripe"),
   );

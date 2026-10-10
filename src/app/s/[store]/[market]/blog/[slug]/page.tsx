@@ -120,6 +120,7 @@ export default async function StoreArticlePage({ params }: Props) {
         lang={market.lang}
         locale={market.locale}
         place={place}
+        editable={market.locale === store.localization.locales[0]}
       />
       <PageEditLink pageId={page.id} store={store.slug} article adminOrigin={adminOrigin(store.slug)} textEditable={market.locale === store.localization.locales[0]} />
     </div>

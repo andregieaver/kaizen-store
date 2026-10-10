@@ -138,6 +138,7 @@ export async function StorePageView({ params, searchParams, variant }: { params:
       <StorePageArticle
         content={c}
         place={{ pageId: page.id, owner: store.id, market: market.slug, listing: { query: searchParams, path: `${home}/${page.slug}` } }}
+        editable={market.locale === store.localization.locales[0]}
       />
       <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} textEditable={market.locale === store.localization.locales[0]} />
       {marker && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={marker.experiment} variant={marker.variant} goalBlock={marker.goalBlock} />}

@@ -92,7 +92,11 @@ export async function StoreBlog({ params }: { params: ShopParams }) {
   if (page) {
     return (
       <>
-        <StorePageArticle content={localizePage(page.content, market.locale)} place={{ pageId: page.id, owner: store.id, market: market.slug }} />
+        <StorePageArticle
+          content={localizePage(page.content, market.locale)}
+          place={{ pageId: page.id, owner: store.id, market: market.slug }}
+          editable={market.locale === store.localization.locales[0]}
+        />
         <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} textEditable={market.locale === store.localization.locales[0]} />
       </>
     );

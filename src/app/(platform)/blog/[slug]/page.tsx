@@ -91,6 +91,7 @@ export default async function ArticlePage({ params }: Props) {
         lang="en"
         locale="en-GB"
         place={{ pageId: page.id, owner: null }}
+        editable
       />
       <PageEditLink pageId={page.id} article />
     </main>

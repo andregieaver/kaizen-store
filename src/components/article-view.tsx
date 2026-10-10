@@ -20,6 +20,7 @@ export function ArticleView({
   locale,
   place,
   inAdmin = false,
+  editable = false,
 }: {
   content: PageContent;
   /** When it was first published; a draft's preview has none yet. */
@@ -31,6 +32,8 @@ export function ArticleView({
   place: GridPlace;
   /** Shown in the admin (a preview), where its own CSS stays inside it (D100). */
   inAdmin?: boolean;
+  /** Signed-in staff may change its headings' and texts' words where they stand (D192): `PageArticle`'s. */
+  editable?: boolean;
 }) {
   const m = t(lang);
   const day = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "Europe/Oslo" });
@@ -59,7 +62,7 @@ export function ArticleView({
           />
         )}
       </header>
-      <PageArticle content={content} place={place} titled inAdmin={inAdmin} />
+      <PageArticle content={content} place={place} titled inAdmin={inAdmin} editable={editable} />
     </article>
   );
 }
