@@ -471,23 +471,24 @@ function themeInnerRules(block: PageBlock): PartRule[] {
     const element = inner[key];
     if (!element) continue;
     const selector = INNER_SELECTORS[key].replace("&", "& .rich-text");
+    const text = (size: Size): Decl => {
+      const settings = typographyAt(element, "text", size);
+      const color = colourCssAt(element, { role: "text" }, size);
+      return {
+        ...typographyDecl(settings),
+        ...(settings.family ? { "font-family": familyStack(settings.family) } : {}),
+        ...(settings.align ? { "text-align": settings.align } : {}),
+        ...(color ? { color } : {}),
+      };
+    };
     rules.push({
       selector,
       important: false,
       where: false,
-      sizes: perSize((size) => {
-        const settings = typographyAt(element, "text", size);
-        const color = colourCssAt(element, { role: "text" }, size);
-        return {
-          ...typographyDecl(settings),
-          ...(settings.family ? { "font-family": familyStack(settings.family) } : {}),
-          ...(settings.align ? { "text-align": settings.align } : {}),
-          ...(color ? { color } : {}),
-          ...innerSpacing(spacingAt(element, size)),
-          ...frameAt(element as PartBase, size),
-        };
-      }),
+      sizes: perSize((size) => ({ ...text(size), ...innerSpacing(spacingAt(element, size)), ...frameAt(element as PartBase, size) })),
     });
+    // A list item holds a paragraph of its own, which the paragraph element would otherwise style: inside a list the list's text wins.
+    if (key === "list") rules.push({ selector: "& .rich-text :is(ul, ol) p", important: false, where: false, sizes: perSize(text) });
   }
   return rules;
 }

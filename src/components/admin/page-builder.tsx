@@ -607,7 +607,10 @@ export function PageBuilder({
   onTestPart,
   checks = null,
   themeTab = null,
+  onThemeState,
 }: {
+  /** Told whenever the Theme tab holds changes not saved yet, with how to save them: the editor's Save and Publish keep them too (D195). */
+  onThemeState?: (state: { dirty: boolean; save: () => Promise<string[] | null> }) => void;
   /** The Theme tab beside Building blocks (D182): a store's theme for rows, headings, text, lists and buttons; null on Kaizen's own pages. */
   themeTab?: ThemeTabContext | null;
   /** The page checker's tab (wave 1, 1e): how many problems it found and its panel; null where there is none (a translated view). */
@@ -690,6 +693,17 @@ export function PageBuilder({
   const [themeSaved, setThemeSaved] = useState<ThemeTabValue | null>(themeValue);
   const themeNow = useMemo(() => (themeTab && themeValue ? withThemeTab(themeTab.settings, themeValue) : null), [themeTab, themeValue]);
   const shownRows = useMemo(() => themedRows(rows, themeValue?.elements), [rows, themeValue]);
+  const saveTheme = async (): Promise<string[] | null> => {
+    if (!themeTab || !themeValue) return null;
+    const result = await themeTab.save(JSON.stringify(themeValue));
+    if (result.ok) setThemeSaved(themeValue);
+    return result.ok ? null : result.problems;
+  };
+  const themeDirty = Boolean(themeValue && themeSaved && JSON.stringify(themeValue) !== JSON.stringify(themeSaved));
+  const themeState = useEffectEvent(() => onThemeState?.({ dirty: themeDirty, save: saveTheme }));
+  useEffect(() => {
+    themeState();
+  }, [themeDirty, themeValue, themeSaved]);
   // What the theme's Row says about widths, for the fields of a row (D190).
   const themeRow = themeValue?.elements.row;
   const themeRowWidths = useMemo(() => ({ width: themeRow?.width, contentWidth: themeRow?.contentWidth }), [themeRow?.width, themeRow?.contentWidth]);
@@ -1105,11 +1119,7 @@ export function PageBuilder({
                   saved={themeSaved}
                   settings={themeTab.settings}
                   onChange={setThemeValue}
-                  onSave={async () => {
-                    const result = await themeTab.save(JSON.stringify(themeValue));
-                    if (result.ok) setThemeSaved(themeValue);
-                    return result.ok ? null : result.problems;
-                  }}
+                  onSave={saveTheme}
                   install={fonts.install}
                 />
               ) : null
@@ -7244,7 +7254,7 @@ function ThemePanel({
     <div className="flex flex-col gap-4" data-theme-panel="">
       <p className="text-xs text-muted">
         The store&apos;s look for every page: what rows, headings, text and buttons are unless a component of a page says otherwise. The
-        page shows it as you change it; Save keeps it.
+        page shows it as you change it; Save theme keeps it, and so does saving or publishing the page.
       </p>
       <div className="flex items-center gap-1 text-sm">
         <SizeSwitch label="Theme" />

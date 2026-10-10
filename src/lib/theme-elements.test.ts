@@ -183,6 +183,20 @@ describe("a rich text's own paragraphs, headings and lists", () => {
     expect(at("& .rich-text :is(ul, ol)")["padding-left"]).toBe("32px");
   });
 
+  it("lets the list's text win over the paragraph's inside a list, where each item holds a paragraph (D195)", () => {
+    const sized: ThemeElements = { p: { typography: { text: { size: { value: 31, unit: "px" } } } }, list: { typography: { text: { size: { value: 23, unit: "px" } } } } };
+    const [row] = themedRows([rowOf([richText()])], sized);
+    const block = row.columns[0].blocks[0];
+    const classes = classesOf(block);
+    const css = sheet([row]);
+    const at = (selector: string) => partStyleAt(css, classes, WIDTHS.xl, (s) => s === selector.replaceAll("&", `.${classes[0]}`));
+    expect(at("& .rich-text p")["font-size"]).toBe("31px");
+    // The item's paragraph is named through the list, which outweighs the plain paragraph rule.
+    expect(at("& .rich-text :is(ul, ol) p")["font-size"]).toBe("23px");
+    // And it carries the list's text only, not the list's spacing.
+    expect(at("& .rich-text :is(ul, ol) p")["padding-left"]).toBeUndefined();
+  });
+
   it("leaves out what the block, its column and its row set themselves", () => {
     const [row] = themedRows(
       [rowOf([richText({ typography: { text: { size: { value: 2, unit: "rem" } } } })], { typography: { text: { color: "#ffffff" } } })],

@@ -267,13 +267,16 @@ export function PageEditor({
         })
     : null;
 
+  // The Theme tab keeps its own changes with Save theme; Save and Publish keep them too (D195), so nothing set there stays only on the canvas.
+  const theme = useRef<{ dirty: boolean; save: () => Promise<string[] | null> }>({ dirty: false, save: async () => null });
+  const [themeDirty, setThemeDirty] = useState(false);
   // Leaving with unsaved changes asks first.
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !themeDirty) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+  }, [dirty, themeDirty]);
 
   // The page checker (wave 1, 1e): what a reader, a screen reader or the checkout's policy would meet, as the page stands now. A checker that
   // throws on odd content is not allowed to stop the editor: the tab then says it is not available, and the server asks again on publish.
@@ -289,6 +292,13 @@ export function PageEditor({
   const submit = (publish: boolean, acknowledged?: string[]) =>
     startBusy(async () => {
       setProblems([]);
+      if (theme.current.dirty) {
+        const failed = await theme.current.save().catch(() => ["The theme could not be saved. Changing it needs access to the website settings."]);
+        if (failed) {
+          setProblems(failed);
+          return;
+        }
+      }
       const sent = content;
       // The globals changed here (D98): the server takes them from this page to every page using them.
       const globalEdits = editedGlobals(sent, known.current);
@@ -446,6 +456,10 @@ export function PageEditor({
         startVideo={context.startVideo}
         fonts={{ ...context.fonts, install: context.actions.installFont, theme: context.theme }}
         // The Theme tab (D182): a store's own pages only.
+        onThemeState={(state) => {
+          theme.current = state;
+          setThemeDirty(state.dirty);
+        }}
         themeTab={context.theme?.settings && context.actions.saveThemeTab ? { settings: context.theme.settings, save: context.actions.saveThemeTab } : null}
         grid={{
           pageId: saved?.id ?? null,
