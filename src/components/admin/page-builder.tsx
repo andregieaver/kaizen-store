@@ -4,6 +4,7 @@ import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, SIZE_LABELS, type Breakpoints, typ
 import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
 import { themeCss, themeTabValue, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTabValue } from "@/lib/theme";
 import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
+import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
 import {
   carouselAnywhere,
   carouselAt,
@@ -373,17 +374,51 @@ type Move = { active: Active; over: Over | null; activatorEvent: Event; delta: {
  * what it is over. Dragged with the keyboard, there is no pointer: the
  * dragged item's middle counts instead.
  */
-function below({ active, activatorEvent, delta }: Move, over: Over, axis: "y" | "x" = "y"): boolean {
-  let point: { x: number; y: number } | null = null;
-  if ("clientX" in activatorEvent && typeof activatorEvent.clientX === "number") {
-    const start = activatorEvent as PointerEvent;
-    point = { x: start.clientX + delta.x, y: start.clientY + delta.y };
-  } else {
-    const rect = active.rect.current.translated;
-    if (rect) point = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  }
+function below(move: Move, over: Over, axis: "y" | "x" = "y"): boolean {
+  const point = pointerOf(move);
   if (!point) return false;
   return axis === "y" ? point.y > over.rect.top + over.rect.height / 2 : point.x > over.rect.left + over.rect.width / 2;
+}
+
+/** Where the pointer is (the dragged item's middle where it is dragged with the keyboard, which has none). */
+function pointerOf({ active, activatorEvent, delta }: Move): { x: number; y: number } | null {
+  if ("clientX" in activatorEvent && typeof activatorEvent.clientX === "number") {
+    const start = activatorEvent as PointerEvent;
+    return { x: start.clientX + delta.x, y: start.clientY + delta.y };
+  }
+  const rect = active.rect.current.translated;
+  return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null;
+}
+
+/** A row's columns as they lie on the canvas now, line by line; null where one is not drawn. */
+function measureLines(row: PageRow): SlotLine[] | null {
+  const rowElement = document.querySelector(`[data-builder-item="row"][data-builder-id="${globalThis.CSS.escape(row.id)}"]`);
+  if (!rowElement) return null;
+  const lines: SlotLine[] = [];
+  for (const line of linesOf(row)) {
+    const ids: string[] = [];
+    const boxes: Box[] = [];
+    for (const column of line.columns) {
+      const element = rowElement.querySelector(`[data-builder-item="column"][data-builder-id="${globalThis.CSS.escape(column.id)}"]`);
+      if (!element) return null;
+      const { left, right, top, bottom } = element.getBoundingClientRect();
+      ids.push(column.id);
+      boxes.push({ left, right, top, bottom });
+    }
+    lines.push({ ids, boxes });
+  }
+  return lines;
+}
+
+/**
+ * The place a column dropped on a row, outside any of its columns (in the gap between two, in the room around them or under a
+ * short one), takes: where the pointer is among them (D189). Null where the row cannot be measured.
+ */
+function slotOnRow(row: PageRow, move: Move): { slot: ColumnSlot; anchor: { id: string; after: boolean } | null } | null {
+  const point = pointerOf(move);
+  const lines = measureLines(row);
+  const slot = point && lines ? columnSlotAt(lines, point) : null;
+  return slot && lines ? { slot, anchor: slotAnchor(lines[slot.line], slot.index) } : null;
 }
 
 const blockLabels: Record<BlockType, string> = {
@@ -781,11 +816,29 @@ export function PageBuilder({
       : movesColumn(from)
         ? data?.kind === "column" && (from?.kind !== "column" || data.rowId !== from.rowId || data.line !== from.line)
           ? { id: String(over.id), after: below(move, over, "x") }
-          : null
+          : data?.kind === "row"
+            ? columnSlotTarget(data.rowId, move, from?.kind === "column" ? from : null)
+            : null
         : data?.kind === "row" || data?.kind === "block"
           ? { id: String(over.id), after: below(move, over) }
           : null;
     setTarget((current) => (current?.id === next?.id && current?.after === next?.after ? current : next));
+  };
+
+  /**
+   * The indicator for a column held over a row, outside its columns (D189): on the column the pointer's place is before, or after
+   * the last of its line. Nothing where it is its own place (the column moved is already there).
+   */
+  const columnSlotTarget = (rowId: string, move: Move, own: { columnId: string; rowId: string; line: number } | null): { id: string; after: boolean } | null => {
+    const row = rows.find((r) => r.id === rowId);
+    const found = row ? slotOnRow(row, move) : null;
+    if (!row || !found?.anchor) return null;
+    if (own && own.rowId === row.id && own.line === found.slot.line) {
+      const at = locateColumn(row, own.columnId)?.index ?? -1;
+      // Before it or right after it is where it already is.
+      if (found.slot.index === at || found.slot.index === at + 1) return null;
+    }
+    return { id: `column:${found.anchor.id}`, after: found.anchor.after };
   };
 
   /** Where a new row goes for a drop on a row (before it, or after when the pointer is in its lower half) or below the last. */
@@ -805,6 +858,17 @@ export function PageBuilder({
     if (to.kind === "row") {
       const row = rows.find((r) => r.id === to.rowId);
       if (!row) return null;
+      // Where the pointer is among the columns (D189): between two, before the first, after the last, in the line it is in.
+      const found = slotOnRow(row, end);
+      if (found) {
+        let index = found.slot.index;
+        // In its own line a column takes the place it is dropped at, the others closing up where it was: it is counted without it.
+        if (own && own.rowId === row.id && own.line === found.slot.line) {
+          const at = locateColumn(row, own.columnId)?.index ?? -1;
+          if (at >= 0 && index > at) index -= 1;
+        }
+        return { rowId: row.id, line: found.slot.line, index };
+      }
       const lines = linesOf(row);
       return { rowId: row.id, line: lines.length - 1, index: Number.MAX_SAFE_INTEGER };
     }
