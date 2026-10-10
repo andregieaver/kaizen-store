@@ -86,19 +86,36 @@ describe("a negative margin (D197)", () => {
   });
 });
 
-import { moveRow } from "./table-edit";
+import { entriesOf, moveEntry } from "./table-edit";
 
-describe("moving a table's rows (D200)", () => {
-  const table = { rows: [["h"], ["a"], ["b"], ["c"]], sections: [null, "One", null, "Two"] as (string | null)[] };
+describe("moving a table's rows and dividers each by itself (D202)", () => {
+  // Header, a, divider One, b, c, divider Two, d
+  const table = { rows: [["h"], ["a"], ["b"], ["c"], ["d"]], sections: [null, null, "One", null, "Two"] as (string | null)[] };
+  const names = (t: typeof table | ReturnType<typeof moveEntry>) => entriesOf(t, 1).map((e) => ("divider" in e ? `[${e.divider}]` : e.row[0]));
 
-  it("takes a row and its divider to the new place", () => {
-    expect(moveRow(table, 3, 1)).toEqual({ rows: [["h"], ["c"], ["a"], ["b"]], sections: [null, "Two", "One"] });
-    expect(moveRow(table, 1, 3)).toEqual({ rows: [["h"], ["b"], ["c"], ["a"]], sections: [null, null, "Two", "One"] });
+  it("lists the body as rows and dividers in order", () => {
+    expect(names(table)).toEqual(["a", "[One]", "b", "c", "[Two]", "d"]);
   });
 
-  it("changes nothing for the same place or one that is not there", () => {
-    expect(moveRow(table, 2, 2)).toBe(table);
-    expect(moveRow(table, 2, 9)).toBe(table);
-    expect(moveRow({ rows: [["a"], ["b"]] }, 0, 1)).toEqual({ rows: [["b"], ["a"]], sections: undefined });
+  it("moves a row without its divider", () => {
+    // b dragged to the top: the divider One stays where it was among the rest.
+    expect(names(moveEntry(table, 1, 2, 0))).toEqual(["b", "a", "[One]", "c", "[Two]", "d"]);
+    expect(names(moveEntry(table, 1, 3, 5))).toEqual(["a", "[One]", "b", "[Two]", "d", "c"]);
+  });
+
+  it("moves a divider without its row, and keeps the header first", () => {
+    const moved = moveEntry(table, 1, 1, 2);
+    expect(names(moved)).toEqual(["a", "b", "[One]", "c", "[Two]", "d"]);
+    expect(moved.rows[0]).toEqual(["h"]);
+  });
+
+  it("refuses to leave two dividers together or one at the end", () => {
+    expect(moveEntry(table, 1, 1, 4)).toBe(table);
+    expect(moveEntry(table, 1, 4, 5)).toBe(table);
+  });
+
+  it("works from the first row when there is no header", () => {
+    const plain = { rows: [["a"], ["b"]], sections: [null, "One"] as (string | null)[] };
+    expect(moveEntry(plain, 0, 0, 2)).toEqual({ rows: [["b"], ["a"]], sections: ["One"] });
   });
 });

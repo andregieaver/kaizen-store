@@ -80,16 +80,47 @@ export function setSection(table: TableData, r: number, title: string | null): T
   return { rows: table.rows, sections: tidy(sections) };
 }
 
-/** A row moved from one place to another with the divider above it (the header, when there is one, is kept first by the caller: it is never moved). */
-export function moveRow(table: TableData, from: number, to: number): TableData {
-  const n = table.rows.length;
-  if (from === to || from < 0 || to < 0 || from >= n || to >= n) return table;
-  const sections = padded(table);
-  const move = <T,>(list: T[]): T[] => {
-    const next = [...list];
-    const [item] = next.splice(from, 1);
-    next.splice(to, 0, item);
-    return next;
-  };
-  return { rows: move(table.rows), sections: tidy(move(sections)) };
+/** What lies in a table's body, in order: rows and the dividers between them, each its own thing to drag (D202). */
+export type Entry = { divider: string } | { row: string[] };
+
+/** The body's entries from row `start` on (1 when the first row is a header, else 0): a divider before the row it lies above. */
+export function entriesOf(table: TableData, start: number): Entry[] {
+  const out: Entry[] = [];
+  for (let r = start; r < table.rows.length; r++) {
+    const title = table.sections?.[r];
+    if (title != null) out.push({ divider: title });
+    out.push({ row: table.rows[r] });
+  }
+  return out;
+}
+
+/** The table back from its head rows (the header, kept as it is) and its body's entries. */
+function fromEntries(table: TableData, start: number, entries: Entry[]): TableData {
+  const head = table.rows.slice(0, start);
+  const rows: Cells = [...head];
+  const sections: Sections = Array.from({ length: start }, (_, r) => table.sections?.[r] ?? null);
+  let pending: string | null = null;
+  for (const entry of entries) {
+    if ("divider" in entry) pending = entry.divider;
+    else {
+      sections[rows.length] = pending;
+      rows.push(entry.row);
+      pending = null;
+    }
+  }
+  return { rows, sections: tidy(sections) };
+}
+
+/**
+ * An entry (a row, or a divider) moved to another place in the body, each by itself: a divider does not take the row under it, nor a
+ * row its divider. Unchanged where it would leave two dividers together or one at the end, which have nothing to divide.
+ */
+export function moveEntry(table: TableData, start: number, from: number, to: number): TableData {
+  const entries = entriesOf(table, start);
+  if (from === to || from < 0 || to < 0 || from >= entries.length || to >= entries.length) return table;
+  const next = [...entries];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  const bad = next.some((entry, i) => "divider" in entry && (i === next.length - 1 || "divider" in next[i + 1]));
+  return bad ? table : fromEntries(table, start, next);
 }

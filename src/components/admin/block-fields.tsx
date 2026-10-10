@@ -20,7 +20,7 @@ import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } fr
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
 import { iconToken } from "@/lib/table-icons";
-import { addColumn, addRowTo, moveRow, removeColumn, removeRowFrom, setCell, setSection, type TableData } from "@/lib/table-edit";
+import { addColumn, addRowTo, entriesOf, moveEntry, removeColumn, removeRowFrom, setCell, setSection, type TableData } from "@/lib/table-edit";
 
 import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
@@ -1491,60 +1491,38 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
     if (next.length <= TABLE_CELL_MAX) set(setCell(rows, r, c, next));
   };
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
-  // Rows are dragged by their handle; a divider goes with the row under it, and a header stays first.
+  // Rows and dividers are each dragged by their own handle (D202); a header stays first.
+  const start = block.header ? 1 : 0;
+  const order = entriesOf(table, start).map((entry, i) => ("divider" in entry ? `div-${i}` : `row-${i}`));
   const dropped = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
-    const from = Number(String(active.id).slice(4));
-    const to = Number(String(over.id).slice(4));
-    if (Number.isInteger(from) && Number.isInteger(to)) setTable(moveRow(table, from, to));
+    const from = order.indexOf(String(active.id));
+    const to = order.indexOf(String(over.id));
+    if (from >= 0 && to >= 0) setTable(moveEntry(table, start, from, to));
   };
-  return (
-    <>
-      <Check label="First row is a header" hint="Column names: read out by screen readers, and shown beside each value on a phone." checked={Boolean(block.header)} onChange={(header) => onChange({ header: header || undefined })} />
-      <TextField label="Title (optional)" value={block.caption ?? ""} max={200} placeholder="Sizes and prices" onChange={(caption) => onChange({ caption: caption || undefined })} />
-      <div className="overflow-x-auto rounded border border-border p-2">
-        <table className="border-separate border-spacing-1 text-sm">
-          <thead>
-            <tr>
-              {rows[0]?.map((_, c) => (
-                <th key={c} scope="col" className="font-normal">
-                  <span className="flex items-center justify-center gap-1">
-                    <button type="button" className={ICON_BUTTON} aria-label={`Add a column after column ${c + 1}`} title="Add a column after" disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows, c))}>
-                      +
-                    </button>
-                    <button type="button" className={ICON_BUTTON} aria-label={`Remove column ${c + 1}`} title="Remove this column" disabled={columns <= 1} onClick={() => set(removeColumn(rows, c))}>
-                      ×
-                    </button>
-                  </span>
-                </th>
-              ))}
-              <th />
-            </tr>
-          </thead>
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={dropped}>
-            <SortableContext items={rows.flatMap((_, r) => (isHeader(r) ? [] : [`row-${r}`]))} strategy={verticalListSortingStrategy}>
-              {rows.map((cells, r) => {
-                const body = (handle: ReactNode) => (
-                  <>
-                    {!isHeader(r) && block.sections?.[r] != null && (
-                  <tr>
-                    <td colSpan={columns}>
-                      <input
-                        value={block.sections[r] ?? ""}
-                        maxLength={200}
-                        placeholder="Section title (optional)"
-                        aria-label={`Section title above row ${r + 1}`}
-                        className="h-8 w-full rounded border border-dashed border-border bg-surface px-2 font-semibold"
-                        onChange={(event) => setTable(setSection(table, r, event.target.value))}
-                      />
-                    </td>
-                    <td>
-                      <button type="button" className={ICON_BUTTON} aria-label={`Remove the divider above row ${r + 1}`} title="Remove this divider" onClick={() => setTable(setSection(table, r, null))}>
-                        ×
-                      </button>
-                    </td>
-                  </tr>
-                )}
+  const dividerLine = (r: number, handle: ReactNode) => (
+    <tr>
+      <td colSpan={columns}>
+        <input
+          value={block.sections?.[r] ?? ""}
+          maxLength={200}
+          placeholder="Section title (optional)"
+          aria-label={`Section title above row ${r + 1}`}
+          className="h-8 w-full rounded border border-dashed border-border bg-surface px-2 font-semibold"
+          onChange={(event) => setTable(setSection(table, r, event.target.value))}
+        />
+      </td>
+      <td>
+        <span className="flex items-center gap-1">
+          {handle}
+          <button type="button" className={ICON_BUTTON} aria-label={`Remove the divider above row ${r + 1}`} title="Remove this divider" onClick={() => setTable(setSection(table, r, null))}>
+            ×
+          </button>
+        </span>
+      </td>
+    </tr>
+  );
+  const rowLine = (cells: string[], r: number, handle: ReactNode) => (
               <tr>
                 {cells.map((text, c) => (
                   <td key={c}>
@@ -1575,16 +1553,57 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                   </span>
                 </td>
               </tr>
-                  </>
-                );
-                return isHeader(r) ? (
-                  <tbody key={r}>{body(null)}</tbody>
-                ) : (
-                  <SortableRows key={r} id={`row-${r}`} label={`row ${r + 1}`}>
-                    {body}
-                  </SortableRows>
-                );
-              })}
+  );
+  return (
+    <>
+      <Check label="First row is a header" hint="Column names: read out by screen readers, and shown beside each value on a phone." checked={Boolean(block.header)} onChange={(header) => onChange({ header: header || undefined })} />
+      <TextField label="Title (optional)" value={block.caption ?? ""} max={200} placeholder="Sizes and prices" onChange={(caption) => onChange({ caption: caption || undefined })} />
+      <div className="overflow-x-auto rounded border border-border p-2">
+        <table className="border-separate border-spacing-1 text-sm">
+          <thead>
+            <tr>
+              {rows[0]?.map((_, c) => (
+                <th key={c} scope="col" className="font-normal">
+                  <span className="flex items-center justify-center gap-1">
+                    <button type="button" className={ICON_BUTTON} aria-label={`Add a column after column ${c + 1}`} title="Add a column after" disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows, c))}>
+                      +
+                    </button>
+                    <button type="button" className={ICON_BUTTON} aria-label={`Remove column ${c + 1}`} title="Remove this column" disabled={columns <= 1} onClick={() => set(removeColumn(rows, c))}>
+                      ×
+                    </button>
+                  </span>
+                </th>
+              ))}
+              <th />
+            </tr>
+          </thead>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={dropped}>
+            <SortableContext items={order} strategy={verticalListSortingStrategy}>
+              {rows.slice(0, start).map((cells, r) => (
+                <tbody key={`head-${r}`}>{rowLine(cells, r, null)}</tbody>
+              ))}
+              {(() => {
+                let index = 0;
+                return rows.slice(start).flatMap((cells, i) => {
+                  const r = i + start;
+                  const out: ReactNode[] = [];
+                  if (block.sections?.[r] != null) {
+                    out.push(
+                      <SortableRows key={`div-${r}`} id={`div-${index}`} label={`the divider above row ${r + 1}`}>
+                        {(handle) => dividerLine(r, handle)}
+                      </SortableRows>,
+                    );
+                    index++;
+                  }
+                  out.push(
+                    <SortableRows key={`row-${r}`} id={`row-${index}`} label={`row ${r + 1}`}>
+                      {(handle) => rowLine(cells, r, handle)}
+                    </SortableRows>,
+                  );
+                  index++;
+                  return out;
+                });
+              })()}
             </SortableContext>
           </DndContext>
         </table>
