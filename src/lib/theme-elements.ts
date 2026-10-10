@@ -22,7 +22,7 @@ import { z } from "zod";
 /**
  * Theme elements (D182, `docs/theme-elements.md`): what a store says once, in the page builder's Theme tab, for every row,
  * heading (H1 to H6), paragraph, list and button of its pages. An element holds what a part of that kind can hold (its
- * typography, spacing, border, corners and shadow, per screen size; a row also its colour and content width), and a part
+ * typography, spacing, border, corners and shadow, per screen size; a row also its colour and whether it spans the screen or keeps to the content's width, D190), and a part
  * of the page that sets the same thing itself wins, at the sizes it sets it at.
  *
  * The theme is laid under the page's parts before they are drawn (`themedRows()`): the part rules (`src/lib/part-css.ts`)
@@ -40,7 +40,7 @@ export const THEME_ELEMENT_KEYS = ["row", "h1", "h2", "h3", "h4", "h5", "h6", "p
 export type ThemeElementKey = (typeof THEME_ELEMENT_KEYS)[number];
 
 export const THEME_ELEMENT_LABELS: Record<ThemeElementKey, { name: string; hint: string }> = {
-  row: { name: "Row", hint: "Every row: its spacing, colour, content width and the text inside it." },
+  row: { name: "Row", hint: "Every row: its width, spacing, colour and the text inside it." },
   h1: { name: "H1", hint: "Heading components at level 1 and first-level headings in text." },
   h2: { name: "H2", hint: "Heading components at level 2 and second-level headings in text." },
   h3: { name: "H3", hint: "Heading components at level 3 and third-level headings in text." },
@@ -197,6 +197,11 @@ export function layerUnder<P extends object>(part: P, element: ThemeElement | un
   }
   if (Object.keys(merged).length > 0) out.at = merged;
   else delete out.at;
+  // A row's width and what it holds (D190): its own choice where it has one, else the theme's.
+  if ((part as { type?: string }).type === "row") {
+    const widths = element as { width?: string; contentWidth?: string };
+    for (const key of ["width", "contentWidth"] as const) if (widths[key] !== undefined && (part as Record<string, unknown>)[key] === undefined) out[key] = widths[key];
+  }
   return out as P;
 }
 
@@ -292,10 +297,28 @@ export function elementAsPart(key: ThemeElementKey, element: ThemeElement | unde
  * checked here (a half-typed value stays while it is typed); `themeElementsSchema` checks it when it is saved.
  */
 export function elementFromPart(part: Record<string, unknown>): ThemeElement | undefined {
-  const kept = Object.fromEntries(
-    ["style", "border", "radius", "shadow", "background", "at", "typography"].flatMap((key) => (part[key] === undefined ? [] : [[key, part[key]]])),
-  );
+  // A row's widths are the row element's alone (D190).
+  const keys = ["style", "border", "radius", "shadow", "background", "at", "typography", ...(part.type === "row" ? ["width", "contentWidth"] : [])];
+  const kept = Object.fromEntries(keys.flatMap((key) => (part[key] === undefined ? [] : [[key, part[key]]])));
   return Object.keys(kept).length > 0 ? (kept as ThemeElement) : undefined;
+}
+
+/**
+ * What a row's own width choice writes (D190): the width it is changed to, only where that is not what the row would be without
+ * its own (the theme's Row, else the content's width), so a row keeps following the theme until it says otherwise; and a row that
+ * keeps to the content's width says nothing of what it holds.
+ */
+export function rowWidthPatch(
+  theme: { width?: "content" | "full"; contentWidth?: "content" | "full" },
+  change: { width?: "content" | "full"; contentWidth?: "content" | "full" },
+): { width?: "content" | "full"; contentWidth?: "content" | "full" } {
+  const patch: { width?: "content" | "full"; contentWidth?: "content" | "full" } = {};
+  if (change.width !== undefined) {
+    patch.width = change.width === (theme.width ?? "content") ? undefined : change.width;
+    if (change.width === "content") patch.contentWidth = undefined;
+  }
+  if (change.contentWidth !== undefined) patch.contentWidth = change.contentWidth === (theme.contentWidth ?? "content") ? undefined : change.contentWidth;
+  return patch;
 }
 
 /** The typography of an element at a size, as the rules write it. */

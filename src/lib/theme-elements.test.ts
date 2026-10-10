@@ -12,6 +12,7 @@ import {
   elementAsPart,
   elementFromPart,
   layerUnder,
+  rowWidthPatch,
   themeElementsSchema,
   themeFontFamilies,
   themedRows,
@@ -285,6 +286,67 @@ describe("editing an element as a part", () => {
     expect(elementFromPart({ ...part, shadow: "md" })).toEqual({ radius: 4, shadow: "md" });
     expect(elementFromPart({ ...elementAsPart("h1", undefined) })).toBeUndefined();
     expect(THEME_ELEMENT_KEYS).toHaveLength(10);
+  });
+});
+
+describe("a row's width (D190)", () => {
+  const spread: ThemeElements = { row: { width: "full", contentWidth: "full" } };
+
+  it("is the theme's where the row chooses none: the whole screen, and what it holds", () => {
+    const [row] = themedRows([rowOf([])], spread);
+    expect(row.width).toBe("full");
+    expect(row.contentWidth).toBe("full");
+    // A theme that only spans the screen leaves what the row holds to the content's width.
+    const [spans] = themedRows([rowOf([])], { row: { width: "full" } });
+    expect(spans.width).toBe("full");
+    expect(spans.contentWidth).toBeUndefined();
+  });
+
+  it("is the row's own where it chooses one, also the content's width over a theme that spans the screen", () => {
+    const [content] = themedRows([rowOf([], { width: "content" })], spread);
+    expect(content.width).toBe("content");
+    const [keeps] = themedRows([rowOf([], { width: "full", contentWidth: "content" })], spread);
+    expect(keeps.width).toBe("full");
+    expect(keeps.contentWidth).toBe("content");
+    const [full] = themedRows([rowOf([], { width: "full" })], { row: { width: "full", contentWidth: "full" } });
+    expect(full.contentWidth).toBe("full");
+  });
+
+  it("is written on no part but a row, and changes nothing where the theme says nothing", () => {
+    const rows = [rowOf([heading()])];
+    const [themed] = themedRows(rows, { h1: { width: "full" } as never });
+    expect(themed.width).toBeUndefined();
+    expect(themed.columns[0].blocks[0]).not.toHaveProperty("width");
+    expect(themedRows(rows, { row: { radius: 4 } })[0]).not.toHaveProperty("width");
+    expect(layerUnder({ id: "b", type: "button" }, { width: "full" })).not.toHaveProperty("width");
+  });
+
+  it("is kept by a row element's fields and by no other element's", () => {
+    const part = elementAsPart("row", { width: "full", contentWidth: "full" });
+    expect(part).toMatchObject({ type: "row", width: "full", contentWidth: "full" });
+    expect(elementFromPart({ ...part, radius: 4 })).toEqual({ width: "full", contentWidth: "full", radius: 4 });
+    expect(elementFromPart({ ...part, width: undefined, contentWidth: undefined })).toBeUndefined();
+    expect(elementFromPart({ ...elementAsPart("h1", undefined), width: "full" })).toBeUndefined();
+  });
+
+  it("is written by a row's own choice only where it is not what the row would be without it", () => {
+    // No theme: the content's width is the default, as rows were always.
+    expect(rowWidthPatch({}, { width: "content" })).toEqual({ width: undefined, contentWidth: undefined });
+    expect(rowWidthPatch({}, { width: "full" })).toEqual({ width: "full" });
+    expect(rowWidthPatch({}, { contentWidth: "full" })).toEqual({ contentWidth: "full" });
+    expect(rowWidthPatch({}, { contentWidth: "content" })).toEqual({ contentWidth: undefined });
+    // A theme that spans the screen: the content's width must be said, the screen's need not.
+    expect(rowWidthPatch({ width: "full" }, { width: "content" })).toEqual({ width: "content", contentWidth: undefined });
+    expect(rowWidthPatch({ width: "full" }, { width: "full" })).toEqual({ width: undefined });
+    // A theme that lets what rows hold spread: keeping to the content's width must be said.
+    expect(rowWidthPatch({ width: "full", contentWidth: "full" }, { contentWidth: "content" })).toEqual({ contentWidth: "content" });
+    expect(rowWidthPatch({ width: "full", contentWidth: "full" }, { contentWidth: "full" })).toEqual({ contentWidth: undefined });
+  });
+
+  it("is checked when the theme is saved", () => {
+    expect(themeElementsSchema.parse({ row: { width: "full", contentWidth: "content" } })).toEqual({ row: { width: "full", contentWidth: "content" } });
+    expect(themeElementsSchema.safeParse({ row: { width: "wide" } }).success).toBe(false);
+    expect(themeElementsSchema.safeParse({ row: { contentWidth: "narrow" } }).success).toBe(false);
   });
 });
 

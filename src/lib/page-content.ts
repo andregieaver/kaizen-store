@@ -2121,6 +2121,10 @@ export type ThemeElement = {
   shadow?: Shadow;
   /** A row's colour behind it. */
   background?: ColorBackground;
+  /** A row's width (D190): the content's (the default) or the whole screen's, as `PageRow.width`; a row's own choice wins. */
+  width?: "content" | "full";
+  /** In a full-width row, whether what is in it spreads too (D190), as `PageRow.contentWidth`; a row's own choice wins. */
+  contentWidth?: "content" | "full";
   at?: SizeOverrides;
   typography?: TypographyGroups;
 };
@@ -2133,6 +2137,8 @@ export const themeElementSchema = z
     radius: radiusSchema,
     shadow: shadowSchema,
     background: colorBackground.optional(),
+    width: z.enum(["content", "full"]).optional(),
+    contentWidth: z.enum(["content", "full"]).optional(),
     at: sizeOverrides,
     typography: typographyGroupsSchema,
   })

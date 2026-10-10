@@ -3,7 +3,7 @@
 import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, SIZE_LABELS, type Breakpoints, type Size } from "@/lib/breakpoints";
 import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
 import { themeCss, themeTabValue, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTabValue } from "@/lib/theme";
-import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
+import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, rowWidthPatch, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
 import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
 import {
   carouselAnywhere,
@@ -45,7 +45,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Fragment,
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useEffectEvent,
   useId,
@@ -677,6 +679,9 @@ export function PageBuilder({
   const [themeSaved, setThemeSaved] = useState<ThemeTabValue | null>(themeValue);
   const themeNow = useMemo(() => (themeTab && themeValue ? withThemeTab(themeTab.settings, themeValue) : null), [themeTab, themeValue]);
   const shownRows = useMemo(() => themedRows(rows, themeValue?.elements), [rows, themeValue]);
+  // What the theme's Row says about widths, for the fields of a row (D190).
+  const themeRow = themeValue?.elements.row;
+  const themeRowWidths = useMemo(() => ({ width: themeRow?.width, contentWidth: themeRow?.contentWidth }), [themeRow?.width, themeRow?.contentWidth]);
   const canvasTheme = fonts.theme && themeNow ? { ...fonts.theme, css: themeCss(themeNow, "[data-theme-canvas]") } : fonts.theme;
   // Responsive editing (D179 phase 2): the size edited and the canvas at it; null is Extra large, the canvas as wide as it can be.
   const breakpoints = fonts.theme?.breakpoints ?? DEFAULT_BREAKPOINTS;
@@ -1018,6 +1023,7 @@ export function PageBuilder({
     <SizeEditContext value={sizeEdit}>
     <FieldGroupsContext value={fieldGroups}>
     <BindEntitiesContext value={bindEntities}>
+    <ThemeRowWidths value={themeRowWidths}>
       <DndContext
         id="page-builder"
         sensors={sensors}
@@ -1259,6 +1265,7 @@ export function PageBuilder({
           onClose={() => setLayoutUse(null)}
         />
       </DndContext>
+    </ThemeRowWidths>
     </BindEntitiesContext>
     </FieldGroupsContext>
     </SizeEditContext>
@@ -4529,19 +4536,35 @@ function OverlayFields({
   );
 }
 
-/** A row's width and height, its columns at each screen size, and how they line up (D48, D179). */
-function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
-  const full = row.width === "full";
+/**
+ * What the theme's Row says about every row's width (D190): a row's own choice wins, so its fields show what it comes to (its own, else
+ * the theme's) and write its own only where that is not what it would be without it.
+ */
+const ThemeRowWidths = createContext<{ width?: "content" | "full"; contentWidth?: "content" | "full" }>({});
+
+/** A row's width and what it holds, the same two choices on a row and on the theme's Row (D48, D190). */
+function RowWidthChoices({
+  width,
+  contentWidth,
+  onWidth,
+  onContentWidth,
+}: {
+  width: "content" | "full";
+  contentWidth: "content" | "full";
+  onWidth: (width: "content" | "full") => void;
+  onContentWidth: (contentWidth: "content" | "full") => void;
+}) {
+  const full = width === "full";
   return (
-    <div className="flex flex-col gap-4 border-t border-border pt-4">
+    <>
       <Choices
         legend="Row width"
         options={[
           { value: "content", label: "Content width" },
           { value: "full", label: "Full width" },
         ]}
-        value={row.width ?? "content"}
-        onChange={(width) => onChange(width === "full" ? { width } : { width: undefined, contentWidth: undefined })}
+        value={width}
+        onChange={onWidth}
       />
       <Choices
         legend="Content width"
@@ -4551,10 +4574,28 @@ function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch
           { value: "content", label: "Content width" },
           { value: "full", label: "Full width" },
         ]}
-        value={row.contentWidth ?? "content"}
-        onChange={(contentWidth) => onChange({ contentWidth: contentWidth === "full" ? contentWidth : undefined })}
+        value={contentWidth}
+        onChange={onContentWidth}
       />
-      <ContentMaxField row={row} onChange={onChange} />
+    </>
+  );
+}
+
+/** A row's width and height, its columns at each screen size, and how they line up (D48, D179). */
+function RowFields({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+  // What the row comes to: its own choice, else the theme's Row, else the content's width (D190).
+  const theme = useContext(ThemeRowWidths);
+  const width = row.width ?? theme.width ?? "content";
+  const contentWidth = row.contentWidth ?? theme.contentWidth ?? "content";
+  return (
+    <div className="flex flex-col gap-4 border-t border-border pt-4">
+      <RowWidthChoices
+        width={width}
+        contentWidth={contentWidth}
+        onWidth={(next) => onChange(rowWidthPatch(theme, { width: next }))}
+        onContentWidth={(next) => onChange(rowWidthPatch(theme, { contentWidth: next }))}
+      />
+      <ContentMaxField row={row} limited={width !== "full" || contentWidth !== "full"} onChange={onChange} />
       <RowHeightField row={row} onChange={onChange} />
       <Check
         label="As tall as the screen"
@@ -4641,11 +4682,10 @@ function RowHeightField({ row, onChange }: { row: PageRow; onChange: (patch: Row
  * How wide a row's content may be, in pixels, at the size edited (D182): over the theme's content width, which a row takes where it sets
  * none. Dragging the row's side edges on the canvas sets it too. Where the row spreads, there is no limit to set.
  */
-function ContentMaxField({ row, onChange }: { row: PageRow; onChange: (patch: RowPatch) => void }) {
+function ContentMaxField({ row, limited, onChange }: { row: PageRow; /** Whether the row keeps to a content width (D190: the theme's Row may spread every row). */ limited: boolean; onChange: (patch: RowPatch) => void }) {
   const { size } = useSizeEdit();
   const id = useId();
   const value = valueAt(row, "contentMax", size) ?? null;
-  const limited = row.width !== "full" || row.contentWidth !== "full";
   // What is typed until it is a width the row can have.
   const [draft, setDraft] = useState<string | null>(null);
   const back = (patch: { at: PageRow["at"] }) => onChange(patch);
@@ -7313,6 +7353,18 @@ function ThemeElementFields({
   const background = element?.background;
   return (
     <>
+      {row && (
+        <div className="flex flex-col gap-4">
+          <RowWidthChoices
+            width={element?.width ?? "content"}
+            contentWidth={element?.contentWidth ?? "content"}
+            // The theme says only what differs from the default: a row that keeps to the content's width needs nothing said.
+            onWidth={(next) => patch({ width: next === "full" ? "full" : undefined, ...(next === "content" && { contentWidth: undefined }) } as Partial<PartBase>)}
+            onContentWidth={(next) => patch({ contentWidth: next === "full" ? "full" : undefined } as Partial<PartBase>)}
+          />
+          <p className="text-xs text-muted">Every row takes these unless it chooses its own width in its settings.</p>
+        </div>
+      )}
       <TypographyFields
         part={part}
         familyDefault={heading ? "The site's heading font" : "The site's body font"}
