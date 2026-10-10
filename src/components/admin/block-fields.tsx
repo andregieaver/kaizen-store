@@ -23,6 +23,7 @@ import { addColumn, addRowTo, removeColumn, removeRowFrom, setCell, setSection, 
 
 import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
+import { GradientText } from "./typography-fields";
 import { RichTextEditor } from "./rich-text-editor";
 import { SizeMark, inheritedClass, useSizeEdit } from "./responsive-edit";
 
@@ -1625,6 +1626,14 @@ function IconListStyleFields({ block, onChange }: BlockEditorProps<IconListBlock
       )}
       <Choices legend="Icon size" options={optionsOf(BUTTON_SIZES)} value={block.iconSize ?? "md"} onChange={(iconSize) => onChange({ iconSize: iconSize === "md" ? undefined : iconSize })} />
       <OptionalColor label="Icon colour" hint="The theme's accent unless chosen." value={block.iconColor} fallback="#2563eb" onChange={(iconColor) => onChange({ iconColor })} />
+      <GradientText
+        label="Gradient icons"
+        hint="The icons are filled with these colours instead of the icon colour."
+        value={block.iconGradient}
+        onChange={(iconGradient) => onChange({ iconGradient })}
+        mark={null}
+        muted=""
+      />
       <NumberField label="Space between lines" value={block.gap ?? 12} min={0} max={SOCIAL_GAP_MAX} unit="px" onChange={(gap) => onChange({ gap: gap === 12 ? undefined : gap })} />
     </>
   );

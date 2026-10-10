@@ -142,7 +142,33 @@ const DRAWINGS: Record<IconName, LucideIcon> = {
 };
 
 /** An icon list's icon (D91), in the current colour; decorative, as the text beside it says what it means. */
-export function ListIcon({ name, className, style }: { name: IconName; className?: string; style?: CSSProperties }) {
+export function ListIcon({ name, className, style, gradient }: { name: IconName; className?: string; style?: CSSProperties; gradient?: IconGradient }) {
   const Drawing = DRAWINGS[name] ?? Check;
-  return <Drawing aria-hidden focusable={false} className={className} style={style} strokeWidth={2} />;
+  if (!gradient) return <Drawing aria-hidden focusable={false} className={className} style={style} strokeWidth={2} />;
+  // A gradient is an SVG paint: its definition sits beside the icon (taking no room) and the icon's strokes use it.
+  const id = gradientId(gradient);
+  const turn = (gradient.angle * Math.PI) / 180;
+  const dx = Math.sin(turn);
+  const dy = -Math.cos(turn);
+  const stops = gradient.colors;
+  return (
+    <>
+      <svg aria-hidden focusable={false} width="0" height="0" className="absolute">
+        <defs>
+          <linearGradient id={id} gradientUnits="userSpaceOnUse" x1={12 - 12 * dx} y1={12 - 12 * dy} x2={12 + 12 * dx} y2={12 + 12 * dy}>
+            {stops.map((color, index) => (
+              <stop key={index} offset={stops.length === 1 ? 0 : index / (stops.length - 1)} stopColor={color} />
+            ))}
+          </linearGradient>
+        </defs>
+      </svg>
+      <Drawing aria-hidden focusable={false} className={className} style={style} strokeWidth={2} stroke={`url(#${id})`} />
+    </>
+  );
 }
+
+/** An icon's gradient: its colours and angle. */
+export type IconGradient = { colors: string[]; angle: number };
+
+/** A name for a gradient's definition, from what it says, so equal gradients share one and different ones never clash. */
+const gradientId = (gradient: IconGradient) => `icon-gradient-${gradient.angle}-${gradient.colors.map((c) => c.replace("#", "")).join("")}`;

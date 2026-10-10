@@ -454,7 +454,7 @@ function ButtonsField({
 }
 
 /** Letters filled with a gradient (D183): on or off, two to four colours at an angle, and the store's saved gradients to start from or add to. */
-function GradientText({ value, onChange, mark, muted }: { value: TextGradient | undefined; onChange: (gradient: TextGradient | undefined) => void; mark: ReactNode; muted: string }) {
+export function GradientText({ value, onChange, mark, muted, label = "Gradient text", hint = "The letters are filled with these colours, over the text colour." }: { value: TextGradient | undefined; onChange: (gradient: TextGradient | undefined) => void; mark: ReactNode; muted: string; label?: string; hint?: string }) {
   const id = useId();
   // A colour field keeps what is typed in it, so when colours come or go the fields start again.
   const [revision, setRevision] = useState(0);
@@ -465,16 +465,16 @@ function GradientText({ value, onChange, mark, muted }: { value: TextGradient | 
       <div className="flex flex-wrap items-center gap-1">
         <label className="flex items-center gap-2 text-sm font-medium" htmlFor={id}>
           <input id={id} type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(event.target.checked ? gradient : undefined)} className="size-4" />
-          Gradient text
+          {label}
         </label>
         {mark}
       </div>
       {value && (
         <div className="flex flex-col gap-3 pl-6">
-          <p className="text-xs text-muted">The letters are filled with these colours, over the text colour.</p>
+          <p className="text-xs text-muted">{hint}</p>
           <div className="h-6 rounded border border-border" aria-hidden style={{ backgroundImage: `linear-gradient(${gradient.angle}deg, ${colours.join(", ")})` }} />
           <SavedGradients
-            label="Text gradient"
+            label={label}
             current={{ style: "shift", colors: colours, angle: gradient.angle }}
             onPick={(saved) => {
               setRevision((n) => n + 1);

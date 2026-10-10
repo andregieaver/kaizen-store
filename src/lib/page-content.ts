@@ -23,7 +23,7 @@ import { menuLinkSchema, type MenuLink } from "./navigation";
 import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
 import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
 import { displaysProblem, publicRows, showSchema, type Show } from "./visibility";
-import { foldTypography, typographyAtSchema, typographyFamilies, typographyGroupsSchema, type TypographyGroups, type TypographyGroupsAt } from "./typography";
+import { foldTypography, textGradientSchema, typographyAtSchema, typographyFamilies, typographyGroupsSchema, type TextGradient, type TypographyGroups, type TypographyGroupsAt } from "./typography";
 import { SIZES, type Size, type SmallerSize } from "./breakpoints";
 import { DESCRIPTION_MAX, EXCERPT_FIELD_MAX, TITLE_MAX, summarize } from "./seo";
 import { slugify } from "./slug";
@@ -1352,6 +1352,8 @@ export type IconListBlock = PartBase & {
   items: IconListItem[];
   layout?: IconListLayout;
   iconColor?: string;
+  /** The icons filled with a gradient (D199), over the icon colour; two to four colours at an angle. */
+  iconGradient?: TextGradient;
   iconSize?: ButtonSize;
   /** Pixels between lines; 12 unless set. */
   gap?: number;
@@ -2813,6 +2815,7 @@ const iconListBlock = z.object({
     .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again."),
   layout: z.enum(Object.keys(ICON_LIST_LAYOUTS) as [IconListLayout, ...IconListLayout[]]).optional(),
   iconColor: color.optional(),
+  iconGradient: textGradientSchema.optional(),
   iconSize: z.enum(Object.keys(BUTTON_SIZES) as [ButtonSize, ...ButtonSize[]]).optional(),
   gap: z.number().int().min(0).max(SOCIAL_GAP_MAX).optional(),
   position: z.enum(Object.keys(SEPARATOR_POSITIONS) as [SeparatorPosition, ...SeparatorPosition[]]).optional(),

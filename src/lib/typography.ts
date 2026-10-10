@@ -176,7 +176,7 @@ const shadowSchema = z.object({
   blur: z.number().int("A shadow's blur is whole pixels.").min(0).max(SHADOW_BLUR_MAX),
 });
 
-const gradientSchema = z.object({
+export const textGradientSchema = z.object({
   colors: z.array(hex).min(TEXT_GRADIENT_COLORS.min).max(TEXT_GRADIENT_COLORS.max),
   angle: z.number().int().min(0).max(360),
 });
@@ -223,9 +223,9 @@ const groups = <T extends z.ZodType>(one: T) =>
     });
 
 /** A part's typography (Extra large). */
-export const typographyGroupsSchema = groups(z.object({ ...typographyShape, textShadow: shadowSchema.optional(), gradient: gradientSchema.optional() }));
+export const typographyGroupsSchema = groups(z.object({ ...typographyShape, textShadow: shadowSchema.optional(), gradient: textGradientSchema.optional() }));
 /** A smaller size's: the same, and a shadow can be none there. */
-export const typographyAtSchema = groups(z.object({ ...typographyShape, textShadow: shadowSchema.nullable().optional(), gradient: gradientSchema.nullable().optional() }));
+export const typographyAtSchema = groups(z.object({ ...typographyShape, textShadow: shadowSchema.nullable().optional(), gradient: textGradientSchema.nullable().optional() }));
 
 // ---------------------------------------------------------------------------
 // Reading at a size

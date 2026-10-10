@@ -24,8 +24,9 @@ export function IconListView({ block }: { block: IconListBlock }) {
           <>
             <ListIcon
               name={item.icon}
-              className={`shrink-0 ${align === "items-start" ? "mt-[0.15em]" : ""} ${size} ${block.iconColor ? "" : "text-accent"}`}
+              className={`shrink-0 ${align === "items-start" ? "mt-[0.15em]" : ""} ${size} ${block.iconColor || block.iconGradient ? "" : "text-accent"}`}
               {...(block.iconColor && { style: { color: block.iconColor } })}
+              {...(block.iconGradient && { gradient: block.iconGradient })}
             />
             <span>
               <Inline text={item.text} links={!item.href} />
