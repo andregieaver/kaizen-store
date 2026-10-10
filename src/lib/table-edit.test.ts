@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TABLE_COLUMNS_MAX, TABLE_ROWS_MAX, pageBlockSchema } from "./page-content";
 import { newBlock } from "./page-rows";
 import { addColumn, addRow, removeColumn, removeRow, setCell } from "./table-edit";
+import { spacingStyle } from "./page-content";
 
 const grid = [["a", "b"], ["c", "d"]];
 
@@ -46,5 +47,41 @@ describe("a table block", () => {
     expect(pageBlockSchema.safeParse({ ...base, rows: [] }).success).toBe(false);
     expect(pageBlockSchema.safeParse({ ...base, rows: [[]] }).success).toBe(false);
     expect(pageBlockSchema.safeParse({ ...base, rows: [Array.from({ length: TABLE_COLUMNS_MAX + 1 }, () => "")] }).success).toBe(false);
+  });
+});
+
+import { addRowTo, removeRowFrom, setSection } from "./table-edit";
+
+describe("a table's section dividers (D197)", () => {
+  const table = { rows: [["h"], ["a"], ["b"]], sections: [null, "One", null] as (string | null)[] };
+
+  it("move with their rows when a row is added or taken out", () => {
+    expect(addRowTo(table, 0).sections).toEqual([null, null, "One"]);
+    expect(addRowTo(table, 1).sections).toEqual([null, "One"]);
+    expect(removeRowFrom(table, 0).sections).toEqual(["One"]);
+    expect(removeRowFrom(table, 1).sections).toBeUndefined();
+  });
+
+  it("are set, emptied (a plain line) and taken away", () => {
+    expect(setSection({ rows: table.rows }, 2, "Two").sections).toEqual([null, null, "Two"]);
+    expect(setSection(table, 1, "").sections).toEqual([null, ""]);
+    expect(setSection(table, 1, null).sections).toBeUndefined();
+  });
+
+  it("pass the page's schema, with colours checked", () => {
+    const block = { ...newBlock("table", () => "t1"), sections: [null, "One"], headerBackground: "#ABCDEF" };
+    const parsed = pageBlockSchema.safeParse(block);
+    expect(parsed.success && (parsed.data as { headerBackground?: string }).headerBackground).toBe("#abcdef");
+    expect(pageBlockSchema.safeParse({ ...block, headerBackground: "red" }).success).toBe(false);
+  });
+});
+
+describe("a negative margin (D197)", () => {
+  it("is allowed by the schema, written as CSS, and padding still cannot be negative", () => {
+    const base = newBlock("heading", () => "h1") as never;
+    const ok = pageBlockSchema.safeParse({ ...(base as object), style: { margin: { top: -20, right: 0, bottom: 0, left: 0 } } });
+    expect(ok.success ? [] : ok.error.issues).toEqual([]);
+    expect(pageBlockSchema.safeParse({ ...(base as object), style: { padding: { top: -5, right: 0, bottom: 0, left: 0 } } }).success).toBe(false);
+    expect(spacingStyle({ margin: { top: -20, right: 0, bottom: 0, left: 0 } })).toEqual({ marginTop: "-20px" });
   });
 });

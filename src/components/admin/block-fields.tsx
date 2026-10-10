@@ -3,7 +3,7 @@
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { createContext, useContext, useId, useState, type ReactNode } from "react";
+import { Fragment, createContext, useContext, useId, useState, type ReactNode } from "react";
 
 import type { ButtonLook } from "@/components/page-block";
 import { ListIcon } from "@/components/list-icon";
@@ -19,7 +19,7 @@ import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
-import { addColumn, addRow, removeColumn, removeRow, setCell } from "@/lib/table-edit";
+import { addColumn, addRowTo, removeColumn, removeRowFrom, setCell, setSection, type TableData } from "@/lib/table-edit";
 
 import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
@@ -1474,6 +1474,9 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
   const rows = block.rows;
   const columns = rows[0]?.length ?? 1;
   const set = (next: string[][]) => onChange({ rows: next });
+  const setTable = (next: TableData) => onChange({ rows: next.rows, sections: next.sections });
+  const table: TableData = { rows, sections: block.sections };
+  const isHeader = (r: number) => Boolean(block.header) && r === 0;
   return (
     <>
       <Check label="First row is a header" hint="Column names: read out by screen readers, and shown beside each value on a phone." checked={Boolean(block.header)} onChange={(header) => onChange({ header: header || undefined })} />
@@ -1499,7 +1502,27 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
           </thead>
           <tbody>
             {rows.map((cells, r) => (
-              <tr key={r}>
+              <Fragment key={r}>
+                {!isHeader(r) && block.sections?.[r] != null && (
+                  <tr>
+                    <td colSpan={columns}>
+                      <input
+                        value={block.sections[r] ?? ""}
+                        maxLength={200}
+                        placeholder="Section title (optional)"
+                        aria-label={`Section title above row ${r + 1}`}
+                        className="h-8 w-full rounded border border-dashed border-border bg-surface px-2 font-semibold"
+                        onChange={(event) => setTable(setSection(table, r, event.target.value))}
+                      />
+                    </td>
+                    <td>
+                      <button type="button" className={ICON_BUTTON} aria-label={`Remove the divider above row ${r + 1}`} title="Remove this divider" onClick={() => setTable(setSection(table, r, null))}>
+                        ×
+                      </button>
+                    </td>
+                  </tr>
+                )}
+              <tr>
                 {cells.map((text, c) => (
                   <td key={c}>
                     <input
@@ -1513,21 +1536,27 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                 ))}
                 <td>
                   <span className="flex items-center gap-1">
-                    <button type="button" className={ICON_BUTTON} aria-label={`Add a row after row ${r + 1}`} title="Add a row after" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => set(addRow(rows, r))}>
+                    <button type="button" className={ICON_BUTTON} aria-label={`Add a row after row ${r + 1}`} title="Add a row after" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => setTable(addRowTo(table, r))}>
                       +
                     </button>
-                    <button type="button" className={ICON_BUTTON} aria-label={`Remove row ${r + 1}`} title="Remove this row" disabled={rows.length <= 1} onClick={() => set(removeRow(rows, r))}>
+                    <button type="button" className={ICON_BUTTON} aria-label={`Remove row ${r + 1}`} title="Remove this row" disabled={rows.length <= 1} onClick={() => setTable(removeRowFrom(table, r))}>
                       ×
                     </button>
+                    {!isHeader(r) && block.sections?.[r] == null && (
+                      <button type="button" className={ICON_BUTTON} aria-label={`Add a divider above row ${r + 1}`} title="Add a section divider above" onClick={() => setTable(setSection(table, r, ""))}>
+                        ―
+                      </button>
+                    )}
                   </span>
                 </td>
               </tr>
+              </Fragment>
             ))}
           </tbody>
         </table>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="min-h-9 rounded border border-border px-3 text-sm hover:bg-background disabled:opacity-40" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => set(addRow(rows))}>
+        <button type="button" className="min-h-9 rounded border border-border px-3 text-sm hover:bg-background disabled:opacity-40" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => setTable(addRowTo(table))}>
           Add row
         </button>
         <button type="button" className="min-h-9 rounded border border-border px-3 text-sm hover:bg-background disabled:opacity-40" disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows))}>
@@ -1535,7 +1564,8 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
         </button>
       </div>
       <p className="text-xs text-muted">
-        Up to {TABLE_ROWS_MAX} rows and {TABLE_COLUMNS_MAX} columns. Cells take the same simple markup as headings (bold, line breaks).
+        Up to {TABLE_ROWS_MAX} rows and {TABLE_COLUMNS_MAX} columns. Cells take the same simple markup as headings (bold, line breaks). The ― button
+        puts a section divider, with a title if you like, above a row.
       </p>
     </>
   );
@@ -1558,6 +1588,18 @@ function TableStyleFields({ block, onChange }: BlockEditorProps<TableBlock>) {
       </p>
       <Check label="First column names the row" hint="Bold, and read out as the row's heading." checked={Boolean(block.rowHeaders)} onChange={(rowHeaders) => onChange({ rowHeaders: rowHeaders || undefined })} />
       <Check label="Shade every other row" checked={Boolean(block.striped)} onChange={(striped) => onChange({ striped: striped || undefined })} />
+      {block.header && (
+        <>
+          <OptionalColor label="Header text colour" hint="The page's text colour unless chosen." value={block.headerColor} fallback="#111111" onChange={(headerColor) => onChange({ headerColor })} />
+          <OptionalColor label="Header background" hint="No background unless chosen. A phone shows the stacked cards without the header row." value={block.headerBackground} fallback="#f5f5f4" onChange={(headerBackground) => onChange({ headerBackground })} />
+        </>
+      )}
+      {block.striped && (
+        <>
+          <OptionalColor label="Shaded rows' text colour" hint="The page's text colour unless chosen." value={block.stripeColor} fallback="#111111" onChange={(stripeColor) => onChange({ stripeColor })} />
+          <OptionalColor label="Shaded rows' background" hint="The theme's surface colour unless chosen." value={block.stripeBackground} fallback="#f5f5f4" onChange={(stripeBackground) => onChange({ stripeBackground })} />
+        </>
+      )}
     </>
   );
 }

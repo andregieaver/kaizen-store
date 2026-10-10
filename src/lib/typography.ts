@@ -446,7 +446,7 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   faq: { "*.title": "title", "*.body": "body" },
   testimonials: { "*.quote": "quote", "*.role": "meta", "*.name": "name" },
   iconList: { "*.text": "text" },
-  table: { caption: "text", "r*": "text" },
+  table: { caption: "text", "r*": "text", "s*": "text" },
   socialLinks: { "network names": "name" },
   emailForm: {
     "*.label": "label",

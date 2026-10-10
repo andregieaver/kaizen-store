@@ -118,6 +118,7 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
       return {
         ...b,
         ...(b.caption !== undefined && { caption: str("caption", b.caption, 200, "Table title") }),
+        ...(b.sections && { sections: b.sections.map((title, r) => (title ? str(`s${r}`, title, 200, `Section title above row ${r + 1}`) : title)) }),
         rows: b.rows.map((row, r) => row.map((cell, c) => str(`r${r}c${c}`, cell, 500, r === 0 && b.header ? `Column ${c + 1} heading` : `Row ${r + 1}, column ${c + 1}`))),
       };
     case "iconList":

@@ -72,7 +72,7 @@ function spacingDecl(spacing: Spacing, dropMargin = false): Decl {
     if (kind === "margin" && dropMargin) continue;
     const sides: Sides | undefined = spacing[kind];
     if (!sides) continue;
-    for (const side of SIDES) if (sides[side] > 0) out[`${kind}-${side}`] = `${sides[side]}px`;
+    for (const side of SIDES) if (kind === "margin" ? sides[side] !== 0 : sides[side] > 0) out[`${kind}-${side}`] = `${sides[side]}px`;
   }
   return out;
 }

@@ -1386,6 +1386,17 @@ export type TableBlock = PartBase & {
   caption?: string;
   /** Phones: stack by default. */
   mobile?: TableMobile;
+  /** The header row's text and background colours (`#rrggbb`); the theme's look unless set. */
+  headerColor?: string;
+  headerBackground?: string;
+  /** The shaded rows' text and background colours (`#rrggbb`), while `striped` is on. */
+  stripeColor?: string;
+  stripeBackground?: string;
+  /**
+   * Section dividers (D197): by row, the title of a divider drawn above that row (an empty title is a plain line), null or missing for
+   * none. Kept in step with `rows` by `table-edit.ts`; never above the header row.
+   */
+  sections?: (string | null)[];
 };
 
 /** A table that shows: some cell has words. */
@@ -1794,7 +1805,7 @@ export function spacingStyle(style: Spacing | undefined): Record<string, string>
     const sides = style?.[kind];
     if (!sides) continue;
     for (const side of ["top", "right", "bottom", "left"] as const) {
-      if (sides[side] > 0) css[`${kind}${side[0].toUpperCase()}${side.slice(1)}`] = `${sides[side]}px`;
+      if (kind === "margin" ? sides[side] !== 0 : sides[side] > 0) css[`${kind}${side[0].toUpperCase()}${side.slice(1)}`] = `${sides[side]}px`;
     }
   }
   return css;
@@ -2018,7 +2029,14 @@ const side = z
   .min(0, "Spacing cannot be below 0.")
   .max(SPACING_MAX, `Keep spacing at ${SPACING_MAX} pixels or less.`);
 const sides = z.object({ top: side, right: side, bottom: side, left: side });
-const spacing = z.object({ margin: sides.optional(), padding: sides.optional() }).optional();
+// A margin may be negative, to pull a part over its neighbour (D197).
+const marginSide = z
+  .number()
+  .int("Spacing is whole pixels.")
+  .min(-SPACING_MAX, `Keep a margin at -${SPACING_MAX} pixels or more.`)
+  .max(SPACING_MAX, `Keep spacing at ${SPACING_MAX} pixels or less.`);
+const marginSides = z.object({ top: marginSide, right: marginSide, bottom: marginSide, left: marginSide });
+const spacing = z.object({ margin: marginSides.optional(), padding: sides.optional() }).optional();
 
 /** Ids the site's own layout uses, which a part of a page cannot take. */
 export const RESERVED_HTML_IDS: readonly string[] = ["main"];
@@ -2798,6 +2816,8 @@ const iconListBlock = z.object({
   ...partBase,
 });
 
+const tableColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase()).optional();
+
 const tableBlock = z.object({
   id: itemId,
   type: z.literal("table"),
@@ -2811,6 +2831,11 @@ const tableBlock = z.object({
   striped: z.boolean().optional(),
   caption: z.string().trim().max(200, "Keep a table's title under 200 characters.").optional(),
   mobile: z.enum(Object.keys(TABLE_MOBILE) as [TableMobile, ...TableMobile[]]).optional(),
+  headerColor: tableColour,
+  headerBackground: tableColour,
+  stripeColor: tableColour,
+  stripeBackground: tableColour,
+  sections: z.array(z.string().trim().max(200, "Keep a section title under 200 characters.").nullable()).max(TABLE_ROWS_MAX).optional(),
   ...partBase,
 });
 

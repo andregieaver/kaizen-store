@@ -45,7 +45,7 @@ describe("a table on the site (D194)", () => {
   it("names rows by the first column, shades every other row and shows a title", () => {
     const html = draw(block({ rowHeaders: true, striped: true, caption: "Sizes" }));
     expect(html).toContain('scope="row"');
-    expect(html).toContain("even:bg-surface");
+    expect(html).toContain("bg-surface");
     expect(html).toContain("<caption");
   });
 });
@@ -54,5 +54,29 @@ describe("the stacked table's header from Medium up (D196)", () => {
   it("undoes every part of Tailwind's sr-only, clip-path included, so the header shows", async () => {
     const { BREAKPOINT_CLASSES } = await import("@/lib/part-css");
     expect(BREAKPOINT_CLASSES["kzb-md-not-sr"].decl).toMatchObject({ "clip-path": "none", position: "static", overflow: "visible" });
+  });
+});
+
+describe("a table's colours and section dividers (D197)", () => {
+  const wide = block({ rows: [["Size", "Price"], ["Small", "1"], ["Medium", "2"], ["Large", "3"], ["Huge", "4"]] });
+
+  it("colours the header row and the shaded rows, only with the colours chosen", () => {
+    const html = draw({ ...wide, striped: true, headerColor: "#ffffff", headerBackground: "#112233", stripeColor: "#000000", stripeBackground: "#eeeeee" });
+    expect(html).toMatch(/<thead[^>]*><tr[^>]*style="color:#ffffff;background-color:#112233"/);
+    expect(html.match(/background-color:#eeeeee/g)).toHaveLength(2);
+    const plain = draw({ ...wide, striped: true });
+    expect(plain).not.toContain("style=");
+    expect(plain.match(/bg-surface/g)).toHaveLength(2);
+  });
+
+  it("draws a divider row across all columns above the row it names, never above the header, and shading skips it", () => {
+    const html = draw({ ...wide, striped: true, sections: ["Ignored", null, "Big sizes", null, ""] });
+    expect(html).toContain('colSpan="2"');
+    expect(html.match(/scope="colgroup"/g)).toHaveLength(2);
+    expect(html).toContain("Big sizes");
+    expect(html).not.toContain("Ignored");
+    // The divider comes before "Medium" (row 2) and not before the header.
+    expect(html.indexOf("Big sizes")).toBeLessThan(html.indexOf("Medium"));
+    expect(html.indexOf("Big sizes")).toBeGreaterThan(html.indexOf("Small"));
   });
 });

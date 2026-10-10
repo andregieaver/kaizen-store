@@ -39,3 +39,43 @@ export function removeColumn(rows: Cells, index: number): Cells {
 export function setCell(rows: Cells, r: number, c: number, text: string): Cells {
   return rows.map((row, i) => (i === r ? row.map((cell, j) => (j === c ? text : cell)) : row));
 }
+
+// ---------------------------------------------------------------------------
+// Section dividers (D197): `sections[r]` is the title of a divider above row r (null: none)
+// ---------------------------------------------------------------------------
+
+export type Sections = (string | null)[];
+export type TableData = { rows: Cells; sections?: Sections };
+
+/** The sections without trailing nothing; none at all when no row has one. */
+function tidy(sections: Sections): Sections | undefined {
+  let end = sections.length;
+  while (end > 0 && sections[end - 1] == null) end--;
+  return end === 0 ? undefined : sections.slice(0, end);
+}
+
+const padded = (table: TableData): Sections => Array.from({ length: table.rows.length }, (_, r) => table.sections?.[r] ?? null);
+
+/** A new row after `after` (-1: first), the sections following their rows. */
+export function addRowTo(table: TableData, after: number = table.rows.length - 1): TableData {
+  const rows = addRow(table.rows, after);
+  if (rows === table.rows) return table;
+  const at = Math.min(Math.max(after + 1, 0), table.rows.length);
+  const sections = padded(table);
+  return { rows, sections: tidy([...sections.slice(0, at), null, ...sections.slice(at)]) };
+}
+
+/** A row taken out with the divider above it. */
+export function removeRowFrom(table: TableData, index: number): TableData {
+  const rows = removeRow(table.rows, index);
+  if (table.rows.length <= 1) return { rows, sections: undefined };
+  return { rows, sections: tidy(padded(table).filter((_, i) => i !== index)) };
+}
+
+/** A divider put above row `r` with this title (empty: a plain line), or taken away with null. */
+export function setSection(table: TableData, r: number, title: string | null): TableData {
+  if (r < 0 || r >= table.rows.length) return table;
+  const sections = padded(table);
+  sections[r] = title;
+  return { rows: table.rows, sections: tidy(sections) };
+}

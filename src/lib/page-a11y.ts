@@ -501,7 +501,7 @@ function blockWords(block: PageBlock): string[] {
     case "iconList":
       return block.items.map((item) => item.text);
     case "table":
-      return [block.caption ?? "", ...block.rows.flat()];
+      return [block.caption ?? "", ...block.rows.flat(), ...(block.sections ?? []).filter((s): s is string => Boolean(s))];
     case "video":
       return [block.title];
     case "html":

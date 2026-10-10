@@ -4131,7 +4131,7 @@ function SpacingFields({
   const id = useId();
   const { size } = useSizeEdit();
   const set = (kind: "margin" | "padding", side: (typeof SIDES)[number], text: string) => {
-    const number = Math.max(0, Math.min(SPACING_MAX, Math.round(Number(text) || 0)));
+    const number = Math.max(kind === "margin" ? -SPACING_MAX : 0, Math.min(SPACING_MAX, Math.round(Number(text) || 0)));
     const sides = { ...NO_SIDES, ...(value?.[kind] ?? defaults?.[kind]), [side]: number };
     const empty = SIDES.every((s) => sides[s] === 0);
     const next: Spacing = { ...value };
@@ -4158,7 +4158,7 @@ function SpacingFields({
                   id={`${id}-${kind}-${side}`}
                   type="number"
                   inputMode="numeric"
-                  min={0}
+                  min={kind === "margin" ? -SPACING_MAX : 0}
                   max={SPACING_MAX}
                   step={4}
                   value={value?.[kind]?.[side] ?? defaults?.[kind]?.[side] ?? 0}
@@ -4167,7 +4167,7 @@ function SpacingFields({
                 />
                 <PixelRange
                   value={value?.[kind]?.[side] ?? defaults?.[kind]?.[side] ?? 0}
-                  min={0}
+                  min={kind === "margin" ? -SPACING_MAX : 0}
                   max={SPACING_MAX}
                   step={2}
                   label={`${kind === "margin" ? "Margin" : "Padding"} ${side}, slider`}

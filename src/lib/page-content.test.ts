@@ -422,15 +422,18 @@ describe("pictures and spacing (D47)", () => {
     });
   });
 
-  it("keeps margin and padding in whole pixels from 0 to 240, and turns them into CSS", () => {
+  it("keeps padding in whole pixels from 0 to 240 and margin from -240 to 240, and turns them into CSS", () => {
     const sides = { top: 8, right: 0, bottom: 24, left: 0 };
     const parsed = pageInput.parse(page([], { style: { margin: sides, padding: sides } }));
     expect(parsed.rows[0].columns[0].style).toEqual({ margin: sides, padding: sides });
     expect(spacingStyle({ margin: sides })).toEqual({ marginTop: "8px", marginBottom: "24px" });
     expect(spacingStyle(undefined)).toEqual({});
     for (const bad of [-4, 241, 2.5]) {
-      expect(pageInput.safeParse(page([], { style: { margin: { ...sides, top: bad } } })).success).toBe(false);
+      expect(pageInput.safeParse(page([], { style: { padding: { ...sides, top: bad } } })).success).toBe(false);
     }
+    // A margin may be negative (D197).
+    for (const bad of [-241, 241, 2.5]) expect(pageInput.safeParse(page([], { style: { margin: { ...sides, top: bad } } })).success).toBe(false);
+    expect(pageInput.safeParse(page([], { style: { margin: { ...sides, top: -40 } } })).success).toBe(true);
   });
 
   it("gives rows 20 px of padding until they have their own, and keeps a row set to none", () => {
