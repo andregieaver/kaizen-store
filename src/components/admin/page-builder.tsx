@@ -450,11 +450,12 @@ const blockLabels: Record<BlockType, string> = {
   testimonials: "Testimonials",
   socialLinks: "Social media",
   iconList: "Icon list",
+  table: "Table",
   emailForm: "Email form",
   newsletter: "Newsletter",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "iconList", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "iconList", "table", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -480,6 +481,7 @@ const blockThis: Record<BlockType, string> = {
   testimonials: "these testimonials",
   socialLinks: "these social media links",
   iconList: "this icon list",
+  table: "this table",
   emailForm: "this form",
   newsletter: "this newsletter sign-up",
 };
@@ -1939,6 +1941,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <SocialIcon />;
     case "iconList":
       return <IconListIcon />;
+    case "table":
+      return <TableIcon />;
     case "emailForm":
       return <FormIcon />;
     case "newsletter":
@@ -1965,6 +1969,16 @@ function NewsletterIcon() {
         <rect x="3" y="5" width="18" height="14" rx="2" />
         <path d="m3 7 9 6 9-6" />
       </svg>
+    </span>
+  );
+}
+
+function TableIcon() {
+  return (
+    <span aria-hidden className="grid h-9 grid-cols-3 gap-px overflow-hidden rounded-sm bg-background/40 p-1 text-background">
+      {Array.from({ length: 9 }, (_, i) => (
+        <span key={i} className={`rounded-[1px] ${i < 3 ? "bg-current" : "bg-current opacity-40"}`} />
+      ))}
     </span>
   );
 }
@@ -2898,6 +2912,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   testimonials: "Testimonials: each needs what the person said. Double-click or use the wrench.",
   socialLinks: "Social media: each link needs its address. Double-click or use the wrench.",
   iconList: "An icon list: each line needs its words. Double-click or use the wrench.",
+  table: "An empty table: write in its cells. Double-click or use the wrench.",
   emailForm: "An email form: it needs its questions and where to send. Double-click or use the wrench.",
   newsletter: "A newsletter sign-up: it needs where to send. Double-click or use the wrench.",
 };

@@ -53,6 +53,8 @@ function filled(type: PageBlock["type"]): PageBlock {
       return { ...block, items: [panel] } as PageBlock;
     case "testimonials":
       return { ...block, items: [{ id: "t1", quote: "Q", name: "N", role: "R", picture: null }] } as PageBlock;
+    case "table":
+      return { ...block, caption: "C", rows: [["A", "B"], ["1", "2"]] } as PageBlock;
     case "iconList":
       return { ...block, items: [{ id: "l1", icon: "check", text: "L", href: "" }] } as PageBlock;
     case "emailForm":
@@ -72,7 +74,8 @@ const pattern = (key: string, block: PageBlock) =>
     .replace(`block.${block.id}.`, "")
     .replace(/^(i1|p1|t1|l1|f1)\./, "*.")
     .replace(/detail-d1\./, "detail-*.")
-    .replace(/option\d+$/, "option*");
+    .replace(/option\d+$/, "option*")
+    .replace(/^r\d+c\d+$/, "r*");
 
 describe("every text a component draws has a size (owner's addition to phase 3) and a colour (D180)", () => {
   it("names a kind of text for every text of every kind of component", () => {

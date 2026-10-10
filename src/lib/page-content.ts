@@ -1362,6 +1362,35 @@ export type IconListBlock = PartBase & {
 /** A line that shows: it has words. */
 export const iconItemShows = (item: IconListItem) => item.text.trim() !== "";
 
+export const TABLE_ROWS_MAX = 60;
+export const TABLE_COLUMNS_MAX = 12;
+export const TABLE_CELL_MAX = 500;
+/** How a table behaves on a narrow screen: scrolls sideways, or each row becomes a card with its column names beside the values. */
+export const TABLE_MOBILE = { stack: "Stack each row", scroll: "Scroll sideways" } as const;
+export type TableMobile = keyof typeof TABLE_MOBILE;
+
+/**
+ * A table: rows of cells (plain text that may hold inline markup), the first row its header when `header` is on. Every row has
+ * as many cells as the first. On a phone it stacks (each row a card, cells labelled by their column's header) or scrolls sideways.
+ */
+export type TableBlock = PartBase & {
+  id: string;
+  type: "table";
+  rows: string[][];
+  /** The first row is the header: column names, read by screen readers and shown beside the values when stacked. */
+  header?: boolean;
+  /** The first column names its row (a row header). */
+  rowHeaders?: boolean;
+  striped?: boolean;
+  /** A title for the table, read by screen readers and shown above it. */
+  caption?: string;
+  /** Phones: stack by default. */
+  mobile?: TableMobile;
+};
+
+/** A table that shows: some cell has words. */
+export const tableShows = (block: Pick<TableBlock, "rows">) => block.rows.some((row) => row.some((cell) => cell.trim() !== ""));
+
 /** Kinds of question a form asks (D93). */
 export const FORM_FIELD_KINDS = {
   name: "Name",
@@ -1477,6 +1506,7 @@ export type PageBlock =
   | TestimonialsBlock
   | SocialLinksBlock
   | IconListBlock
+  | TableBlock
   | EmailFormBlock
   | NewsletterBlock;
 export type BlockType = PageBlock["type"];
@@ -1672,6 +1702,8 @@ export function blockOwnContent(block: PageBlock): boolean {
       return block.links.some(socialLinkShows);
     case "iconList":
       return block.items.some(iconItemShows);
+    case "table":
+      return tableShows(block);
     case "emailForm":
     case "newsletter":
       return formShows(block);
@@ -1706,6 +1738,8 @@ export function blockText(block: PageBlock): string {
         .filter(iconItemShows)
         .map((item) => inlinePlain(item.text))
         .join(" ");
+    case "table":
+      return [block.caption && inlinePlain(block.caption), ...block.rows.map((row) => row.map(inlinePlain).filter(Boolean).join(" "))].filter(Boolean).join(" ");
     case "testimonials":
       // Google's reviews are Google's words, not the page's.
       if (block.source === "google") return "";
@@ -2764,6 +2798,22 @@ const iconListBlock = z.object({
   ...partBase,
 });
 
+const tableBlock = z.object({
+  id: itemId,
+  type: z.literal("table"),
+  rows: z
+    .array(z.array(z.string().max(TABLE_CELL_MAX, `Keep a cell under ${TABLE_CELL_MAX} characters.`)).min(1, "A table needs at least one column.").max(TABLE_COLUMNS_MAX, `A table has at most ${TABLE_COLUMNS_MAX} columns.`))
+    .min(1, "A table needs at least one row.")
+    .max(TABLE_ROWS_MAX, `A table has at most ${TABLE_ROWS_MAX} rows.`)
+    .refine((rows) => rows.every((row) => row.length === rows[0].length), "Every row of a table needs the same number of cells."),
+  header: z.boolean().optional(),
+  rowHeaders: z.boolean().optional(),
+  striped: z.boolean().optional(),
+  caption: z.string().trim().max(200, "Keep a table's title under 200 characters.").optional(),
+  mobile: z.enum(Object.keys(TABLE_MOBILE) as [TableMobile, ...TableMobile[]]).optional(),
+  ...partBase,
+});
+
 const formText = (what: string, max = FORM_TEXT_MAX) => z.string().trim().max(max, `Keep ${what} under ${max} characters.`);
 
 const recipients = z
@@ -2858,6 +2908,7 @@ export const pageBlockUnion = z.discriminatedUnion("type", [
   testimonialsBlock,
   socialLinksBlock,
   iconListBlock,
+  tableBlock,
   emailFormBlock,
   newsletterBlock,
 ]);

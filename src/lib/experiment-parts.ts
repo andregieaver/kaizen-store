@@ -25,6 +25,7 @@ const BLOCK_WORDS: Record<string, string> = {
   contentGrid: "Content grid",
   fieldLoop: "Field loop",
   iconList: "Icon list",
+  table: "Table",
   emailForm: "Email form",
   richText: "Rich text",
 };

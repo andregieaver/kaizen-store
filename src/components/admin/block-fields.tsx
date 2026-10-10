@@ -19,6 +19,8 @@ import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
+import { addColumn, addRow, removeColumn, removeRow, setCell } from "@/lib/table-edit";
+
 import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
 import { RichTextEditor } from "./rich-text-editor";
@@ -54,6 +56,11 @@ import {
   type NewsletterBlock,
   ICON_LIST_LAYOUTS,
   ICON_LIST_TEXT_MAX,
+  TABLE_CELL_MAX,
+  TABLE_COLUMNS_MAX,
+  TABLE_MOBILE,
+  TABLE_ROWS_MAX,
+  type TableBlock,
   type IconListBlock,
   type IconListItem,
   TESTIMONIAL_COLUMNS,
@@ -162,6 +169,12 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font", fallback: "The site's body font" },
     General: IconListFields,
     Style: IconListStyleFields,
+  },
+  table: {
+    title: "Table",
+    font: { label: "Font", fallback: "The site's body font" },
+    General: TableFields,
+    Style: TableStyleFields,
   },
   socialLinks: {
     title: "Social media",
@@ -1447,6 +1460,104 @@ function IconListFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
         }}
       </ItemsEditor>
       <p className="text-xs text-muted">A line without words is left out on the site. The icons are for looks: the words say what each line means.</p>
+    </>
+  );
+}
+
+const ICON_BUTTON = "inline-flex size-7 shrink-0 items-center justify-center rounded border border-border text-xs hover:bg-background disabled:opacity-40";
+
+/**
+ * A table's cells (D194) as a grid of fields: every column has its own add and remove buttons above it and every row at its end,
+ * and "Add row" and "Add column" put one at the end. The first row is the header while the header is on.
+ */
+function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
+  const rows = block.rows;
+  const columns = rows[0]?.length ?? 1;
+  const set = (next: string[][]) => onChange({ rows: next });
+  return (
+    <>
+      <Check label="First row is a header" hint="Column names: read out by screen readers, and shown beside each value on a phone." checked={Boolean(block.header)} onChange={(header) => onChange({ header: header || undefined })} />
+      <TextField label="Title (optional)" value={block.caption ?? ""} max={200} placeholder="Sizes and prices" onChange={(caption) => onChange({ caption: caption || undefined })} />
+      <div className="overflow-x-auto rounded border border-border p-2">
+        <table className="border-separate border-spacing-1 text-sm">
+          <thead>
+            <tr>
+              {rows[0]?.map((_, c) => (
+                <th key={c} scope="col" className="font-normal">
+                  <span className="flex items-center justify-center gap-1">
+                    <button type="button" className={ICON_BUTTON} aria-label={`Add a column after column ${c + 1}`} title="Add a column after" disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows, c))}>
+                      +
+                    </button>
+                    <button type="button" className={ICON_BUTTON} aria-label={`Remove column ${c + 1}`} title="Remove this column" disabled={columns <= 1} onClick={() => set(removeColumn(rows, c))}>
+                      ×
+                    </button>
+                  </span>
+                </th>
+              ))}
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((cells, r) => (
+              <tr key={r}>
+                {cells.map((text, c) => (
+                  <td key={c}>
+                    <input
+                      value={text}
+                      maxLength={TABLE_CELL_MAX}
+                      aria-label={block.header && r === 0 ? `Heading of column ${c + 1}` : `Row ${r + 1}, column ${c + 1}`}
+                      className={`h-8 w-32 rounded border border-border bg-background px-2 ${block.header && r === 0 ? "font-semibold" : ""}`}
+                      onChange={(event) => set(setCell(rows, r, c, event.target.value))}
+                    />
+                  </td>
+                ))}
+                <td>
+                  <span className="flex items-center gap-1">
+                    <button type="button" className={ICON_BUTTON} aria-label={`Add a row after row ${r + 1}`} title="Add a row after" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => set(addRow(rows, r))}>
+                      +
+                    </button>
+                    <button type="button" className={ICON_BUTTON} aria-label={`Remove row ${r + 1}`} title="Remove this row" disabled={rows.length <= 1} onClick={() => set(removeRow(rows, r))}>
+                      ×
+                    </button>
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className="min-h-9 rounded border border-border px-3 text-sm hover:bg-background disabled:opacity-40" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => set(addRow(rows))}>
+          Add row
+        </button>
+        <button type="button" className="min-h-9 rounded border border-border px-3 text-sm hover:bg-background disabled:opacity-40" disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows))}>
+          Add column
+        </button>
+      </div>
+      <p className="text-xs text-muted">
+        Up to {TABLE_ROWS_MAX} rows and {TABLE_COLUMNS_MAX} columns. Cells take the same simple markup as headings (bold, line breaks).
+      </p>
+    </>
+  );
+}
+
+/** How a table looks and behaves on a phone (D194). */
+function TableStyleFields({ block, onChange }: BlockEditorProps<TableBlock>) {
+  return (
+    <>
+      <Choices
+        legend="On a phone"
+        options={optionsOf(TABLE_MOBILE)}
+        value={block.mobile ?? "stack"}
+        onChange={(mobile) => onChange({ mobile: mobile === "stack" ? undefined : mobile })}
+      />
+      <p className="text-xs text-muted">
+        {(block.mobile ?? "stack") === "stack"
+          ? "Each row becomes a card: every value is shown under its column's name (from the header row)."
+          : "The table keeps its columns and scrolls sideways on a narrow screen."}
+      </p>
+      <Check label="First column names the row" hint="Bold, and read out as the row's heading." checked={Boolean(block.rowHeaders)} onChange={(rowHeaders) => onChange({ rowHeaders: rowHeaders || undefined })} />
+      <Check label="Shade every other row" checked={Boolean(block.striped)} onChange={(striped) => onChange({ striped: striped || undefined })} />
     </>
   );
 }

@@ -148,6 +148,7 @@ const BLOCK_WORDS: Partial<Record<PageBlock["type"], string>> = {
   faq: "Questions",
   tabs: "Tabs",
   iconList: "Icon list",
+  table: "Table",
 };
 const blockWord = (block: PageBlock) => BLOCK_WORDS[block.type] ?? "Component";
 
@@ -499,6 +500,8 @@ function blockWords(block: PageBlock): string[] {
       return block.items.flatMap((item) => [item.title, richFacts(item.body).text]);
     case "iconList":
       return block.items.map((item) => item.text);
+    case "table":
+      return [block.caption ?? "", ...block.rows.flat()];
     case "video":
       return [block.title];
     case "html":

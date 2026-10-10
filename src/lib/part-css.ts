@@ -760,6 +760,13 @@ export const BREAKPOINT_CLASSES: Record<string, { from: "md" | "lg"; decl: Decl 
   "kzb-md-size-20": { from: "md", decl: { width: "5rem", height: "5rem" } },
   "kzb-md-hidden": { from: "md", decl: { display: "none" } },
   "kzb-md-flex": { from: "md", decl: { display: "flex" } },
+  // A table that stacks on a phone (D194): its table parts are blocks until Medium.
+  "kzb-md-table": { from: "md", decl: { display: "table" } },
+  "kzb-md-table-row": { from: "md", decl: { display: "table-row" } },
+  "kzb-md-table-cell": { from: "md", decl: { display: "table-cell" } },
+  "kzb-md-table-header-group": { from: "md", decl: { display: "table-header-group" } },
+  "kzb-md-not-sr": { from: "md", decl: { position: "static", width: "auto", height: "auto", margin: "0", overflow: "visible", clip: "auto", "white-space": "normal" } },
+  "kzb-md-table-row-group": { from: "md", decl: { display: "table-row-group" } },
   "kzb-md-text-base": { from: "md", decl: { "font-size": "1rem", "line-height": "var(--tw-leading, 1.5)" } },
   // An article's title (`ArticleView`): Tailwind's `text-4xl`.
   "kzb-md-text-4xl": { from: "md", decl: { "font-size": "2.25rem", "line-height": "var(--tw-leading, calc(2.5 / 2.25))" } },

@@ -53,6 +53,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   testimonials: "testimonials",
   socialLinks: "social links",
   iconList: "icon list",
+  table: "table",
   emailForm: "email form",
   newsletter: "newsletter",
 };

@@ -114,6 +114,12 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
           role: str(`${item.id}.role`, item.role, 100, `Testimonial ${index + 1}: title or place`),
         })),
       };
+    case "table":
+      return {
+        ...b,
+        ...(b.caption !== undefined && { caption: str("caption", b.caption, 200, "Table title") }),
+        rows: b.rows.map((row, r) => row.map((cell, c) => str(`r${r}c${c}`, cell, 500, r === 0 && b.header ? `Column ${c + 1} heading` : `Row ${r + 1}, column ${c + 1}`))),
+      };
     case "iconList":
       return { ...b, items: b.items.map((item, index) => ({ ...item, text: str(`${item.id}.text`, item.text, 300, `Line ${index + 1}`) })) };
     case "html":

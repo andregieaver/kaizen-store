@@ -70,6 +70,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
       return { id: id(), type, source: "youtube", video: null, link: "", poster: null, title: "" };
     case "html":
       return { id: id(), type, html: "", title: "" };
+    case "table":
+      return { id: id(), type, header: true, mobile: "stack", rows: [["", "", ""], ["", "", ""], ["", "", ""]] };
     case "iconList":
       return {
         id: id(),
