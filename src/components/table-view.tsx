@@ -27,11 +27,12 @@ export function TableView({ block }: { block: TableBlock }) {
   const cell = stack ? "block kzb-md-table-cell" : "";
   const headerStyle = colours(block.headerColor, block.headerBackground);
   const stripeStyle = colours(block.stripeColor, block.stripeBackground);
+  const sectionStyle = colours(block.sectionColor, block.sectionBackground);
   // Section dividers (D197): a full-width row above the row it names; not above the header.
   const sectionAt = (r: number) => (header && r <= 0 ? null : (block.sections?.[r] ?? null));
   const sectionRow = (r: number, title: string) => (
     <tr key={`s${r}`} className={stack ? "block kzb-md-table-row" : ""}>
-      <th scope="colgroup" colSpan={first.length} className={`border-b-2 border-t-2 border-border bg-surface px-3 py-2 text-left font-semibold ${cell}`}>
+      <th scope="colgroup" colSpan={first.length} style={sectionStyle} className={`border-b-2 border-t-2 border-border bg-surface px-3 py-2 text-left font-semibold ${cell}`}>
         {title ? <Inline text={title} /> : <span className="sr-only">Section</span>}
       </th>
     </tr>

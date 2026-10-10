@@ -1397,6 +1397,9 @@ export type TableBlock = PartBase & {
    * none. Kept in step with `rows` by `table-edit.ts`; never above the header row.
    */
   sections?: (string | null)[];
+  /** The section dividers' text and background colours (`#rrggbb`). */
+  sectionColor?: string;
+  sectionBackground?: string;
 };
 
 /** A table that shows: some cell has words. */
@@ -2835,6 +2838,8 @@ const tableBlock = z.object({
   headerBackground: tableColour,
   stripeColor: tableColour,
   stripeBackground: tableColour,
+  sectionColor: tableColour,
+  sectionBackground: tableColour,
   sections: z.array(z.string().trim().max(200, "Keep a section title under 200 characters.").nullable()).max(TABLE_ROWS_MAX).optional(),
   ...partBase,
 });

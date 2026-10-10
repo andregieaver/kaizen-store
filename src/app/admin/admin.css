@@ -186,7 +186,7 @@ html[data-admin] :is(h1, h2, h3) {
 html[data-admin] h1:not(:is([data-theme-canvas], [data-theme-preview]) *) {
   font-weight: 650;
 }
-html[data-admin] :is(table, [data-tabular]) {
+html[data-admin] :is(table, [data-tabular]):not(:is([data-theme-canvas], [data-theme-preview]) *) {
   font-variant-numeric: tabular-nums;
 }
 
@@ -376,17 +376,17 @@ html[data-admin] .border-red-700:not(:is([data-theme-canvas], [data-theme-previe
 
 /* ------------------------------------------------------------------- tables */
 
-html[data-admin] thead th {
+html[data-admin] thead th:not(:is([data-theme-canvas], [data-theme-preview]) *) {
   background: color-mix(in srgb, var(--surface) 70%, var(--background));
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
-html[data-admin] tbody tr {
+html[data-admin] tbody tr:not(:is([data-theme-canvas], [data-theme-preview]) *) {
   transition: background-color 0.12s var(--ease);
 }
-html[data-admin] tbody tr:hover {
+html[data-admin] tbody tr:hover:not(:is([data-theme-canvas], [data-theme-preview]) *) {
   background-color: color-mix(in srgb, var(--brand-solid) 5%, var(--background));
 }
 

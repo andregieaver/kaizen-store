@@ -69,6 +69,11 @@ describe("a table's colours and section dividers (D197)", () => {
     expect(plain.match(/bg-surface/g)).toHaveLength(2);
   });
 
+  it("colours the section dividers", () => {
+    const html = draw({ ...wide, sections: [null, "Big", null], sectionColor: "#ffffff", sectionBackground: "#445566" });
+    expect(html).toMatch(/scope="colgroup"[^>]*style="color:#ffffff;background-color:#445566"/);
+  });
+
   it("draws a divider row across all columns above the row it names, never above the header, and shading skips it", () => {
     const html = draw({ ...wide, striped: true, sections: ["Ignored", null, "Big sizes", null, ""] });
     expect(html).toContain('colSpan="2"');

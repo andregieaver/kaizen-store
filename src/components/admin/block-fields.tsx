@@ -1594,6 +1594,12 @@ function TableStyleFields({ block, onChange }: BlockEditorProps<TableBlock>) {
           <OptionalColor label="Header background" hint="No background unless chosen. A phone shows the stacked cards without the header row." value={block.headerBackground} fallback="#f5f5f4" onChange={(headerBackground) => onChange({ headerBackground })} />
         </>
       )}
+      {block.sections?.some((title) => title != null) && (
+        <>
+          <OptionalColor label="Section text colour" hint="The page's text colour unless chosen." value={block.sectionColor} fallback="#111111" onChange={(sectionColor) => onChange({ sectionColor })} />
+          <OptionalColor label="Section background" hint="The theme's surface colour unless chosen." value={block.sectionBackground} fallback="#f5f5f4" onChange={(sectionBackground) => onChange({ sectionBackground })} />
+        </>
+      )}
       {block.striped && (
         <>
           <OptionalColor label="Shaded rows' text colour" hint="The page's text colour unless chosen." value={block.stripeColor} fallback="#111111" onChange={(stripeColor) => onChange({ stripeColor })} />
