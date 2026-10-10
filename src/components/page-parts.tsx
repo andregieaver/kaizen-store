@@ -25,7 +25,7 @@ import { BackgroundVideo } from "./background-video";
 /**
  * How a page's rows, columns and blocks are drawn with their settings (D47,
  * D48), shared by the site (`PageArticle`) and the page builder's canvas so
- * both look the same. The canvas leaves out custom ids, classes and column
+ * both look the same. The canvas leaves out custom ids and column
  * links, and its "full width" is the canvas's. What can differ by screen size
  * (D179) is drawn by the part stylesheet (`src/lib/part-css.ts`, `PartStyles`):
  * these give each element its classes, and the stylesheet says the rest.
@@ -65,7 +65,7 @@ export function rowBox(row: PageRow, mode: PartsMode, inPanel = false): Box {
       "relative isolate flex flex-col",
       row.fullHeight && "min-h-svh",
       clipsAnywhere(row) && !inPanel && "overflow-hidden",
-      mode === "site" && row.className,
+      row.className,
     ),
     style: {},
   };
@@ -137,7 +137,7 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
       clipsAnywhere(column) && "overflow-hidden",
       // Links in the text stay usable above the column's own link.
       mode === "site" && column.link && "[&_.rich-text_a]:relative [&_.rich-text_a]:z-[2]",
-      mode === "site" && column.className,
+      column.className,
     ),
     style: {},
   };
@@ -165,7 +165,7 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
       // Its own font (D59) for all its text, from its typography (D179); the stylesheet comes with `FontLinks`.
       ...boxFamilies(block).map(fontClass),
       block.type !== "button" && SIZES.some((size) => Boolean(valueAt(block, "radius", size))) && "overflow-hidden",
-      mode === "site" && block.className,
+      block.className,
     ),
     style: {},
   };

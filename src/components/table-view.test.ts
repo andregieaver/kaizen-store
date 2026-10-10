@@ -49,3 +49,10 @@ describe("a table on the site (D194)", () => {
     expect(html).toContain("<caption");
   });
 });
+
+describe("the stacked table's header from Medium up (D196)", () => {
+  it("undoes every part of Tailwind's sr-only, clip-path included, so the header shows", async () => {
+    const { BREAKPOINT_CLASSES } = await import("@/lib/part-css");
+    expect(BREAKPOINT_CLASSES["kzb-md-not-sr"].decl).toMatchObject({ "clip-path": "none", position: "static", overflow: "visible" });
+  });
+});
