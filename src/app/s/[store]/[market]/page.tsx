@@ -95,7 +95,7 @@ export default async function MarketHome({ params, searchParams }: Props) {
             listing: { query: searchParams, path: marketPath(store.slug, market.slug) },
           }}
         />
-        <PageEditLink pageId={frontPage.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
+        <PageEditLink pageId={frontPage.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} textEditable={market.locale === store.localization.locales[0]} />
         {/* A test of the front page (D148, phase 10): which version this is, for the exposure. */}
         {test && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={test.id} variant={version} goalBlock={test.goalBlock} />}
       </>

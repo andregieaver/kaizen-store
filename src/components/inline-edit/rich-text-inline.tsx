@@ -1,7 +1,7 @@
 "use client";
 
 import { EditorContent, useEditor } from "@tiptap/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { RichTextDoc } from "@/lib/page-content";
 
@@ -18,6 +18,8 @@ export function InlineRichEditor({
   doc,
   point,
   label,
+  endOnBlur = true,
+  actions,
   onChange,
   onDone,
 }: {
@@ -26,6 +28,10 @@ export function InlineRichEditor({
   /** Where it was pressed, to put the caret there. */
   point: { x: number; y: number } | null;
   label: string;
+  /** Whether the focus leaving the text and its bar ends the editing (the builder's canvas); on the live site only the person says when. */
+  endOnBlur?: boolean;
+  /** More in the floating bar, under the formatting: the live site's Save and Cancel. */
+  actions?: ReactNode;
   onChange: (doc: RichTextDoc) => void;
   onDone: (how: "save" | "cancel") => void;
 }) {
@@ -53,10 +59,18 @@ export function InlineRichEditor({
         role: "textbox",
       },
       handleKeyDown: (_view, event) => {
-        if (event.key !== "Escape") return false;
-        event.preventDefault();
-        finish("cancel");
-        return true;
+        if (event.key === "Escape") {
+          event.preventDefault();
+          finish("cancel");
+          return true;
+        }
+        // Ctrl or Cmd with Enter: done.
+        if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          finish("save");
+          return true;
+        }
+        return false;
       },
     },
     onUpdate: ({ editor: current }) => onChange(current.getJSON() as RichTextDoc),
@@ -74,7 +88,7 @@ export function InlineRichEditor({
       ref={wrapper}
       onBlur={(event) => {
         // The window losing the focus does not end it, nor does the focus moving between the text and its bar.
-        if (!document.hasFocus()) return;
+        if (!endOnBlur || !document.hasFocus()) return;
         const next = event.relatedTarget;
         if (next instanceof Node && (wrapper.current?.contains(next) || bar.current?.contains(next))) return;
         finish("save");
@@ -84,6 +98,7 @@ export function InlineRichEditor({
       {editor && (
         <FloatingBar anchor={wrapper} barRef={bar}>
           <RichTextToolbar editor={editor} label={label} />
+          {actions}
         </FloatingBar>
       )}
     </div>

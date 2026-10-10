@@ -46,7 +46,13 @@ export async function RolePage({
   return (
     <>
       <StorePageArticle content={content} place={{ ...place, pageId: page.id, owner: store.id, market: market.slug, route: route && { ...route, holds } }} />
-      <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
+      <PageEditLink
+        pageId={page.id}
+        store={store.slug}
+        adminOrigin={adminOrigin(store.slug)}
+        // The working pages (the cart, the checkout) are edited in the page builder: nothing of the editor is loaded where a card is paid with (D158).
+        textEditable={!route && market.locale === store.localization.locales[0]}
+      />
       {/* A test of this working page (D148): which version this is, for the exposure. */}
       {test && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={test.id} variant={version} goalBlock={test.goalBlock} />}
     </>

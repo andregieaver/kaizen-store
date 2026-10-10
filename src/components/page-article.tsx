@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 
 import { blockFonts, blockShowsUnbound, columnLines, partFonts, rowShows, type PageBlock, type PageColumn, type PageContent, type PageRow } from "@/lib/page-content";
+import { inlineMarkOf } from "@/lib/inline-edit";
 
 import { withoutBindings } from "@/lib/field-binding";
 import { t } from "@/lib/i18n";
@@ -72,7 +73,8 @@ export function PageArticle({
   const first = flowRows(rows)[0];
   const motion = motionNeeds(rows);
   return (
-    <article className="flex flex-col gap-8" {...(motion.any ? { "data-fx-clip": "" } : {})}>
+    // The page's id, for the signed-in staff's "Edit text" (D192), which finds the headings and texts it may edit inside it.
+    <article className="flex flex-col gap-8" {...(motion.any ? { "data-fx-clip": "" } : {})} {...(!inAdmin && place.pageId ? { "data-kz-page": place.pageId } : {})}>
       {/* The page's own CSS (D100), for the whole page. */}
       {!inAdmin && <CustomCss css={content.css} name={`page-${place.pageId ?? "layout"}`} />}
       {!hasMainHeading && !titled && <h1 className="sr-only">{content.title}</h1>}
@@ -225,9 +227,11 @@ function RowMarkup({
           // A product or site component with nothing to show leaves no space behind (D79, D80).
           const own = renderBlock && (block.type === "product" || block.type === "site") ? renderBlock(block) : undefined;
           if (own === null) return null;
+          // A heading or text of the page's own that signed-in staff may edit where it stands (D192): marked for them, never on a preview.
+          const editable = !preview && place.pageId ? inlineMarkOf({ row, column, block }, inPanel) : null;
           return (
             <VisiblePart key={block.id} show={block.visibility?.show} place={place} preview={preview}>
-            <div id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs}>
+            <div id={b.id} className={b.className || undefined} style={{ ...b.style, ...fx.style }} {...fx.attrs} {...(editable && { "data-kz-edit": editable, "data-kz-block": block.id })}>
               <FontLinks families={blockFonts(block)} />
               {own !== undefined ? (
                 own

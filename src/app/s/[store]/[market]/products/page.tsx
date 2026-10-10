@@ -79,7 +79,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
           content={localizePage(page.content, market.locale)}
           place={{ pageId: page.id, owner: store.id, market: market.slug, archive: true, listing: { query: searchParams, path } }}
         />
-        <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} />
+        <PageEditLink pageId={page.id} store={store.slug} adminOrigin={adminOrigin(store.slug)} textEditable={market.locale === store.localization.locales[0]} />
         {/* A test of the All products page (D148, phase 10): which version this is, for the exposure. */}
         {test && <AbMarker storeId={store.id} store={store.slug} market={market.slug} experiment={test.id} variant={version} goalBlock={test.goalBlock} />}
       </>

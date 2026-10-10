@@ -14,6 +14,7 @@ export function InlineHeadingEditor({
   className,
   text,
   point,
+  endOnBlur = true,
   onChange,
   onDone,
 }: {
@@ -24,6 +25,8 @@ export function InlineHeadingEditor({
   text: string;
   /** Where it was pressed, to put the caret there. */
   point: { x: number; y: number } | null;
+  /** Whether the focus leaving it ends the editing (the builder's canvas); on the live site only the person says when. */
+  endOnBlur?: boolean;
   onChange: (text: string) => void;
   onDone: (how: "save" | "cancel") => void;
 }) {
@@ -93,7 +96,7 @@ export function InlineHeadingEditor({
       onDrop={(event) => event.preventDefault()}
       // The window losing the focus (another tab) does not end it; a press elsewhere does.
       onBlur={() => {
-        if (document.hasFocus()) finish("save");
+        if (endOnBlur && document.hasFocus()) finish("save");
       }}
     />
   );
