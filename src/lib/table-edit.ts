@@ -79,3 +79,17 @@ export function setSection(table: TableData, r: number, title: string | null): T
   sections[r] = title;
   return { rows: table.rows, sections: tidy(sections) };
 }
+
+/** A row moved from one place to another with the divider above it (the header, when there is one, is kept first by the caller: it is never moved). */
+export function moveRow(table: TableData, from: number, to: number): TableData {
+  const n = table.rows.length;
+  if (from === to || from < 0 || to < 0 || from >= n || to >= n) return table;
+  const sections = padded(table);
+  const move = <T,>(list: T[]): T[] => {
+    const next = [...list];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    return next;
+  };
+  return { rows: move(table.rows), sections: tidy(move(sections)) };
+}

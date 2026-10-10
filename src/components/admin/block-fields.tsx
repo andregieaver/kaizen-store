@@ -19,7 +19,7 @@ import { ICONS, type IconName } from "@/lib/icons";
 import { SOCIAL_NETWORKS, socialHref, socialPlaceholder, type SocialNetwork } from "@/lib/social-links";
 import { embedUrl, EMBED_NAMES } from "@/lib/video-embed";
 
-import { addColumn, addRowTo, removeColumn, removeRowFrom, setCell, setSection, type TableData } from "@/lib/table-edit";
+import { addColumn, addRowTo, moveRow, removeColumn, removeRowFrom, setCell, setSection, type TableData } from "@/lib/table-edit";
 
 import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
@@ -1478,6 +1478,14 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
   const setTable = (next: TableData) => onChange({ rows: next.rows, sections: next.sections });
   const table: TableData = { rows, sections: block.sections };
   const isHeader = (r: number) => Boolean(block.header) && r === 0;
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  // Rows are dragged by their handle; a divider goes with the row under it, and a header stays first.
+  const dropped = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return;
+    const from = Number(String(active.id).slice(4));
+    const to = Number(String(over.id).slice(4));
+    if (Number.isInteger(from) && Number.isInteger(to)) setTable(moveRow(table, from, to));
+  };
   return (
     <>
       <Check label="First row is a header" hint="Column names: read out by screen readers, and shown beside each value on a phone." checked={Boolean(block.header)} onChange={(header) => onChange({ header: header || undefined })} />
@@ -1501,10 +1509,12 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
               <th />
             </tr>
           </thead>
-          <tbody>
-            {rows.map((cells, r) => (
-              <Fragment key={r}>
-                {!isHeader(r) && block.sections?.[r] != null && (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={dropped}>
+            <SortableContext items={rows.flatMap((_, r) => (isHeader(r) ? [] : [`row-${r}`]))} strategy={verticalListSortingStrategy}>
+              {rows.map((cells, r) => {
+                const body = (handle: ReactNode) => (
+                  <>
+                    {!isHeader(r) && block.sections?.[r] != null && (
                   <tr>
                     <td colSpan={columns}>
                       <input
@@ -1537,6 +1547,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                 ))}
                 <td>
                   <span className="flex items-center gap-1">
+                    {handle}
                     <button type="button" className={ICON_BUTTON} aria-label={`Add a row after row ${r + 1}`} title="Add a row after" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => setTable(addRowTo(table, r))}>
                       +
                     </button>
@@ -1551,9 +1562,18 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                   </span>
                 </td>
               </tr>
-              </Fragment>
-            ))}
-          </tbody>
+                  </>
+                );
+                return isHeader(r) ? (
+                  <tbody key={r}>{body(null)}</tbody>
+                ) : (
+                  <SortableRows key={r} id={`row-${r}`} label={`row ${r + 1}`}>
+                    {body}
+                  </SortableRows>
+                );
+              })}
+            </SortableContext>
+          </DndContext>
         </table>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -1569,6 +1589,21 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
         puts a section divider, with a title if you like, above a row.
       </p>
     </>
+  );
+}
+
+/** One row of the table's grid (a body of its own, with the divider above it) that can be dragged by its handle (D200). */
+function SortableRows({ id, label, children }: { id: string; label: string; children: (handle: ReactNode) => ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const handle = (
+    <button type="button" {...attributes} {...listeners} aria-label={`Drag ${label} to move it`} title="Drag to move this row" className={`${ICON_BUTTON} cursor-grab touch-none active:cursor-grabbing`}>
+      <span aria-hidden>⠿</span>
+    </button>
+  );
+  return (
+    <tbody ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? "relative z-10 bg-background shadow-lg" : undefined}>
+      {children(handle)}
+    </tbody>
   );
 }
 

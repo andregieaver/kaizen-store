@@ -85,3 +85,20 @@ describe("a negative margin (D197)", () => {
     expect(spacingStyle({ margin: { top: -20, right: 0, bottom: 0, left: 0 } })).toEqual({ marginTop: "-20px" });
   });
 });
+
+import { moveRow } from "./table-edit";
+
+describe("moving a table's rows (D200)", () => {
+  const table = { rows: [["h"], ["a"], ["b"], ["c"]], sections: [null, "One", null, "Two"] as (string | null)[] };
+
+  it("takes a row and its divider to the new place", () => {
+    expect(moveRow(table, 3, 1)).toEqual({ rows: [["h"], ["c"], ["a"], ["b"]], sections: [null, "Two", "One"] });
+    expect(moveRow(table, 1, 3)).toEqual({ rows: [["h"], ["b"], ["c"], ["a"]], sections: [null, null, "Two", "One"] });
+  });
+
+  it("changes nothing for the same place or one that is not there", () => {
+    expect(moveRow(table, 2, 2)).toBe(table);
+    expect(moveRow(table, 2, 9)).toBe(table);
+    expect(moveRow({ rows: [["a"], ["b"]] }, 0, 1)).toEqual({ rows: [["b"], ["a"]], sections: undefined });
+  });
+});
