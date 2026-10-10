@@ -5,6 +5,9 @@ import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
 import { themeCss, themeTabValue, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTabValue } from "@/lib/theme";
 import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, rowWidthPatch, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
 import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
+import { InlineHeadingEditor } from "@/components/inline-edit/heading-editor";
+import { InlineRichEditor } from "@/components/inline-edit/rich-text-inline";
+import { inlineKindOf } from "@/lib/inline-edit";
 import {
   carouselAnywhere,
   carouselAt,
@@ -556,6 +559,10 @@ type Actions = {
   motionPreview: boolean;
   /** Starts an A/B test of a row, column or component (D148); undefined where the page cannot be tested. */
   onTest?: (target: { kind: "row" | "column" | "block"; id: string }) => void;
+  /** The heading or text being edited where it stands (D191), with where it was pressed. */
+  inline: { blockId: string; point: { x: number; y: number } | null } | null;
+  onInline: (blockId: string, point: { x: number; y: number } | null) => void;
+  endInline: () => void;
 };
 
 /** The site's own fonts for the canvas, and installing a family a block chooses (D59). */
@@ -654,6 +661,8 @@ export function PageBuilder({
   /** The column last worked in, where pressing a component adds it. */
   const [lastColumn, setLastColumn] = useState<string | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  // The heading or text edited where it stands (D191): one at a time; opening a component's settings ends it.
+  const [inline, setInline] = useState<{ blockId: string; point: { x: number; y: number } | null } | null>(null);
   /** A saved part by id. */
   const findPart = (id: string) => parts.find((p) => p.id === id);
   const [tab, setTab] = useState<Tab>("components");
@@ -1001,7 +1010,13 @@ export function PageBuilder({
     translating: translate !== null,
     grid,
     onRows,
-    open: setDialog,
+    open: (next) => {
+      setInline(null);
+      setDialog(next);
+    },
+    inline,
+    onInline: (blockId, point) => setInline({ blockId, point }),
+    endInline: () => setInline(null),
     onAddBlock: (type, columnId) => {
       addBlock(type, columnId);
       setLastColumn(columnId);
@@ -2714,10 +2729,22 @@ function BlockItem({
     parentEnter,
     image: block.type === "image",
   });
+  // A heading or text is edited where it stands by pressing it once (D191); its settings open by pressing it twice or with the wrench.
+  const inlineKind = actions.translating ? null : inlineKindOf(block);
+  const editingInline = inlineKind !== null && actions.inline?.blockId === block.id;
+  const blockElement = useRef<HTMLDivElement | null>(null);
+  const endInline = () => {
+    actions.endInline();
+    // The keyboard goes on from the block.
+    window.requestAnimationFrame(() => blockElement.current?.focus({ preventScroll: true }));
+  };
 
   return (
     <div
-      ref={setNodeRef}
+      ref={(node) => {
+        setNodeRef(node);
+        blockElement.current = node;
+      }}
       data-builder-item="block"
       data-builder-id={block.id}
       {...markAttributes(block)}
@@ -2767,11 +2794,41 @@ function BlockItem({
       <Line at={line} />
       <HiddenBadge hideAt={block.visibility?.hideAt} />
       <DisplayBadge show={block.visibility?.show} />
-      <div className={box.className || undefined} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
+      <div
+        className={box.className || undefined}
+        style={{ ...box.style, ...fx.style }}
+        {...fx.attrs}
+        onClick={
+          inlineKind !== null && !editingInline
+            ? (event) => {
+                // A link in the text must not take the builder away; a press on it is a press on the text.
+                event.preventDefault();
+                actions.onInline(block.id, { x: event.clientX, y: event.clientY });
+              }
+            : undefined
+        }
+      >
         <FontLinks families={blockFonts(block)} />
         {/* A block that takes its content from a custom field (D118): the canvas has no values, so it shows its own and says so. */}
         {bindingOf(block) && <BindBadge bind={bindingOf(block)!} />}
-        {!partFeatureOn(block, actions.grid.features) && !partDrawsWhenOff(block) ? (
+        {editingInline && block.type === "heading" ? (
+          <InlineHeadingEditor
+            level={block.level}
+            className="leading-tight text-balance font-heading"
+            text={block.text}
+            point={actions.inline?.point ?? null}
+            onChange={(text) => actions.onRows((rows) => patchBlock<HeadingBlock>(rows, block.id, { text }))}
+            onDone={endInline}
+          />
+        ) : editingInline && block.type === "richText" ? (
+          <InlineRichEditor
+            doc={block.doc}
+            point={actions.inline?.point ?? null}
+            label={`Text in ${name}`}
+            onChange={(doc) => actions.onRows((rows) => patchBlock<RichTextBlock>(rows, block.id, { doc }))}
+            onDone={endInline}
+          />
+        ) : !partFeatureOn(block, actions.grid.features) && !partDrawsWhenOff(block) ? (
           <SwitchedOffStandIn block={block} />
         ) : block.type === "contentGrid" ? (
           <GridPreview block={block} grid={actions.grid} lang={actions.lang} />
@@ -2818,8 +2875,8 @@ function BlockItem({
 
 /** What the canvas shows for a block with nothing to show yet. */
 const EMPTY_BLOCK: Record<BlockType, string> = {
-  richText: "Empty text. Double-click or use the wrench to write.",
-  heading: "Empty heading. Double-click or use the wrench to write it.",
+  richText: "Empty text. Click to write, or use the wrench for its settings.",
+  heading: "Empty heading. Click to write it, or use the wrench for its settings.",
   image: "No picture yet. Double-click or use the wrench to choose one.",
   button: "A button needs its text and an address. Double-click or use the wrench.",
   contentGrid: "Content grid.",

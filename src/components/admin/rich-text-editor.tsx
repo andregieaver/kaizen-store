@@ -55,7 +55,8 @@ const TextColour = Mark.create({
   },
 });
 
-const EXTENSIONS = [
+/** What a rich text can hold, for the editor in the page builder's panel and the one that edits in place (D191). */
+export const RICH_TEXT_EXTENSIONS = [
   StarterKit.configure({
     heading: { levels: [2, 3, 4] },
     code: false,
@@ -96,7 +97,7 @@ export function RichTextEditor({
   label: string;
 }) {
   const editor = useEditor({
-    extensions: EXTENSIONS,
+    extensions: RICH_TEXT_EXTENSIONS,
     content: value,
     // Rendered in the browser only: the admin page is not prerendered.
     immediatelyRender: false,
@@ -113,13 +114,14 @@ export function RichTextEditor({
 
   return (
     <div className="rounded-md border border-border bg-background focus-within:border-foreground">
-      {editor ? <Toolbar editor={editor} label={label} /> : <div className="h-11 border-b border-border" />}
+      {editor ? <RichTextToolbar editor={editor} label={label} /> : <div className="h-11 border-b border-border" />}
       <EditorContent editor={editor} />
     </div>
   );
 }
 
-function Toolbar({ editor, label }: { editor: Editor; label: string }) {
+/** The formatting bar over a rich text: in the panel's editor, and floating over the text edited in place (D191). */
+export function RichTextToolbar({ editor, label }: { editor: Editor; label: string }) {
   const state = useEditorState({
     editor,
     selector: ({ editor: e }) => ({
