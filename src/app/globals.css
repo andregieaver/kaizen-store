@@ -488,10 +488,10 @@ dialog .kz-table-box[data-fixed="popup"] {
   overflow: auto;
   overscroll-behavior: contain;
 }
-/* In a pop-up it takes all the room the panel has (the height set at most), whatever else is in the pop-up. */
+/* In a pop-up it takes all the room the panel has, whatever else is in the pop-up and whatever height the table sets for the page. */
 dialog .kz-table-box[data-fixed="always"],
 dialog .kz-table-box[data-fixed="popup"] {
-  max-height: min(var(--kz-table-max, 100dvh), var(--kz-fit, 70dvh));
+  max-height: var(--kz-fit, 70dvh);
 }
 .kz-table-box[data-fixed="always"] .kz-th-head,
 dialog .kz-table-box[data-fixed="popup"] .kz-th-head {

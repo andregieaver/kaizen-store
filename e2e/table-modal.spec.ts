@@ -61,3 +61,20 @@ test("a long table in a pop-up scrolls itself, with its header and section title
   const b = dialog.getByRole("columnheader", { name: "Del B" });
   expect(Math.abs((await b.boundingBox())!.y - (boxTop + headHeight))).toBeLessThan(3);
 });
+
+test("on a phone the pop-up uses the height it has, and the section title stays at the top of the table", async ({ page }) => {
+  const url = await arrange();
+  await page.setViewportSize({ width: 375, height: 700 });
+  await page.goto(url);
+  await page.getByRole("link", { name: "Åpne" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const box = dialog.locator(".kz-table-box");
+  // The table takes the room the pop-up has: well over half the screen.
+  expect((await box.boundingBox())!.height).toBeGreaterThan(350);
+  expect(await dialog.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
+  await box.evaluate((el) => (el.scrollTop = 600));
+  const boxTop = (await box.boundingBox())!.y;
+  const title = dialog.getByRole("columnheader", { name: /Del [AB]/ }).first();
+  await expect.poll(async () => Math.abs((await title.boundingBox())!.y - boxTop)).toBeLessThan(3);
+});
