@@ -493,6 +493,11 @@ dialog .kz-table-box[data-fixed="always"],
 dialog .kz-table-box[data-fixed="popup"] {
   max-height: var(--kz-fit, 70dvh);
 }
+/* Too little room beside the rest of the pop-up: the pop-up scrolls, and the header and titles stick to its top (`TableScroll`). */
+dialog .kz-table-box[data-fit="panel"][data-fixed] {
+  max-height: none;
+  overflow: visible;
+}
 .kz-table-box[data-fixed="always"] .kz-th-head,
 dialog .kz-table-box[data-fixed="popup"] .kz-th-head {
   position: sticky;

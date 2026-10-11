@@ -78,3 +78,18 @@ test("on a phone the pop-up uses the height it has, and the section title stays 
   const title = dialog.getByRole("columnheader", { name: /Del [AB]/ }).first();
   await expect.poll(async () => Math.abs((await title.boundingBox())!.y - boxTop)).toBeLessThan(3);
 });
+
+test("with little room in the pop-up, the pop-up scrolls and the header and section titles stick to its top", async ({ page }) => {
+  const url = await arrange();
+  await page.setViewportSize({ width: 375, height: 420 });
+  await page.goto(url);
+  await page.getByRole("link", { name: "Åpne" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const panel = dialog.locator(".page-modal-panel");
+  await expect(dialog.locator(".kz-table-box")).toHaveAttribute("data-fit", "panel");
+  await panel.evaluate((el) => (el.scrollTop = 700));
+  const top = (await panel.boundingBox())!.y;
+  const title = dialog.getByRole("columnheader", { name: /Del [AB]/ }).first();
+  await expect.poll(async () => Math.abs((await title.boundingBox())!.y - top)).toBeLessThan(3);
+});

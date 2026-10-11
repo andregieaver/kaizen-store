@@ -4,6 +4,9 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 import type { TableFixed } from "@/lib/page-content";
 
+/** The least height worth a box of its own inside a pop-up, in pixels. */
+const MIN_BOX = 280;
+
 /**
  * The box a table scrolls in (D203, rules in `globals.css`): its header and section titles are kept in view by CSS, and this tells the
  * section titles how tall the header is, so they stop right under it. Without scripts they stop at the top, under the header.
@@ -23,7 +26,16 @@ export function TableScroll({ fixed, maxHeight, sideways, children }: { fixed: T
       const room = parseFloat(getComputedStyle(panel).maxHeight);
       if (!Number.isFinite(room)) return;
       const others = panel.scrollHeight - element.offsetHeight;
-      element.style.setProperty("--kz-fit", `${Math.max(120, Math.floor(room - others))}px`);
+      const free = Math.floor(room - others);
+      // With too little room beside the rest of the pop-up (a phone, a long text above), the table does not scroll in a box of its own
+      // but the pop-up scrolls, and the header and titles stick to the pop-up's top: a box of a few lines would be of no use.
+      if (free < MIN_BOX) {
+        element.dataset.fit = "panel";
+        element.style.removeProperty("--kz-fit");
+      } else {
+        element.dataset.fit = "box";
+        element.style.setProperty("--kz-fit", `${free}px`);
+      }
     };
     set();
     fit();
