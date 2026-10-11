@@ -11,7 +11,7 @@ const body = Array.from({ length: 40 }, (_, i) => [`Rad ${i + 1}`, `${i + 1} kr`
 // Row index in `rows`: 0 is the header; dividers above rows 1 and 21.
 const table = { id: "t1", type: "table", header: true, rows: [["Navn", "Pris"], ...body], sections: [null, "Del A", ...Array(19).fill(null), "Del B"] };
 
-async function arrange() {
+async function arrange(tableOver: Record<string, unknown> = {}) {
   const slug = `tabmodal-${Date.now().toString(36)}`;
   const sql = testDb();
   try {
@@ -21,7 +21,7 @@ async function arrange() {
       title: "Side", slug: "side", thumbnail: null, seo: { title: "", description: "" }, searchEngines: true, aiAssistants: true, categories: [], tags: [],
       rows: [
         { id: "r0", type: "row", layout: "1", columns: [{ id: "c0", blocks: [{ id: "b0", type: "button", label: "Åpne", href: "#modal-liste" }] }] },
-        { id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [{ id: "h1", type: "heading", text: "Prisliste", level: 2 }, { id: "p1", type: "richText", doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Alle våre priser." }] }] } }, table] }], modal: { key: "liste", frequency: "always", size: "md", triggers: { button: true } } },
+        { id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [{ id: "h1", type: "heading", text: "Prisliste", level: 2 }, { id: "p1", type: "richText", doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Alle våre priser." }] }] } }, { ...table, ...tableOver }] }], modal: { key: "liste", frequency: "always", size: "md", triggers: { button: true } } },
       ],
     };
     await sql`insert into commerce.pages (store_id, slug, draft, published, published_at) values (${storeId}, 'side', ${sql.json(content as never)}, ${sql.json(content as never)}, now())`;
@@ -88,6 +88,19 @@ test("with little room in the pop-up, the pop-up scrolls and the header and sect
   await expect(dialog).toBeVisible();
   const panel = dialog.locator(".page-modal-panel");
   await expect(dialog.locator(".kz-table-box")).toHaveAttribute("data-fit", "panel");
+  await panel.evaluate((el) => (el.scrollTop = 700));
+  const top = (await panel.boundingBox())!.y;
+  const title = dialog.getByRole("columnheader", { name: /Del [AB]/ }).first();
+  await expect.poll(async () => Math.abs((await title.boundingBox())!.y - top)).toBeLessThan(3);
+});
+
+test("rounded corners on the table do not stop its titles from sticking", async ({ page }) => {
+  const url = await arrange({ radius: 12 });
+  await page.setViewportSize({ width: 375, height: 420 });
+  await page.goto(url);
+  await page.getByRole("link", { name: "Åpne" }).click();
+  const dialog = page.getByRole("dialog");
+  const panel = dialog.locator(".page-modal-panel");
   await panel.evaluate((el) => (el.scrollTop = 700));
   const top = (await panel.boundingBox())!.y;
   const title = dialog.getByRole("columnheader", { name: /Del [AB]/ }).first();

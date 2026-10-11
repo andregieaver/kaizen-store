@@ -64,7 +64,7 @@ export function rowBox(row: PageRow, mode: PartsMode, inPanel = false): Box {
       ...boxFamilies(row).map(fontClass),
       "relative isolate flex flex-col",
       row.fullHeight && "min-h-svh",
-      clipsAnywhere(row) && !inPanel && "overflow-hidden",
+      clipsAnywhere(row) && !inPanel && "overflow-clip",
       row.className,
     ),
     style: {},
@@ -134,7 +134,7 @@ export function columnBox(column: PageColumn, row: PageRow, mode: PartsMode): Bo
       !column.inline && row.equalHeight && JUSTIFY[row.align ?? "top"],
       // In the canvas the column sits inside its pointing band, which it fills.
       mode === "canvas" && "flex-1",
-      clipsAnywhere(column) && "overflow-hidden",
+      clipsAnywhere(column) && "overflow-clip",
       // Links in the text stay usable above the column's own link.
       mode === "site" && column.link && "[&_.rich-text_a]:relative [&_.rich-text_a]:z-[2]",
       column.className,
@@ -164,7 +164,7 @@ export function blockBox(block: PageBlock, mode: PartsMode): Box {
       picture && "box-content max-w-(--picture-width)",
       // Its own font (D59) for all its text, from its typography (D179); the stylesheet comes with `FontLinks`.
       ...boxFamilies(block).map(fontClass),
-      block.type !== "button" && SIZES.some((size) => Boolean(valueAt(block, "radius", size))) && "overflow-hidden",
+      block.type !== "button" && SIZES.some((size) => Boolean(valueAt(block, "radius", size))) && "overflow-clip",
       block.className,
     ),
     style: {},
