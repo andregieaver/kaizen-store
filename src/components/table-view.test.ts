@@ -62,7 +62,7 @@ describe("a table's colours and section dividers (D197)", () => {
 
   it("colours the header row and the shaded rows, only with the colours chosen", () => {
     const html = draw({ ...wide, striped: true, headerColor: "#ffffff", headerBackground: "#112233", stripeColor: "#000000", stripeBackground: "#eeeeee" });
-    expect(html).toMatch(/<thead[^>]*><tr[^>]*style="color:#ffffff;background-color:#112233"/);
+    expect(html).toMatch(/<thead[^>]*><tr[^>]*style="color:#ffffff;background-color:#112233;--kz-bg:#112233"/);
     expect(html.match(/background-color:#eeeeee/g)).toHaveLength(2);
     const plain = draw({ ...wide, striped: true });
     expect(plain).not.toContain("style=");
@@ -71,7 +71,7 @@ describe("a table's colours and section dividers (D197)", () => {
 
   it("colours the section dividers", () => {
     const html = draw({ ...wide, sections: [null, "Big", null], sectionColor: "#ffffff", sectionBackground: "#445566" });
-    expect(html).toMatch(/scope="colgroup"[^>]*style="color:#ffffff;background-color:#445566"/);
+    expect(html).toMatch(/scope="colgroup"[^>]*style="color:#ffffff;background-color:#445566;--kz-bg:#445566"/);
   });
 
   it("draws a divider row across all columns above the row it names, never above the header, and shading skips it", () => {
@@ -100,5 +100,24 @@ describe("icons in a table's cells (D201)", () => {
   it("leaves a cell without icons as it was", () => {
     const html = draw(block());
     expect(html).not.toContain("<svg");
+  });
+});
+
+describe("a table that scrolls inside itself (D203)", () => {
+  it("sits in a scroll box that is fixed in pop-ups unless set otherwise, and not at all when never", () => {
+    expect(draw(block())).toContain('class="kz-table-box" data-fixed="popup"');
+    expect(draw(block({ fixedHeader: "always", maxHeight: 400 }))).toContain('data-fixed="always"');
+    expect(draw(block({ fixedHeader: "always", maxHeight: 400 }))).toContain("--kz-table-max:400px");
+    expect(draw(block({ fixedHeader: "never" }))).not.toContain("kz-table-box");
+  });
+
+  it("marks the header cells and the section titles for the sticky rules", () => {
+    const html = draw(block({ rows: [["A", "B"], ["1", "2"], ["3", "4"]], sections: [null, "Del"] }));
+    expect(html).toContain("kz-th-head");
+    expect(html).toContain("kz-th-section");
+  });
+
+  it("keeps sideways scrolling in the box when the table does not stack", () => {
+    expect(draw(block({ mobile: "scroll" }))).toContain("kz-table-box overflow-x-auto");
   });
 });

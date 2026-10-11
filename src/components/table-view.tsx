@@ -7,6 +7,7 @@ import type { TableBlock } from "@/lib/page-content";
 import { cellParts, withoutIcons } from "@/lib/table-icons";
 
 import { ListIcon } from "./list-icon";
+import { TableScroll } from "./table-scroll";
 
 /** A cell's words with its icons drawn in their places (D201); an icon is named for screen readers. */
 function Cell({ text, color }: { text: string; color?: string }) {
@@ -30,7 +31,7 @@ function Cell({ text, color }: { text: string; color?: string }) {
 
 /** A row's text and background colours as a style, none when neither is set (`#rrggbb` only, checked on save). */
 function colours(color?: string, background?: string): CSSProperties | undefined {
-  return color || background ? { ...(color && { color }), ...(background && { backgroundColor: background }) } : undefined;
+  return color || background ? ({ ...(color && { color }), ...(background && { backgroundColor: background, "--kz-bg": background }) } as CSSProperties) : undefined;
 }
 
 /**
@@ -56,7 +57,7 @@ export function TableView({ block }: { block: TableBlock }) {
   const sectionAt = (r: number) => (header && r <= 0 ? null : (block.sections?.[r] ?? null));
   const sectionRow = (r: number, title: string) => (
     <tr key={`s${r}`} className={stack ? "block kzb-md-table-row" : ""}>
-      <th scope="colgroup" colSpan={first.length} style={sectionStyle} className={`border-b-2 border-t-2 border-border bg-surface px-3 py-2 text-left font-semibold ${cell}`}>
+      <th scope="colgroup" colSpan={first.length} style={sectionStyle} className={`kz-th-section border-b-2 border-t-2 border-border bg-surface px-3 py-2 text-left font-semibold ${cell}`}>
         {title ? <Cell text={title} color={block.iconColor} /> : <span className="sr-only">Section</span>}
       </th>
     </tr>
@@ -71,7 +72,7 @@ export function TableView({ block }: { block: TableBlock }) {
         <thead className={stack ? "sr-only kzb-md-not-sr kzb-md-table-header-group" : ""}>
           <tr className={stack ? "block kzb-md-table-row" : ""} style={headerStyle}>
             {header.map((text, c) => (
-              <th key={c} scope="col" className={`border-b-2 border-border px-3 py-2 font-semibold ${cell}`}>
+              <th key={c} scope="col" className={`kz-th-head border-b-2 border-border px-3 py-2 font-semibold ${cell}`}>
                 <Cell text={text} color={block.iconColor} />
               </th>
             ))}
@@ -118,5 +119,12 @@ export function TableView({ block }: { block: TableBlock }) {
       </tbody>
     </table>
   );
-  return stack ? markup : <div className="overflow-x-auto">{markup}</div>;
+  const fixed = block.fixedHeader ?? "popup";
+  if (fixed === "never") return stack ? markup : <div className="overflow-x-auto">{markup}</div>;
+  // It scrolls in a box of its own where it is fixed (always, or in a pop-up): sideways too when it does not stack.
+  return (
+    <TableScroll fixed={fixed} maxHeight={block.maxHeight} sideways={!stack}>
+      {markup}
+    </TableScroll>
+  );
 }

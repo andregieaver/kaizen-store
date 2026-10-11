@@ -60,6 +60,8 @@ import {
   ICON_LIST_TEXT_MAX,
   TABLE_CELL_MAX,
   TABLE_COLUMNS_MAX,
+  TABLE_FIXED,
+  TABLE_MAX_HEIGHT_MAX,
   TABLE_MOBILE,
   TABLE_ROWS_MAX,
   type TableBlock,
@@ -1682,6 +1684,13 @@ function TableStyleFields({ block, onChange }: BlockEditorProps<TableBlock>) {
           ? "Each row becomes a card: every value is shown under its column's name (from the header row)."
           : "The table keeps its columns and scrolls sideways on a narrow screen."}
       </p>
+      <Choices legend="Scroll inside the table" options={optionsOf(TABLE_FIXED)} value={block.fixedHeader ?? "popup"} onChange={(fixedHeader) => onChange({ fixedHeader: fixedHeader === "popup" ? undefined : fixedHeader })} />
+      <p className="text-xs text-muted">
+        A long table scrolls in a box of its own, so its header, and each section title under it, stay in view. In a pop-up the pop-up then needs no scrollbar.
+      </p>
+      {(block.fixedHeader ?? "popup") !== "never" && (
+        <NumberField label="Height before it scrolls (0: 70 % of the screen)" value={block.maxHeight ?? 0} min={0} max={TABLE_MAX_HEIGHT_MAX} unit="px" onChange={(maxHeight) => onChange({ maxHeight: maxHeight >= 120 ? maxHeight : undefined })} />
+      )}
       <Check label="First column names the row" hint="Bold, and read out as the row's heading." checked={Boolean(block.rowHeaders)} onChange={(rowHeaders) => onChange({ rowHeaders: rowHeaders || undefined })} />
       <Check label="Shade every other row" checked={Boolean(block.striped)} onChange={(striped) => onChange({ striped: striped || undefined })} />
       <OptionalColor label="Icon colour" hint="The cell's text colour unless chosen." value={block.iconColor} fallback="#16a34a" onChange={(iconColor) => onChange({ iconColor })} />

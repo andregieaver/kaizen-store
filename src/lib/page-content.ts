@@ -1369,6 +1369,10 @@ export const TABLE_ROWS_MAX = 60;
 export const TABLE_COLUMNS_MAX = 12;
 export const TABLE_CELL_MAX = 500;
 /** How a table behaves on a narrow screen: scrolls sideways, or each row becomes a card with its column names beside the values. */
+/** Whether a table scrolls inside itself with its header kept in view (D203): in pop-ups only, always, or never. */
+export const TABLE_FIXED = { popup: "In pop-ups only", always: "Always", never: "Never" } as const;
+export type TableFixed = keyof typeof TABLE_FIXED;
+export const TABLE_MAX_HEIGHT_MAX = 2000;
 export const TABLE_MOBILE = { stack: "Stack each row", scroll: "Scroll sideways" } as const;
 export type TableMobile = keyof typeof TABLE_MOBILE;
 
@@ -1405,6 +1409,10 @@ export type TableBlock = PartBase & {
   sectionBackground?: string;
   /** The icons in cells (`{{check}}`, D201): their colour (`#rrggbb`), the text's unless set. */
   iconColor?: string;
+  /** The table scrolls inside itself, its header and the section titles kept in view (D203): in pop-ups unless set. */
+  fixedHeader?: TableFixed;
+  /** How tall it is before it scrolls, in pixels; 70 % of the screen's height unless set. */
+  maxHeight?: number;
 };
 
 /** A table that shows: some cell has words. */
@@ -2847,6 +2855,8 @@ const tableBlock = z.object({
   sectionColor: tableColour,
   sectionBackground: tableColour,
   iconColor: tableColour,
+  fixedHeader: z.enum(Object.keys(TABLE_FIXED) as [TableFixed, ...TableFixed[]]).optional(),
+  maxHeight: z.number().int().min(120).max(TABLE_MAX_HEIGHT_MAX).optional(),
   sections: z.array(z.string().trim().max(200, "Keep a section title under 200 characters.").nullable()).max(TABLE_ROWS_MAX).optional(),
   ...partBase,
 });
