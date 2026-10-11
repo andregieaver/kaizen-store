@@ -373,7 +373,7 @@ describe("a picture's frame", () => {
     expect(out.wrapper.style["border-radius"]).toBe("12px");
     expect(out.wrapper.style["box-shadow"]).toBe("0 4px 12px rgb(0 0 0 / 0.12)");
     // Rounded corners clip the picture as before.
-    expect(out.wrapper.classes).toContain("overflow-hidden");
+    expect(out.wrapper.classes).toContain("overflow-clip");
     expect(out.wrapper.classes).toContain("box-content");
   });
 
@@ -384,8 +384,8 @@ describe("a picture's frame", () => {
   });
 
   it("clips only when it has a radius", () => {
-    expect(drawnPicture(drawOne(image({ border }))).wrapper.classes).not.toContain("overflow-hidden");
-    expect(drawnPicture(drawOne(image({ radius: 8 }))).wrapper.classes).toContain("overflow-hidden");
+    expect(drawnPicture(drawOne(image({ border }))).wrapper.classes).not.toContain("overflow-clip");
+    expect(drawnPicture(drawOne(image({ radius: 8 }))).wrapper.classes).toContain("overflow-clip");
     expect(drawnPicture(drawOne(image())).wrapper.style["border-radius"]).toBeUndefined();
   });
 });
@@ -530,7 +530,7 @@ describe("a picture bound to a custom field", () => {
     expect(numberOf(out.img.attrs.height)).toBe(300);
     expect(out.wrapper.style["margin-left"]).toBe("auto");
     expect(out.wrapper.style["margin-right"]).toBe("auto");
-    expect(out.wrapper.classes).toContain("overflow-hidden");
+    expect(out.wrapper.classes).toContain("overflow-clip");
     expect(out.wrapper.style["margin-top"]).toBe("10px");
     expect(out.wrapper.style["padding-left"]).toBe("5px");
     expect(out.wrapper.style["border-radius"]).toBe("6px");
