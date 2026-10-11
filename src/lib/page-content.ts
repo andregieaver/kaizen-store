@@ -1415,6 +1415,51 @@ export type TableBlock = PartBase & {
   maxHeight?: number;
 };
 
+// ---------------------------------------------------------------------------
+// Brands (D204)
+// ---------------------------------------------------------------------------
+
+/** A brand: its logo, uploaded, and its name, shown under it. */
+export type BrandItem = {
+  id: string;
+  name: string;
+  picture: { url: string; width: number; height: number } | null;
+};
+
+export const BRANDS_VIEWS = { grid: "Grid", carousel: "Carousel" } as const;
+export type BrandsView = keyof typeof BRANDS_VIEWS;
+export const BRANDS_MOTIONS = { continuous: "Keeps moving", snap: "One logo at a time" } as const;
+export type BrandsMotion = keyof typeof BRANDS_MOTIONS;
+/** What unset means, and the limits. */
+export const BRANDS_DEFAULTS = { columns: 5, gap: 24, logoHeight: 64, speed: 4, interval: 3 } as const;
+export const BRANDS_LIMITS = { logoHeight: { min: 16, max: 300 }, speed: { min: 1, max: 30 }, interval: { min: 1, max: 15 } } as const;
+
+/**
+ * Brands (D204): the logos of the brands a store carries or its partners, with each name under its logo, as a grid or a carousel. The
+ * logos in a row are the block's `columns` and, per screen size, `at.*.columns` (how many are seen at once in a carousel). A carousel
+ * either keeps moving (`speed`: seconds each logo takes to pass) or moves one logo at a time (`interval`: seconds between steps).
+ */
+export type BrandsBlock = PartBase & {
+  id: string;
+  type: "brands";
+  items: BrandItem[];
+  /** Logos in a row at Extra large (five unless set); smaller sizes in `at`. */
+  columns?: number;
+  /** Pixels between the logos. */
+  gap?: number;
+  view?: BrandsView;
+  movement?: BrandsMotion;
+  speed?: number;
+  interval?: number;
+  /** How tall a logo may be, in pixels. */
+  logoHeight?: number;
+  /** The names under the logos; shown unless off. */
+  showNames?: boolean;
+};
+
+/** A brand shows once it has a logo or a name. */
+export const brandShows = (item: BrandItem): boolean => item.picture !== null || item.name.trim() !== "";
+
 /** A table that shows: some cell has words. */
 export const tableShows = (block: Pick<TableBlock, "rows">) => block.rows.some((row) => row.some((cell) => cell.trim() !== ""));
 
@@ -1534,6 +1579,7 @@ export type PageBlock =
   | SocialLinksBlock
   | IconListBlock
   | TableBlock
+  | BrandsBlock
   | EmailFormBlock
   | NewsletterBlock;
 export type BlockType = PageBlock["type"];
@@ -1731,6 +1777,8 @@ export function blockOwnContent(block: PageBlock): boolean {
       return block.items.some(iconItemShows);
     case "table":
       return tableShows(block);
+    case "brands":
+      return block.items.some(brandShows);
     case "emailForm":
     case "newsletter":
       return formShows(block);
@@ -1765,6 +1813,8 @@ export function blockText(block: PageBlock): string {
         .filter(iconItemShows)
         .map((item) => inlinePlain(item.text))
         .join(" ");
+    case "brands":
+      return block.items.map((item) => item.name.trim()).filter(Boolean).join(" ");
     case "table":
       return [block.caption && inlinePlain(block.caption), ...block.rows.map((row) => row.map((cell) => withoutIcons(inlinePlain(cell), true)).filter(Boolean).join(" "))].filter(Boolean).join(" ");
     case "testimonials":
@@ -2835,6 +2885,36 @@ const iconListBlock = z.object({
 
 const tableColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase()).optional();
 
+const brandsBlock = z.object({
+  id: itemId,
+  type: z.literal("brands"),
+  items: z
+    .array(
+      z.object({
+        id: itemId,
+        name: z.string().trim().max(100, "Keep a brand's name under 100 characters."),
+        picture: z
+          .object({
+            url: z.url({ protocol: /^https?$/, error: "A logo has an invalid address." }).max(1000),
+            width: z.number().int().min(1).max(10_000),
+            height: z.number().int().min(1).max(10_000),
+          })
+          .nullable(),
+      }),
+    )
+    .max(CUSTOM_ITEMS_MAX, `Brands holds at most ${CUSTOM_ITEMS_MAX} logos.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two brands have the same id. Reload the page and try again."),
+  columns: gridColumnCount.optional(),
+  gap: partGap,
+  view: z.enum(Object.keys(BRANDS_VIEWS) as [BrandsView, ...BrandsView[]]).optional(),
+  movement: z.enum(Object.keys(BRANDS_MOTIONS) as [BrandsMotion, ...BrandsMotion[]]).optional(),
+  speed: z.number().int().min(BRANDS_LIMITS.speed.min, `A logo takes at least ${BRANDS_LIMITS.speed.min} second to pass.`).max(BRANDS_LIMITS.speed.max, `A logo takes at most ${BRANDS_LIMITS.speed.max} seconds to pass.`).optional(),
+  interval: z.number().int().min(BRANDS_LIMITS.interval.min, `Move at least every ${BRANDS_LIMITS.interval.min} second.`).max(BRANDS_LIMITS.interval.max, `Move at most every ${BRANDS_LIMITS.interval.max} seconds.`).optional(),
+  logoHeight: z.number().int().min(BRANDS_LIMITS.logoHeight.min, `A logo is at least ${BRANDS_LIMITS.logoHeight.min} pixels tall.`).max(BRANDS_LIMITS.logoHeight.max, `A logo is at most ${BRANDS_LIMITS.logoHeight.max} pixels tall.`).optional(),
+  showNames: z.boolean().optional(),
+  ...partBase,
+});
+
 const tableBlock = z.object({
   id: itemId,
   type: z.literal("table"),
@@ -2956,6 +3036,7 @@ export const pageBlockUnion = z.discriminatedUnion("type", [
   socialLinksBlock,
   iconListBlock,
   tableBlock,
+  brandsBlock,
   emailFormBlock,
   newsletterBlock,
 ]);

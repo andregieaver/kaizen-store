@@ -483,9 +483,15 @@ html[data-footer-reveal] .footer-reveal {
  */
 .kz-table-box[data-fixed="always"],
 dialog .kz-table-box[data-fixed="popup"] {
-  max-height: var(--kz-table-max, 70dvh);
+  /* The height set, or the screen's 70 %; in a pop-up never more than the panel has room for (`--kz-fit`, measured by `TableScroll`). */
+  max-height: min(var(--kz-table-max, 70dvh), var(--kz-fit, 100dvh));
   overflow: auto;
   overscroll-behavior: contain;
+}
+/* In a pop-up it takes all the room the panel has (the height set at most), whatever else is in the pop-up. */
+dialog .kz-table-box[data-fixed="always"],
+dialog .kz-table-box[data-fixed="popup"] {
+  max-height: min(var(--kz-table-max, 100dvh), var(--kz-fit, 70dvh));
 }
 .kz-table-box[data-fixed="always"] .kz-th-head,
 dialog .kz-table-box[data-fixed="popup"] .kz-th-head {
@@ -502,4 +508,103 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
   z-index: 10;
   background-color: var(--kz-bg, var(--surface));
   box-shadow: inset 0 -2px 0 var(--border), inset 0 2px 0 var(--border);
+}
+
+/* Brands (D204): logos in a row by screen size (--brand-cols, set by the block's rules), as a grid or a carousel. */
+.kz-brands {
+  container-type: inline-size;
+}
+.kz-brands [data-brands] {
+  --brand-cell: calc((100cqw - var(--brand-gap) * (var(--brand-cols, 5) - 1)) / var(--brand-cols, 5));
+}
+.kz-brands ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.kz-brands-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--brand-cols, 5), minmax(0, 1fr));
+  gap: var(--brand-gap);
+}
+.kz-brand-figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  text-align: center;
+}
+.kz-brand-logo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: var(--brand-h);
+  object-fit: contain;
+}
+.kz-brands-carousel {
+  position: relative;
+}
+.kz-brands-window {
+  overflow: hidden;
+}
+.kz-brands-track {
+  display: flex;
+}
+.kz-brands-track > .kz-brand {
+  flex: 0 0 var(--brand-cell);
+  min-width: 0;
+  margin-inline-end: var(--brand-gap);
+}
+.kz-brands-snap {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.kz-brands-snap > .kz-brand {
+  scroll-snap-align: start;
+}
+.kz-brands-marquee {
+  width: max-content;
+  animation: kz-brands-move linear infinite;
+}
+.kz-brands-carousel[data-still] .kz-brands-marquee {
+  animation-play-state: paused;
+}
+@keyframes kz-brands-move {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kz-brands-marquee {
+    animation: none;
+    width: auto;
+  }
+  .kz-brands-window {
+    overflow-x: auto;
+  }
+  .kz-brands-marquee > .kz-brand[aria-hidden] {
+    display: none;
+  }
+}
+.kz-brands-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-top: 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 9999px;
+  opacity: 0.6;
+}
+.kz-brands-toggle[hidden] {
+  display: none;
+}
+.kz-brands-toggle:hover,
+.kz-brands-toggle:focus-visible {
+  opacity: 1;
 }

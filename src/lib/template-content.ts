@@ -54,6 +54,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   socialLinks: "social links",
   iconList: "icon list",
   table: "table",
+  brands: "brands",
   emailForm: "email form",
   newsletter: "newsletter",
 };
@@ -339,6 +340,9 @@ export function mapTemplateMedia(kind: SavedPartKind, content: PartContent, reso
         };
       }
       if (block.type === "contentGrid" && block.items) {
+        return { ...block, items: block.items.map((item) => ({ ...item, picture: item.picture ? resolved(item.picture, resolve) : null })) };
+      }
+      if (block.type === "brands") {
         return { ...block, items: block.items.map((item) => ({ ...item, picture: item.picture ? resolved(item.picture, resolve) : null })) };
       }
       if (block.type === "testimonials") {

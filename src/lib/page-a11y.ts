@@ -150,6 +150,7 @@ const BLOCK_WORDS: Partial<Record<PageBlock["type"], string>> = {
   tabs: "Tabs",
   iconList: "Icon list",
   table: "Table",
+  brands: "Brands",
 };
 const blockWord = (block: PageBlock) => BLOCK_WORDS[block.type] ?? "Component";
 
@@ -503,6 +504,8 @@ function blockWords(block: PageBlock): string[] {
       return block.items.map((item) => item.text);
     case "table":
       return [block.caption ?? "", ...block.rows.flat().map((cell) => withoutIcons(cell, true)), ...(block.sections ?? []).filter((s): s is string => Boolean(s))];
+    case "brands":
+      return block.items.map((item) => item.name);
     case "video":
       return [block.title];
     case "html":

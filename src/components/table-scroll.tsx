@@ -14,12 +14,30 @@ export function TableScroll({ fixed, maxHeight, sideways, children }: { fixed: T
     const element = box.current;
     const head = element?.querySelector("thead");
     if (!element) return;
+    const panel = element.closest<HTMLElement>(".page-modal-panel");
     const set = () => element.style.setProperty("--kz-head-h", `${head ? head.getBoundingClientRect().height : 0}px`);
+    // In a pop-up the table takes what the panel has left beside the rest of what it holds, so the panel itself never scrolls and the
+    // header stays put whatever else (a title, a text, a button) is in the pop-up.
+    const fit = () => {
+      if (!panel) return;
+      const room = parseFloat(getComputedStyle(panel).maxHeight);
+      if (!Number.isFinite(room)) return;
+      const others = panel.scrollHeight - element.offsetHeight;
+      element.style.setProperty("--kz-fit", `${Math.max(120, Math.floor(room - others))}px`);
+    };
     set();
-    if (!head || typeof ResizeObserver === "undefined") return;
-    const watch = new ResizeObserver(set);
-    watch.observe(head);
-    return () => watch.disconnect();
+    fit();
+    window.addEventListener("resize", fit);
+    const watch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(() => {
+      set();
+      fit();
+    });
+    if (head) watch?.observe(head);
+    if (panel) watch?.observe(panel);
+    return () => {
+      window.removeEventListener("resize", fit);
+      watch?.disconnect();
+    };
   }, []);
   return (
     <div ref={box} className={sideways ? "kz-table-box overflow-x-auto" : "kz-table-box"} data-fixed={fixed} {...(maxHeight && { style: { "--kz-table-max": `${maxHeight}px` } as React.CSSProperties })}>

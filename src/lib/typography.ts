@@ -368,6 +368,8 @@ export function textRoles(part: TypedPart): RoleDef[] {
       return [TEXT, role("title", "Tab titles", "& [role=tab]"), role("body", "Texts", "& [role=tabpanel] .rich-text", { strong: true })];
     case "testimonials":
       return [TEXT, role("quote", "Quotes", "& blockquote"), role("name", "Names", marked("name")), role("meta", "Titles and places", marked("meta"))];
+    case "brands":
+      return [TEXT, role("name", "Names", marked("name"))];
     case "socialLinks":
       return [TEXT, role("name", "Network names", marked("name"))];
     case "emailForm":
@@ -446,6 +448,7 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   faq: { "*.title": "title", "*.body": "body" },
   testimonials: { "*.quote": "quote", "*.role": "meta", "*.name": "name" },
   iconList: { "*.text": "text" },
+  brands: { "*.name": "name" },
   table: { caption: "text", "r*": "text", "s*": "text" },
   socialLinks: { "network names": "name" },
   emailForm: {

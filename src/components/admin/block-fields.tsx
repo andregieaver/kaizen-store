@@ -12,6 +12,7 @@ import { bindable, canBind } from "@/lib/field-binding";
 import { LOOP_SLOT_KEYS, isLoopable, slotChoices, suggestSlots, validSlots } from "@/lib/field-loop";
 import { AUTOPLAY_SECONDS, CAROUSEL_SNAPS, cleanCarousel, normalizeSeconds, resolveCarousel, type CarouselSettings, type CarouselSnap } from "@/lib/carousel-settings";
 import { setAt, sizeSource, valueAt } from "@/lib/responsive";
+import { brandColumns } from "@/lib/brands";
 import { tileFieldOptions } from "@/lib/tile-fields";
 import { isEmail } from "@/lib/forms";
 import { t } from "@/lib/i18n";
@@ -73,6 +74,16 @@ import {
   TESTIMONIAL_QUOTE_MAX,
   type Testimonial,
   type TestimonialsBlock,
+  type BrandsBlock,
+  type BrandItem,
+  BRANDS_DEFAULTS,
+  BRANDS_LIMITS,
+  BRANDS_VIEWS,
+  BRANDS_MOTIONS,
+  type BrandsMotion,
+  type BrandsView,
+  GRID_COLUMNS_MAX,
+  CUSTOM_ITEMS_MAX,
   TABS_LOOKS,
   EMPTY_DOC,
   HEADING_SIZES,
@@ -185,6 +196,12 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font of the names", fallback: "The site's body font" },
     General: SocialLinksFields,
     Style: SocialLinksStyleFields,
+  },
+  brands: {
+    title: "Brands",
+    font: { label: "Font of the names", fallback: "The site's body font" },
+    General: BrandsFields,
+    Style: BrandsStyleFields,
   },
   testimonials: {
     title: "Testimonials",
@@ -1319,6 +1336,111 @@ function TestimonialsStyleFields({ block, onChange }: BlockEditorProps<Testimoni
       {block.display === "carousel" && <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />}
       <Choices legend="Look" options={optionsOf(TESTIMONIAL_LOOKS)} value={block.look ?? "cards"} onChange={(look) => onChange({ look: look === "cards" ? undefined : look })} />
       <Check label="Show stars" checked={block.showRating !== false} onChange={(show) => onChange({ showRating: show ? undefined : false })} />
+    </>
+  );
+}
+
+/** The logos of the brands, each with a name that shows under it (D204). */
+function BrandsFields({ block, onChange, context }: BlockEditorProps<BrandsBlock>) {
+  return (
+    <>
+      <ItemsEditor<BrandItem>
+        label="Brands"
+        items={block.items}
+        max={CUSTOM_ITEMS_MAX}
+        addLabel="Add a brand"
+        nameOf={(item, index) => item.name.trim() || `Brand ${index + 1}${item.picture ? "" : " (no logo yet)"}`}
+        newItem={() => ({ id: newItemId(), name: "", picture: null })}
+        onChange={(items) => onChange({ items })}
+      >
+        {(item, change) => (
+          <>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm font-medium">Logo</p>
+              <div className="flex flex-wrap items-center gap-3">
+                {item.picture && (
+                  // eslint-disable-next-line @next/next/no-img-element -- the owner's own logo, shown as it is
+                  <img src={item.picture.url} alt="" className="h-12 max-w-32 rounded border border-border bg-background object-contain p-1" />
+                )}
+                <ImageUploadButton upload={context.upload} label={item.picture ? "Choose another" : "Upload a logo"} onUploaded={(picture) => change({ picture })} />
+                {item.picture && (
+                  <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+            <TextField label="Name" hint="Shown under the logo, and read out when the logo is not shown." value={item.name} max={100} onChange={(name) => change({ name })} />
+          </>
+        )}
+      </ItemsEditor>
+      <p className="text-xs text-muted">A brand with neither a logo nor a name is left out on the site.</p>
+    </>
+  );
+}
+
+/** How the brands are laid out: a grid or a carousel, logos in view per screen size, speed, gap and the tallest logo (D204). */
+function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
+  const { size } = useSizeEdit();
+  const carousel = block.view === "carousel";
+  const movement: BrandsMotion = block.movement ?? "continuous";
+  return (
+    <>
+      <Choices<BrandsView>
+        legend="Show as"
+        options={(Object.keys(BRANDS_VIEWS) as BrandsView[]).map((view) => ({ value: view, label: BRANDS_VIEWS[view] }))}
+        value={block.view ?? "grid"}
+        onChange={(view) => onChange({ view: view === "grid" ? undefined : view })}
+      />
+      <Choices
+        legend={carousel ? "Logos in view" : "Logos in a row"}
+        hint="at the screen size edited"
+        mark={<SizeMark part={block} field="columns" label="Logos in a row" onPatch={onChange} />}
+        muted={inheritedClass(sizeSource(block, size, "columns"), size)}
+        options={Array.from({ length: GRID_COLUMNS_MAX.desktop }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
+        value={String(brandColumns(block, size))}
+        onChange={(n) => onChange(setAt(block, size, { columns: Number(n) }))}
+      />
+      {carousel && (
+        <>
+          <Choices<BrandsMotion>
+            legend="Movement"
+            options={(Object.keys(BRANDS_MOTIONS) as BrandsMotion[]).map((key) => ({ value: key, label: BRANDS_MOTIONS[key] }))}
+            value={movement}
+            onChange={(value) => onChange({ movement: value === "continuous" ? undefined : value })}
+          />
+          {movement === "continuous" ? (
+            <NumberField
+              label="Seconds for a logo to pass"
+              value={block.speed ?? BRANDS_DEFAULTS.speed}
+              min={BRANDS_LIMITS.speed.min}
+              max={BRANDS_LIMITS.speed.max}
+              unit="seconds (more is slower)"
+              onChange={(speed) => onChange({ speed: speed === BRANDS_DEFAULTS.speed ? undefined : speed })}
+            />
+          ) : (
+            <NumberField
+              label="Seconds between steps"
+              value={block.interval ?? BRANDS_DEFAULTS.interval}
+              min={BRANDS_LIMITS.interval.min}
+              max={BRANDS_LIMITS.interval.max}
+              unit="seconds"
+              onChange={(interval) => onChange({ interval: interval === BRANDS_DEFAULTS.interval ? undefined : interval })}
+            />
+          )}
+          <p className="text-xs text-muted">It stops for visitors who prefer less motion, under the pointer, and with its Pause button.</p>
+        </>
+      )}
+      <NumberField
+        label="Tallest logo"
+        value={block.logoHeight ?? BRANDS_DEFAULTS.logoHeight}
+        min={BRANDS_LIMITS.logoHeight.min}
+        max={BRANDS_LIMITS.logoHeight.max}
+        unit="pixels"
+        onChange={(logoHeight) => onChange({ logoHeight: logoHeight === BRANDS_DEFAULTS.logoHeight ? undefined : logoHeight })}
+      />
+      <NumberField label="Space between" value={block.gap ?? BRANDS_DEFAULTS.gap} min={0} max={200} unit="pixels" onChange={(gap) => onChange({ gap: gap === BRANDS_DEFAULTS.gap ? undefined : gap })} />
+      <Check label="Show the names" hint="Under each logo." checked={block.showNames !== false} onChange={(show) => onChange({ showNames: show ? undefined : false })} />
     </>
   );
 }

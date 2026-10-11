@@ -34,6 +34,7 @@ import { embedUrl } from "@/lib/video-embed";
 import { HtmlFrame } from "./html-frame";
 import { IconListView } from "./icon-list-view";
 import { TableView } from "./table-view";
+import { BrandsView } from "./brands-view";
 import { JsonLdScript } from "./json-ld";
 import { RichText } from "./rich-text";
 import { SocialLinksView } from "./social-links-view";
@@ -122,6 +123,8 @@ export function PageBlockView({ block }: { block: PageBlock }) {
       return <IconListView block={block} />;
     case "table":
       return <TableView block={block} />;
+    case "brands":
+      return <BrandsView block={block} />;
     case "emailForm":
     case "newsletter":
       // Sent from the site (`SiteForm`, drawn by the page's rows with the site's owner, D93); the editor shows it itself.

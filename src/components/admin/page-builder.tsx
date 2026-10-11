@@ -451,11 +451,12 @@ const blockLabels: Record<BlockType, string> = {
   socialLinks: "Social media",
   iconList: "Icon list",
   table: "Table",
+  brands: "Brands",
   emailForm: "Email form",
   newsletter: "Newsletter",
 };
 /** The palette's components, in order. */
-const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "iconList", "table", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
+const BLOCK_TYPES = ["richText", "heading", "image", "video", "button", "dualButton", "tabs", "accordion", "faq", "testimonials", "iconList", "table", "brands", "socialLinks", "emailForm", "newsletter", "contentGrid", "menu", "separator", "html"] as const satisfies readonly BlockType[];
 /** What a block is called when asking before it is deleted. */
 const blockThis: Record<BlockType, string> = {
   richText: "this text",
@@ -482,6 +483,7 @@ const blockThis: Record<BlockType, string> = {
   socialLinks: "these social media links",
   iconList: "this icon list",
   table: "this table",
+  brands: "these brands",
   emailForm: "this form",
   newsletter: "this newsletter sign-up",
 };
@@ -1953,6 +1955,8 @@ function BlockIcon({ type }: { type: BlockType }) {
       return <IconListIcon />;
     case "table":
       return <TableIcon />;
+    case "brands":
+      return <BrandsIcon />;
     case "emailForm":
       return <FormIcon />;
     case "newsletter":
@@ -2012,6 +2016,18 @@ function SocialIcon() {
       <span className="size-2.5 rounded-full bg-current" />
       <span className="size-2.5 rounded-full bg-current" />
       <span className="size-2.5 rounded-full bg-current" />
+    </span>
+  );
+}
+
+function BrandsIcon() {
+  return (
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+        <rect x="3" y="5" width="7" height="6" rx="1" />
+        <rect x="14" y="5" width="7" height="6" rx="1" />
+        <path d="M4.5 16h4M15.5 16h4" strokeLinecap="round" />
+      </svg>
     </span>
   );
 }
@@ -2922,6 +2938,7 @@ const EMPTY_BLOCK: Record<BlockType, string> = {
   testimonials: "Testimonials: each needs what the person said. Double-click or use the wrench.",
   socialLinks: "Social media: each link needs its address. Double-click or use the wrench.",
   iconList: "An icon list: each line needs its words. Double-click or use the wrench.",
+  brands: "Brand logos: add logos and names. Double-click or use the wrench.",
   table: "An empty table: write in its cells. Double-click or use the wrench.",
   emailForm: "An email form: it needs its questions and where to send. Double-click or use the wrench.",
   newsletter: "A newsletter sign-up: it needs where to send. Double-click or use the wrench.",

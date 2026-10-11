@@ -21,7 +21,7 @@ async function arrange() {
       title: "Side", slug: "side", thumbnail: null, seo: { title: "", description: "" }, searchEngines: true, aiAssistants: true, categories: [], tags: [],
       rows: [
         { id: "r0", type: "row", layout: "1", columns: [{ id: "c0", blocks: [{ id: "b0", type: "button", label: "Åpne", href: "#modal-liste" }] }] },
-        { id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [table] }], modal: { key: "liste", frequency: "always", size: "md", triggers: { button: true } } },
+        { id: "r1", type: "row", layout: "1", columns: [{ id: "c1", blocks: [{ id: "h1", type: "heading", text: "Prisliste", level: 2 }, { id: "p1", type: "richText", doc: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Alle våre priser." }] }] } }, table] }], modal: { key: "liste", frequency: "always", size: "md", triggers: { button: true } } },
       ],
     };
     await sql`insert into commerce.pages (store_id, slug, draft, published, published_at) values (${storeId}, 'side', ${sql.json(content as never)}, ${sql.json(content as never)}, now())`;
@@ -33,7 +33,7 @@ async function arrange() {
 
 test("a long table in a pop-up scrolls itself, with its header and section titles kept in view", async ({ page }) => {
   const url = await arrange();
-  await page.setViewportSize({ width: 1200, height: 700 });
+  await page.setViewportSize({ width: 1200, height: 520 });
   await page.goto(url);
   await page.getByRole("link", { name: "Åpne" }).click();
   const dialog = page.getByRole("dialog");
@@ -42,6 +42,8 @@ test("a long table in a pop-up scrolls itself, with its header and section title
   const box = dialog.locator(".kz-table-box");
   const scrolls = await box.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
   expect(scrolls).toBe(true);
+  // The title and text above the table stay in view too: the table took only what was left.
+  await expect(dialog.getByRole("heading", { name: "Prisliste" })).toBeInViewport();
   // The pop-up itself does not scroll: everything it holds is inside it.
   expect(await dialog.evaluate((el) => el.scrollHeight <= el.clientHeight + 1)).toBe(true);
 

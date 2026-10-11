@@ -121,6 +121,9 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         ...(b.sections && { sections: b.sections.map((title, r) => (title ? str(`s${r}`, title, 200, `Section title above row ${r + 1}`) : title)) }),
         rows: b.rows.map((row, r) => row.map((cell, c) => str(`r${r}c${c}`, cell, 500, r === 0 && b.header ? `Column ${c + 1} heading` : `Row ${r + 1}, column ${c + 1}`))),
       };
+    case "brands":
+      // A brand's name is its own in every language; only the logos' alternative texts could differ, and they are the names.
+      return b;
     case "iconList":
       return { ...b, items: b.items.map((item, index) => ({ ...item, text: str(`${item.id}.text`, item.text, 300, `Line ${index + 1}`) })) };
     case "html":
