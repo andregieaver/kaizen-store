@@ -122,3 +122,22 @@ test("the table's title stays at the top of the pop-up, with the titles under it
   const title = dialog.getByRole("columnheader", { name: /Del [AB]/ }).first();
   expect(Math.abs((await title.boundingBox())!.y - capBottom)).toBeLessThan(3);
 });
+
+test("the pinned title does not move when the pop-up scrolls, even with padding around the table", async ({ page }) => {
+  const url = await arrange({ caption: "Funksjoner" });
+  await page.setViewportSize({ width: 375, height: 420 });
+  await page.goto(url);
+  await page.getByRole("link", { name: "Åpne" }).click();
+  const dialog = page.getByRole("dialog");
+  const panel = dialog.locator(".page-modal-panel");
+  // The pop-up's own padding, as a row's padding is.
+  await panel.evaluate((el) => (el.style.paddingTop = "48px"));
+  await page.waitForTimeout(300);
+  const caption = dialog.locator("caption");
+  await panel.evaluate((el) => (el.scrollTop = 200));
+  const first = (await caption.boundingBox())!.y;
+  await panel.evaluate((el) => (el.scrollTop = 900));
+  expect(Math.abs((await caption.boundingBox())!.y - first)).toBeLessThan(2);
+  const top = (await panel.boundingBox())!.y;
+  expect(first - top).toBeGreaterThan(40);
+});

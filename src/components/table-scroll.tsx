@@ -20,6 +20,8 @@ export function TableScroll({ fixed, maxHeight, sideways, children }: { fixed: T
     const panel = element.closest<HTMLElement>(".page-modal-panel");
     const caption = element.querySelector("caption");
     const set = () => {
+      // The first thing that is pinned: the title, else the header row when it is drawn (stacked on a phone it is not), else a section title.
+      element.dataset.top = caption ? "caption" : head && head.getBoundingClientRect().height > 2 ? "head" : "section";
       element.style.setProperty("--kz-cap-h", `${caption ? caption.getBoundingClientRect().height : 0}px`);
       element.style.setProperty("--kz-head-h", `${head ? head.getBoundingClientRect().height : 0}px`);
     };
@@ -35,9 +37,11 @@ export function TableScroll({ fixed, maxHeight, sideways, children }: { fixed: T
       // but the pop-up scrolls, and the header and titles stick to the pop-up's top: a box of a few lines would be of no use.
       if (free < MIN_BOX) {
         element.dataset.fit = "panel";
+        element.style.setProperty("--kz-pad", getComputedStyle(panel).paddingTop);
         element.style.removeProperty("--kz-fit");
       } else {
         element.dataset.fit = "box";
+        element.style.removeProperty("--kz-pad");
         element.style.setProperty("--kz-fit", `${free}px`);
       }
     };
