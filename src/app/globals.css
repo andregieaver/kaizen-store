@@ -498,10 +498,18 @@ dialog .kz-table-box[data-fit="panel"][data-fixed] {
   max-height: none;
   overflow: visible;
 }
+/* The table's title stays too, above the header. */
+.kz-table-box[data-fixed="always"] caption,
+dialog .kz-table-box[data-fixed="popup"] caption {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background-color: var(--background);
+}
 .kz-table-box[data-fixed="always"] .kz-th-head,
 dialog .kz-table-box[data-fixed="popup"] .kz-th-head {
   position: sticky;
-  top: 0;
+  top: var(--kz-cap-h, 0px);
   z-index: 20;
   background-color: var(--kz-bg, var(--background));
   box-shadow: inset 0 -2px 0 var(--border);
@@ -509,7 +517,7 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-head {
 .kz-table-box[data-fixed="always"] .kz-th-section,
 dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
   position: sticky;
-  top: var(--kz-head-h, 0px);
+  top: calc(var(--kz-cap-h, 0px) + var(--kz-head-h, 0px));
   z-index: 10;
   background-color: var(--kz-bg, var(--surface));
   box-shadow: inset 0 -2px 0 var(--border), inset 0 2px 0 var(--border);

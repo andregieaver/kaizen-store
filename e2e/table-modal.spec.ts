@@ -106,3 +106,19 @@ test("rounded corners on the table do not stop its titles from sticking", async 
   const title = dialog.getByRole("columnheader", { name: /Del [AB]/ }).first();
   await expect.poll(async () => Math.abs((await title.boundingBox())!.y - top)).toBeLessThan(3);
 });
+
+test("the table's title stays at the top of the pop-up, with the titles under it", async ({ page }) => {
+  const url = await arrange({ caption: "Funksjoner" });
+  await page.setViewportSize({ width: 375, height: 420 });
+  await page.goto(url);
+  await page.getByRole("link", { name: "Åpne" }).click();
+  const dialog = page.getByRole("dialog");
+  const panel = dialog.locator(".page-modal-panel");
+  await panel.evaluate((el) => (el.scrollTop = 700));
+  const top = (await panel.boundingBox())!.y;
+  const caption = dialog.locator("caption");
+  await expect.poll(async () => Math.abs((await caption.boundingBox())!.y - top)).toBeLessThan(3);
+  const capBottom = (await caption.boundingBox())!.y + (await caption.boundingBox())!.height;
+  const title = dialog.getByRole("columnheader", { name: /Del [AB]/ }).first();
+  expect(Math.abs((await title.boundingBox())!.y - capBottom)).toBeLessThan(3);
+});

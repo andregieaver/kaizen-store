@@ -18,7 +18,11 @@ export function TableScroll({ fixed, maxHeight, sideways, children }: { fixed: T
     const head = element?.querySelector("thead");
     if (!element) return;
     const panel = element.closest<HTMLElement>(".page-modal-panel");
-    const set = () => element.style.setProperty("--kz-head-h", `${head ? head.getBoundingClientRect().height : 0}px`);
+    const caption = element.querySelector("caption");
+    const set = () => {
+      element.style.setProperty("--kz-cap-h", `${caption ? caption.getBoundingClientRect().height : 0}px`);
+      element.style.setProperty("--kz-head-h", `${head ? head.getBoundingClientRect().height : 0}px`);
+    };
     // In a pop-up the table takes what the panel has left beside the rest of what it holds, so the panel itself never scrolls and the
     // header stays put whatever else (a title, a text, a button) is in the pop-up.
     const fit = () => {
@@ -45,6 +49,7 @@ export function TableScroll({ fixed, maxHeight, sideways, children }: { fixed: T
       fit();
     });
     if (head) watch?.observe(head);
+    if (caption) watch?.observe(caption);
     if (panel) watch?.observe(panel);
     return () => {
       window.removeEventListener("resize", fit);
