@@ -20,6 +20,7 @@ import { customPictureProblem } from "./custom-picture";
 import { isSafeAddress } from "./field-parts";
 import { inlinePlain } from "./inline-text";
 import { sourceTraits } from "./grid-source";
+import { menuHoverSchema, type MenuHover } from "./menu-hover";
 import { menuLinkSchema, type MenuLink } from "./navigation";
 import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
 import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
@@ -989,6 +990,8 @@ export type MenuBlock = PartBase & {
   menuId?: string;
   direction?: "row" | "column";
   align?: TextAlign;
+  /** How the links answer the pointer and show the page shown (D207); the links' own grey hover unless set. */
+  itemHover?: MenuHover;
 };
 
 /**
@@ -2638,6 +2641,7 @@ const menuBlock = z.object({
   menuId: z.uuid("Choose a menu for each menu component.").optional(),
   direction: z.enum(["row", "column"]).optional(),
   align: textAlign,
+  itemHover: menuHoverSchema,
   ...partBase,
 });
 

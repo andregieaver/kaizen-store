@@ -75,6 +75,8 @@ import { SiteForm } from "@/components/site-form";
 import { publicForm } from "@/lib/forms";
 import { PartBackground, blockBox, columnBox, rowBox, rowFrame, rowGrid, rowInnerClass, rowInnerStyle } from "@/components/page-parts";
 import { ColumnDividers, RowWidthHandles } from "./row-resize";
+import { MenuGlide } from "@/components/menu-glide";
+import { MenuHoverFields } from "./menu-hover-fields";
 import { PixelRange } from "./pixel-range";
 import { ModalFields, ModalPicker } from "./modal-fields";
 import { FoldButton, Rail, RailHeader, RailTabsHeader, railColumns, useFolded } from "./builder-rails";
@@ -92,6 +94,7 @@ import { ModalBar } from "./modal-preview";
 import { BackgroundMotionFields, GradientFields } from "./gradient-fields";
 import { AnimationFields, MotionFields } from "./motion-fields";
 import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
+import { menuHoverStyle } from "@/lib/menu-hover";
 import {
   BLOCKS_MAX,
   LINE_COLUMNS_MAX,
@@ -3485,6 +3488,10 @@ function Dialogs({
                   value={block}
                   onChange={(patch) => onRows((current) => patchBlock<MenuBlock>(current, block.id, patch))}
                 />
+                <MenuHoverFields
+                  value={block.itemHover}
+                  onChange={(itemHover) => onRows((current) => patchBlock<MenuBlock>(current, block.id, { itemHover }))}
+                />
                 {typographyFields({ kind: "block", id: block.id }, "The site's fonts")}
                 {spacingFields({ kind: "block", id: block.id })}
                 {frameFields({ kind: "block", id: block.id })}
@@ -6801,16 +6808,37 @@ function MenuStandIn({ block, menus }: { block: MenuBlock; menus: MenuPreview[] 
   // Side by side, only the top links show on the line; a mark says a link has links under it.
   const shown = column ? menu.items : menu.items.filter((item) => item.depth === 0);
   const hasUnder = (index: number) => menu.items[menu.items.indexOf(shown[index]) + 1]?.depth > shown[index].depth;
+  const effect = menuHoverStyle(block.itemHover);
+  const list = (
+    <ul className={`flex gap-x-4 gap-y-1 text-sm ${column ? "flex-col" : "flex-wrap items-center"}`}>
+      {shown.map((item, index) => (
+        <li key={index} style={column ? { paddingLeft: `${item.depth}rem` } : undefined} className={`flex min-h-9 items-center gap-1 font-medium ${effect ? "kz-mi" : ""}`}>
+          {effect ? (
+            // As on the site, so the effect can be tried here; the first link stands for the page shown.
+            <a href="#" onClick={(event) => event.preventDefault()} data-active={index === 0 ? "" : undefined} className="flex min-h-9 items-center gap-1 px-2">
+              {item.text}
+              {!column && hasUnder(index) && <span aria-label="with links under it">▾</span>}
+            </a>
+          ) : (
+            <>
+              {item.text}
+              {!column && hasUnder(index) && <span aria-label="with links under it">▾</span>}
+            </>
+          )}
+        </li>
+      ))}
+    </ul>
+  );
   return (
     <div>
-      <ul className={`flex gap-x-4 gap-y-1 text-sm ${column ? "flex-col" : "flex-wrap items-center"}`}>
-        {shown.map((item, index) => (
-          <li key={index} style={column ? { paddingLeft: `${item.depth}rem` } : undefined} className="flex min-h-9 items-center gap-1 font-medium">
-            {item.text}
-            {!column && hasUnder(index) && <span aria-label="with links under it">▾</span>}
-          </li>
-        ))}
-      </ul>
+      {effect ? (
+        <div className="kz-menu relative" {...effect.attrs} {...(column && { "data-mh-col": "" })} style={effect.style as CSSProperties}>
+          <MenuGlide slide={block.itemHover?.travel === "slide"} preview />
+          {list}
+        </div>
+      ) : (
+        list
+      )}
       <HiddenNote hideAt={block.visibility?.hideAt} />
     </div>
   );

@@ -866,3 +866,104 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
     transition: none;
   }
 }
+
+/*
+ * Menu links' hover and active effect (D207, `src/lib/menu-hover.ts`, `MenuGlide`): a line above, below or both, or a
+ * background, growing from each link's centre or one marker gliding between links. The link of the page shown carries it
+ * while `data-mh-active` is on. A gliding menu grows on each link until its script is ready (`data-mh-ready`), so the links
+ * answer without it. Colours and sizes are the custom properties `menuHoverStyle()` writes; times are the hover timing (D206).
+ */
+.kz-menu[data-mh] .kz-mi > a {
+  position: relative;
+  z-index: 1;
+  background-color: transparent;
+  background-repeat: no-repeat;
+  border-radius: var(--mh-radius);
+}
+.kz-menu[data-mh] .kz-mi > a:is(:hover, :focus-visible) {
+  text-decoration-line: none;
+}
+.kz-menu[data-mh="background"][data-mh-col] .kz-mi > a {
+  padding-inline: 0.5rem;
+}
+.kz-menu[data-mh="line"]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a {
+  background-image: var(--mh-fill), var(--mh-fill);
+  background-position: 50% 0, 50% 100%;
+  background-size: 0 var(--mh-thick), 0 var(--mh-thick);
+}
+.kz-menu[data-mh="line"][data-mh-edge="above"]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a:is(:hover, :focus-visible),
+.kz-menu[data-mh="line"][data-mh-edge="above"][data-mh-active]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a[data-active] {
+  background-size: 100% var(--mh-thick), 0 var(--mh-thick);
+}
+.kz-menu[data-mh="line"][data-mh-edge="below"]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a:is(:hover, :focus-visible),
+.kz-menu[data-mh="line"][data-mh-edge="below"][data-mh-active]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a[data-active] {
+  background-size: 0 var(--mh-thick), 100% var(--mh-thick);
+}
+.kz-menu[data-mh="line"][data-mh-edge="both"]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a:is(:hover, :focus-visible),
+.kz-menu[data-mh="line"][data-mh-edge="both"][data-mh-active]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a[data-active] {
+  background-size: 100% var(--mh-thick), 100% var(--mh-thick);
+}
+.kz-menu[data-mh="background"]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a {
+  background-image: var(--mh-fill);
+  background-position: 50% 50%;
+  background-size: 0 100%;
+}
+.kz-menu[data-mh="background"]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a:is(:hover, :focus-visible),
+.kz-menu[data-mh="background"][data-mh-active]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a[data-active] {
+  background-size: 100% 100%;
+}
+.kz-menu[data-mh-text]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a:is(:hover, :focus-visible),
+.kz-menu[data-mh-text][data-mh-active]:is([data-mh-travel="grow"], [data-mh-travel="slide"]:not([data-mh-ready])) .kz-mi > a[data-active],
+.kz-menu[data-mh-text][data-mh-ready] .kz-mi > a[data-mi-on] {
+  color: var(--mh-text);
+}
+.kz-mi-ind {
+  display: none;
+}
+.kz-menu[data-mh-travel="slide"][data-mh-ready] > .kz-mi-ind {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  display: block;
+  width: var(--mi-w, 0);
+  height: var(--mi-h, 0);
+  transform: translate(var(--mi-x, 0), var(--mi-y, 0));
+  opacity: 0;
+  pointer-events: none;
+  border-radius: var(--mh-radius);
+  background-repeat: no-repeat;
+  transition:
+    transform var(--kz-hover-dur, 250ms) var(--kz-hover-ease, ease),
+    width var(--kz-hover-dur, 250ms) var(--kz-hover-ease, ease),
+    height var(--kz-hover-dur, 250ms) var(--kz-hover-ease, ease),
+    opacity var(--kz-hover-dur, 250ms) var(--kz-hover-ease, ease);
+}
+.kz-menu[data-mh-travel="slide"][data-mh-ready] > .kz-mi-ind[data-shown] {
+  opacity: 1;
+}
+.kz-menu[data-mh-travel="slide"][data-mh-ready] > .kz-mi-ind[data-jump] {
+  transition: none;
+}
+.kz-menu[data-mh="background"] > .kz-mi-ind {
+  background-image: var(--mh-fill);
+  background-size: 100% 100%;
+}
+.kz-menu[data-mh="line"] > .kz-mi-ind {
+  background-image: var(--mh-fill), var(--mh-fill);
+  background-position: 0 0, 0 100%;
+}
+.kz-menu[data-mh="line"][data-mh-edge="above"] > .kz-mi-ind {
+  background-size: 100% var(--mh-thick), 0 0;
+}
+.kz-menu[data-mh="line"][data-mh-edge="below"] > .kz-mi-ind {
+  background-size: 0 0, 100% var(--mh-thick);
+}
+.kz-menu[data-mh="line"][data-mh-edge="both"] > .kz-mi-ind {
+  background-size: 100% var(--mh-thick), 100% var(--mh-thick);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kz-menu[data-mh-travel="slide"][data-mh-ready] > .kz-mi-ind {
+    transition: none;
+  }
+}

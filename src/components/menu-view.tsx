@@ -1,9 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import type { CSSProperties, ReactNode } from "react";
+
+import { menuHoverStyle, type MenuHover } from "@/lib/menu-hover";
 import type { MegaMenu, MenuPicture } from "@/lib/navigation";
 
 import { Icon } from "./icons";
+import { MenuGlide } from "./menu-glide";
 
 /** A menu's link as the site draws it, with the links under it (D85). */
 export type MenuLinkNode = {
@@ -36,6 +40,7 @@ export function MenuTreeView({
   linkClassName,
   newTabLabel,
   justify = "",
+  hover,
 }: {
   nodes: MenuLinkNode[];
   layout: MenuLayout;
@@ -45,8 +50,22 @@ export function MenuTreeView({
   newTabLabel: string;
   /** Where side-by-side links sit along the line (`justify-*` classes). */
   justify?: string;
+  /** The links' hover and active effect (D207); side by side and in a column only, never the phone's menu. */
+  hover?: MenuHover;
 }) {
   if (nodes.length === 0) return null;
+  const effect = layout === "drawer" ? null : menuHoverStyle(hover);
+  const item = effect ? "kz-mi" : "";
+  // With an effect the links sit in a box that carries it, with the marker that glides between them.
+  const boxed = (list: ReactNode) =>
+    effect ? (
+      <div className="kz-menu relative" {...effect.attrs} {...(layout === "column" && { "data-mh-col": "" })} style={effect.style as CSSProperties}>
+        <MenuGlide slide={hover?.travel === "slide"} />
+        {list}
+      </div>
+    ) : (
+      list
+    );
   const anchor = (node: MenuLinkNode, className: string, chevron = false, picture = false) => {
     const body = (
       <>
@@ -97,7 +116,7 @@ export function MenuTreeView({
     const mega = (node: MenuLinkNode, mega: MegaMenu) => {
       const columns = Math.max(1, mega.columns);
       return (
-        <li key={node.key} className="group/menu" data-mega-menu>
+        <li key={node.key} className={`group/menu ${item}`} data-mega-menu>
           {/* The link reaches down to the panel's edge, so the panel stays open on the way to it. */}
           {anchor(node, `${linkClassName} relative gap-1 after:absolute after:inset-x-0 after:top-full after:h-6`, true)}
           {/* In a header, globals.css lays it along the whole header's bottom edge (`data-mega-panel`). */}
@@ -128,10 +147,10 @@ export function MenuTreeView({
         </li>
       );
     };
-    return (
+    return boxed(
       <ul className={`flex flex-wrap items-center gap-1 ${justify}`}>
         {nodes.map((node) => node.mega && node.children.length > 0 ? mega(node, node.mega) : (
-          <li key={node.key} className="group/menu relative">
+          <li key={node.key} className={`group/menu relative ${item}`}>
             {anchor(node, `${linkClassName} gap-1`, node.children.length > 0)}
             {node.children.length > 0 && (
               // `pt-1` bridges the gap, so the list stays open on the way down to it.
@@ -141,19 +160,19 @@ export function MenuTreeView({
             )}
           </li>
         ))}
-      </ul>
+      </ul>,
     );
   }
 
   const list = (items: MenuLinkNode[], depth: number) => (
     <ul className={`flex flex-col ${layout === "column" ? "gap-1" : ""} ${depth > 0 ? "pl-4" : ""}`}>
       {items.map((node) => (
-        <li key={node.key}>
+        <li key={node.key} className={item || undefined}>
           {anchor(node, depth > 0 && layout === "drawer" ? "flex min-h-11 items-center text-base" : linkClassName)}
           {node.children.length > 0 && list(node.children, depth + 1)}
         </li>
       ))}
     </ul>
   );
-  return list(nodes, 0);
+  return boxed(list(nodes, 0));
 }

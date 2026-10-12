@@ -6,6 +6,7 @@ import type { PlatformChrome } from "@/server/platform-navigation";
 
 import { Icon } from "./icons";
 import { LogoPicture } from "./logo-picture";
+import type { MenuHover } from "@/lib/menu-hover";
 import { MenuTreeView, type MenuLayout, type MenuLinkNode } from "./menu-view";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
@@ -33,7 +34,8 @@ export function MenuLinks({
   layout,
   linkClassName,
   justify,
-}: Props & { items: PlatformMenuEntry[]; layout: MenuLayout; linkClassName: string; justify?: string }) {
+  hover,
+}: Props & { items: PlatformMenuEntry[]; layout: MenuLayout; linkClassName: string; justify?: string; hover?: MenuHover }) {
   const resolved = new Map(items.map((item) => [item, platformMenuLink(item, chrome.pages, BUILT_IN, chrome.terms, chrome.blog)]));
   const toNode = ({ item, children }: MenuNode<PlatformMenuEntry>, index: number): MenuLinkNode => {
     const link = resolved.get(item)!;
@@ -47,7 +49,7 @@ export function MenuLinks({
     };
   };
   const nodes = menuTree(items, (item) => resolved.get(item) !== null).map(toNode);
-  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} />;
+  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} hover={hover} />;
 }
 
 /** The logo, or Kaizen's name without one; `height` is one set in a header or footer layout (D80). */

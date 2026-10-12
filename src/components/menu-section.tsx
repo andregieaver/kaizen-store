@@ -42,6 +42,7 @@ export async function MenuSection({ block, place }: { block: MenuBlock; place: G
           layout={layout}
           linkClassName={linkClassName}
           justify={justify}
+          hover={block.itemHover}
         />
       </nav>
     );
@@ -51,7 +52,7 @@ export async function MenuSection({ block, place }: { block: MenuBlock; place: G
   if (!menu || menu.items.length === 0) return null;
   return (
     <nav aria-label={menu.name}>
-      <KaizenMenuLinks items={platformMenu(chrome, menu.id)} chrome={chrome} layout={layout} linkClassName={linkClassName} justify={justify} />
+      <KaizenMenuLinks items={platformMenu(chrome, menu.id)} chrome={chrome} layout={layout} linkClassName={linkClassName} justify={justify} hover={block.itemHover} />
     </nav>
   );
 }

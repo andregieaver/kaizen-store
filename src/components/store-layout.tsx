@@ -20,6 +20,7 @@ import { Icon } from "./icons";
 import { LogoPicture } from "./logo-picture";
 import { StoreColorSwitch } from "./store-color-switch";
 import { ViewMenu, type ViewItem } from "./view-menu";
+import type { MenuHover } from "@/lib/menu-hover";
 import { MenuTreeView, type MenuLayout, type MenuLinkNode } from "./menu-view";
 import { HidingBottomBar, HidingHeader, MobileMenu } from "./store-chrome";
 
@@ -51,7 +52,8 @@ export async function MenuLinks({
   layout,
   linkClassName,
   justify,
-}: Props & { items: MenuEntry[]; layout: MenuLayout; linkClassName: string; justify?: string }) {
+  hover,
+}: Props & { items: MenuEntry[]; layout: MenuLayout; linkClassName: string; justify?: string; hover?: MenuHover }) {
   if (items.length === 0) return null;
   const m = t(market.lang);
   const base = marketPath(store.slug, market.slug);
@@ -88,7 +90,7 @@ export async function MenuLinks({
     items,
     (item) => (selling || !shopLink(item.link)) && linkExists(item.link, names) && menuLabel(item, market.locale, builtIn, names) !== "",
   ).map(toNode);
-  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} />;
+  return <MenuTreeView nodes={nodes} layout={layout} linkClassName={linkClassName} newTabLabel={m.opensInNewTab} justify={justify} hover={hover} />;
 }
 
 /**
