@@ -118,6 +118,7 @@ const ENTER_BLOCKS: ReadonlySet<BlockType> = new Set<BlockType>([
   "testimonials",
   "iconList",
   "brands",
+  "gallery",
   "socialLinks",
   "emailForm",
   "newsletter",

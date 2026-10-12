@@ -18,7 +18,7 @@ import { SIZES, SIZE_LABELS, type Size } from "./breakpoints";
 import { blend } from "./colour";
 import { inlinePlain } from "./inline-text";
 import { contrastRatio } from "./theme";
-import { withChildren, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc, type BlockNode, type InlineNode } from "./page-content";
+import { galleryItemShows, withChildren, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc, type BlockNode, type InlineNode } from "./page-content";
 import { footerHasWithdrawal, footerRequired, siteBlocks } from "./site-layout";
 import { localizePage } from "./page-translation";
 import { valueAt } from "./responsive";
@@ -151,6 +151,7 @@ const BLOCK_WORDS: Partial<Record<PageBlock["type"], string>> = {
   iconList: "Icon list",
   table: "Table",
   brands: "Brands",
+  gallery: "Gallery",
 };
 const blockWord = (block: PageBlock) => BLOCK_WORDS[block.type] ?? "Component";
 
@@ -380,6 +381,14 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
         };
 
         switch (block.type) {
+          case "gallery": {
+            // A picture says what it shows; a video is named (D209).
+            const missing = block.items.filter((item) => galleryItemShows(item) && item.alt.trim() === "");
+            if (missing.some((item) => item.kind === "image")) add("image_alt", place, where, "A picture in the gallery has no alt text, so a screen reader cannot say what it shows.");
+            if (missing.some((item) => item.kind === "video")) add("image_alt", place, where, "A video in the gallery has no title, so a screen reader cannot say what it is.");
+            ownColours();
+            break;
+          }
           case "image": {
             if (block.bind) break;
             if (block.image) {
@@ -504,6 +513,8 @@ function blockWords(block: PageBlock): string[] {
       return block.items.map((item) => item.text);
     case "table":
       return [block.caption ?? "", ...block.rows.flat().map((cell) => withoutIcons(cell, true)), ...(block.sections ?? []).filter((s): s is string => Boolean(s))];
+    case "gallery":
+      return block.items.flatMap((item) => [item.alt, item.caption]);
     case "brands":
       return block.items.map((item) => item.name);
     case "video":

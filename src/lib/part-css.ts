@@ -20,6 +20,7 @@ import {
 import { carouselAnywhere, carouselAt, hiddenAt, neverStacks, spacingAt, stackAt, valueAt } from "./responsive";
 import { colourCss } from "./colour";
 import { brandColumns } from "./brands";
+import { galleryColumns } from "./gallery";
 import { INNER_KEYS, INNER_SELECTORS, type ThemedBlock } from "./theme-elements";
 import { colourCssAt, familyClassOf, familyStack, headingDefaultSize, textRoles, typographyAt, typographyDecl, typographyValueAt } from "./typography";
 
@@ -566,6 +567,10 @@ export function blockStyle(block: PageBlock, mode: PartsMode): ElementStyle {
     const columns = block.columns ?? 3;
     const at: Record<Size, number> = { xl: columns, lg: columns, md: Math.min(2, columns), sm: 1 };
     rules.push({ selector: "& [data-testimonial-list]", important: false, where: true, sizes: perSize((size) => ({ "--grid-cols": String(at[size]) })) });
+  }
+  if (block.type === "gallery") {
+    // Tiles in a row by screen size (D209): the owner's, else three, three on Medium, two on Small; a carousel's tiles in view.
+    rules.push({ selector: "& [data-gallery]", important: false, where: true, sizes: perSize((size) => ({ "--grid-cols": String(galleryColumns(block, size)) })) });
   }
   if (block.type === "brands") {
     // Logos in a row by screen size (D204): the owner's, else five, four on Medium, two on Small.

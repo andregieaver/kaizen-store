@@ -967,3 +967,200 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
     transition: none;
   }
 }
+
+/*
+ * Gallery (D209, `GalleryView`, `GalleryLightbox`): tiles in a grid of `--grid-cols` (set per screen size by the block's rules) or
+ * the carousel's track, each cropped to the gallery's shape unless it keeps its own (`data-ratio="auto"`); the lightbox is the
+ * browser's modal dialog over the whole screen.
+ */
+.kz-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols, 3), minmax(0, 1fr));
+  align-items: start;
+}
+.kz-gallery-figure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+}
+.kz-gallery-open {
+  display: block;
+  border-radius: inherit;
+  outline-offset: 2px;
+}
+.kz-gallery-frame {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  border-radius: var(--radius-md, 0.5rem);
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}
+.kz-gallery-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition-property: transform;
+}
+[data-ratio="auto"] .kz-gallery-img {
+  height: auto;
+}
+.kz-gallery-open:is(:hover, :focus-visible) .kz-gallery-img {
+  transform: scale(1.03);
+}
+.kz-gallery-blank {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 8rem;
+  background: #171717;
+}
+.kz-gallery-play {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  display: flex;
+  width: 3.5rem;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgb(0 0 0 / 0.65);
+  color: #fff;
+  transform: translate(-50%, -50%);
+}
+.kz-gallery-caption {
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+dialog.kz-lightbox {
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgb(10 10 10 / 0.94);
+  color: #fff;
+}
+dialog.kz-lightbox::backdrop {
+  background: rgb(0 0 0 / 0.6);
+}
+html:has(dialog.kz-lightbox[open]) {
+  overflow: hidden;
+}
+.kz-lightbox-body {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+.kz-lightbox-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+}
+.kz-lightbox-count {
+  margin-right: auto;
+  font-size: 0.875rem;
+  opacity: 0.8;
+}
+.kz-lightbox-stage {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4rem 1.5rem;
+  touch-action: pan-y;
+}
+@media (max-width: 640px) {
+  .kz-lightbox-stage {
+    padding: 0 0.5rem 1rem;
+  }
+}
+.kz-lightbox-figure {
+  display: flex;
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+}
+.kz-lightbox-img {
+  display: block;
+  width: min(100%, var(--lb-w), calc((100dvh - 9rem) * var(--lb-r)));
+  height: auto;
+  aspect-ratio: var(--lb-r);
+  user-select: none;
+}
+.kz-lightbox-video {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100dvh - 9rem);
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+}
+.kz-lightbox-video {
+  width: min(100%, 1200px);
+  background: #000;
+}
+.kz-lightbox-embed {
+  width: min(90vw, 1200px, calc((100dvh - 9rem) * 16 / 9));
+}
+.kz-lightbox-caption {
+  max-width: 60rem;
+  text-align: center;
+  font-size: 0.95rem;
+  opacity: 0.9;
+}
+.kz-lightbox-button {
+  display: flex;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.1);
+  color: #fff;
+}
+.kz-lightbox-button:is(:hover, :focus-visible) {
+  background: rgb(255 255 255 / 0.22);
+}
+.kz-lightbox-button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.kz-lightbox-prev,
+.kz-lightbox-next {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.kz-lightbox-prev {
+  left: 0.75rem;
+}
+.kz-lightbox-next {
+  right: 0.75rem;
+}
+@media (pointer: coarse) {
+  /* A phone swipes; its arrows sit low, out of the picture's way. */
+  .kz-lightbox-prev,
+  .kz-lightbox-next {
+    top: auto;
+    bottom: 1rem;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kz-gallery-open:is(:hover, :focus-visible) .kz-gallery-img {
+    transform: none;
+  }
+}

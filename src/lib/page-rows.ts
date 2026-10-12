@@ -93,6 +93,8 @@ export function newBlock(type: BlockType, id: NewId, part: ProductPart | SitePar
           { id: id(), network: "instagram", href: "" },
         ],
       };
+    case "gallery":
+      return { id: id(), type, items: [] };
     case "brands":
       return { id: id(), type, items: [{ id: id(), name: "", picture: null }, { id: id(), name: "", picture: null }, { id: id(), name: "", picture: null }] };
     case "testimonials":

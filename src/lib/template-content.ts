@@ -55,6 +55,7 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
   iconList: "icon list",
   table: "table",
   brands: "brands",
+  gallery: "gallery",
   emailForm: "email form",
   newsletter: "newsletter",
 };
@@ -347,6 +348,16 @@ export function mapTemplateMedia(kind: SavedPartKind, content: PartContent, reso
       }
       if (block.type === "contentGrid" && block.items) {
         return { ...block, items: block.items.map((item) => ({ ...item, picture: item.picture ? resolved(item.picture, resolve) : null })) };
+      }
+      if (block.type === "gallery") {
+        return {
+          ...block,
+          items: block.items.map((item) => ({
+            ...item,
+            picture: item.picture ? resolved(item.picture, resolve) : null,
+            ...(item.video && { video: resolved(item.video, resolve) }),
+          })),
+        };
       }
       if (block.type === "brands") {
         return { ...block, items: block.items.map((item) => ({ ...item, picture: item.picture ? resolved(item.picture, resolve) : null })) };

@@ -13,6 +13,7 @@ import { LOOP_SLOT_KEYS, isLoopable, slotChoices, suggestSlots, validSlots } fro
 import { AUTOPLAY_SECONDS, CAROUSEL_SNAPS, cleanCarousel, normalizeSeconds, resolveCarousel, type CarouselSettings, type CarouselSnap } from "@/lib/carousel-settings";
 import { setAt, sizeSource, valueAt } from "@/lib/responsive";
 import { brandColumns } from "@/lib/brands";
+import { galleryColumns } from "@/lib/gallery";
 import { tileFieldOptions } from "@/lib/tile-fields";
 import { isEmail } from "@/lib/forms";
 import { t } from "@/lib/i18n";
@@ -37,6 +38,8 @@ import {
   TABS_ALIGNS,
   VIDEO_RATIOS,
   VIDEO_SOURCES,
+  GRID_GAP_MAX,
+  type VideoSource,
   VIDEO_TITLE_MAX,
   HTML_HEIGHT_MAX,
   HTML_MAX,
@@ -79,6 +82,18 @@ import {
   type TestimonialsBlock,
   type BrandsBlock,
   type BrandItem,
+  GALLERY_DEFAULTS,
+  GALLERY_ITEMS_MAX,
+  GALLERY_KINDS,
+  GALLERY_RATIOS,
+  GALLERY_TEXT_MAX,
+  GALLERY_VIEWS,
+  galleryItemShows,
+  type GalleryBlock,
+  type GalleryItem,
+  type GalleryKind,
+  type GalleryRatio,
+  type GalleryView,
   BRANDS_DEFAULTS,
   BRANDS_LIMITS,
   BRANDS_VIEWS,
@@ -212,6 +227,12 @@ export const BLOCK_EDITORS: Editors = {
     font: { label: "Font of the names", fallback: "The site's body font" },
     General: SocialLinksFields,
     Style: SocialLinksStyleFields,
+  },
+  gallery: {
+    title: "Gallery",
+    font: { label: "Font of the captions", fallback: "The site's body font" },
+    General: GalleryFields,
+    Style: GalleryStyleFields,
   },
   brands: {
     title: "Brands",
@@ -1465,6 +1486,170 @@ function TestimonialsStyleFields({ block, onChange }: BlockEditorProps<Testimoni
       {block.display === "carousel" && <CarouselFields value={block.carousel} onChange={(carousel) => onChange({ carousel })} />}
       <Choices legend="Look" options={optionsOf(TESTIMONIAL_LOOKS)} value={block.look ?? "cards"} onChange={(look) => onChange({ look: look === "cards" ? undefined : look })} />
       <Check label="Show stars" checked={block.showRating !== false} onChange={(show) => onChange({ showRating: show ? undefined : false })} />
+    </>
+  );
+}
+
+/** A gallery's pictures and videos (D209), in the order they are dragged into, each with its description and caption. */
+function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlock>) {
+  const sourceId = useId();
+  return (
+    <>
+      <ItemsEditor<GalleryItem>
+        label="Pictures and videos"
+        items={block.items}
+        max={GALLERY_ITEMS_MAX}
+        addLabel="Add a picture"
+        nameOf={(item, index) => {
+          const what = item.kind === "image" ? "Picture" : "Video";
+          const words = item.alt.trim() || item.caption.trim();
+          return `${what} ${index + 1}${words ? `: ${words.slice(0, 40)}` : galleryItemShows(item) ? "" : item.kind === "image" ? " (no picture yet)" : " (no video yet)"}`;
+        }}
+        newItem={(): GalleryItem => ({ id: newItemId(), kind: "image", picture: null, alt: "", caption: "" })}
+        onChange={(items) => onChange({ items })}
+      >
+        {(item, change) => {
+          const source = item.source ?? "upload";
+          const link = (item.link ?? "").trim();
+          const found = source !== "upload" && link !== "" && embedUrl(source, link) !== null;
+          return (
+            <>
+              <Choices<GalleryKind>
+                legend="This is a"
+                options={(Object.keys(GALLERY_KINDS) as GalleryKind[]).map((kind) => ({ value: kind, label: GALLERY_KINDS[kind] }))}
+                value={item.kind}
+                onChange={(kind) => change(kind === "image" ? { kind, source: undefined, video: undefined, link: undefined } : { kind })}
+              />
+              {item.kind === "video" && (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor={`${sourceId}-${item.id}`} className="text-sm font-medium">
+                      Video from
+                    </label>
+                    <select
+                      id={`${sourceId}-${item.id}`}
+                      value={source}
+                      onChange={(event) => change({ source: event.target.value === "upload" ? undefined : (event.target.value as VideoSource) })}
+                      className="min-h-10 rounded-md border border-border bg-background px-3"
+                    >
+                      {(Object.keys(VIDEO_SOURCES) as VideoSource[]).map((key) => (
+                        <option key={key} value={key}>
+                          {VIDEO_SOURCES[key]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {source === "upload" ? (
+                    <div className="flex flex-col gap-2">
+                      {item.video && <p className="break-all text-sm text-muted">{item.video.url.split("/").pop()}</p>}
+                      <div className="flex flex-wrap items-center gap-3">
+                        <VideoUploadButton
+                          startVideo={context.startVideo}
+                          upload={context.upload}
+                          label={item.video ? "Choose another video" : "Upload a video"}
+                          onUploaded={({ video, poster }) => change({ video, ...(poster && !item.picture ? { picture: poster } : {}) })}
+                        />
+                        {item.video && (
+                          <button type="button" onClick={() => change({ video: null })} className={smallButton}>
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted">MP4 or WebM, up to 50 MB. A still from the video is kept as its picture.</p>
+                    </div>
+                  ) : (
+                    <TextField
+                      label={`Address on ${EMBED_NAMES[source]}`}
+                      value={item.link ?? ""}
+                      max={500}
+                      placeholder={source === "youtube" ? "https://www.youtube.com/watch?v=…" : "https://vimeo.com/…"}
+                      hint={
+                        link === ""
+                          ? "Paste the address from the video's Share button."
+                          : found
+                            ? `Found. Nothing loads from ${EMBED_NAMES[source]} until a visitor presses play.`
+                            : `That is not the address of a video on ${EMBED_NAMES[source]}.`
+                      }
+                      onChange={(value) => change({ link: value || undefined })}
+                    />
+                  )}
+                </>
+              )}
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium">{item.kind === "image" ? "Picture" : "Picture shown for the video"}</p>
+                <div className="flex flex-wrap items-center gap-3">
+                  {item.picture && (
+                    // eslint-disable-next-line @next/next/no-img-element -- the owner's own picture, shown small
+                    <img src={item.picture.url} alt="" className="h-16 w-24 rounded border border-border object-cover" />
+                  )}
+                  <ImageUploadButton
+                    upload={context.upload}
+                    label={item.picture ? "Choose another" : item.kind === "image" ? "Upload a picture" : "Choose a picture"}
+                    onUploaded={(picture) => change({ picture })}
+                  />
+                  {item.picture && (
+                    <button type="button" onClick={() => change({ picture: null })} className={smallButton}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {item.kind === "video" && source !== "upload" && (
+                  <p className="text-xs text-muted">Without one, a dark tile with a play button. YouTube&apos;s and Vimeo&apos;s own pictures are not used, as loading them would tell those sites about every visitor.</p>
+                )}
+              </div>
+              <TextField
+                label={item.kind === "image" ? "Alt text" : "Title"}
+                value={item.alt}
+                max={GALLERY_TEXT_MAX}
+                hint={item.kind === "image" ? "What the picture shows, for people who cannot see it." : "What the video is, for people using screen readers."}
+                onChange={(alt) => change({ alt })}
+              />
+              <TextField label="Caption (optional)" value={item.caption} max={GALLERY_TEXT_MAX} hint="Shown under the tile and in the lightbox." onChange={(caption) => change({ caption })} />
+            </>
+          );
+        }}
+      </ItemsEditor>
+      <p className="text-xs text-muted">Drag a piece by its handle to change the order. A piece with no picture or video is left out on the site.</p>
+    </>
+  );
+}
+
+/** How a gallery is laid out (D209): a grid or a carousel, tiles in a row per screen size, their shape, the space between and the lightbox. */
+function GalleryStyleFields({ block, onChange }: BlockEditorProps<GalleryBlock>) {
+  const { size } = useSizeEdit();
+  const carousel = block.view === "carousel";
+  return (
+    <>
+      <Choices<GalleryView>
+        legend="Show as"
+        options={(Object.keys(GALLERY_VIEWS) as GalleryView[]).map((view) => ({ value: view, label: GALLERY_VIEWS[view] }))}
+        value={block.view ?? "grid"}
+        onChange={(view) => onChange({ view: view === "grid" ? undefined : view })}
+      />
+      <Choices
+        legend={carousel ? "Tiles in view" : "Columns"}
+        hint="at the screen size edited"
+        mark={<SizeMark part={block} field="columns" label="Columns" onPatch={onChange} />}
+        muted={inheritedClass(sizeSource(block, size, "columns"), size)}
+        options={Array.from({ length: GRID_COLUMNS_MAX.desktop }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
+        value={String(galleryColumns(block, size))}
+        onChange={(n) => onChange(setAt(block, size, { columns: Number(n) }))}
+      />
+      <Choices<GalleryRatio>
+        legend="Tile shape"
+        options={(Object.keys(GALLERY_RATIOS) as GalleryRatio[]).map((ratio) => ({ value: ratio, label: GALLERY_RATIOS[ratio] }))}
+        value={block.ratio ?? GALLERY_DEFAULTS.ratio}
+        onChange={(ratio) => onChange({ ratio: ratio === GALLERY_DEFAULTS.ratio ? undefined : ratio })}
+      />
+      <NumberField label="Space between" value={block.gap ?? GALLERY_DEFAULTS.gap} min={0} max={GRID_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap: gap === GALLERY_DEFAULTS.gap ? undefined : gap })} />
+      <Check
+        label="Open full size in a lightbox"
+        hint="A press on a tile shows it over the page, with the previous and the next: arrows, the keyboard's arrow keys or a swipe."
+        checked={block.lightbox !== false}
+        onChange={(on) => onChange({ lightbox: on ? undefined : false })}
+      />
+      <Check label="Show the captions" hint="Under the tiles; the lightbox shows them still." checked={block.showCaptions !== false} onChange={(on) => onChange({ showCaptions: on ? undefined : false })} />
+      {carousel && <CarouselFields value={block.carousel} onChange={(settings) => onChange({ carousel: settings })} />}
     </>
   );
 }

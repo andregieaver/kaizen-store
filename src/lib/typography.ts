@@ -370,6 +370,8 @@ export function textRoles(part: TypedPart): RoleDef[] {
       return [TEXT, role("quote", "Quotes", "& blockquote"), role("name", "Names", marked("name")), role("meta", "Titles and places", marked("meta"))];
     case "brands":
       return [TEXT, role("name", "Names", marked("name"))];
+    case "gallery":
+      return [TEXT, role("caption", "Captions", marked("caption"))];
     case "socialLinks":
       return [TEXT, role("name", "Network names", marked("name"))];
     case "emailForm":
@@ -449,6 +451,7 @@ export const TEXT_FIELDS: Record<string, Record<string, TextRole>> = {
   testimonials: { "*.quote": "quote", "*.role": "meta", "*.name": "name" },
   iconList: { "*.text": "text" },
   brands: { "*.name": "name" },
+  gallery: { "*.caption": "caption" },
   table: { caption: "text", "r*": "text", "s*": "text" },
   socialLinks: { "network names": "name" },
   emailForm: {

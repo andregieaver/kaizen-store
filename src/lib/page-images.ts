@@ -18,6 +18,8 @@ function picturesByKey(content: PageContent): Map<string, string> {
     for (const column of row.columns) {
       for (const block of withChildren(column.blocks)) {
         if (block.type === "image" && block.image) pictures.set(`block.${block.id}.alt`, block.image.url);
+        // A gallery's pictures (D209), each described by its own alt text, or the library's.
+        if (block.type === "gallery") for (const item of block.items) if (item.kind === "image" && item.picture) pictures.set(`block.${block.id}.${item.id}.alt`, item.picture.url);
       }
     }
   }

@@ -121,6 +121,16 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         ...(b.sections && { sections: b.sections.map((title, r) => (title ? str(`s${r}`, title, 200, `Section title above row ${r + 1}`) : title)) }),
         rows: b.rows.map((row, r) => row.map((cell, c) => str(`r${r}c${c}`, cell, 500, r === 0 && b.header ? `Column ${c + 1} heading` : `Row ${r + 1}, column ${c + 1}`))),
       };
+    case "gallery":
+      // Each piece's description (a picture's alt text, a video's title) and caption, by the piece's own id.
+      return {
+        ...b,
+        items: b.items.map((item, index) => ({
+          ...item,
+          alt: str(`${item.id}.alt`, item.alt, 300, `${item.kind === "image" ? "Picture" : "Video"} ${index + 1}: ${item.kind === "image" ? "description" : "title"}`),
+          caption: str(`${item.id}.caption`, item.caption, 300, `${item.kind === "image" ? "Picture" : "Video"} ${index + 1}: caption`),
+        })),
+      };
     case "brands":
       // A brand's name is its own in every language; only the logos' alternative texts could differ, and they are the names.
       return b;

@@ -1509,6 +1509,68 @@ export type BrandTint = keyof typeof BRAND_TINTS;
 /** A brand shows once it has a logo or a name. */
 export const brandShows = (item: BrandItem): boolean => item.picture !== null || item.name.trim() !== "";
 
+// ---------------------------------------------------------------------------
+// Gallery (D209)
+// ---------------------------------------------------------------------------
+
+export const GALLERY_KINDS = { image: "Picture", video: "Video" } as const;
+export type GalleryKind = keyof typeof GALLERY_KINDS;
+export const GALLERY_VIEWS = { grid: "Grid", carousel: "Carousel" } as const;
+export type GalleryView = keyof typeof GALLERY_VIEWS;
+/** The tiles' shape; `auto` keeps each picture's own (a grid then lines them up at the top). */
+export const GALLERY_RATIOS = { "1:1": "Square", "4:3": "4:3", "3:2": "3:2", "16:9": "16:9", "3:4": "Upright 3:4", auto: "Each its own" } as const;
+export type GalleryRatio = keyof typeof GALLERY_RATIOS;
+export const GALLERY_DEFAULTS = { columns: 3, gap: 12, ratio: "1:1" as GalleryRatio } as const;
+export const GALLERY_ITEMS_MAX = 60;
+export const GALLERY_TEXT_MAX = 300;
+
+/**
+ * One piece of a gallery: a picture, or a video (uploaded, or on YouTube or Vimeo) with a picture shown for it. `alt` says what a
+ * picture shows, or names a video; `caption` is shown under the tile and in the lightbox.
+ */
+export type GalleryItem = {
+  id: string;
+  kind: GalleryKind;
+  /** The picture, or a video's picture (its still, or one chosen). */
+  picture: { url: string; width: number; height: number } | null;
+  alt: string;
+  caption: string;
+  /** A video: where it comes from (an upload unless set), the uploaded file, or the YouTube or Vimeo address. */
+  source?: VideoSource;
+  video?: { url: string } | null;
+  link?: string;
+};
+
+/**
+ * A gallery (D209): pictures and videos mixed, in the order the owner drags them into, as a grid of `columns` (by screen size in
+ * `at.*.columns`, read only through `galleryColumns()`) or a carousel of as many in view, with a lightbox that shows each full size,
+ * with the previous and the next, unless `lightbox` is off.
+ */
+export type GalleryBlock = PartBase & {
+  id: string;
+  type: "gallery";
+  items: GalleryItem[];
+  view?: GalleryView;
+  /** Tiles in a row at Extra large (three unless set); smaller sizes in `at`. */
+  columns?: number;
+  /** Pixels between the tiles. */
+  gap?: number;
+  ratio?: GalleryRatio;
+  /** Opens a tile full size; on unless off. */
+  lightbox?: boolean;
+  /** Captions under the tiles; shown unless off (the lightbox shows them still). */
+  showCaptions?: boolean;
+  /** What the carousel does besides scrolling (D155): arrows only unless set. */
+  carousel?: CarouselSettings;
+};
+
+/** A gallery's piece that shows: a picture with its picture, an uploaded video with its file, or a video address that plays. */
+export function galleryItemShows(item: GalleryItem): boolean {
+  if (item.kind === "image") return item.picture !== null;
+  const source = item.source ?? "upload";
+  return source === "upload" ? Boolean(item.video) : embedUrl(source, item.link ?? "") !== null;
+}
+
 /** A table that shows: some cell has words. */
 export const tableShows = (block: Pick<TableBlock, "rows">) => block.rows.some((row) => row.some((cell) => cell.trim() !== ""));
 
@@ -1629,6 +1691,7 @@ export type PageBlock =
   | IconListBlock
   | TableBlock
   | BrandsBlock
+  | GalleryBlock
   | EmailFormBlock
   | NewsletterBlock;
 export type BlockType = PageBlock["type"];
@@ -1828,6 +1891,8 @@ export function blockOwnContent(block: PageBlock): boolean {
       return tableShows(block);
     case "brands":
       return block.items.some(brandShows);
+    case "gallery":
+      return block.items.some(galleryItemShows);
     case "emailForm":
     case "newsletter":
       return formShows(block);
@@ -1864,6 +1929,12 @@ export function blockText(block: PageBlock): string {
         .join(" ");
     case "brands":
       return block.items.map((item) => item.name.trim()).filter(Boolean).join(" ");
+    case "gallery":
+      return block.items
+        .filter(galleryItemShows)
+        .flatMap((item) => [item.alt.trim(), item.caption.trim()])
+        .filter(Boolean)
+        .join(" ");
     case "table":
       return [block.caption && inlinePlain(block.caption), ...block.rows.map((row) => row.map((cell) => withoutIcons(inlinePlain(cell), true)).filter(Boolean).join(" "))].filter(Boolean).join(" ");
     case "testimonials":
@@ -2948,6 +3019,47 @@ const iconListBlock = z.object({
 
 const tableColour = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase()).optional();
 
+const galleryPicture = z
+  .object({
+    url: z.url({ protocol: /^https?$/, error: "A picture in the gallery has an invalid address." }).max(1000),
+    width: z.number().int().min(1).max(10_000),
+    height: z.number().int().min(1).max(10_000),
+  })
+  .nullable();
+
+const galleryBlock = z.object({
+  id: itemId,
+  type: z.literal("gallery"),
+  items: z
+    .array(
+      z
+        .object({
+          id: itemId,
+          kind: z.enum(Object.keys(GALLERY_KINDS) as [GalleryKind, ...GalleryKind[]]),
+          picture: galleryPicture,
+          alt: z.string().trim().max(GALLERY_TEXT_MAX, `Keep a description under ${GALLERY_TEXT_MAX} characters.`).default(""),
+          caption: z.string().trim().max(GALLERY_TEXT_MAX, `Keep a caption under ${GALLERY_TEXT_MAX} characters.`).default(""),
+          source: z.enum(Object.keys(VIDEO_SOURCES) as [VideoSource, ...VideoSource[]], "A video comes from an unknown place.").optional(),
+          video: z.object({ url: z.url({ protocol: /^https?$/, error: "A video in the gallery has an invalid address." }).max(1000) }).nullable().optional(),
+          link: z.string().trim().max(500).optional(),
+        })
+        .refine((item) => item.kind === "image" || (item.source ?? "upload") === "upload" || !item.link || embedUrl(item.source as "youtube" | "vimeo", item.link) !== null, {
+          message: "Use the address of a video on YouTube or Vimeo, as its Share button gives it.",
+          path: ["link"],
+        }),
+    )
+    .max(GALLERY_ITEMS_MAX, `A gallery holds at most ${GALLERY_ITEMS_MAX} pictures and videos.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two pieces of the gallery have the same id. Reload the page and try again."),
+  view: z.enum(Object.keys(GALLERY_VIEWS) as [GalleryView, ...GalleryView[]]).optional(),
+  columns: gridColumnCount.optional(),
+  gap: partGap,
+  ratio: z.enum(Object.keys(GALLERY_RATIOS) as [GalleryRatio, ...GalleryRatio[]]).optional(),
+  lightbox: z.boolean().optional(),
+  showCaptions: z.boolean().optional(),
+  carousel: carouselSettingsSchema.optional(),
+  ...partBase,
+});
+
 const brandsBlock = z.object({
   id: itemId,
   type: z.literal("brands"),
@@ -3110,6 +3222,7 @@ export const pageBlockUnion = z.discriminatedUnion("type", [
   iconListBlock,
   tableBlock,
   brandsBlock,
+  galleryBlock,
   emailFormBlock,
   newsletterBlock,
 ]);
