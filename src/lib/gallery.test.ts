@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { PageBlockView } from "@/components/page-block";
 
-import { galleryAspect, galleryColumns, gallerySlides, stepSlide } from "./gallery";
+import { galleryAspect, galleryColumns, galleryFades, gallerySlides, galleryZoomVars, stepSlide } from "./gallery";
 import { blockHasContent, blockText, pageInput, type GalleryBlock, type GalleryItem, type PageContent } from "./page-content";
 import { pageIssues } from "./page-a11y";
 import { newBlock } from "./page-rows";
@@ -88,5 +88,31 @@ describe("gallery (D209)", () => {
     const html = renderToStaticMarkup(createElement(PageBlockView, { block: gallery({ lightbox: false }) }));
     expect(html).not.toContain("data-gallery-open");
     expect(html).toContain("<video");
+  });
+
+  it("fades only as a carousel with one tile in view at every screen size (D210)", () => {
+    const one = { view: "carousel" as const, transition: "fade" as const, columns: 1 };
+    expect(galleryFades(one)).toBe(true);
+    expect(galleryFades({ ...one, view: "grid" })).toBe(false);
+    expect(galleryFades({ ...one, transition: undefined })).toBe(false);
+    expect(galleryFades({ ...one, columns: 2 })).toBe(false);
+    expect(galleryFades({ ...one, at: { md: { columns: 2 } } })).toBe(false);
+  });
+
+  it("zooms by its own amount, at the site's hover time unless it has its own (D210)", () => {
+    expect(galleryZoomVars({})).toEqual({ "--gallery-zoom": "1.03" });
+    expect(galleryZoomVars({ hoverZoom: 0 })).toEqual({ "--gallery-zoom": "1" });
+    expect(galleryZoomVars({ hoverZoom: 12, hoverZoomMs: 900 })).toEqual({ "--gallery-zoom": "1.12", "--gallery-zoom-ms": "900ms" });
+    expect(pageInput.safeParse(page(gallery({ hoverZoom: 31 }))).success).toBe(false);
+    expect(pageInput.safeParse(page(gallery({ fadeMs: 50 }))).success).toBe(false);
+  });
+
+  it("draws a fading carousel as tiles on top of one another, only the first in front and reachable (D210)", () => {
+    const html = renderToStaticMarkup(createElement(PageBlockView, { block: gallery({ view: "carousel", transition: "fade", columns: 1, fadeMs: 900 }) }));
+    expect(html).toContain("data-fade");
+    expect(html).toContain("--fade-ms:900ms");
+    expect(html.match(/data-on=""/g)).toHaveLength(1);
+    expect(html.match(/inert=""/g)).toHaveLength(2);
+    expect(html).not.toContain("data-carousel-track");
   });
 });

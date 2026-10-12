@@ -14,6 +14,7 @@ import { AUTOPLAY_SECONDS, CAROUSEL_SNAPS, cleanCarousel, normalizeSeconds, reso
 import { setAt, sizeSource, valueAt } from "@/lib/responsive";
 import { brandColumns } from "@/lib/brands";
 import { galleryColumns } from "@/lib/gallery";
+import { SIZES } from "@/lib/breakpoints";
 import { tileFieldOptions } from "@/lib/tile-fields";
 import { isEmail } from "@/lib/forms";
 import { t } from "@/lib/i18n";
@@ -84,6 +85,9 @@ import {
   type BrandItem,
   GALLERY_DEFAULTS,
   GALLERY_ITEMS_MAX,
+  GALLERY_LIMITS,
+  GALLERY_TRANSITIONS,
+  type GalleryTransition,
   GALLERY_KINDS,
   GALLERY_RATIOS,
   GALLERY_TEXT_MAX,
@@ -1649,7 +1653,60 @@ function GalleryStyleFields({ block, onChange }: BlockEditorProps<GalleryBlock>)
         onChange={(on) => onChange({ lightbox: on ? undefined : false })}
       />
       <Check label="Show the captions" hint="Under the tiles; the lightbox shows them still." checked={block.showCaptions !== false} onChange={(on) => onChange({ showCaptions: on ? undefined : false })} />
-      {carousel && <CarouselFields value={block.carousel} onChange={(settings) => onChange({ carousel: settings })} />}
+      <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+        <legend className="float-left mb-1 w-full font-medium">Zoom on hover</legend>
+        <NumberField
+          label="How much a picture grows"
+          value={block.hoverZoom ?? GALLERY_DEFAULTS.hoverZoom}
+          min={GALLERY_LIMITS.hoverZoom.min}
+          max={GALLERY_LIMITS.hoverZoom.max}
+          unit="% (0 for none)"
+          onChange={(hoverZoom) => onChange({ hoverZoom: hoverZoom === GALLERY_DEFAULTS.hoverZoom ? undefined : hoverZoom })}
+        />
+        <Check
+          label="Its own speed"
+          hint="Otherwise it takes the site's hover time, set in the Theme tab."
+          checked={block.hoverZoomMs !== undefined}
+          onChange={(on) => onChange({ hoverZoomMs: on ? GALLERY_DEFAULTS.hoverZoomMs : undefined })}
+        />
+        {block.hoverZoomMs !== undefined && (
+          <NumberField
+            label="Time to grow"
+            value={block.hoverZoomMs}
+            min={GALLERY_LIMITS.hoverZoomMs.min}
+            max={GALLERY_LIMITS.hoverZoomMs.max}
+            unit="milliseconds"
+            onChange={(hoverZoomMs) => onChange({ hoverZoomMs })}
+          />
+        )}
+      </fieldset>
+      {carousel && (
+        <>
+          {SIZES.every((s) => galleryColumns(block, s) === 1) ? (
+            <>
+              <Choices<GalleryTransition>
+                legend="From one tile to the next"
+                options={(Object.keys(GALLERY_TRANSITIONS) as GalleryTransition[]).map((transition) => ({ value: transition, label: GALLERY_TRANSITIONS[transition] }))}
+                value={block.transition ?? "slide"}
+                onChange={(transition) => onChange({ transition: transition === "slide" ? undefined : transition })}
+              />
+              {block.transition === "fade" && (
+                <NumberField
+                  label="Time to fade"
+                  value={block.fadeMs ?? GALLERY_DEFAULTS.fadeMs}
+                  min={GALLERY_LIMITS.fadeMs.min}
+                  max={GALLERY_LIMITS.fadeMs.max}
+                  unit="milliseconds"
+                  onChange={(fadeMs) => onChange({ fadeMs: fadeMs === GALLERY_DEFAULTS.fadeMs ? undefined : fadeMs })}
+                />
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted">A fade from tile to tile is offered when one tile is in view at every screen size.</p>
+          )}
+          <CarouselFields value={block.carousel} onChange={(settings) => onChange({ carousel: settings })} />
+        </>
+      )}
     </>
   );
 }

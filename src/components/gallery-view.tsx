@@ -1,11 +1,12 @@
 import type { CSSProperties, ReactNode } from "react";
 
 import { snapAttribute } from "@/lib/carousel-settings";
-import { galleryAspect, gallerySlides, type GallerySlide } from "@/lib/gallery";
+import { galleryAspect, galleryFades, gallerySlides, galleryZoomVars, type GallerySlide } from "@/lib/gallery";
 import { GALLERY_DEFAULTS, type GalleryBlock } from "@/lib/page-content";
 import { EMBED_NAMES } from "@/lib/video-embed";
 
 import { Carousel } from "./carousel";
+import { GalleryFade } from "./gallery-fade";
 import { GalleryLightbox } from "./gallery-lightbox";
 import { EmbeddedVideo, UploadedVideo } from "./video-view";
 
@@ -23,16 +24,19 @@ export function GalleryView({ block }: { block: GalleryBlock }) {
   const lightbox = block.lightbox !== false;
   const captions = block.showCaptions !== false;
   const carousel = block.view === "carousel";
-  const tiles = slides.map((slide, index) => (
-    <li key={slide.key} className="kz-gallery-tile">
-      <figure className="kz-gallery-figure">
-        {lightbox ? <Opener slide={slide} index={index} aspect={aspect} /> : <Shown slide={slide} aspect={aspect} />}
-        {captions && slide.caption && (
-          <figcaption data-kz-text="caption" className="kz-gallery-caption">
-            {slide.caption}
-          </figcaption>
-        )}
-      </figure>
+  const figures = slides.map((slide, index) => (
+    <figure key={slide.key} className="kz-gallery-figure">
+      {lightbox ? <Opener slide={slide} index={index} aspect={aspect} /> : <Shown slide={slide} aspect={aspect} />}
+      {captions && slide.caption && (
+        <figcaption data-kz-text="caption" className="kz-gallery-caption">
+          {slide.caption}
+        </figcaption>
+      )}
+    </figure>
+  ));
+  const tiles = figures.map((figure, index) => (
+    <li key={slides[index].key} className="kz-gallery-tile">
+      {figure}
     </li>
   ));
   const list = (
@@ -47,8 +51,15 @@ export function GalleryView({ block }: { block: GalleryBlock }) {
       {tiles}
     </ul>
   );
-  const shown: ReactNode = carousel ? <Carousel settings={block.carousel}>{list}</Carousel> : list;
-  return <div className="kz-gallery">{lightbox ? <GalleryLightbox slides={slides}>{shown}</GalleryLightbox> : shown}</div>;
+  const shown: ReactNode = galleryFades(block) ? (
+    // One tile at a time, fading into the next (D210).
+    <GalleryFade tiles={figures.map((node, index) => ({ key: slides[index].key, node }))} settings={block.carousel} fadeMs={block.fadeMs ?? GALLERY_DEFAULTS.fadeMs} gap={gap} />
+  ) : carousel ? (
+    <Carousel settings={block.carousel}>{list}</Carousel>
+  ) : (
+    list
+  );
+  return <div className="kz-gallery" style={galleryZoomVars(block) as CSSProperties}>{lightbox ? <GalleryLightbox slides={slides}>{shown}</GalleryLightbox> : shown}</div>;
 }
 
 /** A tile's picture: the picture itself, or a video's (a dark panel when it has none). */

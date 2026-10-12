@@ -1520,7 +1520,11 @@ export type GalleryView = keyof typeof GALLERY_VIEWS;
 /** The tiles' shape; `auto` keeps each picture's own (a grid then lines them up at the top). */
 export const GALLERY_RATIOS = { "1:1": "Square", "4:3": "4:3", "3:2": "3:2", "16:9": "16:9", "3:4": "Upright 3:4", auto: "Each its own" } as const;
 export type GalleryRatio = keyof typeof GALLERY_RATIOS;
-export const GALLERY_DEFAULTS = { columns: 3, gap: 12, ratio: "1:1" as GalleryRatio } as const;
+export const GALLERY_DEFAULTS = { columns: 3, gap: 12, ratio: "1:1" as GalleryRatio, fadeMs: 600, hoverZoom: 3, hoverZoomMs: 400 } as const;
+/** How a carousel of one tile in view goes from tile to tile (D210): sliding sideways, or fading one into the next. */
+export const GALLERY_TRANSITIONS = { slide: "Slide", fade: "Fade" } as const;
+export type GalleryTransition = keyof typeof GALLERY_TRANSITIONS;
+export const GALLERY_LIMITS = { fadeMs: { min: 150, max: 3000 }, hoverZoom: { min: 0, max: 30 }, hoverZoomMs: { min: 0, max: 3000 } } as const;
 export const GALLERY_ITEMS_MAX = 60;
 export const GALLERY_TEXT_MAX = 300;
 
@@ -1562,6 +1566,14 @@ export type GalleryBlock = PartBase & {
   showCaptions?: boolean;
   /** What the carousel does besides scrolling (D155): arrows only unless set. */
   carousel?: CarouselSettings;
+  /** A carousel with one tile in view at every size may fade from tile to tile (D210, `galleryFades()`); slides unless set. */
+  transition?: GalleryTransition;
+  /** How long a fade takes, in milliseconds. */
+  fadeMs?: number;
+  /** How much a tile's picture grows under the pointer, in percent (0 for none); 3 unless set (D210). */
+  hoverZoom?: number;
+  /** How long it takes to grow, in milliseconds; the site's hover time (D206) unless set. */
+  hoverZoomMs?: number;
 };
 
 /** A gallery's piece that shows: a picture with its picture, an uploaded video with its file, or a video address that plays. */
@@ -3057,6 +3069,10 @@ const galleryBlock = z.object({
   lightbox: z.boolean().optional(),
   showCaptions: z.boolean().optional(),
   carousel: carouselSettingsSchema.optional(),
+  transition: z.enum(Object.keys(GALLERY_TRANSITIONS) as [GalleryTransition, ...GalleryTransition[]]).optional(),
+  fadeMs: z.number().int().min(GALLERY_LIMITS.fadeMs.min, `A fade takes at least ${GALLERY_LIMITS.fadeMs.min} milliseconds.`).max(GALLERY_LIMITS.fadeMs.max, `A fade takes at most ${GALLERY_LIMITS.fadeMs.max} milliseconds.`).optional(),
+  hoverZoom: z.number().int().min(GALLERY_LIMITS.hoverZoom.min).max(GALLERY_LIMITS.hoverZoom.max, `A picture grows at most ${GALLERY_LIMITS.hoverZoom.max} % on hover.`).optional(),
+  hoverZoomMs: z.number().int().min(GALLERY_LIMITS.hoverZoomMs.min).max(GALLERY_LIMITS.hoverZoomMs.max, `Growing takes at most ${GALLERY_LIMITS.hoverZoomMs.max} milliseconds.`).optional(),
   ...partBase,
 });
 

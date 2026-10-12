@@ -52,3 +52,30 @@ test("a gallery as a carousel scrolls with its arrows", async ({ page }) => {
   await page.getByRole("button", { name: "Neste" }).click();
   await expect.poll(() => track.evaluate((el) => el.scrollLeft)).toBeGreaterThan(20);
 });
+
+test("one tile at a time fades into the next, and a picture zooms by its own amount and time (D210)", async ({ page }) => {
+  const url = await storePageWith("galleri-fade", [gallery("g3", { view: "carousel", transition: "fade", columns: 1, fadeMs: 200, hoverZoom: 20, hoverZoomMs: 100 })]);
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto(url);
+  const slides = page.locator("[data-fade] > li");
+  await expect(slides).toHaveCount(5);
+  await expect(slides.nth(0)).toHaveCSS("opacity", "1");
+  await expect(slides.nth(1)).toHaveCSS("opacity", "0");
+  // They lie on top of one another: one box, not a row.
+  const tops = await slides.evaluateAll((els) => els.map((el) => Math.round(el.getBoundingClientRect().left)));
+  expect(new Set(tops).size).toBe(1);
+  await page.getByRole("button", { name: "Neste" }).click();
+  await expect(slides.nth(1)).toHaveCSS("opacity", "1");
+  await expect(slides.nth(0)).toHaveCSS("opacity", "0");
+
+  const picture = slides.nth(1).locator(".kz-gallery-img");
+  await picture.hover();
+  await expect.poll(() => picture.evaluate((el) => getComputedStyle(el).transform)).toBe("matrix(1.2, 0, 0, 1.2, 0, 0)");
+  expect(await picture.evaluate((el) => getComputedStyle(el).transitionDuration)).toBe("0.1s");
+});
+
+test("a tile has no background of its own, so a see-through picture shows what is behind it", async ({ page }) => {
+  const url = await storePageWith("galleri-gjennomsiktig", [gallery("g4")]);
+  await page.goto(url);
+  await expect(page.locator(".kz-gallery-frame").first()).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+});
