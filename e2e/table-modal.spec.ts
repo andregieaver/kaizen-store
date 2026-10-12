@@ -141,3 +141,30 @@ test("the pinned title does not move when the pop-up scrolls, even with padding 
   const top = (await panel.boundingBox())!.y;
   expect(first - top).toBeGreaterThan(40);
 });
+
+test("on a computer the pop-up shows one scrollbar: the table's", async ({ page }) => {
+  const url = await arrange({ caption: "Funksjoner" });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(url);
+  await page.getByRole("link", { name: "Åpne" }).click();
+  const dialog = page.getByRole("dialog");
+  const panel = dialog.locator(".page-modal-panel");
+  await expect(dialog.locator(".kz-table-box")).toHaveAttribute("data-fit", "box");
+  await page.waitForTimeout(500);
+  const sizes = await panel.evaluate((el) => [el.scrollHeight, el.clientHeight]);
+  expect(sizes[0]).toBeLessThanOrEqual(sizes[1]);
+});
+
+test("one scrollbar on a computer even with a border round the pop-up and text that grows after it opens", async ({ page }) => {
+  const url = await arrange({ caption: "Funksjoner" });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(url);
+  await page.getByRole("link", { name: "Åpne" }).click();
+  const dialog = page.getByRole("dialog");
+  const panel = dialog.locator(".page-modal-panel");
+  await panel.evaluate((el) => (el.style.border = "12px solid #ccc"));
+  await dialog.locator("p").first().evaluate((el) => (el.style.fontSize = "40px"));
+  await expect.poll(() => panel.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(0);
+  const box = dialog.locator(".kz-table-box");
+  expect(await box.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
+});
