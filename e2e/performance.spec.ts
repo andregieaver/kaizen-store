@@ -7,8 +7,8 @@ import { storePageRows, testDb } from "./db";
  * would move with but that do not wobble as a score does. `pnpm perf` runs Lighthouse itself.
  */
 
-/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 1.01 MB (249 KB compressed) when this was set. */
-const FIRST_SCRIPTS_MAX = 1_100_000;
+/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 922 KB when this was set (D212; 1.01 MB before each page loaded only its own language). */
+const FIRST_SCRIPTS_MAX = 1_000_000;
 
 const base = `http://localhost:${process.env.PORT ?? 3000}`;
 
@@ -28,6 +28,24 @@ test("the front page's first scripts stay within their budget, without zod or th
   // A part the page does not draw is not in its first scripts: the gallery's lightbox, the checkout's payment form.
   expect(scripts.filter((script) => script.text.includes("kz-lightbox")).map((s) => s.url)).toEqual([]);
   expect(scripts.filter((script) => script.text.includes("CheckoutSdkContext")).map((s) => s.url)).toEqual([]);
+});
+
+test("a page loads its own language's interface text and no other's (D212)", async ({ page }) => {
+  // Each language's words for a store's summary, which only its own module holds.
+  const summaries = { nb: "nettbutikk med levering i", sv: "webbutik med leverans i", da: "webshop med levering i", en: "online store delivering in" };
+  const loaded: Promise<string>[] = [];
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("response", (response) => {
+    if (response.request().resourceType() === "script") loaded.push(response.text().catch(() => ""));
+  });
+  await page.goto("/s/demo/no");
+  await page.waitForLoadState("networkidle");
+  const text = (await Promise.all(loaded)).join("\n");
+  const found = Object.entries(summaries).filter(([, words]) => text.includes(words)).map(([lang]) => lang);
+  expect(found).toEqual(["nb"]);
+  // A client component that found no text would have thrown (`browserText()`).
+  expect(errors).toEqual([]);
 });
 
 test("the first grid's first picture loads at once and first; the next grid's as they come near", async ({ page }) => {

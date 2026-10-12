@@ -27,7 +27,6 @@ vi.mock("@/components/lazy/blocks", async () => ({
   PageModal: await pick(() => import("@/components/page-modal"), "PageModal"),
   RecommendedGrid: await pick(() => import("@/components/recommended-grid"), "RecommendedGrid"),
   SearchBox: await pick(() => import("@/components/search-box"), "SearchBox"),
-  FilterDialog: await pick(() => import("@/components/filter-dialog"), "FilterDialog"),
 }));
 
 vi.mock("@/components/lazy/shop", async () => ({

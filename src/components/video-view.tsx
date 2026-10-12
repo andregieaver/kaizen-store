@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
-import { t } from "@/lib/i18n";
+import { browserText as t } from "@/lib/browser-text";
 import { EMBED_NAMES, type EmbedSource } from "@/lib/video-embed";
 
 import { usePageLanguage } from "./page-language";

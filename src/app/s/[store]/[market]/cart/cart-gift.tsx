@@ -2,7 +2,7 @@
 
 import { useId, useRef, useState, useTransition } from "react";
 
-import { t } from "@/lib/i18n";
+import { browserText as t } from "@/lib/browser-text";
 import {
   GIFT_MESSAGE_LINES,
   GIFT_MESSAGE_MAX,

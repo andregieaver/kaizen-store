@@ -6,9 +6,9 @@ import { lazyView, showChildren } from "./lazy-view";
 
 /**
  * The interactive parts of page components (a gallery's lightbox and fade, a logo carousel, tabs, a table that scrolls, videos,
- * embedded HTML, a modal, the recommended grid, search and filters), each loaded only on a page that draws it (D211, `lazyView()`).
- * Those wrapping the server's content show it while their script loads. A form is not here: what a visitor types into it before
- * its script runs would be lost, so it is in the page's first scripts.
+ * embedded HTML, a modal, the recommended grid and search), each loaded only on a page that draws it (D211, `lazyView()`).
+ * Those wrapping the server's content show it while their script loads. A form is not here, nor a listing's filter button: what
+ * a visitor types or presses before its script runs would be lost, so they are in the page's first scripts.
  */
 export const GalleryLightbox = lazyView(dynamic(() => import("../gallery-lightbox").then((m) => m.GalleryLightbox)), showChildren);
 export const GalleryFade = lazyView(dynamic(() => import("../gallery-fade").then((m) => m.GalleryFade)));
@@ -22,4 +22,3 @@ export const HtmlFrame = lazyView(dynamic(() => import("../html-frame").then((m)
 export const PageModal = lazyView(dynamic(() => import("../page-modal").then((m) => m.PageModal)));
 export const RecommendedGrid = lazyView(dynamic(() => import("../recommended-grid").then((m) => m.RecommendedGrid)), showChildren);
 export const SearchBox = lazyView(dynamic(() => import("../search-box").then((m) => m.SearchBox)));
-export const FilterDialog = lazyView(dynamic(() => import("../filter-dialog").then((m) => m.FilterDialog)));

@@ -44,12 +44,25 @@ with its processor slowed four times, and a computer.
   component that is not on most pages is added to the right `lazy/*.tsx` and imported from there. Not one a visitor came to the
   page to use at once, as what is typed or pressed before a part's own script runs is lost: the site's forms
   (`e2e/components.spec.ts`), a booking's changes (`e2e/bookings.spec.ts`), the cart's checkout button with its company and VAT
-  fields (`e2e/vat-reverse-charge.spec.ts`), the discount codes, the gift box, the delivery choice and signing in stay in the
+  fields (`e2e/vat-reverse-charge.spec.ts`), the discount codes, the gift box, the delivery choice, a listing's filter button
+  (`e2e/custom-fields-ranges.spec.ts`) and signing in stay in the
   first scripts. `next/dynamic` (not
   `React.lazy`) is what lets the server ask for a drawn part's script with the page's: with `React.lazy` alone, galleries, tabs
   and filters answered only a moment after the rest of the page, and 27 end-to-end tests failed.
+- **A page loads only its own language's interface text (D212).** The hand-written languages are each a module
+  (`src/lib/messages/{nb,sv,da,en}.ts`, about 67 KB each before compression); `t()` in `i18n.ts` imports all four, for the server,
+  emails and the admin. Every root layout draws its body inside `LanguageTexts` (`components/language-texts/`): one
+  `next/dynamic` module per language, which registers its text (`registerHandText()`) and gives the page its language
+  (`PageLanguageContext`, read by `usePageLanguage()`); the server asks for that language's script with the page's, and since no
+  `<Suspense>` waits around it, the page wakes up only once the text is there. A visitor's client component reads
+  `browserText()` (`src/lib/browser-text.ts`), never `t()`: the scan test fails for a visitor's component that reaches `lib/i18n`,
+  `lib/email-text` or a language's module other than through its own loader. A language translated by AI loads English and lays
+  its texts over it (`UiTexts`). Unit tests register all four (`src/test/browser-text.ts`).
 - **Font stylesheets are kept for a year** (`immutable`); a change to how one is written raises `FONT_CSS_VERSION`, which is in
   every stylesheet's address.
+
+After D212 the demo store's front page, built locally, loads 217 KB of scripts (compressed; 266 KB after D211, 469 KB before) and
+scores 95 for performance on a phone.
 
 Not changed: Next's own polyfills (14 KB, flagged as legacy JavaScript; the audit carries no weight and the browsers Next targets
 need none of them), React (70 KB) and the router (35 KB).
@@ -60,7 +73,7 @@ need none of them), React (70 KB) and the router (35 KB).
   address given (`pnpm perf https://kaizenalabs.com/`), for a phone and a computer, and lists the scores, the measures and the
   largest scripts; `--min=90` fails below a score.
 - `e2e/performance.spec.ts` holds what does not wobble: the demo front page's first scripts under a byte budget, without zod, the
-  lightbox or the checkout's payment form; the first grid's and the first row's pictures eager and the next ones lazy; a blurred
+  lightbox or the checkout's payment form; a Norwegian page loading Norwegian's text and no other language's; the first grid's and the first row's pictures eager and the next ones lazy; a blurred
   background from its small copy; an embedded frame named.
 
 Scores move a few points between runs, and a page's own content (large pictures, many components) decides much of it.

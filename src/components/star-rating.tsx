@@ -1,6 +1,6 @@
 "use client";
 
-import { t } from "@/lib/i18n";
+import { browserText as t } from "@/lib/browser-text";
 
 import { usePageLanguage } from "./page-language";
 

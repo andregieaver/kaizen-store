@@ -13,7 +13,8 @@ import {
   type PublicForm,
   type PublicNewsletter,
 } from "@/lib/forms";
-import { t, type Messages } from "@/lib/i18n";
+import { browserText as t } from "@/lib/browser-text";
+import type { Messages } from "@/lib/messages/en";
 import type { FormField } from "@/lib/page-content";
 
 import { Dropdown } from "./dropdown";

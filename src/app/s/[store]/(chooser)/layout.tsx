@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { BackToAdmin } from "@/components/back-to-admin";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { CustomCss } from "@/components/custom-css";
+import { LanguageTexts } from "@/components/language-texts";
 import { StoreAffiliate } from "@/components/store-affiliate";
 import { StoreColorScript } from "@/components/store-color-switch";
 import { StoreVisits } from "@/components/store-visits";
@@ -71,33 +72,36 @@ export default async function ChooserLayout({ children, params }: Props) {
       suppressHydrationWarning={store.theme.settings.visitorSwitch}
     >
       <body className="flex min-h-full flex-col font-sans" style={siteFontStyle(store.fonts)}>
-        <StoreColorScript store={store} />
-        {/* The store's own fonts (D59) and theme (D60), as in its markets. */}
-        <StoreThemeStyles store={store} />
-        <CustomCss css={store.customCss} name={`store-${store.id}`} />
-        {children}
-        <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
-        {/* A friend's referral link (D131): it goes with the visitor to the market they choose. */}
-        <Suspense fallback={null}>
-          <StoreAffiliate store={store} base={null} />
-        </Suspense>
-        {/* Cookieless visit counting (D152), while the owner has it on. */}
-        <Suspense fallback={null}>
-          <StoreVisits store={store} />
-        </Suspense>
-        {/* The front door asks and loads as the store's markets do (D58, D61), in its first market's language. */}
-        {market && (
+        {/* The page's interface text, only its own language (D212). */}
+        <LanguageTexts lang={market?.lang ?? "en"}>
+          <StoreColorScript store={store} />
+          {/* The store's own fonts (D59) and theme (D60), as in its markets. */}
+          <StoreThemeStyles store={store} />
+          <CustomCss css={store.customCss} name={`store-${store.id}`} />
+          {children}
+          <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
+          {/* A friend's referral link (D131): it goes with the visitor to the market they choose. */}
           <Suspense fallback={null}>
-            <SiteConsent
-              storeId={store.id}
-              tracking={store.tracking}
-              code={liveCustomCode(store.customCode)}
-              lang={market.lang}
-              locale={market.locale}
-              cookiePage={marketPath(store.slug, market.slug, "/cookies")}
-            />
+            <StoreAffiliate store={store} base={null} />
           </Suspense>
-        )}
+          {/* Cookieless visit counting (D152), while the owner has it on. */}
+          <Suspense fallback={null}>
+            <StoreVisits store={store} />
+          </Suspense>
+          {/* The front door asks and loads as the store's markets do (D58, D61), in its first market's language. */}
+          {market && (
+            <Suspense fallback={null}>
+              <SiteConsent
+                storeId={store.id}
+                tracking={store.tracking}
+                code={liveCustomCode(store.customCode)}
+                lang={market.lang}
+                locale={market.locale}
+                cookiePage={marketPath(store.slug, market.slug, "/cookies")}
+              />
+            </Suspense>
+          )}
+        </LanguageTexts>
       </body>
     </html>
   );

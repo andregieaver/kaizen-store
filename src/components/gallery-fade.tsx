@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 
 import { resolveCarousel, type CarouselSettings } from "@/lib/carousel-settings";
 import { stepSlide } from "@/lib/slide-step";
-import { t } from "@/lib/i18n";
+import { browserText as t } from "@/lib/browser-text";
 
 import { usePageLanguage } from "./page-language";
 

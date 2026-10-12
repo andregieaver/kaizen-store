@@ -18,7 +18,7 @@ import {
   windowNote,
 } from "@/components/withdraw/withdraw-parts";
 import { RETURN_REASONS } from "@/lib/withdrawal";
-import { t } from "@/lib/i18n";
+import { browserText as t } from "@/lib/browser-text";
 import { FIELD, lineField, returnableLines, withdrawableLines, type FormState, type WithdrawState } from "@/lib/withdraw-form";
 
 import { withdrawAction } from "./actions";

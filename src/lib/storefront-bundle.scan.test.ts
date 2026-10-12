@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 /**
  * What the visitor's browser loads (D211, `docs/performance.md`): every client component a visitor's page can draw is walked through
- * its static imports, and none may reach zod or the page model (`lib/page-content`). zod with its translations is 90 KB of the
+ * its static imports, and none may reach zod, the page model (`lib/page-content`) or the interface text of every language (D212). zod with its translations is 90 KB of the
  * first scripts, and a schema built in the browser checks nothing the server does not check again. A module that has both
  * plain helpers and schemas keeps its schemas in `*-schema.ts` beside it; a view the browser needs only now and then is loaded
  * with `import()` (the recommended grid's), which this walk does not follow.
@@ -13,7 +13,18 @@ import { describe, expect, it } from "vitest";
  * signed-in person turns it on. A server action file (`"use server"`) is a reference in the browser, not its code.
  */
 const SRC = join(process.cwd(), "src");
-const FORBIDDEN = ["zod", "lib/page-content"];
+const FORBIDDEN = ["zod", "lib/page-content", "lib/i18n", "lib/email-text"];
+
+/**
+ * The interface text (D212): all four hand-written languages are 270 KB, so a visitor's browser loads only its page's, through
+ * `LanguageTexts`, whose module for a language is the one place that may import it. Everything else reads `browserText()`.
+ */
+function forbidden(entry: string, target: string): boolean {
+  const name = rel(target);
+  if (FORBIDDEN.includes(name)) return true;
+  const language = /^lib\/messages\/(\w+)$/.exec(name)?.[1];
+  return language !== undefined && rel(entry) !== `components/language-texts/${language}`;
+}
 
 const IMPORT = /(?:^|\n)\s*(?:import|export)\s+([^;]*?)\s+from\s+["']([^"']+)["']|(?:^|\n)\s*import\s+["']([^"']+)["']/g;
 
@@ -80,18 +91,26 @@ describe("the visitor's scripts", () => {
     expect(names.some((name) => name.startsWith("components/admin/"))).toBe(false);
   });
 
-  it("never reach zod or the page model", () => {
+  it("never reach zod, the page model or every language's interface text", () => {
     const found: string[] = [];
     for (const entry of ENTRIES) {
       const seen = reach(entry);
       for (const target of seen.keys()) {
-        if (!FORBIDDEN.includes(rel(target))) continue;
+        if (!forbidden(entry, target)) continue;
         const chain = [rel(target)];
         for (let at = seen.get(target); at; at = seen.get(at)) chain.unshift(rel(at));
         found.push(chain.join(" -> "));
       }
     }
     expect(found).toEqual([]);
+  });
+
+  it("would notice: a language's module is reached only from its own loader", () => {
+    const loader = join(SRC, "components/language-texts/nb.tsx");
+    const reached = [...reach(loader).keys()];
+    expect(reached.map(rel)).toContain("lib/messages/nb");
+    expect(reached.some((target) => forbidden(loader, target))).toBe(false);
+    expect(reached.some((target) => forbidden(join(SRC, "components/language-texts/sv.tsx"), target))).toBe(true);
   });
 
   it("would notice: the product editor (admin) reaches zod", () => {

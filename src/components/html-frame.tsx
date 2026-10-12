@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { t } from "@/lib/i18n";
+import { browserText as t } from "@/lib/browser-text";
 import { cssValue, FRAME_SANDBOX, frameDocument, frameHeight, HEIGHT_MESSAGE, LOOK_MESSAGE, type FrameLook } from "@/lib/html-frame";
 
 import { usePageLanguage } from "./page-language";

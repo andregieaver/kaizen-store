@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { createCarouselController, type CarouselController, type CarouselState, type Scroller } from "@/lib/carousel-controller";
 import { resolveCarousel, type CarouselSettings } from "@/lib/carousel-settings";
-import { t } from "@/lib/i18n";
+import { browserText as t } from "@/lib/browser-text";
 
 import { usePageLanguage } from "./page-language";
 
