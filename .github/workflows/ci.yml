@@ -186,7 +186,8 @@ jobs:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
           test -n "$VERCEL_DEPLOY_HOOK_URL" || { echo "The secret VERCEL_DEPLOY_HOOK_URL is not set."; exit 1; }
-          curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL"
+          # A busy Vercel answers 429: wait as it asks (Retry-After) and try again, up to five minutes.
+          curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
 
   # Migrations were pending (or AUTO_MIGRATE is off): after the three checks, apply the files, then deploy, in one
@@ -232,7 +233,8 @@ jobs:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
           test -n "$VERCEL_DEPLOY_HOOK_URL" || { echo "The secret VERCEL_DEPLOY_HOOK_URL is not set."; exit 1; }
-          curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL"
+          # A busy Vercel answers 429: wait as it asks (Retry-After) and try again, up to five minutes.
+          curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
 
   # Manual: deploy again (to test the hook, or after a failed deploy) without running anything else.
@@ -246,7 +248,8 @@ jobs:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
         run: |
           test -n "$VERCEL_DEPLOY_HOOK_URL" || { echo "The secret VERCEL_DEPLOY_HOOK_URL is not set."; exit 1; }
-          curl --fail --silent --show-error --max-time 30 -X POST "$VERCEL_DEPLOY_HOOK_URL"
+          # A busy Vercel answers 429: wait as it asks (Retry-After) and try again, up to five minutes.
+          curl --fail --silent --show-error --max-time 30 --retry 6 --retry-max-time 300 -X POST "$VERCEL_DEPLOY_HOOK_URL"
           echo
 
   baseline:
