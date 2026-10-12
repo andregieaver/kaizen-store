@@ -37,6 +37,9 @@ test("a carousel that keeps moving moves, and stops under the pointer", async ({
   await expect(page.getByRole("button", { name: /pause/i })).toHaveCount(0);
   const window = (await page.locator(".kz-brands-window").boundingBox())!;
   await page.mouse.move(window.x + window.width / 2, window.y + window.height / 2);
+  // The pause follows the pointer's arrival (a state the carousel sets): measure once it has.
+  await expect(page.locator(".kz-brands-carousel")).toHaveAttribute("data-still", "");
+  await page.waitForTimeout(100);
   const held = await x();
   await page.waitForTimeout(500);
   expect(Math.abs((await x()) - held)).toBeLessThan(1);

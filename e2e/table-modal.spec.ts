@@ -33,11 +33,13 @@ async function arrange(tableOver: Record<string, unknown> = {}) {
 
 test("a long table in a pop-up scrolls itself, with its header and section titles kept in view", async ({ page }) => {
   const url = await arrange();
-  await page.setViewportSize({ width: 1200, height: 520 });
+  // Tall enough that the table keeps a box of its own whatever fonts the machine has (under 280 px left, the pop-up scrolls).
+  await page.setViewportSize({ width: 1200, height: 640 });
   await page.goto(url);
   await page.getByRole("link", { name: "Åpne" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  await expect(dialog.locator(".kz-table-box")).toHaveAttribute("data-fit", "box");
 
   const box = dialog.locator(".kz-table-box");
   const scrolls = await box.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
