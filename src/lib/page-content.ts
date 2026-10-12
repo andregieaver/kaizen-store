@@ -1191,8 +1191,8 @@ export type TabsBlock = PartBase & {
 export type FaqBlock = PartBase & {
   id: string;
   type: "faq";
-  /** Each item's title is the question and its text the answer. */
-  items: PanelItem[];
+  /** Each item's title is the question and its text the answer, with components under it (D208). */
+  items: FaqItem[];
   openFirst?: boolean;
   single?: boolean;
   look?: AccordionLook;
@@ -1200,8 +1200,35 @@ export type FaqBlock = PartBase & {
   structuredData?: boolean;
 };
 
-/** A question that shows: it has both its question and an answer. */
-export const faqShows = (item: PanelItem) => item.title.trim() !== "" && !richTextIsEmpty(item.body);
+/**
+ * A question and its answer (D208): the answer's text and, under it, components of their own (a button, a picture, a table…),
+ * at most `FAQ_CHILDREN_MAX` of the kinds in `FAQ_CHILD_TYPES`. They are blocks like a column's, with ids of the page's own,
+ * styled and translated like any other, but never moving, global, bound to a field or shown only to some visitors: an answer
+ * is the same for everyone (its words are in the page's FAQPage data).
+ */
+export type FaqItem = PanelItem & { blocks?: PageBlock[] };
+export const FAQ_CHILD_TYPES = ["richText", "heading", "image", "button", "dualButton", "separator", "iconList", "table", "video", "socialLinks"] as const;
+export type FaqChildType = (typeof FAQ_CHILD_TYPES)[number];
+export const FAQ_CHILDREN_MAX = 12;
+export const isFaqChildType = (type: BlockType): type is FaqChildType => (FAQ_CHILD_TYPES as readonly string[]).includes(type);
+
+/** The components a block holds inside it (an FAQ's answers', D208), item after item; none for every other block. */
+export function childBlocks(block: PageBlock): PageBlock[] {
+  return block.type === "faq" ? block.items.flatMap((item) => item.blocks ?? []) : [];
+}
+
+/** The block with each component it holds changed by `change` (D208); the block itself when it holds none. */
+export function mapChildBlocks(block: PageBlock, change: (child: PageBlock) => PageBlock): PageBlock {
+  if (block.type !== "faq" || !block.items.some((item) => item.blocks?.length)) return block;
+  return { ...block, items: block.items.map((item) => (item.blocks?.length ? { ...item, blocks: item.blocks.map(change) } : item)) };
+}
+
+/** A column's blocks with the components each holds after it (D208): every block a walker of the page must see. */
+export const withChildren = (blocks: PageBlock[]): PageBlock[] => blocks.flatMap((block) => [block, ...childBlocks(block)]);
+
+/** A question that shows: it has both its question and an answer (its text or a component with something to show). */
+export const faqShows = (item: FaqItem) =>
+  item.title.trim() !== "" && (!richTextIsEmpty(item.body) || (item.blocks ?? []).some((child) => blockHasContent(child)));
 
 export const VIDEO_SOURCES = { upload: "Uploaded video", youtube: "YouTube", vimeo: "Vimeo" } as const;
 export type VideoSource = keyof typeof VIDEO_SOURCES;
@@ -1827,7 +1854,7 @@ export function blockText(block: PageBlock): string {
     case "tabs":
       return panelText(block.items);
     case "faq":
-      return panelText(block.items.filter(faqShows));
+      return [panelText(block.items.filter(faqShows)), ...childBlocks(block).map(blockText)].filter(Boolean).join(" ");
     case "video":
       return block.title;
     case "iconList":
@@ -1958,7 +1985,7 @@ export type PageTranslation = Record<string, PageText>;
 
 /** Every row, column and block, in page order. */
 export function pageParts(rows: PageRow[]): (PageRow | PageColumn | PageBlock)[] {
-  return rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...column.blocks])]);
+  return rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...withChildren(column.blocks)])]);
 }
 
 /** A custom id used by more than one part, if any. */
@@ -1992,7 +2019,7 @@ export const pageFonts = (content: Pick<PageContent, "rows">) => [...new Set(pag
 
 /** Every block on the page, row by row and column by column. */
 export function pageBlocks(content: Pick<PageContent, "rows">): PageBlock[] {
-  return content.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks));
+  return content.rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks)));
 }
 
 /**
@@ -2770,7 +2797,18 @@ const tabsBlock = z.object({
 const faqBlock = z.object({
   id: itemId,
   type: z.literal("faq"),
-  items: panelItems,
+  items: z
+    .array(
+      z.object({
+        id: itemId,
+        title: z.string().trim().max(ITEM_TITLE_MAX, `Keep a title under ${ITEM_TITLE_MAX} characters.`),
+        body: richTextBlock.shape.doc,
+        // Defined below with the kinds it may hold; nothing here refers back to an FAQ.
+        blocks: z.lazy(() => faqChildren).optional(),
+      }),
+    )
+    .max(ITEMS_MAX, `A component holds at most ${ITEMS_MAX} items.`)
+    .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Two items have the same id. Reload the page and try again."),
   openFirst: z.boolean().optional(),
   single: z.boolean().optional(),
   look: accordionBlock.shape.look,
@@ -3076,6 +3114,28 @@ export const pageBlockUnion = z.discriminatedUnion("type", [
   newsletterBlock,
 ]);
 
+/**
+ * What an FAQ's answer may hold (D208): a few kinds of component, never moving, global, bound to a field or shown only to some
+ * visitors (what the FAQPage data says must be what everyone sees), none when empty.
+ */
+const faqChildren = z
+  .array(
+    z.preprocess(
+      (value) => foldTypography(upgradeBlock(value)),
+      z
+        .discriminatedUnion("type", [richTextBlock, headingBlock, imageBlock, buttonBlock, dualButtonBlock, separatorBlock, iconListBlock, tableBlock, videoBlock, socialLinksBlock])
+        .superRefine((child, ctx) => {
+          if (child.global) ctx.addIssue({ code: "custom", message: "A component in an answer cannot be a global one." });
+          if (child.motion) ctx.addIssue({ code: "custom", message: "A component in an answer does not move: take its motion away." });
+          if (child.visibility?.show) ctx.addIssue({ code: "custom", message: "A component in an answer shows to everyone: take away who sees it." });
+          if ("bind" in child && child.bind) ctx.addIssue({ code: "custom", message: "A component in an answer cannot take its words from a field." });
+        }),
+    ),
+  )
+  .max(FAQ_CHILDREN_MAX, `An answer holds at most ${FAQ_CHILDREN_MAX} components.`)
+  .optional()
+  .transform((blocks) => (blocks && blocks.length > 0 ? blocks : undefined));
+
 /** One block, as stored: rich text, a picture, a heading, a button, a content grid, a part of a product's page or of the site's header or footer; one saved before D179 is read into the per-size shape. */
 export const pageBlockSchema = z.preprocess((value) => foldTypography(upgradeBlock(value)), pageBlockUnion);
 
@@ -3228,7 +3288,7 @@ export const pageInput = z.preprocess(
       if (pageBlocks(page).length > BLOCKS_MAX) {
         ctx.addIssue({ code: "custom", message: `A page takes at most ${BLOCKS_MAX} blocks.` });
       }
-      const ids = page.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])]);
+      const ids = page.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...withChildren(c.blocks).map((b) => b.id)])]);
       if (new Set(ids).size !== ids.length) {
         ctx.addIssue({ code: "custom", message: "Two parts of the page have the same id. Reload the page and try again." });
       }

@@ -13,6 +13,7 @@ import {
   type SizeOverrides,
   type Spacing,
   type ThemeElement,
+  mapChildBlocks,
 } from "./page-content";
 import { spacingAt, valueAt } from "./responsive";
 import { siteFontFamilies, type SiteFonts } from "./fonts";
@@ -267,7 +268,8 @@ export function themedRows(rows: PageRow[], elements: ThemeElements | undefined)
       ...themedRow,
       columns: row.columns.map((column): PageColumn => ({
         ...column,
-        blocks: column.blocks.map((block) => themedBlock(block, elements, [row, column])),
+        // An FAQ's answers' components (D208) take the theme as the FAQ does, inside the FAQ.
+        blocks: column.blocks.map((block) => mapChildBlocks(themedBlock(block, elements, [row, column]), (child) => themedBlock(child, elements, [row, column]))),
       })),
     };
   });
@@ -276,7 +278,7 @@ export function themedRows(rows: PageRow[], elements: ThemeElements | undefined)
 /** Blocks drawn on their own (a listing's grid): the theme's elements apply to them too. */
 export function themedBlocks(blocks: PageBlock[], elements: ThemeElements | undefined): PageBlock[] {
   if (!hasThemeElements(elements)) return blocks;
-  return blocks.map((block) => themedBlock(block, elements, []));
+  return blocks.map((block) => mapChildBlocks(themedBlock(block, elements, []), (child) => themedBlock(child, elements, [])));
 }
 
 // ---------------------------------------------------------------------------

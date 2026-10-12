@@ -1,4 +1,4 @@
-import type { PageContent } from "./page-content";
+import { withChildren, type PageContent } from "./page-content";
 import { mapTexts } from "./page-translation";
 
 /**
@@ -16,7 +16,7 @@ function picturesByKey(content: PageContent): Map<string, string> {
   if (content.thumbnail) pictures.set("thumbnail.alt", content.thumbnail.url);
   for (const row of content.rows) {
     for (const column of row.columns) {
-      for (const block of column.blocks) {
+      for (const block of withChildren(column.blocks)) {
         if (block.type === "image" && block.image) pictures.set(`block.${block.id}.alt`, block.image.url);
       }
     }

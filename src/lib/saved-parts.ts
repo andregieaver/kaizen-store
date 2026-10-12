@@ -9,6 +9,7 @@ import {
   type PageColumn,
   type PageRow,
   type PageText,
+  withChildren,
 } from "./page-content";
 import type { GlobalPart, Translations } from "./global-parts";
 import { layoutBlocks, pageLayoutSchema, type PageLayout } from "./page-layout";
@@ -76,19 +77,19 @@ const blocksOf = (part: { kind: SavedPartKind; content: unknown }): PageBlock[] 
   part.kind === "page"
     ? layoutBlocks(part.content as PageLayout)
     : part.kind === "row"
-      ? (part.content as PageRow).columns.flatMap((c) => c.blocks)
+      ? (part.content as PageRow).columns.flatMap((c) => withChildren(c.blocks))
       : part.kind === "column"
-        ? (part.content as PageColumn).blocks
-        : [part.content as PageBlock];
+        ? withChildren((part.content as PageColumn).blocks)
+        : withChildren([part.content as PageBlock]);
 
 const idsOf = (part: { kind: SavedPartKind; content: unknown }): string[] =>
   part.kind === "page"
-    ? (part.content as PageLayout).rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])])
+    ? (part.content as PageLayout).rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...withChildren(c.blocks).map((b) => b.id)])])
     : part.kind === "row"
-      ? [(part.content as PageRow).id, ...(part.content as PageRow).columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])]
+      ? [(part.content as PageRow).id, ...(part.content as PageRow).columns.flatMap((c) => [c.id, ...withChildren(c.blocks).map((b) => b.id)])]
       : part.kind === "column"
-        ? [(part.content as PageColumn).id, ...(part.content as PageColumn).blocks.map((b) => b.id)]
-        : [(part.content as PageBlock).id];
+        ? [(part.content as PageColumn).id, ...withChildren((part.content as PageColumn).blocks).map((b) => b.id)]
+        : withChildren([part.content as PageBlock]).map((b) => b.id);
 
 /** Texts in other languages by their place (checked again against the content when saved, `cleanTranslations`). */
 const translations = z

@@ -18,7 +18,7 @@ import { SIZES, SIZE_LABELS, type Size } from "./breakpoints";
 import { blend } from "./colour";
 import { inlinePlain } from "./inline-text";
 import { contrastRatio } from "./theme";
-import type { PageBlock, PageColumn, PageContent, PageRow, RichTextDoc, BlockNode, InlineNode } from "./page-content";
+import { withChildren, type PageBlock, type PageColumn, type PageContent, type PageRow, type RichTextDoc, type BlockNode, type InlineNode } from "./page-content";
 import { footerHasWithdrawal, footerRequired, siteBlocks } from "./site-layout";
 import { localizePage } from "./page-translation";
 import { valueAt } from "./responsive";
@@ -288,7 +288,7 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
 
   for (const row of content.rows) {
     for (const column of row.columns) {
-      for (const block of column.blocks) {
+      for (const block of withChildren(column.blocks)) {
         const place = { rowId: row.id, columnId: column.id, blockId: block.id };
         const where = blockWord(block);
 
@@ -471,7 +471,7 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
     }
     for (const row of localized.rows) {
       for (const column of row.columns) {
-        for (const block of column.blocks) {
+        for (const block of withChildren(column.blocks)) {
           if (seen.has(block.id)) continue;
           if (!blockWords(block).some((w) => PLACEHOLDER.test(w))) continue;
           seen.add(block.id);

@@ -27,6 +27,8 @@ import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
 import { GradientText } from "./typography-fields";
 import { RichTextEditor } from "./rich-text-editor";
+import { inlinePlain } from "@/lib/inline-text";
+import { newBlock } from "@/lib/page-rows";
 import { ButtonHoverField } from "./hover-fields";
 import { SizeMark, inheritedClass, useSizeEdit } from "./responsive-edit";
 
@@ -120,6 +122,12 @@ import {
   type LoopSlot,
   type HeadingSize,
   type FaqBlock,
+  type FaqChildType,
+  type FaqItem,
+  FAQ_CHILD_TYPES,
+  FAQ_CHILDREN_MAX,
+  blockText,
+  isFaqChildType,
   type PanelItem,
   type TabsBlock,
   type VideoBlock,
@@ -147,7 +155,12 @@ import { VideoUploadButton, type StartVideo } from "./video-upload";
  * the builder than its entry here.
  */
 
-export type BlockEditorContext = { upload: Upload | null; startVideo: StartVideo | null };
+export type BlockEditorContext = {
+  upload: Upload | null;
+  startVideo: StartVideo | null;
+  /** Opens a component's own settings (an FAQ's answer's, D208); absent where it cannot be edited (a saved part). */
+  editPart?: (blockId: string) => void;
+};
 
 export type BlockEditorProps<T extends PageBlock> = {
   block: T;
@@ -954,13 +967,125 @@ function TabsStyleFields({ block, onChange }: BlockEditorProps<TabsBlock>) {
   );
 }
 
-/** Questions and their answers (D91). */
-function FaqFields({ block, onChange }: BlockEditorProps<FaqBlock>) {
+/** Questions and their answers (D91), each answer with components of its own under its text (D208). */
+function FaqFields({ block, onChange, context }: BlockEditorProps<FaqBlock>) {
   return (
     <>
-      <PanelItemsFields items={block.items} noun="Question" names={{ title: "Question", body: "Answer" }} onChange={(items) => onChange({ items })} />
-      <p className="text-xs text-muted">A question shows on the site once it has an answer.</p>
+      <ItemsEditor
+        label="Questions"
+        items={block.items}
+        max={ITEMS_MAX}
+        addLabel="Add a question"
+        nameOf={(item, index) => item.title.trim() || `Question ${index + 1} (no title yet)`}
+        newItem={(): FaqItem => ({ id: newItemId(), title: "", body: EMPTY_DOC })}
+        onChange={(items) => onChange({ items })}
+      >
+        {(item, change) => (
+          <>
+            <TextField label="Question" value={item.title} max={ITEM_TITLE_MAX} onChange={(title) => change({ title })} />
+            <RichTextEditor key={item.id} value={item.body} onChange={(body) => change({ body })} label="Answer" />
+            <AnswerPartsFields blocks={item.blocks ?? []} editPart={context.editPart} onChange={(blocks) => change({ blocks: blocks.length > 0 ? blocks : undefined })} />
+          </>
+        )}
+      </ItemsEditor>
+      <p className="text-xs text-muted">A question shows on the site once it has an answer: its text, or a component under it.</p>
     </>
+  );
+}
+
+/** What each kind of component an answer can hold is called (D208). */
+const ANSWER_PART_NAMES: Record<FaqChildType, string> = {
+  richText: "Text",
+  heading: "Heading",
+  image: "Image",
+  button: "Button",
+  dualButton: "Two buttons",
+  separator: "Separator",
+  iconList: "Icon list",
+  table: "Table",
+  video: "Video",
+  socialLinks: "Social links",
+};
+
+/** A component's few words in the list: its text, else what it is. */
+function answerPartName(block: PageBlock): string {
+  const words =
+    block.type === "button" ? inlinePlain(block.label) : block.type === "dualButton" ? [block.first.label, block.second.label].map(inlinePlain).filter(Boolean).join(" · ") : blockText(block);
+  const kind = isFaqChildType(block.type) ? ANSWER_PART_NAMES[block.type] : block.type;
+  return words.trim() ? `${kind}: ${words.trim().slice(0, 60)}${words.trim().length > 60 ? "…" : ""}` : kind;
+}
+
+/**
+ * The components under an answer's text (D208): added from a short list, ordered, taken out, and each opened in its own
+ * settings (General, Style, Advanced) as any component on the page is.
+ */
+function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]; editPart?: (blockId: string) => void; onChange: (blocks: PageBlock[]) => void }) {
+  const id = useId();
+  const [kind, setKind] = useState<FaqChildType>("button");
+  const full = blocks.length >= FAQ_CHILDREN_MAX;
+  const move = (from: number, to: number) => {
+    if (to < 0 || to >= blocks.length) return;
+    const next = [...blocks];
+    const [taken] = next.splice(from, 1);
+    next.splice(to, 0, taken);
+    onChange(next);
+  };
+  const small = "min-h-9 rounded-md border border-border px-2 text-xs disabled:opacity-40";
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3" data-answer-parts="">
+      <legend className="px-1 text-sm font-medium">Components under the answer</legend>
+      {blocks.length === 0 && <p className="text-xs text-muted">None yet. Add a button, a picture, a table or more under the answer&apos;s text.</p>}
+      {blocks.length > 0 && (
+        <ol className="flex flex-col gap-1">
+          {blocks.map((child, index) => (
+            <li key={child.id} className="flex flex-wrap items-center gap-1 rounded-md bg-surface px-2 py-1">
+              <span className="mr-auto min-w-0 truncate text-sm">{answerPartName(child)}</span>
+              {editPart && (
+                <button type="button" className={small} onClick={() => editPart(child.id)}>
+                  Edit
+                </button>
+              )}
+              <button type="button" className={small} disabled={index === 0} onClick={() => move(index, index - 1)} aria-label={`Move ${answerPartName(child)} up`}>
+                ↑
+              </button>
+              <button type="button" className={small} disabled={index === blocks.length - 1} onClick={() => move(index, index + 1)} aria-label={`Move ${answerPartName(child)} down`}>
+                ↓
+              </button>
+              <button type="button" className={small} onClick={() => onChange(blocks.filter((b) => b.id !== child.id))} aria-label={`Remove ${answerPartName(child)}`}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="flex flex-wrap items-end gap-2">
+        <label htmlFor={`${id}-kind`} className="flex flex-col gap-1 text-xs font-medium">
+          Component
+          <select id={`${id}-kind`} value={kind} onChange={(event) => setKind(event.target.value as FaqChildType)} className="min-h-9 rounded-md border border-border bg-background px-2 text-sm font-normal">
+            {FAQ_CHILD_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {ANSWER_PART_NAMES[type]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          type="button"
+          disabled={full}
+          onClick={() => {
+            const child = newBlock(kind, newItemId);
+            onChange([...blocks, child]);
+            // Its settings open at once, so it can be filled in.
+            if (editPart) window.setTimeout(() => editPart(child.id), 0);
+          }}
+          className="min-h-9 rounded-md border border-border px-3 text-sm disabled:opacity-40"
+        >
+          Add
+        </button>
+        {full && <span className="text-xs text-muted">An answer holds at most {FAQ_CHILDREN_MAX} components.</span>}
+      </div>
+      {!editPart && blocks.length > 0 && <p className="text-xs text-muted">Change these components where the questions are used on a page.</p>}
+    </fieldset>
   );
 }
 

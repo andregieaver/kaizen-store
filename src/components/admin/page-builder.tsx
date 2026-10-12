@@ -2907,7 +2907,7 @@ function BlockItem({
             Google reviews of your business show here on the site, as Google has them when the page is shown.
           </p>
         ) : blockHasContent(block) && (!bindingOf(block) || blockOwnContent(block)) ? (
-          <PageBlockView block={block} />
+          <PageBlockView block={block} renderChildren={(children) => <AnswerParts blocks={children} actions={actions} />} />
         ) : bindingOf(block) ? (
           <p className="rounded-md bg-surface p-3 text-sm text-muted">Takes its content from a field where it is shown.</p>
         ) : (
@@ -2916,6 +2916,48 @@ function BlockItem({
       </div>
     </div>
   );
+}
+
+/**
+ * An FAQ's answers' components on the canvas (D208): drawn as the site draws them, each opening its own settings when pressed
+ * (the FAQ's open with a double press outside them). They are added, ordered and taken out in the FAQ's General tab.
+ */
+function AnswerParts({ blocks, actions }: { blocks: PageBlock[]; actions: Actions }) {
+  return blocks.map((child) => {
+    const box = blockBox(child, "canvas");
+    const open = () => actions.open({ kind: "edit-block", blockId: child.id });
+    return (
+      <div
+        key={child.id}
+        data-builder-id={child.id}
+        data-answer-part=""
+        role="button"
+        tabIndex={0}
+        aria-label={`${blockLabels[child.type]} in the answer: edit`}
+        title={`${blockLabels[child.type]}: press to edit`}
+        onClickCapture={(event) => {
+          // A link or button in it must not take the builder away; a press opens its settings.
+          event.preventDefault();
+          event.stopPropagation();
+          open();
+        }}
+        onDoubleClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            event.stopPropagation();
+            open();
+          }
+        }}
+        className="cursor-pointer rounded-sm outline-offset-2 hover:outline hover:outline-1 hover:outline-dashed hover:outline-current/40 focus-visible:outline focus-visible:outline-2"
+      >
+        <div className={box.className || undefined} style={box.style}>
+          <FontLinks families={blockFonts(child)} />
+          {blockHasContent(child) ? <PageBlockView block={child} /> : <p className="rounded-md bg-surface p-3 text-sm text-muted">{EMPTY_BLOCK[child.type]}</p>}
+        </div>
+      </div>
+    );
+  });
 }
 
 /** What the canvas shows for a block with nothing to show yet. */
@@ -3046,7 +3088,11 @@ function Dialogs({
       Done
     </button>
   );
-  const saveAs = (part: SavedPartDraft) => (
+  const saveAs = (part: SavedPartDraft) =>
+    // A component in an FAQ's answer (D208) is the FAQ's own: it is saved, and made global, with the FAQ.
+    part.kind === "block" && findBlock(rows, part.content.id)?.parent ? (
+      <span className="mr-auto" />
+    ) : (
     <div className="mr-auto flex flex-wrap items-center gap-2">
       <button
         type="button"
@@ -3057,9 +3103,11 @@ function Dialogs({
       </button>
       <GlobalControls id={part.content.id} rows={rows} onRows={onRows} nameOf={(id) => parts.find((p) => p.id === id)?.name ?? "Global"} />
     </div>
-  );
+    );
   const block = dialog?.kind === "edit-block" ? findBlock(rows, dialog.blockId)?.block : null;
   const editor = block ? editorFor(block) : undefined;
+  /** Opens a component in an FAQ's answer in its own settings (D208). */
+  const editPart = (blockId: string) => open({ kind: "edit-block", blockId });
   const row = dialog?.kind === "edit-row" ? rows.find((r) => r.id === dialog.rowId) : null;
   const column = dialog?.kind === "edit-row" && dialog.columnId ? row?.columns.find((c) => c.id === dialog.columnId) : null;
   const savedPart = dialog?.kind === "edit-saved" ? parts.find((p) => p.id === dialog.partId) : null;
@@ -3075,15 +3123,17 @@ function Dialogs({
     );
     const block = target.kind === "block" ? (part as PageBlock) : null;
     const row = target.kind === "row" ? (part as PageRow) : null;
+    // A component in an FAQ's answer (D208) does not move and shows to everyone: no Animation, no Display.
+    const inAnswer = target.kind === "block" && Boolean(findBlock(rows, target.id)?.parent);
     return (
       <>
         <AdvancedFields part={part} taken={others} onChange={(patch) => onRows((current) => patchPart(current, target, patch))} />
         {/* Beaver's Animation (D179 phase 3): the entrance's delay and duration, in seconds. */}
-        <AnimationFields
+        {!inAnswer && <AnimationFields
           part={target.kind === "block" ? { kind: "block", blockType: (part as PageBlock).type } : { kind: target.kind }}
           motion={part.motion}
           onChange={(motion) => onRows((current) => patchPart(current, target, { motion }))}
-        />
+        />}
         {/* Beaver's Visibility (D179): by screen size, and who sees it (phase 4). A modal opens over any size, so it has Display only. */}
         {row?.modal ? (
           <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
@@ -3099,7 +3149,7 @@ function Dialogs({
           <VisibilityFields
             part={part}
             onChange={plainPatch(target)}
-            display={{ setup: displaySetup, locked: displayLocked(part) ?? undefined }}
+            display={inAnswer ? undefined : { setup: displaySetup, locked: displayLocked(part) ?? undefined }}
             locked={
               block?.type === "site" && block.part === "withdrawal"
                 ? "The withdrawal link is for every visitor, so it shows at every size."
@@ -3116,6 +3166,9 @@ function Dialogs({
   const motionFields = (target: Styled) => {
     const part = partOf(rows, target);
     if (!part) return null;
+    if (target.kind === "block" && findBlock(rows, target.id)?.parent) {
+      return <p className="text-sm text-muted">A component in an answer does not move: it shows as the question opens.</p>;
+    }
     const kind: MotionPart =
       target.kind === "block" ? { kind: "block", blockType: (part as PageBlock).type } : { kind: target.kind };
     return (
@@ -3375,11 +3428,11 @@ function Dialogs({
         {block && editor && (
           <SettingsTabs
             key={block.id}
-            general={<editor.General block={block} context={{ upload, startVideo }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />}
+            general={<editor.General block={block} context={{ upload, startVideo, editPart }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />}
             style={
               <>
                 {editor.Style && (
-                  <editor.Style block={block} context={{ upload, startVideo }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />
+                  <editor.Style block={block} context={{ upload, startVideo, editPart }} onChange={(patch) => onRows((current) => patchBlock(current, block.id, patch))} />
                 )}
                 {typographyFields({ kind: "block", id: block.id }, editor.font?.fallback)}
                 {spacingFields({ kind: "block", id: block.id })}

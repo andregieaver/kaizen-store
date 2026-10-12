@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { Inline } from "@/components/inline-text";
 import { inlinePlain } from "@/lib/inline-text";
@@ -8,7 +8,10 @@ import {
   richTextPlain,
   type AccordionBlock,
   type FaqBlock,
+  type FaqItem,
   type PanelItem,
+  richTextIsEmpty,
+  blockHasContent,
   buttonShows,
   imageDisplaySize,
   type ButtonBlock,
@@ -32,6 +35,7 @@ import { faqJsonLd } from "@/lib/seo";
 import { embedUrl } from "@/lib/video-embed";
 
 import { HtmlFrame } from "./html-frame";
+import { blockBox } from "./page-parts";
 import { IconListView } from "./icon-list-view";
 import { TableView } from "./table-view";
 import { BrandsView } from "./brands-view";
@@ -70,7 +74,7 @@ const BUTTON_SHAPES: Record<ButtonShape, string> = { rounded: "rounded-md", pill
  * its caption (in its own shape or cropped to one, D48), a heading or a
  * button. The page builder's canvas shows blocks with this too.
  */
-export function PageBlockView({ block }: { block: PageBlock }) {
+export function PageBlockView({ block, renderChildren }: { block: PageBlock; renderChildren?: ChildRenderer }) {
   switch (block.type) {
     case "richText":
       return <RichText doc={block.doc} />;
@@ -114,7 +118,7 @@ export function PageBlockView({ block }: { block: PageBlock }) {
     case "tabs":
       return <Tabs block={block} />;
     case "faq":
-      return <Faq block={block} />;
+      return <Faq block={block} renderChildren={renderChildren ?? siteChildren} />;
     case "video":
       return <Video block={block} />;
     case "socialLinks":
@@ -321,20 +325,42 @@ function Accordion({ block }: { block: AccordionBlock }) {
  * schema.org's FAQPage beside them for search engines and AI assistants
  * unless switched off. Only questions with an answer show.
  */
-function Faq({ block }: { block: FaqBlock }) {
+function Faq({ block, renderChildren }: { block: FaqBlock; renderChildren: ChildRenderer }) {
   const items = block.items.filter(faqShows);
   return (
     <>
-      <DetailsList block={block} items={items} />
-      {block.structuredData !== false && items.length > 0 && (
-        <JsonLdScript data={faqJsonLd(items.map((item) => ({ question: inlinePlain(item.title), answer: richTextPlain(item.body) })))} />
+      <DetailsList block={block} items={items} renderChildren={renderChildren} />
+      {block.structuredData !== false && items.some((item) => answerText(item) !== "") && (
+        // The answer's words: its text and its components' (D208).
+        // An answer of components with no words (a button alone) says nothing to search engines, so it is left out of the data.
+        <JsonLdScript data={faqJsonLd(items.map((item) => ({ question: inlinePlain(item.title), answer: answerText(item) })).filter((item) => item.answer !== ""))} />
       )}
     </>
   );
 }
 
+/** How the components in an answer are drawn (D208): the site's own drawing, or the canvas's, which can choose them. */
+export type ChildRenderer = (blocks: PageBlock[]) => ReactNode;
+
+/** An answer's components as the site draws a column's, each in its box (its id, classes and part styles), one under another. */
+const siteChildren: ChildRenderer = (blocks) =>
+  blocks.filter(blockHasContent).map((child) => {
+    const b = blockBox(child, "site");
+    return (
+      <div key={child.id} id={b.id} className={b.className || undefined} style={b.style}>
+        <PageBlockView block={child} />
+      </div>
+    );
+  });
+
+/** An answer's words for the FAQPage data: its text, then its components' words. */
+const answerText = (item: FaqItem) =>
+  [richTextPlain(item.body), ...(item.blocks ?? []).map((child) => (child.type === "richText" ? richTextPlain(child.doc) : child.type === "heading" ? inlinePlain(child.text) : ""))]
+    .filter((text) => text.trim() !== "")
+    .join("\n\n");
+
 /** Titled items that open under their titles: an accordion's sections, or questions and answers. */
-function DetailsList({ block, items }: { block: AccordionBlock | FaqBlock; items: PanelItem[] }) {
+function DetailsList({ block, items, renderChildren }: { block: AccordionBlock | FaqBlock; items: (PanelItem | FaqItem)[]; renderChildren?: ChildRenderer }) {
   const boxed = block.look === "boxed";
   return (
     <div className={boxed ? "flex flex-col gap-3" : "divide-y divide-border border-y border-border"}>
@@ -356,7 +382,11 @@ function DetailsList({ block, items }: { block: AccordionBlock | FaqBlock; items
             </svg>
           </summary>
           <div className="pb-4">
-            <RichText doc={item.body} />
+            {!richTextIsEmpty(item.body) && <RichText doc={item.body} />}
+            {/* An answer's components (D208), under its text. */}
+            {renderChildren && "blocks" in item && item.blocks && item.blocks.length > 0 && (
+              <div className="kz-answer-parts mt-3 flex flex-col gap-3">{renderChildren(item.blocks)}</div>
+            )}
           </div>
         </details>
       ))}

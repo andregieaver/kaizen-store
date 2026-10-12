@@ -1,4 +1,4 @@
-import type { PageBlock, PageColumn, PageRow, PageTranslation } from "./page-content";
+import { childBlocks, mapChildBlocks, type PageBlock, type PageColumn, type PageRow, type PageTranslation } from "./page-content";
 import { maskBetween, maskId, randomMask } from "./part-ids";
 
 /**
@@ -31,13 +31,15 @@ const CHILD = { row: "column", column: "block", block: "block" } as const;
 function kids(kind: PartKind, part: AnyPart): AnyPart[] {
   if (kind === "row") return (part as PageRow).columns;
   if (kind === "column") return (part as PageColumn).blocks;
-  return [];
+  // An FAQ's answers' components (D208), item after item: they take the use's ids like any part inside it.
+  return childBlocks(part as PageBlock);
 }
 
 function withKids<T extends AnyPart>(kind: PartKind, part: T, children: AnyPart[]): T {
   if (kind === "row") return { ...part, columns: children as PageColumn[] };
   if (kind === "column") return { ...part, blocks: children as PageBlock[] };
-  return part;
+  let next = 0;
+  return mapChildBlocks(part as PageBlock, () => children[next++] as PageBlock) as T;
 }
 
 function without<T extends AnyPart>(part: T, keys: ("global" | "local")[]): T {

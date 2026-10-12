@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from "react";
 
-import { blockFonts, blockShowsUnbound, columnLines, partFonts, rowShows, type PageBlock, type PageColumn, type PageContent, type PageRow } from "@/lib/page-content";
+import { blockFonts, blockHasContent, blockShowsUnbound, columnLines, partFonts, rowShows, type PageBlock, type PageColumn, type PageContent, type PageRow } from "@/lib/page-content";
 import { inlineMarkOf } from "@/lib/inline-edit";
 
 import { withoutBindings } from "@/lib/field-binding";
@@ -269,7 +269,7 @@ function RowMarkup({
                   <GoogleReviewsSection block={block} place={place} />
                 </Suspense>
               ) : (
-                <PageBlockView block={block} />
+                <PageBlockView block={block} renderChildren={answerParts} />
               )}
             </div>
             </VisiblePart>
@@ -297,4 +297,17 @@ function RowMarkup({
       </div>
     </div>
   );
+}
+
+/** An FAQ's answers' components (D208) as the site draws a column's: each in its box, with its fonts. */
+function answerParts(blocks: PageBlock[]): ReactNode {
+  return blocks.filter(blockHasContent).map((child) => {
+    const b = blockBox(child, "site");
+    return (
+      <div key={child.id} id={b.id} className={b.className || undefined} style={b.style}>
+        <FontLinks families={blockFonts(child)} />
+        <PageBlockView block={child} />
+      </div>
+    );
+  });
 }

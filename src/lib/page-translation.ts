@@ -156,8 +156,21 @@ export function mapBlockTexts(b: PageBlock, visit: Visit): PageBlock {
         successMessage: str("successMessage", b.successMessage, 500, "Thank-you message"),
         consent: str("consent", b.consent, 500, "Consent"),
       };
-    case "faq":
-      return { ...b, items: mapPanelItems(b.items, visit, key, "Question", { title: "Question", body: "Answer" }) };
+    case "faq": {
+      const items = mapPanelItems(b.items, visit, key, "Question", { title: "Question", body: "Answer" });
+      // An answer's components (D208) keep their own places (`block.{id}.…`); their labels say which answer they are in.
+      return {
+        ...b,
+        items: b.items.map((item, index) =>
+          item.blocks?.length
+            ? {
+                ...items[index],
+                blocks: item.blocks.map((child) => mapBlockTexts(child, (k, value, max, label) => visit(k, value, max, label && `Answer ${index + 1}: ${label}`))),
+              }
+            : items[index],
+        ),
+      };
+    }
     case "dualButton":
       return {
         ...b,

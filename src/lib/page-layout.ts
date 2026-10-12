@@ -10,6 +10,7 @@ import {
   type PageContent,
   type PageRow,
   type PageType,
+  withChildren,
 } from "./page-content";
 
 /**
@@ -48,7 +49,7 @@ export const pageLayoutSchema = z
   .superRefine((layout, ctx) => {
     const blocks = layoutBlocks(layout);
     if (blocks.length > BLOCKS_MAX) ctx.addIssue({ code: "custom", message: `It holds more than ${BLOCKS_MAX} blocks.` });
-    const ids = layout.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...c.blocks.map((b) => b.id)])]);
+    const ids = layout.rows.flatMap((r) => [r.id, ...r.columns.flatMap((c) => [c.id, ...withChildren(c.blocks).map((b) => b.id)])]);
     if (new Set(ids).size !== ids.length) {
       ctx.addIssue({ code: "custom", message: "Two parts have the same id. Reload the page and try again." });
     }
@@ -56,7 +57,7 @@ export const pageLayoutSchema = z
 
 /** Every block of a layout, in reading order. */
 export const layoutBlocks = (layout: Pick<PageLayout, "rows">): PageBlock[] =>
-  layout.rows.flatMap((row) => row.columns.flatMap((column) => column.blocks));
+  layout.rows.flatMap((row) => row.columns.flatMap((column) => withChildren(column.blocks)));
 
 /** The layout a page holds now, to save as a template. */
 export const layoutOf = (content: Pick<PageContent, "rows" | "css">, pageType: PageType): PageLayout => ({

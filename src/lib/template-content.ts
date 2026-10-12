@@ -2,7 +2,7 @@ import { isCustomPicture } from "./custom-picture";
 import { cssProblem } from "./custom-css";
 import { withoutRecipients } from "./forms";
 import { withoutUses } from "./global-parts";
-import { ownProducts, type BlockType, type PageBlock, type PageColumn, type PageRow, type RichTextDoc } from "./page-content";
+import { mapChildBlocks, ownProducts, withChildren, type BlockType, type PageBlock, type PageColumn, type PageRow, type RichTextDoc } from "./page-content";
 import { layoutBlocks, type PageLayout } from "./page-layout";
 import type { SavedPartKind } from "./saved-parts";
 import { summaryText } from "./templates";
@@ -62,9 +62,9 @@ export const BLOCK_WORDS: Record<BlockType, string> = {
 /** The blocks a saved part holds, in reading order. */
 export function partBlocks(kind: SavedPartKind, content: PartContent): PageBlock[] {
   if (kind === "page") return layoutBlocks(content as PageLayout);
-  if (kind === "row") return (content as PageRow).columns.flatMap((column) => column.blocks);
-  if (kind === "column") return (content as PageColumn).blocks;
-  return [content as PageBlock];
+  if (kind === "row") return (content as PageRow).columns.flatMap((column) => withChildren(column.blocks));
+  if (kind === "column") return withChildren((content as PageColumn).blocks);
+  return withChildren([content as PageBlock]);
 }
 
 /** What is in a saved part, in a few words: "2 columns: heading, text, button". */
@@ -139,7 +139,11 @@ type Edits = {
 
 /** A part with each block, column and row passed through `edits`, the inner ones first. */
 function editPart(kind: SavedPartKind, content: PartContent, edits: Edits): PartContent {
-  const block = (b: PageBlock) => (edits.block ? edits.block(b) : b);
+  // An FAQ's answers' components (D208) are blocks too, passed through first.
+  const block = (b: PageBlock): PageBlock => {
+    const inner = mapChildBlocks(b, block);
+    return edits.block ? edits.block(inner) : inner;
+  };
   const column = (c: PageColumn) => {
     const next = { ...c, blocks: c.blocks.map(block) };
     return edits.column ? edits.column(next) : next;

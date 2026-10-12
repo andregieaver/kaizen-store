@@ -1,11 +1,14 @@
 import {
   EMPTY_DOC,
+  FAQ_CHILDREN_MAX,
   LINE_COLUMNS_MAX,
   PRODUCT_PARTS,
   ROW_LAYOUTS,
   ROW_LINES_MAX,
   SITE_PARTS,
   columnLines,
+  isFaqChildType,
+  mapChildBlocks,
   pageParts,
   rowLayouts,
   type BlockType,
@@ -336,14 +339,70 @@ function mapColumn(rows: PageRow[], columnId: string, change: (blocks: PageBlock
   );
 }
 
-export function findBlock(rows: PageRow[], blockId: string): (BlockPlace & { block: PageBlock }) | null {
+export function findBlock(rows: PageRow[], blockId: string): (BlockPlace & { block: PageBlock; parent?: ChildPlace }) | null {
   for (const row of rows) {
     for (const column of row.columns) {
       const index = column.blocks.findIndex((b) => b.id === blockId);
       if (index >= 0) return { rowId: row.id, columnId: column.id, index, block: column.blocks[index] };
+      // A component in an FAQ's answer (D208): found in its answer, with where it is.
+      for (const holder of column.blocks) {
+        if (holder.type !== "faq") continue;
+        for (const item of holder.items) {
+          const at = (item.blocks ?? []).findIndex((b) => b.id === blockId);
+          if (at >= 0) return { rowId: row.id, columnId: column.id, index: at, block: item.blocks![at], parent: { blockId: holder.id, itemId: item.id } };
+        }
+      }
     }
   }
   return null;
+}
+
+/** Where a component in an answer is (D208): the FAQ and its question. */
+export type ChildPlace = { blockId: string; itemId: string };
+
+/** An answer's components changed by `change` (D208); the rows as they are when the FAQ or its question is not found. */
+function mapChildren(rows: PageRow[], place: ChildPlace, change: (blocks: PageBlock[]) => PageBlock[]): PageRow[] {
+  return mapColumnBlocks(rows, (block) =>
+    block.id === place.blockId && block.type === "faq"
+      ? {
+          ...block,
+          items: block.items.map((item) => {
+            if (item.id !== place.itemId) return item;
+            const blocks = change(item.blocks ?? []);
+            if (blocks.length > 0) return { ...item, blocks };
+            const rest = { ...item };
+            delete rest.blocks;
+            return rest;
+          }),
+        }
+      : block,
+  );
+}
+
+function mapColumnBlocks(rows: PageRow[], change: (block: PageBlock) => PageBlock): PageRow[] {
+  return rows.map((row) => ({ ...row, columns: row.columns.map((column) => ({ ...column, blocks: column.blocks.map(change) })) }));
+}
+
+/** Puts a component in an FAQ's answer at `index` (D208), at most `FAQ_CHILDREN_MAX` and only of the kinds an answer holds. */
+export function insertChild(rows: PageRow[], place: ChildPlace, block: PageBlock, index: number): PageRow[] {
+  if (!isFaqChildType(block.type)) return rows;
+  return mapChildren(rows, place, (blocks) => {
+    if (blocks.length >= FAQ_CHILDREN_MAX) return blocks;
+    const next = [...blocks];
+    next.splice(clamp(index, blocks.length), 0, block);
+    return next;
+  });
+}
+
+/** Moves a component in its answer to `index` (D208), counted after it has been taken out. */
+export function moveChild(rows: PageRow[], blockId: string, index: number): PageRow[] {
+  const place = findBlock(rows, blockId);
+  if (!place?.parent) return rows;
+  return mapChildren(rows, place.parent, (blocks) => {
+    const rest = blocks.filter((b) => b.id !== blockId);
+    rest.splice(clamp(index, rest.length), 0, place.block);
+    return rest;
+  });
 }
 
 export function insertBlock(rows: PageRow[], columnId: string, block: PageBlock, index: number): PageRow[] {
@@ -356,6 +415,7 @@ export function insertBlock(rows: PageRow[], columnId: string, block: PageBlock,
 
 export function removeBlock(rows: PageRow[], blockId: string): PageRow[] {
   const place = findBlock(rows, blockId);
+  if (place?.parent) return mapChildren(rows, place.parent, (blocks) => blocks.filter((b) => b.id !== blockId));
   return place ? mapColumn(rows, place.columnId, (blocks) => blocks.filter((b) => b.id !== blockId)) : rows;
 }
 
@@ -365,12 +425,14 @@ export function removeBlock(rows: PageRow[], blockId: string): PageRow[] {
  */
 export function moveBlock(rows: PageRow[], blockId: string, columnId: string, index: number): PageRow[] {
   const place = findBlock(rows, blockId);
-  if (!place) return rows;
+  // A component in an answer stays in it (D208): it moves there with `moveChild()`.
+  if (!place || place.parent) return rows;
   return insertBlock(removeBlock(rows, blockId), columnId, place.block, index);
 }
 
 export function updateBlock(rows: PageRow[], blockId: string, change: (block: PageBlock) => PageBlock): PageRow[] {
   const place = findBlock(rows, blockId);
+  if (place?.parent) return mapChildren(rows, place.parent, (blocks) => blocks.map((b) => (b.id === blockId ? change(b) : b)));
   return place ? mapColumn(rows, place.columnId, (blocks) => blocks.map((b) => (b.id === blockId ? change(b) : b))) : rows;
 }
 
@@ -410,7 +472,10 @@ function keepHtmlId<T extends PartBase>(part: T, taken: Set<string>): T {
  * global's own.
  */
 export const copyBlock = (block: PageBlock, id: NewId, taken = new Set<string>()): PageBlock =>
-  block.global ? copyWithUses("block", structuredClone(block), id) : keepHtmlId(withFreshItems({ ...structuredClone(block), id: id() }, id), taken);
+  block.global
+    ? copyWithUses("block", structuredClone(block), id)
+    : // An answer's components (D208) are copied with ids of their own too.
+      mapChildBlocks(keepHtmlId(withFreshItems({ ...structuredClone(block), id: id() }, id), taken), (child) => copyBlock(child, id, taken));
 
 /** A copy of a grid of custom items (D155) gives each item an id of its own, which keeps that item's texts' translations apart from the original's. */
 function withFreshItems<T extends PageBlock>(block: T, id: NewId): T {
@@ -453,6 +518,7 @@ export function duplicateRow(rows: PageRow[], rowId: string, id: NewId): PageRow
 /** A copy of the block right after it. */
 export function duplicateBlock(rows: PageRow[], blockId: string, id: NewId): PageRow[] {
   const place = findBlock(rows, blockId);
+  if (place?.parent) return insertChild(rows, place.parent, copyBlock(place.block, id, htmlIds(rows)), place.index + 1);
   return place ? insertBlock(rows, place.columnId, copyBlock(place.block, id, htmlIds(rows)), place.index + 1) : rows;
 }
 

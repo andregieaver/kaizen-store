@@ -15,6 +15,7 @@ import {
   type Sides,
   type Spacing,
   type VerticalAlign,
+  withChildren,
 } from "./page-content";
 import { carouselAnywhere, carouselAt, hiddenAt, neverStacks, spacingAt, stackAt, valueAt } from "./responsive";
 import { colourCss } from "./colour";
@@ -636,7 +637,7 @@ export function partRules(rows: PageRow[], mode: PartsMode): PartRule[] {
     if (row.modal) out.push(...panelStyle(row).rules);
     // The canvas also previews a modal in its panel (`ModalBar`).
     if (row.modal && mode === "canvas") out.push(...rowStyle(row, true, mode).rules);
-    for (const column of row.columns) out.push(...columnStyle(column, mode).rules, ...blockRules(column.blocks, mode));
+    for (const column of row.columns) out.push(...columnStyle(column, mode).rules, ...blockRules(withChildren(column.blocks), mode));
   }
   return out;
 }
@@ -716,7 +717,7 @@ const quoted = (value: string) => `"${value.replace(/["\\]/g, "\\$&")}"`;
  * queries on the canvas (`kz-page`), so they follow the size being edited; the canvas's items carry `data-builder-id`.
  */
 export function canvasHiddenCss(rows: PageRow[], breakpoints: Breakpoints, hide: boolean): string {
-  const parts: PartBase[] = rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...column.blocks])]);
+  const parts: PartBase[] = rows.flatMap((row) => [row, ...row.columns.flatMap((column) => [column, ...withChildren(column.blocks)])]);
   const byQuery = new Map<string, string[]>();
   for (const part of parts as (PartBase & { id: string })[]) {
     const sizes = SIZES.filter((size) => hiddenAt(part, size));
