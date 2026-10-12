@@ -1,7 +1,6 @@
-import { z } from "zod";
-
 import type { Messages } from "./i18n";
 import type { EmailFormBlock, FormField, FormFieldKind, NewsletterBlock } from "./page-content";
+import type { FormRequest } from "./forms-schema";
 
 /**
  * Forms on pages (D93): an email form and a newsletter sign-up. What a
@@ -41,29 +40,6 @@ export const CONSENT_KEY = "consent";
 
 const LINE_MAX = 300;
 export const MESSAGE_MAX = 5000;
-const key = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/);
-
-/** What the browser sends (`/api/forms`). */
-export const formRequest = z.object({
-  /** The site's owner: a store's id, or null for Kaizen's own pages. */
-  store: z.uuid().nullable(),
-  block: key,
-  values: z
-    .record(key, z.union([z.string().max(MESSAGE_MAX * 2), z.boolean()]))
-    .refine((values) => Object.keys(values).length <= 30, "Too many answers."),
-  consent: z.boolean().default(false),
-  /** A field people never see: only robots fill it in. */
-  website: z.string().max(1000).default(""),
-  lang: z.string().regex(/^[a-z]{2,3}$/).default("en"),
-  /** The page it is sent from, a path on the site. */
-  path: z
-    .string()
-    .max(500)
-    .refine((path) => path.startsWith("/") && !path.startsWith("//") && !/[\\\s]/.test(path), "The page's address could not be read."),
-  /** Milliseconds from showing the form to sending it: people take a few seconds. */
-  elapsed: z.number().int().min(0).max(1e10).default(0),
-});
-export type FormRequest = z.infer<typeof formRequest>;
 
 /** Sent faster than this, a form was filled in by a robot. */
 export const HUMAN_MS = 2000;
@@ -86,7 +62,9 @@ const paragraph = (value: string) =>
     .replace(/[\u0000-\u0009\u000b-\u001f\u007f]+/g, " ")
     .trim();
 
-export const isEmail = (value: string) => value.length <= 254 && z.email().safeParse(value).success;
+/** zod's own email rule (`z.email()`), written here so a form checks in the browser without zod. */
+const EMAIL = /^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
+export const isEmail = (value: string) => value.length <= 254 && EMAIL.test(value);
 export const isPhone = (value: string) => /^\+?[0-9 ()./-]{5,30}$/.test(value) && (value.match(/[0-9]/g)?.length ?? 0) >= 5;
 
 /**

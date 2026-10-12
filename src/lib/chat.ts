@@ -1,7 +1,4 @@
-import { z } from "zod";
-
 import { findClaims } from "./claims";
-import { cleanSignals } from "./recommendations";
 import type { ReturnPolicyFacts } from "./structured-data";
 import type { ShownMeasure } from "./unit-price";
 
@@ -19,20 +16,6 @@ export const AGENT_NAME_MAX = 60;
 export const OCCUPATION_MAX = 80;
 export const GREETING_MAX = 300;
 export const INSTRUCTIONS_MAX = 2000;
-
-/** A visitor's request: the conversation so far (kept in their browser), their country, and the page they are on. */
-export const chatRequest = z.object({
-  market: z.string().regex(/^[a-z]{2}(?:-[a-z]{2})?(?:-[a-z]{3})?$/).optional(),
-  path: z.string().max(300).regex(/^\//).optional(),
-  messages: z
-    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().trim().min(1).max(MESSAGE_MAX) }))
-    .min(1)
-    .max(HISTORY_MAX)
-    .refine((messages) => messages.at(-1)?.role === "user", "The last message is the visitor's."),
-  /** What the visitor's tab remembers of the products they looked at and what they searched for (D139), for recommendations. */
-  signals: z.unknown().optional().transform((value) => cleanSignals(value)),
-});
-export type ChatRequest = z.infer<typeof chatRequest>;
 
 /** Something the widget does for the visitor after an answer: open a page of the site. */
 export type ChatAction = { type: "navigate"; href: string; label: string };
@@ -58,28 +41,6 @@ export type ChatProduct = {
 
 export type ChatReply = { reply: string; actions: ChatAction[]; products: ChatProduct[] };
 
-/** An agent's settings as the admin saves them. */
-export const chatAgentInput = z.object({
-  enabled: z.boolean(),
-  name: z.string().trim().max(AGENT_NAME_MAX, `Keep the name under ${AGENT_NAME_MAX} characters.`),
-  occupation: z.string().trim().max(OCCUPATION_MAX, `Keep the occupation under ${OCCUPATION_MAX} characters.`),
-  avatar: z
-    .object({
-      url: z.url({ protocol: /^https?$/, error: "The picture has an invalid address." }).max(1000),
-      width: z.number().int().min(1).max(10_000),
-      height: z.number().int().min(1).max(10_000),
-    })
-    .nullable(),
-  greeting: z.record(
-    z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/),
-    z.string().trim().max(GREETING_MAX, `Keep the greeting under ${GREETING_MAX} characters.`),
-  ),
-  instructions: z.string().trim().max(INSTRUCTIONS_MAX, `Keep the guidance under ${INSTRUCTIONS_MAX} characters.`),
-  voice: z.boolean(),
-  dailyLimit: z.coerce.number().int().min(1, "Allow at least one message a day.").max(100_000, "Allow at most 100,000 messages a day."),
-}).refine((agent) => !agent.enabled || agent.name.length > 0, { message: "Give the agent a name before switching it on.", path: ["name"] });
-export type ChatAgentInput = z.infer<typeof chatAgentInput>;
-
 // Tools ---------------------------------------------------------------------
 
 /** Where the agent may take a visitor, in a store or on Kaizen's site. */
@@ -89,13 +50,6 @@ export const SHOP_DESTINATIONS = ["products", "product", "category", "tag", "sea
 /** The store's tools that answer from its products, prices and stock (D178 step 5): a website's agent is not given them. */
 export const SHOP_TOOLS = ["search_products", "recommend_products", "get_product"] as const;
 export const KAIZEN_DESTINATIONS = ["home", "page", "article", "blog", "signUp", "signIn"] as const;
-
-export const navigateArgs = z.object({
-  to: z.string(),
-  handle: z.string().max(200).optional(),
-  slug: z.string().max(200).optional(),
-  query: z.string().max(200).optional(),
-});
 
 const text = (description: string) => ({ type: "string", description });
 

@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /**
  * How a menu's links answer the pointer and show the page the visitor is on (D207): a line above, below or both, or a
  * background, either growing from the link's centre (`grow`, CSS only) or one marker gliding from link to link
@@ -38,22 +36,6 @@ export type MenuHover = {
   /** The page shown is marked the same way; on unless false. */
   active?: boolean;
 };
-
-const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase());
-
-export const menuHoverSchema = z
-  .object({
-    kind: z.enum(Object.keys(MENU_HOVER_KINDS) as [MenuHoverKind, ...MenuHoverKind[]]),
-    edge: z.enum(Object.keys(MENU_HOVER_EDGES) as [MenuHoverEdge, ...MenuHoverEdge[]]).optional(),
-    travel: z.enum(Object.keys(MENU_HOVER_TRAVEL) as [MenuHoverTravel, ...MenuHoverTravel[]]).optional(),
-    thickness: z.number().int().min(1).max(MENU_LINE_MAX, `A line is at most ${MENU_LINE_MAX} pixels thick.`).optional(),
-    color: hex.optional(),
-    gradient: z.object({ colors: z.array(hex).min(2).max(4), angle: z.number().int().min(0).max(360) }).optional(),
-    textColor: hex.optional(),
-    radius: z.number().int().min(0).max(MENU_RADIUS_MAX).optional(),
-    active: z.boolean().optional(),
-  })
-  .optional();
 
 /**
  * The attributes and custom properties a menu with an effect is drawn with, or none (the links' own grey hover).

@@ -5,7 +5,8 @@ import { fontCss } from "@/server/fonts";
 /**
  * An installed family's stylesheet (D59): `@font-face` rules pointing at
  * Kaizen's copies of its files, and the class that sets it. A family's
- * stylesheet never changes once installed, so the CDN keeps it.
+ * stylesheet never changes once installed, so the CDN and browsers keep it for a year (`immutable`); a change to how it is
+ * written gives it a new address (`FONT_CSS_VERSION` in `fontCssHref()`).
  */
 export async function GET(_request: Request, { params }: RouteContext<"/api/fonts/css/[slug]">) {
   await connection();
@@ -14,7 +15,7 @@ export async function GET(_request: Request, { params }: RouteContext<"/api/font
   return new Response(css, {
     headers: {
       "Content-Type": "text/css; charset=utf-8",
-      "Cache-Control": "public, max-age=86400, s-maxage=31536000, stale-while-revalidate=604800",
+      "Cache-Control": "public, max-age=31536000, s-maxage=31536000, immutable",
     },
   });
 }

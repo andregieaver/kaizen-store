@@ -5,26 +5,8 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import {
-  BONUS_DEFAULTS,
-  BONUS_EXPIRY_REMINDER_DAYS,
-  BONUS_HISTORY_LIMIT,
-  bonusSettingsInput,
-  convertCredits,
-  earnAmount,
-  minChargeMinor,
-  planCredit,
-  type BonusBalance,
-  type BonusEntry,
-  type BonusEntryKind,
-  type BonusExpiryReminder,
-  type BonusOverview,
-  type BonusResult,
-  type BonusSettings,
-  type CartBonus,
-  type CreditPlan,
-  type ShopperBonus,
-} from "@/lib/bonus";
+import { BONUS_DEFAULTS, BONUS_EXPIRY_REMINDER_DAYS, BONUS_HISTORY_LIMIT, convertCredits, earnAmount, minChargeMinor, planCredit, type BonusBalance, type BonusEntry, type BonusEntryKind, type BonusExpiryReminder, type BonusOverview, type BonusResult, type BonusSettings, type CartBonus, type CreditPlan, type ShopperBonus } from "@/lib/bonus";
+import { bonusSettingsInput } from "@/lib/bonus-schema";
 import type { Market } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 

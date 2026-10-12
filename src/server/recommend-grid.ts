@@ -5,7 +5,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import type { GridData } from "@/lib/content-grid";
 import { EMPTY_GRID } from "@/lib/content-grid";
 import type { ContentGridBlock } from "@/lib/page-content";
-import type { RecommendBlock, RecommendPlace } from "@/lib/recommendations";
+import type { RecommendBlock, RecommendPlace } from "@/lib/recommendations-schema";
 import { DEFAULT_MIX } from "@/lib/recommendations";
 import { tileFieldIds } from "@/lib/tile-fields";
 

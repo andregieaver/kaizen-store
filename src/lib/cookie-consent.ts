@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { FeatureId } from "./store-features";
 
 /**
@@ -24,31 +23,6 @@ export const FULL_CONSENT: ConsentChoices = { preferences: true, statistics: tru
 
 /** Analytics and marketing tools, by the id each service gives; none is loaded without consent. */
 export type TrackingSettings = { ga4?: string; gtm?: string; metaPixel?: string };
-
-const optionalId = (pattern: RegExp, message: string) =>
-  z
-    .string()
-    .trim()
-    .transform((value) => value.toUpperCase())
-    .refine((value) => value === "" || pattern.test(value), message)
-    .optional();
-
-export const trackingSchema = z
-  .object({
-    ga4: optionalId(/^G-[A-Z0-9]{4,15}$/, "A Google Analytics 4 id looks like G-XXXXXXXXXX."),
-    gtm: optionalId(/^GTM-[A-Z0-9]{4,12}$/, "A Google Tag Manager id looks like GTM-XXXXXXX."),
-    metaPixel: optionalId(/^\d{6,20}$/, "A Meta Pixel id is a number of 6 to 20 digits."),
-  })
-  // Empty fields are tools switched off.
-  .transform((value) =>
-    Object.fromEntries(Object.entries(value).filter(([, id]) => id)) as TrackingSettings,
-  );
-
-/** The stored value, or no tools if it is missing or damaged. */
-export function parseTracking(value: unknown): TrackingSettings {
-  const parsed = trackingSchema.safeParse(value ?? {});
-  return parsed.success ? parsed.data : {};
-}
 
 /** The categories a set of tools needs consent for: Analytics is statistics; the Pixel marketing; Tag Manager may run either. */
 export function toolCategories(tracking: TrackingSettings): OptionalCategory[] {

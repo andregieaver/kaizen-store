@@ -66,7 +66,8 @@ import { getSetupProgress } from "./setup";
 import { deliveryRounds } from "./standing-orders";
 import { listSubscriptions } from "./subscriptions";
 import { mostWishedProducts, wishlistFigures } from "./wishlist-admin";
-import { BONUS_DEFAULTS, bonusSettingsInput, type BonusSettings } from "@/lib/bonus";
+import { BONUS_DEFAULTS, type BonusSettings } from "@/lib/bonus";
+import { bonusSettingsInput } from "@/lib/bonus-schema";
 import {
   BONUS_ACCOUNTING_NOTE,
   BONUS_EXPLANATION,
@@ -79,7 +80,8 @@ import {
 } from "@/lib/bonus-admin";
 import { mainCurrency } from "@/lib/markets";
 import { adjustBonus, bonusOverview, customerBonus, getBonusSettings, saveBonusSettings } from "./bonus";
-import { AFFILIATE_DEFAULTS, affiliateSettingsInput, type AffiliateSettings } from "@/lib/affiliates";
+import { AFFILIATE_DEFAULTS, type AffiliateSettings } from "@/lib/affiliates";
+import { affiliateSettingsInput } from "@/lib/affiliates-schema";
 import {
   AFFILIATE_EXPLANATION,
   AFFILIATE_NEEDS_BONUS,

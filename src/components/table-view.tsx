@@ -7,7 +7,7 @@ import type { TableBlock } from "@/lib/page-content";
 import { cellParts, withoutIcons } from "@/lib/table-icons";
 
 import { ListIcon } from "./list-icon";
-import { TableScroll } from "./table-scroll";
+import { TableScroll } from "./lazy/blocks";
 
 /** A cell's words with its icons drawn in their places (D201); an icon is named for screen readers. */
 function Cell({ text, color }: { text: string; color?: string }) {

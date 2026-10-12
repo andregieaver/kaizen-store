@@ -2,13 +2,8 @@ import "server-only";
 
 import { minorUnitDigits } from "@/lib/money";
 import { EVAL_CASES, PASS_RATE, scoreCase } from "@/lib/query-eval";
-import {
-  cleanFilters,
-  parseModelJson,
-  understandingMessages,
-  type SearchFilters,
-  type UnderstandingContext,
-} from "@/lib/query-understanding";
+import { parseModelJson, understandingMessages, type SearchFilters, type UnderstandingContext } from "@/lib/query-understanding";
+import { cleanFilters } from "@/lib/query-understanding-schema";
 
 import { AiError, aiFor, completeText, type AiConnection } from "./ai";
 import { cached, cacheKey } from "./search-cache";

@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { formRequest } from "@/lib/forms";
+import { formRequest } from "@/lib/forms-schema";
 import { fail, sameSite } from "@/server/chat-route";
 import { formVisitor, submitForm } from "@/server/forms";
 

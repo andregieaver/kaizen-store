@@ -1,42 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { consentCookieName, encodeConsent } from "./cookie-consent";
-import {
-  EXIT_INTENT_MIN_MS,
-  NO_SCROLL,
-  NO_WAY_TO_CLOSE,
-  NO_WAY_TO_OPEN,
-  autoAllowed,
-  classProblem,
-  flowRows,
-  hasAutoTriggers,
-  isExitIntent,
-  isWorkingPath,
-  keyFromHash,
-  keyFromLink,
-  keyProblem,
-  mayRemember,
-  modalDomId,
-  modalHash,
-  modalProblems,
-  modalRows,
-  modalStorageName,
-  modalSummary,
-  newModal,
-  rememberClose,
-  remembersClose,
-  repeatedModalKey,
-  rowModalSchema,
-  shouldAutoOpen,
-  slugifyKey,
-  stepScrollIntent,
-  triggerWords,
-  uniqueKey,
-  type KeyValue,
-  type ModalMemory,
-  type RowModal,
-  type ScrollIntentState,
-} from "./page-modal";
+import { EXIT_INTENT_MIN_MS, NO_SCROLL, NO_WAY_TO_CLOSE, NO_WAY_TO_OPEN, autoAllowed, classProblem, flowRows, hasAutoTriggers, isExitIntent, isWorkingPath, keyFromHash, keyFromLink, keyProblem, mayRemember, modalDomId, modalHash, modalProblems, modalRows, modalStorageName, modalSummary, newModal, rememberClose, remembersClose, repeatedModalKey, shouldAutoOpen, slugifyKey, stepScrollIntent, triggerWords, uniqueKey, type KeyValue, type ModalMemory, type RowModal, type ScrollIntentState } from "./page-modal";
+import { rowModalSchema } from "./page-modal-schema";
 
 /** A storage that keeps what it is given, or refuses. */
 const store = (initial: Record<string, string> = {}, refuses = false): KeyValue & { data: Map<string, string> } => {

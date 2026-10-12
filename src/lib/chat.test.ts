@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { chatAgentInput, chatRequest, cleanReply, HISTORY_MAX, kaizenTools, returnFacts, storeTools, systemPrompt } from "./chat";
+import { cleanReply, HISTORY_MAX, kaizenTools, returnFacts, storeTools, systemPrompt } from "./chat";
+import { chatAgentInput, chatRequest } from "./chat-schema";
 
 const agent = { enabled: true, name: "Ingrid", occupation: "Customer service", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
 

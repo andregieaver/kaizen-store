@@ -7,19 +7,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import type { CSSProperties } from "react";
 
 import { db, readDb } from "@/db/client";
-import {
-  catalogFont,
-  fontClass,
-  fontSlug,
-  fontStack,
-  FONT_SUBSETS,
-  installedStyles,
-  siteFontFamilies,
-  siteFontsSchema,
-  type CatalogFont,
-  type CatalogRow,
-  type SiteFonts,
-} from "@/lib/fonts";
+import { catalogFont, fontClass, fontSlug, fontStack, FONT_SUBSETS, installedStyles, siteFontFamilies, type CatalogFont, type CatalogRow } from "@/lib/fonts";
+import { siteFontsSchema, type SiteFonts } from "@/lib/fonts-schema";
 import rows from "@/lib/fonts/google-fonts.json";
 
 import { audit, type Account } from "./auth";

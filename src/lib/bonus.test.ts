@@ -1,17 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  BONUS_DEFAULTS,
-  MIN_CHARGE_MINOR,
-  allocateCredit,
-  bonusSettingsInput,
-  convertCredits,
-  earnAmount,
-  minChargeMinor,
-  planCredit,
-  redeemLimit,
-  restoreShare,
-} from "./bonus";
+import { BONUS_DEFAULTS, MIN_CHARGE_MINOR, allocateCredit, convertCredits, earnAmount, minChargeMinor, planCredit, redeemLimit, restoreShare } from "./bonus";
+import { bonusSettingsInput } from "./bonus-schema";
 import { OFFERABLE_CURRENCIES, minorUnitDigits } from "./money";
 
 const rates = new Map([

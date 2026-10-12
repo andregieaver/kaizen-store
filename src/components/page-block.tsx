@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { Inline } from "@/components/inline-text";
 import { inlinePlain } from "@/lib/inline-text";
@@ -15,13 +15,9 @@ import {
   buttonShows,
   imageDisplaySize,
   type ButtonBlock,
-  type ButtonShape,
-  type ButtonSize,
   type DualButtonBlock,
   type DualButtonSide,
-  type FontWeight,
   type HeadingBlock,
-  type ImageShape,
   type PageBlock,
   type SeparatorBlock,
   type TabsBlock,
@@ -34,7 +30,8 @@ import {
 import { faqJsonLd } from "@/lib/seo";
 import { embedUrl } from "@/lib/video-embed";
 
-import { HtmlFrame } from "./html-frame";
+import { SHAPES, buttonLook } from "./button-look";
+import { EmbeddedVideo, HtmlFrame, TabsView, UploadedVideo } from "./lazy/blocks";
 import { blockBox } from "./page-parts";
 import { IconListView } from "./icon-list-view";
 import { TableView } from "./table-view";
@@ -43,39 +40,28 @@ import { GalleryView } from "./gallery-view";
 import { JsonLdScript } from "./json-ld";
 import { RichText } from "./rich-text";
 import { SocialLinksView } from "./social-links-view";
-import { TabsView } from "./tabs-view";
 import { TestimonialCards } from "./testimonials-view";
-import { EmbeddedVideo, UploadedVideo } from "./video-view";
 
 // Written out whole so Tailwind finds every class.
 
-/** Crops (D48). */
-export const SHAPES: Record<ImageShape, string> = {
-  landscape: "aspect-[4/3] object-cover rounded-lg",
-  portrait: "aspect-[3/4] object-cover rounded-lg",
-  panorama: "aspect-[3/1] object-cover rounded-lg",
-  square: "aspect-square object-cover rounded-lg",
-  circle: "aspect-square object-cover rounded-full",
-};
-
-export const WEIGHTS: Record<FontWeight, string> = {
-  normal: "font-normal",
-  medium: "font-medium",
-  semibold: "font-semibold",
-  bold: "font-bold",
-};
-
-const BUTTON_SIZES: Record<ButtonSize, string> = { sm: "min-h-9 text-sm", md: "min-h-11 text-base", lg: "min-h-13 text-lg" };
-/** Room at the sides; a text link has none. */
-const BUTTON_PADDING: Record<ButtonSize, string> = { sm: "px-3", md: "px-5", lg: "px-7" };
-const BUTTON_SHAPES: Record<ButtonShape, string> = { rounded: "rounded-md", pill: "rounded-full", square: "rounded-none" };
+// How buttons and pictures look, kept apart so the browser's parts (a form, a grid) can use them without the whole page model.
+export { SHAPES, WEIGHTS, buttonLook, type ButtonLook } from "./button-look";
 
 /**
  * One block as the site shows it (D42, D47, D49): rich text, a picture with
  * its caption (in its own shape or cropped to one, D48), a heading or a
  * button. The page builder's canvas shows blocks with this too.
  */
-export function PageBlockView({ block, renderChildren }: { block: PageBlock; renderChildren?: ChildRenderer }) {
+export function PageBlockView({
+  block,
+  renderChildren,
+  eager = false,
+}: {
+  block: PageBlock;
+  renderChildren?: ChildRenderer;
+  /** In a row that may be on the first screen: its picture loads at once and before the others, never lazily. */
+  eager?: boolean;
+}) {
   switch (block.type) {
     case "richText":
       return <RichText doc={block.doc} />;
@@ -153,6 +139,7 @@ export function PageBlockView({ block, renderChildren }: { block: PageBlock; ren
           width={size.width}
           height={size.height}
           unoptimized
+          {...(eager ? { loading: "eager" as const, fetchPriority: "high" as const } : {})}
           className={`h-auto max-w-full ${block.shape ? SHAPES[block.shape] : "rounded-lg"}`}
         />
       );
@@ -193,37 +180,6 @@ function Heading({ block }: { block: HeadingBlock }) {
       <Inline text={block.text} links />
     </Tag>
   );
-}
-
-/** How a button looks (D49): its kind, size, corners and colours; also a content grid's tile buttons (D51). */
-export type ButtonLook = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "hover">;
-
-/** The classes and colours of a link that looks like a button. */
-export function buttonLook(
-  look: ButtonLook | undefined,
-  fullWidth = false,
-  weight: FontWeight = "medium",
-): { className: string; style: CSSProperties; hover?: ButtonLook["hover"] } {
-  const variant = look?.variant ?? "filled";
-  const size = look?.size ?? "md";
-  // How it answers the pointer is `kz-btn` and its variant's class, with the button's own or the theme's effect (D206, globals.css).
-  const colors =
-    variant === "filled"
-      ? "kz-btn-filled border-2 border-transparent bg-accent text-accent-foreground"
-      : variant === "outline"
-        ? "kz-btn-outline border-2 border-current text-foreground"
-        : "kz-btn-text text-foreground underline underline-offset-4";
-  return {
-    className: `kz-btn relative z-[2] inline-flex items-center justify-center text-center ${WEIGHTS[weight]} focus-visible:outline-2 focus-visible:outline-offset-2 ${
-      BUTTON_SIZES[size]
-    } ${variant === "text" ? "" : `${BUTTON_PADDING[size]} ${BUTTON_SHAPES[look?.shape ?? "rounded"]}`} ${fullWidth ? "w-full" : ""} ${colors}`,
-    // Its text colour is its block's typography (D180), which beats this as the inline colour it was.
-    style: {
-      ...(variant === "filled" ? { backgroundColor: look?.fill } : { color: look?.fill, borderColor: look?.fill }),
-      ...(look?.fill && { "--kz-btn-fill": look.fill }),
-    } as CSSProperties,
-    ...(look?.hover && { hover: look.hover }),
-  };
 }
 
 /**

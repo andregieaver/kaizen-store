@@ -28,7 +28,9 @@ import {
   skipDeliveryAction,
   startDeliveryAction,
 } from "./actions";
-import { ConfirmButton, DeliveryAddressForm, DeliverySetupForm, type AddressValues } from "./delivery-forms";
+import { ConfirmButton, DeliveryAddressForm, DeliverySetupForm } from "@/components/lazy/shop";
+
+import type { AddressValues } from "./delivery-forms";
 
 const card = "flex flex-col gap-4 rounded-lg border border-border p-5";
 const small = "min-h-11 rounded-button border border-border px-3 text-sm hover:bg-surface";

@@ -1,16 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { EVAL_CASES, scoreCase } from "./query-eval";
-import {
-  cleanFilters,
-  hasFilters,
-  parseModelJson,
-  plainFilters,
-  namesTerm,
-  understandingMessages,
-  worthUnderstanding,
-  type UnderstandingContext,
-} from "./query-understanding";
+import { hasFilters, parseModelJson, plainFilters, namesTerm, understandingMessages, worthUnderstanding, type UnderstandingContext } from "./query-understanding";
+import { cleanFilters } from "./query-understanding-schema";
 
 const context: UnderstandingContext = {
   locale: "nb-NO",

@@ -1,13 +1,5 @@
-import {
-  AFFILIATE_REJECTION_LABELS,
-  AFFILIATE_STATUS_LABELS,
-  affiliateSettingsInput,
-  friendDiscount,
-  referrerReward,
-  type AffiliateAttributionRow,
-  type AffiliateOverview,
-  type AffiliateSettings,
-} from "./affiliates";
+import { AFFILIATE_REJECTION_LABELS, AFFILIATE_STATUS_LABELS, friendDiscount, referrerReward, type AffiliateAttributionRow, type AffiliateOverview, type AffiliateSettings } from "./affiliates";
+import { affiliateSettingsInput } from "./affiliates-schema";
 import { bpsToPercentText, percentTextToBps, type MoneyFormat } from "./bonus-admin";
 import { formatMoney, minorUnitDigits } from "./money";
 import { formatPriceInput, parsePrice } from "./product-input";

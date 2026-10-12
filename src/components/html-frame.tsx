@@ -26,7 +26,8 @@ export function HtmlFrame({ html, title, height, waitForClick }: { html: string;
       </div>
     );
   }
-  return <Frame html={html} title={title} height={height} />;
+  // A frame always has a name for screen readers (WCAG 4.1.2): the owner's title, else a plain one.
+  return <Frame html={html} title={title.trim() || m.embeddedContent} height={height} />;
 }
 
 function Frame({ html, title, height }: { html: string; title: string; height: number | undefined }) {
@@ -64,7 +65,7 @@ function Frame({ html, title, height }: { html: string; title: string; height: n
       ref={ref}
       srcDoc={frameDocument(html)}
       sandbox={FRAME_SANDBOX}
-      title={title || undefined}
+      title={title}
       loading="lazy"
       referrerPolicy="strict-origin-when-cross-origin"
       className="block w-full border-0"

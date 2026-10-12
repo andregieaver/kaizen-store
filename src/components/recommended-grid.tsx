@@ -1,15 +1,18 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, type MouseEvent } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import type { CampaignNotices } from "@/lib/campaign-notices";
 import type { GridData } from "@/lib/content-grid";
 import type { ContentGridBlock } from "@/lib/page-content";
 import { readSession, recordClick, signalsOf } from "@/lib/recommend-session";
-import type { Placement, RecommendBlock, RecommendPlace } from "@/lib/recommendations";
+import type { Placement } from "@/lib/recommendations";
+import type { RecommendBlock, RecommendPlace } from "@/lib/recommendations-schema";
 
-import { ContentGridView } from "./content-grid";
+// The grid's own view is loaded only when the shopper's products arrive: until then the server's stand-in is shown, and the
+// view (with the page model it reads) stays out of the page's first scripts.
+const ContentGridView = lazy(() => import("./content-grid").then((module) => ({ default: module.ContentGridView })));
 
 type Outcome = { items: GridData["items"]; arm: "ai" | "baseline"; placement: Placement };
 
@@ -45,7 +48,10 @@ export function RecommendedGrid({
   market,
   place,
   ask,
+  children,
 }: {
+  /** The grid as the server drew it with `initial`: shown until the shopper's own products replace it. */
+  children: ReactNode;
   block: ContentGridBlock;
   initial: GridData;
   notices?: CampaignNotices;
@@ -107,7 +113,13 @@ export function RecommendedGrid({
   return (
     // The tiles' own links do the work; the wrapper only notes which tile was used.
     <div onClick={clicked}>
-      <ContentGridView block={block} data={data} notices={notices} />
+      {outcome ? (
+        <Suspense fallback={children}>
+          <ContentGridView block={block} data={data} notices={notices} />
+        </Suspense>
+      ) : (
+        children
+      )}
     </div>
   );
 }

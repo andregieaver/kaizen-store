@@ -14,15 +14,18 @@ import {
   type GradientStyle,
   type PartMotion,
 } from "./motion";
-import { carouselSettingsSchema, type CarouselSettings } from "./carousel-settings";
+import { type CarouselSettings } from "./carousel-settings";
+import { carouselSettingsSchema } from "./carousel-settings-schema";
 import { HEX6, isOpacity } from "./colour";
 import { customPictureProblem } from "./custom-picture";
 import { isSafeAddress } from "./field-parts";
 import { inlinePlain } from "./inline-text";
 import { sourceTraits } from "./grid-source";
-import { menuHoverSchema, type MenuHover } from "./menu-hover";
+import { type MenuHover } from "./menu-hover";
+import { menuHoverSchema } from "./menu-hover-schema";
 import { menuLinkSchema, type MenuLink } from "./navigation";
-import { modalDomId, repeatedModalKey, rowModalSchema, type RowModal } from "./page-modal";
+import { modalDomId, repeatedModalKey, type RowModal } from "./page-modal";
+import { rowModalSchema } from "./page-modal-schema";
 import { upgradeBlock, upgradeColumn, upgradeRow } from "./responsive";
 import { displaysProblem, publicRows, showSchema, type Show } from "./visibility";
 import { withoutIcons } from "./table-icons";
@@ -462,7 +465,8 @@ export type Background =
   | { type: "color"; color: Color; opacity?: number }
   | {
       type: "image";
-      image: { url: string; width: number; height: number };
+      /** `small`: the library's 480 px copy, set when the page is read for the site (`withSmallCopies()`), never saved. */
+      image: { url: string; width: number; height: number; small?: string };
       /** A colour laid over the picture, `opacity` 0–100, so text on it can be read. */
       overlay: { color: Color; opacity: number } | null;
       /** How soft the picture is drawn, in pixels (up to `BLUR_MAX`); none when left out. */

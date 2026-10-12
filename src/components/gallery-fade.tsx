@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { resolveCarousel, type CarouselSettings } from "@/lib/carousel-settings";
-import { stepSlide } from "@/lib/gallery";
+import { stepSlide } from "@/lib/slide-step";
 import { t } from "@/lib/i18n";
 
 import { usePageLanguage } from "./page-language";

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { WishlistView, type WishlistItemView } from "@/components/wishlist-view";
+import { WishlistView } from "@/components/lazy/shop";
+import type { WishlistItemView } from "@/components/wishlist-view";
 import { optionLabel, t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import type { StoreQuery } from "@/lib/store-parts";

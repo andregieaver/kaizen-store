@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { SubscriptionButton } from "@/components/subscription-button";
-import { SubscriptionContentsForm } from "@/components/subscription-contents-form";
+import { SubscriptionButton, SubscriptionContentsForm } from "@/components/lazy/shop";
 import { MAX_LINE_QUANTITY } from "@/lib/cart";
 import { t, type Messages } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";

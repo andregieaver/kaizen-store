@@ -15,6 +15,15 @@ export function testDb() {
  * addresses (D181; `/s/{slug}/no/{page}` moves there).
  */
 export async function storePageWith(name: string, blocks: postgres.JSONValue[], page = "side"): Promise<string> {
+  return storePageRows(
+    name,
+    blocks.map((block, index) => ({ id: `row-${index}`, type: "row", layout: "1", columns: [{ id: `column-${index}`, blocks: [block] }] })),
+    page,
+  );
+}
+
+/** As `storePageWith()`, with the page's rows as given (a row's own settings, such as its background). */
+export async function storePageRows(name: string, rows: postgres.JSONValue[], page = "side"): Promise<string> {
   const slug = `${name}-${Date.now().toString(36)}`;
   const sql = testDb();
   try {
@@ -31,12 +40,7 @@ export async function storePageWith(name: string, blocks: postgres.JSONValue[], 
       aiAssistants: true,
       categories: [],
       tags: [],
-      rows: blocks.map((block, index) => ({
-        id: `row-${index}`,
-        type: "row",
-        layout: "1",
-        columns: [{ id: `column-${index}`, blocks: [block] }],
-      })),
+      rows,
     };
     await sql`
       insert into commerce.pages (store_id, slug, draft, published, published_at)

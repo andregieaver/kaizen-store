@@ -1,10 +1,10 @@
-import { z } from "zod";
-
 /**
  * Google Fonts, self-hosted (D59): the catalogue's shape, how a family is
  * named in addresses and classes, and the fallbacks shown while it loads.
  * Shared by the site, the page builder and the server that installs fonts.
  */
+
+import type { SiteFonts } from "./fonts-schema";
 
 export const FONT_CATEGORIES = {
   "sans-serif": "Sans serif",
@@ -32,7 +32,6 @@ export const catalogFont = ([family, category, weights, italics]: CatalogRow): C
 
 /** A family's name as the catalogue writes it: letters, digits and spaces. */
 export const FONT_FAMILY = /^[A-Za-z0-9][A-Za-z0-9 ]{0,99}$/;
-export const fontFamily = z.string().trim().regex(FONT_FAMILY, "Choose a font from the list.");
 
 /** `Open Sans` → `open-sans`: in addresses and class names. */
 export const fontSlug = (family: string) => family.trim().toLowerCase().replace(/\s+/g, "-");
@@ -40,8 +39,14 @@ export const fontSlug = (family: string) => family.trim().toLowerCase().replace(
 /** The class that sets a family on an element, from its stylesheet. */
 export const fontClass = (family: string) => `kf-${fontSlug(family)}`;
 
+/**
+ * The version of how a family's stylesheet is written (`fontCss()`): browsers keep a stylesheet for a year without asking again,
+ * so a change to what it holds raises this, which gives every stylesheet a new address.
+ */
+export const FONT_CSS_VERSION = 1;
+
 /** A family's self-hosted stylesheet: its `@font-face` rules and its class. */
-export const fontCssHref = (family: string) => `/api/fonts/css/${fontSlug(family)}`;
+export const fontCssHref = (family: string) => `/api/fonts/css/${fontSlug(family)}?v=${FONT_CSS_VERSION}`;
 
 /** What shows while a family loads, or if it cannot. */
 const FALLBACKS: Record<FontCategory, string> = {
@@ -74,19 +79,6 @@ export function installedStyles(font: CatalogFont): { weights: number[]; italics
 
 /** Scripts kept for the EU's languages: Latin, and Greek and Cyrillic (Bulgarian). */
 export const FONT_SUBSETS = ["latin", "latin-ext", "greek", "cyrillic"] as const;
-
-/** A site's own fonts (D59): headings and the rest; unset keeps the system's. */
-export const siteFontsSchema = z.object({
-  heading: fontFamily.optional(),
-  body: fontFamily.optional(),
-});
-export type SiteFonts = z.infer<typeof siteFontsSchema>;
-
-/** The stored value, or no fonts if it is missing or damaged. */
-export function parseSiteFonts(value: unknown): SiteFonts {
-  const parsed = siteFontsSchema.safeParse(value ?? {});
-  return parsed.success ? parsed.data : {};
-}
 
 /** The families a site's fonts use. */
 export const siteFontFamilies = (fonts: SiteFonts) => [...new Set([fonts.heading, fonts.body].filter((f): f is string => Boolean(f)))];

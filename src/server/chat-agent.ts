@@ -6,21 +6,8 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
-import {
-  chatAgentInput,
-  cleanReply,
-  kaizenTools,
-  navigateArgs,
-  returnFacts,
-  SHOP_DESTINATIONS,
-  SHOP_TOOLS,
-  storeTools,
-  systemPrompt,
-  type ChatAction,
-  type ChatProduct,
-  type ChatReply,
-  type ChatRequest,
-} from "@/lib/chat";
+import { cleanReply, kaizenTools, returnFacts, SHOP_DESTINATIONS, SHOP_TOOLS, storeTools, systemPrompt, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
+import { chatAgentInput, navigateArgs, type ChatRequest } from "@/lib/chat-schema";
 import { chatDetails } from "@/lib/custom-fields";
 import { featureOn } from "@/lib/store-features";
 import { cardNotices, noticesFor, noticeText, type CampaignNotice, type CampaignNotices } from "@/lib/campaign-notices";

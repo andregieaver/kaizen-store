@@ -1,23 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  applyRerank,
-  armFor,
-  chooseMix,
-  classify,
-  cleanSignals,
-  fuse,
-  intentText,
-  parseAttribution,
-  parseRecommendSettings,
-  parseRerank,
-  pickAnchors,
-  reasonFor,
-  recommendRequest,
-  rerankUser,
-  withinTokenCap,
-  type Classified,
-} from "./recommendations";
+import { applyRerank, armFor, chooseMix, classify, cleanSignals, fuse, intentText, parseRerank, pickAnchors, reasonFor, rerankUser, withinTokenCap, type Classified } from "./recommendations";
+import { parseAttribution, parseRecommendSettings, recommendRequest } from "./recommendations-schema";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 const form = (entries: Record<string, string>) => {

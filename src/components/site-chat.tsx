@@ -4,7 +4,8 @@ import { unitLabelsOf } from "@/lib/unit-price-text";
 import { chatWidgetFor } from "@/server/chat-agent";
 import type { Store } from "@/server/stores";
 
-import { ChatWidget, type ChatLabels } from "./chat-widget";
+import type { ChatLabels } from "./chat-widget";
+import { ChatWidget } from "./lazy/extras";
 
 /** The widget's words in a language, with the agent's own greeting for the locale if it has one. */
 function chatLabels(lang: string, locale: string, name: string, greeting: Record<string, string>): ChatLabels {

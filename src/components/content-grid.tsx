@@ -16,7 +16,7 @@ import { carouselAnywhere } from "@/lib/responsive";
 
 import { Carousel } from "./carousel";
 import { Inline } from "./inline-text";
-import { SHAPES, buttonLook } from "./page-block";
+import { SHAPES, buttonLook } from "./button-look";
 import { CampaignBadge } from "./campaign-notice";
 import { Price } from "./price";
 
@@ -25,7 +25,22 @@ import { Price } from "./price";
  * site (`ContentGridSection`) and in the page builder's canvas. Columns
  * follow the screen sizes (D179): the grid's own at Extra large, overrides below.
  */
-export function ContentGridView({ block, data, notices }: { block: ContentGridBlock; data: GridData; /** The store's campaigns (D115), for a badge on the products they reach. */ notices?: CampaignNotices }) {
+/** How many tiles of a grid that may be on the first screen load their pictures at once: a row of them on a computer. */
+const EAGER_TILES = 4;
+
+export function ContentGridView({
+  block,
+  data,
+  notices,
+  eager = false,
+}: {
+  block: ContentGridBlock;
+  data: GridData;
+  /** The store's campaigns (D115), for a badge on the products they reach. */
+  notices?: CampaignNotices;
+  /** In a row that may be on the first screen: its first tiles' pictures load at once, the first before anything else. */
+  eager?: boolean;
+}) {
   if (data.items.length === 0) {
     return block.emptyText ? (
       <p className="text-muted">
@@ -76,7 +91,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
         } as CSSProperties
       }
     >
-      {data.items.map((item) => (
+      {data.items.map((item, index) => (
         <li
           key={item.id}
           data-item-id={item.id}
@@ -96,6 +111,7 @@ export function ContentGridView({ block, data, notices }: { block: ContentGridBl
               // Without a heading or a button to link, the picture is the item's link for everyone (a logo strip, picture-only cards).
               only={item.href !== "" && !(block.show.heading && item.title) && !block.show.button}
               fallbackName={plain(item.title || item.buttonLabel || label)}
+              load={eager && index < EAGER_TILES ? (index === 0 ? "first" : "eager") : "lazy"}
             />
           )}
           <TileBody padding={tile?.contentPadding}>
@@ -216,7 +232,9 @@ function TileImage({
   m,
   only,
   fallbackName,
+  load,
 }: {
+  load: TileLoad;
   item: GridData["items"][number];
   image: { url: string; alt: string; width?: number; height?: number };
   shape: ReturnType<typeof gridImageShape>;
@@ -228,7 +246,7 @@ function TileImage({
 }) {
   const picture =
     item.href === "" ? (
-      <TilePicture image={image} alt={image.alt} shape={shape} />
+      <TilePicture image={image} alt={image.alt} shape={shape} load={load} />
     ) : only ? (
       <a
         href={item.href}
@@ -237,12 +255,12 @@ function TileImage({
         className="relative z-[2] block focus-visible:outline-2"
         {...externalAttributes(item)}
       >
-        <TilePicture image={image} alt={image.alt} shape={shape} />
+        <TilePicture image={image} alt={image.alt} shape={shape} load={load} />
       </a>
     ) : (
       <a href={item.href} tabIndex={-1} aria-hidden className="relative z-[2] block" {...externalAttributes(item)}>
         {isProduct && <CampaignBadge notices={noticesFor(notices, item.id)} m={m} />}
-        <TilePicture image={image} alt="" shape={shape} />
+        <TilePicture image={image} alt="" shape={shape} load={load} />
       </a>
     );
   return item.badge ? (
@@ -256,7 +274,20 @@ function TileImage({
 }
 
 /** A tile's picture, at its own size when the item has one (custom items, D155), else the usual 800 by 600. */
-function TilePicture({ image, alt, shape }: { image: { url: string; width?: number; height?: number }; alt: string; shape: ReturnType<typeof gridImageShape> }) {
+/** When a tile's picture loads: as it comes near, at once, or at once and before anything else (the first tile on the first screen). */
+type TileLoad = "lazy" | "eager" | "first";
+
+function TilePicture({
+  image,
+  alt,
+  shape,
+  load,
+}: {
+  image: { url: string; width?: number; height?: number };
+  alt: string;
+  shape: ReturnType<typeof gridImageShape>;
+  load: TileLoad;
+}) {
   return (
     <Image
       src={image.url}
@@ -264,6 +295,8 @@ function TilePicture({ image, alt, shape }: { image: { url: string; width?: numb
       width={image.width ?? 800}
       height={image.height ?? 600}
       unoptimized
+      loading={load === "lazy" ? "lazy" : "eager"}
+      fetchPriority={load === "first" ? "high" : undefined}
       className={`h-auto w-full bg-surface ${
         shape === "original" ? "rounded-lg" : shape === "theme" ? "product-card-image rounded-lg object-cover" : SHAPES[shape]
       }`}

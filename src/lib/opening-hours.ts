@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /**
  * Opening hours (D40): the usual week, and exceptions to it, either a season
  * (a run of dates with its own week, such as summer hours) or single dates
@@ -31,32 +29,6 @@ export type OpeningHours = { week: WeekHours; exceptions: HoursException[] };
 
 export const MAX_EXCEPTIONS = 40;
 
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Write times as HH:MM, such as 09:00.");
-const date = z.iso.date("Choose a date.");
-
-const dayHours = z
-  .object({ open: time, close: time })
-  .nullable()
-  .refine((h) => h === null || h.open < h.close, "A day must close after it opens.");
-
-const weekHours = z.object(Object.fromEntries(DAYS.map((d) => [d, dayHours])) as Record<Day, typeof dayHours>);
-
-const label = z.string().trim().max(60).default("");
-
-export const openingHoursInput = z.object({
-  week: weekHours,
-  exceptions: z
-    .array(
-      z.discriminatedUnion("kind", [
-        z
-          .object({ kind: z.literal("season"), label, from: date, to: date, week: weekHours })
-          .refine((s) => s.from <= s.to, "A season must end on or after the day it starts."),
-        z.object({ kind: z.literal("date"), label, date, hours: dayHours }),
-      ]),
-    )
-    .max(MAX_EXCEPTIONS, `Add at most ${MAX_EXCEPTIONS} exceptions.`),
-});
-
 /** Weekdays 09:00–17:00, weekends closed: a place to start. */
 export function defaultWeek(): WeekHours {
   return Object.fromEntries(
@@ -66,12 +38,6 @@ export function defaultWeek(): WeekHours {
 
 export function defaultHours(): OpeningHours {
   return { week: defaultWeek(), exceptions: [] };
-}
-
-/** Hours as stored, or null when they are missing or malformed. */
-export function parseOpeningHours(value: unknown): OpeningHours | null {
-  const parsed = openingHoursInput.safeParse(value);
-  return parsed.success ? (parsed.data as OpeningHours) : null;
 }
 
 const short = (d: Day) => DAY_NAMES[d].slice(0, 3);

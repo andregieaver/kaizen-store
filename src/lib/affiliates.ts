@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { AFFILIATE_PARAM, withAffiliate } from "./affiliate-address";
 import { allocateCredit } from "./bonus";
 import { consentCookieName, decodeConsent } from "./cookie-consent";
@@ -53,16 +51,6 @@ export const AFFILIATE_DEFAULTS: AffiliateSettings = {
   monthlyCapMinor: null,
   cookieDays: 30,
 };
-
-export const affiliateSettingsInput = z.object({
-  enabled: z.boolean(),
-  rewardBps: z.number().int().min(0, "The reward cannot be below 0%.").max(AFFILIATE_REWARD_BPS_MAX, `Keep the reward at ${AFFILIATE_REWARD_BPS_MAX / 100}% or less.`),
-  rewardOrders: z.number().int().min(1).max(100).nullable(),
-  friendPercent: z.number().int().min(0).max(AFFILIATE_FRIEND_PERCENT_MAX, `Keep the friend's discount at ${AFFILIATE_FRIEND_PERCENT_MAX}% or less.`),
-  friendMaxMinor: z.number().int().min(0).max(100_000_000).nullable(),
-  monthlyCapMinor: z.number().int().min(0).max(1_000_000_000).nullable(),
-  cookieDays: z.number().int().min(1).max(AFFILIATE_COOKIE_DAYS_MAX),
-});
 
 /** A code: lower case letters and digits, 6 to 16 (the same shape as Kaizen's referral codes). */
 export const AFFILIATE_CODE = REFERRAL_CODE;

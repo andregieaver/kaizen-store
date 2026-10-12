@@ -59,5 +59,4 @@ export function gallerySlides(items: readonly GalleryItem[]): GallerySlide[] {
   });
 }
 
-/** The slide after or before `index`, going round. */
-export const stepSlide = (index: number, by: 1 | -1, count: number): number => (count === 0 ? 0 : (index + by + count) % count);
+export { stepSlide } from "./slide-step";

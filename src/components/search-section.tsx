@@ -4,7 +4,7 @@ import { Suspense } from "react";
 
 import { ProductListing } from "@/components/product-listing";
 import { RecommendTracker } from "@/components/recommend-tracker";
-import { SearchBox } from "@/components/search-box";
+import { SearchBox } from "@/components/lazy/blocks";
 import { t, type Messages } from "@/lib/i18n";
 import { parseListingParams } from "@/lib/listing-filters";
 import { formatMoney } from "@/lib/money";

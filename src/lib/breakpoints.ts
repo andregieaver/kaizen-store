@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /**
  * Screen sizes (D179, `docs/responsive-editing.md` 2): four, as Beaver Builder has them, each from a width up to the next.
  * A part's settings as saved are its Extra large values; the smaller sizes hold only what differs (`PartBase.at`,
@@ -40,18 +38,17 @@ export function breakpointsProblem(value: Breakpoints): string | null {
   return null;
 }
 
-const width = z.number().int().min(BREAKPOINT_MIN).max(BREAKPOINT_MAX);
-export const breakpointsSchema = z
-  .object({ md: width, lg: width, xl: width })
-  .superRefine((value, ctx) => {
-    const problem = breakpointsProblem(value);
-    if (problem) ctx.addIssue({ code: "custom", message: problem });
-  });
-
-/** The widths a theme gives, or the defaults where it gives none or ones that cannot be used. */
+/**
+ * The widths a theme gives, or the defaults where it gives none or ones that cannot be used. Read without zod, as the browser's
+ * part rules use it (`breakpointsSchema` in `breakpoints-schema.ts` checks a theme as it is saved, to the same rule).
+ */
 export function breakpointsOf(theme: { breakpoints?: Breakpoints } | null | undefined): Breakpoints {
-  const parsed = breakpointsSchema.safeParse(theme?.breakpoints);
-  return parsed.success ? parsed.data : DEFAULT_BREAKPOINTS;
+  const given = theme?.breakpoints as Partial<Record<keyof Breakpoints, unknown>> | undefined;
+  if (!given || typeof given !== "object") return DEFAULT_BREAKPOINTS;
+  const { md, lg, xl } = given;
+  if (typeof md !== "number" || typeof lg !== "number" || typeof xl !== "number") return DEFAULT_BREAKPOINTS;
+  const widths = { md, lg, xl };
+  return breakpointsProblem(widths) ? DEFAULT_BREAKPOINTS : widths;
 }
 
 /** Where the part rules are measured: the window on the site, the canvas (`kz-page`) in the builder. */

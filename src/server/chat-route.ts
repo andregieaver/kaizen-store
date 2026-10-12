@@ -2,7 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
-import { chatRequest, type ChatReply, type ChatRequest } from "@/lib/chat";
+import { type ChatReply } from "@/lib/chat";
+import { chatRequest, type ChatRequest } from "@/lib/chat-schema";
 import { t } from "@/lib/i18n";
 
 import { AiError, aiFor, type AiConnection } from "./ai";

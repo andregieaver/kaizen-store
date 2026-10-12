@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { checkMessage, checkSignup, formRequest, looksAutomated, publicForm, returnPath, withoutRecipients } from "./forms";
+import { z } from "zod";
+
+import { checkMessage, checkSignup, isEmail, looksAutomated, publicForm, returnPath, withoutRecipients } from "./forms";
+import { formRequest } from "./forms-schema";
 import { t } from "./i18n";
 import type { EmailFormBlock, NewsletterBlock } from "./page-content";
 
@@ -89,5 +92,12 @@ describe("forms (D93)", () => {
   it("returns a confirmed sign-up to its page, marked for its form", () => {
     expect(returnPath("/s/demo/no/nyhetsbrev?utm=x#top", "n1", "confirmed")).toBe("/s/demo/no/nyhetsbrev?utm=x&newsletter=confirmed&form=n1");
     expect(returnPath("/", "n1", "expired")).toBe("/?newsletter=expired&form=n1");
+  });
+});
+
+describe("isEmail without zod", () => {
+  it("agrees with z.email() on addresses good and bad", () => {
+    const samples = ["a@b.no", "ola.nordmann@firma.co.uk", "x+tag@sub.example.com", "o'neil@ex.ie", "a..b@x.no", ".a@x.no", "a.@x.no", "a@x", "a@-x.no", "a@x.n", "a b@x.no", "æ@x.no", "a@x.no.", ""];
+    for (const value of samples) expect([value, isEmail(value)]).toEqual([value, value.length <= 254 && z.email().safeParse(value).success]);
   });
 });

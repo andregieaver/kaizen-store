@@ -4,7 +4,8 @@ import { useState } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { FontLinks } from "@/components/font-links";
-import { fontClass, type SiteFonts } from "@/lib/fonts";
+import { fontClass } from "@/lib/fonts";
+import { type SiteFonts } from "@/lib/fonts-schema";
 
 import { FontPicker, type InstallFont } from "./font-picker";
 

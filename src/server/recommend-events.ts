@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { compareArms } from "@/lib/recommend-eval";
-import { ATTRIBUTION_DAYS, EVENT_DAYS, type Placement, type RecommendEvents } from "@/lib/recommendations";
+import { ATTRIBUTION_DAYS, EVENT_DAYS, type Placement } from "@/lib/recommendations";
+import { type RecommendEvents } from "@/lib/recommendations-schema";
 
 type Row = Record<string, unknown>;
 

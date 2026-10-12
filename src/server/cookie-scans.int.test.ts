@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { decodeConsent } from "@/lib/cookie-consent";
-import { parseCustomCode } from "@/lib/custom-code";
+import { parseCustomCode } from "@/lib/custom-code-schema";
 
 import type { Account } from "./auth";
 

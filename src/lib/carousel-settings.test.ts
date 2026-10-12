@@ -1,19 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  AUTOPLAY_SECONDS,
-  DEFAULT_CAROUSEL,
-  activePage,
-  carouselSettingsSchema,
-  cleanCarousel,
-  normalizeSeconds,
-  pageCount,
-  pageOffsets,
-  resolveCarousel,
-  snapAttribute,
-  tilesPerScreen,
-  type TrackMetrics,
-} from "./carousel-settings";
+import { AUTOPLAY_SECONDS, DEFAULT_CAROUSEL, activePage, cleanCarousel, normalizeSeconds, pageCount, pageOffsets, resolveCarousel, snapAttribute, tilesPerScreen, type TrackMetrics } from "./carousel-settings";
+import { carouselSettingsSchema } from "./carousel-settings-schema";
 import { newPageContent, pageInput } from "./page-content";
 import { newBlock } from "./page-rows";
 

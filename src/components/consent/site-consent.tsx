@@ -1,10 +1,10 @@
 import type { OptionalCategory, TrackingSettings } from "@/lib/cookie-consent";
 import { allowedCode, CODE_PLACES, type CustomCode } from "@/lib/custom-code";
+import { ConsentManager, StoreCustomCode } from "@/components/lazy/extras";
 import { t } from "@/lib/i18n";
 import { siteCookies } from "@/server/site-cookies";
 
-import { ConsentManager, type ConsentTexts } from "./consent-manager";
-import { StoreCustomCode } from "./store-custom-code";
+import type { ConsentTexts } from "./consent-manager";
 
 /** The consent widget's words in a language (D58). */
 export function consentTexts(lang: string, locale: string, categories: OptionalCategory[]): ConsentTexts {

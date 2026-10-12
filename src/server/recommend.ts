@@ -9,40 +9,8 @@ import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
 import { pageExcerpt, parsePageContent } from "@/lib/page-content";
 import { localizePage } from "@/lib/page-translation";
-import {
-  ANCHOR_WEIGHT,
-  DEFAULT_MIX,
-  PAGE_TEXT_MAX,
-  RERANK_SYSTEM,
-  applyRerank,
-  armFor,
-  chooseMix,
-  classify,
-  fuse,
-  intentText,
-  parseRerank,
-  pickAnchors,
-  placementOf,
-  reasonFits,
-  reasonFor,
-  rerankFingerprint,
-  rerankUser,
-  withinTokenCap,
-  type Anchor,
-  type AnchorRole,
-  type Classified,
-  type Facts,
-  type Placement,
-  type Reason,
-  type RecommendKind,
-  type RecommendBlock,
-  type RecommendPlace,
-  type RecommendRequest,
-  type RerankInput,
-  type RerankPick,
-  type Signals,
-  type Source,
-} from "@/lib/recommendations";
+import { ANCHOR_WEIGHT, DEFAULT_MIX, PAGE_TEXT_MAX, RERANK_SYSTEM, applyRerank, armFor, chooseMix, classify, fuse, intentText, parseRerank, pickAnchors, placementOf, reasonFits, reasonFor, rerankFingerprint, rerankUser, withinTokenCap, type Anchor, type AnchorRole, type Classified, type Facts, type Placement, type Reason, type RecommendKind, type RerankInput, type RerankPick, type Signals, type Source } from "@/lib/recommendations";
+import { type RecommendBlock, type RecommendPlace, type RecommendRequest } from "@/lib/recommendations-schema";
 import { parseListingParams } from "@/lib/listing-filters";
 import { withDescendants } from "@/lib/taxonomy";
 

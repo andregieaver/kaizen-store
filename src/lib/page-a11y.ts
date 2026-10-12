@@ -36,6 +36,7 @@ export const PAGE_ISSUE_RULES = [
   "legal_notice",
   "pay_page_block",
   "footer_legal",
+  "frame_title",
 ] as const;
 export type PageIssueRule = (typeof PAGE_ISSUE_RULES)[number];
 export type IssueSeverity = "blocking" | "warning";
@@ -53,6 +54,7 @@ export const RULE_SEVERITY: Record<PageIssueRule, IssueSeverity> = {
   legal_notice: "blocking",
   pay_page_block: "blocking",
   footer_legal: "warning",
+  frame_title: "warning",
 };
 
 /** What the owner is told each rule found, in a few words (the title of a group in the tab). */
@@ -68,6 +70,7 @@ export const RULE_TITLE: Record<PageIssueRule, string> = {
   legal_notice: "Draft notice still on the page",
   pay_page_block: "Not allowed on the checkout page",
   footer_legal: "Footer missing what the law asks",
+  frame_title: "Embedded content with no title",
 };
 
 export type PageIssue = {
@@ -454,6 +457,8 @@ export function pageIssues(content: Pick<PageContent, "rows" | "title"> & Partia
             break;
           }
           case "html": {
+            // A frame is named for screen readers by its title; without one it is only "Embedded content".
+            if (block.html.trim() && !block.title.trim()) add("frame_title", place, where, "This embedded content has no title, so a screen reader can only call it embedded content. Give it a title that says what it is.");
             if (context.checkout) add("pay_page_block", place, where, "The checkout page cannot hold your own HTML: the payment page's security policy would block it.");
             break;
           }

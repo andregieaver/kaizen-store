@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { BonusCreditsForm } from "@/components/bonus-credits-form";
+import { BonusCreditsForm } from "@/components/lazy/shop";
 import { creditsInputValue, creditsMode, earnPercentText, type CreditsState } from "@/lib/bonus-shopper";
 import type { CartBonus } from "@/lib/bonus";
 import type { Messages } from "@/lib/i18n";

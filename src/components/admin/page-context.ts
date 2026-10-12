@@ -6,7 +6,7 @@ import type { CSSProperties } from "react";
 import type { GridData } from "@/lib/content-grid";
 import type { PageIssue, ThemeSet } from "@/lib/page-a11y";
 import type { FieldGroup, FieldLookups } from "@/lib/custom-fields";
-import type { SiteFonts } from "@/lib/fonts";
+import type { SiteFonts } from "@/lib/fonts-schema";
 import type { PageType } from "@/lib/page-content";
 import type { MotionPlanResult } from "@/lib/motion-plan";
 import type { TranslateResult } from "@/lib/page-translate-ai";

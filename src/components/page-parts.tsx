@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { CSSProperties } from "react";
 
 import {
@@ -12,6 +11,7 @@ import {
   type VerticalAlign,
 } from "@/lib/page-content";
 import { fontClass } from "@/lib/fonts";
+import { backgroundSources } from "@/lib/page-images";
 import type { BackgroundMotion } from "@/lib/motion";
 import { backgroundFx } from "@/lib/motion-attrs";
 import { blockStyle, clipsAnywhere, columnStyle, inlineNowrap, panelStyle, partClass, rowGridStyle, rowStyle, rowWidthStyle, type PartsMode } from "@/lib/part-css";
@@ -20,7 +20,7 @@ import { valueAt } from "@/lib/responsive";
 import { summarize } from "@/lib/seo";
 import { boxFamilies } from "@/lib/typography";
 
-import { BackgroundVideo } from "./background-video";
+import { BackgroundVideo } from "./lazy/blocks";
 
 /**
  * How a page's rows, columns and blocks are drawn with their settings (D47,
@@ -258,7 +258,8 @@ function GradientLayer({
  * motion. With `motion` (D128) the picture or video sits on a layer larger
  * than its frame that moves with the scroll or by itself; without it the
  * markup is the plain one. `firstRow` is the page's first row, and `preview`
- * the builder's canvas.
+ * the builder's canvas. `eager`: it may be on the first screen (a page's or a header's first row, never a footer's), so its
+ * picture is loaded at once and before the others; any other is loaded only as it comes near.
  */
 export function PartBackground({
   background,
@@ -267,11 +268,13 @@ export function PartBackground({
   preview,
   fixed = false,
   align = "middle",
+  eager = false,
 }: {
   background: RowBackground | undefined;
   motion?: BackgroundMotion;
   firstRow?: boolean;
   preview?: boolean;
+  eager?: boolean;
   /** Which part of a picture or video shows where it is cut to fit: its top, middle or bottom (D184). */
   align?: "top" | "middle" | "bottom";
   /** The picture, video or gradient stays where it is on the screen while the page scrolls, and what is over it moves (D184). */
@@ -287,8 +290,23 @@ export function PartBackground({
   const anchor = align === "top" ? "object-top" : align === "bottom" ? "object-bottom" : "";
   const media = cx(fixed ? "fixed object-cover" : "absolute object-cover", anchor, blur ? "max-w-none" : "inset-0 size-full");
   const still = background.type === "image" ? background.image : background.poster;
-  const picture = still && (
-    <Image src={still.url} alt="" width={still.width} height={still.height} unoptimized className={media} style={blurredMedia(blur)} />
+  // A phone gets the library's small copy where there is one, a blurred picture only that (`backgroundSources()`).
+  const sources = background.type === "image" ? backgroundSources(background.image, blur) : still ? { src: still.url } : null;
+  const picture = still && sources && (
+    // eslint-disable-next-line @next/next/no-img-element -- the owner's picture with its small copy by width, behind the part
+    <img
+      src={sources.src}
+      srcSet={sources.srcSet}
+      sizes={sources.srcSet ? "100vw" : undefined}
+      alt=""
+      width={still.width}
+      height={still.height}
+      loading={eager ? "eager" : "lazy"}
+      fetchPriority={eager ? "high" : undefined}
+      decoding="async"
+      className={media}
+      style={blurredMedia(blur)}
+    />
   );
   return (
     <>

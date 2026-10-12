@@ -5,15 +5,11 @@ import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import {
-  consentCookieName,
-  consentVersion,
-  encodeConsent,
-  FULL_CONSENT,
-  parseTracking,
-} from "@/lib/cookie-consent";
+import { consentCookieName, consentVersion, encodeConsent, FULL_CONSENT } from "@/lib/cookie-consent";
+import { parseTracking } from "@/lib/cookie-consent-schema";
 import { parseScannedItems, type ScannedItem, type ScanTarget } from "@/lib/cookie-scan";
-import { liveCustomCode, parseCustomCode, type CustomCode } from "@/lib/custom-code";
+import { liveCustomCode, type CustomCode } from "@/lib/custom-code";
+import { parseCustomCode } from "@/lib/custom-code-schema";
 import { toMarket } from "@/lib/markets";
 import { marketPath, storeBase, storeSiteUrl } from "@/lib/paths";
 import { siteUrl } from "@/lib/site";

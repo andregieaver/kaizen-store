@@ -18,7 +18,8 @@ import { getCustomer } from "@/server/customers";
 import { setCartCode } from "@/server/discounts";
 import { recordExperimentCart } from "@/server/experiments";
 import { productOfVariant, recordRecommendedAdd } from "@/server/recommend-events";
-import { attributionOf, parseAttribution } from "@/lib/recommendations";
+import { attributionOf } from "@/lib/recommendations";
+import { parseAttribution } from "@/lib/recommendations-schema";
 import { startCheckout, type CheckoutConsent, type CheckoutProblem } from "@/server/checkout";
 import { resolveSellingShop } from "@/server/shop";
 

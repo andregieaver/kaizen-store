@@ -5,28 +5,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { cookies } from "next/headers";
 
 import { db, readDb } from "@/db/client";
-import {
-  AFFILIATE_DEFAULTS,
-  affiliateCookie,
-  affiliateSettingsInput,
-  friendLabel,
-  makeAffiliateCode,
-  normalizeAffiliateCode,
-  NO_CART_AFFILIATE,
-  planWelcome,
-  statusOf,
-  type AffiliateAttributionRow,
-  type AffiliateOverview,
-  type AffiliateRejection,
-  type AffiliateResult,
-  type AffiliateRow,
-  type AffiliateSettings,
-  type AffiliateStatus,
-  type AffiliateVerdict,
-  type CartAffiliate,
-  type CustomerAffiliate,
-  type ShopperReferrals,
-} from "@/lib/affiliates";
+import { AFFILIATE_DEFAULTS, affiliateCookie, friendLabel, makeAffiliateCode, normalizeAffiliateCode, NO_CART_AFFILIATE, planWelcome, statusOf, type AffiliateAttributionRow, type AffiliateOverview, type AffiliateRejection, type AffiliateResult, type AffiliateRow, type AffiliateSettings, type AffiliateStatus, type AffiliateVerdict, type CartAffiliate, type CustomerAffiliate, type ShopperReferrals } from "@/lib/affiliates";
+import { affiliateSettingsInput } from "@/lib/affiliates-schema";
 import { convertCredits } from "@/lib/bonus";
 import type { Market } from "@/lib/markets";
 

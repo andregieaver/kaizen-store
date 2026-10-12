@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { FilterDialog, type FilterFacets } from "@/components/filter-dialog";
+import type { FilterFacets } from "@/components/filter-dialog";
+import { FilterDialog } from "@/components/lazy/blocks";
 import { ProductCard } from "@/components/product-card";
 import type { CampaignNotices } from "@/lib/campaign-notices";
 import { rangeText } from "@/lib/field-filters";

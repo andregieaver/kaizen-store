@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { AGENT_NAME_MAX, GREETING_MAX, INSTRUCTIONS_MAX, OCCUPATION_MAX, type ChatAgentInput } from "@/lib/chat";
+import { AGENT_NAME_MAX, GREETING_MAX, INSTRUCTIONS_MAX, OCCUPATION_MAX } from "@/lib/chat";
+import { type ChatAgentInput } from "@/lib/chat-schema";
 
 import { ImageUploadButton, type Upload } from "./image-upload";
 

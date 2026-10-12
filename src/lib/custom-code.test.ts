@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { allowedCode, codeCategories, customCodeInput, liveCustomCode, parseCustomCode, type CustomCode } from "./custom-code";
+import { allowedCode, codeCategories, liveCustomCode, type CustomCode } from "./custom-code";
+import { customCodeInput, parseCustomCode } from "./custom-code-schema";
 
 afterEach(() => vi.unstubAllEnvs());
 

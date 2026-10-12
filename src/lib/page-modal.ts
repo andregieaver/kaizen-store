@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { consentCookieName, decodeConsent } from "./cookie-consent";
 import { slugify } from "./slug";
 
@@ -130,67 +128,6 @@ export function modalProblems(modal: RowModal): string[] {
   if (modal.closeButton === false && modal.closeOnOverlay === false) problems.push(NO_WAY_TO_CLOSE);
   return problems;
 }
-
-/** Empty text is the same as none. */
-const optional = <T extends z.ZodType>(schema: T) =>
-  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), schema.optional());
-
-/** What the editor sends and the site reads (`pageRowSchema`), with the checks shown to the admin. */
-export const rowModalSchema = z
-  .object({
-    key: z
-      .string()
-      .trim()
-      .superRefine((key, ctx) => {
-        const problem = keyProblem(key);
-        if (problem) ctx.addIssue({ code: "custom", message: problem });
-      }),
-    name: optional(
-      z.string().trim().max(MODAL_NAME_MAX, `Keep the modal's name to ${MODAL_NAME_MAX} characters or fewer.`),
-    ),
-    triggers: z.object({
-      button: z.boolean().optional(),
-      className: optional(
-        z
-          .string()
-          .trim()
-          .superRefine((name, ctx) => {
-            const problem = classProblem(name);
-            if (problem) ctx.addIssue({ code: "custom", message: problem });
-          }),
-      ),
-      exitIntent: z.boolean().optional(),
-      timer: z
-        .object({
-          seconds: z
-            .number()
-            .int("The timer is whole seconds.")
-            .min(MODAL_SECONDS_MIN, `The timer is at least ${MODAL_SECONDS_MIN} second.`)
-            .max(MODAL_SECONDS_MAX, `The timer is at most ${MODAL_SECONDS_MAX} seconds.`),
-        })
-        .optional(),
-    }),
-    frequency: z.enum(Object.keys(MODAL_FREQUENCIES) as [ModalFrequency, ...ModalFrequency[]]),
-    days: z
-      .number()
-      .int("Days are whole days.")
-      .min(MODAL_DAYS_MIN, `Choose between ${MODAL_DAYS_MIN} and ${MODAL_DAYS_MAX} days.`)
-      .max(MODAL_DAYS_MAX, `Choose between ${MODAL_DAYS_MIN} and ${MODAL_DAYS_MAX} days.`)
-      .optional(),
-    size: z.enum(MODAL_SIZE_KEYS),
-    position: z.enum(Object.keys(MODAL_POSITIONS) as [ModalPosition, ...ModalPosition[]]).optional(),
-    overlay: z.enum(MODAL_OVERLAY_KEYS).optional(),
-    closeOnOverlay: z.boolean().optional(),
-    closeButton: z.boolean().optional(),
-  })
-  .superRefine((modal, ctx) => {
-    if (!hasTrigger(modal.triggers)) ctx.addIssue({ code: "custom", message: NO_WAY_TO_OPEN });
-    if (modal.frequency === "days" && modal.days === undefined) {
-      ctx.addIssue({ code: "custom", message: `Choose between ${MODAL_DAYS_MIN} and ${MODAL_DAYS_MAX} days.` });
-    }
-    if (modal.closeButton === false && modal.closeOnOverlay === false)
-      ctx.addIssue({ code: "custom", message: NO_WAY_TO_CLOSE });
-  });
 
 /** A new modal setting: opened by a button or link, once per visit when it opens by itself. */
 export const newModal = (key: string): RowModal => ({

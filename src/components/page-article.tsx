@@ -23,7 +23,7 @@ import { FontLinks } from "./font-links";
 import { FormSection } from "./form-section";
 import { GoogleReviewsSection } from "./google-reviews-section";
 import { PageBlockView } from "./page-block";
-import { PageModal } from "./page-modal";
+import { PageModal } from "./lazy/blocks";
 import { PlansSection } from "./plans-section";
 import { ColumnLinkCover, PartBackground, blockBox, columnBox, modalPanelClass, rowBox, rowGrid, rowInnerClass } from "./page-parts";
 import { PartStyles } from "./part-styles";
@@ -120,6 +120,8 @@ export function PageRowView(props: {
   inAdmin?: boolean;
   /** The first row in the flow of what is drawn (D128): its entrances play by CSS at once, without waiting for scripts. */
   first?: boolean;
+  /** Drawn below the first screen at first (a footer's rows): even its first row's pictures load only as they come near. */
+  late?: boolean;
   /** Its headings and texts are marked for the staff's "Edit text" (D192): `PageArticle`'s. */
   editable?: boolean;
 }) {
@@ -138,6 +140,7 @@ function RowView({
   renderBlock,
   inAdmin = false,
   first = false,
+  late = false,
   editable = false,
 }: Parameters<typeof PageRowView>[0]) {
   return (
@@ -149,7 +152,7 @@ function RowView({
         {row.modal ? (
           <ModalRow row={row} place={place} renderBlock={renderBlock} inAdmin={inAdmin} />
         ) : (
-          <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} preview={inAdmin} editable={editable} />
+          <RowMarkup row={row} place={place} renderBlock={renderBlock} first={first} eager={first && !late} preview={inAdmin} editable={editable} />
         )}
       </VisiblePart>
     </>
@@ -195,6 +198,7 @@ function RowMarkup({
   renderBlock,
   inPanel = false,
   first = false,
+  eager = false,
   preview = false,
   editable = false,
 }: {
@@ -203,6 +207,8 @@ function RowMarkup({
   renderBlock?: (block: PageBlock) => ReactNode;
   inPanel?: boolean;
   first?: boolean;
+  /** It may be on the first screen: its background pictures load at once (`PartBackground`). */
+  eager?: boolean;
   /** The admin's preview: every part but a Never one is drawn (`VisiblePart`). */
   preview?: boolean;
   /** Mark its headings and texts for the staff's "Edit text" (D192). */
@@ -225,7 +231,7 @@ function RowMarkup({
       <VisiblePart key={column.id} show={column.visibility?.show} place={place} preview={preview}>
       <div id={col.id} className={col.className} style={{ ...col.style, ...colFx.style }} {...colFx.attrs}>
         <FontLinks families={partFonts(column)} />
-        <PartBackground background={column.background} motion={column.backgroundMotion} firstRow={first} />
+        <PartBackground background={column.background} motion={column.backgroundMotion} firstRow={first} eager={eager} />
         <ColumnLinkCover column={column} />
         {column.blocks.filter(blockShowsUnbound).map((block, blockIndex) => {
           const b = blockBox(block, "site");
@@ -248,7 +254,7 @@ function RowMarkup({
               {own !== undefined ? (
                 own
               ) : block.type === "contentGrid" ? (
-                <ContentGridSection block={block} place={place} />
+                <ContentGridSection block={block} place={place} eager={eager} />
               ) : block.type === "menu" ? (
                 <MenuSection block={block} place={place} />
               ) : block.type === "search" ? (
@@ -269,7 +275,7 @@ function RowMarkup({
                   <GoogleReviewsSection block={block} place={place} />
                 </Suspense>
               ) : (
-                <PageBlockView block={block} renderChildren={answerParts} />
+                <PageBlockView block={block} renderChildren={answerParts} eager={eager} />
               )}
             </div>
             </VisiblePart>
@@ -283,7 +289,7 @@ function RowMarkup({
     <div className={row.width === "full" || inPanel ? undefined : `mx-auto w-full max-w-(--content-width) ${rowWidthStyle(row).className}`.trim()}>
       <div id={box.id} className={box.className} style={{ ...box.style, ...rowFx.style }} {...rowFx.attrs}>
         <FontLinks families={partFonts(row)} />
-        <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} fixed={row.backgroundFixed} align={row.backgroundAlign} />
+        <PartBackground background={row.background} motion={row.backgroundMotion} firstRow={first} eager={eager} fixed={row.backgroundFixed} align={row.backgroundAlign} />
         <div className={rowInnerClass(row, "site")}>
           <div className={grid.className} style={grid.style}>
             {lines.length === 1

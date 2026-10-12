@@ -6,23 +6,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db, readDb } from "@/db/client";
 import { renderEmail } from "@/lib/email-layout";
 import { referralCreditAppliedEmail, referredStoreOpenedEmail } from "@/lib/referral-emails";
-import {
-  makeReferralCode,
-  normalizeReferralCode,
-  REFERRAL_DEFAULTS,
-  referralEnds,
-  referralSettingsInput,
-  sumPerCurrency,
-  type AdminReferral,
-  type AdminReferralTotals,
-  type AdminReferrer,
-  type ReferralBalance,
-  type ReferralEntry,
-  type ReferralEntryKind,
-  type ReferralSettings,
-  type ReferredStore,
-  type ReferrerOverview,
-} from "@/lib/referrals";
+import { makeReferralCode, normalizeReferralCode, REFERRAL_DEFAULTS, referralEnds, sumPerCurrency, type AdminReferral, type AdminReferralTotals, type AdminReferrer, type ReferralBalance, type ReferralEntry, type ReferralEntryKind, type ReferralSettings, type ReferredStore, type ReferrerOverview } from "@/lib/referrals";
+import { referralSettingsInput } from "@/lib/referrals-schema";
 import { siteUrl } from "@/lib/site";
 
 import { audit, type Account } from "./auth";

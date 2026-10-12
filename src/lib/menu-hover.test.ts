@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { isCurrentPath, menuHoverSchema, menuHoverStyle } from "./menu-hover";
+import { isCurrentPath, menuHoverStyle } from "./menu-hover";
+import { menuHoverSchema } from "./menu-hover-schema";
 import { pageInput } from "./page-content";
 
 describe("menu hover (D207)", () => {

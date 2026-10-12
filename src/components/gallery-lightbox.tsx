@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
-import { stepSlide, type GallerySlide } from "@/lib/gallery";
+import type { GallerySlide } from "@/lib/gallery";
+import { stepSlide } from "@/lib/slide-step";
 import { t } from "@/lib/i18n";
 
 import { usePageLanguage } from "./page-language";

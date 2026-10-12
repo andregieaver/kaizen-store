@@ -1,16 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  consentIsCurrent,
-  consentVersion,
-  declaredCookies,
-  decodeConsent,
-  encodeConsent,
-  knownCookie,
-  parseTracking,
-  toolCategories,
-  trackingSchema,
-} from "./cookie-consent";
+import { consentIsCurrent, consentVersion, declaredCookies, decodeConsent, encodeConsent, knownCookie, toolCategories } from "./cookie-consent";
+import { parseTracking, trackingSchema } from "./cookie-consent-schema";
 
 const visitor = "3f2b8c1e-7a4d-4b9e-9c2a-1d5e6f7a8b9c";
 

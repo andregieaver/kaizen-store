@@ -8,7 +8,7 @@ import {
 
 import { isSafeAddress } from "@/lib/field-parts";
 
-import { BrandsCarousel } from "./brands-carousel";
+import { BrandsCarousel } from "./lazy/blocks";
 
 /**
  * Brands (D204): logos with their names under them, as a grid or a carousel. How many are in a row is `--brand-cols`, set by the

@@ -16,7 +16,8 @@ import {
   mapChildBlocks,
 } from "./page-content";
 import { spacingAt, valueAt } from "./responsive";
-import { siteFontFamilies, type SiteFonts } from "./fonts";
+import { siteFontFamilies } from "./fonts";
+import { type SiteFonts } from "./fonts-schema";
 import { TYPOGRAPHY_KEYS, typographyAt, typographyFamilies, typographyValueAt, type Typography, type TypographyGroups, type TypographyKey, type TypographyOverride } from "./typography";
 import { z } from "zod";
 

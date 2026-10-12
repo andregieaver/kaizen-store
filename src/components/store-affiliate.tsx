@@ -1,4 +1,4 @@
-import { AffiliateCapture } from "@/components/affiliate-capture";
+import { AffiliateCapture } from "@/components/lazy/extras";
 import { storeHome } from "@/lib/paths";
 import { affiliateSite } from "@/server/affiliates";
 

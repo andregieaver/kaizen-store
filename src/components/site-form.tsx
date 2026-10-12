@@ -18,7 +18,7 @@ import type { FormField } from "@/lib/page-content";
 
 import { Dropdown } from "./dropdown";
 import { Inline } from "./inline-text";
-import { buttonLook } from "./page-block";
+import { buttonLook } from "./button-look";
 import { usePageLanguage } from "./page-language";
 
 const input = "min-h-11 w-full rounded-md border border-border bg-background px-3 text-base";

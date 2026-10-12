@@ -6,7 +6,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { closeDb, db } from "@/db/client";
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
-import { DEFAULT_MIX, type RecommendRequest } from "@/lib/recommendations";
+import { DEFAULT_MIX } from "@/lib/recommendations";
+import { type RecommendRequest } from "@/lib/recommendations-schema";
 
 type Row = Record<string, unknown>;
 

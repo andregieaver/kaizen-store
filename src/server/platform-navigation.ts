@@ -18,8 +18,9 @@ import {
   termNames,
   type TermNames,
 } from "@/lib/navigation";
-import { parseTracking, type TrackingSettings } from "@/lib/cookie-consent";
-import { parseSiteFonts, type SiteFonts } from "@/lib/fonts";
+import { type TrackingSettings } from "@/lib/cookie-consent";
+import { parseTracking } from "@/lib/cookie-consent-schema";
+import { parseSiteFonts, type SiteFonts } from "@/lib/fonts-schema";
 
 import { audit, type Account } from "./auth";
 import { ownMenus, standardMenusInput } from "./navigation";

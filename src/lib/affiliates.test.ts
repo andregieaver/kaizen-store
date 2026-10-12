@@ -1,26 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  AFFILIATE_CODE,
-  AFFILIATE_DEFAULTS,
-  AFFILIATE_REJECTION_LABELS,
-  AFFILIATE_STATUS_LABELS,
-  affiliateCookie,
-  affiliateSettingsInput,
-  codeFromSearch,
-  friendDiscount,
-  friendLabel,
-  makeAffiliateCode,
-  mayKeepAffiliate,
-  normalizeAffiliateCode,
-  planWelcome,
-  readAffiliateCookie,
-  referrerReward,
-  shouldCarry,
-  statusOf,
-  withAffiliate,
-  writeAffiliateCookie,
-} from "./affiliates";
+import { AFFILIATE_CODE, AFFILIATE_DEFAULTS, AFFILIATE_REJECTION_LABELS, AFFILIATE_STATUS_LABELS, affiliateCookie, codeFromSearch, friendDiscount, friendLabel, makeAffiliateCode, mayKeepAffiliate, normalizeAffiliateCode, planWelcome, readAffiliateCookie, referrerReward, shouldCarry, statusOf, withAffiliate, writeAffiliateCookie } from "./affiliates";
+import { affiliateSettingsInput } from "./affiliates-schema";
 import { consentCookieName, encodeConsent } from "./cookie-consent";
 
 const STORE = "0f8fad5b-d9cb-469f-a165-70867728950e";

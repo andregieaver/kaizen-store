@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { attributionFor, newSessionId, readSession, recordClick, recordSearch, recordView, signalsOf, SESSION_KEY } from "./recommend-session";
-import { attributionOf, parseAttribution } from "./recommendations";
+import { attributionOf } from "./recommendations";
+import { parseAttribution } from "./recommendations-schema";
 
 const memory = () => {
   const data = new Map<string, string>();

@@ -16,7 +16,7 @@ import { siteTerms } from "@/server/taxonomy";
 
 import { ContentGridView } from "./content-grid";
 import { ListingControls } from "./product-listing";
-import { RecommendedGrid } from "./recommended-grid";
+import { RecommendedGrid } from "./lazy/blocks";
 
 /**
  * A content grid on the site (D51): its items looked up (and cached) on the
@@ -24,23 +24,23 @@ import { RecommendedGrid } from "./recommended-grid";
  * the listing's controls over it and follows the choices in the address,
  * per request; its grid as set is the prerendered stand-in meanwhile.
  */
-export async function ContentGridSection({ block, place }: { block: ContentGridBlock; place: GridPlace }) {
+export async function ContentGridSection({ block, place, eager = false }: { block: ContentGridBlock; place: GridPlace; /** It may be on the first screen. */ eager?: boolean }) {
   // A grid of products draws nothing in a website (D178 step 5: the online shop off); a grid of pages, articles or the owner's items stays.
   if (sourceTraits(block.source).products && !(await ownerSells(place.owner))) return null;
   // A grid that recommends (D139) is built with the recommendations for everyone, then follows the shopper's own.
-  if (recommends(block, place) && place.owner) return <RecommendingGrid block={block} place={place} owner={place.owner} />;
+  if (recommends(block, place) && place.owner) return <RecommendingGrid block={block} place={place} owner={place.owner} eager={eager} />;
   const data = await gridData(block, place);
   const { listing } = place;
   const products = sourceTraits(block.source).products;
   const notices = products && place.owner ? await campaignNoticesAt(place.owner, place.market ?? null) : undefined;
   if (block.filters && products && place.owner && listing) {
     return (
-      <Suspense fallback={<ContentGridView block={block} data={data} notices={notices} />}>
-        <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} notices={notices} />
+      <Suspense fallback={<ContentGridView block={block} data={data} notices={notices} eager={eager} />}>
+        <FilterableGrid block={block} owner={place.owner} market={place.market} listing={listing} data={data} notices={notices} eager={eager} />
       </Suspense>
     );
   }
-  return <ContentGridView block={block} data={data} notices={notices} />;
+  return <ContentGridView block={block} data={data} notices={notices} eager={eager} />;
 }
 
 /** The grid's products as the shopper filters and sorts them, with the controls to do so. */
@@ -51,6 +51,7 @@ async function FilterableGrid({
   listing,
   data,
   notices,
+  eager,
 }: {
   block: ContentGridBlock;
   owner: string;
@@ -58,14 +59,15 @@ async function FilterableGrid({
   listing: ListingPlace;
   data: GridData;
   notices?: CampaignNotices;
+  eager: boolean;
 }) {
   const [shop, query] = await Promise.all([storeAndMarket(owner, marketCode ?? null), listing.query]);
-  if (!shop) return <ContentGridView block={block} data={data} />;
+  if (!shop) return <ContentGridView block={block} data={data} eager={eager} />;
   const { store, market } = shop;
   const m = t(market.lang);
   const filters = parseListingParams(query);
   const scope = await gridScope(store.id, block);
-  if (!scope) return <ContentGridView block={block} data={data} />;
+  if (!scope) return <ContentGridView block={block} data={data} eager={eager} />;
   const buyer = await getBuyer(store);
   const viewer = { buyer, audienceBoth: store.audience === "both" };
   // Without choices the grid keeps its own order; with them, the listing's (D78).
@@ -99,7 +101,7 @@ async function FilterableGrid({
       {items.length === 0 && !unfiltered ? (
         <p>{m.listing.none}</p>
       ) : (
-        <ContentGridView block={block} data={{ ...data, items }} notices={notices} />
+        <ContentGridView block={block} data={{ ...data, items }} notices={notices} eager={eager} />
       )}
     </div>
   );
@@ -109,11 +111,11 @@ async function FilterableGrid({
  * A product grid that recommends (D139): the recommendations for the page for everyone are its prerendered stand-in, kept
  * with the catalogue; in the browser the shopper's own replace them (`RecommendedGrid`).
  */
-async function RecommendingGrid({ block, place, owner }: { block: ContentGridBlock; place: GridPlace; owner: string }) {
+async function RecommendingGrid({ block, place, owner, eager }: { block: ContentGridBlock; place: GridPlace; owner: string; eager: boolean }) {
   const where = recommendPlaceOf(place);
   const [grid, notices] = await Promise.all([recommendingGrid(owner, place.market ?? null, block, where), campaignNoticesAt(owner, place.market ?? null)]);
   if (!grid) return null;
-  const fallback = <ContentGridView block={block} data={grid.data} notices={notices} />;
+  const fallback = <ContentGridView block={block} data={grid.data} notices={notices} eager={eager} />;
   // While the store's recommendations are off there is nothing to ask for: the grid is as built (empty, or its own text).
   if (!grid.enabled) return fallback;
   return (
@@ -126,7 +128,9 @@ async function RecommendingGrid({ block, place, owner }: { block: ContentGridBlo
         market={grid.market}
         place={where}
         ask={recommendBlockOf(block)}
-      />
+      >
+        {fallback}
+      </RecommendedGrid>
     </Suspense>
   );
 }

@@ -239,7 +239,8 @@ import { planCurrencies, type PlanChoice } from "@/lib/plan-offer";
 
 import type { GridData } from "@/lib/content-grid";
 import type { FieldEntity, FieldGroup } from "@/lib/custom-fields";
-import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
+import { siteFontFamilies } from "@/lib/fonts";
+import { type SiteFonts } from "@/lib/fonts-schema";
 import { SAVED_KIND_LABELS, SAVED_NAME_MAX, globalOf, type SavedPart, type SavedPartKind } from "@/lib/saved-parts";
 import { productLoopConfig, productLoopPatch } from "@/lib/field-loop";
 import { tileEntity } from "@/lib/tile-fields";

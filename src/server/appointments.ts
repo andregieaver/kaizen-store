@@ -14,7 +14,8 @@ import {
   type Slot,
   type SlotResource,
 } from "@/lib/booking-slots";
-import { defaultHours, parseOpeningHours } from "@/lib/opening-hours";
+import { defaultHours } from "@/lib/opening-hours";
+import { parseOpeningHours } from "@/lib/opening-hours-schema";
 import { parsePaymentMode, type AppointmentPayment } from "@/lib/pay-later";
 
 /**

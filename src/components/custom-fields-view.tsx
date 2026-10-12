@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { EmbeddedVideo } from "@/components/video-view";
+import { EmbeddedVideo } from "@/components/lazy/blocks";
 import { RichText } from "@/components/rich-text";
 import type { ShownBlock, ShownField, ShownGroup, ShownLink } from "@/lib/custom-fields";
 import {

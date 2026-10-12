@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /**
  * What a carousel does beyond scrolling (D155, B), shared by the content grid
  * and testimonials. Pure, shared with the browser (the page builder, the
@@ -77,23 +75,6 @@ export const snapAttribute = (settings?: CarouselSettings | null): "center" | "n
   const { snap } = resolveCarousel(settings);
   return snap === "start" ? undefined : snap;
 };
-
-/** The settings in the page's JSON, for `pageInput`: a part of the content grid's and testimonials' schemas. */
-export const carouselSettingsSchema = z.object({
-  arrows: z.boolean().optional(),
-  dots: z.boolean().optional(),
-  snap: z.enum(Object.keys(CAROUSEL_SNAPS) as [CarouselSnap, ...CarouselSnap[]], "A carousel rests on an unknown part of its tiles.").optional(),
-  rewind: z.boolean().optional(),
-  autoplay: z
-    .object({
-      seconds: z
-        .number("Give the seconds a carousel stays on a page as a number.")
-        .int(`A carousel stays on a page a whole number of seconds, from ${AUTOPLAY_SECONDS.min} to ${AUTOPLAY_SECONDS.max}.`)
-        .min(AUTOPLAY_SECONDS.min, `A carousel stays on a page at least ${AUTOPLAY_SECONDS.min} seconds.`)
-        .max(AUTOPLAY_SECONDS.max, `A carousel stays on a page at most ${AUTOPLAY_SECONDS.max} seconds.`),
-    })
-    .optional(),
-});
 
 // ---------------------------------------------------------------------------
 // Pages of tiles (the dots)

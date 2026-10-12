@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/db/client";
-import { openingHoursInput, parseOpeningHours, type OpeningHours } from "@/lib/opening-hours";
+import { type OpeningHours } from "@/lib/opening-hours";
+import { openingHoursInput, parseOpeningHours } from "@/lib/opening-hours-schema";
 
 import { audit, type Membership } from "./auth";
 

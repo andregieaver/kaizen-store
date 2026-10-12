@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 import { consentCookieName, decodeConsent } from "./cookie-consent";
 
 /**
@@ -43,14 +41,6 @@ export const REFERRAL_DEFAULTS: ReferralSettings = {
   pendingDays: 30,
   cookieDays: 30,
 };
-
-export const referralSettingsInput = z.object({
-  enabled: z.boolean(),
-  commissionBps: z.number().int().min(0, "Commission cannot be below 0%.").max(REFERRAL_COMMISSION_BPS_MAX, `Keep commission at ${REFERRAL_COMMISSION_BPS_MAX / 100}% or less.`),
-  months: z.number().int().min(1, "At least 1 month.").max(REFERRAL_MONTHS_MAX, `Keep it at ${REFERRAL_MONTHS_MAX} months or less.`),
-  pendingDays: z.number().int().min(0).max(REFERRAL_PENDING_DAYS_MAX),
-  cookieDays: z.number().int().min(1).max(REFERRAL_COOKIE_DAYS_MAX),
-});
 
 /** A referral code: lower case letters and digits, 6 to 16. */
 export const REFERRAL_CODE = /^[a-z0-9]{6,16}$/;

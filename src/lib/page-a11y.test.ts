@@ -45,7 +45,7 @@ describe("the rules", () => {
     }
     const blocking = PAGE_ISSUE_RULES.filter((r) => RULE_SEVERITY[r] === "blocking");
     expect(blocking.sort()).toEqual(["contrast", "empty_link", "heading_empty", "image_alt", "legal_notice", "pay_page_block", "placeholder"].sort());
-    expect(PAGE_ISSUE_RULES.filter((r) => RULE_SEVERITY[r] === "warning").sort()).toEqual(["alt_long", "footer_legal", "heading_order", "link_text_generic"]);
+    expect(PAGE_ISSUE_RULES.filter((r) => RULE_SEVERITY[r] === "warning").sort()).toEqual(["alt_long", "footer_legal", "frame_title", "heading_order", "link_text_generic"]);
   });
 });
 
@@ -415,6 +415,12 @@ describe("what publishing makes of the list", () => {
     expect(groups[0].issues).toHaveLength(2);
     const rulesSeen: PageIssueRule[] = groups.map((g) => g.rule);
     expect(new Set(rulesSeen).size).toBe(rulesSeen.length);
+  });
+
+  it("asks for a title on embedded content, which a screen reader names by it", () => {
+    const frame = (title: string): PageBlock => ({ id: "f1", type: "html", html: "<p>Hi</p>", title });
+    expect(pageIssues(one(frame(""))).map((i) => [i.rule, i.severity])).toEqual([["frame_title", "warning"]]);
+    expect(pageIssues(one(frame("Opening hours")))).toEqual([]);
   });
 
   it("finds nothing wrong with an empty page, or one that is fine", () => {

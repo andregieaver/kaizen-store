@@ -1,4 +1,4 @@
-import { withChildren, type PageContent } from "./page-content";
+import { withChildren, type Background, type PageContent, type RowBackground } from "./page-content";
 import { mapTexts } from "./page-translation";
 
 /**
@@ -55,3 +55,51 @@ export function withLibraryAlts(content: PageContent, lookup: (url: string) => L
   });
   return changed ? { ...filled, translations } : content;
 }
+
+/** The pictures behind the page's rows and columns (D48), whose small copies a phone can be given. */
+export function backgroundImageUrls(content: PageContent): string[] {
+  const urls = new Set<string>();
+  for (const row of content.rows) {
+    if (row.background?.type === "image") urls.add(row.background.image.url);
+    for (const column of row.columns) if (column.background?.type === "image") urls.add(column.background.image.url);
+  }
+  return [...urls];
+}
+
+/**
+ * The page with each background picture's small copy (`image.small`, the library's 480 px one) where the library has one, so a phone
+ * is not sent the large file and a blurred picture loads the small one only. Set when the page is read, never saved (the page's
+ * schema drops it).
+ */
+export function withSmallCopies(content: PageContent, lookup: (url: string) => string | undefined): PageContent {
+  let changed = false;
+  const fill = <B extends Background | RowBackground | undefined>(background: B): B => {
+    if (background?.type !== "image") return background;
+    const small = lookup(background.image.url);
+    if (!small || small === background.image.url || background.image.small === small) return background;
+    changed = true;
+    return { ...background, image: { ...background.image, small } };
+  };
+  const rows = content.rows.map((row) => ({
+    ...row,
+    background: fill(row.background),
+    columns: row.columns.map((column) => ({ ...column, background: fill(column.background) })),
+  }));
+  return changed ? { ...content, rows } : content;
+}
+
+/** Blurred this much or more, a background picture's small copy looks the same as the large one, so only the small one is sent. */
+export const SMALL_ENOUGH_BLUR = 4;
+
+/**
+ * Where a background picture is loaded from: the small copy alone when it is blurred (`SMALL_ENOUGH_BLUR`), else the large one
+ * with the small one offered beside it (`srcSet`, by width) for a narrow screen. Without a small copy, the picture as it is.
+ */
+export function backgroundSources(image: { url: string; width: number; small?: string }, blur: number): { src: string; srcSet?: string } {
+  const small = image.small && image.width > SMALL_COPY_WIDTH ? image.small : undefined;
+  if (!small) return { src: image.url };
+  if (blur >= SMALL_ENOUGH_BLUR) return { src: small };
+  return { src: image.url, srcSet: `${small} ${SMALL_COPY_WIDTH}w, ${image.url} ${image.width}w` };
+}
+/** The width of the library's small copy of a picture, made in the browser when it is uploaded. */
+export const SMALL_COPY_WIDTH = 480;

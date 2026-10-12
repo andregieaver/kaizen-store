@@ -1,6 +1,6 @@
 import { connection } from "next/server";
 
-import { recommendRequest } from "@/lib/recommendations";
+import { recommendRequest } from "@/lib/recommendations-schema";
 import { visitorKey } from "@/server/chat-agent";
 import { fail, sameSite } from "@/server/chat-route";
 import { recommendFor } from "@/server/recommend";

@@ -6,9 +6,7 @@ import { GALLERY_DEFAULTS, type GalleryBlock } from "@/lib/page-content";
 import { EMBED_NAMES } from "@/lib/video-embed";
 
 import { Carousel } from "./carousel";
-import { GalleryFade } from "./gallery-fade";
-import { GalleryLightbox } from "./gallery-lightbox";
-import { EmbeddedVideo, UploadedVideo } from "./video-view";
+import { EmbeddedVideo, GalleryFade, GalleryLightbox, UploadedVideo } from "./lazy/blocks";
 
 /**
  * A gallery (D209): pictures and videos in the owner's order, as a grid or a carousel (the site's own, D155), as many in a row as

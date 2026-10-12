@@ -1,8 +1,9 @@
 import { z } from "zod";
 
 import { hoverTimingVars, themeHoverSchema, type ThemeHover } from "./hover-timing";
-import { DEFAULT_BREAKPOINTS, breakpointsSchema, type Breakpoints } from "./breakpoints";
-import { fontFamily, type SiteFonts } from "./fonts";
+import { DEFAULT_BREAKPOINTS, type Breakpoints } from "./breakpoints";
+import { breakpointsSchema } from "./breakpoints-schema";
+import { fontFamily, type SiteFonts } from "./fonts-schema";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./page-content";
 import { colourLibrarySchema, type ColourLibrary } from "./colour-library";
 import { themeElementsSchema, type ThemeElements } from "./theme-elements";

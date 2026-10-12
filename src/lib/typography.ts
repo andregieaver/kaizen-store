@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { SIZES, SMALLER_SIZES, type Size, type SmallerSize } from "./breakpoints";
 import { colourCss, opacityValue } from "./colour";
-import { fontFamily } from "./fonts";
+import { fontFamily } from "./fonts-schema";
 
 /**
  * Typography (D179 phase 3, `docs/responsive-editing.md` 4 and 11): Beaver Builder's panel on every row, column and

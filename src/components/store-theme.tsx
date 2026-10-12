@@ -1,4 +1,5 @@
-import { siteFontFamilies, type SiteFonts } from "@/lib/fonts";
+import { siteFontFamilies } from "@/lib/fonts";
+import { type SiteFonts } from "@/lib/fonts-schema";
 import { themeCss, type StoreTheme } from "@/lib/theme";
 
 import { breakpointsOf } from "@/lib/breakpoints";

@@ -4,7 +4,8 @@ import { sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
 
 import { db, readDb } from "@/db/client";
-import { DEFAULT_SETTINGS, parseRecommendSettings, settingsProblems, type RecommendSettings } from "@/lib/recommendations";
+import { DEFAULT_SETTINGS, settingsProblems, type RecommendSettings } from "@/lib/recommendations";
+import { parseRecommendSettings } from "@/lib/recommendations-schema";
 
 import { costMicrosSql, priceFor, unpricedSql } from "./ai-price-sql";
 import { audit, type Account } from "./auth";

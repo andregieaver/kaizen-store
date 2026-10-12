@@ -250,7 +250,7 @@ export function SiteRows({ content, ctx, place }: { content: PageContent; ctx: S
   return (
     <>
       {rows.map((row) => (
-        <PageRowView key={row.id} row={row} place={place} renderBlock={render} first={row === first} />
+        <PageRowView key={row.id} row={row} place={place} renderBlock={render} first={row === first} late={ctx.place === "footer"} />
       ))}
       <MotionSupport needs={motionNeeds(rows)} />
     </>

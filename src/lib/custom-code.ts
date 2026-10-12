@@ -1,6 +1,4 @@
-import { z } from "zod";
-
-import { CONSENT_CATEGORIES, OPTIONAL_CATEGORIES, type ConsentCategory, type ConsentChoices, type OptionalCategory } from "./cookie-consent";
+import { OPTIONAL_CATEGORIES, type ConsentCategory, type ConsentChoices, type OptionalCategory } from "./cookie-consent";
 import { storeDomain } from "./paths";
 
 /**
@@ -25,27 +23,6 @@ export const CODE_PLACE_LABELS: Record<CodePlace, { title: string; hint: string 
 
 /** Room for a tag manager's or a widget's snippet, not for a whole program. */
 export const CODE_MAX_LENGTH = 20_000;
-
-const snippet = z.object({
-  code: z
-    .string()
-    .max(CODE_MAX_LENGTH, `Each piece of code takes at most ${CODE_MAX_LENGTH.toLocaleString("en")} characters.`)
-    .transform((code) => code.trim()),
-  category: z.enum(CONSENT_CATEGORIES, "Choose a cookie category for the code."),
-});
-
-/** What the owner saves; places left empty are dropped. */
-export const customCodeInput = z
-  .object({ head: snippet.optional(), bodyStart: snippet.optional(), bodyEnd: snippet.optional() })
-  .transform((value) =>
-    Object.fromEntries(CODE_PLACES.flatMap((place) => (value[place]?.code ? [[place, value[place]]] : []))) as CustomCode,
-  );
-
-/** The stored value, or none if it is missing or damaged. */
-export function parseCustomCode(value: unknown): CustomCode {
-  const parsed = customCodeInput.safeParse(value ?? {});
-  return parsed.success ? parsed.data : {};
-}
 
 /** The code a storefront adds: none until stores have their own hosts (P7). */
 export function liveCustomCode(code: CustomCode): CustomCode {

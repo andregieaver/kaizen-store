@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { DAYS, defaultHours, defaultWeek, hoursOn, openingHoursInput, weekSummary, type OpeningHours, type WeekHours } from "./opening-hours";
+import { DAYS, defaultHours, defaultWeek, hoursOn, weekSummary, type OpeningHours, type WeekHours } from "./opening-hours";
+import { openingHoursInput } from "./opening-hours-schema";
 
 describe("opening hours (D40)", () => {
   it("sums up the week, running days with the same hours together", () => {

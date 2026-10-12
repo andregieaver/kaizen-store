@@ -73,10 +73,12 @@ test("a store's fonts and a component's own font load from Kaizen, never from Go
   const hrefs = await page.locator('link[rel="stylesheet"][href^="/api/fonts/"]').evaluateAll((links) =>
     links.map((l) => l.getAttribute("href")),
   );
-  expect(hrefs.sort()).toEqual(["/api/fonts/css/lato", "/api/fonts/css/pacifico"]);
+  expect(hrefs.sort()).toEqual(["/api/fonts/css/lato?v=1", "/api/fonts/css/pacifico?v=1"]);
 
   const css = await request.get("/api/fonts/css/lato");
   expect(css.headers()["content-type"]).toContain("text/css");
+  // Kept by browsers for a year: a new way of writing it is a new address (`FONT_CSS_VERSION`).
+  expect(css.headers()["cache-control"]).toContain("immutable");
   expect(await css.text()).toContain(`/api/fonts/files/${FILE}`);
   const file = await request.get(`/api/fonts/files/${FILE}`);
   expect(file.headers()["content-type"]).toBe("font/woff2");

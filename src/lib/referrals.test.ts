@@ -2,26 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { encodeConsent, FULL_CONSENT, NO_CONSENT } from "./cookie-consent";
 import { KNOWN_COOKIES, declaredCookies } from "./cookie-consent";
-import {
-  bpsText,
-  commissionOn,
-  makeReferralCode,
-  mayKeepReferral,
-  normalizeReferralCode,
-  readReferralCookie,
-  REFERRAL_CODE,
-  REFERRAL_COOKIE,
-  REFERRAL_DEFAULTS,
-  referralCodeFor,
-  referralCookie,
-  referralEnds,
-  referralPath,
-  referralSettingsInput,
-  referralSignUpPath,
-  referralUrl,
-  sumPerCurrency,
-  withinReferralWindow,
-} from "./referrals";
+import { bpsText, commissionOn, makeReferralCode, mayKeepReferral, normalizeReferralCode, readReferralCookie, REFERRAL_CODE, REFERRAL_COOKIE, REFERRAL_DEFAULTS, referralCodeFor, referralCookie, referralEnds, referralPath, referralSignUpPath, referralUrl, sumPerCurrency, withinReferralWindow } from "./referrals";
+import { referralSettingsInput } from "./referrals-schema";
 
 const VISITOR = "0b9f3c1e-5d2a-4f43-9d87-6a1f2e3c4b5d";
 const consent = (choices: typeof NO_CONSENT) => `consent_kaizen=${encodeConsent({ visitor: VISITOR, version: "marketing", choices })}`;

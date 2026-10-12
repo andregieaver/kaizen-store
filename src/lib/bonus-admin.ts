@@ -1,13 +1,5 @@
-import {
-  BONUS_KIND_LABELS,
-  isGrantKind,
-  bonusSettingsInput,
-  earnAmount,
-  restoreShare,
-  type BonusEntry,
-  type BonusOverview,
-  type BonusSettings,
-} from "./bonus";
+import { BONUS_KIND_LABELS, isGrantKind, earnAmount, restoreShare, type BonusEntry, type BonusOverview, type BonusSettings } from "./bonus";
+import { bonusSettingsInput } from "./bonus-schema";
 import { formatMoney, minorUnitDigits } from "./money";
 import { formatPriceInput, parsePrice } from "./product-input";
 

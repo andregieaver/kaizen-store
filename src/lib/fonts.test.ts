@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import rows from "./fonts/google-fonts.json";
-import { catalogFont, fontClass, fontSlug, fontStack, installedStyles, parseSiteFonts, type CatalogRow } from "./fonts";
+import { catalogFont, fontClass, fontSlug, fontStack, installedStyles, type CatalogRow } from "./fonts";
+import { parseSiteFonts } from "./fonts-schema";
 
 describe("Google Fonts (D59)", () => {
   it("reads the catalogue, most popular first, with Latin families only", () => {
