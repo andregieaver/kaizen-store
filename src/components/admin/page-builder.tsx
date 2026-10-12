@@ -1,8 +1,10 @@
 "use client";
 
+import { ButtonHoverField, HoverTimingFields } from "./hover-fields";
+import { HOVER_DURATION_DEFAULT } from "@/lib/hover-timing";
 import { DEFAULT_BREAKPOINTS, PAGE_CONTAINER, SIZE_LABELS, type Breakpoints, type Size } from "@/lib/breakpoints";
 import { breakpointClassCss, canvasHiddenCss, partCss } from "@/lib/part-css";
-import { themeCss, themeTabValue, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTabValue } from "@/lib/theme";
+import { themeAttributes, themeCss, themeTabValue, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTabValue } from "@/lib/theme";
 import { THEME_ELEMENT_KEYS, THEME_ELEMENT_LABELS, elementAsPart, elementFromPart, rowWidthPatch, themeElementsSchema, themedRows, type ThemeElementKey } from "@/lib/theme-elements";
 import { columnSlotAt, slotAnchor, type Box, type ColumnSlot, type SlotLine } from "@/lib/column-slot";
 import { InlineHeadingEditor } from "@/components/inline-edit/heading-editor";
@@ -1170,7 +1172,7 @@ export function PageBuilder({
             style={fonts.style}
             // With owners' CSS (D100), whatever it draws stays inside the canvas, even `position: fixed`.
             className={`min-w-0 ${fonts.theme ? "rounded-md bg-background text-foreground" : ""} ${css.some((c) => c.trim()) ? "[contain:paint]" : ""}`}
-            {...(fonts.theme && { ...fonts.theme.attributes, "data-theme-canvas": "" })}
+            {...(fonts.theme && { ...fonts.theme.attributes, ...(themeNow && themeAttributes(themeNow)), "data-theme-canvas": "" })}
             data-custom-css=""
           >
             <FontLinks families={siteFontFamilies(fonts.site)} />
@@ -5443,6 +5445,7 @@ function ButtonStyleFields({ block, onChange }: { block: ButtonBlock; onChange: 
   return (
     <div className="flex flex-col gap-4">
       <ButtonLookFields look={block} onChange={onChange} />
+      <ButtonHoverField value={block.hover} onChange={(hover) => onChange({ hover })} />
       <Check
         label="Full width"
         hint="As wide as its column."
@@ -7295,6 +7298,21 @@ function ThemePanel({
             onChange={(dark) => change({ ...value, background: { ...value.background, dark } })}
           />
         )}
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-4 rounded-md border border-border p-3" data-theme-hover="">
+        <legend className="px-1 text-sm font-medium">Hover</legend>
+        <HoverTimingFields
+          value={value.hover}
+          inherited={`${HOVER_DURATION_DEFAULT} ms with Ease`}
+          onChange={(timing) => change({ ...value, hover: { ...(value.hover?.button && { button: value.hover.button }), ...timing } })}
+        />
+        <ButtonHoverField
+          value={value.hover?.button}
+          emptyLabel="Fade (as before)"
+          onChange={(button) => change({ ...value, hover: { ...value.hover, button } })}
+        />
+        <p className="text-xs text-muted">For every link and button of the site. A row, column or component can have its own in its Advanced tab&apos;s Motion, and a button its own effect.</p>
       </fieldset>
 
       <div className="flex flex-col gap-2">

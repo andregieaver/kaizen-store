@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { hoverTimingSchema, type HoverTiming } from "./hover-timing";
+
 /**
  * Motion (D128): a curated set of effects an owner picks for a row, column or component and for their backgrounds:
  * an *entrance* (when it comes into view, or when the page loads), a *hover* effect, a *scroll* effect (tied to
@@ -129,7 +131,13 @@ export const SCROLL_IDS = Object.keys(SCROLL_EFFECTS) as [ScrollEffect, ...Scrol
 export type ScrollMotion = { effect: ScrollEffect; intensity?: MotionIntensity };
 
 /** What can be on one part: an entrance, a hover effect and a scroll effect together. */
-export type PartMotion = { enter?: EnterMotion; hover?: HoverMotion; scroll?: ScrollMotion };
+export type PartMotion = {
+  enter?: EnterMotion;
+  hover?: HoverMotion;
+  scroll?: ScrollMotion;
+  /** How long its hover changes (and those of what it holds) take, and their easing (D206, `src/lib/hover-timing.ts`). */
+  hoverTime?: HoverTiming;
+};
 
 // ---------------------------------------------------------------------------
 // Backgrounds
@@ -189,9 +197,10 @@ export const partMotionSchema = z
     enter: enterMotion.optional(),
     hover: z.object({ effect: z.enum(HOVER_IDS), intensity }).optional(),
     scroll: z.object({ effect: z.enum(SCROLL_IDS), intensity }).optional(),
+    hoverTime: hoverTimingSchema,
   })
   .optional()
-  .transform((motion) => (motion && (motion.enter || motion.hover || motion.scroll) ? motion : undefined));
+  .transform((motion) => (motion && (motion.enter || motion.hover || motion.scroll || motion.hoverTime) ? motion : undefined));
 
 /** A row's or column's background motion (D128). */
 export const backgroundMotionSchema = z.object({ effect: z.enum(BACKGROUND_IDS), intensity }).optional();

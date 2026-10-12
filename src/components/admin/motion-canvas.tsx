@@ -1,5 +1,6 @@
 "use client";
 
+import { hoverTimingVars } from "@/lib/hover-timing";
 import { useEffect, useId, type RefObject } from "react";
 
 import { partFx, type FxProps } from "@/lib/motion-attrs";
@@ -32,7 +33,11 @@ export function canvasFx(
   options: CanvasFxOptions = {},
 ): FxProps {
   // A part with no motion of its own may still take part in its parent's stagger, so the renderer decides.
-  if (!on) return NO_FX;
+  // Hover timing (D206) is no motion to preview: the canvas always shows it.
+  if (!on) {
+    const style = hoverTimingVars(motion?.hoverTime);
+    return Object.keys(style).length > 0 ? { attrs: {}, style } : NO_FX;
+  }
   return partFx(motion, target, { ...options, preview: true });
 }
 

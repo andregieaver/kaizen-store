@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 
+import { hoverTimingVars } from "./hover-timing";
 import {
   ENTER_EFFECTS,
   enterFits,
@@ -185,7 +186,10 @@ export function partFx(motion: PartMotion | undefined, target: MotionTarget, opt
     if (scroll.intensity && scroll.intensity !== "medium") style["--fx-sk"] = INTENSITY_FACTOR[scroll.intensity];
   }
 
-  if (Object.keys(attrs).length === 0) return none();
+  // How long its hover changes take (D206): custom properties that what it holds inherits.
+  Object.assign(style, hoverTimingVars(motion?.hoverTime));
+
+  if (Object.keys(attrs).length === 0 && Object.keys(style).length === 0) return none();
   return { attrs, style: style as CSSProperties };
 }
 

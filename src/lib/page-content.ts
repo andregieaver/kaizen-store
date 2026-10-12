@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { BUTTON_HOVER_IDS, type ButtonHover } from "./hover-timing";
 import { cssProblem } from "./custom-css";
 import {
   GRADIENT_COLORS_MAX,
@@ -626,6 +627,8 @@ export type ButtonBlock = PartBase & Bindable & {
   align?: TextAlign;
   /** The fill (or an outline's line and text); the site's text colour unless chosen. Its text colour is its typography (D180). */
   fill?: Color;
+  /** How it answers the pointer (D206); the theme's choice unless set. */
+  hover?: ButtonHover;
 };
 
 /** What a content grid shows (D51): its kinds of content; articles come with the articles themselves. */
@@ -1123,6 +1126,8 @@ export type DualButtonBlock = PartBase & {
   /** One under another, each the column's width (per size in `at`, D179). */
   stack?: boolean;
   align?: TextAlign;
+  /** How both answer the pointer (D206); the theme's choice unless set. */
+  hover?: ButtonHover;
 };
 export const DUAL_GAP_MAX = 64;
 
@@ -1460,7 +1465,16 @@ export type BrandsBlock = PartBase & {
   /** Logos drawn in greys (D205); with `colourOnHover`, in their colours under the pointer or focus. */
   greyscale?: boolean;
   colourOnHover?: boolean;
+  /**
+   * Logos in one colour (D206): the store's brand colour (the theme's accent), white, black or `tintColor`, drawn through
+   * each logo's shape (a logo with a see-through background keeps its shape), or `invert` for logos made for light
+   * backgrounds shown on a dark one. Over `greyscale`; `colourOnHover` shows the logo as it is under the pointer.
+   */
+  tint?: BrandTint;
+  tintColor?: string;
 };
+export const BRAND_TINTS = { brand: "Brand colour", white: "White", black: "Black", invert: "Inverted", custom: "Custom colour" } as const;
+export type BrandTint = keyof typeof BRAND_TINTS;
 
 /** A brand shows once it has a logo or a name. */
 export const brandShows = (item: BrandItem): boolean => item.picture !== null || item.name.trim() !== "";
@@ -2413,6 +2427,7 @@ const buttonBlock = z.object({
   fullWidth: z.boolean().optional(),
   align: textAlign,
   fill: color.optional(),
+  hover: z.enum(BUTTON_HOVER_IDS).optional(),
   bind: bindRule,
   ...partBase,
 });
@@ -2714,6 +2729,7 @@ const dualButtonBlock = z.object({
   gap: z.number().int().min(0).max(DUAL_GAP_MAX, `Keep the space between the buttons at ${DUAL_GAP_MAX} pixels or less.`).optional(),
   stack: z.boolean().optional(),
   align: textAlign,
+  hover: z.enum(BUTTON_HOVER_IDS).optional(),
   ...partBase,
 });
 
@@ -2925,6 +2941,8 @@ const brandsBlock = z.object({
   showNames: z.boolean().optional(),
   greyscale: z.boolean().optional(),
   colourOnHover: z.boolean().optional(),
+  tint: z.enum(Object.keys(BRAND_TINTS) as [BrandTint, ...BrandTint[]]).optional(),
+  tintColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "A colour is written as # and six hex digits, like #1f2937.").transform((v) => v.toLowerCase()).optional(),
   ...partBase,
 });
 

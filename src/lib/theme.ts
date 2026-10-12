@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { hoverTimingVars, themeHoverSchema, type ThemeHover } from "./hover-timing";
 import { DEFAULT_BREAKPOINTS, breakpointsSchema, type Breakpoints } from "./breakpoints";
 import { fontFamily, type SiteFonts } from "./fonts";
 import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "./page-content";
@@ -96,6 +97,8 @@ export type ThemeSettings = {
   elements?: ThemeElements;
   /** The store's saved colours and gradients (D183), offered in the page builder's colour fields and gradient editors; copied into a part when used. */
   library?: ColourLibrary;
+  /** How hover changes play out on the site (D206): their time, easing and the buttons' default answer. */
+  hover?: ThemeHover;
 };
 
 const keys = <T extends Record<string, unknown>>(record: T) => Object.keys(record) as [keyof T & string, ...(keyof T & string)[]];
@@ -126,6 +129,7 @@ export const themeSettingsSchema = z.object({
   breakpoints: breakpointsSchema.optional(),
   elements: themeElementsSchema.optional(),
   library: colourLibrarySchema.optional(),
+  hover: themeHoverSchema,
 }) satisfies z.ZodType<ThemeSettings, unknown>;
 
 // ---------------------------------------------------------------------------
@@ -330,6 +334,8 @@ export function themeCss(settings: ThemeSettings, selector: string, preview?: "l
     `--content-width: ${settings.layout.maxWidth ? `${settings.layout.maxWidth}px` : WIDTH[settings.layout.width]}`,
     `--card-aspect: ${ASPECT[settings.productCards.image]}`,
     `--heading-weight: ${HEADING_WEIGHTS[settings.headings.weight]}`,
+    // The site's hover timing (D206): only what the owner set, so effects keep their own times otherwise.
+    ...Object.entries(hoverTimingVars(settings.hover)).map(([name, value]) => `${name}: ${value}`),
   ].join("; ");
   const colors = (scheme: "light" | "dark") => paletteVars(settings[scheme], scheme);
   if (preview) return `${selector} { ${colors(preview)}; ${sizes}; }`;
@@ -355,6 +361,7 @@ export function themeAttributes(settings: ThemeSettings): Record<string, string>
     "data-heading-case": settings.headings.case,
     "data-card-style": settings.productCards.style,
     "data-card-align": settings.productCards.align,
+    ...(settings.hover?.button && { "data-button-hover": settings.hover.button }),
     ...(settings.mode !== "auto" && { "data-color-mode": settings.mode }),
   };
 }
@@ -367,18 +374,27 @@ export function themeAttributes(settings: ThemeSettings): Record<string, string>
  * What the page builder's Theme tab edits of a theme (`src/lib/theme-elements.ts`): the elements, the content width in
  * pixels over the Narrow, Normal and Wide choice (null: the choice), and the body background of each colour set.
  */
-export type ThemeTabValue = { elements: ThemeElements; maxWidth: number | null; background: { light: string; dark: string } };
+export type ThemeTabValue = {
+  elements: ThemeElements;
+  maxWidth: number | null;
+  background: { light: string; dark: string };
+  /** The site's hover timing and the buttons' default answer (D206); none set when empty. */
+  hover?: ThemeHover;
+};
 
 export const themeTabValue = (settings: ThemeSettings): ThemeTabValue => ({
   elements: structuredClone(settings.elements ?? {}),
   maxWidth: settings.layout.maxWidth ?? null,
   background: { light: settings.light.background, dark: settings.dark.background },
+  hover: settings.hover ? { ...settings.hover } : {},
 });
 
 /** The theme with the tab's value in it, and nothing else changed. */
 export function withThemeTab(settings: ThemeSettings, value: ThemeTabValue): ThemeSettings {
-  const { elements: _before, ...rest } = settings;
+  const { elements: _before, hover: _hover, ...rest } = settings;
   void _before;
+  void _hover;
+  const hover = value.hover && Object.values(value.hover).some((v) => v !== undefined) ? value.hover : undefined;
   const { maxWidth: _width, ...layout } = settings.layout;
   void _width;
   return {
@@ -387,6 +403,7 @@ export function withThemeTab(settings: ThemeSettings, value: ThemeTabValue): The
     light: { ...settings.light, background: value.background.light },
     dark: { ...settings.dark, background: value.background.dark },
     ...(Object.keys(value.elements).length > 0 && { elements: value.elements }),
+    ...(hover && { hover }),
   };
 }
 

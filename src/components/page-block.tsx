@@ -189,28 +189,33 @@ function Heading({ block }: { block: HeadingBlock }) {
 }
 
 /** How a button looks (D49): its kind, size, corners and colours; also a content grid's tile buttons (D51). */
-export type ButtonLook = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill">;
+export type ButtonLook = Pick<ButtonBlock, "variant" | "size" | "shape" | "fill" | "hover">;
 
 /** The classes and colours of a link that looks like a button. */
 export function buttonLook(
   look: ButtonLook | undefined,
   fullWidth = false,
   weight: FontWeight = "medium",
-): { className: string; style: CSSProperties } {
+): { className: string; style: CSSProperties; hover?: ButtonLook["hover"] } {
   const variant = look?.variant ?? "filled";
   const size = look?.size ?? "md";
+  // How it answers the pointer is `kz-btn` and its variant's class, with the button's own or the theme's effect (D206, globals.css).
   const colors =
     variant === "filled"
-      ? "border-2 border-transparent bg-accent text-accent-foreground hover:opacity-90"
+      ? "kz-btn-filled border-2 border-transparent bg-accent text-accent-foreground"
       : variant === "outline"
-        ? "border-2 border-current text-foreground hover:bg-foreground/5"
-        : "text-foreground underline underline-offset-4 hover:no-underline";
+        ? "kz-btn-outline border-2 border-current text-foreground"
+        : "kz-btn-text text-foreground underline underline-offset-4";
   return {
-    className: `relative z-[2] inline-flex items-center justify-center text-center ${WEIGHTS[weight]} transition focus-visible:outline-2 focus-visible:outline-offset-2 ${
+    className: `kz-btn relative z-[2] inline-flex items-center justify-center text-center ${WEIGHTS[weight]} focus-visible:outline-2 focus-visible:outline-offset-2 ${
       BUTTON_SIZES[size]
     } ${variant === "text" ? "" : `${BUTTON_PADDING[size]} ${BUTTON_SHAPES[look?.shape ?? "rounded"]}`} ${fullWidth ? "w-full" : ""} ${colors}`,
     // Its text colour is its block's typography (D180), which beats this as the inline colour it was.
-    style: variant === "filled" ? { backgroundColor: look?.fill } : { color: look?.fill, borderColor: look?.fill },
+    style: {
+      ...(variant === "filled" ? { backgroundColor: look?.fill } : { color: look?.fill, borderColor: look?.fill }),
+      ...(look?.fill && { "--kz-btn-fill": look.fill }),
+    } as CSSProperties,
+    ...(look?.hover && { hover: look.hover }),
   };
 }
 
@@ -230,6 +235,7 @@ function Button({ block }: { block: ButtonBlock }) {
       {...(block.newTab && { target: "_blank", rel: "noopener noreferrer" })}
       // A border, corners and shadow chosen for the button win over its style's own (by size, the block's rules, D179).
       data-button-frame=""
+      data-hover={look.hover}
       style={look.style}
       className={look.className}
     >
@@ -284,10 +290,11 @@ function DualButton({ block }: { block: DualButtonBlock }) {
 }
 
 function SideButton({ which, side, block }: { which: "first" | "second"; side: DualButtonSide; block: DualButtonBlock }) {
-  const look = buttonLook({ ...side, size: block.size, shape: block.shape });
+  const look = buttonLook({ ...side, size: block.size, shape: block.shape, hover: block.hover });
   return (
     <a
       href={side.href}
+      data-hover={look.hover}
       {...(side.newTab && { target: "_blank", rel: "noopener noreferrer" })}
       style={look.style}
       className={look.className}

@@ -662,11 +662,207 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
 }
 @media (prefers-reduced-motion: no-preference) {
   .kz-brands[data-grey="hover"] .kz-brand-logo {
-    transition: filter 200ms ease;
+    transition: filter var(--kz-hover-dur, 200ms) var(--kz-hover-ease, ease);
   }
 }
 .kz-brand-link {
   display: block;
   color: inherit;
   text-decoration: none;
+}
+
+/*
+ * Buttons' hover (D206, `BUTTON_HOVERS` in `src/lib/hover-timing.ts`): the button's own `data-hover`, else the theme's
+ * `data-button-hover`, else `fade` (what buttons always did). Times and easing are the hover timing's custom properties.
+ */
+:is(.kz-btn, .button-primary) {
+  isolation: isolate;
+}
+.kz-btn[data-hover="darken"]:is(:hover, :focus-visible),
+:where([data-button-hover="darken"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
+  filter: brightness(0.88);
+}
+.kz-btn[data-hover="lighten"]:is(:hover, :focus-visible),
+:where([data-button-hover="lighten"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
+  filter: brightness(1.15);
+}
+.kz-btn[data-hover="lift"]:is(:hover, :focus-visible),
+:where([data-button-hover="lift"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px -10px rgb(0 0 0 / 0.45);
+}
+.kz-btn[data-hover="grow"]:is(:hover, :focus-visible),
+:where([data-button-hover="grow"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
+  transform: scale(1.04);
+}
+.kz-btn[data-hover="shadow"]:is(:hover, :focus-visible),
+:where([data-button-hover="shadow"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
+  box-shadow: 0 12px 26px -10px rgb(0 0 0 / 0.45);
+}
+.kz-btn[data-hover="glow"]:is(:hover, :focus-visible),
+:where([data-button-hover="glow"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
+  box-shadow: 0 0 20px 2px color-mix(in srgb, var(--kz-btn-fill, var(--accent)) 45%, transparent);
+}
+.kz-btn[data-hover="fade"].kz-btn-filled:is(:hover, :focus-visible),
+:where([data-button-hover="fade"]) :is(.kz-btn, .button-primary):not([data-hover]).kz-btn-filled:is(:hover, :focus-visible),
+.kz-btn:not([data-hover]):not(:where([data-button-hover]) *).kz-btn-filled:is(:hover, :focus-visible) {
+  opacity: 0.88;
+}
+.kz-btn[data-hover="fade"].kz-btn-outline:is(:hover, :focus-visible),
+:where([data-button-hover="fade"]) :is(.kz-btn, .button-primary):not([data-hover]).kz-btn-outline:is(:hover, :focus-visible),
+.kz-btn:not([data-hover]):not(:where([data-button-hover]) *).kz-btn-outline:is(:hover, :focus-visible) {
+  background-color: color-mix(in srgb, currentColor 6%, transparent);
+}
+.kz-btn[data-hover="fade"].kz-btn-text:is(:hover, :focus-visible),
+:where([data-button-hover="fade"]) :is(.kz-btn, .button-primary):not([data-hover]).kz-btn-text:is(:hover, :focus-visible),
+.kz-btn:not([data-hover]):not(:where([data-button-hover]) *).kz-btn-text:is(:hover, :focus-visible) {
+  text-decoration-color: transparent;
+}
+.kz-btn[data-hover="sweep"]::before,
+:where([data-button-hover="sweep"]) :is(.kz-btn, .button-primary):not([data-hover])::before,
+.kz-btn[data-hover="shine"]::before,
+:where([data-button-hover="shine"]) :is(.kz-btn, .button-primary):not([data-hover])::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: transform var(--kz-hover-dur, 300ms) var(--kz-hover-ease, ease), background-position var(--kz-hover-dur, 700ms) var(--kz-hover-ease, ease);
+}
+.kz-btn[data-hover="sweep"],
+:where([data-button-hover="sweep"]) :is(.kz-btn, .button-primary):not([data-hover]),
+.kz-btn[data-hover="shine"],
+:where([data-button-hover="shine"]) :is(.kz-btn, .button-primary):not([data-hover]) {
+  overflow: hidden;
+}
+.kz-btn[data-hover="sweep"]::before,
+:where([data-button-hover="sweep"]) :is(.kz-btn, .button-primary):not([data-hover])::before {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.kz-btn[data-hover="sweep"]:is(:hover, :focus-visible)::before,
+:where([data-button-hover="sweep"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible)::before {
+  transform: scaleX(1);
+}
+.kz-btn[data-hover="shine"]::before,
+:where([data-button-hover="shine"]) :is(.kz-btn, .button-primary):not([data-hover])::before {
+  background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.4) 50%, transparent 65%) no-repeat;
+  background-size: 250% 100%;
+  background-position: 130% 0;
+}
+.kz-btn[data-hover="shine"]:is(:hover, :focus-visible)::before,
+:where([data-button-hover="shine"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible)::before {
+  background-position: -30% 0;
+}
+.kz-btn[data-hover="invert"].kz-btn-filled:is(:hover, :focus-visible),
+:where([data-button-hover="invert"]) :is(.kz-btn, .button-primary):not([data-hover]).kz-btn-filled:is(:hover, :focus-visible) {
+  background-color: transparent !important;
+  border-color: var(--kz-btn-fill, var(--accent)) !important;
+  color: var(--kz-btn-fill, var(--accent)) !important;
+}
+.kz-btn[data-hover="invert"].kz-btn-outline:is(:hover, :focus-visible),
+:where([data-button-hover="invert"]) :is(.kz-btn, .button-primary):not([data-hover]).kz-btn-outline:is(:hover, :focus-visible) {
+  background-color: var(--kz-btn-fill, var(--foreground)) !important;
+  border-color: var(--kz-btn-fill, var(--foreground)) !important;
+  color: var(--background) !important;
+}
+.kz-btn[data-hover="underline"],
+:where([data-button-hover="underline"]) :is(.kz-btn, .button-primary):not([data-hover]) {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-origin: content-box;
+  background-position: 0 100%;
+  background-size: 0 1px;
+}
+.kz-btn[data-hover="underline"]:is(:hover, :focus-visible),
+:where([data-button-hover="underline"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
+  background-size: 100% 1px;
+}
+.kz-btn[data-hover="arrow"]::after,
+:where([data-button-hover="arrow"]) :is(.kz-btn, .button-primary):not([data-hover])::after {
+  content: "\2192" / "";
+  display: inline-block;
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width var(--kz-hover-dur, 200ms) var(--kz-hover-ease, ease), margin-left var(--kz-hover-dur, 200ms) var(--kz-hover-ease, ease), opacity var(--kz-hover-dur, 200ms) var(--kz-hover-ease, ease);
+}
+.kz-btn[data-hover="arrow"]:is(:hover, :focus-visible)::after,
+:where([data-button-hover="arrow"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible)::after {
+  max-width: 1.5em;
+  margin-left: 0.4em;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.kz-btn, .button-primary):is(:hover, :focus-visible) {
+    transform: none !important;
+  }
+}
+
+/*
+ * Hover timing (D206, `src/lib/hover-timing.ts`): links, buttons and fields on the site and the builder's canvas change over the
+ * theme's time and easing, or a part's own (`--kz-hover-dur`/`--kz-hover-ease`, inherited from where they are set). Which
+ * properties move is a base rule, so a component's own transition still names its own; the time and easing are read by all.
+ */
+@layer base {
+  :where(html:not([data-admin]), [data-theme-canvas]) :where(a, button, summary, input, select, textarea, [data-button-frame], .product-card) {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, background-size;
+  }
+}
+:where(html:not([data-admin]), [data-theme-canvas]) :where(a, button, summary, input, select, textarea, [data-button-frame], .product-card, .kz-brand-logo) {
+  transition-duration: var(--kz-hover-dur, 200ms);
+  transition-timing-function: var(--kz-hover-ease, ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(html:not([data-admin]), [data-theme-canvas]) :where(a, button, summary, input, select, textarea, [data-button-frame], .product-card, .kz-brand-logo) {
+    transition-duration: 0s;
+  }
+}
+
+/*
+ * Logos in one colour (D206): brand colour, white, black or a chosen one fill each logo's own shape (a mask of the picture
+ * over it, so the picture keeps its size and its words for screen readers); inverted logos are for dark backgrounds.
+ */
+/* As wide as its cell, so the logo inside can shrink to it; the mask is drawn centred and contained, where the logo is. */
+.kz-brand-mask {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  line-height: 0;
+}
+.kz-brand-mask::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--brand-tint);
+  -webkit-mask: var(--kz-logo) center / contain no-repeat;
+  mask: var(--kz-logo) center / contain no-repeat;
+  pointer-events: none;
+}
+.kz-brand-mask > .kz-brand-logo {
+  opacity: 0;
+}
+.kz-brands[data-tint="invert"] .kz-brand-logo {
+  filter: invert(1) hue-rotate(180deg);
+}
+.kz-brands[data-tint-hover] .kz-brand:is(:hover, :focus-within) .kz-brand-logo {
+  filter: none;
+  opacity: 1;
+}
+.kz-brands[data-tint-hover] .kz-brand:is(:hover, :focus-within) .kz-brand-mask::after {
+  opacity: 0;
+}
+.kz-brand-mask::after,
+.kz-brand-mask > .kz-brand-logo {
+  transition: opacity var(--kz-hover-dur, 200ms) var(--kz-hover-ease, ease);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kz-brand-mask::after,
+  .kz-brand-mask > .kz-brand-logo {
+    transition: none;
+  }
 }

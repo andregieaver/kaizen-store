@@ -8,6 +8,7 @@ import { CONTENT_MAX_MAX, CONTENT_MAX_MIN } from "@/lib/page-content";
 import { storeThemeInput, THEME_TEMPLATE_KEYS, themeSettingsSchema, withThemeTab, type StoreTheme, type ThemeSettings, type ThemeTemplate } from "@/lib/theme";
 import { colourLibrarySchema } from "@/lib/colour-library";
 import { themeElementsSchema, themeFontFamilies } from "@/lib/theme-elements";
+import { themeHoverSchema } from "@/lib/hover-timing";
 
 import { audit, type Account } from "./auth";
 import { findFont, installFonts } from "./fonts";
@@ -79,6 +80,7 @@ const themeTabInput = z.object({
   elements: themeElementsSchema.optional(),
   maxWidth: z.number().int().min(CONTENT_MAX_MIN).max(CONTENT_MAX_MAX).nullable(),
   background: z.object({ light: hexColour, dark: hexColour }),
+  hover: themeHoverSchema,
 });
 
 /**
@@ -92,8 +94,8 @@ export async function saveThemeTab(
 ): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
   const parsed = themeTabInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
-  const { elements, maxWidth, background } = parsed.data;
-  const settings = withThemeTab(store.theme.settings, { elements: elements ?? {}, maxWidth, background });
+  const { elements, maxWidth, background, hover } = parsed.data;
+  const settings = withThemeTab(store.theme.settings, { elements: elements ?? {}, maxWidth, background, hover });
   return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings });
 }
 

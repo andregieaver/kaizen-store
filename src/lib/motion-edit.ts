@@ -22,6 +22,7 @@ import {
   type ScrollEffect,
   type ScrollMotion,
 } from "./motion";
+import type { HoverTiming } from "./hover-timing";
 import type { BlockType, GradientBackground, PageRow, RowBackground } from "./page-content";
 import { pageParts } from "./page-content";
 
@@ -107,7 +108,8 @@ export function tidy(motion: PartMotion | undefined): PartMotion | undefined {
   if (motion.enter) next.enter = motion.enter;
   if (motion.hover) next.hover = motion.hover;
   if (motion.scroll) next.scroll = motion.scroll;
-  return next.enter || next.hover || next.scroll ? next : undefined;
+  if (motion.hoverTime) next.hoverTime = motion.hoverTime;
+  return next.enter || next.hover || next.scroll || next.hoverTime ? next : undefined;
 }
 
 /** Drops the keys that say nothing (left out, or a zero delay or stagger), so the page stays as small as it can. */
@@ -169,6 +171,12 @@ export function setHoverIntensity(
 ): PartMotion | undefined {
   if (!motion?.hover) return motion;
   return tidy({ ...motion, hover: lean({ ...motion.hover, intensity }) });
+}
+
+/** Sets how long its hover changes take and their easing (D206); an empty timing is taken away. */
+export function setHoverTime(motion: PartMotion | undefined, hoverTime: HoverTiming | undefined): PartMotion | undefined {
+  const lean = hoverTime && (hoverTime.duration !== undefined || hoverTime.ease) ? hoverTime : undefined;
+  return tidy({ ...motion, hoverTime: lean });
 }
 
 export function setScrollEffect(motion: PartMotion | undefined, effect: ScrollEffect | null): PartMotion | undefined {

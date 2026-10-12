@@ -34,6 +34,7 @@ import {
   setEnterEffect,
   setHoverEffect,
   setHoverIntensity,
+  setHoverTime,
   setScrollEffect,
   setScrollIntensity,
   staggerKind,
@@ -42,6 +43,7 @@ import {
   type StaggerKind,
 } from "@/lib/motion-edit";
 import { Check, Choices } from "./block-fields";
+import { HoverTimingFields } from "./hover-fields";
 
 /**
  * A part's Motion tab (D128): the effects an owner can give a row, column or component, chosen from lists built from
@@ -187,6 +189,7 @@ export function MotionFields({
             onChange={(intensity) => onChange(setHoverIntensity(motion, intensity))}
           />
         )}
+        <HoverTimingFields value={motion?.hoverTime} onChange={(hoverTime) => onChange(setHoverTime(motion, hoverTime))} />
       </Section>
 
       <Section title="While scrolling" hint="Moves, fades or changes as the page is scrolled.">

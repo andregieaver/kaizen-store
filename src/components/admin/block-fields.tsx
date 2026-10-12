@@ -27,6 +27,7 @@ import { PixelRange } from "./pixel-range";
 import { ColorField } from "./colour-field";
 import { GradientText } from "./typography-fields";
 import { RichTextEditor } from "./rich-text-editor";
+import { ButtonHoverField } from "./hover-fields";
 import { SizeMark, inheritedClass, useSizeEdit } from "./responsive-edit";
 
 import {
@@ -80,6 +81,8 @@ import {
   BRANDS_LIMITS,
   BRANDS_VIEWS,
   BRANDS_MOTIONS,
+  BRAND_TINTS,
+  type BrandTint,
   type BrandsMotion,
   type BrandsView,
   GRID_COLUMNS_MAX,
@@ -836,6 +839,7 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
       {look("second", "Second button", "filled")}
       <Choices legend="Size" options={optionsOf(BUTTON_SIZES)} value={block.size ?? "md"} onChange={(size: ButtonSize) => onChange({ size: size === "md" ? undefined : size })} />
       <Choices legend="Corners" options={optionsOf(BUTTON_SHAPES)} value={block.shape ?? "rounded"} onChange={(shape: ButtonShape) => onChange({ shape: shape === "rounded" ? undefined : shape })} />
+      <ButtonHoverField value={block.hover} onChange={(hover) => onChange({ hover })} />
       <NumberField label="Space between" value={block.gap ?? 12} min={0} max={DUAL_GAP_MAX} unit="pixels" onChange={(gap) => onChange({ gap })} />
       <DualStackField block={block} onChange={onChange} />
       <TextAlignFields what="Position" value={block} onChange={onChange} />
@@ -1451,16 +1455,34 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
       />
       <NumberField label="Space between" value={block.gap ?? BRANDS_DEFAULTS.gap} min={0} max={200} unit="pixels" onChange={(gap) => onChange({ gap: gap === BRANDS_DEFAULTS.gap ? undefined : gap })} />
       <Check label="Show the names" hint="Under each logo." checked={block.showNames !== false} onChange={(show) => onChange({ showNames: show ? undefined : false })} />
-      <Check label="Logos in greyscale" checked={Boolean(block.greyscale)} onChange={(on) => onChange({ greyscale: on || undefined, ...(!on && { colourOnHover: undefined }) })} />
-      {block.greyscale && (
-        <div className="pl-7">
-          <Check
-            label="Colour on hover"
-            hint="A logo shows its colours under the pointer, or when it has the keyboard's focus."
-            checked={Boolean(block.colourOnHover)}
-            onChange={(on) => onChange({ colourOnHover: on || undefined })}
-          />
-        </div>
+      <Choices
+        legend="Logo colour"
+        hint="Brand colour, white, black and a custom colour fill each logo's shape: best with logos on a see-through background"
+        options={[
+          { value: "original", label: "As uploaded" },
+          { value: "grey", label: "Greyscale" },
+          ...(Object.keys(BRAND_TINTS) as BrandTint[]).map((tint) => ({ value: tint, label: BRAND_TINTS[tint] })),
+        ]}
+        value={block.tint ?? (block.greyscale ? "grey" : "original")}
+        onChange={(choice) =>
+          onChange({
+            greyscale: choice === "grey" || undefined,
+            tint: choice === "original" || choice === "grey" ? undefined : (choice as BrandTint),
+            ...(choice !== "custom" && { tintColor: undefined }),
+            ...(choice === "original" && { colourOnHover: undefined }),
+          })
+        }
+      />
+      {block.tint === "custom" && (
+        <OptionalColor label="Custom colour" hint="The colour every logo is drawn in." value={block.tintColor} fallback="#1d4ed8" onChange={(tintColor) => onChange({ tintColor })} />
+      )}
+      {(block.greyscale || block.tint) && (
+        <Check
+          label="Original colours on hover"
+          hint="A logo shows itself as uploaded under the pointer, or when it has the keyboard's focus."
+          checked={Boolean(block.colourOnHover)}
+          onChange={(on) => onChange({ colourOnHover: on || undefined })}
+        />
       )}
     </>
   );
