@@ -9,12 +9,16 @@ import { t } from "@/lib/i18n";
 import { usePageLanguage } from "./page-language";
 
 const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
+/** How far a finger moves across before it is a swipe. */
+const SWIPE_PX = 40;
 
 /**
  * A gallery's carousel of one tile at a time that fades from tile to tile (D210). The tiles lie on top of one another and only the
  * one shown can be reached (the others are `inert`); it follows the carousel's own settings (D155): the arrows, the dots, going
  * back to the first, and autoplay, which never runs for visitors who prefer less motion, stops for good at any interaction, waits
- * under the pointer or while the tab is hidden, and always has a Pause button. Under reduced motion a change is instant. Without a
+ * under the pointer or while the tab is hidden, and always has a Pause button. A swipe across the tile goes to the next or the
+ * previous, as a sliding carousel's does (the tile does not open the lightbox at the end of a swipe), while a swipe up or down
+ * still scrolls the page (`touch-action: pan-y`). Under reduced motion a change is instant. Without a
  * script the tiles are a row to scroll (`@media (scripting: none)` in `globals.css`), so every one is still there.
  */
 export function GalleryFade({
@@ -37,6 +41,8 @@ export function GalleryFade({
   const [held, setHeld] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const timerRef = useRef(0);
+  const swipe = useRef<{ id: number; x: number; y: number } | null>(null);
+  const swiped = useRef(false);
   const seconds = resolved.autoplay?.seconds ?? null;
 
   // Autoplay starts only for visitors who do not prefer less motion, and never in the builder's canvas or a preview.
@@ -69,6 +75,9 @@ export function GalleryFade({
   };
   const canPrev = resolved.rewind || index > 0;
   const canNext = resolved.rewind || index < count - 1;
+  const step = (by: 1 | -1) => {
+    if (by === 1 ? canNext : canPrev) go(stepSlide(index, by, count));
+  };
   const arrow =
     "flex size-10 items-center justify-center rounded-full border border-border bg-background shadow-sm transition hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-0";
   const icon = { "aria-hidden": true, viewBox: "0 0 24 24", className: "size-5", fill: "none", stroke: "currentColor", strokeWidth: 2, strokeLinecap: "round", strokeLinejoin: "round" } as const;
@@ -95,6 +104,29 @@ export function GalleryFade({
         className="kz-fade"
         style={{ "--fade-ms": `${fadeMs}ms`, "--gap": `${gap}px` } as CSSProperties}
         aria-live={stopped && seconds !== null ? "polite" : "off"}
+        onPointerDown={(event) => {
+          swiped.current = false;
+          swipe.current = event.isPrimary ? { id: event.pointerId, x: event.clientX, y: event.clientY } : null;
+        }}
+        onPointerUp={(event) => {
+          const from = swipe.current;
+          swipe.current = null;
+          if (!from || from.id !== event.pointerId || count < 2) return;
+          const dx = event.clientX - from.x;
+          const dy = event.clientY - from.y;
+          // Across, and more across than down: a swipe, not a press or a scroll.
+          if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+          swiped.current = true;
+          step(dx < 0 ? 1 : -1);
+        }}
+        onPointerCancel={() => (swipe.current = null)}
+        onClickCapture={(event) => {
+          // The press that ends a swipe opens nothing.
+          if (!swiped.current) return;
+          swiped.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
       >
         {tiles.map((tile, i) => (
           <li
@@ -154,12 +186,12 @@ export function GalleryFade({
           )}
           {resolved.arrows && (
             <div className="ml-auto flex gap-2">
-              <button type="button" onClick={() => go(stepSlide(index, -1, count))} disabled={!canPrev} aria-label={m.carouselPrevious} className={arrow}>
+              <button type="button" onClick={() => step(-1)} disabled={!canPrev} aria-label={m.carouselPrevious} className={arrow}>
                 <svg {...icon}>
                   <path d="m15 18-6-6 6-6" />
                 </svg>
               </button>
-              <button type="button" onClick={() => go(stepSlide(index, 1, count))} disabled={!canNext} aria-label={m.carouselNext} className={arrow}>
+              <button type="button" onClick={() => step(1)} disabled={!canNext} aria-label={m.carouselNext} className={arrow}>
                 <svg {...icon}>
                   <path d="m9 18 6-6-6-6" />
                 </svg>

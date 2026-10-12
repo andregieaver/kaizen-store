@@ -79,3 +79,33 @@ test("a tile has no background of its own, so a see-through picture shows what i
   await page.goto(url);
   await expect(page.locator(".kz-gallery-frame").first()).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 });
+
+test.describe("on a phone", () => {
+  test.use({ hasTouch: true, viewport: { width: 390, height: 800 } });
+
+  test("a fading gallery changes tile with a swipe, and the swipe opens nothing", async ({ page }) => {
+    const url = await storePageWith("galleri-sveip", [gallery("g5", { view: "carousel", transition: "fade", columns: 1, fadeMs: 200 })]);
+    await page.goto(url);
+    const slides = page.locator("[data-fade] > li");
+    await expect(slides.nth(0)).toHaveAttribute("data-on", "");
+    const box = (await slides.nth(0).boundingBox())!;
+    const y = box.y + box.height / 2;
+    const cdp = await page.context().newCDPSession(page);
+    const swipe = async (from: number, to: number) => {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: from, y }] });
+      for (let i = 1; i <= 5; i++) await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: from + ((to - from) * i) / 5, y }] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    };
+    // Right to left: the next one; left to right: back.
+    await swipe(box.x + box.width * 0.8, box.x + box.width * 0.2);
+    await expect(slides.nth(1)).toHaveAttribute("data-on", "");
+    await swipe(box.x + box.width * 0.8, box.x + box.width * 0.2);
+    await expect(slides.nth(2)).toHaveAttribute("data-on", "");
+    await swipe(box.x + box.width * 0.2, box.x + box.width * 0.8);
+    await expect(slides.nth(1)).toHaveAttribute("data-on", "");
+    await expect(page.locator("dialog.kz-lightbox")).toBeHidden();
+    // A press after the swipes still opens the lightbox (Chromium makes no click of a tap sent this way, so it is a click).
+    await slides.nth(1).locator("a").click();
+    await expect(page.locator("dialog.kz-lightbox")).toBeVisible();
+  });
+});

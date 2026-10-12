@@ -1164,6 +1164,8 @@ html:has(dialog.kz-lightbox[open]) {
 /* A carousel that fades (D210): the tiles on top of one another, the one shown in front; without a script, a row to scroll. */
 .kz-fade {
   display: grid;
+  /* A swipe across changes the tile (GalleryFade); up and down still scroll the page. */
+  touch-action: pan-y;
 }
 .kz-fade-slide {
   grid-area: 1 / 1;
@@ -1184,6 +1186,7 @@ html:has(dialog.kz-lightbox[open]) {
 @media (scripting: none) {
   .kz-fade {
     display: flex;
+    touch-action: auto;
     gap: var(--gap, 0px);
     overflow-x: auto;
     scroll-snap-type: x mandatory;
