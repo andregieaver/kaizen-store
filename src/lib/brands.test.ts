@@ -55,4 +55,21 @@ describe("Brands (D204)", () => {
     expect(pageBlockSchema.safeParse(block({ logoHeight: 5000 })).success).toBe(false);
     expect(pageBlockSchema.safeParse(block({ view: "carousel", movement: "snap", interval: 0 })).success).toBe(false);
   });
+
+  it("links a brand when it has an address, and the hidden copy of a moving strip cannot be reached", () => {
+    const linked = block({ items: [{ id: "i1", name: "Acme", picture: logo, href: "https://acme.example" }] });
+    expect(renderToStaticMarkup(createElement(BrandsView, { block: linked }))).toContain('href="https://acme.example"');
+    const moving = renderToStaticMarkup(createElement(BrandsView, { block: { ...linked, view: "carousel" } }));
+    expect(moving).toMatch(/ inert[ =>]/);
+    expect(pageBlockSchema.safeParse(block({ items: [{ id: "i1", name: "A", picture: null, href: "javascript:alert(1)" }] })).success).toBe(false);
+  });
+
+  it("draws greys, with colour on hover when asked, and arrows without a Pause button when visitors move it", () => {
+    expect(renderToStaticMarkup(createElement(BrandsView, { block: block({ greyscale: true }) }))).toContain('data-grey="always"');
+    expect(renderToStaticMarkup(createElement(BrandsView, { block: block({ greyscale: true, colourOnHover: true }) }))).toContain('data-grey="hover"');
+    const still = renderToStaticMarkup(createElement(BrandsView, { block: block({ view: "carousel", movement: "none" }) }));
+    expect(still.match(/kz-brands-arrow/g)).toHaveLength(2);
+    expect(still).not.toContain("kz-brands-marquee");
+    expect(renderToStaticMarkup(createElement(BrandsView, { block: block({ view: "carousel" }) }))).not.toContain("aria-pressed");
+  });
 });

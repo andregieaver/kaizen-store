@@ -24,7 +24,7 @@ test("logos in a row follow the screen size, and are held to their height", asyn
   for (const h of heights) expect(h).toBeLessThanOrEqual(40.5);
 });
 
-test("a carousel that keeps moving moves, and stops on Pause", async ({ page }) => {
+test("a carousel that keeps moving moves, and stops under the pointer", async ({ page }) => {
   const url = await storePageWith("merker-rull", [brands("b2", { view: "carousel", speed: 2, columns: 3 })]);
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.goto(url);
@@ -33,7 +33,10 @@ test("a carousel that keeps moving moves, and stops on Pause", async ({ page }) 
   const first = await x();
   await page.waitForTimeout(700);
   expect(await x()).toBeLessThan(first - 5);
-  await page.getByRole("button", { name: /pause/i }).click();
+  // It stops under the pointer; there is no Pause button.
+  await expect(page.getByRole("button", { name: /pause/i })).toHaveCount(0);
+  const window = (await page.locator(".kz-brands-window").boundingBox())!;
+  await page.mouse.move(window.x + window.width / 2, window.y + window.height / 2);
   const held = await x();
   await page.waitForTimeout(500);
   expect(Math.abs((await x()) - held)).toBeLessThan(1);
@@ -45,4 +48,29 @@ test("a carousel that steps moves one logo at a time", async ({ page }) => {
   await page.goto(url);
   const track = page.locator(".kz-brands-snap");
   await expect.poll(() => track.evaluate((el) => el.scrollLeft), { timeout: 5000 }).toBeGreaterThan(20);
+});
+
+test("a carousel moved by the visitor steps with its arrows and stays still otherwise", async ({ page }) => {
+  const url = await storePageWith("merker-piler", [brands("b4", { view: "carousel", movement: "none", columns: 3 })]);
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto(url);
+  const track = page.locator(".kz-brands-snap");
+  const previous = page.locator(".kz-brands-arrow").first();
+  const next = page.locator(".kz-brands-arrow").last();
+  await expect(previous).toBeDisabled();
+  await page.waitForTimeout(1200);
+  expect(await track.evaluate((el) => el.scrollLeft)).toBe(0);
+  await next.click();
+  await expect.poll(() => track.evaluate((el) => el.scrollLeft)).toBeGreaterThan(20);
+  await expect(previous).toBeEnabled();
+});
+
+test("greyscale logos show their colours on hover", async ({ page }) => {
+  const url = await storePageWith("merker-gra", [brands("b5", { greyscale: true, colourOnHover: true })]);
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.goto(url);
+  const logo = page.locator(".kz-brand-logo").first();
+  await expect(logo).toHaveCSS("filter", "grayscale(1)");
+  await logo.hover();
+  await expect(logo).toHaveCSS("filter", "none");
 });

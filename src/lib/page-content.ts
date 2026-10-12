@@ -1424,11 +1424,13 @@ export type BrandItem = {
   id: string;
   name: string;
   picture: { url: string; width: number; height: number } | null;
+  /** Where the logo links (D205): a web address, a page of the site, mailto: or tel:; none unless set. */
+  href?: string;
 };
 
 export const BRANDS_VIEWS = { grid: "Grid", carousel: "Carousel" } as const;
 export type BrandsView = keyof typeof BRANDS_VIEWS;
-export const BRANDS_MOTIONS = { continuous: "Keeps moving", snap: "One logo at a time" } as const;
+export const BRANDS_MOTIONS = { continuous: "Keeps moving", snap: "One logo at a time", none: "None: visitors move it" } as const;
 export type BrandsMotion = keyof typeof BRANDS_MOTIONS;
 /** What unset means, and the limits. */
 export const BRANDS_DEFAULTS = { columns: 5, gap: 24, logoHeight: 64, speed: 4, interval: 3 } as const;
@@ -1455,6 +1457,9 @@ export type BrandsBlock = PartBase & {
   logoHeight?: number;
   /** The names under the logos; shown unless off. */
   showNames?: boolean;
+  /** Logos drawn in greys (D205); with `colourOnHover`, in their colours under the pointer or focus. */
+  greyscale?: boolean;
+  colourOnHover?: boolean;
 };
 
 /** A brand shows once it has a logo or a name. */
@@ -2893,6 +2898,12 @@ const brandsBlock = z.object({
       z.object({
         id: itemId,
         name: z.string().trim().max(100, "Keep a brand's name under 100 characters."),
+        href: z
+          .string()
+          .trim()
+          .max(2000)
+          .refine((href) => href === "" || isLinkAddress(href), "A brand's link must be https://…, a page like /about, an anchor like #contact, mailto: or tel:.")
+          .optional(),
         picture: z
           .object({
             url: z.url({ protocol: /^https?$/, error: "A logo has an invalid address." }).max(1000),
@@ -2912,6 +2923,8 @@ const brandsBlock = z.object({
   interval: z.number().int().min(BRANDS_LIMITS.interval.min, `Move at least every ${BRANDS_LIMITS.interval.min} second.`).max(BRANDS_LIMITS.interval.max, `Move at most every ${BRANDS_LIMITS.interval.max} seconds.`).optional(),
   logoHeight: z.number().int().min(BRANDS_LIMITS.logoHeight.min, `A logo is at least ${BRANDS_LIMITS.logoHeight.min} pixels tall.`).max(BRANDS_LIMITS.logoHeight.max, `A logo is at most ${BRANDS_LIMITS.logoHeight.max} pixels tall.`).optional(),
   showNames: z.boolean().optional(),
+  greyscale: z.boolean().optional(),
+  colourOnHover: z.boolean().optional(),
   ...partBase,
 });
 

@@ -619,21 +619,54 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
     display: none;
   }
 }
-.kz-brands-toggle {
-  display: inline-flex;
+/* Moved by the visitor (D205): arrows beside the strip where there is a mouse, a swipe where there is a finger. */
+.kz-brands-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.kz-brands-stepper > .kz-brands-track {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.kz-brands-arrow {
+  display: none;
+  flex: none;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  margin-top: 0.75rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border: 1px solid currentColor;
   border-radius: 9999px;
-  opacity: 0.6;
+  opacity: 0.7;
 }
-.kz-brands-toggle[hidden] {
-  display: none;
-}
-.kz-brands-toggle:hover,
-.kz-brands-toggle:focus-visible {
+.kz-brands-arrow:hover:not(:disabled),
+.kz-brands-arrow:focus-visible {
   opacity: 1;
+}
+.kz-brands-arrow:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+@media (hover: hover) and (pointer: fine) {
+  .kz-brands-arrow {
+    display: inline-flex;
+  }
+}
+/* Logos in greys (D205), in their colours under the pointer or focus when the owner says so. */
+.kz-brands[data-grey] .kz-brand-logo {
+  filter: grayscale(1);
+}
+.kz-brands[data-grey="hover"] .kz-brand:is(:hover, :focus-within) .kz-brand-logo {
+  filter: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .kz-brands[data-grey="hover"] .kz-brand-logo {
+    transition: filter 200ms ease;
+  }
+}
+.kz-brand-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
 }

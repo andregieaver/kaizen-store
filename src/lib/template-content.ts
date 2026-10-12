@@ -203,6 +203,8 @@ function sanitizeBlock(block: PageBlock, from: ForeignStore, trusted: boolean): 
       };
     case "iconList":
       return { ...block, items: block.items.map((item) => ({ ...item, href: href(item.href) })) };
+    case "brands":
+      return { ...block, items: block.items.map((item) => (item.href ? { ...item, href: href(item.href) } : item)) };
     case "socialLinks":
       // Someone's own profiles: the owner of the store adds theirs.
       return { ...block, links: block.links.map((link) => ({ ...link, href: "" })) };

@@ -1,6 +1,12 @@
 import type { CSSProperties } from "react";
 
-import { BRANDS_DEFAULTS, brandShows, type BrandsBlock } from "@/lib/page-content";
+import {
+  BRANDS_DEFAULTS,
+  brandShows,
+  type BrandsBlock,
+} from "@/lib/page-content";
+
+import { isSafeAddress } from "@/lib/field-parts";
 
 import { BrandsCarousel } from "./brands-carousel";
 
@@ -14,23 +20,49 @@ export function BrandsView({ block }: { block: BrandsBlock }) {
   if (items.length === 0) return null;
   const gap = block.gap ?? BRANDS_DEFAULTS.gap;
   const showNames = block.showNames !== false;
-  const style = { "--brand-gap": `${gap}px`, "--brand-h": `${block.logoHeight ?? BRANDS_DEFAULTS.logoHeight}px` } as CSSProperties;
-  const cells = items.map((item) => (
-    <figure key={item.id} className="kz-brand-figure">
-      {item.picture && (
-        // eslint-disable-next-line @next/next/no-img-element -- the owner's own logo, drawn at its shape under a height limit
-        <img src={item.picture.url} alt={showNames && item.name.trim() ? "" : item.name} width={item.picture.width} height={item.picture.height} loading="lazy" className="kz-brand-logo" />
-      )}
-      {showNames && item.name.trim() && (
-        <figcaption data-kz-text="name" className="kz-brand-name">
-          {item.name}
-        </figcaption>
-      )}
-    </figure>
-  ));
+  const grey = block.greyscale
+    ? block.colourOnHover
+      ? "hover"
+      : "always"
+    : undefined;
+  const style = {
+    "--brand-gap": `${gap}px`,
+    "--brand-h": `${block.logoHeight ?? BRANDS_DEFAULTS.logoHeight}px`,
+  } as CSSProperties;
+  const cells = items.map((item) => {
+    const figure = (
+      <figure key={item.id} className="kz-brand-figure">
+        {item.picture && (
+          // eslint-disable-next-line @next/next/no-img-element -- the owner's own logo, drawn at its shape under a height limit
+          <img
+            src={item.picture.url}
+            alt={showNames && item.name.trim() ? "" : item.name}
+            width={item.picture.width}
+            height={item.picture.height}
+            loading="lazy"
+            className="kz-brand-logo"
+          />
+        )}
+        {showNames && item.name.trim() && (
+          <figcaption data-kz-text="name" className="kz-brand-name">
+            {item.name}
+          </figcaption>
+        )}
+      </figure>
+    );
+    // A brand that links is one link: its name (or the logo's, when names are hidden) is the link's words.
+    const href = item.href?.trim();
+    return href && isSafeAddress(href) ? (
+      <a key={item.id} href={href} className="kz-brand-link">
+        {figure}
+      </a>
+    ) : (
+      figure
+    );
+  });
   if (block.view === "carousel") {
     return (
-      <div style={style} className="kz-brands">
+      <div style={style} className="kz-brands" data-grey={grey}>
         <BrandsCarousel
           cells={cells}
           movement={block.movement ?? "continuous"}
@@ -43,7 +75,7 @@ export function BrandsView({ block }: { block: BrandsBlock }) {
     );
   }
   return (
-    <div style={style} className="kz-brands">
+    <div style={style} className="kz-brands" data-grey={grey}>
       <ul data-brands="" className="kz-brands-grid">
         {cells.map((cell, i) => (
           <li key={items[i].id} className="kz-brand">

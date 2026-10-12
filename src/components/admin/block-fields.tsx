@@ -1371,6 +1371,14 @@ function BrandsFields({ block, onChange, context }: BlockEditorProps<BrandsBlock
               </div>
             </div>
             <TextField label="Name" hint="Shown under the logo, and read out when the logo is not shown." value={item.name} max={100} onChange={(name) => change({ name })} />
+            <TextField
+              label="Links to (optional)"
+              value={item.href ?? ""}
+              max={2000}
+              placeholder="https://… or /about"
+              hint={!item.href?.trim() || isLinkAddress(item.href.trim()) ? undefined : "Use a web address (https://…), a page on the site (/about), mailto: or tel:."}
+              onChange={(href) => change({ href: href || undefined })}
+            />
           </>
         )}
       </ItemsEditor>
@@ -1409,7 +1417,9 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
             value={movement}
             onChange={(value) => onChange({ movement: value === "continuous" ? undefined : value })}
           />
-          {movement === "continuous" ? (
+          {movement === "none" ? (
+            <p className="text-xs text-muted">Visitors move it one logo at a time: with arrows on a computer, by swiping on a phone.</p>
+          ) : movement === "continuous" ? (
             <NumberField
               label="Seconds for a logo to pass"
               value={block.speed ?? BRANDS_DEFAULTS.speed}
@@ -1428,7 +1438,7 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
               onChange={(interval) => onChange({ interval: interval === BRANDS_DEFAULTS.interval ? undefined : interval })}
             />
           )}
-          <p className="text-xs text-muted">It stops for visitors who prefer less motion, under the pointer, and with its Pause button.</p>
+          {movement !== "none" && <p className="text-xs text-muted">It stops under the pointer or the keyboard&apos;s focus, and stands still for visitors who prefer less motion.</p>}
         </>
       )}
       <NumberField
@@ -1441,6 +1451,17 @@ function BrandsStyleFields({ block, onChange }: BlockEditorProps<BrandsBlock>) {
       />
       <NumberField label="Space between" value={block.gap ?? BRANDS_DEFAULTS.gap} min={0} max={200} unit="pixels" onChange={(gap) => onChange({ gap: gap === BRANDS_DEFAULTS.gap ? undefined : gap })} />
       <Check label="Show the names" hint="Under each logo." checked={block.showNames !== false} onChange={(show) => onChange({ showNames: show ? undefined : false })} />
+      <Check label="Logos in greyscale" checked={Boolean(block.greyscale)} onChange={(on) => onChange({ greyscale: on || undefined, ...(!on && { colourOnHover: undefined }) })} />
+      {block.greyscale && (
+        <div className="pl-7">
+          <Check
+            label="Colour on hover"
+            hint="A logo shows its colours under the pointer, or when it has the keyboard's focus."
+            checked={Boolean(block.colourOnHover)}
+            onChange={(on) => onChange({ colourOnHover: on || undefined })}
+          />
+        </div>
+      )}
     </>
   );
 }
