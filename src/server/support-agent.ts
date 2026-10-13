@@ -2,6 +2,8 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 
+import { after } from "next/server";
+
 import { db } from "@/db/client";
 import { MESSAGE_MAX } from "@/lib/support-rules";
 import { REFUSAL_WORDS } from "@/lib/support-state";
@@ -9,6 +11,7 @@ import { REFUSAL_WORDS } from "@/lib/support-state";
 import { audit } from "./auth";
 import { SupportError, addMessage, agentIdentity, deskSettings, transition } from "./support";
 import type { StaffDesk } from "./support-desk";
+import { editSummary, makeBrief, readSummaryEdit, summarise } from "./support-summary";
 
 type Row = Record<string, unknown>;
 
@@ -26,11 +29,14 @@ export type AgentAct =
   | { kind: "transfer"; target: string | null }
   | { kind: "hand_back" }
   | { kind: "end" }
-  | { kind: "ask_sign_in" };
+  | { kind: "ask_sign_in" }
+  | { kind: "brief" }
+  | { kind: "summary"; summary: unknown };
 
-export type AgentActResult = { ok: true } | { ok: false; problem: string };
+/** `brief` is the conversation so far, when one was asked for (step 7). */
+export type AgentActResult = { ok: true; brief?: string | null } | { ok: false; problem: string };
 
-export const ACT_KINDS = ["claim", "reply", "note", "transfer", "hand_back", "end", "ask_sign_in"] as const;
+export const ACT_KINDS = ["claim", "reply", "note", "transfer", "hand_back", "end", "ask_sign_in", "brief", "summary"] as const;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -43,7 +49,10 @@ export function readAct(raw: unknown): AgentAct | null {
     case "hand_back":
     case "end":
     case "ask_sign_in":
+    case "brief":
       return { kind: value.kind };
+    case "summary":
+      return { kind: "summary", summary: value.summary };
     case "reply":
     case "note": {
       const body = typeof value.body === "string" ? value.body.trim() : "";
@@ -97,6 +106,8 @@ export async function agentAct(staff: StaffDesk, conversationId: string, act: Ag
         const name = (await agentIdentity(staff.desk, me)).name;
         await transition(staff.desk, conversationId, "claim", { kind: "agent", id: me, name });
         await audit(me, store, "support.claimed", { conversation: conversationId }, { target: { type: "support_conversation", id: conversationId } });
+        // A brief of the conversation so far is ready by the time the person reads it (step 7).
+        after(() => makeBrief(staff.desk, conversationId).catch(() => undefined));
         return { ok: true };
       }
       case "reply": {
@@ -124,6 +135,7 @@ export async function agentAct(staff: StaffDesk, conversationId: string, act: Ag
       case "end": {
         await transition(staff.desk, conversationId, "end", { kind: "agent", id: me, name: (await agentIdentity(staff.desk, me)).name });
         await audit(me, store, "support.ended", { conversation: conversationId }, { target: { type: "support_conversation", id: conversationId } });
+        after(() => summarise(staff.desk, conversationId).catch((error) => console.warn(`[support] summary of ${conversationId}: ${String(error)}`)));
         return { ok: true };
       }
       case "ask_sign_in": {
@@ -136,6 +148,15 @@ export async function agentAct(staff: StaffDesk, conversationId: string, act: Ag
         if (row.customer_id) return { ok: false, problem: "The customer is already signed in." };
         await addMessage(staff.desk, conversationId, "system", me, "", { kind: "sign_in" });
         return { ok: true };
+      }
+      case "brief": {
+        const made = await makeBrief(staff.desk, conversationId);
+        return made.ok ? { ok: true, brief: made.brief } : made;
+      }
+      case "summary": {
+        const edit = readSummaryEdit(act.summary, store === null);
+        if (!edit) return { ok: false, problem: "A summary needs a title, a text, an outcome and at least one topic from the list." };
+        return editSummary(staff, conversationId, edit);
       }
     }
   } catch (error) {

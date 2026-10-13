@@ -18,6 +18,7 @@ import {
   NOTIFY_AFTER_MINUTES,
   ONLINE_SECONDS,
   QUEUE_GIVE_UP_DAYS,
+  RATING_COMMENT_MAX,
   TRANSCRIPT_DAYS_DEFAULT,
   TRANSCRIPT_DAYS_OFF,
   type ConversationStatus,
@@ -98,6 +99,8 @@ export type DeskSettings = {
   toneOn: boolean;
   toneAlert: number | null;
   toneHandoff: number | null;
+  /** Ended conversations are summarised by the AI (2.7, step 7). */
+  summariesOn: boolean;
 };
 
 /** The desk's settings, made on its first conversation with support off (S5): the chat agent alone, as before. */
@@ -123,6 +126,7 @@ export function settingsOf(row: Row): DeskSettings {
     toneOn: row.tone_on === undefined ? true : Boolean(row.tone_on),
     toneAlert: row.tone_alert === null || row.tone_alert === undefined ? null : Number(row.tone_alert),
     toneHandoff: row.tone_handoff === null || row.tone_handoff === undefined ? null : Number(row.tone_handoff),
+    summariesOn: row.summaries_on === undefined ? true : Boolean(row.summaries_on),
   };
 }
 
@@ -151,6 +155,8 @@ export type Conversation = {
   contactEmail: string | null;
   contactChanges: number;
   emailCount: number;
+  /** The customer's answer to "Did we help?" after the end (2.1, step 7). */
+  rating: "good" | "bad" | null;
 };
 
 function toConversation(row: Row): Conversation {
@@ -169,10 +175,11 @@ function toConversation(row: Row): Conversation {
     contactEmail: row.contact_email ? String(row.contact_email) : null,
     contactChanges: Number(row.contact_changes ?? 0),
     emailCount: Number(row.email_count ?? 0),
+    rating: row.rating === "good" || row.rating === "bad" ? row.rating : null,
   };
 }
 
-const CONVERSATION_COLUMNS = sql`id, store_id, status, handler, customer_id, message_seq, ended_at, channel_key, locale, assignee_id, queued_at, contact_email, contact_changes, email_count`;
+const CONVERSATION_COLUMNS = sql`id, store_id, status, handler, customer_id, message_seq, ended_at, channel_key, locale, assignee_id, queued_at, contact_email, contact_changes, email_count, rating`;
 
 /** A new conversation on the visitor's site, started as the desk's mode says; its token is given once and kept only as a hash. */
 export async function openConversation(
@@ -233,6 +240,19 @@ export async function setAiReason(desk: Desk, conversationId: string, reason: st
     update commerce.support_conversations set ai_reason = ${reason.slice(0, AI_REASON_MAX)}
     where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)}
   `);
+}
+
+/**
+ * The customer's rating of an ended conversation (2.1, step 7): good or bad, with an optional comment of at most
+ * `RATING_COMMENT_MAX` characters; they may change it while the transcript is kept. False when the conversation is not ended.
+ */
+export async function setRating(desk: Desk, conversationId: string, rating: "good" | "bad", comment: string | null): Promise<boolean> {
+  const rows = await db().execute<Row>(sql`
+    update commerce.support_conversations set rating = ${rating}, rating_comment = ${comment ? comment.slice(0, RATING_COMMENT_MAX) : null}
+    where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)} and status = 'ended' and anonymised_at is null
+    returning id
+  `);
+  return rows.length > 0;
 }
 
 export type ContactResult = { ok: true } | { ok: false; reason: "off" | "changes" };
@@ -335,7 +355,7 @@ export type VisitorExtras = {
 
 /** The conversation's state as the visitor's widget draws it; `agent` is the person who has it, as customers see them. */
 export function visitorState(
-  conversation: Pick<Conversation, "status" | "handler" | "emailCount">,
+  conversation: Pick<Conversation, "status" | "handler" | "emailCount"> & Partial<Pick<Conversation, "rating">>,
   settings: DeskSettings,
   signedIn: boolean,
   extras: VisitorExtras = {},
@@ -353,6 +373,7 @@ export function visitorState(
     signedIn,
     emailFollowup: followup,
     followupEmail: followup ? (extras.followupEmail ?? null) : null,
+    rating: conversation.rating ?? null,
   };
 }
 
@@ -492,7 +513,7 @@ export async function deleteOldRecords(cutoff: Date, limit = 5000): Promise<numb
 export const INBOX_TABS = ["waiting", "mine", "ai", "open", "ended"] as const;
 export type InboxTab = (typeof INBOX_TABS)[number];
 
-export type InboxFilters = { tab: InboxTab; q?: string; storeId?: string | null; tone?: ToneBand };
+export type InboxFilters = { tab: InboxTab; q?: string; storeId?: string | null; tone?: ToneBand; topic?: string };
 
 /** A tone band as a condition on a conversation alias `c` (2.6's edges). */
 function toneBandCondition(band: ToneBand): SQL {
@@ -533,6 +554,9 @@ export type InboxRow = {
   endedAt: string | null;
   /** The tone fell to the desk's alert line (or by 40) and the conversation is still open (2.6). */
   toneAlert: boolean;
+  /** An ended conversation's summary outcome and topics (step 7). */
+  outcome: string | null;
+  topics: string[];
 };
 
 const PREVIEW_MAX = 140;
@@ -576,6 +600,7 @@ export async function staffList(desks: Desk[], accountId: string, filters: Inbox
   const q = filters.q?.trim().slice(0, 100);
   const storeOnly = filters.storeId ? sql`and c.store_id = ${filters.storeId}::uuid` : sql``;
   const toneOnly = filters.tone ? sql`and ${toneBandCondition(filters.tone)}` : sql``;
+  const topicOnly = filters.topic ? sql`and c.summary->'topics' ? ${filters.topic}` : sql``;
   const search = q
     ? sql`and (cu.name ilike ${likeOf(q)} or cu.email ilike ${likeOf(q)} or c.contact_name ilike ${likeOf(q)} or c.contact_email ilike ${likeOf(q)}
         or ra.name ilike ${likeOf(q)} or ra.email ilike ${likeOf(q)} or c.summary->>'title' ilike ${likeOf(q)})`
@@ -583,7 +608,7 @@ export async function staffList(desks: Desk[], accountId: string, filters: Inbox
   const order = filters.tab === "waiting" ? sql`c.queued_at asc nulls last, c.created_at asc` : sql`c.last_message_at desc`;
   const rows = await db().execute<Row>(sql`
     select c.id, c.status, c.handler, c.source, c.last_message_at, c.queued_at, c.tone, c.tone_alert_at, c.ended_at, c.message_seq, c.customer_id,
-      c.summary->>'title' as summary_title,
+      c.summary->>'title' as summary_title, c.summary->>'outcome' as outcome, c.summary->'topics' as topics,
       s.slug as store_slug, s.name as store_name,
       coalesce(nullif(cu.name, ''), nullif(c.contact_name, ''), nullif(ra.name, '')) as who_name,
       coalesce(cu.email, c.contact_email, ra.email) as who_email,
@@ -597,7 +622,7 @@ export async function staffList(desks: Desk[], accountId: string, filters: Inbox
     left join commerce.accounts ra on ra.id = c.requester_id
     left join commerce.accounts a on a.id = c.assignee_id
     left join commerce.support_reads rd on rd.conversation_id = c.id and rd.account_id = ${accountId}::uuid
-    where ${onDesks(desks)} and c.anonymised_at is null and ${tabCondition(filters.tab, accountId)} ${storeOnly} ${toneOnly} ${search}
+    where ${onDesks(desks)} and c.anonymised_at is null and ${tabCondition(filters.tab, accountId)} ${storeOnly} ${toneOnly} ${topicOnly} ${search}
     order by ${order}
     limit ${LIST_MAX}
   `);
@@ -620,6 +645,8 @@ export async function staffList(desks: Desk[], accountId: string, filters: Inbox
     summaryTitle: r.summary_title ? String(r.summary_title) : null,
     endedAt: r.ended_at ? iso(r.ended_at) : null,
     toneAlert: r.status === "open" && r.tone_alert_at !== null,
+    outcome: r.outcome ? String(r.outcome) : null,
+    topics: Array.isArray(r.topics) ? r.topics.map(String) : [],
   }));
 }
 
@@ -694,8 +721,13 @@ export type StaffConversation = {
   endedAt: string | null;
   endedBy: string | null;
   handoffReason: string | null;
-  summary: { title: string; text: string; outcome: string; topics: string[] } | null;
+  summary: { title: string; text: string; outcome: string; topics: string[]; followUp: string | null; edited: boolean } | null;
+  /** Where its summary stands: `pending` (on its way), `failed`, `skipped` (no AI), `none` (still open) or `done`. */
+  summaryStatus: string;
+  /** The AI's brief of the conversation so far, with the message number it was made at. */
+  brief: { text: string; seq: number } | null;
   rating: string | null;
+  ratingComment: string | null;
   messageSeq: number;
   /** The desk scores customers' messages (support and tone on): a customer message without a score is *not measured*. */
   toneMeasured: boolean;
@@ -726,7 +758,8 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
     where m.conversation_id = ${conversationId}::uuid and m.seq > ${after}
     order by m.seq limit 200
   `);
-  const summary = c.summary as { title?: unknown; text?: unknown; outcome?: unknown; topics?: unknown } | null;
+  const summary = c.summary as { title?: unknown; text?: unknown; outcome?: unknown; topics?: unknown; followUp?: unknown; editedAt?: unknown } | null;
+  const brief = c.brief as { text?: unknown; seq?: unknown } | null;
   return {
     id: String(c.id),
     store: c.store_slug ? { slug: String(c.store_slug), name: String(c.store_name) } : null,
@@ -747,9 +780,19 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
     handoffReason: c.handoff_reason ? String(c.handoff_reason) : null,
     summary:
       summary && typeof summary.title === "string"
-        ? { title: summary.title, text: String(summary.text ?? ""), outcome: String(summary.outcome ?? ""), topics: Array.isArray(summary.topics) ? summary.topics.map(String) : [] }
+        ? {
+            title: summary.title,
+            text: String(summary.text ?? ""),
+            outcome: String(summary.outcome ?? ""),
+            topics: Array.isArray(summary.topics) ? summary.topics.map(String) : [],
+            followUp: typeof summary.followUp === "string" ? summary.followUp : null,
+            edited: typeof summary.editedAt === "string",
+          }
         : null,
+    summaryStatus: String(c.summary_status ?? "none"),
+    brief: brief && typeof brief.text === "string" ? { text: brief.text, seq: Number(brief.seq ?? 0) } : null,
     rating: c.rating ? String(c.rating) : null,
+    ratingComment: c.rating_comment ? String(c.rating_comment) : null,
     messageSeq: Number(c.message_seq),
     toneMeasured: Boolean(c.tone_measured),
     toneAlertAt: c.tone_alert_at ? iso(c.tone_alert_at) : null,

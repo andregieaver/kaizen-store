@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
+import { OUTCOME_WORDS, topicWords } from "@/lib/support-inbox-text";
 import { MESSAGE_MAX } from "@/lib/support-rules";
+import { FOLLOW_UP_MAX, OUTCOMES, SUMMARY_TEXT_MAX, SUMMARY_TITLE_MAX, topicsFor } from "@/lib/support-summary";
 import type { ConversationFeed } from "@/server/support-inbox";
 
 import type { ActResult } from "./desk-context";
@@ -16,15 +18,21 @@ export function availableActs(c: Pick<ConversationFeed, "status" | "handler" | "
   askSignIn: boolean;
   reply: boolean;
   note: boolean;
+  /** Ask the AI for a brief of the conversation so far (step 7). */
+  brief: boolean;
+  /** Correct an ended conversation's summary (step 7). */
+  editSummary: boolean;
   /** Why nothing can be done, when nothing can. */
   why: string | null;
 } {
-  const none = { claim: false, handBack: false, transfer: false, end: false, askSignIn: false, reply: false, note: false };
+  const none = { claim: false, handBack: false, transfer: false, end: false, askSignIn: false, reply: false, note: false, brief: false, editSummary: false };
   if (!c.canWrite) return { ...none, why: "You can read this desk's conversations but not answer them." };
-  if (c.status !== "open") return { ...none, note: true, why: "This conversation has ended." };
+  if (c.status !== "open") return { ...none, note: true, editSummary: true, why: "This conversation has ended." };
   if (c.mode === "off") return { ...none, note: true, why: "Support is switched off for this desk: the chat assistant answers alone, and nobody takes over." };
   const mine = c.handler === "human" && c.assignee?.id === c.me;
   return {
+    brief: true,
+    editSummary: false,
     claim: c.handler === "ai" || c.handler === "queue",
     handBack: mine && c.mode === "ai_first",
     transfer: mine,
@@ -47,6 +55,7 @@ export function ConversationActions({ conversation, act, onDone }: { conversatio
   const [draft, setDraft] = useState("");
   const [asNote, setAsNote] = useState(false);
   const [target, setTarget] = useState("");
+  const [editing, setEditing] = useState(false);
   const writingNote = asNote || !acts.reply;
 
   async function run(input: unknown, after?: () => void) {
@@ -112,12 +121,30 @@ export function ConversationActions({ conversation, act, onDone }: { conversatio
             End
           </button>
         )}
+        {acts.brief && (
+          <button type="button" disabled={busy} onClick={() => void run({ kind: "brief" })} className={button}>
+            Brief me
+          </button>
+        )}
+        {acts.editSummary && !editing && (
+          <button type="button" disabled={busy} onClick={() => setEditing(true)} className={button}>
+            {conversation.summary ? "Edit summary" : "Write a summary"}
+          </button>
+        )}
         {acts.why && <p className="text-sm text-muted">{acts.why}</p>}
       </div>
       {problem && (
         <p role="alert" className="text-sm text-[var(--danger)]">
           {problem}
         </p>
+      )}
+      {editing && (
+        <SummaryEditor
+          conversation={conversation}
+          busy={busy}
+          onCancel={() => setEditing(false)}
+          onSave={(summary) => void run({ kind: "summary", summary }, () => setEditing(false))}
+        />
       )}
       {(acts.reply || acts.note) && (
         <form
@@ -161,5 +188,78 @@ export function ConversationActions({ conversation, act, onDone }: { conversatio
         </form>
       )}
     </div>
+  );
+}
+
+/** Correcting a summary (2.7): the title, the text, the outcome, one to three topics of the desk's list and a follow-up. */
+function SummaryEditor({
+  conversation,
+  busy,
+  onCancel,
+  onSave,
+}: {
+  conversation: ConversationFeed;
+  busy: boolean;
+  onCancel: () => void;
+  onSave: (summary: { title: string; text: string; outcome: string; topics: string[]; followUp: string | null }) => void;
+}) {
+  const current = conversation.summary;
+  const topics = topicsFor(conversation.store === null);
+  const field = "w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm";
+  return (
+    <form
+      className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const form = new FormData(event.currentTarget);
+        onSave({
+          title: String(form.get("title") ?? ""),
+          text: String(form.get("text") ?? ""),
+          outcome: String(form.get("outcome") ?? ""),
+          topics: form.getAll("topics").map(String),
+          followUp: String(form.get("followUp") ?? "") || null,
+        });
+      }}
+    >
+      <label className="flex flex-col gap-1">
+        Title
+        <input name="title" required maxLength={SUMMARY_TITLE_MAX} defaultValue={current?.title ?? ""} className={field} />
+      </label>
+      <label className="flex flex-col gap-1">
+        What happened
+        <textarea name="text" required maxLength={SUMMARY_TEXT_MAX} rows={3} defaultValue={current?.text ?? ""} className={field} />
+      </label>
+      <label className="flex flex-col gap-1">
+        Outcome
+        <select name="outcome" defaultValue={current?.outcome ?? "resolved"} className={field}>
+          {OUTCOMES.map((outcome) => (
+            <option key={outcome} value={outcome}>
+              {OUTCOME_WORDS[outcome]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <fieldset className="flex flex-wrap gap-x-3 gap-y-1">
+        <legend className="mb-1">Topics (one to three)</legend>
+        {topics.map((topic) => (
+          <label key={topic} className="flex items-center gap-1">
+            <input type="checkbox" name="topics" value={topic} defaultChecked={current?.topics.includes(topic) ?? false} className="size-4" />
+            {topicWords(topic)}
+          </label>
+        ))}
+      </fieldset>
+      <label className="flex flex-col gap-1">
+        Still to do (optional)
+        <input name="followUp" maxLength={FOLLOW_UP_MAX} defaultValue={current?.followUp ?? ""} className={field} />
+      </label>
+      <div className="flex gap-2">
+        <button type="submit" disabled={busy} className="rounded-md bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
+          Save summary
+        </button>
+        <button type="button" onClick={onCancel} className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface">
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }

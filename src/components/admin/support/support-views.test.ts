@@ -7,7 +7,7 @@ import type { InboxRow, StaffConversation } from "@/server/support";
 
 import { availableActs, ConversationActions } from "./conversation-actions";
 import { ConversationList } from "./conversation-list";
-import { ConversationContext, ConversationView } from "./conversation-view";
+import { ConversationContext, ConversationView, SummaryPanel } from "./conversation-view";
 import { conversationHref } from "./desk-context";
 import { SupportSettingsForm } from "./settings-form";
 
@@ -34,6 +34,8 @@ const row = (over: Partial<InboxRow> = {}): InboxRow => ({
   summaryTitle: null,
   endedAt: null,
   toneAlert: false,
+  outcome: null,
+  topics: [],
   ...over,
 });
 
@@ -57,6 +59,9 @@ const conversation = (over: Partial<StaffConversation> = {}): StaffConversation 
   handoffReason: null,
   summary: null,
   rating: null,
+  ratingComment: null,
+  summaryStatus: "none",
+  brief: null,
   messageSeq: 5,
   toneMeasured: true,
   toneAlertAt: null,
@@ -201,6 +206,7 @@ describe("the desk's settings (step 5)", () => {
     toneOn: true,
     toneAlert: -40,
     toneHandoff: -60,
+    summariesOn: true,
     aiReady: false,
   };
   const form = (over: Partial<Parameters<typeof SupportSettingsForm>[0]> = {}) =>
@@ -230,5 +236,45 @@ describe("the desk's settings (step 5)", () => {
   it("lets only the owner change how long transcripts are kept", () => {
     expect(form({ owner: false })).toContain("(only the owner changes this)");
     expect(form()).not.toContain("only the owner changes this");
+  });
+});
+
+describe("summaries, briefs and ratings (step 7)", () => {
+  const ended = (over: Partial<StaffConversation> = {}) =>
+    conversation({ status: "ended", endedAt: "2026-10-13T12:02:00Z", startedAt: "2026-10-13T11:50:00Z", summaryStatus: "done", ...over });
+
+  it("marks a summary as the AI's, with its outcome, topics, follow-up, how long it lasted and the customer's rating", () => {
+    const out = html(
+      h(SummaryPanel, {
+        conversation: ended({
+          summary: { title: "Late parcel", text: "The parcel was late; it ships today.", outcome: "follow_up", topics: ["delivery", "order_status"], followUp: "Check it arrived.", edited: false },
+          rating: "good",
+          ratingComment: "Quick help",
+        }),
+      }),
+    );
+    expect(out).toContain("Summary · Written by AI");
+    expect(out).toContain("Late parcel");
+    expect(out).toContain("Needs a follow-up");
+    expect(out).toContain("Order status");
+    expect(out).toContain("To do: Check it arrived.");
+    expect(out).toContain("Lasted 12 min");
+    expect(out).toContain("The customer said we helped");
+    expect(out).toContain("Quick help");
+  });
+
+  it("says why there is no summary, never inventing one, and shows a brief while open", () => {
+    expect(html(h(SummaryPanel, { conversation: ended({ summary: null, summaryStatus: "skipped" }) }))).toContain("No AI summary");
+    expect(html(h(SummaryPanel, { conversation: ended({ summary: null, summaryStatus: "pending" }) }))).toContain("The AI is writing a summary.");
+    expect(html(h(SummaryPanel, { conversation: ended({ summary: null, summaryStatus: "failed" }) }))).toContain("could not write a summary");
+    expect(html(h(SummaryPanel, { conversation: conversation({ brief: { text: "Wants a refund.", seq: 4 } }) }))).toContain("So far · Written by AI");
+    expect(html(h(SummaryPanel, { conversation: conversation() }))).toBe("");
+  });
+
+  it("offers a brief while open and correcting the summary once ended", () => {
+    const base = { status: "open" as const, handler: "ai" as const, assignee: null, me: "me", canWrite: true, mode: "ai_first" as const, store: { slug: "demo", name: "Demo" }, signedIn: false, source: "site" as const };
+    expect(availableActs(base)).toMatchObject({ brief: true, editSummary: false });
+    expect(availableActs({ ...base, status: "ended" })).toMatchObject({ brief: false, editSummary: true });
+    expect(availableActs({ ...base, status: "ended", canWrite: false })).toMatchObject({ editSummary: false });
   });
 });

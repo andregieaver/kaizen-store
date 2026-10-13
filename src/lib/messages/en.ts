@@ -916,6 +916,14 @@ export const en = {
       invalid: "Write a valid email address.",
       tooMany: "The email can't be changed again in this conversation.",
     },
+    rating: {
+      question: "Did we help?",
+      yes: "Yes",
+      no: "No",
+      comment: "Anything to add? (optional)",
+      send: "Send",
+      thanks: "Thank you for telling us.",
+    },
     thread: {
       title: (desk: string) => `Your conversation with ${desk}`,
       intro: "Answer here and we'll see it at once. We also email you when someone writes.",

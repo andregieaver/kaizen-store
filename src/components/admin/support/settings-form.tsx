@@ -127,6 +127,17 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Summaries</h2>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="summariesOn" defaultChecked={settings.summariesOn} className="mt-0.5 size-4" />
+          <span>
+            <span className="font-medium">Summarise ended conversations, and brief whoever takes one over.</span> Written by the AI from the
+            conversation, in English, for your team only; you can correct a summary. Needs a text model{settings.aiReady ? "" : " (none is connected)"}.
+          </span>
+        </label>
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Conversations</h2>
         <label className="flex flex-wrap items-center gap-2 text-sm">
           End a conversation with the assistant after

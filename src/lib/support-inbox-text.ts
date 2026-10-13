@@ -83,3 +83,42 @@ export const HANDOFF_WORDS: Record<string, string> = {
   no_ai: "The assistant could not answer",
   limit: "The assistant reached its daily limit",
 };
+
+/** An outcome of a summary, in words (2.7). */
+export const OUTCOME_WORDS: Record<string, string> = {
+  resolved: "Resolved",
+  unresolved: "Not resolved",
+  follow_up: "Needs a follow-up",
+  no_reply: "No reply",
+  spam: "Spam",
+};
+
+/** A topic of the closed lists in words: `order_status` is "Order status", `ai` "AI". */
+export function topicWords(topic: string): string {
+  if (topic === "ai") return "AI";
+  const words = topic.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** Why an ended conversation shows no summary, in words; null when it has one or is still open. */
+export function summaryStatusWords(status: string): string | null {
+  switch (status) {
+    case "pending":
+      return "The AI is writing a summary.";
+    case "failed":
+      return "The AI could not write a summary.";
+    case "skipped":
+      return "No AI summary: summaries are off, or the desk has no text model.";
+    default:
+      return null;
+  }
+}
+
+/** How long a conversation lasted, in the shortest words ("12 min", "2 h 5 min", "3 d"). */
+export function durationWords(from: string, to: string): string {
+  const minutes = Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 60_000));
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`;
+  return `${Math.floor(hours / 24)} d`;
+}

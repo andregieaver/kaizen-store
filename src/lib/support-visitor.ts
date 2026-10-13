@@ -43,6 +43,8 @@ export type VisitorState = {
   emailFollowup: boolean;
   /** Where answers will be emailed (the email the visitor left, or a signed-in customer's own), when the desk takes email. */
   followupEmail: string | null;
+  /** The visitor's answer to "Did we help?" once the conversation ended (step 7). */
+  rating: "good" | "bad" | null;
 };
 
 /** What every visitor route answers with. `token` only when the conversation was just made (or started anew). */

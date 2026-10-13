@@ -53,6 +53,8 @@ export type ChatLabels = {
   queuePlace: string;
   nobody: string;
   nobodyLater: string;
+  /** The rating card after the end (step 7). */
+  rating: { question: string; yes: string; no: string; comment: string; send: string; thanks: string };
   /** The email card; `sent` holds `{email}`. */
   emailCard: { intro: string; name: string; email: string; send: string; sent: string; use: string; change: string; invalid: string };
   /** The words of the conversation's system lines, by kind; `{name}` stands for a person's name. */
@@ -574,6 +576,9 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
                 onAssistant={agent.mode === "ai_first" && agent.ai ? () => void change("assistant") : null}
               />
             )}
+            {agent.mode !== "off" && stored.conversation && stored.status === "ended" && state?.status === "ended" && (
+              <RatingCard state={state} labels={labels} site={site} conversation={stored.conversation} after={stored.lastSeq} onReply={(reply) => setState(reply.state)} />
+            )}
             {(waiting || recording) && (
               <li className="flex items-end gap-2 text-sm text-muted">
                 {avatar("size-7")}
@@ -761,6 +766,88 @@ function Waiting({
           {labels.continueAssistant}
         </button>
       )}
+    </li>
+  );
+}
+
+/** "Did we help?" after the conversation ended (D216, 2.1, step 7): yes or no, then an optional comment; the answer can be changed. */
+function RatingCard({
+  state,
+  labels,
+  site,
+  conversation,
+  after,
+  onReply,
+}: {
+  state: VisitorState;
+  labels: ChatLabels;
+  site: { store?: string; market?: string };
+  conversation: ConversationRef;
+  after: number;
+  onReply: (reply: VisitorReply) => void;
+}) {
+  const [chosen, setChosen] = useState<"good" | "bad" | null>(state.rating);
+  const [comment, setComment] = useState("");
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const words = labels.rating;
+
+  async function rate(rating: "good" | "bad", withComment: string | null) {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/chat/rate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...site, conversation, after, rating, ...(withComment ? { comment: withComment } : {}) }),
+      });
+      const body = (await response.json().catch(() => ({}))) as unknown;
+      if (response.ok && isReply(body)) {
+        setChosen(rating);
+        onReply(body);
+        if (withComment !== null) setSent(true);
+      }
+    } catch {
+      // The card stays: the visitor may press again.
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li className="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm" aria-busy={busy || undefined}>
+      <p>{words.question}</p>
+      <div className="flex gap-2" role="group" aria-label={words.question}>
+        {(["good", "bad"] as const).map((rating) => (
+          <button
+            key={rating}
+            type="button"
+            aria-pressed={chosen === rating}
+            disabled={busy}
+            onClick={() => void rate(rating, null)}
+            className={`rounded-button border border-border px-3 py-1.5 disabled:opacity-50 ${chosen === rating ? "button-primary" : "hover:bg-surface"}`}
+          >
+            {rating === "good" ? words.yes : words.no}
+          </button>
+        ))}
+      </div>
+      {chosen && !sent && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (comment.trim()) void rate(chosen, comment.trim());
+          }}
+          className="flex flex-col gap-2"
+        >
+          <label className="flex flex-col gap-1">
+            <span>{words.comment}</span>
+            <textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={500} rows={2} className="rounded-lg border border-border bg-background px-3 py-2 text-base" />
+          </label>
+          <button type="submit" disabled={busy || !comment.trim()} className="self-start rounded-button border border-border px-3 py-1.5 hover:bg-surface disabled:opacity-50">
+            {words.send}
+          </button>
+        </form>
+      )}
+      {chosen && <p role="status">{words.thanks}</p>}
     </li>
   );
 }

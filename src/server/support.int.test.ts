@@ -873,3 +873,156 @@ describe("tone (step 6, C9)", () => {
   });
 });
 
+
+describe("summaries, briefs and ratings (step 7, C10)", () => {
+  type Staff = import("./support-desk").StaffDesk;
+  const SUMMARY = { title: "Late parcel", text: "The customer's parcel was late; Kari said it ships today.", outcome: "resolved", topics: ["delivery", "not_a_topic"], followUp: null };
+
+  async function summaryDesk(name: string, ai = true) {
+    const s = `${name}-${run}`;
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${s}@example.com`}, 'T', 'T') returning id`);
+    const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${s}, ${name}, null) as id`);
+    const id = String(created.id);
+    await db().execute(sql`update commerce.stores set status = 'active' where id = ${id}::uuid`);
+    await db().execute(sql`insert into commerce.support_settings (store_id, mode, tone_on) values (${id}::uuid, 'people', false)`);
+    if (ai) background.aiStores.add(id);
+    const [owner] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`${s}@example.com`}`);
+    await db().execute(sql`update commerce.accounts set name = 'Kari Nordmann' where id = ${String(owner.id)}::uuid`);
+    const store = (await getStore(s))!;
+    const market = store.markets.find((m) => m.code === "NO")!;
+    const ctx: ChatContext = {
+      site: { kind: "store", store, market },
+      storeId: id,
+      lang: market.lang,
+      locale: market.locale,
+      market: market.slug,
+      agent: null,
+      connection: null,
+      settings: (await support.deskSettings(systemDesk(id)))!,
+    };
+    const kari: Staff = { desk: systemDesk(id), store: { id, slug: s, name }, account: { id: String(owner.id), email: String(owner.email) } as unknown as Staff["account"], canWrite: true };
+    return { id, slug: s, ctx, kari, raw: { store: s, market: market.slug } };
+  }
+
+  /** The model answers in turn (a failure for `null`) and keeps what it was asked. */
+  function model(answers: (string | null)[]) {
+    const asked: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        asked.push(String(JSON.parse(String(init.body)).messages.map((m: { content: string }) => m.content).join("\n")));
+        const next = answers.shift();
+        if (next === null || next === undefined) return new Response("down", { status: 500 });
+        return Response.json({ choices: [{ message: { content: next } }] });
+      }),
+    );
+    return asked;
+  }
+
+  const start = async (d: Awaited<ReturnType<typeof summaryDesk>>, words: string) => {
+    background.tasks.length = 0;
+    const reply = ok(await route.visitorTurn(d.ctx, { after: 0, signals: { views: [], searches: [] } }, words));
+    background.tasks.length = 0;
+    return { id: reply.conversation!.id, token: reply.conversation!.token! };
+  };
+
+  it("writes a summary when the conversation ends, from the transcript with notes marked and never the partner's help", async () => {
+    const { agentAct } = await import("./support-agent");
+    const d = await summaryDesk("summary-written");
+    const ref = await start(d, "My parcel is late");
+    await agentAct(d.kari, ref.id, { kind: "claim" });
+    background.tasks.length = 0;
+    await agentAct(d.kari, ref.id, { kind: "reply", body: "It ships today." });
+    await agentAct(d.kari, ref.id, { kind: "note", body: "Courier delay in Bergen" });
+    await support.addMessage(systemDesk(d.id), ref.id, "partner", null, "SECRET PARTNER HELP", { kind: "suggestion" });
+    const asked = model([JSON.stringify(SUMMARY)]);
+    expect(await agentAct(d.kari, ref.id, { kind: "end" })).toEqual({ ok: true });
+    expect(background.tasks).toHaveLength(1);
+    await Promise.all(background.tasks.map((task) => task()));
+
+    const row = await conversationRow(ref.id);
+    expect(row.summary_status).toBe("done");
+    // Topics outside the store's list are dropped.
+    expect(row.summary).toMatchObject({ title: "Late parcel", outcome: "resolved", topics: ["delivery"], followUp: null });
+    expect(asked[0]).toContain("Customer: My parcel is late");
+    expect(asked[0]).toContain("Staff (Kari): It ships today.");
+    expect(asked[0]).toContain("Staff note (Kari): Courier delay in Bergen");
+    expect(asked[0]).not.toContain("SECRET PARTNER HELP");
+    // The list's Ended tab carries the title and outcome, and finds it by topic.
+    const ended = await support.staffList([systemDesk(d.id)], d.kari.account.id, { tab: "ended", topic: "delivery" });
+    expect(ended.map((r) => [r.id, r.summaryTitle, r.outcome])).toEqual([[ref.id, "Late parcel", "resolved"]]);
+    expect(await support.staffList([systemDesk(d.id)], d.kari.account.id, { tab: "ended", topic: "refund" })).toEqual([]);
+  });
+
+  it("tries a failed summary again from the five-minute job, three times in all, then says it failed", async () => {
+    const { summarisePending } = await import("./support-summary");
+    const d = await summaryDesk("summary-retries");
+    const ref = await start(d, "Hello?");
+    model([null, "not json at all", null]);
+    await route.visitorEnd(d.raw, ref, 0);
+    background.tasks.length = 0;
+    const age = () => db().execute(sql`update commerce.support_conversations set ended_at = now() - interval '2 minutes' where id = ${ref.id}::uuid`);
+    await age();
+    for (let i = 0; i < 3; i++) await summarisePending();
+    expect(await conversationRow(ref.id)).toMatchObject({ summary_status: "failed", summary_tries: 3, summary: null });
+    // A fourth run does not ask again.
+    const asked = model([JSON.stringify(SUMMARY)]);
+    await summarisePending();
+    expect(asked).toHaveLength(0);
+  });
+
+  it("never invents a summary without AI, and writes none with summaries off", async () => {
+    const { summarise } = await import("./support-summary");
+    const noAi = await summaryDesk("summary-no-ai", false);
+    const a = await start(noAi, "Hello?");
+    await route.visitorEnd(noAi.raw, a, 0);
+    expect(await summarise(systemDesk(noAi.id), a.id)).toBe("skipped");
+    expect(await conversationRow(a.id)).toMatchObject({ summary_status: "skipped", summary: null });
+
+    const off = await summaryDesk("summary-off");
+    await db().execute(sql`update commerce.support_settings set summaries_on = false where store_id = ${off.id}::uuid`);
+    const b = await start(off, "Hello?");
+    const asked = model([JSON.stringify(SUMMARY)]);
+    await route.visitorEnd(off.raw, b, 0);
+    expect((await conversationRow(b.id)).summary_status).toBe("skipped");
+    expect(await summarise(systemDesk(off.id), b.id)).toBe("none");
+    expect(asked).toHaveLength(0);
+  });
+
+  it("briefs the person who takes over, once per message, and lets staff correct a summary", async () => {
+    const { agentAct } = await import("./support-agent");
+    const d = await summaryDesk("summary-brief");
+    const ref = await start(d, "I want a refund for my broken lamp");
+    const asked = model(["The customer wants a refund for a broken lamp."]);
+    await agentAct(d.kari, ref.id, { kind: "claim" });
+    await Promise.all(background.tasks.map((task) => task()));
+    background.tasks.length = 0;
+    expect((await support.staffConversation(systemDesk(d.id), ref.id))?.brief).toMatchObject({ text: "The customer wants a refund for a broken lamp." });
+    // Asked again at the same message: the kept brief, no new model call.
+    expect(await agentAct(d.kari, ref.id, { kind: "brief" })).toEqual({ ok: true, brief: "The customer wants a refund for a broken lamp." });
+    expect(asked).toHaveLength(1);
+
+    model([JSON.stringify(SUMMARY)]);
+    await agentAct(d.kari, ref.id, { kind: "end" });
+    await Promise.all(background.tasks.map((task) => task()));
+    const edit = { title: "Refund for a broken lamp", text: "Kari agreed a refund.", outcome: "resolved", topics: ["refund", "complaint"], followUp: "Refund the order." };
+    expect(await agentAct(d.kari, ref.id, { kind: "summary", summary: { ...edit, topics: [] } })).toMatchObject({ ok: false });
+    expect(await agentAct(d.kari, ref.id, { kind: "summary", summary: edit })).toEqual({ ok: true });
+    const seen = await support.staffConversation(systemDesk(d.id), ref.id);
+    expect(seen?.summary).toMatchObject({ title: "Refund for a broken lamp", topics: ["refund", "complaint"], followUp: "Refund the order.", edited: true });
+    const [logged] = await db().execute<Row>(sql`select area from commerce.audit_log where action = 'support.summary_edited' and target_id = ${ref.id}`);
+    expect(logged.area).toBe("support");
+  });
+
+  it("takes the customer's rating once the conversation has ended, and shows it in the state", async () => {
+    const d = await summaryDesk("summary-rating", false);
+    const ref = await start(d, "Hello?");
+    expect(((await route.visitorRate(d.raw, ref, 0, "good", null)) as Response).status).toBe(409);
+    await route.visitorEnd(d.raw, ref, 0);
+    const rated = ok(await route.visitorRate(d.raw, ref, 0, "bad", "Nobody answered"));
+    expect(rated.state).toMatchObject({ status: "ended", rating: "bad" });
+    expect(await conversationRow(ref.id)).toMatchObject({ rating: "bad", rating_comment: "Nobody answered" });
+    // Changed: the newest answer counts.
+    expect(ok(await route.visitorRate(d.raw, ref, 0, "good", null)).state.rating).toBe("good");
+  });
+});

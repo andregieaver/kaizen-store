@@ -1,4 +1,14 @@
-import { HANDOFF_WORDS, authorWords, handlerWords, systemWords, toneWords } from "@/lib/support-inbox-text";
+import {
+  HANDOFF_WORDS,
+  OUTCOME_WORDS,
+  authorWords,
+  durationWords,
+  handlerWords,
+  summaryStatusWords,
+  systemWords,
+  toneWords,
+  topicWords,
+} from "@/lib/support-inbox-text";
 import type { StaffConversation, StaffMessage } from "@/server/support";
 
 import { ToneChart, ToneDot } from "./tone";
@@ -20,12 +30,7 @@ export function ConversationView({ conversation, now }: { conversation: StaffCon
           <p className="w-full text-xs text-muted">{HANDOFF_WORDS[conversation.handoffReason] ?? null}</p>
         )}
       </header>
-      {conversation.summary && (
-        <section className="border-b border-border px-4 py-3 text-sm" aria-label="Summary">
-          <p className="font-medium">{conversation.summary.title}</p>
-          <p className="text-muted">{conversation.summary.text}</p>
-        </section>
-      )}
+      <SummaryPanel conversation={conversation} />
       <ol role="log" aria-live="polite" aria-label="Messages" className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
         {conversation.messages.map((message) => (
           <MessageItem key={message.seq} message={message} toneMeasured={conversation.toneMeasured} />
@@ -65,6 +70,51 @@ function MessageItem({ message, toneMeasured }: { message: StaffMessage; toneMea
       {/* A score that is missing is never shown as 0 (2.6). */}
       {customer && !tone && toneMeasured && <span className="text-xs text-muted">Tone: not measured</span>}
     </li>
+  );
+}
+
+/**
+ * An ended conversation's summary (2.7): marked as the AI's (or as edited by staff), with its outcome, topics and follow-up, and the
+ * facts from data (how long it lasted); without one, why. An open conversation shows the AI's brief of it so far, when one was made.
+ */
+export function SummaryPanel({ conversation }: { conversation: StaffConversation }) {
+  if (conversation.status === "open") {
+    if (!conversation.brief) return null;
+    return (
+      <section className="border-b border-border px-4 py-3 text-sm" aria-label="Brief">
+        <p className="text-xs text-muted">So far · Written by AI</p>
+        <p>{conversation.brief.text}</p>
+      </section>
+    );
+  }
+  const summary = conversation.summary;
+  const lasted = conversation.endedAt ? durationWords(conversation.startedAt, conversation.endedAt) : null;
+  return (
+    <section className="flex flex-col gap-1 border-b border-border px-4 py-3 text-sm" aria-label="Summary">
+      {summary ? (
+        <>
+          <p className="text-xs text-muted">{summary.edited ? "Summary · Edited by staff" : "Summary · Written by AI"}</p>
+          <p className="font-medium">{summary.title}</p>
+          <p>{summary.text}</p>
+          <p className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-border px-2 py-0.5 font-medium">{OUTCOME_WORDS[summary.outcome] ?? summary.outcome}</span>
+            {summary.topics.map((topic) => (
+              <span key={topic} className="rounded-full border border-border px-2 py-0.5 text-muted">
+                {topicWords(topic)}
+              </span>
+            ))}
+          </p>
+          {summary.followUp && <p className="text-xs">To do: {summary.followUp}</p>}
+        </>
+      ) : (
+        <p className="text-muted">{summaryStatusWords(conversation.summaryStatus) ?? "No summary."}</p>
+      )}
+      <p className="text-xs text-muted">
+        {lasted ? `Lasted ${lasted}` : ""}
+        {conversation.rating ? `${lasted ? " · " : ""}The customer said ${conversation.rating === "good" ? "we helped" : "we did not help"}` : ""}
+        {conversation.ratingComment ? `: “${conversation.ratingComment}”` : ""}
+      </p>
+    </section>
   );
 }
 

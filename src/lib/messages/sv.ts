@@ -915,6 +915,14 @@ export const sv: Messages = {
       invalid: "Skriv en giltig e-postadress.",
       tooMany: "E-postadressen kan inte ändras fler gånger i det här samtalet.",
     },
+    rating: {
+      question: "Fick du hjälp?",
+      yes: "Ja",
+      no: "Nej",
+      comment: "Något du vill tillägga? (valfritt)",
+      send: "Skicka",
+      thanks: "Tack för att du berättade.",
+    },
     thread: {
       title: (desk: string) => `Ditt samtal med ${desk}`,
       intro: "Svara här så ser vi det direkt. Vi mejlar dig också när någon skriver.",

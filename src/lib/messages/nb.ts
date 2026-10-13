@@ -919,6 +919,14 @@ export const nb: Messages = {
       invalid: "Skriv en gyldig e-postadresse.",
       tooMany: "E-postadressen kan ikke endres flere ganger i denne samtalen.",
     },
+    rating: {
+      question: "Fikk du hjelp?",
+      yes: "Ja",
+      no: "Nei",
+      comment: "Noe du vil legge til? (valgfritt)",
+      send: "Send",
+      thanks: "Takk for at du sa ifra.",
+    },
     thread: {
       title: (desk: string) => `Samtalen din med ${desk}`,
       intro: "Svar her, så ser vi det med en gang. Vi sender deg også en e-post når noen skriver.",

@@ -118,3 +118,38 @@ test("the AI first, with an AI that cannot answer: the visitor's message goes to
     await sql.end();
   }
 });
+
+test("a person ends the conversation: the rating card appears and the rating is kept (case 3)", async ({ page }) => {
+  const slug = `support-rate-${Date.now()}`;
+  const sql = testDb();
+  try {
+    const { storeId, ownerId } = await newStore(sql, slug, "Vurderingsbutikken");
+    await sql`insert into commerce.support_settings (store_id, mode) values (${storeId}, 'people')`;
+    await page.goto(`/s/${slug}`);
+    await page.getByRole("button", { name: "Chat med oss: Vurderingsbutikken" }).click();
+    const chat = page.getByRole("dialog", { name: "Vurderingsbutikken" });
+    await chat.getByRole("textbox", { name: "Skriv en melding" }).fill("Hei, et spørsmål");
+    await chat.getByRole("textbox", { name: "Skriv en melding" }).press("Enter");
+    await expect(chat.getByText("Du er nummer 1 i køen.")).toBeVisible();
+
+    const [conversation] = await sql`select id from commerce.support_conversations where store_id = ${storeId}`;
+    const id = String(conversation.id);
+    await sql`select commerce.support_transition(${id}, 'claim', 'agent', ${ownerId}, null, null, 'Ola')`;
+    await sql`select * from commerce.support_add_message(${id}, 'agent', ${ownerId}, 'Det ordner seg!', null, ${sql.json({ name: "Ola", picture: null })})`;
+    await expect(chat.getByText("Det ordner seg!")).toBeVisible({ timeout: 5000 });
+    await sql`select commerce.support_transition(${id}, 'end', 'agent', ${ownerId}, null, null, 'Ola')`;
+
+    await expect(chat.getByText("Samtalen er avsluttet.")).toBeVisible({ timeout: 5000 });
+    const card = chat.getByRole("listitem").filter({ hasText: "Fikk du hjelp?" });
+    await expect(card).toBeVisible();
+    await card.getByRole("button", { name: "Ja" }).click();
+    await expect(card.getByText("Takk for at du sa ifra.")).toBeVisible();
+    await card.getByRole("textbox", { name: "Noe du vil legge til? (valgfritt)" }).fill("Rask hjelp");
+    await card.getByRole("button", { name: "Send", exact: true }).click();
+    await expect
+      .poll(async () => (await sql`select rating, rating_comment from commerce.support_conversations where id = ${id}`)[0])
+      .toMatchObject({ rating: "good", rating_comment: "Rask hjelp" });
+  } finally {
+    await sql.end();
+  }
+});

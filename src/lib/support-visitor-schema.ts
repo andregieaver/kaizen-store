@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { cleanSignals } from "./recommendations";
-import { CONTACT_EMAIL_MAX, CONTACT_NAME_MAX, MESSAGE_MAX } from "./support-rules";
+import { CONTACT_EMAIL_MAX, CONTACT_NAME_MAX, MESSAGE_MAX, RATING_COMMENT_MAX } from "./support-rules";
 
 /**
  * The visitor routes' input (D216, `docs/support.md` 5.3), beside `support-visitor.ts` so the widget never loads zod (D211). The
@@ -45,4 +45,10 @@ export const changeInput = feedInput;
 export const emailInput = feedInput.extend({
   name: z.string().trim().max(CONTACT_NAME_MAX).optional().transform((name) => name || null),
   email: z.email().trim().toLowerCase().max(CONTACT_EMAIL_MAX),
+});
+
+/** The rating card (2.1): good or bad, and a comment if the visitor writes one. */
+export const rateInput = feedInput.extend({
+  rating: z.enum(["good", "bad"]),
+  comment: z.string().trim().max(RATING_COMMENT_MAX).optional().transform((comment) => comment || null),
 });

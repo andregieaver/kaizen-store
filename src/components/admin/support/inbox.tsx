@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { TAB_WORDS } from "@/lib/support-inbox-text";
+import { TAB_WORDS, topicWords } from "@/lib/support-inbox-text";
+import { topicsFor } from "@/lib/support-summary";
 import { TONE_BAND_WORDS, TONE_BANDS } from "@/lib/support-tone";
 import { HEARTBEAT_SECONDS, POLL_STAFF_MS } from "@/lib/support-rules";
 import type { InboxTab } from "@/server/support";
@@ -31,6 +32,7 @@ export function Inbox({
   const [query, setQuery] = useState("");
   const [store, setStore] = useState("");
   const [tone, setTone] = useState("");
+  const [topic, setTopic] = useState("");
   const [rows, setRows] = useState(initial.rows);
   const [waiting, setWaiting] = useState(initial.waiting);
   const [open, setOpen] = useState<{ id: string; store: string | null } | null>(null);
@@ -52,6 +54,7 @@ export function Inbox({
     if (query.trim()) params.set("q", query.trim());
     if (store) params.set("store", store);
     if (tone) params.set("tone", tone);
+    if (topic && tab === "ended") params.set("topic", topic);
     try {
       const response = await fetch(`${context.feedUrl}?${params}`, { cache: "no-store" });
       if (!response.ok) return;
@@ -64,7 +67,7 @@ export function Inbox({
     } catch {
       // Offline for a moment: the next poll tries again.
     }
-  }, [context.feedUrl, tab, query, store, tone]);
+  }, [context.feedUrl, tab, query, store, tone, topic]);
 
   // The list: at once when the filters change, then every 3 seconds (15 in a hidden tab).
   useEffect(() => {
@@ -238,6 +241,16 @@ export function Inbox({
                 </option>
               ))}
             </select>
+            {tab === "ended" && (
+              <select value={topic} onChange={(event) => setTopic(event.target.value)} aria-label="Topic" className="rounded-md border border-border bg-background px-2 py-1 text-sm">
+                <option value="">Any topic</option>
+                {topicsFor(context.level === "platform").map((t) => (
+                  <option key={t} value={t}>
+                    {topicWords(t)}
+                  </option>
+                ))}
+              </select>
+            )}
             {context.stores.length > 1 && (
               <select value={store} onChange={(event) => setStore(event.target.value)} aria-label="Store" className="rounded-md border border-border bg-background px-2 py-1 text-sm">
                 <option value="">All stores</option>

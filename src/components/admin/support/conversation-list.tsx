@@ -1,4 +1,4 @@
-import { agoWords, handlerWords } from "@/lib/support-inbox-text";
+import { OUTCOME_WORDS, agoWords, handlerWords } from "@/lib/support-inbox-text";
 import type { InboxRow } from "@/server/support";
 
 import { ToneDot } from "./tone";
@@ -51,6 +51,7 @@ export function ConversationList({
                 {row.source === "admin" && <span className="text-muted">From the admin</span>}
                 <ToneDot score={row.tone} compact />
                 {row.toneAlert && <span className="font-medium">Tone alert</span>}
+                {row.outcome && <span className="text-muted">{OUTCOME_WORDS[row.outcome] ?? row.outcome}</span>}
               </span>
             </button>
           </li>

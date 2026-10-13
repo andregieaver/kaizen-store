@@ -9,6 +9,7 @@ import { sendDueCartReminders } from "@/server/cart-reminders";
 import { catalogTag } from "@/server/catalog";
 import { pruneChatUsage } from "@/server/chat-agent";
 import { endIdleConversations } from "@/server/support";
+import { summarisePending } from "@/server/support-summary";
 import { cronAuthorised } from "@/server/cron-auth";
 import { expireDrafts } from "@/server/draft-orders";
 import { archiveFinishedOrders } from "@/server/order-archive";
@@ -102,6 +103,11 @@ async function run(request: Request) {
     // Support (D216): conversations with the AI that nobody has written in for the desk's time end, so their period begins.
     endIdleConversations().catch((error) => {
       console.error("[cron] ending idle support conversations failed", error);
+      return null;
+    }),
+    // Support (D216, step 7): the summaries of ended conversations not yet written, each tried again until it is done or failed.
+    summarisePending().catch((error) => {
+      console.error("[cron] support summaries failed", error);
       return null;
     }),
   ]);

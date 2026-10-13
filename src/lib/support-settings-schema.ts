@@ -50,6 +50,7 @@ export const deskSettingsInput = z.object({
     .max(NOTIFY_AFTER_MINUTES.max, `Email your people after ${NOTIFY_AFTER_MINUTES.min} to ${NOTIFY_AFTER_MINUTES.max} minutes.`),
   agentNaming: z.enum(["first_name", "desk"], "Choose how your people are named to customers."),
   toneOn: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
+  summariesOn: z.literal(["on", "off"]).default("off").transform((value) => value === "on"),
   toneAlert: toneLine("tone alert"),
   toneHandoff: toneLine("hand-over"),
   transcriptDays: z.coerce

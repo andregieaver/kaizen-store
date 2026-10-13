@@ -24,6 +24,7 @@ import {
   queuePosition,
   setAiReason,
   setContact,
+  setRating,
   transition,
   visitorConversation,
   visitorFeed,
@@ -32,6 +33,7 @@ import {
   type DeskSettings,
 } from "./support";
 import { visitorDesk, type Desk } from "./support-desk";
+import { summarise } from "./support-summary";
 import { scoreTone, scoresTone } from "./support-tone";
 import { runSupportTurn } from "./support-turn";
 
@@ -218,7 +220,10 @@ async function visitorChange(raw: unknown, ref: { id: string; token: string }, a
 /** The visitor ends the conversation (an ended one stays ended). */
 export const visitorEnd = (raw: unknown, ref: { id: string; token: string }, after: number) =>
   visitorChange(raw, ref, after, async ({ desk, conversation }) => {
-    if (conversation.status === "open") await transition(desk, conversation.id, "end", { kind: "customer" });
+    if (conversation.status !== "open") return;
+    await transition(desk, conversation.id, "end", { kind: "customer" });
+    // The summary is written after the answer (step 7); the five-minute job catches any that is not.
+    afterResponse(() => summarise(desk, conversation.id).catch((error) => console.warn(`[support] summary of ${conversation.id}: ${String(error)}`)));
   });
 
 /** *Talk to a person* (2.3, the AI first): the conversation goes from the AI to the queue. */
@@ -262,4 +267,13 @@ export async function emailThread(site: ChatSite, token: string): Promise<EmailT
     messages: await visitorFeed(desk, conversation.id, Math.max(0, conversation.messageSeq - 100)),
     state: { status: conversation.status, handler: conversation.handler },
   };
+}
+
+/** The rating card (2.1, step 7): the visitor's answer to "Did we help?" for an ended conversation, or the response to give. */
+export async function visitorRate(raw: unknown, ref: { id: string; token: string }, after: number, rating: "good" | "bad", comment: string | null): Promise<VisitorReply | Response> {
+  const found = await visitorPlace(raw, ref);
+  if (found instanceof Response) return found;
+  if (!(await setRating(found.desk, found.conversation.id, rating, comment))) return fail(409, t(found.place.lang).chat.sorry);
+  const conversation = (await visitorConversation(found.desk, ref)) ?? found.conversation;
+  return visitorReply(found.desk, found.settings, conversation, after, await customerOf(found.place));
 }

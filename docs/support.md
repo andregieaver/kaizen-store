@@ -1467,3 +1467,35 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   people-only desk scored, none with support or tone off, the route's background task, the list's filter and mark).
 - Migration: `20261013194647_support_tone`.
 
+**Step 7 (13 October 2026).**
+
+- **No migration**: the summary, its status and tries, the brief and the rating were in the step-1 tables.
+- **When a summary is written**: `support_transition()` marks an ended conversation `pending` where support and summaries are on.
+  `summarise()` runs in `after()` where a person (`agentAct` end) or the visitor (`/api/chat/end`) ends it; every other end (the
+  idle and give-up job, a mode change, the settings page) is caught by `summarisePending()` in the five-minute dispatcher, a minute
+  after the end. Each attempt first takes a try (`summary_tries + 1` where still pending), so two callers never both ask; after
+  `SUMMARY_TRIES` it is `failed`. Without a text model (or with summaries or support off) it is `skipped` and says so: never an
+  invented summary. A conversation in which the customer wrote nothing gets a plain one written by code (*no reply*), not a model
+  call.
+- **What the model reads**: `transcriptOf()` (roles marked, staff notes marked as such, events in words, the partner's help never;
+  a very long transcript keeps its end); `summarySystem()` names the desk's own topic list; `parseSummary()` drops unknown topics and
+  refuses an answer without one. The facts the tools returned are not yet in it (the AI's tools are step 9).
+- **The brief**: made after a person takes a conversation over (`after()`) and on *Brief me*, from the same transcript, plain text of
+  at most 400 characters (`parseBrief()`), kept with the message number it was made at so asking again before anything new is said
+  costs nothing. It needs summaries on and a text model, and says so otherwise. The partner's first card (step 8) will show it.
+- **Editing**: an ended conversation's summary can be corrected or written by anyone who may answer the desk (*Edit summary*: title,
+  text, outcome, one to three of the desk's topics, a follow-up); it is then marked *Edited by staff*, and `support.summary_edited`
+  is in the activity log (never its words).
+- **The inbox**: the *Ended* tab shows each row's title and outcome and filters by topic; an ended conversation shows its summary
+  (*Written by AI* or *Edited by staff*), outcome, topics and follow-up, or why there is none, how long it lasted and the
+  customer's rating with their comment; an open one shows the brief (*So far · Written by AI*).
+- **The rating**: `/api/chat/rate` takes *good* or *bad* and an optional comment (at most 500 characters) for an ended conversation
+  (409 otherwise); the newest answer counts. The widget draws *Did we help?* after the end while support is on (not with the chat
+  assistant alone), then *Anything to add?*; words in nb, sv, da and en (`m.chat.rating`). The rating and comment were already in
+  the export and anonymised with the transcript.
+- **Settings**: *Summarise ended conversations, and brief whoever takes one over* (on).
+- **Tests**: U `support-summary.test.ts` (transcript, instructions, brief); V the summary panel, its states and the actions; I
+  `support.int.test.ts` (C10: written at the end with notes marked and no partner help, unknown topics dropped, the Ended tab and the
+  topic filter, three tries then failed, skipped without AI, none with summaries off, the brief once per message, editing, the
+  rating); E `support.spec.ts` case 3.
+

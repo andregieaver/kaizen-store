@@ -260,6 +260,15 @@ of running `playwright install`.
   never changed), the conversation's tone and alert come from `rollingTone()`/
   `toneFell()` under its lock, the hand-over at the line from `crossedLine()`;
   a missing score is *not measured*, never 0, and the customer never sees one.
+  Summaries (step 7, `src/server/support-summary.ts`): `summarise()` in
+  `after()` where a person or the visitor ends a conversation and
+  `summarisePending()` in the five-minute dispatcher (a try is taken first,
+  `SUMMARY_TRIES` in all, then `failed`; no text model or summaries off:
+  `skipped`, never an invented summary); the model reads `transcriptOf()`
+  (notes marked, never the partner's help) and only `parseSummary()`'s answer
+  is kept; the brief is made on take-over and *Brief me* (kept per message
+  number); staff edits audit `support.summary_edited`; the rating is
+  `/api/chat/rate` on an ended conversation.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

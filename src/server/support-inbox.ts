@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { SupportMode } from "@/lib/support-rules";
+import { KAIZEN_TOPICS, STORE_TOPICS } from "@/lib/support-summary";
 import { TONE_BANDS, type ToneBand } from "@/lib/support-tone";
 
 import { INBOX_TABS, deskSettings, lastToneAlert, markRead, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
@@ -19,7 +20,7 @@ export const NO_STORE = { "Cache-Control": "no-store" } as const;
 export type InboxFeed = { rows: InboxRow[]; waiting: number; mineUnread: number; /** When a tone alert was last raised (2.6): the inbox notifies when it moves. */ lastToneAlert: string | null };
 
 /** The list's filters from the address: the tab (waiting by default), the words searched and, at the owner's level, the store. */
-export function inboxQuery(search: URLSearchParams): { tab: InboxTab; q?: string; store?: string; tone?: ToneBand } {
+export function inboxQuery(search: URLSearchParams): { tab: InboxTab; q?: string; store?: string; tone?: ToneBand; topic?: string } {
   const tab = search.get("tab");
   const tone = search.get("tone");
   const q = search.get("q")?.trim().slice(0, 100);
@@ -29,6 +30,8 @@ export function inboxQuery(search: URLSearchParams): { tab: InboxTab; q?: string
     ...(q ? { q } : {}),
     ...(store && /^[a-z0-9-]{1,63}$/.test(store) ? { store } : {}),
     ...((TONE_BANDS as readonly string[]).includes(tone ?? "") ? { tone: tone as ToneBand } : {}),
+    // Any topic of either desk kind's closed list; the list's own condition finds nothing for the other kind's.
+    ...(([...STORE_TOPICS, ...KAIZEN_TOPICS] as string[]).includes(search.get("topic") ?? "") ? { topic: search.get("topic")! } : {}),
   };
 }
 
@@ -39,7 +42,7 @@ export async function inboxFeed(desks: StaffDesk[], query: ReturnType<typeof inb
   if (!account || shown.length === 0) return { rows: [], waiting: 0, mineUnread: 0, lastToneAlert: null };
   const plain = shown.map((d) => d.desk);
   const [rows, waiting, mineUnread, toneAlert] = await Promise.all([
-    staffList(plain, account, { tab: query.tab, q: query.q, tone: query.tone }),
+    staffList(plain, account, { tab: query.tab, q: query.q, tone: query.tone, topic: query.topic }),
     waitingCount(plain),
     mineUnreadCount(plain, account),
     lastToneAlert(plain),

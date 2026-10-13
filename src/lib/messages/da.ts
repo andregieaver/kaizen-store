@@ -913,6 +913,14 @@ export const da: Messages = {
       invalid: "Skriv en gyldig e-mailadresse.",
       tooMany: "E-mailadressen kan ikke ændres flere gange i denne samtale.",
     },
+    rating: {
+      question: "Fik du hjælp?",
+      yes: "Ja",
+      no: "Nej",
+      comment: "Noget du vil tilføje? (valgfrit)",
+      send: "Send",
+      thanks: "Tak, fordi du fortalte os det.",
+    },
     thread: {
       title: (desk: string) => `Din samtale med ${desk}`,
       intro: "Svar her, så ser vi det med det samme. Vi sender dig også en e-mail, når nogen skriver.",
