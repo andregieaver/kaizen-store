@@ -40,6 +40,7 @@ function chatLabels(lang: string, locale: string, profile: ChatWidgetProfile, de
     queuePlace: c.queuePlace("{place}" as unknown as number),
     nobody: c.nobody,
     nobodyLater: c.nobodyLater,
+    translatedByAi: c.translatedByAi,
     rating: c.rating,
     emailCard: {
       intro: c.emailCard.intro,

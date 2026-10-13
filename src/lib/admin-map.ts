@@ -560,6 +560,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["requests", "refund request", "cancel order", "change address", "exception", "support"],
     tasks: ["Decide a request the chat assistant passed on", "See decided requests"],
   }),
+  store("support.replies", "/support/replies", "Saved replies", "Store", "The support desk's saved replies: texts with a title and a /shortcut, optionally for one language, that your team puts in an answer by typing / in the inbox's composer. {customer_first_name}, {agent_first_name} and {store} are filled in for the conversation.", {
+    keywords: ["saved replies", "canned responses", "macros", "templates", "shortcuts", "support"],
+    tasks: ["Add a saved reply", "Change a saved reply's text"],
+  }),
   store("support.settings", "/support/settings", "Support settings", "Store", "Who answers the store's customers in the chat: the chat assistant alone, the AI first and then your team, or your team only. Also email follow-up when nobody is there, opening hours, when quiet conversations end, when your people are emailed about a waiting customer, how they are named, and (the owner's) how long transcripts are kept.", {
     keywords: ["support mode", "live chat", "people only", "opening hours", "email follow-up", "transcripts", "handover"],
     tasks: ["Let people answer the chat", "Answer customers with the AI first", "Set support opening hours", "Turn email answers on or off"],
@@ -715,6 +719,9 @@ const PAGES: readonly AdminPage[] = [
   }),
   platform("support", "/support", "Support inbox", "Support", "Kaizen's own support desk: conversations with visitors of Kaizen's site and owners asking Kaizen, live.", {
     keywords: ["inbox", "live chat", "helpdesk", "conversations"],
+  }),
+  platform("support.replies", "/support/replies", "Saved replies", "Support", "Kaizen's support desk's saved replies: texts with a /shortcut that Kaizen's people put in an answer from the inbox, with {customer_first_name}, {agent_first_name} and {store} filled in.", {
+    keywords: ["saved replies", "canned responses", "macros"],
   }),
   platform("support.settings", "/support/settings", "Support settings", "Support", "Who answers Kaizen's visitors in the chat (the assistant alone, the AI first, or people only), email follow-up, opening hours, when quiet conversations end, when platform admins are emailed and how long transcripts are kept.", {
     keywords: ["support mode", "live chat", "opening hours", "email follow-up"],

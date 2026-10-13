@@ -357,7 +357,11 @@ export function Inbox({
           )}
           {conversation ? (
             <>
-              <ConversationView conversation={conversation} now={now} />
+              <ConversationView
+                conversation={conversation}
+                now={now}
+                translate={conversation.translate ? (seq) => runAct(context, conversation.store?.slug ?? null, conversation.id, { kind: "translate", seq }) : undefined}
+              />
               <ConversationActions
                 key={`${conversation.id}:${fill?.n ?? 0}`}
                 initialDraft={fill?.text}

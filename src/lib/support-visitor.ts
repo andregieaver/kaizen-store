@@ -29,7 +29,8 @@ export type SupportCard = "sign_in" | "email";
 export const CHIPS_MAX = 8;
 
 /** What a message from the AI carries for the widget to draw: product cards, the page it opened, link chips and a card. Drawn by code, never from model text. */
-export type VisitorMessageData = { products?: ChatProduct[]; actions?: ChatAction[]; chips?: SupportChip[]; card?: SupportCard };
+/** `translated`: a person's message the AI translated into the customer's language, which the agent read and sent (step 13). */
+export type VisitorMessageData = { products?: ChatProduct[]; actions?: ChatAction[]; chips?: SupportChip[]; card?: SupportCard; translated?: boolean };
 
 /** A proposal or request the AI's message carries (step 10): the summary written by code, and where it stands. */
 export type VisitorAction = { id: string; summary: string; status: "proposed" | "done" | "declined" | "failed" | "expired"; confirmer: "customer" | "staff" };

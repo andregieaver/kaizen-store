@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { OUTCOME_WORDS, topicWords } from "@/lib/support-inbox-text";
+import { insertReply, matchReplies, slashQuery, type SavedReply } from "@/lib/support-replies";
 import { MESSAGE_MAX } from "@/lib/support-rules";
 import { FOLLOW_UP_MAX, OUTCOMES, SUMMARY_TEXT_MAX, SUMMARY_TITLE_MAX, topicsFor } from "@/lib/support-summary";
+import { isEnglish, languageName } from "@/lib/support-translate";
 import type { ConversationFeed } from "@/server/support-inbox";
 
 import type { ActResult } from "./desk-context";
@@ -46,7 +48,9 @@ export function availableActs(c: Pick<ConversationFeed, "status" | "handler" | "
 
 /**
  * The buttons and the composer of an open conversation (D216, 2.4, step 4): Take over, Hand back to the AI, Transfer, Ask to sign in,
- * End; a reply (to the customer, only once it is yours) or an internal note (never sent). Ctrl or Cmd and Enter sends.
+ * End; a reply (to the customer, only once it is yours) or an internal note (never sent). Ctrl or Cmd and Enter sends. `/` at the
+ * start of a line opens the desk's saved replies, filled in for the conversation, and a reply can be translated into the
+ * conversation's language first (step 13): the translation only fills the composer, and Send sends it marked *Translated by AI*.
  */
 export function ConversationActions({
   conversation,
@@ -73,7 +77,71 @@ export function ConversationActions({
   const [asNote, setAsNote] = useState(false);
   const [target, setTarget] = useState("");
   const [editing, setEditing] = useState(false);
+  /** The person's own words before a translation, while the composer holds the AI's translation of them. */
+  const [original, setOriginal] = useState<string | null>(null);
+  const [replies, setReplies] = useState<SavedReply[] | null>(null);
+  const [slash, setSlash] = useState<{ query: string; start: number } | null>(null);
+  const [active, setActive] = useState(0);
+  const loadingReplies = useRef(false);
+  const textarea = useRef<HTMLTextAreaElement>(null);
   const writingNote = asNote || !acts.reply;
+  const translated = original !== null && !writingNote;
+  const matches = slash && replies ? matchReplies(replies, slash.query, conversation.locale) : [];
+  const picking = slash !== null && matches.length > 0;
+  const canTranslate = conversation.translate && acts.reply && !writingNote && !isEnglish(conversation.locale);
+
+  /** The desk's saved replies, filled in for this conversation, asked for the first time `/` is typed. */
+  async function loadReplies() {
+    if (replies || loadingReplies.current) return;
+    loadingReplies.current = true;
+    try {
+      const result = await act({ kind: "replies" });
+      setReplies(result.ok ? (result.replies ?? []) : []);
+    } catch {
+      setReplies([]);
+    } finally {
+      loadingReplies.current = false;
+    }
+  }
+
+  function typed(text: string, cursor: number) {
+    setDraft(text);
+    if (!text) setOriginal(null);
+    const found = slashQuery(text, cursor);
+    setSlash(found);
+    setActive(0);
+    if (found) void loadReplies();
+  }
+
+  function pick(reply: SavedReply) {
+    if (!slash) return;
+    const next = insertReply(draft, slash, reply.body);
+    setDraft(next.text);
+    setSlash(null);
+    requestAnimationFrame(() => {
+      textarea.current?.focus();
+      textarea.current?.setSelectionRange(next.cursor, next.cursor);
+    });
+  }
+
+  async function translateDraft() {
+    const text = draft.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      const result = await act({ kind: "translate_reply", text });
+      if (!result.ok) setProblem(result.problem);
+      else if (result.text) {
+        setOriginal(text);
+        setDraft(result.text);
+      }
+    } catch {
+      setProblem("The reply could not be translated just now. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function run(input: unknown, after?: () => void) {
     setBusy(true);
@@ -95,7 +163,10 @@ export function ConversationActions({
   function send() {
     const body = draft.trim();
     if (!body || busy) return;
-    void run({ kind: writingNote ? "note" : "reply", body }, () => setDraft(""));
+    void run(writingNote ? { kind: "note", body } : { kind: "reply", body, ...(translated ? { translated: true } : {}) }, () => {
+      setDraft("");
+      setOriginal(null);
+    });
   }
 
   const button = "rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50";
@@ -187,13 +258,31 @@ export function ConversationActions({
             </p>
           )}
           <textarea
+            ref={textarea}
             value={draft}
             onChange={(event) => {
-              setDraft(event.target.value);
+              typed(event.target.value, event.target.selectionStart ?? event.target.value.length);
               // The customer sees "typing…" (never the words), at most every 2 seconds.
               if (event.target.value && !writingNote) onTyping?.();
             }}
             onKeyDown={(event) => {
+              if (picking) {
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setActive((n) => (n + (event.key === "ArrowDown" ? 1 : matches.length - 1)) % matches.length);
+                  return;
+                }
+                if ((event.key === "Enter" && !event.metaKey && !event.ctrlKey) || event.key === "Tab") {
+                  event.preventDefault();
+                  pick(matches[Math.min(active, matches.length - 1)]);
+                  return;
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  setSlash(null);
+                  return;
+                }
+              }
               if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
                 event.preventDefault();
                 send();
@@ -202,11 +291,54 @@ export function ConversationActions({
             rows={3}
             maxLength={writingNote ? MESSAGE_MAX.note : MESSAGE_MAX.agent}
             aria-label={writingNote ? "Internal note (only your team sees it)" : "Reply to the customer"}
-            placeholder={writingNote ? "An internal note: only your team sees it" : "Write to the customer"}
+            aria-autocomplete="list"
+            aria-controls={picking ? "saved-replies" : undefined}
+            aria-activedescendant={picking ? `saved-reply-${matches[Math.min(active, matches.length - 1)].id}` : undefined}
+            placeholder={writingNote ? "An internal note: only your team sees it" : "Write to the customer, or / for a saved reply"}
             className={`w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm ${writingNote ? "border-dashed" : ""}`}
           />
+          {picking && (
+            <ul id="saved-replies" role="listbox" aria-label="Saved replies" className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-border bg-background text-sm">
+              {matches.map((reply, index) => (
+                <li
+                  key={reply.id}
+                  id={`saved-reply-${reply.id}`}
+                  role="option"
+                  aria-selected={index === active}
+                  onMouseDown={(event) => {
+                    // Keeps the focus in the composer.
+                    event.preventDefault();
+                    pick(reply);
+                  }}
+                  className={`flex cursor-pointer flex-col px-3 py-1.5 ${index === active ? "bg-surface" : ""}`}
+                >
+                  <span>
+                    <span className="font-mono text-xs text-muted">/{reply.shortcut}</span> {reply.title}
+                    {reply.locale ? <span className="text-xs text-muted"> · {languageName(reply.locale)}</span> : null}
+                  </span>
+                  <span className="line-clamp-1 text-xs text-muted">{reply.body}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {slash && replies && matches.length === 0 && <p className="text-xs text-muted">No saved reply starts with /{slash.query}.</p>}
+          {translated && (
+            <p className="flex flex-wrap items-center gap-2 text-xs text-muted" role="status">
+              Translated by AI into {languageName(conversation.locale)}: read it before you send. The customer sees it marked as translated.
+              <button type="button" onClick={() => { setDraft(original ?? ""); setOriginal(null); }} className="underline">
+                Back to my words
+              </button>
+            </p>
+          )}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs text-muted">Ctrl or ⌘ and Enter sends</span>
+            <span className="flex items-center gap-3 text-xs text-muted">
+              Ctrl or ⌘ and Enter sends
+              {canTranslate && !translated && (
+                <button type="button" disabled={busy || !draft.trim()} onClick={() => void translateDraft()} className="rounded-md border border-border px-2 py-1 text-foreground hover:bg-surface disabled:opacity-50">
+                  Translate to {languageName(conversation.locale)}
+                </button>
+              )}
+            </span>
             <button type="submit" disabled={busy || !draft.trim()} className="rounded-md bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
               {writingNote ? "Add note" : "Send"}
             </button>

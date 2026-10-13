@@ -58,6 +58,8 @@ export type ChatLabels = {
   queuePlace: string;
   nobody: string;
   nobodyLater: string;
+  /** Under a person's message the AI translated (step 13). */
+  translatedByAi: string;
   /** The rating card after the end (step 7). */
   rating: { question: string; yes: string; no: string; comment: string; send: string; thanks: string };
   /** The email card; `sent` holds `{email}`. */
@@ -609,6 +611,7 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
                     <PersonPicture person={agentOf(message)} size="size-7" />
                     <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 whitespace-pre-line">{message.body}</p>
                   </div>
+                  {message.data?.translated && <span className="ml-9 text-xs text-muted">{labels.translatedByAi}</span>}
                 </li>
               ) : (
                 <Fragment key={message.seq}>

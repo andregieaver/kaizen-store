@@ -180,7 +180,7 @@ describe("what a person may do with a conversation (step 4)", () => {
   });
 
   it("draws the buttons and a composer that says when a text is an internal note", () => {
-    const feed = { ...conversation({ handler: "human", assignee: { id: "me", name: "Me" } }), me: "me", canWrite: true, mode: "ai_first" as const, agents: [{ id: "ola", name: "Ola", online: true }], partner: { available: true, mine: true }, channel: "" };
+    const feed = { ...conversation({ handler: "human", assignee: { id: "me", name: "Me" } }), me: "me", canWrite: true, mode: "ai_first" as const, agents: [{ id: "ola", name: "Ola", online: true }], partner: { available: true, mine: true }, channel: "", translate: false };
     const out = html(h(ConversationActions, { conversation: feed, act: async () => ({ ok: true as const }), onDone: () => {} }));
     expect(out).toContain("Hand back to the AI");
     expect(out).toContain("Transfer");
@@ -312,6 +312,7 @@ describe("the silent partner's tab (step 8, C24)", () => {
     agents: [],
     partner,
     channel: "",
+    translate: false,
   });
   const panel = (f: ReturnType<typeof feed>, working = false) => html(h(PartnerPanel, { conversation: f, act: async () => ({ ok: true as const }), onDone: () => {}, onUse: () => {}, working }));
 

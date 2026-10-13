@@ -1670,3 +1670,35 @@ and push to `main`; watch CI; for a migration, record its version and check the 
 - **Checked in production (13 October 2026, 22:52 UTC)**: a client subscribed with the publishable key to a random `sc:` topic, and
   `commerce.support_ping()` run in the production database reached it in 20 ms (Realtime's public channels work; `realtime.send`
   exists). A message therefore reaches the other side in the ping, the 300 ms debounce and one fetch, well under a second.
+
+**Step 13 (13 October 2026).**
+
+- **Saved replies** are the desk's (`support_replies`), on a page of their own at `/admin/{store}/support/replies` (read with
+  `support:read`, written with `support:write`) and `/admin/platform/support/replies` (platform admins), in the Support section of
+  each level's navigation and in `ADMIN_PAGES`. Server: `src/server/support-replies.ts` (`listReplies()`, `saveReply()`,
+  `deleteReply()`, audited `support.reply_added`/`_changed`/`_deleted` with the shortcut, never the text; `repliesFor()` fills them in
+  for a conversation); pure: `src/lib/support-replies.ts` (`fillPlaceholders()`, `matchReplies()`, `slashQuery()`, `insertReply()`),
+  the form's schema `support-replies-schema.ts`. At most 200 a desk.
+- **Every saved reply has a shortcut**: the step-1 key `support_replies_shortcut_key` is `NULLS NOT DISTINCT`, so two replies without
+  one would clash; the form suggests one from the title (`shortcutFrom()`), and the `/` picker finds replies by it or by a title's
+  word. No migration was needed for that.
+- **Placeholders** `{customer_first_name}` (the customer's account name, the name they gave, or a requester's name; never an email
+  address), `{agent_first_name}` (the person's name as customers see it, `agentIdentity()`) and `{store}` (Kaizen on Kaizen's desk)
+  are filled in by the server for the conversation (the inbox's act `replies`); a name not known is left out with the space before
+  it and a comma that follows it ("Hi {customer_first_name}," becomes "Hi,"). Anything else in braces stays as written, and the page
+  says so. A reply for a language is offered first in conversations in that language (matched by its language, `nb` for `nb-NO`).
+- **The `/` picker**: `/` at the start of the composer's text or of a line opens the replies (a listbox under the composer; arrows,
+  Enter or Tab to put one in, Escape to close); they are asked for the first time `/` is typed. Putting one in sends nothing.
+- **Translation** (`src/server/support-translate.ts`, pure prompt and checks in `src/lib/support-translate.ts`, feature
+  `support_partner`), for people who may answer, with a text model (`ConversationFeed.translate`): *Translate* under a customer's
+  message shows it in English under it, marked as the AI's and for the person only (act `translate`; never stored); *Translate to
+  {language}* in the composer (a reply, not a note, in a conversation not in English) replaces the draft with the AI's translation
+  and keeps the person's words for *Back to my words* (act `translate_reply`; never stored, never sent). Only the person's Send sends
+  it, as `reply` with `translated`, kept as `data.translated` beside the person's identity; the widget shows `m.chat.translatedByAi`
+  under it (nb, sv, da, en by hand), the inbox and the account's Kaizen page show *Translated by AI*. The model gets the text between
+  `<text>` markers as data; an empty or too long answer is no translation.
+- **Not built**: translating the AI's own answers (it already answers in the conversation's language), automatic translation of
+  every message, and copying saved replies with a store (still `never` in `COPY_RULES`).
+- **Tests**: U `support-replies.test.ts` (placeholders, the picker's matching and insertion, shortcuts), `support-translate.test.ts`;
+  I `support-helpers.int.test.ts` (the desk's own replies and shortcuts, filled in for a conversation, a translation writes nothing
+  until the person sends it and then carries the mark); E `support.spec.ts` (the widget shows the mark on a translated reply only).

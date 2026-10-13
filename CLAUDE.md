@@ -301,6 +301,12 @@ of running `playwright install`.
   dynamically, nothing without the public Supabase settings) and then fetch as they would on their timer (`visitorDelay()`,
   `staffDelay()`: the safety net while connected). A topic (`sc:`/`sd:` key) is handed out only after the check that guards its
   data, typing carries only who, and polling must always work alone.
+  Saved replies and translation (step 13, `src/server/support-replies.ts`, `src/server/support-translate.ts`): a desk's replies are
+  edited at `…/support/replies` and put in with `/` in the composer, filled in by the server (`repliesFor()`,
+  `fillPlaceholders()`: `{customer_first_name}`, `{agent_first_name}`, `{store}`; a name not known is left out, never an email
+  address), every one with a shortcut (the key treats empty ones as the same); a translation (feature `support_partner`) is only
+  shown to the person or put in their composer, never stored or sent, and a reply they send translated carries `data.translated`
+  (*Translated by AI*, `m.chat.translatedByAi`).
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

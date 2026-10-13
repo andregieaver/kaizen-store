@@ -975,6 +975,8 @@ export const nb: Messages = {
     queuePlace: (place: number) => `Du er nummer ${place} i køen.`,
     nobody: "Ingen kan svare akkurat nå.",
     nobodyLater: "Skriv til oss likevel: vi svarer så snart noen er tilbake.",
+    /** Under a person's message the AI translated for the customer (D216, step 13). */
+    translatedByAi: "Oversatt av KI",
     // legal: needs review (D216, docs/support.md 8): what the email left in the chat is used for.
     emailCard: {
       intro: "Legg igjen e-postadressen din, så sender vi svaret dit.",

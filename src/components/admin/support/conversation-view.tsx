@@ -11,14 +11,25 @@ import {
 } from "@/lib/support-inbox-text";
 import type { StaffConversation, StaffMessage } from "@/server/support";
 
+import type { ActResult } from "./desk-context";
 import { ToneChart, ToneDot } from "./tone";
+import { TranslateButton } from "./translate-button";
 
 /**
  * A conversation as staff see it (D216, 2.4): the transcript, live, with every author marked — the customer, the AI (and the tools it
  * used), people, system lines, internal notes and the AI partner's help (both staff only, never sent) — and a tone on each customer
  * message. Every text is drawn as text. Taking over and answering come with step 4.
  */
-export function ConversationView({ conversation, now }: { conversation: StaffConversation; now: Date }) {
+export function ConversationView({
+  conversation,
+  now,
+  translate,
+}: {
+  conversation: StaffConversation;
+  now: Date;
+  /** Translates a customer's message for the person reading (step 13), when they may have it done. */
+  translate?: (seq: number) => Promise<ActResult>;
+}) {
   return (
     <article className="flex min-h-0 flex-1 flex-col" aria-label={`Conversation with ${conversation.who}`}>
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-3">
@@ -33,14 +44,14 @@ export function ConversationView({ conversation, now }: { conversation: StaffCon
       <SummaryPanel conversation={conversation} />
       <ol role="log" aria-live="polite" aria-label="Messages" className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
         {conversation.messages.map((message) => (
-          <MessageItem key={message.seq} message={message} toneMeasured={conversation.toneMeasured} />
+          <MessageItem key={message.seq} message={message} toneMeasured={conversation.toneMeasured} translate={translate} />
         ))}
       </ol>
     </article>
   );
 }
 
-function MessageItem({ message, toneMeasured }: { message: StaffMessage; toneMeasured: boolean }) {
+function MessageItem({ message, toneMeasured, translate }: { message: StaffMessage; toneMeasured: boolean; translate?: (seq: number) => Promise<ActResult> }) {
   if (message.author === "system") {
     const words = systemWords(message.kind, message.data);
     if (!words) return null;
@@ -67,6 +78,10 @@ function MessageItem({ message, toneMeasured }: { message: StaffMessage; toneMea
         {message.body}
       </p>
       {message.tools.length > 0 && <span className="text-xs text-muted">Used: {message.tools.join(", ")}</span>}
+      {message.author === "agent" && (message.data as { translated?: unknown } | null)?.translated === true && (
+        <span className="text-xs text-muted">Translated by AI · the customer sees this mark</span>
+      )}
+      {customer && translate && <TranslateButton seq={message.seq} translate={translate} />}
       {tone && <ToneDot score={message.tone} />}
       {/* A score that is missing is never shown as 0 (2.6). */}
       {customer && !tone && toneMeasured && <span className="text-xs text-muted">Tone: not measured</span>}

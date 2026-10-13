@@ -6,13 +6,16 @@ import { after } from "next/server";
 
 import { db } from "@/db/client";
 import { MESSAGE_MAX, PARTNER_QUESTION_MAX } from "@/lib/support-rules";
+import type { SavedReply } from "@/lib/support-replies";
 import { REFUSAL_WORDS } from "@/lib/support-state";
 
 import { audit } from "./auth";
 import { SupportError, addMessage, agentIdentity, deskSettings, setPartnerPaused, transition } from "./support";
 import type { StaffDesk } from "./support-desk";
 import { runPartner } from "./support-partner";
+import { repliesFor } from "./support-replies";
 import { editSummary, makeBrief, readSummaryEdit, summarise } from "./support-summary";
+import { translateMessage, translateReply } from "./support-translate";
 
 type Row = Record<string, unknown>;
 
@@ -25,7 +28,7 @@ type Row = Record<string, unknown>;
 
 export type AgentAct =
   | { kind: "claim" }
-  | { kind: "reply"; body: string }
+  | { kind: "reply"; body: string; translated?: boolean }
   | { kind: "note"; body: string }
   | { kind: "transfer"; target: string | null }
   | { kind: "hand_back" }
@@ -35,12 +38,36 @@ export type AgentAct =
   | { kind: "summary"; summary: unknown }
   | { kind: "partner"; seq: number }
   | { kind: "ask_partner"; question: string }
-  | { kind: "pause_partner"; paused: boolean };
+  | { kind: "pause_partner"; paused: boolean }
+  | { kind: "replies" }
+  | { kind: "translate"; seq: number }
+  | { kind: "translate_reply"; text: string };
 
-/** `brief` is the conversation so far, when one was asked for (step 7); `ran`, whether the silent partner answered (step 8). */
-export type AgentActResult = { ok: true; brief?: string | null; ran?: boolean } | { ok: false; problem: string };
+/**
+ * `brief` is the conversation so far, when one was asked for (step 7); `ran`, whether the silent partner answered (step 8);
+ * `replies`, the desk's saved replies filled in for the conversation, and `text`, a translation for the person alone (step 13).
+ */
+export type AgentActResult =
+  | { ok: true; brief?: string | null; ran?: boolean; replies?: SavedReply[]; locale?: string; text?: string; language?: string }
+  | { ok: false; problem: string };
 
-export const ACT_KINDS = ["claim", "reply", "note", "transfer", "hand_back", "end", "ask_sign_in", "brief", "summary", "partner", "ask_partner", "pause_partner"] as const;
+export const ACT_KINDS = [
+  "claim",
+  "reply",
+  "note",
+  "transfer",
+  "hand_back",
+  "end",
+  "ask_sign_in",
+  "brief",
+  "summary",
+  "partner",
+  "ask_partner",
+  "pause_partner",
+  "replies",
+  "translate",
+  "translate_reply",
+] as const;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -54,9 +81,16 @@ export function readAct(raw: unknown): AgentAct | null {
     case "end":
     case "ask_sign_in":
     case "brief":
+    case "replies":
       return { kind: value.kind };
     case "summary":
       return { kind: "summary", summary: value.summary };
+    case "translate":
+      return Number.isInteger(value.seq) && (value.seq as number) > 0 && (value.seq as number) < 1_000_000 ? { kind: "translate", seq: value.seq as number } : null;
+    case "translate_reply": {
+      const text = typeof value.text === "string" ? value.text.trim() : "";
+      return text.length > 0 && text.length <= MESSAGE_MAX.agent ? { kind: "translate_reply", text } : null;
+    }
     case "partner":
       return Number.isInteger(value.seq) && (value.seq as number) > 0 && (value.seq as number) < 1_000_000 ? { kind: "partner", seq: value.seq as number } : null;
     case "ask_partner": {
@@ -69,7 +103,9 @@ export function readAct(raw: unknown): AgentAct | null {
     case "note": {
       const body = typeof value.body === "string" ? value.body.trim() : "";
       const max = value.kind === "reply" ? MESSAGE_MAX.agent : MESSAGE_MAX.note;
-      return body.length > 0 && body.length <= max ? { kind: value.kind, body } : null;
+      if (body.length === 0 || body.length > max) return null;
+      // A reply the AI translated says so to the customer (step 13); a note is never sent, so it has no such mark.
+      return value.kind === "reply" && value.translated === true ? { kind: "reply", body, translated: true } : { kind: value.kind, body };
     }
     case "transfer":
       return value.target === null || (typeof value.target === "string" && UUID.test(value.target)) ? { kind: "transfer", target: value.target as string | null } : null;
@@ -126,7 +162,7 @@ export async function agentAct(staff: StaffDesk, conversationId: string, act: Ag
       case "reply": {
         const identity = await agentIdentity(staff.desk, me);
         // The name and picture the customer sees are kept with the message, as they were when it was written.
-        await addMessage(staff.desk, conversationId, "agent", me, act.body, { data: identity });
+        await addMessage(staff.desk, conversationId, "agent", me, act.body, { data: act.translated ? { ...identity, translated: true } : identity });
         return { ok: true };
       }
       case "note":
@@ -178,6 +214,19 @@ export async function agentAct(staff: StaffDesk, conversationId: string, act: Ag
       case "ask_partner": {
         const ran = await runPartner(staff, conversationId, { kind: "question", text: act.question });
         return ran.ok ? { ok: true, ran: ran.ran } : ran;
+      }
+      case "replies": {
+        const filled = await repliesFor(staff, conversationId);
+        return filled ? { ok: true, replies: filled.replies, locale: filled.locale } : { ok: false, problem: REFUSAL_WORDS.support_gone };
+      }
+      // Translations are the person's alone: shown or put in their composer, never written to the conversation from here.
+      case "translate": {
+        const done = await translateMessage(staff, conversationId, act.seq);
+        return done.ok ? { ok: true, text: done.text, language: done.language } : done;
+      }
+      case "translate_reply": {
+        const done = await translateReply(staff, conversationId, act.text);
+        return done.ok ? { ok: true, text: done.text, language: done.language } : done;
       }
       case "pause_partner":
         return (await setPartnerPaused(staff.desk, conversationId, me, act.paused)) ? { ok: true } : { ok: false, problem: "Only the person who has the conversation pauses the partner in it." };

@@ -969,6 +969,8 @@ export const da: Messages = {
     queuePlace: (place: number) => `Du er nummer ${place} i køen.`,
     nobody: "Ingen kan svare lige nu.",
     nobodyLater: "Skriv til os alligevel: vi svarer, så snart nogen er tilbage.",
+    /** Under a person's message the AI translated for the customer (D216, step 13). */
+    translatedByAi: "Oversat af AI",
     // legal: needs review (D216, docs/support.md 8): what the email left in the chat is used for.
     emailCard: {
       intro: "Skriv din e-mailadresse, så sender vi svaret dertil.",

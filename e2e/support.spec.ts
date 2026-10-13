@@ -53,6 +53,11 @@ test("people only: the visitor waits, leaves an email, a person answers in the c
     await sql`select * from commerce.support_add_message(${id}, 'agent', ${ownerId}, 'Ja, vi har tre igjen.', null, ${sql.json({ name: "Ola", picture: null })})`;
     await expect(chat.getByText("Ola ble med i samtalen.")).toBeVisible({ timeout: 5000 });
     await expect(chat.getByText("Ja, vi har tre igjen.")).toBeVisible({ timeout: 5000 });
+    // A reply the AI translated for the person says so (step 13); one in their own words does not.
+    await expect(chat.getByText("Oversatt av KI")).toHaveCount(0);
+    await sql`select * from commerce.support_add_message(${id}, 'agent', ${ownerId}, 'Vi sender dem i morgen.', null, ${sql.json({ name: "Ola", picture: null, translated: true })})`;
+    await expect(chat.getByText("Vi sender dem i morgen.")).toBeVisible({ timeout: 5000 });
+    await expect(chat.getByText("Oversatt av KI")).toHaveCount(1);
 
     // The visitor leaves; the next answer goes by email with a link back.
     await chat.getByRole("button", { name: "Lukk chatten" }).click();

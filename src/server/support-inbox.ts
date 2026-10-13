@@ -71,6 +71,8 @@ export type ConversationFeed = StaffConversation & {
   partner: { available: boolean; mine: boolean };
   /** The conversation's realtime topic (`sc:{key}`, step 12). */
   channel: string;
+  /** Whether the person may have messages and replies translated by AI (step 13): they may answer, and the desk has a text model. */
+  translate: boolean;
 };
 
 /** One conversation for staff after `after`; looking at it counts as read up to its last message. */
@@ -94,6 +96,7 @@ export async function conversationFeed(desk: StaffDesk, id: string, after: numbe
     agents: agents.filter((a) => a.id !== desk.account.id),
     partner: { available: desk.canWrite && mode !== "off" && Boolean(settings?.partner) && Boolean(connection?.textModel), mine: mine.partner },
     channel,
+    translate: desk.canWrite && Boolean(connection?.textModel),
   };
 }
 

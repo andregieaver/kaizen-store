@@ -1,3 +1,5 @@
+import type { SavedReply } from "@/lib/support-replies";
+
 /**
  * What an inbox needs from the level it is drawn at (D216, `docs/support.md` 5.4): a store's, the owner's combined one, or Kaizen's
  * own. The components never import a level's actions; the page passes them here, bound, as `PageOwnerContext` does for the page
@@ -30,7 +32,9 @@ export type SupportDeskContext = {
   };
 };
 
-export type ActResult = { ok: true; brief?: string | null; ran?: boolean } | { ok: false; problem: string };
+export type ActResult =
+  | { ok: true; brief?: string | null; ran?: boolean; replies?: SavedReply[]; locale?: string; text?: string; language?: string }
+  | { ok: false; problem: string };
 
 /** Runs an act through the level's action. */
 export function runAct(context: Pick<SupportDeskContext, "actions">, store: string | null, conversationId: string, act: unknown): Promise<ActResult> {

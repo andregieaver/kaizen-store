@@ -971,6 +971,8 @@ export const sv: Messages = {
     queuePlace: (place: number) => `Du är nummer ${place} i kön.`,
     nobody: "Ingen kan svara just nu.",
     nobodyLater: "Skriv till oss ändå: vi svarar så snart någon är tillbaka.",
+    /** Under a person's message the AI translated for the customer (D216, step 13). */
+    translatedByAi: "Översatt av AI",
     // legal: needs review (D216, docs/support.md 8): what the email left in the chat is used for.
     emailCard: {
       intro: "Lämna din e-postadress så skickar vi svaret dit.",

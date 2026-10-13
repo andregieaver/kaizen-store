@@ -972,6 +972,8 @@ export const en = {
     queuePlace: (place: number) => `You're number ${place} in line.`,
     nobody: "Nobody can answer right now.",
     nobodyLater: "Write to us anyway: we'll answer as soon as someone is back.",
+    /** Under a person's message the AI translated for the customer (D216, step 13). */
+    translatedByAi: "Translated by AI",
     // legal: needs review (D216, docs/support.md 8): what the email left in the chat is used for.
     emailCard: {
       intro: "Leave your email and we'll send the answer there.",

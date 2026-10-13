@@ -195,6 +195,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
               <li key={message.seq} className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
                 <span className="text-xs text-muted">{name}</span>
                 <p className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-line ${mine ? "bg-foreground text-background" : "border border-border bg-background"}`}>{message.body}</p>
+                {message.author === "agent" && message.data?.translated && <span className="text-xs text-muted">Translated by AI</span>}
                 {message.data?.chips && message.data.chips.length > 0 && (
                   <ul className="flex flex-wrap gap-2">
                     {message.data.chips
