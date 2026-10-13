@@ -5,7 +5,7 @@ import { KAIZEN_TOPICS, STORE_TOPICS } from "@/lib/support-summary";
 import { TONE_BANDS, type ToneBand } from "@/lib/support-tone";
 
 import { aiFor } from "./ai";
-import { INBOX_TABS, deskSettings, lastToneAlert, markRead, presence, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
+import { INBOX_TABS, conversationChannel, deskChannels, deskSettings, lastToneAlert, markRead, presence, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
 import { deskAgents } from "./support-agent";
 import type { StaffDesk } from "./support-desk";
 
@@ -18,7 +18,15 @@ import type { StaffDesk } from "./support-desk";
 export const NO_STORE = { "Cache-Control": "no-store" } as const;
 
 /** The list, how many wait for a person, and how many of the person's own conversations have a customer message they have not read (the alerts, 2.9). */
-export type InboxFeed = { rows: InboxRow[]; waiting: number; mineUnread: number; /** When a tone alert was last raised (2.6): the inbox notifies when it moves. */ lastToneAlert: string | null };
+export type InboxFeed = {
+  rows: InboxRow[];
+  waiting: number;
+  mineUnread: number;
+  /** When a tone alert was last raised (2.6): the inbox notifies when it moves. */
+  lastToneAlert: string | null;
+  /** The desks' realtime topics (`sd:{key}`, 4.6, step 12), handed out only to people who may read them. */
+  channels: string[];
+};
 
 /** The list's filters from the address: the tab (waiting by default), the words searched and, at the owner's level, the store. */
 export function inboxQuery(search: URLSearchParams): { tab: InboxTab; q?: string; store?: string; tone?: ToneBand; topic?: string } {
@@ -40,15 +48,16 @@ export function inboxQuery(search: URLSearchParams): { tab: InboxTab; q?: string
 export async function inboxFeed(desks: StaffDesk[], query: ReturnType<typeof inboxQuery>): Promise<InboxFeed> {
   const shown = query.store ? desks.filter((d) => d.store?.slug === query.store) : desks;
   const account = desks[0]?.account.id;
-  if (!account || shown.length === 0) return { rows: [], waiting: 0, mineUnread: 0, lastToneAlert: null };
+  if (!account || shown.length === 0) return { rows: [], waiting: 0, mineUnread: 0, lastToneAlert: null, channels: [] };
   const plain = shown.map((d) => d.desk);
-  const [rows, waiting, mineUnread, toneAlert] = await Promise.all([
+  const [rows, waiting, mineUnread, toneAlert, channels] = await Promise.all([
     staffList(plain, account, { tab: query.tab, q: query.q, tone: query.tone, topic: query.topic }),
     waitingCount(plain),
     mineUnreadCount(plain, account),
     lastToneAlert(plain),
+    deskChannels(plain),
   ]);
-  return { rows, waiting, mineUnread, lastToneAlert: toneAlert };
+  return { rows, waiting, mineUnread, lastToneAlert: toneAlert, channels };
 }
 
 /** A conversation as the inbox draws it: the conversation, who is looking (to know whether it is theirs), what they may do and to whom it can be handed. */
@@ -60,18 +69,21 @@ export type ConversationFeed = StaffConversation & {
   agents: { id: string; name: string; online: boolean }[];
   /** The silent partner here (step 8): whether the desk offers it (support on, its switch, a text model), and the person's own switch. */
   partner: { available: boolean; mine: boolean };
+  /** The conversation's realtime topic (`sc:{key}`, step 12). */
+  channel: string;
 };
 
 /** One conversation for staff after `after`; looking at it counts as read up to its last message. */
 export async function conversationFeed(desk: StaffDesk, id: string, after: number): Promise<ConversationFeed | null> {
   const conversation = await staffConversation(desk.desk, id, after);
   if (!conversation) return null;
-  const [, agents, settings, mine, connection] = await Promise.all([
+  const [, agents, settings, mine, connection, channel] = await Promise.all([
     markRead(desk.desk, id, desk.account.id, conversation.messageSeq),
     deskAgents(desk),
     deskSettings(desk.desk),
     presence(desk.desk, desk.account.id),
     aiFor(desk.desk.storeId),
+    conversationChannel(desk.desk, id),
   ]);
   const mode = settings?.mode ?? "off";
   return {
@@ -81,6 +93,7 @@ export async function conversationFeed(desk: StaffDesk, id: string, after: numbe
     mode,
     agents: agents.filter((a) => a.id !== desk.account.id),
     partner: { available: desk.canWrite && mode !== "off" && Boolean(settings?.partner) && Boolean(connection?.textModel), mine: mine.partner },
+    channel,
   };
 }
 

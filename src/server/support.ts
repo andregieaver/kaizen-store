@@ -368,7 +368,7 @@ export type VisitorExtras = {
 
 /** The conversation's state as the visitor's widget draws it; `agent` is the person who has it, as customers see them. */
 export function visitorState(
-  conversation: Pick<Conversation, "status" | "handler" | "emailCount"> & Partial<Pick<Conversation, "rating">>,
+  conversation: Pick<Conversation, "status" | "handler" | "emailCount"> & Partial<Pick<Conversation, "rating" | "channelKey">>,
   settings: DeskSettings,
   signedIn: boolean,
   extras: VisitorExtras = {},
@@ -387,6 +387,8 @@ export function visitorState(
     emailFollowup: followup,
     followupEmail: followup ? (extras.followupEmail ?? null) : null,
     rating: conversation.rating ?? null,
+    // The conversation's realtime topic while it waits for or is with a person (4.6, step 12): the token was just checked.
+    channel: open && conversation.handler !== "ai" && conversation.channelKey ? `sc:${conversation.channelKey}` : null,
   };
 }
 
@@ -423,6 +425,18 @@ export async function availabilityOf(desk: Desk, settings: Pick<DeskSettings, "h
 }
 
 export const channelOf = (conversation: Pick<Conversation, "channelKey">) => `sc:${conversation.channelKey}`;
+
+/** A conversation's realtime topic (4.6, step 12), for staff who were let read it. */
+export async function conversationChannel(desk: Desk, id: string): Promise<string> {
+  const [row] = await db().execute<Row>(sql`select channel_key from commerce.support_conversations where id = ${id}::uuid and ${deskIs(desk, sql`store_id`)}`);
+  return row ? `sc:${String(row.channel_key)}` : "";
+}
+
+/** The desks' realtime topics (`sd:{key}`, step 12), for staff who were let read them. */
+export async function deskChannels(desks: Desk[]): Promise<string[]> {
+  const rows = await db().execute<Row>(sql`select channel_key from commerce.support_settings c where ${onDesks(desks)}`);
+  return rows.map((row) => `sd:${String(row.channel_key)}`);
+}
 
 /** What the AI is given of the conversation: the last messages of the customer, the AI and people, oldest first (never notes or system lines). */
 export async function historyForAi(desk: Desk, conversationId: string, limit: number): Promise<{ author: "customer" | "ai" | "agent"; body: string }[]> {

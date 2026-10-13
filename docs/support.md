@@ -1648,3 +1648,22 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   hold.
 - **Tests**: I `support-kaizen.int.test.ts` (another account cannot list, read, write in or end a request; a store that is not the
   account's is not recorded; Kaizen's tools give only the account's stores and status, and admin page chips).
+
+**Step 12 (13 October 2026).**
+
+- **The client** is `useSupportChannel()` (`src/components/chat/use-support-channel.ts`), with the pure rules in
+  `src/lib/support-realtime.ts` (`visitorDelay()`, `staffDelay()`, `widgetListens()`, typing's `maySendTyping()`/`readTyping()`,
+  `isTopic()`). `@supabase/realtime-js` 2.117.1 is a direct dependency, loaded by a dynamic `import()` only when there is a topic to
+  join and the build has `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (read as plain `process.env`, no zod in
+  the widget). Without them (CI, e2e, local) or when the socket fails, it joins nothing and the callers poll at their normal rates.
+- **Topics reach a client only after the check that guards their data**: the widget's state carries `channel` (`sc:{key}`) only
+  while the conversation waits for or is with a person (`visitorState()`, after the token check); the inbox's list carries its desks'
+  `channels` (`sd:{key}`, `deskChannels()`, for the desks the person may read) and a conversation's feed its `channel`
+  (`conversationChannel()`). The account's own page for Kaizen support and the email link's page still poll (3 seconds).
+- **On a ping** (`m` or `s`, debounced 300 ms) the widget asks `/api/chat/feed` at once, and the inbox asks its list and the open
+  conversation at once; while connected, their timers slow to 15 seconds (the safety net). Nothing is shown about the connection.
+- **Typing**: the widget sends `{by: "customer"}` and the inbox's composer `{by: "agent"}` (an answer, never a note) on the
+  conversation's topic at most every 2 seconds; the other side shows it for 4 seconds (the widget: the person's picture with the
+  chat's "Writing …"; the inbox: *The customer is typing…*). Words never travel.
+- **Tests**: U `support-realtime.test.ts` (the delays with and without a connection, listening only with a person, typing's rate
+  and payload, topics); I the visitor's topic only while queued or with a person (`support-tools.int.test.ts`); E stays on polling.

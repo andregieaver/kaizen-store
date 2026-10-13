@@ -65,6 +65,8 @@ export type VisitorState = {
   followupEmail: string | null;
   /** The visitor's answer to "Did we help?" once the conversation ended (step 7). */
   rating: "good" | "bad" | null;
+  /** The conversation's realtime topic (`sc:{key}`, step 12) while it waits for or is with a person; null otherwise. */
+  channel: string | null;
 };
 
 /** What every visitor route answers with. `token` only when the conversation was just made (or started anew). */

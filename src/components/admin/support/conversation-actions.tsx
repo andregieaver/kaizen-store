@@ -53,12 +53,18 @@ export function ConversationActions({
   act,
   onDone,
   initialDraft,
+  onTyping,
+  customerTyping = false,
 }: {
   conversation: ConversationFeed;
   act: (input: unknown) => Promise<ActResult>;
   onDone: () => void;
   /** A partner's draft put here by *Use* (step 8): it fills the composer, and nothing is sent. */
   initialDraft?: string;
+  /** Typing an answer (not a note): the customer is told someone is typing (realtime, step 12). */
+  onTyping?: () => void;
+  /** The customer is typing now (realtime, step 12). */
+  customerTyping?: boolean;
 }) {
   const acts = availableActs(conversation);
   const [busy, setBusy] = useState(false);
@@ -175,9 +181,18 @@ export function ConversationActions({
               </button>
             </div>
           )}
+          {customerTyping && (
+            <p className="text-sm text-muted" role="status">
+              The customer is typing…
+            </p>
+          )}
           <textarea
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => {
+              setDraft(event.target.value);
+              // The customer sees "typing…" (never the words), at most every 2 seconds.
+              if (event.target.value && !writingNote) onTyping?.();
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
                 event.preventDefault();

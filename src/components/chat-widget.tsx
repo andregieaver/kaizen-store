@@ -12,7 +12,6 @@ import {
   mergeMessages,
   readStored,
   storedValue,
-  pollDelay,
   type ConversationRef,
   type StoredConversation,
   type VisitorMessage,
@@ -20,12 +19,14 @@ import {
   type VisitorState,
 } from "@/lib/support-visitor";
 
+import { TYPING_SHOWN_MS, visitorDelay, widgetListens } from "@/lib/support-realtime";
 import type { UnitLabels } from "@/lib/unit-price-text";
 
 import { Chips, type ChipLabels } from "./chat/chips";
 import { ConfirmCard, actionLine, type ActionLabels } from "./chat/confirm-card";
 import { EmailForm } from "./chat/email-card";
 import { SignInCard, type SignInCardLabels } from "./chat/sign-in-card";
+import { useSupportChannel } from "./chat/use-support-channel";
 import { Icon } from "./icons";
 import { UnitLine, VatAmount } from "./price";
 
@@ -194,9 +195,27 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
 
   // While a conversation is open, the widget asks the site for what is new (D216): every 3 seconds while waiting for or talking to a
   // person, 10 with the AI, 15 with the chat closed or the tab hidden. A person's answer while the chat is closed marks its button.
+  // With realtime (step 12, only while waiting for or with a person) a ping asks at once and the timer slows to the safety net.
   const conversationId = stored.conversation?.id ?? null;
   const live = loaded && conversationId !== null && stored.status === "open";
   const handler = state?.handler ?? "ai";
+  const topic = live && widgetListens(state) ? state!.channel : null;
+  const [nudge, setNudge] = useState(0);
+  // "typing…" from a person shows for a few seconds after their last keystroke, and goes with their message.
+  const [agentTyping, setAgentTyping] = useState(false);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const setAgentTypingAt = (at: number) => {
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    setAgentTyping(at > 0);
+    if (at > 0) typingTimer.current = setTimeout(() => setAgentTyping(false), TYPING_SHOWN_MS);
+  };
+  const realtime = useSupportChannel(topic ? [topic] : [], {
+    onPing: () => setNudge((n) => n + 1),
+    onTyping: (by) => {
+      if (by === "agent") setAgentTypingAt(Date.now());
+    },
+  });
+  const connected = realtime.connected;
   useEffect(() => {
     if (!live) return;
     let timer: ReturnType<typeof setTimeout>;
@@ -218,6 +237,7 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
                 const merged = mergeMessages(now.messages, body.messages);
                 return { ...now, status: body.state.status, messages: merged, lastSeq: lastSeqOf(merged, now.lastSeq) };
               });
+              if (body.messages.some((m) => m.author === "agent")) setAgentTypingAt(0);
               if (!openRef.current && body.messages.some((m) => m.author === "agent")) setUnseen(true);
             } else if (body.state.status !== storedRef.current.status) {
               setStored((now) => ({ ...now, status: body.state.status }));
@@ -228,15 +248,17 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
         }
       }
       const hidden = document.visibilityState === "hidden" || !openRef.current;
-      const delay = pollDelay({ status: "open", handler }, hidden);
+      const delay = visitorDelay({ status: "open", handler }, hidden, connected);
       if (!stopped && delay !== null) timer = setTimeout(tick, delay);
     };
-    timer = setTimeout(tick, pollDelay({ status: "open", handler }, !openRef.current) ?? 10_000);
+    // A ping asks at once; otherwise the first ask waits its delay.
+    timer = setTimeout(tick, nudge > 0 ? 0 : (visitorDelay({ status: "open", handler }, !openRef.current, connected) ?? 10_000));
     return () => {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [live, conversationId, handler, site]);
+  }, [live, conversationId, handler, site, nudge, connected]);
+
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: "end" });
   }, [messages, notices, pending, waiting, open]);
@@ -657,6 +679,12 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
             {agent.mode !== "off" && stored.conversation && stored.status === "ended" && state?.status === "ended" && (
               <RatingCard state={state} labels={labels} site={site} conversation={stored.conversation} after={stored.lastSeq} onReply={(reply) => setState(reply.state)} />
             )}
+            {agentTyping && !waiting && (
+              <li className="flex items-end gap-2 text-sm text-muted">
+                <PersonPicture person={state?.agent ?? null} size="size-7" />
+                <span>{labels.thinking}</span>
+              </li>
+            )}
             {(waiting || recording) && (
               <li className="flex items-end gap-2 text-sm text-muted">
                 {avatar("size-7")}
@@ -676,7 +704,11 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
               <textarea
                 ref={inputRef}
                 value={draft}
-                onChange={(event) => setDraft(event.target.value)}
+                onChange={(event) => {
+                  setDraft(event.target.value);
+                  // The person answering sees "typing…" (never the words), at most every 2 seconds.
+                  if (topic && event.target.value) realtime.sendTyping(topic, "customer");
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
                     event.preventDefault();

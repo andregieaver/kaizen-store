@@ -297,6 +297,10 @@ of running `playwright install`.
   support* in the account menu, the manager tool `contact_kaizen_support`): source `admin`, `requester_id` the account, no token;
   every reader takes the account (`requesterConversation()` and co.), and Kaizen's tools (`kaizenToolsFor()`, also the partner's
   there) read only stores the account is a member of and never change one.
+  Realtime (step 12): the database only pings (`support_ping()`, `{at}`); clients join through `useSupportChannel()` (loaded
+  dynamically, nothing without the public Supabase settings) and then fetch as they would on their timer (`visitorDelay()`,
+  `staffDelay()`: the safety net while connected). A topic (`sc:`/`sd:` key) is handed out only after the check that guards its
+  data, typing carries only who, and polling must always work alone.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

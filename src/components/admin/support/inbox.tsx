@@ -5,9 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { TAB_WORDS, topicWords } from "@/lib/support-inbox-text";
 import { topicsFor } from "@/lib/support-summary";
 import { TONE_BAND_WORDS, TONE_BANDS } from "@/lib/support-tone";
-import { HEARTBEAT_SECONDS, PARTNER_PAUSE_SECONDS, POLL_STAFF_MS } from "@/lib/support-rules";
+import { TYPING_SHOWN_MS, staffDelay } from "@/lib/support-realtime";
+import { HEARTBEAT_SECONDS, PARTNER_PAUSE_SECONDS } from "@/lib/support-rules";
 import type { InboxTab } from "@/server/support";
 import type { ConversationFeed, InboxFeed } from "@/server/support-inbox";
+
+import { useSupportChannel } from "../../chat/use-support-channel";
 
 import { ConversationActions } from "./conversation-actions";
 import { ConversationList } from "./conversation-list";
@@ -55,6 +58,10 @@ export function Inbox({
   const [gone, setGone] = useState(false);
   const [mineUnread, setMineUnread] = useState(initial.mineUnread);
   const [toneAlertAt, setToneAlertAt] = useState(initial.lastToneAlert);
+  // Realtime (D216, 4.6, step 12): the desks' topics and the open conversation's; a ping asks at once, the timers slow to the safety net.
+  const [deskChannels, setDeskChannels] = useState(initial.channels);
+  const [customerTyping, setCustomerTyping] = useState(false);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Sound and browser notifications, once the person turned them on (2.9): the browser asks first.
   const [alerts, setAlerts] = useState(false);
   const seen = useRef({ waiting: initial.waiting, mineUnread: initial.mineUnread, toneAlertAt: initial.lastToneAlert });
@@ -74,26 +81,42 @@ export function Inbox({
       setWaiting(body.waiting);
       setMineUnread(body.mineUnread);
       setToneAlertAt(body.lastToneAlert);
+      setDeskChannels((current) => (current.join() === body.channels.join() ? current : body.channels));
       setNow(new Date());
     } catch {
       // Offline for a moment: the next poll tries again.
     }
   }, [context.feedUrl, tab, query, store, tone, topic]);
 
-  // The list: at once when the filters change, then every 3 seconds (15 in a hidden tab).
+  const conversationTopic = conversation?.status === "open" ? conversation.channel : "";
+  const realtime = useSupportChannel([...deskChannels, ...(conversationTopic ? [conversationTopic] : [])], {
+    onPing: () => {
+      void loadList();
+      setRefresh((n) => n + 1);
+    },
+    onTyping: (by) => {
+      if (by !== "customer") return;
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      setCustomerTyping(true);
+      typingTimer.current = setTimeout(() => setCustomerTyping(false), TYPING_SHOWN_MS);
+    },
+  });
+  const connected = realtime.connected;
+
+  // The list: at once when the filters change, then every 3 seconds (15 in a hidden tab or while realtime is connected).
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     let stopped = false;
     const tick = async () => {
       await loadList();
-      if (!stopped) timer = setTimeout(tick, hidden() ? POLL_STAFF_MS.realtime : POLL_STAFF_MS.list);
+      if (!stopped) timer = setTimeout(tick, staffDelay("list", hidden(), connected));
     };
     void tick();
     return () => {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [loadList]);
+  }, [loadList, connected]);
 
   // The open conversation: everything first, then what came after the last message seen, every 2 seconds.
   useEffect(() => {
@@ -121,14 +144,14 @@ export function Inbox({
       } catch {
         // The next poll tries again.
       }
-      if (!stopped) timer = setTimeout(tick, hidden() ? POLL_STAFF_MS.realtime : POLL_STAFF_MS.conversation);
+      if (!stopped) timer = setTimeout(tick, staffDelay("conversation", hidden(), connected));
     };
     void tick();
     return () => {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [context, open, refresh]);
+  }, [context, open, refresh, connected]);
 
   // The heartbeat keeps an online agent counted as online while the inbox is open.
   useEffect(() => {
@@ -340,6 +363,8 @@ export function Inbox({
                 initialDraft={fill?.text}
                 conversation={conversation}
                 act={(input) => runAct(context, conversation.store?.slug ?? null, conversation.id, input)}
+                onTyping={() => realtime.sendTyping(conversationTopic || null, "agent")}
+                customerTyping={customerTyping}
                 onDone={() => {
                   setRefresh((n) => n + 1);
                   void loadList();

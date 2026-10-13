@@ -240,6 +240,18 @@ describe("the AI's turn with the tools", () => {
     expect(((await route.visitorConfirm(raw, ref, 0, answer.action!.id, true)) as Response).status).toBe(404);
   });
 
+  it("hands the visitor the conversation's realtime topic only while it waits for or is with a person (step 12)", async () => {
+    model([{ content: "Hello." }]);
+    const reply = await route.visitorTurn(ctx, { after: 0, signals: { views: [], searches: [] } }, "Hi");
+    if (reply instanceof Response) throw new Error(await reply.text());
+    expect(reply.state.channel).toBeNull();
+    const ref = { id: reply.conversation!.id, token: reply.conversation!.token! };
+    const queued = await route.visitorHandoff(raw, ref, 0);
+    if (queued instanceof Response) throw new Error(await queued.text());
+    const [row] = await db().execute<Row>(sql`select channel_key from commerce.support_conversations where id = ${ref.id}::uuid`);
+    expect(queued.state).toMatchObject({ handler: "queue", channel: `sc:${String(row.channel_key)}` });
+  });
+
   it("refuses the order tools to a visitor who is not signed in", async () => {
     const results = model([call("my_orders"), { content: "Please sign in first." }]);
     const reply = await route.visitorTurn(ctx, { after: 0, signals: { views: [], searches: [] } }, "What did I order?");
