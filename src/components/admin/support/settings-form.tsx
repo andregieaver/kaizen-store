@@ -107,6 +107,18 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">Silent partner</h2>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="partner" defaultChecked={settings.partner} className="mt-0.5 size-4" />
+          <span>
+            <span className="font-medium">Let the AI help your people as a silent partner.</span> Beside a conversation someone has, it looks up facts
+            with that person&apos;s own permissions, recommends what to do and drafts a reply they may use. It never writes to the customer or acts, and
+            each person can switch it off for themselves. Needs a text model{settings.aiReady ? "" : " (none is connected)"}.
+          </span>
+        </label>
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">The customer&apos;s tone</h2>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="toneOn" defaultChecked={settings.toneOn} className="mt-0.5 size-4" />

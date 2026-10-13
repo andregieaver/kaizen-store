@@ -446,6 +446,16 @@ async function kaizenTool(name: string, args: Record<string, unknown>): Promise<
  * conversation and the site's tools, runs tools for up to a few rounds,
  * and words the answer. What the tools opened and found goes with it.
  */
+/**
+ * The chat's own `search_content` and `store_info` (Kaizen's `site_info`) for the silent partner (D216, step 8), as the visitor's chat
+ * answers them, as JSON text. Nothing else of the chat's tools is offered there.
+ */
+export async function siteFactsTool(site: ChatSite, name: "search_content" | "store_info", args: Record<string, unknown>): Promise<string> {
+  const request = { messages: [], signals: { views: [], searches: [] } } as unknown as ChatRequest;
+  const outcome = site.kind === "store" ? await storeTool(site, name, args, request) : await kaizenTool(name === "store_info" ? "site_info" : name, args);
+  return outcome.result;
+}
+
 /** The support tool that hands a conversation to a person (D216, 4.3a), as the model is given it. */
 const HANDOFF = SUPPORT_TOOLS.find((tool) => tool.name === "handoff_to_human")!;
 const handoffTool = { name: HANDOFF.name, description: HANDOFF.description, parameters: z.toJSONSchema(HANDOFF.input) as Record<string, unknown> };

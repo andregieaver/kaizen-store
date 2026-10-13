@@ -5,12 +5,13 @@ import { sql } from "drizzle-orm";
 import { after } from "next/server";
 
 import { db } from "@/db/client";
-import { MESSAGE_MAX } from "@/lib/support-rules";
+import { MESSAGE_MAX, PARTNER_QUESTION_MAX } from "@/lib/support-rules";
 import { REFUSAL_WORDS } from "@/lib/support-state";
 
 import { audit } from "./auth";
-import { SupportError, addMessage, agentIdentity, deskSettings, transition } from "./support";
+import { SupportError, addMessage, agentIdentity, deskSettings, setPartnerPaused, transition } from "./support";
 import type { StaffDesk } from "./support-desk";
+import { runPartner } from "./support-partner";
 import { editSummary, makeBrief, readSummaryEdit, summarise } from "./support-summary";
 
 type Row = Record<string, unknown>;
@@ -31,12 +32,15 @@ export type AgentAct =
   | { kind: "end" }
   | { kind: "ask_sign_in" }
   | { kind: "brief" }
-  | { kind: "summary"; summary: unknown };
+  | { kind: "summary"; summary: unknown }
+  | { kind: "partner"; seq: number }
+  | { kind: "ask_partner"; question: string }
+  | { kind: "pause_partner"; paused: boolean };
 
-/** `brief` is the conversation so far, when one was asked for (step 7). */
-export type AgentActResult = { ok: true; brief?: string | null } | { ok: false; problem: string };
+/** `brief` is the conversation so far, when one was asked for (step 7); `ran`, whether the silent partner answered (step 8). */
+export type AgentActResult = { ok: true; brief?: string | null; ran?: boolean } | { ok: false; problem: string };
 
-export const ACT_KINDS = ["claim", "reply", "note", "transfer", "hand_back", "end", "ask_sign_in", "brief", "summary"] as const;
+export const ACT_KINDS = ["claim", "reply", "note", "transfer", "hand_back", "end", "ask_sign_in", "brief", "summary", "partner", "ask_partner", "pause_partner"] as const;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -53,6 +57,14 @@ export function readAct(raw: unknown): AgentAct | null {
       return { kind: value.kind };
     case "summary":
       return { kind: "summary", summary: value.summary };
+    case "partner":
+      return Number.isInteger(value.seq) && (value.seq as number) > 0 && (value.seq as number) < 1_000_000 ? { kind: "partner", seq: value.seq as number } : null;
+    case "ask_partner": {
+      const question = typeof value.question === "string" ? value.question.trim() : "";
+      return question.length > 0 && question.length <= PARTNER_QUESTION_MAX ? { kind: "ask_partner", question } : null;
+    }
+    case "pause_partner":
+      return typeof value.paused === "boolean" ? { kind: "pause_partner", paused: value.paused } : null;
     case "reply":
     case "note": {
       const body = typeof value.body === "string" ? value.body.trim() : "";
@@ -106,8 +118,9 @@ export async function agentAct(staff: StaffDesk, conversationId: string, act: Ag
         const name = (await agentIdentity(staff.desk, me)).name;
         await transition(staff.desk, conversationId, "claim", { kind: "agent", id: me, name });
         await audit(me, store, "support.claimed", { conversation: conversationId }, { target: { type: "support_conversation", id: conversationId } });
-        // A brief of the conversation so far is ready by the time the person reads it (step 7).
+        // A brief of the conversation so far is ready by the time the person reads it (step 7), and the partner looks (step 8).
         after(() => makeBrief(staff.desk, conversationId).catch(() => undefined));
+        after(() => runPartner(staff, conversationId, { kind: "claim" }).catch((error) => console.warn(`[support] partner of ${conversationId}: ${String(error)}`)));
         return { ok: true };
       }
       case "reply": {
@@ -158,6 +171,16 @@ export async function agentAct(staff: StaffDesk, conversationId: string, act: Ag
         if (!edit) return { ok: false, problem: "A summary needs a title, a text, an outcome and at least one topic from the list." };
         return editSummary(staff, conversationId, edit);
       }
+      case "partner": {
+        const ran = await runPartner(staff, conversationId, { kind: "message", seq: act.seq });
+        return ran.ok ? { ok: true, ran: ran.ran } : ran;
+      }
+      case "ask_partner": {
+        const ran = await runPartner(staff, conversationId, { kind: "question", text: act.question });
+        return ran.ok ? { ok: true, ran: ran.ran } : ran;
+      }
+      case "pause_partner":
+        return (await setPartnerPaused(staff.desk, conversationId, me, act.paused)) ? { ok: true } : { ok: false, problem: "Only the person who has the conversation pauses the partner in it." };
     }
   } catch (error) {
     if (error instanceof SupportError) return { ok: false, problem: await refusalWords(error, conversationId) };

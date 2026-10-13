@@ -395,7 +395,7 @@ describe("a person takes over, answers and hands back (C4, C5, C6, step 4)", () 
     await db().execute(sql`insert into commerce.store_members (store_id, account_id, role) values (${String(created.id)}::uuid, ${String(second.id)}::uuid, 'admin')`);
     const store = { id: String(created.id), slug: s, name };
     type Staff = import("./support-desk").StaffDesk;
-    const staff = (id: string, email: string): Staff => ({ desk: systemDesk(store.id), store, account: { id, email } as unknown as Staff["account"], canWrite: true });
+    const staff = (id: string, email: string): Staff => ({ desk: systemDesk(store.id), store, account: { id, email } as unknown as Staff["account"], canWrite: true, holder: { role: "owner" } });
     return { store, kari: staff(String(owner.id), String(owner.email)), ola: staff(String(second.id), `ola-${s}@example.com`) };
   }
 
@@ -477,7 +477,7 @@ describe("a person takes over, answers and hands back (C4, C5, C6, step 4)", () 
     const ref = { id: first.conversation!.id, token: first.conversation!.token! };
     const [owner] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${storeId}::uuid and role = 'owner' limit 1`);
     type Staff = import("./support-desk").StaffDesk;
-    const kari: Staff = { desk: systemDesk(storeId), store: { id: storeId, slug, name: "Support test" }, account: { id: String(owner.account_id), email: "x@example.com" } as unknown as Staff["account"], canWrite: true };
+    const kari: Staff = { desk: systemDesk(storeId), store: { id: storeId, slug, name: "Support test" }, account: { id: String(owner.account_id), email: "x@example.com" } as unknown as Staff["account"], canWrite: true, holder: { role: "owner" } };
     expect(await agentAct(kari, ref.id, { kind: "claim" })).toEqual({ ok: true });
     const before = sent.length;
     const next = ok(await turn("Are you there?", ref, 2));
@@ -517,7 +517,7 @@ describe("asking for a person, and the two modes (step 5: C7, C8, C20)", () => {
       connection: ai ? connection : null,
       settings,
     };
-    const kari: Staff = { desk: systemDesk(id), store: { id, slug: s, name }, account: { id: String(owner.id), email: String(owner.email) } as unknown as Staff["account"], canWrite: true };
+    const kari: Staff = { desk: systemDesk(id), store: { id, slug: s, name }, account: { id: String(owner.id), email: String(owner.email) } as unknown as Staff["account"], canWrite: true, holder: { role: "owner" } };
     return { id, slug: s, store, market, ctx, kari, raw: { store: s, market: market.slug } };
   }
 
@@ -884,7 +884,8 @@ describe("summaries, briefs and ratings (step 7, C10)", () => {
     const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${s}, ${name}, null) as id`);
     const id = String(created.id);
     await db().execute(sql`update commerce.stores set status = 'active' where id = ${id}::uuid`);
-    await db().execute(sql`insert into commerce.support_settings (store_id, mode, tone_on) values (${id}::uuid, 'people', false)`);
+    // Tone and the partner off: these tests count the summary's and the brief's model calls alone.
+    await db().execute(sql`insert into commerce.support_settings (store_id, mode, tone_on, partner) values (${id}::uuid, 'people', false, false)`);
     if (ai) background.aiStores.add(id);
     const [owner] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`${s}@example.com`}`);
     await db().execute(sql`update commerce.accounts set name = 'Kari Nordmann' where id = ${String(owner.id)}::uuid`);
@@ -900,7 +901,7 @@ describe("summaries, briefs and ratings (step 7, C10)", () => {
       connection: null,
       settings: (await support.deskSettings(systemDesk(id)))!,
     };
-    const kari: Staff = { desk: systemDesk(id), store: { id, slug: s, name }, account: { id: String(owner.id), email: String(owner.email) } as unknown as Staff["account"], canWrite: true };
+    const kari: Staff = { desk: systemDesk(id), store: { id, slug: s, name }, account: { id: String(owner.id), email: String(owner.email) } as unknown as Staff["account"], canWrite: true, holder: { role: "owner" } };
     return { id, slug: s, ctx, kari, raw: { store: s, market: market.slug } };
   }
 

@@ -4,7 +4,8 @@ import type { SupportMode } from "@/lib/support-rules";
 import { KAIZEN_TOPICS, STORE_TOPICS } from "@/lib/support-summary";
 import { TONE_BANDS, type ToneBand } from "@/lib/support-tone";
 
-import { INBOX_TABS, deskSettings, lastToneAlert, markRead, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
+import { aiFor } from "./ai";
+import { INBOX_TABS, deskSettings, lastToneAlert, markRead, presence, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
 import { deskAgents } from "./support-agent";
 import type { StaffDesk } from "./support-desk";
 
@@ -57,14 +58,30 @@ export type ConversationFeed = StaffConversation & {
   /** The desk's mode: with support off nobody takes over (the chat assistant answers alone). */
   mode: SupportMode;
   agents: { id: string; name: string; online: boolean }[];
+  /** The silent partner here (step 8): whether the desk offers it (support on, its switch, a text model), and the person's own switch. */
+  partner: { available: boolean; mine: boolean };
 };
 
 /** One conversation for staff after `after`; looking at it counts as read up to its last message. */
 export async function conversationFeed(desk: StaffDesk, id: string, after: number): Promise<ConversationFeed | null> {
   const conversation = await staffConversation(desk.desk, id, after);
   if (!conversation) return null;
-  const [, agents, settings] = await Promise.all([markRead(desk.desk, id, desk.account.id, conversation.messageSeq), deskAgents(desk), deskSettings(desk.desk)]);
-  return { ...conversation, me: desk.account.id, canWrite: desk.canWrite, mode: settings?.mode ?? "off", agents: agents.filter((a) => a.id !== desk.account.id) };
+  const [, agents, settings, mine, connection] = await Promise.all([
+    markRead(desk.desk, id, desk.account.id, conversation.messageSeq),
+    deskAgents(desk),
+    deskSettings(desk.desk),
+    presence(desk.desk, desk.account.id),
+    aiFor(desk.desk.storeId),
+  ]);
+  const mode = settings?.mode ?? "off";
+  return {
+    ...conversation,
+    me: desk.account.id,
+    canWrite: desk.canWrite,
+    mode,
+    agents: agents.filter((a) => a.id !== desk.account.id),
+    partner: { available: desk.canWrite && mode !== "off" && Boolean(settings?.partner) && Boolean(connection?.textModel), mine: mine.partner },
+  };
 }
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

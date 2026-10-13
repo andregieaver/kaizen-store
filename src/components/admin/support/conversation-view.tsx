@@ -54,7 +54,8 @@ function MessageItem({ message, toneMeasured }: { message: StaffMessage; toneMea
   const staffOnly = message.author === "note" || message.author === "partner";
   const tone = customer ? toneWords(message.tone) : null;
   return (
-    <li className={`flex flex-col gap-1 ${customer ? "items-start" : "items-end"}`} data-author={message.author}>
+    // The partner's cards are in its own tab beside the conversation on a large screen; in the transcript on a small one.
+    <li className={`flex flex-col gap-1 ${customer ? "items-start" : "items-end"} ${message.author === "partner" ? "lg:hidden" : ""}`} data-author={message.author}>
       <span className="text-xs text-muted">
         {authorWords(message.author, message.by)} · <time dateTime={message.at}>{message.at.slice(11, 16)}</time>
       </span>

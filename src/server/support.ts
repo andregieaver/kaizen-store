@@ -101,6 +101,8 @@ export type DeskSettings = {
   toneHandoff: number | null;
   /** Ended conversations are summarised by the AI (2.7, step 7). */
   summariesOn: boolean;
+  /** The silent partner may help this desk's people (2.5, step 8). */
+  partner: boolean;
 };
 
 /** The desk's settings, made on its first conversation with support off (S5): the chat agent alone, as before. */
@@ -127,6 +129,7 @@ export function settingsOf(row: Row): DeskSettings {
     toneAlert: row.tone_alert === null || row.tone_alert === undefined ? null : Number(row.tone_alert),
     toneHandoff: row.tone_handoff === null || row.tone_handoff === undefined ? null : Number(row.tone_handoff),
     summariesOn: row.summaries_on === undefined ? true : Boolean(row.summaries_on),
+    partner: row.partner === undefined ? true : Boolean(row.partner),
   };
 }
 
@@ -728,6 +731,9 @@ export type StaffConversation = {
   brief: { text: string; seq: number } | null;
   rating: string | null;
   ratingComment: string | null;
+  /** The last customer message the silent partner answered, and whether its assignee paused it here (step 8). */
+  partnerSeq: number;
+  partnerPaused: boolean;
   messageSeq: number;
   /** The desk scores customers' messages (support and tone on): a customer message without a score is *not measured*. */
   toneMeasured: boolean;
@@ -793,6 +799,8 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
     brief: brief && typeof brief.text === "string" ? { text: brief.text, seq: Number(brief.seq ?? 0) } : null,
     rating: c.rating ? String(c.rating) : null,
     ratingComment: c.rating_comment ? String(c.rating_comment) : null,
+    partnerSeq: Number(c.partner_seq ?? 0),
+    partnerPaused: Boolean(c.partner_paused),
     messageSeq: Number(c.message_seq),
     toneMeasured: Boolean(c.tone_measured),
     toneAlertAt: c.tone_alert_at ? iso(c.tone_alert_at) : null,
@@ -871,6 +879,26 @@ export async function setPresence(desks: Desk[], accountId: string, status: "onl
       on conflict on constraint support_agents_key do update set status = excluded.status, last_seen_at = now()
     `);
   }
+}
+
+/** The person's own *Partner on / off* (2.5): on every desk given, kept with their presence (default on). */
+export async function setAgentPartner(desks: Desk[], accountId: string, on: boolean): Promise<void> {
+  for (const desk of desks) {
+    await db().execute(sql`
+      insert into commerce.support_agents (store_id, account_id, partner) values (${desk.storeId}::uuid, ${accountId}::uuid, ${on})
+      on conflict on constraint support_agents_key do update set partner = excluded.partner
+    `);
+  }
+}
+
+/** *Pause the partner here* (2.5): only the person who has the conversation; false when it is not theirs. */
+export async function setPartnerPaused(desk: Desk, conversationId: string, accountId: string, paused: boolean): Promise<boolean> {
+  const rows = await db().execute<Row>(sql`
+    update commerce.support_conversations set partner_paused = ${paused}
+    where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)} and status = 'open' and handler = 'human' and assignee_id = ${accountId}::uuid
+    returning id
+  `);
+  return rows.length > 0;
 }
 
 /** The open inbox says the agent is still there (every `HEARTBEAT_SECONDS`). */

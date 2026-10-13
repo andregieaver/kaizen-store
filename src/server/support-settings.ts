@@ -57,7 +57,7 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
       update commerce.support_settings set
         mode = ${input.mode}, email_followup = ${input.emailFollowup}, hours = ${input.hours ? JSON.stringify(input.hours) : null}::jsonb,
         end_after_minutes = ${input.endAfterMinutes}, notify_after_minutes = ${input.notifyAfterMinutes}, agent_naming = ${input.agentNaming},
-        tone_on = ${input.toneOn}, tone_alert = ${input.toneAlert}, tone_handoff = ${input.toneHandoff}, summaries_on = ${input.summariesOn},
+        tone_on = ${input.toneOn}, tone_alert = ${input.toneAlert}, tone_handoff = ${input.toneHandoff}, summaries_on = ${input.summariesOn}, partner = ${input.partner},
         transcript_days = ${transcriptDays}, updated_at = now(), updated_by = ${staff.account.id}::uuid
       where ${desk}
     `);
@@ -79,6 +79,7 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
       ["agent_naming", current.agentNaming, input.agentNaming],
       ["tone_on", current.toneOn, input.toneOn],
       ["summaries_on", current.summariesOn, input.summariesOn],
+      ["partner", current.partner, input.partner],
       ["tone_alert", current.toneAlert, input.toneAlert],
       ["tone_handoff", current.toneHandoff, input.toneHandoff],
       ["transcript_days", current.transcriptDays, transcriptDays],

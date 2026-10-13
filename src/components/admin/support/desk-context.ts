@@ -15,9 +15,13 @@ export type SupportDeskContext = {
   canWrite: boolean;
   /** Their presence when the inbox opened; null when they may not be online. */
   presence: "online" | "away" | null;
+  /** Their own *Partner on / off* when the inbox opened (step 8); null when they may not answer. */
+  partnerOn: boolean | null;
   actions: {
     heartbeat: () => Promise<{ ok: boolean }>;
     presence: ((status: "online" | "away") => Promise<{ ok: boolean }>) | null;
+    /** The person's own silent-partner switch (step 8). */
+    partner: ((on: boolean) => Promise<{ ok: boolean }>) | null;
     /**
      * Take over, answer, note, hand over, give back, end, ask to sign in (step 4), or null for those who only read. A single desk's
      * action takes the conversation and the act; the owner's level's takes the conversation's store first.
@@ -26,7 +30,7 @@ export type SupportDeskContext = {
   };
 };
 
-export type ActResult = { ok: true } | { ok: false; problem: string };
+export type ActResult = { ok: true; brief?: string | null; ran?: boolean } | { ok: false; problem: string };
 
 /** Runs an act through the level's action. */
 export function runAct(context: Pick<SupportDeskContext, "actions">, store: string | null, conversationId: string, act: unknown): Promise<ActResult> {

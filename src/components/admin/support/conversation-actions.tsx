@@ -48,11 +48,22 @@ export function availableActs(c: Pick<ConversationFeed, "status" | "handler" | "
  * The buttons and the composer of an open conversation (D216, 2.4, step 4): Take over, Hand back to the AI, Transfer, Ask to sign in,
  * End; a reply (to the customer, only once it is yours) or an internal note (never sent). Ctrl or Cmd and Enter sends.
  */
-export function ConversationActions({ conversation, act, onDone }: { conversation: ConversationFeed; act: (input: unknown) => Promise<ActResult>; onDone: () => void }) {
+export function ConversationActions({
+  conversation,
+  act,
+  onDone,
+  initialDraft,
+}: {
+  conversation: ConversationFeed;
+  act: (input: unknown) => Promise<ActResult>;
+  onDone: () => void;
+  /** A partner's draft put here by *Use* (step 8): it fills the composer, and nothing is sent. */
+  initialDraft?: string;
+}) {
   const acts = availableActs(conversation);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialDraft ?? "");
   const [asNote, setAsNote] = useState(false);
   const [target, setTarget] = useState("");
   const [editing, setEditing] = useState(false);

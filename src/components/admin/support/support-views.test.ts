@@ -9,6 +9,7 @@ import { availableActs, ConversationActions } from "./conversation-actions";
 import { ConversationList } from "./conversation-list";
 import { ConversationContext, ConversationView, SummaryPanel } from "./conversation-view";
 import { conversationHref } from "./desk-context";
+import { PartnerPanel } from "./partner-panel";
 import { SupportSettingsForm } from "./settings-form";
 
 /** What a person reads: comment markers out, entities made plain. */
@@ -62,6 +63,8 @@ const conversation = (over: Partial<StaffConversation> = {}): StaffConversation 
   ratingComment: null,
   summaryStatus: "none",
   brief: null,
+  partnerSeq: 0,
+  partnerPaused: false,
   messageSeq: 5,
   toneMeasured: true,
   toneAlertAt: null,
@@ -177,7 +180,7 @@ describe("what a person may do with a conversation (step 4)", () => {
   });
 
   it("draws the buttons and a composer that says when a text is an internal note", () => {
-    const feed = { ...conversation({ handler: "human", assignee: { id: "me", name: "Me" } }), me: "me", canWrite: true, mode: "ai_first" as const, agents: [{ id: "ola", name: "Ola", online: true }] };
+    const feed = { ...conversation({ handler: "human", assignee: { id: "me", name: "Me" } }), me: "me", canWrite: true, mode: "ai_first" as const, agents: [{ id: "ola", name: "Ola", online: true }], partner: { available: true, mine: true } };
     const out = html(h(ConversationActions, { conversation: feed, act: async () => ({ ok: true as const }), onDone: () => {} }));
     expect(out).toContain("Hand back to the AI");
     expect(out).toContain("Transfer");
@@ -207,6 +210,7 @@ describe("the desk's settings (step 5)", () => {
     toneAlert: -40,
     toneHandoff: -60,
     summariesOn: true,
+    partner: true,
     aiReady: false,
   };
   const form = (over: Partial<Parameters<typeof SupportSettingsForm>[0]> = {}) =>
@@ -276,5 +280,55 @@ describe("summaries, briefs and ratings (step 7)", () => {
     expect(availableActs(base)).toMatchObject({ brief: true, editSummary: false });
     expect(availableActs({ ...base, status: "ended" })).toMatchObject({ brief: false, editSummary: true });
     expect(availableActs({ ...base, status: "ended", canWrite: false })).toMatchObject({ editSummary: false });
+  });
+});
+
+describe("the silent partner's tab (step 8, C24)", () => {
+  const feed = (over: Partial<StaffConversation> = {}, partner = { available: true, mine: true }) => ({
+    ...conversation({
+      handler: "human",
+      assignee: { id: "me", name: "Me" },
+      messages: [
+        { seq: 1, author: "customer", body: "Where is order 1042?", kind: null, data: null, by: null, tone: null, toneLabel: null, tools: [], at: "2026-10-13T11:50:00Z" },
+        {
+          seq: 2,
+          author: "partner",
+          body: "Sent yesterday.",
+          kind: "suggestion",
+          data: { facts: [{ text: "Order 1042 was sent with Bring", tool: "get_order" }], recommendation: "Share the tracking.", draft: "It was sent yesterday with Bring.", answer: null },
+          by: null,
+          tone: null,
+          toneLabel: null,
+          tools: [],
+          at: "2026-10-13T11:50:06Z",
+        },
+      ],
+      ...over,
+    }),
+    me: "me",
+    canWrite: true,
+    mode: "ai_first" as const,
+    agents: [],
+    partner,
+  });
+  const panel = (f: ReturnType<typeof feed>, working = false) => html(h(PartnerPanel, { conversation: f, act: async () => ({ ok: true as const }), onDone: () => {}, onUse: () => {}, working }));
+
+  it("shows facts with where they came from, the recommendation and a draft to use, marked as staff only", () => {
+    const out = panel(feed());
+    expect(out).toContain("AI partner — only your team sees this");
+    expect(out).toContain("Order 1042 was sent with Bring");
+    expect(out).toContain("(from the order)");
+    expect(out).toContain("Share the tracking.");
+    expect(out).toContain("It was sent yesterday with Bring.");
+    expect(out).toContain(">Use<");
+    expect(out).toContain("Pause the partner here");
+    expect(out).toContain("Not signed in: what the customer says about an order is not proven.");
+  });
+
+  it("offers no Use to someone who does not have the conversation, says when it is off, and when it is looking", () => {
+    expect(panel(feed({ assignee: { id: "ola", name: "Ola" } }))).not.toContain(">Use<");
+    expect(panel(feed({}, { available: false, mine: true }))).toContain("The silent partner is off for this desk");
+    expect(panel(feed({}, { available: true, mine: false }))).toContain("Your partner is off");
+    expect(panel(feed(), true)).toContain("The partner is looking");
   });
 });

@@ -1,6 +1,6 @@
 "use server";
 
-import { heartbeat, setPresence } from "@/server/support";
+import { heartbeat, setAgentPartner, setPresence } from "@/server/support";
 import { agentAct, readAct, type AgentActResult } from "@/server/support-agent";
 import { checkKaizenDesk } from "@/server/support-desk";
 
@@ -10,6 +10,14 @@ export async function kaizenSupportPresenceAction(status: "online" | "away"): Pr
   const desk = await checkKaizenDesk();
   if (!desk || (status !== "online" && status !== "away")) return { ok: false };
   await setPresence([desk.desk], desk.account.id, status);
+  return { ok: true };
+}
+
+/** The platform admin's own silent partner on or off on Kaizen's desk (step 8). */
+export async function kaizenSupportPartnerAction(on: boolean): Promise<{ ok: boolean }> {
+  const desk = await checkKaizenDesk();
+  if (!desk || typeof on !== "boolean") return { ok: false };
+  await setAgentPartner([desk.desk], desk.account.id, on);
   return { ok: true };
 }
 

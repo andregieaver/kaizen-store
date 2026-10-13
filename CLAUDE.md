@@ -269,6 +269,17 @@ of running `playwright install`.
   is kept; the brief is made on take-over and *Brief me* (kept per message
   number); staff edits audit `support.summary_edited`; the rating is
   `/api/chat/rate` on an ended conversation.
+  The silent partner (step 8, `src/server/support-partner.ts`,
+  `partner-panel.tsx`): `runPartner()` runs for the assignee 4 s after the
+  last customer message the open inbox saw (agent act `partner`) and after a
+  take-over, only when `partnerMayRun()` (desk switch, the person's own in
+  `support_agents.partner`, not paused here, a text model) and
+  `support_take_partner_turn()` allow; *Ask the partner* (`ask_partner`) for
+  anyone who may answer. Its tools are `PARTNER_OWNER_TOOLS` the person's
+  role may read (`partnerToolsFor()`, `toolOffered()`, through
+  `runOwnerTool()` with their holder) and its own; a fact must name a tool it
+  called, a draft passes `cleanReply()` and `guardedForVisitor()`, and its
+  answer is a `partner` message the customer never sees.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

@@ -5,13 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { TAB_WORDS, topicWords } from "@/lib/support-inbox-text";
 import { topicsFor } from "@/lib/support-summary";
 import { TONE_BAND_WORDS, TONE_BANDS } from "@/lib/support-tone";
-import { HEARTBEAT_SECONDS, POLL_STAFF_MS } from "@/lib/support-rules";
+import { HEARTBEAT_SECONDS, PARTNER_PAUSE_SECONDS, POLL_STAFF_MS } from "@/lib/support-rules";
 import type { InboxTab } from "@/server/support";
 import type { ConversationFeed, InboxFeed } from "@/server/support-inbox";
 
 import { ConversationActions } from "./conversation-actions";
 import { ConversationList } from "./conversation-list";
 import { ConversationContext, ConversationView } from "./conversation-view";
+import { PartnerPanel } from "./partner-panel";
 import { conversationHref, runAct, type SupportDeskContext } from "./desk-context";
 
 /**
@@ -40,6 +41,13 @@ export function Inbox({
   // Bumped after an action, so the conversation and the list are asked for again at once.
   const [refresh, setRefresh] = useState(0);
   const [presence, setPresenceState] = useState(context.presence);
+  const [partnerOn, setPartnerOn] = useState(context.partnerOn);
+  // The right column's tab: the partner by default where it may help, else the context (step 8).
+  const [side, setSide] = useState<"partner" | "context" | null>(null);
+  // A partner's draft put in the composer (*Use*): the composer is drawn again with it.
+  const [fill, setFill] = useState<{ text: string; n: number } | null>(null);
+  const [partnerWorking, setPartnerWorking] = useState(false);
+  const asked = useRef(new Set<string>());
   const [now, setNow] = useState(() => new Date());
   const [gone, setGone] = useState(false);
   const [mineUnread, setMineUnread] = useState(initial.mineUnread);
@@ -164,11 +172,54 @@ export function Inbox({
     setAlerts(true);
   }
 
+  // The silent partner looks once the customer has stopped writing for a moment, when the person has the conversation (step 8). The
+  // server decides again (switches, the person, once per message); this only says when to ask.
+  const partnerFor = conversation;
+  const lastCustomer = partnerFor ? partnerFor.messages.reduce((max, m) => (m.author === "customer" ? Math.max(max, m.seq) : max), 0) : 0;
+  const partnerShould = Boolean(
+    partnerFor &&
+      partnerFor.partner.available &&
+      partnerFor.partner.mine &&
+      !partnerFor.partnerPaused &&
+      partnerFor.status === "open" &&
+      partnerFor.handler === "human" &&
+      partnerFor.assignee?.id === partnerFor.me &&
+      lastCustomer > partnerFor.partnerSeq,
+  );
+  const partnerConversation = partnerFor?.id ?? null;
+  const partnerStore = partnerFor?.store?.slug ?? null;
+  useEffect(() => {
+    if (!partnerShould || !partnerConversation) return;
+    const key = `${partnerConversation}:${lastCustomer}`;
+    if (asked.current.has(key)) return;
+    const timer = setTimeout(() => {
+      asked.current.add(key);
+      setPartnerWorking(true);
+      void runAct(context, partnerStore, partnerConversation, { kind: "partner", seq: lastCustomer })
+        .catch(() => undefined)
+        .finally(() => {
+          setPartnerWorking(false);
+          setRefresh((n) => n + 1);
+        });
+    }, PARTNER_PAUSE_SECONDS * 1000);
+    return () => clearTimeout(timer);
+  }, [partnerShould, partnerConversation, partnerStore, lastCustomer, context]);
+
   /** Opens a conversation (or goes back to the list on a phone), forgetting the one shown before. */
   function openConversation(next: { id: string; store: string | null } | null) {
     setConversation(null);
     setGone(false);
+    setFill(null);
     setOpen(next);
+  }
+
+  async function changePartner(next: boolean) {
+    if (!context.actions.partner) return;
+    const before = partnerOn;
+    setPartnerOn(next);
+    const result = await context.actions.partner(next).catch(() => ({ ok: false }));
+    if (!result.ok) setPartnerOn(before);
+    else setRefresh((n) => n + 1);
   }
 
   async function changePresence(next: "online" | "away") {
@@ -196,6 +247,12 @@ export function Inbox({
           <button type="button" onClick={() => void turnOnAlerts()} className="rounded-md border border-border px-2 py-1 text-sm hover:bg-surface" aria-pressed={false}>
             Turn on alerts
           </button>
+        )}
+        {partnerOn !== null && context.actions.partner && (
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={partnerOn} onChange={(event) => void changePartner(event.target.checked)} className="size-4" />
+            Partner
+          </label>
         )}
         {context.presence !== null && context.actions.presence && (
           <label className="flex items-center gap-2 text-sm">
@@ -276,7 +333,8 @@ export function Inbox({
             <>
               <ConversationView conversation={conversation} now={now} />
               <ConversationActions
-                key={conversation.id}
+                key={`${conversation.id}:${fill?.n ?? 0}`}
+                initialDraft={fill?.text}
                 conversation={conversation}
                 act={(input) => runAct(context, conversation.store?.slug ?? null, conversation.id, input)}
                 onDone={() => {
@@ -289,8 +347,41 @@ export function Inbox({
             <p className="p-6 text-sm text-muted">{gone ? "This conversation is no longer here." : showing ? "Opening…" : "Choose a conversation to read it as it happens."}</p>
           )}
         </section>
-        <aside className="hidden min-h-0 overflow-y-auto overscroll-contain border-l border-border lg:block" aria-label="Context">
-          {conversation && <ConversationContext conversation={conversation} />}
+        <aside className="hidden min-h-0 flex-col border-l border-border lg:flex" aria-label="Partner and context">
+          {conversation && (
+            <>
+              <div role="tablist" aria-label="Beside the conversation" className="flex gap-1 border-b border-border p-2">
+                {(["partner", "context"] as const).map((key) => {
+                  const shown = side ?? (conversation.partner.available ? "partner" : "context");
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      role="tab"
+                      aria-selected={shown === key}
+                      onClick={() => setSide(key)}
+                      className={`rounded-md px-2 py-1 text-sm ${shown === key ? "bg-foreground text-background" : "hover:bg-surface"}`}
+                    >
+                      {key === "partner" ? "Partner" : "Context"}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+                {(side ?? (conversation.partner.available ? "partner" : "context")) === "partner" ? (
+                  <PartnerPanel
+                    conversation={conversation}
+                    working={partnerWorking}
+                    act={(input) => runAct(context, conversation.store?.slug ?? null, conversation.id, input)}
+                    onDone={() => setRefresh((n) => n + 1)}
+                    onUse={(text) => setFill((current) => ({ text, n: (current?.n ?? 0) + 1 }))}
+                  />
+                ) : (
+                  <ConversationContext conversation={conversation} />
+                )}
+              </div>
+            </>
+          )}
         </aside>
       </div>
     </div>

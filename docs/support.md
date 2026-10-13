@@ -1499,3 +1499,37 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   topic filter, three tries then failed, skipped without AI, none with summaries off, the brief once per message, editing, the
   rating); E `support.spec.ts` case 3.
 
+**Step 8 (13 October 2026).**
+
+- **No migration**: the desk's switch (`support_settings.partner`), the person's (`support_agents.partner`), *Pause the partner here*
+  (`support_conversations.partner_paused`), `partner_seq` and `support_take_partner_turn()` were in step 1.
+- **When it runs**: the open inbox, for the person who has the conversation, asks 4 seconds after the last customer message it has
+  seen (agent act `partner` with that message's number), and a take-over asks in `after()`; the server runs only when
+  `partnerMayRun()` says so (support on, the desk's switch, the person's own, not paused, a text model, the person has it) and
+  `support_take_partner_turn()` gives this caller the turn, so it answers once per message whoever asks. *Ask the partner*
+  (`ask_partner`) works in any open conversation for anyone who may answer the desk, with the desk's switch and a model. Pausing is
+  the assignee's alone (`pause_partner`). The person's own switch is a checkbox in the inbox's header (one action per level, like
+  presence; at the owner's level it is set on every store where they may answer).
+- **What it reads**: the conversation's last messages (the customer's, the AI's and people's; never notes or its own), the AI
+  manager's read-only tools in `PARTNER_OWNER_TOOLS` that the person's role may use and whose features are on (`partnerToolsFor()`,
+  `toolOffered()`), run by `runOwnerTool()` with the person's holder, so a tool not offered is refused as it would be in the
+  assistant; and its own: the chat's `search_content` and `store_info` (`siteFactsTool()` in `chat-agent.ts`),
+  `conversation_facts` (signed in or not, the contact as typed and marked as no proof, language, page) and `earlier_conversations`
+  (the same customer's titles, outcomes and summaries). Kaizen's desk gets only its own tools for now (the first-line tools and the
+  admin's page map for Kaizen come with step 11). Tool results are cut at 6000 characters; four rounds at most.
+- **What is kept**: only an answer `parsePartner()` reads (facts that name a tool it called, cut lengths, the draft through
+  `cleanReply()`), and, for a customer who is not signed in, never a draft once it read an order or a customer
+  (`guardedForVisitor()`, `PRIVATE_TOOLS`; the facts stay for the agent). It is a `partner` message by the person it worked for,
+  kind `suggestion` or `answer`, with the structure in `data`; never in the customer's feed, emails or export, deleted with the
+  transcript. An answer that does not parse is not kept and the person sees *The partner could not answer just now*.
+- **The Partner tab** (`partner-panel.tsx`): beside the conversation on a large screen, the default tab where the partner is
+  available (else Context): *AI partner — only your team sees this*, *Not signed in* first where it applies, the brief (step 7),
+  *Pause the partner here* for the assignee, *Ask the partner*, then the cards newest first: the question asked, the answer, facts
+  with where each came from in the admin's words, *Next:* and a draft with *Use*, which fills the composer and sends nothing. On a
+  phone the cards stay in the transcript.
+- **Settings**: *Let the AI help your people as a silent partner* (on).
+- **Metered** as `support_partner` with the person's account.
+- **Tests**: U `support-partner.test.ts` (the visitor guard, the prompt); V the Partner tab; I `support-partner.int.test.ts` (C21 the
+  switches, the person and no model; C22 the role's tools and a refused one; C23 two callers, one answer; C24 a draft's claims cut;
+  C25 no draft after reading orders for a customer not signed in; a question; nothing in the visitor's feed).
+

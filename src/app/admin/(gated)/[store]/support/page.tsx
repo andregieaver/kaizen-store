@@ -7,7 +7,7 @@ import { presence } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
 import { inboxFeed } from "@/server/support-inbox";
 
-import { supportActAction, supportHeartbeatAction, supportPresenceAction } from "./actions";
+import { supportActAction, supportHeartbeatAction, supportPartnerAction, supportPresenceAction } from "./actions";
 
 export const metadata: Metadata = { title: "Support inbox" };
 
@@ -27,9 +27,11 @@ export default async function SupportInboxPage({ params }: PageProps<"/admin/[st
     stores: [],
     canWrite: staff.canWrite,
     presence: staff.canWrite ? mine.status : null,
+    partnerOn: staff.canWrite ? mine.partner : null,
     actions: {
       heartbeat: supportHeartbeatAction.bind(null, slug),
       presence: staff.canWrite ? supportPresenceAction.bind(null, slug) : null,
+      partner: staff.canWrite ? supportPartnerAction.bind(null, slug) : null,
       act: staff.canWrite ? { byStore: false, run: supportActAction.bind(null, slug) } : null,
     },
   };

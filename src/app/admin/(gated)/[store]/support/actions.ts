@@ -1,7 +1,7 @@
 "use server";
 
 import { checkPermission } from "@/server/permissions";
-import { heartbeat, setPresence } from "@/server/support";
+import { heartbeat, setAgentPartner, setPresence } from "@/server/support";
 import { agentAct, readAct, type AgentActResult } from "@/server/support-agent";
 import { memberDesk } from "@/server/support-desk";
 
@@ -15,6 +15,15 @@ export async function supportPresenceAction(slug: string, status: "online" | "aw
   if (!member || (status !== "online" && status !== "away")) return { ok: false };
   const staff = memberDesk(member);
   await setPresence([staff.desk], staff.account.id, status);
+  return { ok: true };
+}
+
+/** The person's own silent partner on or off on the store's desk (step 8): `support:write`, as answering is. */
+export async function supportPartnerAction(slug: string, on: boolean): Promise<{ ok: boolean }> {
+  const member = await checkPermission(slug, "support:write");
+  if (!member || typeof on !== "boolean") return { ok: false };
+  const staff = memberDesk(member);
+  await setAgentPartner([staff.desk], staff.account.id, on);
   return { ok: true };
 }
 

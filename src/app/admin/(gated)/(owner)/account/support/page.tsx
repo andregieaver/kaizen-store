@@ -8,7 +8,7 @@ import { presence } from "@/server/support";
 import { ownerDesks } from "@/server/support-desk";
 import { inboxFeed } from "@/server/support-inbox";
 
-import { ownerSupportActAction, ownerSupportHeartbeatAction, ownerSupportPresenceAction } from "./actions";
+import { ownerSupportActAction, ownerSupportHeartbeatAction, ownerSupportPartnerAction, ownerSupportPresenceAction } from "./actions";
 
 export const metadata: Metadata = { title: "Support" };
 
@@ -32,9 +32,11 @@ export default async function OwnerSupportPage() {
     stores: desks.flatMap((d) => (d.store ? [{ slug: d.store.slug, name: d.store.name }] : [])),
     canWrite: writable.length > 0,
     presence: mine ? mine.status : null,
+    partnerOn: mine ? mine.partner : null,
     actions: {
       heartbeat: ownerSupportHeartbeatAction,
       presence: writable.length > 0 ? ownerSupportPresenceAction : null,
+      partner: writable.length > 0 ? ownerSupportPartnerAction : null,
       act: writable.length > 0 ? { byStore: true, run: ownerSupportActAction } : null,
     },
   };

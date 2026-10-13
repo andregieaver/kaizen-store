@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { OWNER_TOOLS } from "./owner-tools";
 import { TOOL_PERMISSIONS } from "./owner-tool-permissions";
-import { parsePartner, partnerMayRun, partnerToolsFor, PARTNER_OWNER_TOOLS, PARTNER_OWN_TOOLS } from "./support-partner";
+import { guardedForVisitor, parsePartner, partnerMayRun, partnerPrompt, partnerToolsFor, PARTNER_OWNER_TOOLS, PARTNER_OWN_TOOLS, PRIVATE_TOOLS } from "./support-partner";
 
 const allowed = { mode: "people", deskPartner: true, agentPartner: true, paused: false, hasModel: true, handler: "human", assigneeIsAgent: true } as const;
 
@@ -61,3 +61,24 @@ describe("the silent partner (D216, 2.5)", () => {
     expect(parsePartner(JSON.stringify({ draft: "The cheapest anywhere!" }), [])).toBeNull();
   });
 });
+
+describe("the partner and a customer who is not signed in (step 8, C25)", () => {
+  const answer = { facts: [{ text: "Order 1042 was sent", tool: "get_order" }], recommendation: "Ask them to sign in.", draft: "Your order 1042 was sent yesterday.", answer: null };
+
+  it("drops the draft when it read an order or a customer, and keeps the facts for the agent", () => {
+    expect(guardedForVisitor(answer, false, ["get_order"])).toEqual({ ...answer, draft: null });
+    expect(guardedForVisitor(answer, false, ["search_content"])).toEqual(answer);
+    expect(guardedForVisitor(answer, true, ["get_order"])).toEqual(answer);
+    // Every private tool is one the partner may use, so the guard covers what it can read.
+    for (const name of PRIVATE_TOOLS) expect([...PARTNER_OWNER_TOOLS] as string[], name).toContain(name);
+  });
+
+  it("tells the model the customer is not signed in, the customer's language, and to answer a question only when asked", () => {
+    const prompt = partnerPrompt({ agent: "Kari", desk: "Demo", signedIn: false, language: "Norwegian", question: false });
+    expect(prompt).toContain("NOT signed in");
+    expect(prompt).toContain("in Norwegian");
+    expect(prompt).not.toContain('"answer"');
+    expect(partnerPrompt({ agent: "Kari", desk: "Demo", signedIn: true, language: "English", question: true })).toContain('"answer"');
+  });
+});
+

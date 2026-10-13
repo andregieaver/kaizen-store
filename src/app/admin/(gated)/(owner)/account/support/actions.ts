@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAccount } from "@/server/auth";
-import { heartbeat, setPresence } from "@/server/support";
+import { heartbeat, setAgentPartner, setPresence } from "@/server/support";
 import { agentAct, readAct, type AgentActResult } from "@/server/support-agent";
 import { checkStoreDesk, ownerDesks } from "@/server/support-desk";
 
@@ -16,6 +16,16 @@ export async function ownerSupportPresenceAction(status: "online" | "away"): Pro
   const desks = (await ownerDesks(account)).filter((d) => d.canWrite);
   if (desks.length === 0) return { ok: false };
   await setPresence(desks.map((d) => d.desk), account.id, status);
+  return { ok: true };
+}
+
+/** The person's own silent partner on or off on every store where they may answer (step 8). */
+export async function ownerSupportPartnerAction(on: boolean): Promise<{ ok: boolean }> {
+  const account = await requireAccount();
+  if (typeof on !== "boolean") return { ok: false };
+  const desks = (await ownerDesks(account)).filter((d) => d.canWrite);
+  if (desks.length === 0) return { ok: false };
+  await setAgentPartner(desks.map((d) => d.desk), account.id, on);
   return { ok: true };
 }
 

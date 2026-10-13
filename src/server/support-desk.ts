@@ -3,7 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { can, type Access } from "@/lib/permissions";
+import { can, type Access, type PermissionHolder } from "@/lib/permissions";
 import { allowedWhenNotOpen } from "@/lib/store-closure";
 
 import { getAccount, requirePlatformAdmin, type Account, type Membership } from "./auth";
@@ -44,6 +44,8 @@ export type StaffDesk = {
   account: Account;
   /** Answering, taking over and the rest (step 4); `support:write` in a store, a platform admin on Kaizen's. */
   canWrite: boolean;
+  /** The person's role in the store, for what the silent partner may read for them (step 8); null on Kaizen's desk. */
+  holder: PermissionHolder | null;
 };
 
 /**
@@ -57,6 +59,7 @@ const fromMember = (member: Membership): StaffDesk => ({
   store: { id: member.store.id, slug: member.store.slug, name: member.store.name },
   account: member.account,
   canWrite: can(holder(member), "support:write") && (member.store.status === "active" || allowedWhenNotOpen("support:write")),
+  holder: holder(member),
 });
 
 const holder = (member: Pick<Membership, "role" | "kind" | "permissions">) => ({ role: member.role, kind: member.kind, permissions: member.permissions });
@@ -75,13 +78,13 @@ export async function checkStoreDesk(slug: string, access: Access): Promise<Staf
 /** Kaizen's own desk, for a platform admin's page (a 404 for anyone else). */
 export async function kaizenDesk(): Promise<StaffDesk> {
   const account = await requirePlatformAdmin();
-  return { desk: make(null), store: null, account, canWrite: true };
+  return { desk: make(null), store: null, account, canWrite: true, holder: null };
 }
 
 /** Kaizen's own desk for a route or an action, or null. */
 export async function checkKaizenDesk(): Promise<StaffDesk | null> {
   const account = await getAccount();
-  return account?.platformAdmin ? { desk: make(null), store: null, account, canWrite: true } : null;
+  return account?.platformAdmin ? { desk: make(null), store: null, account, canWrite: true, holder: null } : null;
 }
 
 type Row = Record<string, unknown>;
@@ -115,6 +118,7 @@ export async function ownerDesks(account: Account): Promise<StaffDesk[]> {
       store: { id: String(row.id), slug: String(row.slug), name: String(row.name) },
       account,
       canWrite: open && can(who, "support:write"),
+      holder: who,
     });
   }
   return desks;
