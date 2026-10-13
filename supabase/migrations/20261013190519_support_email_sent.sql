@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."support_conversations" ADD COLUMN "email_sent_at" timestamp with time zone;

@@ -2,21 +2,26 @@ import "server-only";
 
 import { t } from "@/lib/i18n";
 import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS } from "@/lib/support-rules";
-import type { VisitorReply } from "@/lib/support-visitor";
+import type { VisitorMessage, VisitorReply, VisitorState } from "@/lib/support-visitor";
 import { BODY_MAX, type TurnInput } from "@/lib/support-visitor-schema";
 
+import type { ChatSite } from "./chat-agent";
 import { chatPlace, fail, type ChatContext, type ChatPlace } from "./chat-route";
 import { getCustomer } from "./customers";
 import {
   SupportError,
   addMessage,
   agentIdentity,
+  availabilityOf,
   channelOf,
   claimForCustomer,
+  conversationByEmailToken,
   deskSettings,
-  ensureDesk,
   markSeen,
   openConversation,
+  queuePosition,
+  setAiReason,
+  setContact,
   transition,
   visitorConversation,
   visitorFeed,
@@ -48,10 +53,11 @@ export async function readBody(request: Request): Promise<unknown | Response> {
   }
 }
 
-/** The signed-in customer of a store's desk, or null (Kaizen's desk has no customers). */
-async function customerOf(place: ChatPlace): Promise<string | null> {
+/** The signed-in customer of a store's desk (their id and their own email), or null (Kaizen's desk has no customers). */
+async function customerOf(place: ChatPlace): Promise<{ id: string; email: string } | null> {
   if (!place.storeId) return null;
-  return (await getCustomer(place.storeId))?.id ?? null;
+  const customer = await getCustomer(place.storeId);
+  return customer ? { id: customer.id, email: customer.email } : null;
 }
 
 /** The visitor's conversation on the site by its token: the desk, its settings and the conversation, or a 404 for anything else. */
@@ -64,23 +70,65 @@ export async function visitorPlace(raw: unknown, ref: { id: string; token: strin
   return { place, desk, settings, conversation };
 }
 
-/** The state and the messages after `after`, as every visitor route answers. */
-export async function visitorReply(desk: Desk, settings: DeskSettings, conversation: Conversation, after: number, signedIn: boolean, extra: Partial<VisitorReply> = {}): Promise<VisitorReply> {
-  const withPerson = conversation.status === "open" && conversation.handler === "human" && conversation.assigneeId;
-  const [messages, agent] = await Promise.all([visitorFeed(desk, conversation.id, after), withPerson ? agentIdentity(desk, conversation.assigneeId!, settings) : Promise.resolve(null)]);
-  return { ...extra, state: visitorState(conversation, settings, signedIn, agent), messages };
+/**
+ * The state and the messages after `after`, as every visitor route answers: the person who has the conversation, its place in line
+ * and whether anyone can answer now while it waits, and where answers will be emailed (the email the visitor left, else a signed-in
+ * customer's own).
+ */
+export async function visitorReply(
+  desk: Desk,
+  settings: DeskSettings,
+  conversation: Conversation,
+  after: number,
+  customer: { email: string } | null,
+  extra: Partial<VisitorReply> = {},
+): Promise<VisitorReply> {
+  const open = conversation.status === "open";
+  const withPerson = open && conversation.handler === "human" && conversation.assigneeId;
+  const waiting = open && conversation.handler === "queue";
+  const [messages, agent, position, availability] = await Promise.all([
+    visitorFeed(desk, conversation.id, after),
+    withPerson ? agentIdentity(desk, conversation.assigneeId!, settings) : Promise.resolve(null),
+    waiting ? queuePosition(desk, conversation) : Promise.resolve(null),
+    waiting ? availabilityOf(desk, settings) : Promise.resolve(null),
+  ]);
+  return {
+    ...extra,
+    state: visitorState(conversation, settings, customer !== null, {
+      agent,
+      queuePosition: position,
+      available: availability?.open ?? true,
+      followupEmail: conversation.contactEmail ?? customer?.email ?? null,
+    }),
+    messages,
+  };
+}
+
+/**
+ * Moves a conversation from the AI to the queue (D216, 2.3): the AI asked for a person (`ai`, its words kept for the staff), or the
+ * system did because the AI failed or is not set up (`no_ai`) or reached its daily limit (`limit`). A conversation a person took in
+ * the meantime is left as it is.
+ */
+async function handOver(desk: Desk, conversationId: string, by: "ai" | "system", reason: "ai" | "no_ai" | "limit", aiReason?: string): Promise<void> {
+  try {
+    await transition(desk, conversationId, "handoff", { kind: by }, { reason });
+    if (aiReason) await setAiReason(desk, conversationId, aiReason);
+  } catch (error) {
+    if (!(error instanceof SupportError)) throw error;
+  }
 }
 
 /**
  * A visitor's message (typed, or the words of a spoken one): the conversation is made on the first message and continued with its
  * token; an ended one is reopened within `REOPEN_HOURS`, else a new one starts. The message is kept before the AI is asked, so a
- * failing AI loses nothing; the answer is every message after `after`.
+ * failing AI loses nothing. The AI answers only while it has the conversation; with the AI first, a conversation goes to a person
+ * when the AI asks for one, fails, is not set up or reached its daily limit (`limited`). The answer is every message after `after`.
  */
-export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "message">, words: string): Promise<VisitorReply | Response> {
+export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "message">, words: string, options: { limited?: boolean } = {}): Promise<VisitorReply | Response> {
   const m = t(context.lang);
   const desk = visitorDesk(context.site);
-  const settings = await ensureDesk(desk);
-  const customerId = await customerOf(context);
+  const settings = context.settings;
+  const customer = await customerOf(context);
 
   let conversation: Conversation | null = null;
   let token: string | undefined;
@@ -99,13 +147,14 @@ export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "
   }
   if (conversation && conversation.messageSeq >= CONVERSATION_MESSAGES_MAX) return fail(409, m.chat.full);
   if (!conversation) {
-    const opened = await openConversation(desk, { mode: settings.mode, locale: context.locale, market: context.market, pagePath: input.path ?? null, customerId });
+    const opened = await openConversation(desk, { mode: settings.mode, locale: context.locale, market: context.market, pagePath: input.path ?? null, customerId: customer?.id ?? null });
     conversation = opened.conversation;
     token = opened.token;
     after = 0;
-  } else if (customerId && !conversation.customerId) {
-    await claimForCustomer(desk, conversation.id, customerId);
+  } else if (customer && !conversation.customerId) {
+    await claimForCustomer(desk, conversation.id, customer.id);
   }
+  const ref = { id: conversation.id, token: token ?? input.conversation!.token };
 
   try {
     await addMessage(desk, conversation.id, "customer", null, words);
@@ -113,13 +162,24 @@ export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "
     if (error instanceof SupportError) return fail(409, m.chat.sorry);
     throw error;
   }
-  // The AI answers only while it has the conversation (support off or the AI first); with a person or in the queue the message waits for them.
-  const current = (await visitorConversation(desk, { id: conversation.id, token: token ?? input.conversation!.token })) ?? conversation;
-  const turn = settings.mode !== "people" && current.handler === "ai" ? await runSupportTurn(desk, context, conversation.id, { path: input.path, signals: input.signals }) : { reply: null };
-  const fresh = (await visitorConversation(desk, { id: conversation.id, token: token ?? input.conversation!.token })) ?? conversation;
-  return visitorReply(desk, settings, fresh, after, customerId !== null, {
+
+  let error: string | undefined;
+  const current = (await visitorConversation(desk, ref)) ?? conversation;
+  // The AI answers only while it has the conversation; with a person or in the queue the message waits for them.
+  if (current.status === "open" && current.handler === "ai") {
+    if (settings.mode === "ai_first" && (!context.agent || options.limited)) {
+      await handOver(desk, conversation.id, "system", context.agent ? "limit" : "no_ai");
+    } else {
+      const turn = await runSupportTurn(desk, context, conversation.id, { path: input.path, signals: input.signals });
+      if (turn.error && settings.mode === "ai_first") await handOver(desk, conversation.id, "system", "no_ai");
+      else if (turn.error) error = turn.error;
+      else if (turn.handoff && settings.mode === "ai_first") await handOver(desk, conversation.id, "ai", "ai", turn.handoff);
+    }
+  }
+  const fresh = (await visitorConversation(desk, ref)) ?? conversation;
+  return visitorReply(desk, settings, fresh, after, customer, {
     conversation: { id: conversation.id, ...(token ? { token } : {}), channel: channelOf(conversation) },
-    ...("error" in turn && turn.error ? { error: turn.error } : {}),
+    ...(error ? { error } : {}),
   });
 }
 
@@ -128,21 +188,68 @@ export async function visitorFeedReply(raw: unknown, ref: { id: string; token: s
   const found = await visitorPlace(raw, ref);
   if (found instanceof Response) return found;
   await markSeen(found.desk, found.conversation.id);
-  return visitorReply(found.desk, found.settings, found.conversation, after, (await customerOf(found.place)) !== null);
+  return visitorReply(found.desk, found.settings, found.conversation, after, await customerOf(found.place));
+}
+
+/** A change the visitor asks for (end, a person, the assistant again): done when the conversation's state allows it, then the reply. */
+async function visitorChange(raw: unknown, ref: { id: string; token: string }, after: number, change: (found: { desk: Desk; conversation: Conversation; settings: DeskSettings }) => Promise<void>): Promise<VisitorReply | Response> {
+  const found = await visitorPlace(raw, ref);
+  if (found instanceof Response) return found;
+  try {
+    await change(found);
+  } catch (error) {
+    // Someone else changed it first (a person took it, it ended): the reply shows how it stands.
+    if (!(error instanceof SupportError)) throw error;
+  }
+  const conversation = (await visitorConversation(found.desk, ref)) ?? found.conversation;
+  return visitorReply(found.desk, found.settings, conversation, after, await customerOf(found.place));
 }
 
 /** The visitor ends the conversation (an ended one stays ended). */
-export async function visitorEnd(raw: unknown, ref: { id: string; token: string }, after: number): Promise<VisitorReply | Response> {
+export const visitorEnd = (raw: unknown, ref: { id: string; token: string }, after: number) =>
+  visitorChange(raw, ref, after, async ({ desk, conversation }) => {
+    if (conversation.status === "open") await transition(desk, conversation.id, "end", { kind: "customer" });
+  });
+
+/** *Talk to a person* (2.3, the AI first): the conversation goes from the AI to the queue. */
+export const visitorHandoff = (raw: unknown, ref: { id: string; token: string }, after: number) =>
+  visitorChange(raw, ref, after, async ({ desk, conversation, settings }) => {
+    if (settings.mode === "ai_first" && conversation.status === "open" && conversation.handler === "ai") {
+      await transition(desk, conversation.id, "handoff", { kind: "customer" }, { reason: "customer" });
+    }
+  });
+
+/** *Continue with the assistant* (2.3, the AI first): a waiting conversation goes back to the AI. */
+export const visitorAssistant = (raw: unknown, ref: { id: string; token: string }, after: number) =>
+  visitorChange(raw, ref, after, async ({ desk, conversation, settings }) => {
+    if (settings.mode === "ai_first" && conversation.status === "open" && conversation.handler === "queue") {
+      await transition(desk, conversation.id, "hand_back", { kind: "customer" });
+    }
+  });
+
+/** The email (and name) the visitor leaves for answers (the email card, 2.3), or the response to give. */
+export async function visitorEmail(raw: unknown, ref: { id: string; token: string }, after: number, contact: { name: string | null; email: string }): Promise<VisitorReply | Response> {
   const found = await visitorPlace(raw, ref);
   if (found instanceof Response) return found;
-  let conversation = found.conversation;
-  if (conversation.status === "open") {
-    try {
-      await transition(found.desk, conversation.id, "end", { kind: "customer" });
-    } catch (error) {
-      if (!(error instanceof SupportError)) throw error;
-    }
-    conversation = (await visitorConversation(found.desk, ref)) ?? conversation;
-  }
-  return visitorReply(found.desk, found.settings, conversation, after, (await customerOf(found.place)) !== null);
+  const m = t(found.place.lang);
+  const saved = await setContact(found.desk, found.conversation.id, found.settings, contact);
+  if (!saved.ok) return fail(saved.reason === "off" ? 404 : 409, saved.reason === "off" ? m.chat.sorry : m.chat.emailCard.tooMany);
+  const conversation = (await visitorConversation(found.desk, ref)) ?? found.conversation;
+  return visitorReply(found.desk, found.settings, conversation, after, await customerOf(found.place));
+}
+
+/** What the page an answer email opens shows (2.3): the conversation's reference with the email's token, its messages and its state. */
+export type EmailThread = { conversation: { id: string; token: string }; messages: VisitorMessage[]; state: Pick<VisitorState, "status" | "handler"> };
+
+/** The conversation an answer email's link opens on this site, or null (a token of another site, a replaced or malformed one, or a desk with support off). */
+export async function emailThread(site: ChatSite, token: string): Promise<EmailThread | null> {
+  const desk = visitorDesk(site);
+  const [conversation, settings] = await Promise.all([conversationByEmailToken(desk, token), deskSettings(desk)]);
+  if (!conversation || !settings || settings.mode === "off") return null;
+  await markSeen(desk, conversation.id);
+  return {
+    conversation: { id: conversation.id, token },
+    messages: await visitorFeed(desk, conversation.id, Math.max(0, conversation.messageSeq - 100)),
+    state: { status: conversation.status, handler: conversation.handler },
+  };
 }

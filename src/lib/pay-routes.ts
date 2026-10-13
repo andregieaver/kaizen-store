@@ -104,7 +104,17 @@ export function isChangeLinkPath(pathname: string): boolean {
 }
 
 /**
- * Where the market layout draws none of its extras (`MarketExtras`) and a script from an earlier page must not still be in the document: the pay routes, the hosted documents, a draft's pay
- * link and a change's pay link.
+ * The page a support conversation's answer email opens (D216, `docs/support.md` 2.3): a store's `/s/{store}/{market}/account/support/{token}`, on either shape of address, and Kaizen's
+ * `/support/c/{token}`. Its address holds a bearer token that opens a customer's conversation, so no tracking tool, owner code, chat widget or referral capture is drawn there.
  */
-export const isNoExtrasPath = (pathname: string): boolean => isPayPath(pathname) || isDocumentPath(pathname) || isPayLinkPath(pathname) || isChangeLinkPath(pathname);
+export function isSupportLinkPath(pathname: string): boolean {
+  const parts = afterMarketParts(pathname);
+  return (parts[0] === "account" && parts[1] === "support" && parts.length > 2) || (parts[0] === "support" && parts[1] === "c" && parts.length > 2);
+}
+
+/**
+ * Where the market layout draws none of its extras (`MarketExtras`) and a script from an earlier page must not still be in the document: the pay routes, the hosted documents, a draft's pay
+ * link, a change's pay link and a support conversation's link (where Kaizen's layout draws none of its own either).
+ */
+export const isNoExtrasPath = (pathname: string): boolean =>
+  isPayPath(pathname) || isDocumentPath(pathname) || isPayLinkPath(pathname) || isChangeLinkPath(pathname) || isSupportLinkPath(pathname);

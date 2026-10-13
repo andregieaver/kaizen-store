@@ -208,6 +208,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         items: [
           item("/support", "Inbox", "Every conversation with the store's customers as it happens: who is waiting, who is talking to the assistant, and what was said."),
           item("/chat", "Chat assistant", "The store's chat assistant for shoppers, and the knowledge it answers from."),
+          item("/support/settings", "Settings", "Who answers the store's customers (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept."),
         ],
       },
     ],

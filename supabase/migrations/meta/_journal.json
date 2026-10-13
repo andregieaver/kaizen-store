@@ -2199,6 +2199,13 @@
       "when": 1791914027261,
       "tag": "20261013175347_support_area_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 314,
+      "version": "7",
+      "when": 1791918319825,
+      "tag": "20261013190519_support_email_sent",
+      "breakpoints": true
     }
   ]
 }

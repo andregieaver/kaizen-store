@@ -9324,6 +9324,8 @@ export const supportConversations = commerce.table(
     visitorSeenAt: timestamp("visitor_seen_at", { withTimezone: true }),
     emailSentSeq: integer("email_sent_seq").notNull().default(0),
     emailCount: smallint("email_count").notNull().default(0),
+    /** When the last answer email went out (at most one every `EMAIL_EVERY_MINUTES`, D216 step 5). */
+    emailSentAt: timestamp("email_sent_at", { withTimezone: true }),
     contactChanges: smallint("contact_changes").notNull().default(0),
     createdAt: createdAt(),
     updatedAt: updatedAt(),

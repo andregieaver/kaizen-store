@@ -39,7 +39,13 @@ export type ChatProduct = {
   offers?: string[];
 };
 
-export type ChatReply = { reply: string; actions: ChatAction[]; products: ChatProduct[] };
+export type ChatReply = {
+  reply: string;
+  actions: ChatAction[];
+  products: ChatProduct[];
+  /** The AI asked for a person (D216, `handoff_to_human`, only with the AI first): what the customer needs, for the staff. */
+  handoff?: string;
+};
 
 // Tools ---------------------------------------------------------------------
 
@@ -160,6 +166,8 @@ export type PromptContext = {
   instructions: string;
   path: string | null;
   today: string;
+  /** The AI answers first and a person can take over (D216, mode `ai_first`): it is told when to hand over. */
+  handoff?: boolean;
 };
 
 /**
@@ -183,6 +191,11 @@ export function systemPrompt(ctx: PromptContext): string {
       : "Search before answering questions about Kaizen.",
     "Use navigate to open a page for the visitor when they ask to see or go somewhere, or when it clearly helps; say in a few words what you opened.",
     "Write plain text only: no Markdown, no lists with symbols, no web addresses. Be friendly and brief, at most about 80 words unless the visitor asks for more. Do not ask for personal details; for a particular order, point to the account page or the contact details.",
+    ...(ctx.handoff
+      ? [
+          `People from ${ctx.site} can take over this conversation. When the visitor asks for a person, is upset, or you could not help after two tries, write one short sentence saying a person will answer here, and call handoff_to_human. Never promise when.`,
+        ]
+      : []),
     ...(ctx.instructions.trim() ? [`The site's own guidance on tone and what to point out (follow it unless it goes against the rules above):\n${ctx.instructions.trim()}`] : []),
     `The visitor is on ${ctx.path ?? "the front page"}. Today is ${ctx.today}.`,
   ].join("\n\n");

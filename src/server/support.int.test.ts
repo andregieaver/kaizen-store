@@ -60,6 +60,7 @@ beforeAll(async () => {
     market: market.slug,
     agent: { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
     connection,
+    settings: await support.ensureDesk(systemDesk(storeId)),
   };
 });
 
@@ -86,8 +87,10 @@ function fakeModel(answers: string[], fail = false) {
   return sent;
 }
 
+/** A visitor's message on the test store, with the desk's settings as they are now (the routes read them per request). */
 const turn = async (message: string, ref?: { id: string; token: string }, after = 0) => {
-  const answer = await route.visitorTurn(context, { conversation: ref, after, signals: { views: [], searches: [] } }, message);
+  const settings = await support.ensureDesk(systemDesk(storeId));
+  const answer = await route.visitorTurn({ ...context, settings }, { conversation: ref, after, signals: { views: [], searches: [] } }, message);
   if (answer instanceof Response) return answer;
   return answer as VisitorReply;
 };
@@ -206,9 +209,12 @@ describe("the chat keeps its conversations (C1, C2)", () => {
 
   it("counts the visitor's turns before the model is asked, as before", async () => {
     const { takeTurn } = await import("./chat-route");
-    const tight = { ...context, agent: { ...context.agent, dailyLimit: 0 } };
+    const tight = { ...context, agent: { ...context.agent!, dailyLimit: 0 } };
     const refused = await takeTurn(tight, new Request("https://example.com/api/chat", { headers: { "x-forwarded-for": "192.0.2.77" } }));
-    expect(refused?.status).toBe(429);
+    expect((refused as Response).status).toBe(429);
+    // With the AI first, the site's daily limit hands the conversation to a person instead (2.12).
+    const handing = await takeTurn({ ...tight, settings: { ...tight.settings, mode: "ai_first" } }, new Request("https://example.com/api/chat", { headers: { "x-forwarded-for": "192.0.2.78" } }));
+    expect(handing).toBe("limit");
   });
 });
 
@@ -462,5 +468,248 @@ describe("a person takes over, answers and hands back (C4, C5, C6, step 4)", () 
     expect(next.messages.map((m) => m.kind ?? m.author)).toEqual(["joined", "customer"]);
     expect(next.state).toMatchObject({ handler: "human", agent: { name: expect.any(String) } });
     await setMode(storeId, "off");
+  });
+});
+
+describe("asking for a person, and the two modes (step 5: C7, C8, C20)", () => {
+  type Staff = import("./support-desk").StaffDesk;
+
+  /** A new open store with its desk in `mode`, its owner, and a visitor's context on it (with or without the AI). */
+  async function desk(name: string, mode: "off" | "ai_first" | "people", ai = false) {
+    const s = `${name}-${run}`;
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${s}@example.com`}, 'T', 'T') returning id`);
+    const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${s}, ${name}, null) as id`);
+    const id = String(created.id);
+    await db().execute(sql`update commerce.stores set status = 'active' where id = ${id}::uuid`);
+    await db().execute(sql`
+      insert into commerce.support_settings (store_id, mode) values (${id}::uuid, ${mode})
+      on conflict on constraint support_settings_store_key do update set mode = excluded.mode
+    `);
+    const [owner] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`${s}@example.com`}`);
+    await db().execute(sql`update commerce.accounts set name = 'Kari Nordmann' where id = ${String(owner.id)}::uuid`);
+    const store = (await getStore(s))!;
+    const market = store.markets.find((m) => m.code === "NO")!;
+    const settings = await support.ensureDesk(systemDesk(id));
+    const ctx: ChatContext = {
+      site: { kind: "store", store, market },
+      storeId: id,
+      lang: market.lang,
+      locale: market.locale,
+      market: market.slug,
+      agent: ai ? { storeId: id, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 } : null,
+      connection: ai ? connection : null,
+      settings,
+    };
+    const kari: Staff = { desk: systemDesk(id), store: { id, slug: s, name }, account: { id: String(owner.id), email: String(owner.email) } as unknown as Staff["account"], canWrite: true };
+    return { id, slug: s, store, market, ctx, kari, raw: { store: s, market: market.slug } };
+  }
+
+  const say = async (ctx: ChatContext, message: string, ref?: { id: string; token: string }, after = 0, options: { limited?: boolean } = {}) =>
+    ok(await route.visitorTurn(ctx, { conversation: ref, after, signals: { views: [], searches: [] } }, message, options));
+  const refOf = (reply: VisitorReply) => ({ id: reply.conversation!.id, token: reply.conversation!.token! });
+
+  it("with people only, starts every conversation in the queue, never asks the AI and stores no AI message (C20)", async () => {
+    const sent = fakeModel(["Should never be asked"]);
+    const d = await desk("people-only", "people");
+    const first = await say(d.ctx, "Hei, er dere der?");
+    expect(sent).toHaveLength(0);
+    expect(first.messages.map((m) => m.author)).toEqual(["customer"]);
+    expect(first.state).toMatchObject({ status: "open", handler: "queue", mode: "people", queue: { position: 1 }, available: false, emailFollowup: true, followupEmail: null });
+    // An answer from the AI is dropped by the database: the conversation is not the AI's.
+    expect(await support.addMessage(systemDesk(d.id), first.conversation!.id, "ai", null, "Hello")).toBeNull();
+    expect((await db().execute<Row>(sql`select count(*)::int as n from commerce.support_messages where conversation_id = ${first.conversation!.id}::uuid and author = 'ai'`))[0].n).toBe(0);
+
+    // The chat is served without an agent or a model; with support off it is not.
+    const { chatContext } = await import("./chat-route");
+    const place = { site: d.ctx.site, storeId: d.id, lang: d.ctx.lang, locale: d.ctx.locale, market: d.ctx.market };
+    expect(await chatContext(place)).toMatchObject({ agent: null, connection: null, settings: { mode: "people" } });
+    await db().execute(sql`update commerce.support_settings set mode = 'off' where store_id = ${d.id}::uuid`);
+    expect(((await chatContext(place)) as Response).status).toBe(404);
+  });
+
+  it("with the AI first but no AI, or an AI that fails, moves the conversation to the queue (C8)", async () => {
+    const none = await desk("no-model", "ai_first");
+    const first = await say(none.ctx, "Hello?");
+    expect(first.state.handler).toBe("queue");
+    expect(first.messages.map((m) => m.kind ?? m.author)).toEqual(["customer", "queued"]);
+    expect((await conversationRow(first.conversation!.id)).handoff_reason).toBe("no_ai");
+
+    const failing = await desk("failing-ai", "ai_first", true);
+    fakeModel([], true);
+    const failed = await say(failing.ctx, "Hello?");
+    expect(failed.state.handler).toBe("queue");
+    expect(failed.error).toBeUndefined();
+    expect((await conversationRow(failed.conversation!.id)).handoff_reason).toBe("no_ai");
+
+    // Past the site's daily limit the message is kept and goes to a person, without asking the model.
+    const limited = await desk("limited-ai", "ai_first", true);
+    const sent = fakeModel(["Never"]);
+    const over = await say(limited.ctx, "Hello?", undefined, 0, { limited: true });
+    expect(sent).toHaveLength(0);
+    expect((await conversationRow(over.conversation!.id)).handoff_reason).toBe("limit");
+  });
+
+  it("hands over when the AI asks for a person, keeping its words for the staff", async () => {
+    const d = await desk("ai-handoff", "ai_first", true);
+    const answers: unknown[] = [
+      { content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "handoff_to_human", arguments: JSON.stringify({ reason: "Wants a refund for a broken lamp" }) } }] },
+      { content: "A person from the store will answer here." },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ choices: [{ message: answers.shift() ?? { content: "…" } }] })),
+    );
+    const reply = await say(d.ctx, "I want to talk to someone about a refund");
+    expect(reply.state.handler).toBe("queue");
+    expect(reply.messages.map((m) => m.kind ?? m.author)).toEqual(["customer", "ai", "queued"]);
+    expect(await conversationRow(reply.conversation!.id)).toMatchObject({ handoff_reason: "ai", ai_reason: "Wants a refund for a broken lamp" });
+  });
+
+  it("lets the visitor ask for a person and go back to the assistant, with their place in line", async () => {
+    const d = await desk("talk-to-person", "ai_first", true);
+    fakeModel(["Hei!", "Hei igjen!"]);
+    const a = await say(d.ctx, "Hei");
+    const b = await say(d.ctx, "Hei");
+    const asked = ok(await route.visitorHandoff(d.raw, refOf(a), 2));
+    expect(asked.state).toMatchObject({ handler: "queue", queue: { position: 1 } });
+    expect(asked.messages.map((m) => m.kind)).toEqual(["queued"]);
+    const second = ok(await route.visitorHandoff(d.raw, refOf(b), 2));
+    expect(second.state.queue).toEqual({ position: 2 });
+    expect((await conversationRow(a.conversation!.id)).handoff_reason).toBe("customer");
+
+    const back = ok(await route.visitorAssistant(d.raw, refOf(a), 3));
+    expect(back.state.handler).toBe("ai");
+    expect(back.messages.map((m) => m.kind)).toEqual(["assistant_back"]);
+    // The other moves up.
+    expect(ok(await route.visitorFeedReply(d.raw, refOf(b), 3)).state.queue).toEqual({ position: 1 });
+  });
+
+  it("says when someone can answer: a person online inside the desk's hours", async () => {
+    const d = await desk("hours", "people");
+    const reply = await say(d.ctx, "Hei");
+    expect(reply.state.available).toBe(false);
+    await support.setPresence([systemDesk(d.id)], d.kari.account.id, "online");
+    expect(ok(await route.visitorFeedReply(d.raw, refOf(reply), 1)).state.available).toBe(true);
+    const closed = { week: Object.fromEntries(["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => [day, null])), exceptions: [] };
+    await db().execute(sql`update commerce.support_settings set hours = ${JSON.stringify(closed)}::jsonb where store_id = ${d.id}::uuid`);
+    expect(ok(await route.visitorFeedReply(d.raw, refOf(reply), 1)).state.available).toBe(false);
+  });
+
+  it("takes an email for answers, at most three changes, and emails a person's answers with a link that only the newest email opens (C7)", async () => {
+    const { sendReplyEmails } = await import("./support-email");
+    const { agentAct } = await import("./support-agent");
+    const d = await desk("email-follow", "people");
+    const first = await say(d.ctx, "Is the lamp in stock?");
+    const ref = refOf(first);
+    const left = ok(await route.visitorEmail(d.raw, ref, 1, { name: "Kari", email: "kari.visitor@example.com" }));
+    expect(left.state.followupEmail).toBe("kari.visitor@example.com");
+    for (const n of [2, 3]) ok(await route.visitorEmail(d.raw, ref, 1, { name: null, email: `kari${n}@example.com` }));
+    const fourth = await route.visitorEmail(d.raw, ref, 1, { name: null, email: "kari4@example.com" });
+    expect((fourth as Response).status).toBe(409);
+
+    expect(await agentAct(d.kari, ref.id, { kind: "claim" })).toEqual({ ok: true });
+    expect(await agentAct(d.kari, ref.id, { kind: "reply", body: "Yes, we have three left." })).toEqual({ ok: true });
+    // The visitor has not looked since: one email, a minute later.
+    await db().execute(sql`update commerce.support_conversations set visitor_seen_at = null where id = ${ref.id}::uuid`);
+    const later = (minutes: number) => new Date(Date.now() + minutes * 60_000);
+    // The database is shared with other tests: count this conversation's emails only.
+    const emails = async () =>
+      db().execute<Row>(sql`select to_address, text, idempotency_key from commerce.email_messages where kind = 'support.reply' and idempotency_key like ${`support.reply:${ref.id}:%`} order by created_at`);
+    const sent = async (at: Date) => {
+      await sendReplyEmails(at);
+      return (await emails()).length;
+    };
+    expect(await sent(new Date())).toBe(0);
+    expect(await sent(later(2))).toBe(1);
+    const [one] = await emails();
+    expect(one.to_address).toBe("kari3@example.com");
+    expect(String(one.text)).toContain("Yes, we have three left.");
+    const tokenOf = (text: unknown) => /\/account\/support\/([A-Za-z0-9_-]{20,})/.exec(String(text))![1];
+    const firstToken = tokenOf(one.text);
+    const site = { kind: "store" as const, store: d.store, market: d.market };
+    expect((await route.emailThread(site, firstToken))?.conversation.id).toBe(ref.id);
+
+    // Not again within ten minutes, even with a new answer.
+    await agentAct(d.kari, ref.id, { kind: "reply", body: "And they ship today." });
+    expect(await sent(later(3))).toBe(1);
+    // After ten minutes, the new answer only, with a new link; the old link no longer opens it.
+    await db().execute(sql`update commerce.support_conversations set email_sent_at = now() - interval '11 minutes', visitor_seen_at = null where id = ${ref.id}::uuid`);
+    expect(await sent(later(2))).toBe(2);
+    const [, two] = await emails();
+    expect(String(two.text)).toContain("And they ship today.");
+    expect(String(two.text)).not.toContain("three left");
+    expect(await route.emailThread(site, firstToken)).toBeNull();
+    const thread = await route.emailThread(site, tokenOf(two.text));
+    expect(thread?.messages.map((m) => m.author)).toContain("agent");
+    // The link's token opens the conversation for the visitor's routes too, and a message from it lands there.
+    expect(ok(await route.visitorFeedReply(d.raw, thread!.conversation, 0)).messages.length).toBeGreaterThan(0);
+    // Another site never opens it.
+    const other = await desk("email-other", "people");
+    expect(await route.emailThread({ kind: "store", store: other.store, market: other.market }, tokenOf(two.text))).toBeNull();
+
+    // Once the visitor looked after the answer, nothing is sent; and never past the limit.
+    await agentAct(d.kari, ref.id, { kind: "reply", body: "Seen at once" });
+    await db().execute(sql`update commerce.support_conversations set email_sent_at = now() - interval '11 minutes', visitor_seen_at = now() + interval '1 minute' where id = ${ref.id}::uuid`);
+    expect(await sent(later(2))).toBe(2);
+    await db().execute(sql`update commerce.support_conversations set visitor_seen_at = null, email_count = 20 where id = ${ref.id}::uuid`);
+    expect(await sent(later(2))).toBe(2);
+  });
+
+  it("emails the desk's people who are not online once when a customer has waited, naming no customer", async () => {
+    const { sendWaitingAlerts } = await import("./support-email");
+    const d = await desk("waiting-alert", "people");
+    const first = await say(d.ctx, "My name is Ola and my phone is 99999999");
+    await db().execute(sql`update commerce.support_conversations set queued_at = now() - interval '10 minutes' where id = ${first.conversation!.id}::uuid`);
+    // The database is shared with other tests: count this store's alerts only.
+    const alerts = async () => db().execute<Row>(sql`select to_address, subject, text from commerce.email_messages where kind = 'support.waiting' and store_id = ${d.id}::uuid`);
+    await sendWaitingAlerts();
+    const [email, ...more] = await alerts();
+    expect(more).toHaveLength(0);
+    expect(email.to_address).toBe(d.kari.account.email);
+    expect(`${String(email.subject)} ${String(email.text)}`).not.toMatch(/Ola|99999999/);
+    await sendWaitingAlerts();
+    expect(await alerts()).toHaveLength(1);
+
+    // Someone online is not emailed.
+    const second = await say(d.ctx, "Hello again");
+    await db().execute(sql`update commerce.support_conversations set queued_at = now() - interval '10 minutes' where id = ${second.conversation!.id}::uuid`);
+    await support.setPresence([systemDesk(d.id)], d.kari.account.id, "online");
+    await sendWaitingAlerts();
+    expect(await alerts()).toHaveLength(1);
+  });
+
+  it("ends a conversation with a person after a quiet day, and one nobody took from the queue after 14 days", async () => {
+    const { agentAct } = await import("./support-agent");
+    const d = await desk("idle-ends", "people");
+    const withPerson = await say(d.ctx, "Hei");
+    await agentAct(d.kari, withPerson.conversation!.id, { kind: "claim" });
+    const waiting = await say(d.ctx, "Hei");
+    await db().execute(sql`update commerce.support_conversations set last_message_at = now() - interval '25 hours' where id = ${withPerson.conversation!.id}::uuid`);
+    await db().execute(sql`update commerce.support_conversations set queued_at = now() - interval '15 days', last_message_at = now() - interval '15 days' where id = ${waiting.conversation!.id}::uuid`);
+    await support.endIdleConversations();
+    expect(await conversationRow(withPerson.conversation!.id)).toMatchObject({ status: "ended", ended_by: "timeout" });
+    expect(await conversationRow(waiting.conversation!.id)).toMatchObject({ status: "ended", ended_by: "timeout" });
+  });
+
+  it("saves the desk's settings: transcripts only by the owner, and changing who answers ends what the new mode cannot serve", async () => {
+    const { saveDeskSettings } = await import("./support-settings");
+    const d = await desk("settings-save", "off", true);
+    fakeModel(["Hei!"]);
+    const open = await say(d.ctx, "Hei");
+    const form = { mode: "people", emailFollowup: "on", hours: "", endAfterMinutes: "45", notifyAfterMinutes: "3", agentNaming: "desk", transcriptDays: "30" };
+
+    expect(await saveDeskSettings(d.kari, form, { owner: false })).toEqual({ ok: false, problems: ["Only the store's owner can change how long transcripts are kept."] });
+    expect(await saveDeskSettings(d.kari, { ...form, endAfterMinutes: "5" }, { owner: true })).toMatchObject({ ok: false });
+    expect(await saveDeskSettings({ ...d.kari, canWrite: false }, form, { owner: true })).toMatchObject({ ok: false });
+    expect(await saveDeskSettings(d.kari, form, { owner: true })).toEqual({ ok: true, ended: 1 });
+    expect(await support.deskSettings(systemDesk(d.id))).toMatchObject({ mode: "people", endAfterMinutes: 45, notifyAfterMinutes: 3, agentNaming: "desk", transcriptDays: 30, emailFollowup: true, hours: null });
+    expect(await conversationRow(open.conversation!.id)).toMatchObject({ status: "ended", ended_by: "system" });
+    const [logged] = await db().execute<Row>(sql`select area, details from commerce.audit_log where action = 'support.settings_changed' and store_id = ${d.id}::uuid`);
+    expect(logged.area).toBe("support");
+    expect((logged.details as { mode: string }).mode).toBe("people");
+
+    // Without the owner's field, a member's save keeps what the desk has.
+    expect(await saveDeskSettings(d.kari, { ...form, transcriptDays: undefined, emailFollowup: undefined }, { owner: false })).toEqual({ ok: true, ended: 0 });
+    expect(await support.deskSettings(systemDesk(d.id))).toMatchObject({ transcriptDays: 30, emailFollowup: false });
   });
 });

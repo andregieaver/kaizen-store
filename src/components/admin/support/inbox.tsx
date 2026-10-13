@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TAB_WORDS } from "@/lib/support-inbox-text";
 import { HEARTBEAT_SECONDS, POLL_STAFF_MS } from "@/lib/support-rules";
-import type { InboxRow, InboxTab } from "@/server/support";
-import type { ConversationFeed } from "@/server/support-inbox";
+import type { InboxTab } from "@/server/support";
+import type { ConversationFeed, InboxFeed } from "@/server/support-inbox";
 
 import { ConversationActions } from "./conversation-actions";
 import { ConversationList } from "./conversation-list";
@@ -23,7 +23,7 @@ export function Inbox({
   initialTab,
 }: {
   context: SupportDeskContext;
-  initial: { rows: InboxRow[]; waiting: number };
+  initial: InboxFeed;
   initialTab: InboxTab;
 }) {
   const [tab, setTab] = useState<InboxTab>(initialTab);
@@ -38,6 +38,10 @@ export function Inbox({
   const [presence, setPresenceState] = useState(context.presence);
   const [now, setNow] = useState(() => new Date());
   const [gone, setGone] = useState(false);
+  const [mineUnread, setMineUnread] = useState(initial.mineUnread);
+  // Sound and browser notifications, once the person turned them on (2.9): the browser asks first.
+  const [alerts, setAlerts] = useState(false);
+  const seen = useRef({ waiting: initial.waiting, mineUnread: initial.mineUnread });
   const hidden = () => typeof document !== "undefined" && document.visibilityState === "hidden";
 
   const loadList = useCallback(async () => {
@@ -47,9 +51,10 @@ export function Inbox({
     try {
       const response = await fetch(`${context.feedUrl}?${params}`, { cache: "no-store" });
       if (!response.ok) return;
-      const body = (await response.json()) as { rows: InboxRow[]; waiting: number };
+      const body = (await response.json()) as InboxFeed;
       setRows(body.rows);
       setWaiting(body.waiting);
+      setMineUnread(body.mineUnread);
       setNow(new Date());
     } catch {
       // Offline for a moment: the next poll tries again.
@@ -114,6 +119,33 @@ export function Inbox({
     return () => clearInterval(timer);
   }, [context.actions]);
 
+  // Someone new waiting, or a customer writing in one of the person's own conversations: a sound and a notification, if on.
+  useEffect(() => {
+    const before = seen.current;
+    seen.current = { waiting, mineUnread };
+    if (!alerts) return;
+    const words = waiting > before.waiting ? (waiting === 1 ? "Someone is waiting for a person." : `${waiting} are waiting for a person.`) : mineUnread > before.mineUnread ? "A customer wrote in your conversation." : null;
+    if (words) alert(words);
+  }, [waiting, mineUnread, alerts]);
+
+  // The tab's title says how many wait while the inbox is open.
+  useEffect(() => {
+    const original = document.title;
+    return () => {
+      document.title = original;
+    };
+  }, []);
+  useEffect(() => {
+    document.title = waiting > 0 ? `(${waiting}) Support` : "Support";
+  }, [waiting]);
+
+  async function turnOnAlerts() {
+    if (typeof Notification !== "undefined" && Notification.permission === "default") await Notification.requestPermission().catch(() => "denied");
+    // The sound is allowed from this press on; notifications only where the browser said yes.
+    chime();
+    setAlerts(true);
+  }
+
   /** Opens a conversation (or goes back to the list on a phone), forgetting the one shown before. */
   function openConversation(next: { id: string; store: string | null } | null) {
     setConversation(null);
@@ -138,6 +170,15 @@ export function Inbox({
           {waiting === 1 ? "1 waiting" : `${waiting} waiting`}
         </p>
         <span className="flex-1" />
+        {alerts ? (
+          <button type="button" onClick={() => setAlerts(false)} className="rounded-md border border-border px-2 py-1 text-sm hover:bg-surface" aria-pressed>
+            Alerts on
+          </button>
+        ) : (
+          <button type="button" onClick={() => void turnOnAlerts()} className="rounded-md border border-border px-2 py-1 text-sm hover:bg-surface" aria-pressed={false}>
+            Turn on alerts
+          </button>
+        )}
         {context.presence !== null && context.actions.presence && (
           <label className="flex items-center gap-2 text-sm">
             <span>You are</span>
@@ -227,3 +268,36 @@ const EMPTY: Record<InboxTab, string> = {
   open: "No open conversations.",
   ended: "No ended conversations yet.",
 };
+
+/** A short tone, made in the browser (no file to load). */
+function chime() {
+  try {
+    const AudioContextClass = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audio = new AudioContextClass();
+    const tone = audio.createOscillator();
+    const gain = audio.createGain();
+    tone.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, audio.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.2, audio.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.4);
+    tone.connect(gain).connect(audio.destination);
+    tone.start();
+    tone.stop(audio.currentTime + 0.45);
+    tone.onended = () => void audio.close();
+  } catch {
+    // No sound where the browser allows none.
+  }
+}
+
+/** The sound, and a browser notification when the tab is not in front and the browser allows them. */
+function alert(words: string) {
+  chime();
+  if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState === "hidden") {
+    try {
+      new Notification("Support", { body: words, tag: "kaizen-support" });
+    } catch {
+      // Some browsers allow notifications only from a service worker: the sound and the title still say it.
+    }
+  }
+}

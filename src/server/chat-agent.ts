@@ -17,8 +17,11 @@ import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
 import type { PriceView } from "@/lib/pricing";
 import { priceUnitSentence } from "@/lib/unit-price-text";
+import { SUPPORT_TOOLS } from "@/lib/support-tools";
+import { TRANSCRIPT_DAYS_OFF, type SupportMode } from "@/lib/support-rules";
+import { z } from "zod";
 
-import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, type AiConnection, type ToolChatMessage } from "./ai";
+import { AI_TAG, AiError, aiFor, canSpeak, chatWithTools, type AiConnection, type ToolChatMessage, type ToolDefinition } from "./ai";
 import { audit, type Account } from "./auth";
 import { campaignNotices } from "./campaign-notices";
 import { getProduct, getVariantStock, type GridProduct } from "./catalog";
@@ -32,6 +35,7 @@ import { searchProducts } from "./search";
 import { getShippingFacts } from "./seo";
 import type { Store } from "./stores";
 import { siteTerms } from "./taxonomy";
+import { settingsOf } from "./support";
 
 type Row = Record<string, unknown>;
 
@@ -89,31 +93,50 @@ export async function getChatAgentForEdit(storeId: string | null): Promise<ChatA
   return row ? toAgent(row) : null;
 }
 
-/** What the site's pages show of its agent: who it is, how it greets, and whether it listens and speaks. */
+/** What the site's pages show of its chat: who answers, how it greets, whether it listens and speaks, and how the desk works (D216). */
 export type ChatWidgetProfile = {
   name: string;
   occupation: string;
   avatar: ChatAgent["avatar"];
   greeting: Record<string, string>;
   voice: boolean;
+  /** Who answers the site's customers: the chat agent alone (`off`), the AI first, or people only. */
+  mode: SupportMode;
+  /** Whether the AI answers first here (an agent with a text model, and the desk not people only). */
+  ai: boolean;
+  /** How long a conversation is kept after it ends, in days, for the notice. */
+  keptDays: number;
 };
 
+/** The desk's settings as the site's cached pages read them, or null before its first conversation. */
+async function cachedDeskSettings(storeId: string | null) {
+  const [row] = await readDb().execute<Row>(sql`select * from commerce.support_settings where ${owned(storeId)}`);
+  return row ? settingsOf(row) : null;
+}
+
 /**
- * The widget for a site's pages, or null while its agent is off or it has
- * no text model; cached with the agent and the site's AI settings.
+ * The widget for a site's pages, or null when there is no chat: with support off, while its agent is off or it has no text model
+ * (as before); with the AI first or people only, always (D216, step 5), the AI answering first only where it can. Cached with the
+ * agent, the desk's settings (`chatTag`) and the site's AI settings.
  */
 export async function chatWidgetFor(storeId: string | null): Promise<ChatWidgetProfile | null> {
   "use cache";
   cacheLife("hours");
   cacheTag(chatTag(storeId), AI_TAG);
-  const [agent, connection] = await Promise.all([getChatAgent(storeId), aiFor(storeId)]);
-  if (!agent?.enabled || !connection?.textModel) return null;
+  const [agent, connection, settings] = await Promise.all([getChatAgent(storeId), aiFor(storeId), cachedDeskSettings(storeId)]);
+  const mode = settings?.mode ?? "off";
+  const ai = agent !== null && Boolean(connection?.textModel) && mode !== "people" && (mode === "ai_first" || agent.enabled);
+  if (mode === "off" && !ai) return null;
+  const people = mode === "people";
   return {
-    name: agent.name,
-    occupation: agent.occupation,
-    avatar: agent.avatar,
-    greeting: agent.greeting,
-    voice: agent.voice && canSpeak(connection),
+    name: people ? "" : (agent?.name ?? ""),
+    occupation: people ? "" : (agent?.occupation ?? ""),
+    avatar: people ? null : (agent?.avatar ?? null),
+    greeting: people ? {} : (agent?.greeting ?? {}),
+    voice: ai && agent!.voice && canSpeak(connection!),
+    mode,
+    ai,
+    keptDays: mode === "off" || !settings ? TRANSCRIPT_DAYS_OFF : settings.transcriptDays,
   };
 }
 
@@ -423,7 +446,15 @@ async function kaizenTool(name: string, args: Record<string, unknown>): Promise<
  * conversation and the site's tools, runs tools for up to a few rounds,
  * and words the answer. What the tools opened and found goes with it.
  */
-export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatRequest, connection: AiConnection): Promise<ChatReply> {
+/** The support tool that hands a conversation to a person (D216, 4.3a), as the model is given it. */
+const HANDOFF = SUPPORT_TOOLS.find((tool) => tool.name === "handoff_to_human")!;
+const handoffTool = { name: HANDOFF.name, description: HANDOFF.description, parameters: z.toJSONSchema(HANDOFF.input) as Record<string, unknown> };
+
+/**
+ * The agent's answer to a visitor. With `handoff` (support with the AI first, D216) it may also hand the conversation to a person:
+ * the reply carries what the customer needs, and the caller moves the conversation to the queue after storing the answer.
+ */
+export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatRequest, connection: AiConnection, options: { handoff?: boolean } = {}): Promise<ChatReply> {
   const lang = site.kind === "store" ? site.market.lang : "en";
   const m = t(lang);
   const messages: ToolChatMessage[] = [
@@ -438,11 +469,14 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
         instructions: agent.instructions,
         path: request.path ?? null,
         today: new Date().toISOString().slice(0, 10),
+        handoff: options.handoff,
       }),
     },
     ...request.messages.map((message) => ({ role: message.role, content: message.content }) as ToolChatMessage),
   ];
-  const tools = site.kind === "store" ? storeTools(featureOn(site.store, "shop")) : kaizenTools();
+  const siteTools: ToolDefinition[] = site.kind === "store" ? storeTools(featureOn(site.store, "shop")) : kaizenTools();
+  const tools = options.handoff ? [...siteTools, handoffTool] : siteTools;
+  let handoff: string | undefined;
   let action: ChatAction | null = null;
   const products = new Map<string, ChatProduct>();
   for (let round = 0; round <= ROUNDS; round++) {
@@ -450,7 +484,7 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
     const step = await chatWithTools(connection, messages, round < ROUNDS ? tools : [], { maxTokens: 600 });
     if (step.toolCalls.length === 0 || round === ROUNDS) {
       const reply = cleanReply(step.content ?? "", m.chat.sorry);
-      return { reply, actions: action ? [action] : [], products: [...products.values()].slice(0, 6) };
+      return { reply, actions: action ? [action] : [], products: [...products.values()].slice(0, 6), ...(handoff ? { handoff } : {}) };
     }
     messages.push({ role: "assistant", content: step.content, tool_calls: step.toolCalls });
     for (const call of step.toolCalls.slice(0, 4)) {
@@ -459,6 +493,12 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
         args = JSON.parse(call.function.arguments || "{}") as Record<string, unknown>;
       } catch {
         // Unreadable arguments: the tool says what it needs.
+      }
+      if (options.handoff && call.function.name === HANDOFF.name) {
+        const parsed = HANDOFF.input.safeParse(args);
+        handoff = parsed.success ? (parsed.data as { reason: string }).reason : "The customer asked for a person.";
+        messages.push({ role: "tool", tool_call_id: call.id, content: json({ ok: true, note: "A person takes over after your reply. Tell the visitor in one short sentence." }) });
+        continue;
       }
       let outcome: ToolOutcome;
       try {
@@ -475,7 +515,7 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
     // Tool calls beyond the first four get an answer too, so the conversation stays well formed.
     for (const call of step.toolCalls.slice(4)) messages.push({ role: "tool", tool_call_id: call.id, content: json({ error: "Too many tools at once." }) });
   }
-  return { reply: m.chat.sorry, actions: [], products: [] };
+  return { reply: m.chat.sorry, actions: [], products: [], ...(handoff ? { handoff } : {}) };
 }
 
 /**

@@ -33,14 +33,16 @@ export type VisitorState = {
   mode: SupportMode;
   /** The person answering, once one has joined (step 4). */
   agent: { name: string; picture: string | null } | null;
-  /** The visitor's place in line while waiting (step 5). */
+  /** The visitor's place in line while waiting. */
   queue: { position: number } | null;
-  /** Whether someone can answer now (step 5); always true while the AI answers. */
+  /** Whether someone can answer now: someone online inside the desk's hours (always true unless waiting). */
   available: boolean;
-  /** Emails the desk may still send to this conversation (step 5). */
+  /** Emails the desk may still send to this conversation. */
   emailLeft: number;
   signedIn: boolean;
   emailFollowup: boolean;
+  /** Where answers will be emailed (the email the visitor left, or a signed-in customer's own), when the desk takes email. */
+  followupEmail: string | null;
 };
 
 /** What every visitor route answers with. `token` only when the conversation was just made (or started anew). */

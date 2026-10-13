@@ -1386,3 +1386,59 @@ and push to `main`; watch CI; for a migration, record its version and check the 
 - **Tests**: I `support.int.test.ts` (C4, C5, C6, transfer, hand back, end, support off, no AI call while a person has it); V
   `availableActs()` and the buttons; E `chat.spec.ts` (a person joins and answers within 5 s, the header without the AI label).
   `e2e/support.spec.ts` against the real routes starts in step 5, when a desk in mode `people` draws the widget without AI.
+
+**Step 5 (13 October 2026).**
+
+- **The settings page** (`/admin/{store}/support/settings`, `/admin/platform/support/settings`; Support's *Settings*): who answers
+  first, email follow-up, opening hours (the places' `HoursEditor`), when a quiet conversation with the assistant ends, when people
+  are emailed about a waiting customer, how people are named, and how long transcripts are kept (the owner's alone: the action asks
+  `owner` too, listed in `OWNER_ONLY_EXTRA`; a platform admin is the owner of Kaizen's desk). `saveDeskSettings()` audits
+  `support.settings_changed` with the fields changed. **Changing the mode ends the open conversations the new mode cannot serve**
+  (to `people`: the AI's; to `off`: the queue's and people's), in the same transaction, ended by the system; the customer's next
+  message within a day reopens theirs as the new mode starts one. The page says how many are open before saving. The AI helpers
+  (partner, tone, summaries), the tone lines and what the AI may do for customers are not on the page yet: each comes with the step
+  that builds it, so the page never shows a switch that does nothing.
+- **Who answers where there is no AI**: with the AI first the AI answers when the site has a *saved* chat assistant and a text model
+  (its *Show the chat on the site* switch governs only mode `off`, as 2.10 says); otherwise, and with people only, `chatContext()`
+  serves the desk without one. `chatWidgetFor()` reads the desk's settings in its cached read (tag `chatTag`) and gives the widget
+  the mode, whether the AI answers and the days kept.
+- **To the queue**: a conversation the AI has goes to the queue, with its system line, when the AI asks (`handoff_to_human`, a support
+  tool added to `runChat()` only with the AI first, its words kept in `ai_reason`), when it fails or is missing (`no_ai`: the error is
+  not shown, the customer sees the queue) and past the site's daily limit (`takeTurn()` answers `limit` instead of a 429 unless
+  support is off). The voice route still needs the AI: past the limit it answers 429.
+- **Routes** `/api/chat/handoff`, `/api/chat/assistant` and `/api/chat/email` answer like the feed (`VisitorReply`: state and
+  messages), so the widget draws one shape; the email card's route returns the whole reply rather than `{state}`. `VisitorState`
+  gains `followupEmail` (the email left, or a signed-in customer's own address); the place in line is counted in the database (a time
+  read into JavaScript loses its microseconds); availability is `deskAvailability()` with the desk's presence and its time zone
+  (Kaizen's: Europe/Oslo).
+- **The email link's token is made anew with each answer email**: only its hash is kept (`email_token_hash`), so the newest email's
+  link is the one that opens the conversation; an older link's page says a newer email has the link. No plain token or key-derived
+  token is kept, so no secret is needed. `visitorConversation()` takes the tab's token or the email's. The pages
+  (`/s/{store}/{market}/account/support/{token}`, Kaizen's `/support/c/{token}`) are no-extras paths (`isSupportLinkPath()`): no chat,
+  consent banner or owner code there, and Kaizen's layout now draws its chat and banner inside `OffPayRoutes` too. The thread
+  (`components/chat/support-thread.tsx`) is its own small component, without the widget.
+- **Emails** run every minute in `/api/cron/integrations` (`sendSupportEmails()`): `support.reply` (shopper, hand-written in
+  `src/lib/support-email-text.ts`, four languages, legal review) when a person's message is at least a minute old and newer than the
+  customer's last look, which they have not repeated for a minute; at most one every 10 minutes (`email_sent_at`, migration
+  `20261013190519_support_email_sent`) and 20 a conversation; to a signed-in customer's own address, else the one left. A failed send
+  is not retried (its key is kept, as every email's); *Email not sent* for staff waits for step 14. `support.waiting` (staff, English,
+  names no customer and holds none of their words) to every person of the desk who may answer (`support:write` by their role, or the
+  platform admins) and is not online, once each time a conversation entered the queue (`waiting_alert_at`). Both skip a store that is
+  not open.
+- **Ending**: `endIdleConversations()` also ends a conversation with a person after `HUMAN_IDLE_END_HOURS` without a message and one
+  nobody took from the queue after `QUEUE_GIVE_UP_DAYS` (ended by the system, `timeout`).
+- **The widget**: with people only, the desk's name and *Our team answers here*, the people's greeting and notice, no AI persona,
+  label, disclaimer or voice; with the AI first, the AI notice, *Talk to a person* while the AI answers, and *Continue with the
+  assistant* while waiting; the place in line, *Nobody can answer right now* and the email card (or where answers will go, with
+  *Change*) while waiting; the notice links the store's privacy page while support is on. The desk's hours are not written out yet.
+- **The inbox**: *Turn on alerts* (asks the browser for notifications; a sound made in the browser) for someone new waiting and a
+  customer's new message in one's own conversation (`mineUnread` in the list's feed); the tab's title says how many wait; an email a
+  visitor typed is marked *Email not verified*.
+- **Not done here**: the export by `contact_email` (the subject is never matched by a typed address yet, 3.5) and the desk's hours in
+  the widget's words are left for later steps; Slack's `support.waiting` is step 14.
+- **Tests**: I `support.int.test.ts` (C7: the email card and its three changes, one email per window, the link's rotation, nothing
+  when seen or past the limit, another site's token refused; C8: no model, a failing model and the limit; C20; the AI's hand-over;
+  *Talk to a person* and back with the places in line; availability by presence and hours; waiting alerts; the new ends; the settings
+  save); U `pay-routes.test.ts` (the link paths); E `support.spec.ts` cases 1 and 5.
+- Migration: `20261013190519_support_email_sent`.
+

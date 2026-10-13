@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const input = turnInput.safeParse(raw);
   if (!input.success) return fail(400, "The chat could not read that message.");
   const refused = await takeTurn(context, request);
-  if (refused) return refused;
-  const answer = await visitorTurn(context, input.data, input.data.message);
+  if (refused instanceof Response) return refused;
+  const answer = await visitorTurn(context, input.data, input.data.message, { limited: refused === "limit" });
   return answer instanceof Response ? answer : reply(answer);
 }

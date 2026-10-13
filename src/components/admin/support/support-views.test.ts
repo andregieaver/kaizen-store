@@ -9,6 +9,7 @@ import { availableActs, ConversationActions } from "./conversation-actions";
 import { ConversationList } from "./conversation-list";
 import { ConversationContext, ConversationView } from "./conversation-view";
 import { conversationHref } from "./desk-context";
+import { SupportSettingsForm } from "./settings-form";
 
 /** What a person reads: comment markers out, entities made plain. */
 const html = (element: Parameters<typeof renderToString>[0]) =>
@@ -181,5 +182,47 @@ describe("what a person may do with a conversation (step 4)", () => {
     expect(watching).toContain("Take over");
     expect(watching).toContain("Internal note (only your team sees it)");
     expect(watching).not.toContain("Reply to the customer");
+  });
+});
+
+describe("the desk's settings (step 5)", () => {
+  const settings = {
+    mode: "ai_first" as const,
+    transcriptDays: 90,
+    endAfterMinutes: 30,
+    emailFollowup: true,
+    channelKey: "k",
+    agentNaming: "first_name" as const,
+    hours: null,
+    notifyAfterMinutes: 5,
+    aiReady: false,
+  };
+  const form = (over: Partial<Parameters<typeof SupportSettingsForm>[0]> = {}) =>
+    html(
+      h(SupportSettingsForm, {
+        settings,
+        save: null,
+        canWrite: true,
+        owner: true,
+        deskName: "Demo store",
+        aiSettingsHref: "/admin/demo/settings/ai",
+        chatHref: "/admin/demo/chat",
+        openCount: 0,
+        ...over,
+      }),
+    );
+
+  it("offers the three choices of who answers, and says plainly when the AI first has no AI", () => {
+    const out = form();
+    expect(out).toContain("Support off — the chat assistant alone");
+    expect(out).toContain("The AI first, then your team");
+    expect(out).toContain("Your team only");
+    expect(out).toContain("No AI is connected: your customers will reach your team only");
+    expect(form({ settings: { ...settings, aiReady: true } })).not.toContain("No AI is connected");
+  });
+
+  it("lets only the owner change how long transcripts are kept", () => {
+    expect(form({ owner: false })).toContain("(only the owner changes this)");
+    expect(form()).not.toContain("only the owner changes this");
   });
 });

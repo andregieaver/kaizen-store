@@ -5,10 +5,19 @@ import { createHash, randomBytes } from "node:crypto";
 import { sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import type { OpeningHours } from "@/lib/opening-hours";
+import { parseOpeningHours } from "@/lib/opening-hours-schema";
+import { deskAvailability, type AgentPresence, type Availability } from "@/lib/support-hours";
 import {
+  AI_REASON_MAX,
+  CONTACT_CHANGES_MAX,
+  EMAILS_MAX,
   END_AFTER_MINUTES,
+  HUMAN_IDLE_END_HOURS,
   MESSAGE_MAX,
+  NOTIFY_AFTER_MINUTES,
   ONLINE_SECONDS,
+  QUEUE_GIVE_UP_DAYS,
   TRANSCRIPT_DAYS_DEFAULT,
   TRANSCRIPT_DAYS_OFF,
   type ConversationStatus,
@@ -22,6 +31,9 @@ import type { ConversationRef, VisitorMessage, VisitorMessageData, VisitorState 
 import { avatarPictureUrl } from "@/lib/avatar";
 
 import type { Desk } from "./support-desk";
+
+/** Kaizen's own desk keeps Norway's time (its company's). */
+export const KAIZEN_TIME_ZONE = "Europe/Oslo";
 
 type Row = Record<string, unknown>;
 type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -77,6 +89,10 @@ export type DeskSettings = {
   channelKey: string;
   /** How a person is named to customers: their first name, or the desk's name (D216, 2.10). */
   agentNaming: "first_name" | "desk";
+  /** When people answer, in the desk's time zone; null: whenever someone is online (2.3). */
+  hours: OpeningHours | null;
+  /** Email the desk's people after a conversation has waited this long (2.9). */
+  notifyAfterMinutes: number;
 };
 
 /** The desk's settings, made on its first conversation with support off (S5): the chat agent alone, as before. */
@@ -88,12 +104,8 @@ export async function ensureDesk(desk: Desk): Promise<DeskSettings> {
   return (await deskSettings(desk))!;
 }
 
-/** The desk's settings, or null before its first conversation. */
-export async function deskSettings(desk: Desk): Promise<DeskSettings | null> {
-  const [row] = await db().execute<Row>(sql`
-    select mode, transcript_days, end_after_minutes, email_followup, channel_key, agent_naming from commerce.support_settings where ${deskIs(desk, sql`store_id`)}
-  `);
-  if (!row) return null;
+/** A settings row as the code reads it (also from the cached read in `chat-agent.ts`). */
+export function settingsOf(row: Row): DeskSettings {
   return {
     mode: String(row.mode) as SupportMode,
     transcriptDays: Number(row.transcript_days),
@@ -101,7 +113,15 @@ export async function deskSettings(desk: Desk): Promise<DeskSettings | null> {
     emailFollowup: Boolean(row.email_followup),
     channelKey: String(row.channel_key),
     agentNaming: row.agent_naming === "desk" ? "desk" : "first_name",
+    hours: row.hours ? parseOpeningHours(row.hours) : null,
+    notifyAfterMinutes: Number(row.notify_after_minutes ?? NOTIFY_AFTER_MINUTES.default),
   };
+}
+
+/** The desk's settings, or null before its first conversation. */
+export async function deskSettings(desk: Desk): Promise<DeskSettings | null> {
+  const [row] = await db().execute<Row>(sql`select * from commerce.support_settings where ${deskIs(desk, sql`store_id`)}`);
+  return row ? settingsOf(row) : null;
 }
 
 // Conversations ------------------------------------------------------------------------------------------------------------------
@@ -117,6 +137,12 @@ export type Conversation = {
   channelKey: string;
   locale: string;
   assigneeId: string | null;
+  /** In the queue since (for the place in line). */
+  queuedAt: string | null;
+  /** The email the visitor left for answers (typed, never proof), and how often they changed it. */
+  contactEmail: string | null;
+  contactChanges: number;
+  emailCount: number;
 };
 
 function toConversation(row: Row): Conversation {
@@ -131,10 +157,14 @@ function toConversation(row: Row): Conversation {
     channelKey: String(row.channel_key),
     locale: String(row.locale),
     assigneeId: row.assignee_id ? String(row.assignee_id) : null,
+    queuedAt: row.queued_at ? iso(row.queued_at) : null,
+    contactEmail: row.contact_email ? String(row.contact_email) : null,
+    contactChanges: Number(row.contact_changes ?? 0),
+    emailCount: Number(row.email_count ?? 0),
   };
 }
 
-const CONVERSATION_COLUMNS = sql`id, store_id, status, handler, customer_id, message_seq, ended_at, channel_key, locale, assignee_id`;
+const CONVERSATION_COLUMNS = sql`id, store_id, status, handler, customer_id, message_seq, ended_at, channel_key, locale, assignee_id, queued_at, contact_email, contact_changes, email_count`;
 
 /** A new conversation on the visitor's site, started as the desk's mode says; its token is given once and kept only as a hash. */
 export async function openConversation(
@@ -153,13 +183,64 @@ export async function openConversation(
   return { conversation: toConversation(row), token };
 }
 
-/** The visitor's conversation on this desk when the token is its own, else null (another site's, a wrong token, or one that is gone). */
+/**
+ * The visitor's conversation on this desk when the token is its own (the tab's, or the newest answer email's link), else null
+ * (another site's, a wrong or replaced token, or one that is gone).
+ */
 export async function visitorConversation(desk: Desk, ref: ConversationRef): Promise<Conversation | null> {
+  const hash = sha256(ref.token);
   const [row] = await db().execute<Row>(sql`
     select ${CONVERSATION_COLUMNS} from commerce.support_conversations
-    where id = ${ref.id}::uuid and ${deskIs(desk, sql`store_id`)} and token_hash = ${sha256(ref.token)} and anonymised_at is null
+    where id = ${ref.id}::uuid and ${deskIs(desk, sql`store_id`)} and (token_hash = ${hash} or email_token_hash = ${hash}) and anonymised_at is null
   `);
   return row ? toConversation(row) : null;
+}
+
+/** The conversation an answer email's link opens (its token alone; the newest email's only), on this desk, or null. */
+export async function conversationByEmailToken(desk: Desk, token: string): Promise<Conversation | null> {
+  if (!/^[A-Za-z0-9_-]{20,100}$/.test(token)) return null;
+  const [row] = await db().execute<Row>(sql`
+    select ${CONVERSATION_COLUMNS} from commerce.support_conversations
+    where email_token_hash = ${sha256(token)} and ${deskIs(desk, sql`store_id`)} and anonymised_at is null
+  `);
+  return row ? toConversation(row) : null;
+}
+
+/**
+ * A new link for the conversation's answer emails: a fresh token whose hash replaces the last one, so only the newest email's link
+ * opens it (the token itself is never kept, 2.3).
+ */
+export async function newEmailToken(desk: Desk, conversationId: string): Promise<string> {
+  const token = randomBytes(24).toString("base64url");
+  await db().execute(sql`
+    update commerce.support_conversations set email_token_hash = ${sha256(token)}
+    where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)}
+  `);
+  return token;
+}
+
+/** The AI's words when it handed the conversation to a person (2.3), shown to staff as text. */
+export async function setAiReason(desk: Desk, conversationId: string, reason: string): Promise<void> {
+  await db().execute(sql`
+    update commerce.support_conversations set ai_reason = ${reason.slice(0, AI_REASON_MAX)}
+    where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)}
+  `);
+}
+
+export type ContactResult = { ok: true } | { ok: false; reason: "off" | "changes" };
+
+/**
+ * The email (and name) the visitor left for answers (2.3): typed, never proof, used only to send the answers. At most
+ * `CONTACT_CHANGES_MAX` changes a conversation; a desk without email follow-up takes none.
+ */
+export async function setContact(desk: Desk, conversationId: string, settings: Pick<DeskSettings, "mode" | "emailFollowup">, contact: { name: string | null; email: string }): Promise<ContactResult> {
+  if (settings.mode === "off" || !settings.emailFollowup) return { ok: false, reason: "off" };
+  const rows = await db().execute<Row>(sql`
+    update commerce.support_conversations set contact_email = ${contact.email}, contact_name = ${contact.name}, contact_changes = contact_changes + 1
+    where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)} and anonymised_at is null and contact_changes < ${CONTACT_CHANGES_MAX}
+    returning id
+  `);
+  return rows.length > 0 ? { ok: true } : { ok: false, reason: "changes" };
 }
 
 /** Ties a conversation to the customer who signed in since it started (a store's desk only; never moves it to another customer). */
@@ -235,19 +316,68 @@ export async function markSeen(desk: Desk, conversationId: string): Promise<void
   await db().execute(sql`update commerce.support_conversations set visitor_seen_at = now() where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)}`);
 }
 
+/** What the visitor's state needs beyond the conversation: where it stands in line, whether anyone can answer, and the follow-up email. */
+export type VisitorExtras = {
+  agent?: AgentIdentity | null;
+  queuePosition?: number | null;
+  available?: boolean;
+  /** Where answers will be emailed: the email the visitor left, or a signed-in customer's own. */
+  followupEmail?: string | null;
+};
+
 /** The conversation's state as the visitor's widget draws it; `agent` is the person who has it, as customers see them. */
-export function visitorState(conversation: Pick<Conversation, "status" | "handler">, settings: DeskSettings, signedIn: boolean, agent: AgentIdentity | null = null): VisitorState {
+export function visitorState(
+  conversation: Pick<Conversation, "status" | "handler" | "emailCount">,
+  settings: DeskSettings,
+  signedIn: boolean,
+  extras: VisitorExtras = {},
+): VisitorState {
+  const open = conversation.status === "open";
+  const followup = settings.mode !== "off" && settings.emailFollowup;
   return {
     status: conversation.status,
     handler: conversation.handler,
     mode: settings.mode,
-    agent: conversation.status === "open" && conversation.handler === "human" ? agent : null,
-    queue: null,
-    available: true,
-    emailLeft: 0,
+    agent: open && conversation.handler === "human" ? (extras.agent ?? null) : null,
+    queue: open && conversation.handler === "queue" && extras.queuePosition ? { position: extras.queuePosition } : null,
+    available: open && conversation.handler === "queue" ? (extras.available ?? true) : true,
+    emailLeft: followup ? Math.max(0, EMAILS_MAX - conversation.emailCount) : 0,
     signedIn,
-    emailFollowup: settings.mode !== "off" && settings.emailFollowup,
+    emailFollowup: followup,
+    followupEmail: followup ? (extras.followupEmail ?? null) : null,
   };
+}
+
+/** The conversation's place in the desk's queue (1 is next), or null when it is not waiting. */
+export async function queuePosition(desk: Desk, conversation: Pick<Conversation, "id" | "status" | "handler" | "queuedAt">): Promise<number | null> {
+  if (conversation.status !== "open" || conversation.handler !== "queue" || !conversation.queuedAt) return null;
+  // Compared in the database: a time read into JavaScript loses its microseconds.
+  const [row] = await db().execute<Row>(sql`
+    select count(*)::int as n from commerce.support_conversations c,
+      (select queued_at, id from commerce.support_conversations where id = ${conversation.id}::uuid) me
+    where ${deskIs(desk, sql`c.store_id`)} and c.status = 'open' and c.handler = 'queue' and c.anonymised_at is null
+      and (c.queued_at < me.queued_at or (c.queued_at = me.queued_at and c.id <= me.id))
+  `);
+  return Math.max(1, Number(row?.n ?? 1));
+}
+
+/** The desk's people as presence knows them (online or away, and when last seen). */
+export async function deskPresence(desk: Desk): Promise<AgentPresence[]> {
+  const rows = await db().execute<Row>(sql`select status, last_seen_at from commerce.support_agents where ${deskIs(desk, sql`store_id`)}`);
+  return rows.map((r) => ({ status: r.status === "online" ? "online" : "away", lastSeenAt: r.last_seen_at ? new Date(iso(r.last_seen_at)) : null }));
+}
+
+/** The desk's time zone: its store's, or Kaizen's. */
+export async function deskTimeZone(desk: Desk): Promise<string> {
+  if (!desk.storeId) return KAIZEN_TIME_ZONE;
+  const [row] = await db().execute<Row>(sql`select time_zone from commerce.stores where id = ${desk.storeId}::uuid`);
+  return row?.time_zone ? String(row.time_zone) : KAIZEN_TIME_ZONE;
+}
+
+/** Whether the desk can answer now (2.3): someone online, inside its hours. */
+export async function availabilityOf(desk: Desk, settings: Pick<DeskSettings, "hours">, now: Date = new Date()): Promise<Availability> {
+  const [agents, timeZone] = await Promise.all([deskPresence(desk), deskTimeZone(desk)]);
+  return deskAvailability({ agents, now, hours: settings.hours, timeZone });
 }
 
 export const channelOf = (conversation: Pick<Conversation, "channelKey">) => `sc:${conversation.channelKey}`;
@@ -265,15 +395,19 @@ export async function historyForAi(desk: Desk, conversationId: string, limit: nu
 // Ending, anonymising and deleting -------------------------------------------------------------------------------------------------
 
 /**
- * Ends conversations with the AI that nobody has written in for the desk's `end_after_minutes` (30 by default; the five-minute
- * dispatcher). Conversations with a person or in the queue end by their own rules (steps 4 and 5).
+ * Ends the conversations whose time is up (the five-minute dispatcher): with the AI, nobody has written for the desk's
+ * `end_after_minutes` (30 by default); with a person, nobody has written for `HUMAN_IDLE_END_HOURS`; in the queue, nobody took it
+ * for `QUEUE_GIVE_UP_DAYS` (2.3). Ended by the system with reason `timeout`.
  */
 export async function endIdleConversations(now: Date = new Date(), limit = 500): Promise<number> {
+  const at = sql`${now.toISOString()}::timestamptz`;
   const rows = await db().execute<Row>(sql`
     select c.id from commerce.support_conversations c
     left join commerce.support_settings s on s.store_id is not distinct from c.store_id
-    where c.status = 'open' and c.handler = 'ai' and c.anonymised_at is null
-      and c.last_message_at < ${now.toISOString()}::timestamptz - make_interval(mins => coalesce(s.end_after_minutes, ${END_AFTER_MINUTES.default}))
+    where c.status = 'open' and c.anonymised_at is null and (
+      (c.handler = 'ai' and c.last_message_at < ${at} - make_interval(mins => coalesce(s.end_after_minutes, ${END_AFTER_MINUTES.default})))
+      or (c.handler = 'human' and c.last_message_at < ${at} - make_interval(hours => ${HUMAN_IDLE_END_HOURS}))
+      or (c.handler = 'queue' and coalesce(c.queued_at, c.created_at) < ${at} - make_interval(days => ${QUEUE_GIVE_UP_DAYS})))
     order by c.last_message_at limit ${limit}
   `);
   let ended = 0;
@@ -476,6 +610,18 @@ export async function waitingCount(desks: Desk[]): Promise<number> {
   return Number(row?.n ?? 0);
 }
 
+/** How many of the account's own open conversations have a customer message after the last it read (the inbox's alerts, 2.9). */
+export async function mineUnreadCount(desks: Desk[], accountId: string): Promise<number> {
+  if (desks.length === 0) return 0;
+  const [row] = await db().execute<Row>(sql`
+    select count(*)::int as n from commerce.support_conversations c
+    left join commerce.support_reads rd on rd.conversation_id = c.id and rd.account_id = ${accountId}::uuid
+    where ${onDesks(desks)} and c.status = 'open' and c.handler = 'human' and c.assignee_id = ${accountId}::uuid and c.anonymised_at is null
+      and exists (select 1 from commerce.support_messages m where m.conversation_id = c.id and m.author = 'customer' and m.seq > coalesce(rd.last_read_seq, 0))
+  `);
+  return Number(row?.n ?? 0);
+}
+
 /** A message as staff see it: every author, notes and the partner's help included, with the person who wrote it. */
 export type StaffMessage = {
   seq: number;
@@ -653,6 +799,14 @@ export async function onlineCount(desk: Desk): Promise<number> {
   const [row] = await db().execute<Row>(sql`
     select count(*)::int as n from commerce.support_agents
     where ${deskIs(desk, sql`store_id`)} and status = 'online' and last_seen_at > now() - make_interval(secs => ${ONLINE_SECONDS})
+  `);
+  return Number(row?.n ?? 0);
+}
+
+/** How many of the desk's conversations are open now (the settings page's note on changing who answers). */
+export async function openConversationCount(desk: Desk): Promise<number> {
+  const [row] = await db().execute<Row>(sql`
+    select count(*)::int as n from commerce.support_conversations where ${deskIs(desk, sql`store_id`)} and status = 'open' and anonymised_at is null
   `);
   return Number(row?.n ?? 0);
 }

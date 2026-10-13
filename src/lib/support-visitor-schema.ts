@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { cleanSignals } from "./recommendations";
-import { MESSAGE_MAX } from "./support-rules";
+import { CONTACT_EMAIL_MAX, CONTACT_NAME_MAX, MESSAGE_MAX } from "./support-rules";
 
 /**
  * The visitor routes' input (D216, `docs/support.md` 5.3), beside `support-visitor.ts` so the widget never loads zod (D211). The
@@ -37,3 +37,12 @@ export type FeedInput = z.infer<typeof feedInput>;
 
 /** Ending takes the same as the feed: the answer is what came after the tab's last message. */
 export const endInput = feedInput;
+
+/** *Talk to a person* and *Continue with the assistant* take the same as the feed. */
+export const changeInput = feedInput;
+
+/** The email card (2.3): an email for answers, and a name if the visitor gives one. */
+export const emailInput = feedInput.extend({
+  name: z.string().trim().max(CONTACT_NAME_MAX).optional().transform((name) => name || null),
+  email: z.email().trim().toLowerCase().max(CONTACT_EMAIL_MAX),
+});

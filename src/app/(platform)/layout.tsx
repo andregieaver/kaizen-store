@@ -8,6 +8,7 @@ import { FontLinks } from "@/components/font-links";
 import { BreakpointSheet } from "@/components/part-styles";
 import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
+import { OffPayRoutes } from "@/components/off-pay-routes";
 import { KaizenChat } from "@/components/site-chat";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { t } from "@/lib/i18n";
@@ -76,13 +77,16 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
         <Suspense fallback={null}>
           <PlatformMenu chrome={chrome} />
         </Suspense>
-        {/* Kaizen's AI assistant (D81), while it is on. */}
+        {/* Kaizen's chat (D81, D216) and the consent banner (D58), never on a support conversation's email link, whose address holds its token. */}
         <Suspense fallback={null}>
-          <KaizenChat />
-        </Suspense>
-        {/* Asks about Kaizen's optional tools, if it has any (D58). */}
-        <Suspense fallback={null}>
-          <SiteConsent storeId={null} tracking={chrome.tracking} lang="en" locale="en-GB" cookiePage="/cookies" />
+          <OffPayRoutes>
+            <Suspense fallback={null}>
+              <KaizenChat />
+            </Suspense>
+            <Suspense fallback={null}>
+              <SiteConsent storeId={null} tracking={chrome.tracking} lang="en" locale="en-GB" cookiePage="/cookies" />
+            </Suspense>
+          </OffPayRoutes>
         </Suspense>
       </body>
     </html>

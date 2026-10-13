@@ -304,6 +304,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "privacy.erased": "shopper",
   "privacy.extended": "shopper",
   "privacy.refused": "shopper",
+  "support.reply": "shopper",
   // Security: short-lived
   "account.code": "security",
   "account.reset": "security",
@@ -326,6 +327,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "privacy.due": "staff",
   "privacy.overdue": "staff",
   "data_job.ready": "staff",
+  "support.waiting": "staff",
   // To a Work client (the owner's own bookkeeping)
   "work.invoice": "staff",
   "work.credit_note": "staff",

@@ -42,8 +42,19 @@ export type ChatLabels = {
   micDenied: string;
   restart: string;
   conversation: string;
-  /** How long the site keeps the conversation (D216, legal: needs review). */
-  kept: string;
+  /** The notice under the conversation (D216, legal: needs review): who answers and how long the site keeps it, in the desk's mode. */
+  notice: string;
+  privacy: string;
+  /** People only: the header's words beside the desk's name. */
+  peopleTitle: string;
+  talkToPerson: string;
+  continueAssistant: string;
+  /** `{place}` stands for the visitor's place in line. */
+  queuePlace: string;
+  nobody: string;
+  nobodyLater: string;
+  /** The email card; `sent` holds `{email}`. */
+  emailCard: { intro: string; name: string; email: string; send: string; sent: string; use: string; change: string; invalid: string };
   /** The words of the conversation's system lines, by kind; `{name}` stands for a person's name. */
   lines: { ended: string; reopened: string; queued: string; joined: string; left: string; assistantBack: string };
   /** The card asking the customer to sign in (D216, step 4), and its button. */
@@ -65,7 +76,21 @@ export type ChatWidgetProps = {
   /** Where a customer signs in (a store's account page), for the card a person can send; none on Kaizen's site. */
   signInHref?: string;
   locale: string;
-  agent: { name: string; occupation: string; avatar: { url: string; width: number; height: number } | null; voice: boolean };
+  /** Who answers: the agent while the AI answers first; with people only its name is empty and `deskName` is shown. */
+  agent: {
+    name: string;
+    occupation: string;
+    avatar: { url: string; width: number; height: number } | null;
+    voice: boolean;
+    /** The desk's mode (D216): the chat agent alone, the AI first, or people only. */
+    mode: "off" | "ai_first" | "people";
+    /** Whether the AI answers here (with the AI first but no AI set up, every conversation goes to the queue). */
+    ai: boolean;
+  };
+  /** The store's name, or Kaizen's: shown with people only. */
+  deskName: string;
+  /** The site's privacy page, linked from the notice while support is on. */
+  privacyHref?: string;
   labels: ChatLabels;
 };
 
@@ -122,7 +147,7 @@ function recorderType(): string | undefined {
  * The conversation is the site's (D216): the widget sends only the new
  * message and draws what the site answers.
  */
-export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidgetProps) {
+export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyHref, labels }: ChatWidgetProps) {
   const router = useRouter();
   const key = `${site.store ?? ""}/${site.market ?? ""}`;
   const [open, setOpen] = useState(false);
@@ -393,8 +418,34 @@ export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidg
     inputRef.current?.focus();
   }
 
+  /** *Talk to a person* or *Continue with the assistant* (D216, 2.3): the site moves the conversation and answers with how it stands. */
+  async function change(to: "handoff" | "assistant") {
+    const ref = stored.conversation;
+    if (!ref || waiting) return;
+    setWaiting(true);
+    try {
+      const response = await fetch(`/api/chat/${to}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...site, conversation: ref, after: stored.lastSeq }),
+      });
+      const body = (await response.json().catch(() => ({}))) as unknown;
+      if (!response.ok || !isReply(body)) refused(response.status, (body as { error?: string }).error);
+      else received(body, ref);
+    } catch {
+      notice(labels.sorry);
+    } finally {
+      setWaiting(false);
+    }
+  }
+
   // A person who has taken the conversation over is shown instead of the AI persona, never with the AI label (D216, S11).
   const person = state?.status === "open" && state.handler === "human" ? state.agent : null;
+  // People only (D216, 2.1): the desk's name and "Our team answers here", never an AI persona or label; so too the AI first with no AI set up.
+  const people = agent.mode === "people" || (agent.mode === "ai_first" && !agent.ai);
+  const who = people ? deskName : `${agent.name}, ${labels.aiAssistant}`;
+  const isOpen = stored.conversation !== null && stored.status === "open";
+  const queued = isOpen && state?.status === "open" && state.handler === "queue" ? state : null;
 
   const avatar = (size: string) =>
     agent.avatar ? (
@@ -412,7 +463,7 @@ export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidg
         <section
           id={panelId}
           role="dialog"
-          aria-label={`${agent.name}, ${labels.aiAssistant}`}
+          aria-label={who}
           onKeyDown={(event) => {
             if (event.key === "Escape") setOpen(false);
           }}
@@ -423,6 +474,11 @@ export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidg
             <div className="min-w-0 flex-1">
               {person ? (
                 <p className="truncate font-semibold">{person.name}</p>
+              ) : people ? (
+                <>
+                  <p className="truncate font-semibold">{deskName}</p>
+                  <p className="truncate text-sm text-muted">{labels.peopleTitle}</p>
+                </>
               ) : (
                 <>
                   <p className="truncate font-semibold">{agent.name}</p>
@@ -433,6 +489,11 @@ export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidg
                 </>
               )}
             </div>
+            {agent.mode === "ai_first" && agent.ai && isOpen && state?.handler === "ai" && (
+              <button type="button" onClick={() => void change("handoff")} disabled={waiting} className="rounded-button border border-border px-2 py-1 text-sm whitespace-nowrap hover:bg-surface disabled:opacity-50">
+                {labels.talkToPerson}
+              </button>
+            )}
             {messages.length > 0 && (
               <button type="button" onClick={restart} className="rounded-button px-2 py-1 text-sm text-muted hover:text-foreground">
                 {labels.restart}
@@ -502,6 +563,17 @@ export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidg
                 <p className="max-w-[85%] rounded-2xl rounded-bl-sm border border-border px-3 py-2 whitespace-pre-line text-muted">{item.text}</p>
               </li>
             ))}
+            {queued && (
+              <Waiting
+                state={queued}
+                labels={labels}
+                site={site}
+                conversation={stored.conversation!}
+                after={stored.lastSeq}
+                onReply={(reply) => received(reply, stored.conversation)}
+                onAssistant={agent.mode === "ai_first" && agent.ai ? () => void change("assistant") : null}
+              />
+            )}
             {(waiting || recording) && (
               <li className="flex items-end gap-2 text-sm text-muted">
                 {avatar("size-7")}
@@ -552,7 +624,16 @@ export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidg
               </button>
             </div>
             <p className="mt-2 text-xs text-muted">
-              {labels.disclaimer} {labels.kept}
+              {people ? "" : `${labels.disclaimer} `}
+              {labels.notice}
+              {agent.mode !== "off" && privacyHref && (
+                <>
+                  {" "}
+                  <a href={privacyHref} className="underline">
+                    {labels.privacy}
+                  </a>
+                </>
+              )}
             </p>
           </form>
         </section>
@@ -569,7 +650,7 @@ export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidg
             setOpen(true);
           }}
           aria-expanded={false}
-          aria-label={`${labels.open}: ${agent.name}, ${labels.aiAssistant}`}
+          aria-label={`${labels.open}: ${who}`}
           className="fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-[55] flex items-center gap-2 rounded-full bg-foreground p-1 text-background shadow-lg md:right-6 md:bottom-6 md:pr-4"
         >
           {avatar("size-12")}
@@ -580,6 +661,107 @@ export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidg
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * While a conversation waits for a person (D216, 2.1 and 2.3): the visitor's place in line; when nobody can answer now, that, and the
+ * email card where the desk answers by email (or where answers will go); with the AI first, *Continue with the assistant*.
+ */
+function Waiting({
+  state,
+  labels,
+  site,
+  conversation,
+  after,
+  onReply,
+  onAssistant,
+}: {
+  state: VisitorState;
+  labels: ChatLabels;
+  site: { store?: string; market?: string };
+  conversation: ConversationRef;
+  after: number;
+  onReply: (reply: VisitorReply) => void;
+  onAssistant: (() => void) | null;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const card = labels.emailCard;
+  const asking = state.emailFollowup && (editing || (!state.followupEmail && !state.available));
+
+  async function leave(form: FormData) {
+    setBusy(true);
+    setProblem(null);
+    try {
+      const response = await fetch("/api/chat/email", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...site, conversation, after, name: String(form.get("name") ?? ""), email: String(form.get("email") ?? "") }),
+      });
+      const body = (await response.json().catch(() => ({}))) as unknown;
+      if (response.ok && isReply(body)) {
+        setEditing(false);
+        onReply(body);
+      } else setProblem(response.status === 400 ? card.invalid : ((body as { error?: string }).error ?? labels.sorry));
+    } catch {
+      setProblem(labels.sorry);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <li className="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm">
+      {state.queue && <p>{labels.queuePlace.replace("{place}", String(state.queue.position))}</p>}
+      {!state.available && (
+        <p>
+          {labels.nobody} {labels.nobodyLater}
+        </p>
+      )}
+      {asking ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void leave(new FormData(event.currentTarget));
+          }}
+          className="flex flex-col gap-2"
+          aria-busy={busy || undefined}
+        >
+          <p>{card.intro}</p>
+          <label className="flex flex-col gap-1">
+            <span>{card.name}</span>
+            <input name="name" autoComplete="name" maxLength={120} className="rounded-lg border border-border bg-background px-3 py-2 text-base" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span>{card.email}</span>
+            <input name="email" type="email" required autoComplete="email" maxLength={254} className="rounded-lg border border-border bg-background px-3 py-2 text-base" />
+          </label>
+          {problem && <p role="alert">{problem}</p>}
+          <button type="submit" disabled={busy} className="button-primary self-start rounded-button px-3 py-1.5 disabled:opacity-50">
+            {card.send}
+          </button>
+          <p className="text-xs text-muted">{card.use}</p>
+        </form>
+      ) : (
+        state.followupEmail && (
+          <p className="flex flex-wrap items-center gap-2">
+            <span>{card.sent.replace("{email}", state.followupEmail)}</span>
+            {!state.signedIn && (
+              <button type="button" onClick={() => setEditing(true)} className="underline">
+                {card.change}
+              </button>
+            )}
+          </p>
+        )
+      )}
+      {onAssistant && (
+        <button type="button" onClick={onAssistant} className="self-start rounded-button border border-border px-3 py-1.5 hover:bg-surface">
+          {labels.continueAssistant}
+        </button>
+      )}
+    </li>
   );
 }
 

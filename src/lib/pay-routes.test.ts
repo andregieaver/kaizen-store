@@ -1,7 +1,7 @@
 import { pathToRegexp } from "next/dist/compiled/path-to-regexp";
 import { describe, expect, it } from "vitest";
 
-import { FORBIDDEN_ON_PAY_ROUTES, PAY_SEGMENTS, PAY_SOURCES, importsForbidden, isChangeLinkPath, isDocumentPath, isNoExtrasPath, isPayLinkPath, isPayPath } from "./pay-routes";
+import { FORBIDDEN_ON_PAY_ROUTES, PAY_SEGMENTS, PAY_SOURCES, importsForbidden, isChangeLinkPath, isDocumentPath, isNoExtrasPath, isPayLinkPath, isPayPath, isSupportLinkPath } from "./pay-routes";
 
 const PAY = [
   "/s/demo/no/cart",
@@ -217,5 +217,21 @@ describe("a change's pay link (wave 3, run 3, D174)", () => {
 
   it("a draft's pay link is not a change's", () => {
     expect(isChangeLinkPath(`/s/demo/no/account/pay/${TOKEN}`)).toBe(false);
+  });
+});
+
+describe("a support conversation's email link (D216, step 5)", () => {
+  const TOKEN = "B".repeat(32);
+  const LINKS = [`/s/demo/no/account/support/${TOKEN}`, `/no-en/account/support/${TOKEN}?x=1`, `/s/kaiza/account/support/${TOKEN}`, `/support/c/${TOKEN}`];
+  const NOT_LINKS = ["/s/demo/no/account/support", "/s/demo/no/account", "/support", "/support/c", "/admin/demo/support", "/admin/platform/support/c/abc"];
+
+  it.each(LINKS)("%s draws none of the layout's extras and is not a pay route", (path) => {
+    expect(isSupportLinkPath(path)).toBe(true);
+    expect(isNoExtrasPath(path)).toBe(true);
+    expect(isPayPath(path)).toBe(false);
+  });
+
+  it.each(NOT_LINKS)("%s is not one", (path) => {
+    expect(isSupportLinkPath(path)).toBe(false);
   });
 });

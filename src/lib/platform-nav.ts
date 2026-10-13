@@ -40,6 +40,7 @@ export const PLAN_ITEMS: SectionItem[] = [
 export const SUPPORT_ITEMS: SectionItem[] = [
   item("/support", "Inbox", "Kaizen's support desk: conversations with visitors of Kaizen's site and owners asking Kaizen, live.", true),
   item("/chat", "Chat assistant", "Kaizen's public site chat assistant and its knowledge base."),
+  item("/support/settings", "Settings", "Who answers Kaizen's visitors (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept."),
 ];
 
 export const SETTINGS_ITEMS: SectionItem[] = [

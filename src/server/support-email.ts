@@ -1,0 +1,239 @@
+import "server-only";
+
+import { sql } from "drizzle-orm";
+
+import { db } from "@/db/client";
+import { renderEmail, type EmailBlock } from "@/lib/email-layout";
+import { marketPath, storeSiteUrl } from "@/lib/paths";
+import { can } from "@/lib/permissions";
+import { siteUrl } from "@/lib/site";
+import { supportEmailText } from "@/lib/support-email-text";
+import { EMAIL_EVERY_MINUTES, EMAILS_MAX, ONLINE_SECONDS } from "@/lib/support-rules";
+
+import type { Role } from "./auth";
+import { sendEmail, type SendOutcome } from "./email";
+import { emailContext, emailFooter } from "./shopper-emails";
+import { newEmailToken } from "./support";
+import { systemDesk } from "./support-desk";
+
+type Row = Record<string, unknown>;
+
+/**
+ * Support's emails (D216, `docs/support.md` 2.3 and 2.9, step 5), run every minute by `/api/cron/integrations`:
+ *
+ * - `support.reply` to a customer: when a person answered while the customer had not looked for `REPLY_AFTER_SECONDS`, one email
+ *   carries the people's messages since the last email (at most one every `EMAIL_EVERY_MINUTES`, `EMAILS_MAX` a conversation) and a
+ *   new link back to the conversation (the newest email's link alone opens it). It goes to a signed-in customer's own address, else
+ *   to the email they left; only on a desk with support on and email follow-up.
+ * - `support.waiting` to the desk's people: a conversation has waited the desk's `notify_after_minutes` for a person; every person
+ *   who may answer there and is not online gets one email, once for each time it entered the queue. It names no customer and holds
+ *   none of their words.
+ *
+ * Never throws: a conversation that fails is logged and the next goes on.
+ */
+
+/** The customer had not looked at the conversation for this long when a person wrote. */
+export const REPLY_AFTER_SECONDS = 60;
+
+const TOLD: readonly SendOutcome[] = ["sent", "logged", "duplicate"];
+
+export type SupportEmailRun = { replies: number; waiting: number; failed: number };
+
+export async function sendSupportEmails(now: Date = new Date()): Promise<SupportEmailRun> {
+  const out: SupportEmailRun = { replies: 0, waiting: 0, failed: 0 };
+  for (const job of [sendReplyEmails, sendWaitingAlerts]) {
+    try {
+      const run = await job(now);
+      out.replies += run.replies;
+      out.waiting += run.waiting;
+      out.failed += run.failed;
+    } catch (error) {
+      console.error("[support] the emails could not be read", error);
+    }
+  }
+  return out;
+}
+
+/** The answer emails due now (see the module's note). */
+export async function sendReplyEmails(now: Date = new Date(), limit = 100): Promise<SupportEmailRun> {
+  const out: SupportEmailRun = { replies: 0, waiting: 0, failed: 0 };
+  const at = sql`${now.toISOString()}::timestamptz`;
+  const rows = await db().execute<Row>(sql`
+    select c.id, c.store_id, c.locale, c.market, c.email_sent_seq, coalesce(cu.email, c.contact_email) as address
+    from commerce.support_conversations c
+    join commerce.support_settings s on s.store_id is not distinct from c.store_id
+    left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
+    where c.anonymised_at is null and s.mode <> 'off' and s.email_followup
+      and coalesce(cu.email, c.contact_email) is not null and c.email_count < ${EMAILS_MAX}
+      and (c.email_sent_at is null or c.email_sent_at <= ${at} - make_interval(mins => ${EMAIL_EVERY_MINUTES}))
+      and (c.visitor_seen_at is null or c.visitor_seen_at <= ${at} - make_interval(secs => ${REPLY_AFTER_SECONDS}))
+      and (c.store_id is null or commerce.store_is_active(c.store_id))
+      and exists (
+        select 1 from commerce.support_messages m
+        where m.conversation_id = c.id and m.author = 'agent' and m.seq > c.email_sent_seq
+          and m.created_at > coalesce(c.visitor_seen_at, '-infinity'::timestamptz)
+          and m.created_at <= ${at} - make_interval(secs => ${REPLY_AFTER_SECONDS}))
+    order by c.last_message_at limit ${limit}
+  `);
+  for (const row of rows) {
+    try {
+      const outcome = await sendReply(row);
+      if (outcome === null) continue;
+      if (TOLD.includes(outcome)) out.replies += 1;
+      else out.failed += 1;
+    } catch (error) {
+      out.failed += 1;
+      console.error(`[support] the answer email of ${String(row.id)} failed`, error);
+    }
+  }
+  return out;
+}
+
+async function sendReply(row: Row): Promise<SendOutcome | null> {
+  const id = String(row.id);
+  const storeId = row.store_id ? String(row.store_id) : null;
+  const desk = systemDesk(storeId);
+  const messages = await db().execute<Row>(sql`
+    select seq, body, data from commerce.support_messages
+    where conversation_id = ${id}::uuid and author = 'agent' and seq > ${Number(row.email_sent_seq)}
+    order by seq limit 20
+  `);
+  if (messages.length === 0) return null;
+  const lastSeq = Math.max(...messages.map((m) => Number(m.seq)));
+  const locale = String(row.locale);
+  const words = supportEmailText(locale);
+  const lines = messages.map((m) => {
+    const name = (m.data as { name?: unknown } | null)?.name;
+    return { type: "paragraph" as const, text: `${typeof name === "string" ? `${name}:\n` : ""}${String(m.body)}` };
+  });
+
+  let deskName: string;
+  let url: string;
+  let footer: string[];
+  let replyTo: string | null = null;
+  const token = await newEmailToken(desk, id);
+  if (storeId) {
+    const market = row.market ? String(row.market) : "";
+    const ctx = await emailContext(storeId, market.slice(0, 2).toUpperCase(), locale);
+    if (!ctx) return null;
+    deskName = ctx.store.name;
+    url = `${storeSiteUrl(ctx.store.slug)}${marketPath(ctx.store.slug, ctx.market.slug, `/account/support/${token}`)}`;
+    footer = emailFooter(ctx.store, ctx.text);
+    replyTo = ctx.store.details.contactEmail;
+  } else {
+    deskName = "Kaizen";
+    url = `${siteUrl()}/support/c/${token}`;
+    footer = ["Kaizen"];
+  }
+  const blocks: EmailBlock[] = [
+    { type: "heading", text: words.heading },
+    { type: "paragraph", text: words.intro(deskName) },
+    // The people's own words, as text.
+    ...lines,
+    { type: "button", text: words.button, url },
+    { type: "paragraph", text: words.linkNote },
+    { type: "paragraph", text: words.why },
+  ];
+  const email = renderEmail({ subject: words.subject(deskName), preview: words.preview(deskName), blocks, footer, lang: locale.split("-")[0] || "en" });
+  const outcome = await sendEmail({
+    storeId,
+    kind: "support.reply",
+    to: String(row.address),
+    email,
+    fromName: deskName,
+    replyTo,
+    idempotencyKey: `support.reply:${id}:${lastSeq}`,
+  });
+  if (TOLD.includes(outcome)) {
+    await db().execute(sql`
+      update commerce.support_conversations set email_sent_seq = greatest(email_sent_seq, ${lastSeq}), email_count = least(email_count + 1, ${EMAILS_MAX}), email_sent_at = now()
+      where id = ${id}::uuid
+    `);
+  }
+  return outcome;
+}
+
+/** The waiting alerts due now (see the module's note). */
+export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Promise<SupportEmailRun> {
+  const out: SupportEmailRun = { replies: 0, waiting: 0, failed: 0 };
+  const at = sql`${now.toISOString()}::timestamptz`;
+  const rows = await db().execute<Row>(sql`
+    select c.id, c.store_id, c.queued_at, st.slug, st.name,
+      floor(extract(epoch from (${at} - c.queued_at)) / 60)::int as minutes
+    from commerce.support_conversations c
+    join commerce.support_settings s on s.store_id is not distinct from c.store_id
+    left join commerce.stores st on st.id = c.store_id
+    where c.status = 'open' and c.handler = 'queue' and c.anonymised_at is null and c.waiting_alert_at is null and s.mode <> 'off'
+      and c.queued_at <= ${at} - make_interval(mins => s.notify_after_minutes)
+      and (c.store_id is null or commerce.store_is_active(c.store_id))
+    order by c.queued_at limit ${limit}
+  `);
+  for (const row of rows) {
+    const id = String(row.id);
+    try {
+      const storeId = row.store_id ? String(row.store_id) : null;
+      const people = await deskPeopleAway(storeId);
+      const where = storeId ? String(row.name) : "Kaizen";
+      const inbox = storeId ? `${siteUrl()}/admin/${String(row.slug)}/support` : `${siteUrl()}/admin/platform/support`;
+      const minutes = Math.max(1, Number(row.minutes));
+      const email = renderEmail({
+        subject: `Someone is waiting in ${where}'s support`,
+        preview: `A conversation has waited ${minutes} min for a person.`,
+        lang: "en",
+        footer: ["Kaizen"],
+        blocks: [
+          { type: "heading", text: "Someone is waiting for a person" },
+          { type: "paragraph", text: `A conversation in ${where}'s support has waited ${minutes} min, and nobody who can answer is online. Open the inbox to take it.` },
+          { type: "button", text: "Open the inbox", url: inbox },
+          { type: "paragraph", text: "You get this because you may answer this support desk and were not online. You hear about each conversation once for each time it waits." },
+        ],
+      });
+      const queuedAt = new Date(String(row.queued_at)).toISOString();
+      for (const person of people) {
+        const outcome = await sendEmail({ storeId, kind: "support.waiting", to: person.email, email, fromName: "Kaizen", idempotencyKey: `support.waiting:${id}:${queuedAt}:${person.id}` });
+        if (TOLD.includes(outcome)) out.waiting += 1;
+        else out.failed += 1;
+      }
+      // Marked whatever was sent: one alert for each time it entered the queue (a new time in the queue clears the mark).
+      await db().execute(sql`update commerce.support_conversations set waiting_alert_at = now() where id = ${id}::uuid and waiting_alert_at is null`);
+    } catch (error) {
+      out.failed += 1;
+      console.error(`[support] the waiting alert of ${id} failed`, error);
+    }
+  }
+  return out;
+}
+
+/**
+ * Who may answer a desk and is not online now: a store's members whose role holds `support:write` (active, not expired, with an
+ * address), or Kaizen's platform admins.
+ */
+async function deskPeopleAway(storeId: string | null): Promise<{ id: string; email: string }[]> {
+  const online = sql`exists (select 1 from commerce.support_agents ag where ag.account_id = a.id and ag.store_id is not distinct from ${storeId}::uuid
+    and ag.status = 'online' and ag.last_seen_at > now() - make_interval(secs => ${ONLINE_SECONDS}))`;
+  if (!storeId) {
+    const rows = await db().execute<Row>(sql`
+      select a.id, a.email from commerce.accounts a where a.platform_admin and a.disabled_at is null and a.email <> '' and not ${online}
+    `);
+    return rows.map((r) => ({ id: String(r.id), email: String(r.email) }));
+  }
+  const rows = await db().execute<Row>(sql`
+    select distinct on (a.id) a.id, a.email, m.role, m.kind, m.role_id, r.permissions as role_permissions
+    from commerce.store_members m
+    join commerce.accounts a on a.id = m.account_id and a.disabled_at is null and a.email <> ''
+    left join commerce.store_roles r on r.store_id = m.store_id and r.id = m.role_id
+    where m.store_id = ${storeId}::uuid and m.disabled_at is null and (m.expires_at is null or m.expires_at > now()) and not ${online}
+  `);
+  return rows
+    .filter((r) =>
+      can(
+        {
+          role: String(r.role) as Role,
+          kind: r.kind === "collaborator" ? "collaborator" : "staff",
+          permissions: r.role_id ? ((r.role_permissions ?? []) as unknown[]).map(String) : null,
+        },
+        "support:write",
+      ),
+    )
+    .map((r) => ({ id: String(r.id), email: String(r.email) }));
+}

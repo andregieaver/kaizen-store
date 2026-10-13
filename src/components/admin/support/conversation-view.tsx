@@ -69,7 +69,8 @@ function MessageItem({ message }: { message: StaffMessage }) {
 export function ConversationContext({ conversation }: { conversation: StaffConversation }) {
   const rows: [string, string][] = [
     ["Who", conversation.who],
-    ...(conversation.email ? ([["Email", conversation.email]] as [string, string][]) : []),
+    // An address a visitor typed is no proof of who they are (2.3): never put an order's details in an answer to it.
+    ...(conversation.email ? ([["Email", conversation.signedIn ? conversation.email : `${conversation.email} (Email not verified)`]] as [string, string][]) : []),
     ["Signed in", conversation.signedIn ? "Yes" : "No"],
     ["Language", conversation.locale],
     ...(conversation.store ? ([["Store", conversation.store.name]] as [string, string][]) : []),

@@ -43,16 +43,19 @@ export async function POST(request: Request) {
   const input = spokenTurnInput.safeParse(body);
   if (!input.success) return fail(400, "The chat could not read that recording.");
   const m = t(context.lang);
-  if (!context.agent.voice || !canSpeak(context.connection)) return fail(404, m.chat.sorry);
-  // Counted before the recording is written down, so the limits cover the voice models too.
+  // Voice is the AI's: it needs an agent that listens and the site's speech models (never with people only).
+  const voice = context.agent?.voice && context.connection && canSpeak(context.connection) ? context.connection : null;
+  if (!voice) return fail(404, m.chat.sorry);
+  // Counted before the recording is written down, so the limits cover the voice models too; past the site's limit there is no model to write it down.
   const refused = await takeTurn(context, request);
-  if (refused) return refused;
+  if (refused instanceof Response) return refused;
+  if (refused === "limit") return fail(429, m.chat.closed);
 
   let transcript: string;
   try {
     const type = audio.type || "audio/webm";
     const extension = type.includes("mp4") ? "mp4" : type.includes("ogg") ? "ogg" : type.includes("wav") ? "wav" : "webm";
-    transcript = (await transcribeAudio(context.connection, audio, `message.${extension}`, context.lang.split("-")[0])).trim().slice(0, MESSAGE_MAX.customer);
+    transcript = (await transcribeAudio(voice, audio, `message.${extension}`, context.lang.split("-")[0])).trim().slice(0, MESSAGE_MAX.customer);
   } catch (error) {
     console.warn(`[chat] transcription: ${error instanceof Error ? error.message : String(error)}`);
     return fail(503, m.chat.sorry);
@@ -65,7 +68,7 @@ export async function POST(request: Request) {
   let spoken: string | null = null;
   if (said) {
     try {
-      spoken = Buffer.from(await speakText(context.connection, said.slice(0, 1500))).toString("base64");
+      spoken = Buffer.from(await speakText(voice, said.slice(0, 1500))).toString("base64");
     } catch (error) {
       // The answer still shows as text.
       if (!(error instanceof AiError)) throw error;

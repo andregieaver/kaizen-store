@@ -556,6 +556,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["inbox", "live chat", "customer service", "helpdesk", "conversations", "tickets"],
     tasks: ["See who is waiting", "Read a conversation with the chat assistant", "Set yourself online or away"],
   }),
+  store("support.settings", "/support/settings", "Support settings", "Store", "Who answers the store's customers in the chat: the chat assistant alone, the AI first and then your team, or your team only. Also email follow-up when nobody is there, opening hours, when quiet conversations end, when your people are emailed about a waiting customer, how they are named, and (the owner's) how long transcripts are kept.", {
+    keywords: ["support mode", "live chat", "people only", "opening hours", "email follow-up", "transcripts", "handover"],
+    tasks: ["Let people answer the chat", "Answer customers with the AI first", "Set support opening hours", "Turn email answers on or off"],
+  }),
   store("seo", "/settings/seo", "SEO & Reach", "Store", "How search engines, social sharing and AI crawlers see the store, per country.", {
     keywords: ["google", "meta description", "crawlers"],
   }),
@@ -703,6 +707,9 @@ const PAGES: readonly AdminPage[] = [
   }),
   platform("support", "/support", "Support inbox", "Support", "Kaizen's own support desk: conversations with visitors of Kaizen's site and owners asking Kaizen, live.", {
     keywords: ["inbox", "live chat", "helpdesk", "conversations"],
+  }),
+  platform("support.settings", "/support/settings", "Support settings", "Support", "Who answers Kaizen's visitors in the chat (the assistant alone, the AI first, or people only), email follow-up, opening hours, when quiet conversations end, when platform admins are emailed and how long transcripts are kept.", {
+    keywords: ["support mode", "live chat", "opening hours", "email follow-up"],
   }),
   platform("requests", "/requests", "Access requests", "Platform", "People asking to open a store: approving creates it and emails a sign-in link.", {
     keywords: ["sign-ups", "waiting list", "approve"],

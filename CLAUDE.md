@@ -240,6 +240,19 @@ of running `playwright install`.
   tools, never acts and never writes to the customer; platform admins never
   read a store's conversations; tone is customers' only; realtime only pings,
   polling is always there; the chat never runs on pay routes.
+  A desk's mode and the rest are saved at `…/support/settings` by
+  `saveDeskSettings()` (transcript days owner-only; a mode change ends the
+  open conversations the new mode cannot serve, then `updateTag(chatTag())`);
+  `chatWidgetFor()` and `chatContext()` serve a desk in `ai_first` or `people`
+  without an agent or a model, and with the AI first a conversation goes to the
+  queue when the AI asks (`handoff_to_human`), fails or is missing (`no_ai`) or
+  hits the daily limit (`limit`), never a 429. Answer emails (`support.reply`)
+  and waiting alerts (`support.waiting`) are `sendSupportEmails()` in
+  `/api/cron/integrations` (every minute); an email's link carries a new token
+  each time (only the newest opens the conversation; the store's
+  `account/support/{token}` and Kaizen's `/support/c/{token}` are no-extras
+  paths, `isSupportLinkPath()`), and a typed email is never proof (*Email not
+  verified*).
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,
