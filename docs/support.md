@@ -1667,3 +1667,6 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   chat's "Writing …"; the inbox: *The customer is typing…*). Words never travel.
 - **Tests**: U `support-realtime.test.ts` (the delays with and without a connection, listening only with a person, typing's rate
   and payload, topics); I the visitor's topic only while queued or with a person (`support-tools.int.test.ts`); E stays on polling.
+- **Checked in production (13 October 2026, 22:52 UTC)**: a client subscribed with the publishable key to a random `sc:` topic, and
+  `commerce.support_ping()` run in the production database reached it in 20 ms (Realtime's public channels work; `realtime.send`
+  exists). A message therefore reaches the other side in the ping, the 300 ms debounce and one fetch, well under a second.
