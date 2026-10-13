@@ -52,3 +52,15 @@ export const rateInput = feedInput.extend({
   rating: z.enum(["good", "bad"]),
   comment: z.string().trim().max(RATING_COMMENT_MAX).optional().transform((comment) => comment || null),
 });
+
+/** The sign-in card's first step (step 9): the email a code is sent to. */
+export const signInInput = feedInput.extend({ email: z.email().trim().toLowerCase().max(254) });
+
+/** The sign-in card's second step: the email and the six-digit code it was sent (spaces dropped). */
+export const signInCodeInput = signInInput.extend({
+  code: z
+    .string()
+    .max(20)
+    .transform((code) => code.replace(/\D/g, ""))
+    .pipe(z.string().length(6)),
+});

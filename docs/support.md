@@ -1533,3 +1533,46 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   switches, the person and no model; C22 the role's tools and a refused one; C23 two callers, one answer; C24 a draft's claims cut;
   C25 no draft after reading orders for a customer not signed in; a question; nothing in the visitor's feed).
 
+
+**Step 9 (13 October 2026).**
+
+- **The tools** (`src/server/support-tools.ts`, `supportToolsFor()`): only on a store's desk with the AI first, beside the chat's own
+  and `handoff_to_human`, given to `runChat()` as a `SupportToolSet` (definitions and one handler). Of 4.3a this step offers the
+  read-only ones: `ask_to_sign_in`, `ask_for_email`, `my_orders`, `order_details`, `return_options`, `my_bookings`,
+  `my_subscriptions`, `my_boxes`, `bonus_balance` and `check_code`; `propose_action` and `request_staff_action` come with step 10.
+  `needs` is checked twice by the server: what is offered (the shop, or a signed-in customer with orders; the desk taking emails; a
+  feature on, or a signed-in customer, who may already have such things), and again before each handler runs. Being signed in is
+  not needed to be offered: a tool that needs it answers `not_signed_in` and tells the model to call `ask_to_sign_in`, so the AI
+  can offer the card instead of asking for details (C11).
+- **Whose orders**: an order is found by its number only among the signed-in customer's own (`customer_id`, never a copied one,
+  then `ownsOrder()`); another customer's is the same `not_found` as one that does not exist. `return_options` goes through
+  `lookupWithdrawableOrder()` with the customer as proof (no delay floor: the customer proved the order); bookings are the
+  customer's paid orders' confirmed future bookings with `selfServiceOpen()`; subscriptions are `listCustomerSubscriptions()` with
+  `allowedChanges()`; the box is `getStandingOrder()`; bonus is `shopperBonus()`. `check_code` says whether a code works now for the
+  visitor (`findUsableDiscount()`) and what it gives, never what it would take off a particular cart: the cart checks that.
+- **Amounts** are written by code with `formatMoney()` in the order's own currency (a euro order shows euros, C12), the credits'
+  currency for bonus, the market's for a code; dates in the market's language and the store's time zone. The prompt gets the support
+  rules (`PromptContext.support`): tools for a customer's own things, sign-in by the card only, links as chips, no promises, no
+  withdrawal done or asked about.
+- **Link chips** (`SupportChip`: `kind`, `label`, `href`): the order's page, each parcel's tracking page, the invoice and credit
+  notes' hosted pages, returns, the withdrawal page with the order filled in, bookings' order pages, subscriptions, the box page and
+  the bonus page; addresses made by code and passed `isSafeAddress()`, at most `CHIPS_MAX` (8) per answer, kept in the AI message's
+  `data.chips` and drawn by `Chips` (`src/components/chat/chips.tsx`) in the site's words per kind (`m.chat.chips`). A page of the
+  site opens in place, anything else in a new tab.
+- **Cards**: a tool may ask for the sign-in card or the email card (`data.card`). The widget draws only the latest card asked for (by
+  the AI or, as a `sign_in` system line, by a person), and the sign-in card only while the visitor is not signed in here. The
+  person's sign-in request (step 4) is now the same in-chat card, no longer a link to the account page. The email form is
+  `EmailForm` (`src/components/chat/email-card.tsx`), shared with the waiting card.
+- **The sign-in card** (`sign-in-card.tsx`, `/api/chat/sign-in` and `/api/chat/sign-in/code`, `visitorSignIn()` and
+  `visitorSignInCode()`): the store's own code sign-in (`createSignInCode()`, `sendSignInCode()`, `verifySignInCode()`,
+  `startSession()`), so the answer to the first step is the same whether or not the email has an account; only too many codes is
+  refused, as on the store's page (so the first route answers `{ok: false, error}` with 429 then, not `{ok: true}` always). A wrong
+  code is 400 with the store's words. The code signs the visitor in to the store and links the conversation to them.
+- **Linking**: a conversation is linked to the signed-in customer when it is made, on their next message, or when they sign in from
+  the card (`claimForCustomer()`, only while it has none). `customerFor()` is the customer for a conversation: the signed-in one
+  when the conversation is theirs or no one's yet; a different customer signed in on the browser is treated as not signed in (the
+  state says so, the tools refuse, and signing in from the card says the conversation belongs to another account).
+- *About my order* (2.1, the shopper asking for the card without the AI) is not built yet: the card comes from the AI or a person.
+- **Tests**: I `support-tools.int.test.ts` (C11 refused when not signed in, another customer's order not found; C12 a euro order's
+  totals; chips; the AI's turn with a tool and its chips kept; another customer's session; the sign-in routes' same answer, the code,
+  the link, another customer's conversation left as it is).

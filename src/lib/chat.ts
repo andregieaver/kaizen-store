@@ -1,5 +1,6 @@
 import { findClaims } from "./claims";
 import type { ReturnPolicyFacts } from "./structured-data";
+import type { SupportCard, SupportChip } from "./support-visitor";
 import type { ShownMeasure } from "./unit-price";
 
 /**
@@ -45,6 +46,10 @@ export type ChatReply = {
   products: ChatProduct[];
   /** The AI asked for a person (D216, `handoff_to_human`, only with the AI first): what the customer needs, for the staff. */
   handoff?: string;
+  /** Links the support tools gave (D216, step 9), drawn as chips under the answer. */
+  chips?: SupportChip[];
+  /** A card a support tool asked for (the sign-in card, the email card). */
+  card?: SupportCard;
 };
 
 // Tools ---------------------------------------------------------------------
@@ -168,6 +173,8 @@ export type PromptContext = {
   today: string;
   /** The AI answers first and a person can take over (D216, mode `ai_first`): it is told when to hand over. */
   handoff?: boolean;
+  /** Support's tools for a customer's own orders and the rest (D216, 4.3a, step 9): the rules that go with them. */
+  support?: boolean;
 };
 
 /**
@@ -190,7 +197,14 @@ export function systemPrompt(ctx: PromptContext): string {
       ? "Search before answering questions about products or the store. When you suggest, recommend or promote products, use recommend_products and present only what it returns; do not pick products yourself. Products you find are shown under your answer as cards with their prices, so mention them briefly."
       : "Search before answering questions about Kaizen.",
     "Use navigate to open a page for the visitor when they ask to see or go somewhere, or when it clearly helps; say in a few words what you opened.",
-    "Write plain text only: no Markdown, no lists with symbols, no web addresses. Be friendly and brief, at most about 80 words unless the visitor asks for more. Do not ask for personal details; for a particular order, point to the account page or the contact details.",
+    ctx.support
+      ? "Write plain text only: no Markdown, no lists with symbols, no web addresses. Be friendly and brief, at most about 80 words unless the visitor asks for more."
+      : "Write plain text only: no Markdown, no lists with symbols, no web addresses. Be friendly and brief, at most about 80 words unless the visitor asks for more. Do not ask for personal details; for a particular order, point to the account page or the contact details.",
+    ...(ctx.support
+      ? [
+          "For the visitor's own orders, parcels, returns, bookings, subscriptions, subscription boxes and bonus credits, use your tools. They work only for a visitor who is signed in: when a tool says the visitor is not signed in, call ask_to_sign_in, which shows them a sign-in form, and never ask for their email, an order's email, card numbers, passwords or codes in the chat. Say amounts, dates and statuses exactly as the tools give them. Links the tools give (tracking, invoices, the withdrawal page) are shown as buttons under your answer: mention them, never write an address. Never promise a refund, a discount, a delivery date or an exception, never ask why someone withdraws from a purchase, and never withdraw or cancel anything yourself: for a withdrawal, give the withdrawal page with return_options.",
+        ]
+      : []),
     ...(ctx.handoff
       ? [
           `People from ${ctx.site} can take over this conversation. When the visitor asks for a person, is upset, or you could not help after two tries, write one short sentence saying a person will answer here, and call handoff_to_human. Never promise when.`,

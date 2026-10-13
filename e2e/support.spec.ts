@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { expect, test } from "@playwright/test";
 
 import { encryptSecret, parseKey } from "../src/lib/secret-box";
@@ -149,6 +151,46 @@ test("a person ends the conversation: the rating card appears and the rating is 
     await expect
       .poll(async () => (await sql`select rating, rating_comment from commerce.support_conversations where id = ${id}`)[0])
       .toMatchObject({ rating: "good", rating_comment: "Rask hjelp" });
+  } finally {
+    await sql.end();
+  }
+});
+
+test("a person asks the visitor to sign in: the card in the chat takes the email and the code and links the conversation (step 9)", async ({ page }) => {
+  const slug = `support-signin-${Date.now()}`;
+  const sql = testDb();
+  try {
+    const { storeId, ownerId } = await newStore(sql, slug, "Innloggingsbutikken");
+    await sql`insert into commerce.support_settings (store_id, mode) values (${storeId}, 'people')`;
+    await page.goto(`/s/${slug}`);
+    await page.getByRole("button", { name: "Chat med oss: Innloggingsbutikken" }).click();
+    const chat = page.getByRole("dialog", { name: "Innloggingsbutikken" });
+    await chat.getByRole("textbox", { name: "Skriv en melding" }).fill("Hvor er pakken min?");
+    await chat.getByRole("textbox", { name: "Skriv en melding" }).press("Enter");
+    await expect(chat.getByText("Du er nummer 1 i køen.")).toBeVisible();
+
+    const [conversation] = await sql`select id from commerce.support_conversations where store_id = ${storeId}`;
+    const id = String(conversation.id);
+    await sql`select commerce.support_transition(${id}, 'claim', 'agent', ${ownerId}, null, null, 'Ola')`;
+    await sql`select * from commerce.support_add_message(${id}, 'system', ${ownerId}, '', 'sign_in', null)`;
+
+    const card = chat.getByRole("listitem").filter({ hasText: "Logg inn med e-posten din" });
+    await expect(card).toBeVisible({ timeout: 5000 });
+    const email = `kunde-${slug}@example.com`;
+    await card.getByRole("textbox", { name: "E-post" }).fill(email);
+    await card.getByRole("button", { name: "Send kode" }).click();
+    await expect(chat.getByText(`Vi har sendt en kode til ${email}.`, { exact: false })).toBeVisible();
+    // The emailed code is the store's own; the test puts in one it knows (the newest code is the one that counts).
+    const code = "123456";
+    const hash = createHash("sha256").update(`${storeId}:${email}:${code}`).digest("hex");
+    await sql`update commerce.customer_codes set used_at = now() where store_id = ${storeId} and lower(email) = ${email} and used_at is null`;
+    await sql`insert into commerce.customer_codes (store_id, email, code_hash, expires_at) values (${storeId}, ${email}, ${hash}, now() + interval '10 minutes')`;
+    await chat.getByRole("textbox", { name: "Kode" }).fill(code);
+    await chat.getByRole("button", { name: "Logg inn" }).click();
+    await expect(chat.getByText("Du er logget inn.")).toBeVisible();
+    const [linked] = await sql`select c.customer_id, cu.email from commerce.support_conversations c join commerce.customers cu on cu.id = c.customer_id where c.id = ${id}`;
+    expect(linked.email).toBe(email);
+    expect((await page.context().cookies()).some((cookie) => cookie.name === `account_${storeId}`)).toBe(true);
   } finally {
     await sql.end();
   }

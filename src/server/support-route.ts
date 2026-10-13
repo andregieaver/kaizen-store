@@ -9,7 +9,8 @@ import { BODY_MAX, type TurnInput } from "@/lib/support-visitor-schema";
 
 import type { ChatSite } from "./chat-agent";
 import { chatPlace, fail, type ChatContext, type ChatPlace } from "./chat-route";
-import { getCustomer } from "./customers";
+import { createSignInCode, getCustomer, startSession, verifySignInCode } from "./customers";
+import { sendSignInCode } from "./shopper-emails";
 import {
   SupportError,
   addMessage,
@@ -33,6 +34,7 @@ import {
   type DeskSettings,
 } from "./support";
 import { visitorDesk, type Desk } from "./support-desk";
+import type { SupportCustomer } from "./support-tools";
 import { summarise } from "./support-summary";
 import { scoreTone, scoresTone } from "./support-tone";
 import { runSupportTurn } from "./support-turn";
@@ -59,11 +61,22 @@ export async function readBody(request: Request): Promise<unknown | Response> {
 }
 
 /** The signed-in customer of a store's desk (their id and their own email), or null (Kaizen's desk has no customers). */
-async function customerOf(place: ChatPlace): Promise<{ id: string; email: string } | null> {
+async function sessionCustomer(place: ChatPlace): Promise<SupportCustomer> {
   if (!place.storeId) return null;
   const customer = await getCustomer(place.storeId);
   return customer ? { id: customer.id, email: customer.email } : null;
 }
+
+/**
+ * The customer a conversation is for (D216, step 9): the signed-in customer, when the conversation is theirs or no one's yet. A
+ * conversation linked to one customer treats anyone else signed in on the browser as not signed in, so their tools see nothing.
+ */
+export function customerFor(signedIn: SupportCustomer, conversation: Pick<Conversation, "customerId">): SupportCustomer {
+  if (!signedIn) return null;
+  return conversation.customerId === null || conversation.customerId === signedIn.id ? signedIn : null;
+}
+
+const customerOf = async (place: ChatPlace, conversation: Pick<Conversation, "customerId">) => customerFor(await sessionCustomer(place), conversation);
 
 /** The visitor's conversation on the site by its token: the desk, its settings and the conversation, or a 404 for anything else. */
 export async function visitorPlace(raw: unknown, ref: { id: string; token: string }): Promise<{ place: ChatPlace; desk: Desk; settings: DeskSettings; conversation: Conversation } | Response> {
@@ -133,7 +146,7 @@ export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "
   const m = t(context.lang);
   const desk = visitorDesk(context.site);
   const settings = context.settings;
-  const customer = await customerOf(context);
+  const signedIn = await sessionCustomer(context);
 
   let conversation: Conversation | null = null;
   let token: string | undefined;
@@ -152,13 +165,15 @@ export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "
   }
   if (conversation && conversation.messageSeq >= CONVERSATION_MESSAGES_MAX) return fail(409, m.chat.full);
   if (!conversation) {
-    const opened = await openConversation(desk, { mode: settings.mode, locale: context.locale, market: context.market, pagePath: input.path ?? null, customerId: customer?.id ?? null });
+    const opened = await openConversation(desk, { mode: settings.mode, locale: context.locale, market: context.market, pagePath: input.path ?? null, customerId: signedIn?.id ?? null });
     conversation = opened.conversation;
     token = opened.token;
     after = 0;
-  } else if (customer && !conversation.customerId) {
-    await claimForCustomer(desk, conversation.id, customer.id);
+  } else if (signedIn && !conversation.customerId) {
+    await claimForCustomer(desk, conversation.id, signedIn.id);
+    conversation = { ...conversation, customerId: desk.storeId ? signedIn.id : null };
   }
+  const customer = customerFor(signedIn, conversation);
   const ref = { id: conversation.id, token: token ?? input.conversation!.token };
 
   let added: { seq: number } | null;
@@ -182,7 +197,7 @@ export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "
     if (settings.mode === "ai_first" && (!context.agent || options.limited)) {
       await handOver(desk, conversation.id, "system", context.agent ? "limit" : "no_ai");
     } else {
-      const turn = await runSupportTurn(desk, context, conversation.id, { path: input.path, signals: input.signals });
+      const turn = await runSupportTurn(desk, context, conversation.id, { path: input.path, signals: input.signals }, customer);
       if (turn.error && settings.mode === "ai_first") await handOver(desk, conversation.id, "system", "no_ai");
       else if (turn.error) error = turn.error;
       else if (turn.handoff && settings.mode === "ai_first") await handOver(desk, conversation.id, "ai", "ai", turn.handoff);
@@ -200,7 +215,7 @@ export async function visitorFeedReply(raw: unknown, ref: { id: string; token: s
   const found = await visitorPlace(raw, ref);
   if (found instanceof Response) return found;
   await markSeen(found.desk, found.conversation.id);
-  return visitorReply(found.desk, found.settings, found.conversation, after, await customerOf(found.place));
+  return visitorReply(found.desk, found.settings, found.conversation, after, await customerOf(found.place, found.conversation));
 }
 
 /** A change the visitor asks for (end, a person, the assistant again): done when the conversation's state allows it, then the reply. */
@@ -214,7 +229,7 @@ async function visitorChange(raw: unknown, ref: { id: string; token: string }, a
     if (!(error instanceof SupportError)) throw error;
   }
   const conversation = (await visitorConversation(found.desk, ref)) ?? found.conversation;
-  return visitorReply(found.desk, found.settings, conversation, after, await customerOf(found.place));
+  return visitorReply(found.desk, found.settings, conversation, after, await customerOf(found.place, conversation));
 }
 
 /** The visitor ends the conversation (an ended one stays ended). */
@@ -250,7 +265,7 @@ export async function visitorEmail(raw: unknown, ref: { id: string; token: strin
   const saved = await setContact(found.desk, found.conversation.id, found.settings, contact);
   if (!saved.ok) return fail(saved.reason === "off" ? 404 : 409, saved.reason === "off" ? m.chat.sorry : m.chat.emailCard.tooMany);
   const conversation = (await visitorConversation(found.desk, ref)) ?? found.conversation;
-  return visitorReply(found.desk, found.settings, conversation, after, await customerOf(found.place));
+  return visitorReply(found.desk, found.settings, conversation, after, await customerOf(found.place, conversation));
 }
 
 /** What the page an answer email opens shows (2.3): the conversation's reference with the email's token, its messages and its state. */
@@ -275,5 +290,42 @@ export async function visitorRate(raw: unknown, ref: { id: string; token: string
   if (found instanceof Response) return found;
   if (!(await setRating(found.desk, found.conversation.id, rating, comment))) return fail(409, t(found.place.lang).chat.sorry);
   const conversation = (await visitorConversation(found.desk, ref)) ?? found.conversation;
-  return visitorReply(found.desk, found.settings, conversation, after, await customerOf(found.place));
+  return visitorReply(found.desk, found.settings, conversation, after, await customerOf(found.place, conversation));
+}
+
+/**
+ * The sign-in card's first step (D216, 2.1, step 9): a code is emailed, as on the store's own sign-in page, and the answer is the same
+ * whether or not the email has an account (a new one is made when the code is used); only asking for too many codes is refused, as
+ * there. Only on a store's desk.
+ */
+export async function visitorSignIn(raw: unknown, ref: { id: string; token: string }, email: string): Promise<Response> {
+  const found = await visitorPlace(raw, ref);
+  if (found instanceof Response) return found;
+  const { site } = found.place;
+  if (site.kind !== "store") return fail(404, t(found.place.lang).chat.sorry);
+  const code = await createSignInCode(site.store.id, email);
+  if (!code) return Response.json({ ok: false, error: t(site.market.lang).account.tooManyCodes }, { status: 429, headers: NO_STORE });
+  await sendSignInCode(site.store.id, site.market.code, site.market.locale, email, code);
+  return Response.json({ ok: true }, { headers: NO_STORE });
+}
+
+/**
+ * The sign-in card's second step: the code signs the visitor in to the store (the session cookie, as the store's own page sets it, with
+ * the orders of the email claimed) and links the conversation to them. A conversation already linked to another customer stays
+ * theirs: the visitor is signed in to the store but not here (`signedIn: false`, with a sentence saying so).
+ */
+export async function visitorSignInCode(raw: unknown, ref: { id: string; token: string }, after: number, email: string, code: string): Promise<Response> {
+  const found = await visitorPlace(raw, ref);
+  if (found instanceof Response) return found;
+  const { site } = found.place;
+  if (site.kind !== "store") return fail(404, t(found.place.lang).chat.sorry);
+  const m = t(site.market.lang);
+  const customerId = await verifySignInCode(site.store.id, email, code);
+  if (!customerId) return Response.json({ signedIn: false, error: m.account.wrongCode }, { status: 400, headers: NO_STORE });
+  await startSession(site.store.id, customerId);
+  if (!found.conversation.customerId) await claimForCustomer(found.desk, found.conversation.id, customerId);
+  const conversation = (await visitorConversation(found.desk, ref)) ?? found.conversation;
+  const customer = customerFor({ id: customerId, email }, conversation);
+  const answer = await visitorReply(found.desk, found.settings, conversation, after, customer);
+  return Response.json({ ...answer, signedIn: customer !== null, ...(customer ? {} : { error: m.chat.signInCard.otherAccount }) }, { headers: NO_STORE });
 }

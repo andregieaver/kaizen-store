@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { MESSAGE_MAX, type ChatProduct } from "@/lib/chat";
 import { readSession, signalsOf } from "@/lib/recommend-session";
@@ -22,6 +22,9 @@ import {
 
 import type { UnitLabels } from "@/lib/unit-price-text";
 
+import { Chips, type ChipLabels } from "./chat/chips";
+import { EmailForm } from "./chat/email-card";
+import { SignInCard, type SignInCardLabels } from "./chat/sign-in-card";
 import { Icon } from "./icons";
 import { UnitLine, VatAmount } from "./price";
 
@@ -59,9 +62,10 @@ export type ChatLabels = {
   emailCard: { intro: string; name: string; email: string; send: string; sent: string; use: string; change: string; invalid: string };
   /** The words of the conversation's system lines, by kind; `{name}` stands for a person's name. */
   lines: { ended: string; reopened: string; queued: string; joined: string; left: string; assistantBack: string };
-  /** The card asking the customer to sign in (D216, step 4), and its button. */
-  signIn: string;
-  signInButton: string;
+  /** The sign-in card (D216, 2.1: a person's request, step 4, or the AI's, step 9). */
+  signInCard: SignInCardLabels;
+  /** The link chips under the AI's answers (step 9), by kind; `{label}` stands for the number. */
+  chips: ChipLabels;
   /** On the closed chat's button when a person wrote. */
   newMessage: string;
   vatIncluded: string;
@@ -164,6 +168,8 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
   const [state, setState] = useState<VisitorState | null>(null);
   // A person wrote while the chat was closed.
   const [unseen, setUnseen] = useState(false);
+  // The sign-in card the visitor just signed in with (step 9): it says so where it was.
+  const [signedInAt, setSignedInAt] = useState<number | null>(null);
   const storedRef = useRef(stored);
   const openRef = useRef(open);
   const panelId = useId();
@@ -448,6 +454,48 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
   const who = people ? deskName : `${agent.name}, ${labels.aiAssistant}`;
   const isOpen = stored.conversation !== null && stored.status === "open";
   const queued = isOpen && state?.status === "open" && state.handler === "queue" ? state : null;
+  // The latest card asked for (D216, step 9): a person's or the AI's sign-in card, or the AI's email card. Only that one is drawn.
+  const lastCard = [...messages].reverse().find((message) => (message.author === "system" && message.kind === "sign_in") || (message.author === "ai" && message.data?.card));
+  const cardOf = (message: VisitorMessage) => (message.seq !== lastCard?.seq || !isOpen ? null : message.author === "system" ? "sign_in" : (message.data?.card ?? null));
+  const cardFor = (message: VisitorMessage) => {
+    const kind = cardOf(message);
+    if (kind === "sign_in" && signedInAt === message.seq) {
+      return (
+        <li key={`card-${message.seq}`} className="flex justify-center">
+          <p className="text-center text-xs text-muted">{labels.signInCard.done}</p>
+        </li>
+      );
+    }
+    if (kind === "sign_in" && signInHref && !state?.signedIn && stored.conversation) {
+      return (
+        <SignInCard
+          key={`card-${message.seq}`}
+          labels={labels.signInCard}
+          sorry={labels.sorry}
+          site={site}
+          conversation={stored.conversation}
+          after={stored.lastSeq}
+          focus={false}
+          onSignedIn={(reply) => {
+            if (reply.state.signedIn) setSignedInAt(message.seq);
+            received(reply, stored.conversation);
+          }}
+        />
+      );
+    }
+    if (kind === "email" && state?.emailFollowup && stored.conversation) {
+      return (
+        <li key={`card-${message.seq}`} className="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm">
+          {state.followupEmail ? (
+            <p>{labels.emailCard.sent.replace("{email}", state.followupEmail)}</p>
+          ) : (
+            <EmailForm labels={labels.emailCard} sorry={labels.sorry} site={site} conversation={stored.conversation} after={stored.lastSeq} onReply={(reply) => received(reply, stored.conversation)} />
+          )}
+        </li>
+      );
+    }
+    return null;
+  };
 
   const avatar = (size: string) =>
     agent.avatar ? (
@@ -517,7 +565,11 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
                   <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-foreground px-3 py-2 whitespace-pre-line text-background">{message.body}</p>
                 </li>
               ) : message.author === "system" ? (
-                <SystemLine key={message.seq} message={message} labels={labels} signInHref={signInHref} signedIn={state?.signedIn ?? false} />
+                message.kind === "sign_in" ? (
+                  cardFor(message)
+                ) : (
+                  <SystemLine key={message.seq} message={message} labels={labels} />
+                )
               ) : message.author === "agent" ? (
                 <li key={message.seq} className="flex flex-col gap-1">
                   <span className="ml-9 text-xs text-muted">{agentOf(message)?.name ?? ""}</span>
@@ -527,11 +579,13 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
                   </div>
                 </li>
               ) : (
-                <li key={message.seq} className="flex flex-col gap-2">
+                <Fragment key={message.seq}>
+                <li className="flex flex-col gap-2">
                   <div className="flex items-end gap-2">
                     {avatar("size-7")}
                     <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 whitespace-pre-line">{message.body}</p>
                   </div>
+                  {message.data?.chips && message.data.chips.length > 0 && <Chips chips={message.data.chips} labels={labels.chips} onOpen={() => phone() && setOpen(false)} />}
                   {message.data?.actions?.map((action) => (
                     <Link
                       key={action.href}
@@ -552,6 +606,8 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
                     </ul>
                   )}
                 </li>
+                {cardFor(message)}
+                </Fragment>
               ),
             )}
             {pending && (
@@ -691,31 +747,8 @@ function Waiting({
   onAssistant: (() => void) | null;
 }) {
   const [editing, setEditing] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
   const card = labels.emailCard;
   const asking = state.emailFollowup && (editing || (!state.followupEmail && !state.available));
-
-  async function leave(form: FormData) {
-    setBusy(true);
-    setProblem(null);
-    try {
-      const response = await fetch("/api/chat/email", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...site, conversation, after, name: String(form.get("name") ?? ""), email: String(form.get("email") ?? "") }),
-      });
-      const body = (await response.json().catch(() => ({}))) as unknown;
-      if (response.ok && isReply(body)) {
-        setEditing(false);
-        onReply(body);
-      } else setProblem(response.status === 400 ? card.invalid : ((body as { error?: string }).error ?? labels.sorry));
-    } catch {
-      setProblem(labels.sorry);
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <li className="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm">
@@ -726,29 +759,17 @@ function Waiting({
         </p>
       )}
       {asking ? (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void leave(new FormData(event.currentTarget));
+        <EmailForm
+          labels={card}
+          sorry={labels.sorry}
+          site={site}
+          conversation={conversation}
+          after={after}
+          onReply={(reply) => {
+            setEditing(false);
+            onReply(reply);
           }}
-          className="flex flex-col gap-2"
-          aria-busy={busy || undefined}
-        >
-          <p>{card.intro}</p>
-          <label className="flex flex-col gap-1">
-            <span>{card.name}</span>
-            <input name="name" autoComplete="name" maxLength={120} className="rounded-lg border border-border bg-background px-3 py-2 text-base" />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span>{card.email}</span>
-            <input name="email" type="email" required autoComplete="email" maxLength={254} className="rounded-lg border border-border bg-background px-3 py-2 text-base" />
-          </label>
-          {problem && <p role="alert">{problem}</p>}
-          <button type="submit" disabled={busy} className="button-primary self-start rounded-button px-3 py-1.5 disabled:opacity-50">
-            {card.send}
-          </button>
-          <p className="text-xs text-muted">{card.use}</p>
-        </form>
+        />
       ) : (
         state.followupEmail && (
           <p className="flex flex-wrap items-center gap-2">
@@ -873,20 +894,9 @@ function PersonPicture({ person, size }: { person: { name: string; picture: stri
 
 /**
  * A line about the conversation itself (it ended, it was opened again, waiting for a person, a person joined or left, the assistant
- * is back), in the site's words, and the card asking the customer to sign in; kinds the widget has no words for are left out.
+ * is back), in the site's words; kinds the widget has no words for are left out (the sign-in card a person sends is drawn by the list).
  */
-function SystemLine({ message, labels, signInHref, signedIn }: { message: VisitorMessage; labels: ChatLabels; signInHref?: string; signedIn: boolean }) {
-  if (message.kind === "sign_in") {
-    if (!signInHref || signedIn) return null;
-    return (
-      <li className="flex flex-col items-start gap-2 rounded-lg border border-border p-3 text-sm">
-        <p>{labels.signIn}</p>
-        <a href={signInHref} className="button-primary rounded-button px-3 py-1.5">
-          {labels.signInButton}
-        </a>
-      </li>
-    );
-  }
+function SystemLine({ message, labels }: { message: VisitorMessage; labels: ChatLabels }) {
   const name = (message.data as { name?: unknown } | undefined)?.name;
   const byKind: Record<string, string> = {
     ended: labels.lines.ended,

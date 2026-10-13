@@ -13,8 +13,23 @@ export type ConversationRef = { id: string; token: string };
 /** The authors a visitor sees (never a note or the partner's help). */
 export type VisitorAuthor = Extract<MessageAuthor, "customer" | "ai" | "agent" | "system">;
 
-/** What a message from the AI carries for the widget to draw: product cards and the page it opened. Drawn by code, never from model text. */
-export type VisitorMessageData = { products?: ChatProduct[]; actions?: ChatAction[] };
+/**
+ * A link the AI's tools gave (D216, 2.1, step 9): a parcel's tracking page, an invoice or credit note, an order, a return, the withdrawal
+ * page, a subscription, the subscription boxes, the bonus page. Drawn by the widget as a chip in the site's words for its `kind`, with
+ * `label` (a number) put in; the address is made by code and passed `isSafeAddress()`, never written by the model.
+ */
+export const CHIP_KINDS = ["order", "tracking", "invoice", "credit_note", "return", "withdraw", "booking", "subscription", "boxes", "bonus"] as const;
+export type ChipKind = (typeof CHIP_KINDS)[number];
+export type SupportChip = { kind: ChipKind; label: string; href: string };
+
+/** A card the AI asked the widget to show under its answer (step 9): the sign-in card or the email card. */
+export type SupportCard = "sign_in" | "email";
+
+/** At most this many chips under one answer. */
+export const CHIPS_MAX = 8;
+
+/** What a message from the AI carries for the widget to draw: product cards, the page it opened, link chips and a card. Drawn by code, never from model text. */
+export type VisitorMessageData = { products?: ChatProduct[]; actions?: ChatAction[]; chips?: SupportChip[]; card?: SupportCard };
 
 export type VisitorMessage = {
   seq: number;

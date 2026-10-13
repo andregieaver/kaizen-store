@@ -18,6 +18,7 @@ import { marketPath } from "@/lib/paths";
 import type { PriceView } from "@/lib/pricing";
 import { priceUnitSentence } from "@/lib/unit-price-text";
 import { SUPPORT_TOOLS } from "@/lib/support-tools";
+import { CHIPS_MAX, type SupportCard, type SupportChip } from "@/lib/support-visitor";
 import { TRANSCRIPT_DAYS_OFF, type SupportMode } from "@/lib/support-rules";
 import { z } from "zod";
 
@@ -460,11 +461,24 @@ export async function siteFactsTool(site: ChatSite, name: "search_content" | "st
 const HANDOFF = SUPPORT_TOOLS.find((tool) => tool.name === "handoff_to_human")!;
 const handoffTool = { name: HANDOFF.name, description: HANDOFF.description, parameters: z.toJSONSchema(HANDOFF.input) as Record<string, unknown> };
 
+/** A support tool's answer (D216, step 9): JSON for the model, and the chips and the card the widget draws from it. */
+export type SupportToolOutcome = { result: string; chips?: SupportChip[]; card?: SupportCard };
+
+/** Support's own tools for one turn (D216, 4.3a): what the model is offered, and the server's handler, which checks each tool's needs itself. */
+export type SupportToolSet = { definitions: ToolDefinition[]; run: (name: string, args: Record<string, unknown>) => Promise<SupportToolOutcome> };
+
 /**
  * The agent's answer to a visitor. With `handoff` (support with the AI first, D216) it may also hand the conversation to a person:
- * the reply carries what the customer needs, and the caller moves the conversation to the queue after storing the answer.
+ * the reply carries what the customer needs, and the caller moves the conversation to the queue after storing the answer. With
+ * `support` (step 9) it has support's tools too: their chips and card come back with the reply.
  */
-export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatRequest, connection: AiConnection, options: { handoff?: boolean } = {}): Promise<ChatReply> {
+export async function runChat(
+  site: ChatSite,
+  agent: ChatAgent,
+  request: ChatRequest,
+  connection: AiConnection,
+  options: { handoff?: boolean; support?: SupportToolSet } = {},
+): Promise<ChatReply> {
   const lang = site.kind === "store" ? site.market.lang : "en";
   const m = t(lang);
   const messages: ToolChatMessage[] = [
@@ -480,13 +494,19 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
         path: request.path ?? null,
         today: new Date().toISOString().slice(0, 10),
         handoff: options.handoff,
+        support: Boolean(options.support?.definitions.length),
       }),
     },
     ...request.messages.map((message) => ({ role: message.role, content: message.content }) as ToolChatMessage),
   ];
   const siteTools: ToolDefinition[] = site.kind === "store" ? storeTools(featureOn(site.store, "shop")) : kaizenTools();
-  const tools = options.handoff ? [...siteTools, handoffTool] : siteTools;
+  const supportTools = options.support?.definitions ?? [];
+  const supportNames = new Set(supportTools.map((tool) => tool.name));
+  const tools = [...siteTools, ...(options.handoff ? [handoffTool] : []), ...supportTools];
   let handoff: string | undefined;
+  const chips = new Map<string, SupportChip>();
+  let card: SupportCard | undefined;
+  const extras = () => ({ ...(handoff ? { handoff } : {}), ...(chips.size > 0 ? { chips: [...chips.values()].slice(0, CHIPS_MAX) } : {}), ...(card ? { card } : {}) });
   let action: ChatAction | null = null;
   const products = new Map<string, ChatProduct>();
   for (let round = 0; round <= ROUNDS; round++) {
@@ -494,7 +514,7 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
     const step = await chatWithTools(connection, messages, round < ROUNDS ? tools : [], { maxTokens: 600 });
     if (step.toolCalls.length === 0 || round === ROUNDS) {
       const reply = cleanReply(step.content ?? "", m.chat.sorry);
-      return { reply, actions: action ? [action] : [], products: [...products.values()].slice(0, 6), ...(handoff ? { handoff } : {}) };
+      return { reply, actions: action ? [action] : [], products: [...products.values()].slice(0, 6), ...extras() };
     }
     messages.push({ role: "assistant", content: step.content, tool_calls: step.toolCalls });
     for (const call of step.toolCalls.slice(0, 4)) {
@@ -508,6 +528,20 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
         const parsed = HANDOFF.input.safeParse(args);
         handoff = parsed.success ? (parsed.data as { reason: string }).reason : "The customer asked for a person.";
         messages.push({ role: "tool", tool_call_id: call.id, content: json({ ok: true, note: "A person takes over after your reply. Tell the visitor in one short sentence." }) });
+        continue;
+      }
+      if (options.support && supportNames.has(call.function.name)) {
+        let answer: SupportToolOutcome;
+        try {
+          answer = await options.support.run(call.function.name, args);
+        } catch (error) {
+          if (error instanceof AiError) throw error;
+          console.warn(`[chat] support tool ${call.function.name} failed: ${error instanceof Error ? error.message : String(error)}`);
+          answer = { result: json({ error: "That did not work just now." }) };
+        }
+        for (const chip of answer.chips ?? []) chips.set(chip.href, chip);
+        if (answer.card) card = answer.card;
+        messages.push({ role: "tool", tool_call_id: call.id, content: answer.result.slice(0, 6000) });
         continue;
       }
       let outcome: ToolOutcome;
@@ -525,7 +559,7 @@ export async function runChat(site: ChatSite, agent: ChatAgent, request: ChatReq
     // Tool calls beyond the first four get an answer too, so the conversation stays well formed.
     for (const call of step.toolCalls.slice(4)) messages.push({ role: "tool", tool_call_id: call.id, content: json({ error: "Too many tools at once." }) });
   }
-  return { reply: m.chat.sorry, actions: [], products: [], ...(handoff ? { handoff } : {}) };
+  return { reply: m.chat.sorry, actions: [], products: [], ...extras() };
 }
 
 /**

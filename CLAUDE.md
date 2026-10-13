@@ -280,6 +280,12 @@ of running `playwright install`.
   `runOwnerTool()` with their holder) and its own; a fact must name a tool it
   called, a draft passes `cleanReply()` and `guardedForVisitor()`, and its
   answer is a `partner` message the customer never sees.
+  Help with orders (step 9, `src/server/support-tools.ts`): `supportToolsFor()` gives a store's desk with the AI first the
+  read-only tools of 4.3a, `needs` checked by the server before each handler (never the model); an order is found only among the
+  signed-in customer's own (another's is `not_found`), amounts are `formatMoney()` in the order's own currency (a new money read
+  here needs a euro case in `support-tools.int.test.ts`), links are `SupportChip`s made by code and passed `isSafeAddress()`, never
+  in the model's text. Who a conversation is for is only `customerFor()` (a different customer signed in on the browser is not
+  signed in here); the sign-in card is the store's own code sign-in through `/api/chat/sign-in` and `/sign-in/code`.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,
