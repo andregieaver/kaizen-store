@@ -20,5 +20,18 @@ export function threadLabels(lang: string): SupportThreadLabels {
       left: c.lines.left("{name}"),
       assistantBack: c.lines.assistantBack,
     },
+    actions: {
+      confirm: c.actions.confirm,
+      noThanks: c.actions.noThanks,
+      expired: c.actions.expired,
+      done: c.actions.done("{summary}"),
+      failed: c.actions.failed("{reason}"),
+      declined: c.actions.declined,
+      requested: c.actions.requested("{summary}"),
+      decidedDone: c.actions.decidedDone("{summary}"),
+      decidedDeclined: c.actions.decidedDeclined("{summary}"),
+      note: c.actions.note("{note}"),
+      why: c.actions.why,
+    },
   };
 }

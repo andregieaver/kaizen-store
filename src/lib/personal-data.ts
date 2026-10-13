@@ -305,6 +305,7 @@ export const EMAIL_KINDS: Record<string, EmailClass> = {
   "privacy.extended": "shopper",
   "privacy.refused": "shopper",
   "support.reply": "shopper",
+  "support.request_done": "shopper",
   // Security: short-lived
   "account.code": "security",
   "account.reset": "security",

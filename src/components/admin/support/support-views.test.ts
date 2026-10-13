@@ -211,6 +211,7 @@ describe("the desk's settings (step 5)", () => {
     toneHandoff: -60,
     summariesOn: true,
     partner: true,
+    aiActions: null,
     aiReady: false,
   };
   const form = (over: Partial<Parameters<typeof SupportSettingsForm>[0]> = {}) =>

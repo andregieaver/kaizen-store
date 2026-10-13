@@ -26,7 +26,10 @@ export function handlerWords(row: { status: "open" | "ended"; handler: Handler; 
 
 /** A system line in the transcript, for staff. Unknown kinds say nothing. */
 export function systemWords(kind: string | null, data: unknown): string | null {
-  const name = data && typeof data === "object" && typeof (data as { name?: unknown }).name === "string" ? (data as { name: string }).name : null;
+  const text = (key: string) => (data && typeof data === "object" && typeof (data as Record<string, unknown>)[key] === "string" ? ((data as Record<string, string>)[key] as string) : null);
+  const name = text("name");
+  const summary = text("summary");
+  const why = text("why");
   switch (kind) {
     case "queued":
       return "Waiting for a person";
@@ -42,6 +45,16 @@ export function systemWords(kind: string | null, data: unknown): string | null {
       return "The conversation was opened again";
     case "sign_in":
       return "Asked the customer to sign in";
+    case "action_done":
+      return `The customer confirmed, and it was done: ${summary ?? ""}`;
+    case "action_failed":
+      return `The customer confirmed, but it could not be done (${why ?? "failed"}): ${summary ?? ""}`;
+    case "action_declined":
+      return `The customer said no thanks to: ${summary ?? ""}`;
+    case "request_done":
+      return `${name ?? "Someone"} marked the request done: ${summary ?? ""}`;
+    case "request_declined":
+      return `${name ?? "Someone"} declined the request: ${summary ?? ""}`;
     default:
       return null;
   }

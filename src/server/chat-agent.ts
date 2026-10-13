@@ -462,7 +462,7 @@ const HANDOFF = SUPPORT_TOOLS.find((tool) => tool.name === "handoff_to_human")!;
 const handoffTool = { name: HANDOFF.name, description: HANDOFF.description, parameters: z.toJSONSchema(HANDOFF.input) as Record<string, unknown> };
 
 /** A support tool's answer (D216, step 9): JSON for the model, and the chips and the card the widget draws from it. */
-export type SupportToolOutcome = { result: string; chips?: SupportChip[]; card?: SupportCard };
+export type SupportToolOutcome = { result: string; chips?: SupportChip[]; card?: SupportCard; action?: string };
 
 /** Support's own tools for one turn (D216, 4.3a): what the model is offered, and the server's handler, which checks each tool's needs itself. */
 export type SupportToolSet = { definitions: ToolDefinition[]; run: (name: string, args: Record<string, unknown>) => Promise<SupportToolOutcome> };
@@ -506,7 +506,13 @@ export async function runChat(
   let handoff: string | undefined;
   const chips = new Map<string, SupportChip>();
   let card: SupportCard | undefined;
-  const extras = () => ({ ...(handoff ? { handoff } : {}), ...(chips.size > 0 ? { chips: [...chips.values()].slice(0, CHIPS_MAX) } : {}), ...(card ? { card } : {}) });
+  let kept: string | undefined;
+  const extras = () => ({
+    ...(handoff ? { handoff } : {}),
+    ...(chips.size > 0 ? { chips: [...chips.values()].slice(0, CHIPS_MAX) } : {}),
+    ...(card ? { card } : {}),
+    ...(kept ? { action: kept } : {}),
+  });
   let action: ChatAction | null = null;
   const products = new Map<string, ChatProduct>();
   for (let round = 0; round <= ROUNDS; round++) {
@@ -541,6 +547,8 @@ export async function runChat(
         }
         for (const chip of answer.chips ?? []) chips.set(chip.href, chip);
         if (answer.card) card = answer.card;
+        // One proposal or request per answer: the last one kept is the one the customer sees.
+        if (answer.action) kept = answer.action;
         messages.push({ role: "tool", tool_call_id: call.id, content: answer.result.slice(0, 6000) });
         continue;
       }

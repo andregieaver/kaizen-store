@@ -15,8 +15,10 @@ export const metadata: Metadata = { title: "Support inbox" };
  * A store's support inbox (D216, `docs/support.md` 2.4, step 3): every conversation with the store's customers as it happens, for
  * members who may read support; those who may write take conversations over, answer, hand them on or back and end them (step 4).
  */
-export default async function SupportInboxPage({ params }: PageProps<"/admin/[store]/support">) {
+export default async function SupportInboxPage({ params, searchParams }: PageProps<"/admin/[store]/support">) {
   const { store: slug } = await params;
+  const c = (await searchParams).c;
+  const initialOpen = typeof c === "string" && /^[0-9a-f-]{36}$/i.test(c) ? c : null;
   const member = await requirePermission(slug, "support:read");
   const staff = memberDesk(member);
   const [initial, mine] = await Promise.all([inboxFeed([staff], { tab: "waiting" }), presence(staff.desk, staff.account.id)]);
@@ -35,5 +37,5 @@ export default async function SupportInboxPage({ params }: PageProps<"/admin/[st
       act: staff.canWrite ? { byStore: false, run: supportActAction.bind(null, slug) } : null,
     },
   };
-  return <Inbox context={context} initial={initial} initialTab="waiting" />;
+  return <Inbox context={context} initial={initial} initialTab="waiting" initialOpen={initialOpen} />;
 }

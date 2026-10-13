@@ -74,7 +74,7 @@ export const SUPPORT_TOOLS = [
   ),
   supportTool(
     "propose_action",
-    "Propose something the signed-in customer can do themselves (cancel or move a booking, change a subscription or a box, send an order's email again, ask to return items). It does nothing until the customer presses Confirm.",
+    "Propose something the signed-in customer can do themselves; it does nothing until the customer presses Confirm. Use ids from the other tools. Kinds and their args: booking.cancel {bookingId}; booking.move {bookingId, startsAt (ISO time with offset)}; subscription.pause {subscriptionId, periods 1-3}; subscription.skip, subscription.cancel, subscription.resume, subscription.unpause {subscriptionId}; box.skip {listId, date (one of upcomingDates)}; box.pause, box.resume {listId}; order.resend_confirmation, order.resend_shipped {orderNumber}; return.request {orderNumber, lines: [{lineId, quantity}]} for lines whose `can` is return (never a withdrawal: give the withdrawal page).",
     z.object({ kind: z.enum(CUSTOMER_ACTION_KINDS as [string, ...string[]]), args: z.record(z.string(), z.unknown()) }),
     { signedIn: true },
   ),

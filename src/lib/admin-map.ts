@@ -556,6 +556,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["inbox", "live chat", "customer service", "helpdesk", "conversations", "tickets"],
     tasks: ["See who is waiting", "Read a conversation with the chat assistant", "Set yourself online or away"],
   }),
+  store("support.requests", "/support/requests", "Support requests", "Store", "What the store's chat assistant could not do itself and passed to your team: a refund, cancelling a paid order, changing an address, an exception or anything else, with the conversation, the order and the customer. Do the work on the order page, then mark it done or decline it with a note; the customer is told in the chat and by email when away. Decided requests are under ?show=decided.", {
+    keywords: ["requests", "refund request", "cancel order", "change address", "exception", "support"],
+    tasks: ["Decide a request the chat assistant passed on", "See decided requests"],
+  }),
   store("support.settings", "/support/settings", "Support settings", "Store", "Who answers the store's customers in the chat: the chat assistant alone, the AI first and then your team, or your team only. Also email follow-up when nobody is there, opening hours, when quiet conversations end, when your people are emailed about a waiting customer, how they are named, and (the owner's) how long transcripts are kept.", {
     keywords: ["support mode", "live chat", "people only", "opening hours", "email follow-up", "transcripts", "handover"],
     tasks: ["Let people answer the chat", "Answer customers with the AI first", "Set support opening hours", "Turn email answers on or off"],

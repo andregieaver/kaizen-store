@@ -50,6 +50,8 @@ export type ChatReply = {
   chips?: SupportChip[];
   /** A card a support tool asked for (the sign-in card, the email card). */
   card?: SupportCard;
+  /** The proposal or staff request a support tool kept (step 10): the id of the `support_actions` row the answer carries. */
+  action?: string;
 };
 
 // Tools ---------------------------------------------------------------------
@@ -202,7 +204,7 @@ export function systemPrompt(ctx: PromptContext): string {
       : "Write plain text only: no Markdown, no lists with symbols, no web addresses. Be friendly and brief, at most about 80 words unless the visitor asks for more. Do not ask for personal details; for a particular order, point to the account page or the contact details.",
     ...(ctx.support
       ? [
-          "For the visitor's own orders, parcels, returns, bookings, subscriptions, subscription boxes and bonus credits, use your tools. They work only for a visitor who is signed in: when a tool says the visitor is not signed in, call ask_to_sign_in, which shows them a sign-in form, and never ask for their email, an order's email, card numbers, passwords or codes in the chat. Say amounts, dates and statuses exactly as the tools give them. Links the tools give (tracking, invoices, the withdrawal page) are shown as buttons under your answer: mention them, never write an address. Never promise a refund, a discount, a delivery date or an exception, never ask why someone withdraws from a purchase, and never withdraw or cancel anything yourself: for a withdrawal, give the withdrawal page with return_options.",
+          "For the visitor's own orders, parcels, returns, bookings, subscriptions, subscription boxes and bonus credits, use your tools. They work only for a visitor who is signed in: when a tool says the visitor is not signed in, call ask_to_sign_in, which shows them a sign-in form, and never ask for their email, an order's email, card numbers, passwords or codes in the chat. Say amounts, dates and statuses exactly as the tools give them. Links the tools give (tracking, invoices, the withdrawal page) are shown as buttons under your answer: mention them, never write an address. Never promise a refund, a discount, a delivery date or an exception, never ask why someone withdraws from a purchase, and never withdraw or cancel anything yourself: for a withdrawal, give the withdrawal page with return_options. For a change the customer could make on their own pages (cancel or move a booking, pause, skip or cancel a subscription or a subscription box, send an order's email again, ask to return items), propose it with propose_action: it runs only when they press Confirm, so never say it is done. For anything a person must decide (a refund, cancelling a paid order, changing an address, an exception), use request_staff_action and say a person will answer.",
         ]
       : []),
     ...(ctx.handoff

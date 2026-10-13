@@ -23,6 +23,7 @@ import {
 import type { UnitLabels } from "@/lib/unit-price-text";
 
 import { Chips, type ChipLabels } from "./chat/chips";
+import { ConfirmCard, actionLine, type ActionLabels } from "./chat/confirm-card";
 import { EmailForm } from "./chat/email-card";
 import { SignInCard, type SignInCardLabels } from "./chat/sign-in-card";
 import { Icon } from "./icons";
@@ -66,6 +67,8 @@ export type ChatLabels = {
   signInCard: SignInCardLabels;
   /** The link chips under the AI's answers (step 9), by kind; `{label}` stands for the number. */
   chips: ChipLabels;
+  /** The confirm card and the lines after an action or request (step 10). */
+  actions: ActionLabels;
   /** On the closed chat's button when a person wrote. */
   newMessage: string;
   vatIncluded: string;
@@ -454,6 +457,13 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
   const who = people ? deskName : `${agent.name}, ${labels.aiAssistant}`;
   const isOpen = stored.conversation !== null && stored.status === "open";
   const queued = isOpen && state?.status === "open" && state.handler === "queue" ? state : null;
+  // Proposals a later line settled (step 10): their cards take no more answers.
+  const settled = new Set(
+    messages.flatMap((message) => {
+      const id = message.author === "system" ? (message.data as { actionId?: unknown } | undefined)?.actionId : undefined;
+      return typeof id === "string" ? [id] : [];
+    }),
+  );
   // The latest card asked for (D216, step 9): a person's or the AI's sign-in card, or the AI's email card. Only that one is drawn.
   const lastCard = [...messages].reverse().find((message) => (message.author === "system" && message.kind === "sign_in") || (message.author === "ai" && message.data?.card));
   const cardOf = (message: VisitorMessage) => (message.seq !== lastCard?.seq || !isOpen ? null : message.author === "system" ? "sign_in" : (message.data?.card ?? null));
@@ -586,6 +596,18 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
                     <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 whitespace-pre-line">{message.body}</p>
                   </div>
                   {message.data?.chips && message.data.chips.length > 0 && <Chips chips={message.data.chips} labels={labels.chips} onOpen={() => phone() && setOpen(false)} />}
+                  {message.action && stored.conversation && (
+                    <ConfirmCard
+                      action={message.action}
+                      open={isOpen && !settled.has(message.action.id)}
+                      labels={labels.actions}
+                      sorry={labels.sorry}
+                      site={site}
+                      conversation={stored.conversation}
+                      after={stored.lastSeq}
+                      onReply={(reply) => received(reply, stored.conversation)}
+                    />
+                  )}
                   {message.data?.actions?.map((action) => (
                     <Link
                       key={action.href}
@@ -906,7 +928,7 @@ function SystemLine({ message, labels }: { message: VisitorMessage; labels: Chat
     left: labels.lines.left.replace("{name}", typeof name === "string" ? name : ""),
     assistant_back: labels.lines.assistantBack,
   };
-  const words = message.kind ? byKind[message.kind] : undefined;
+  const words = (message.kind ? byKind[message.kind] : undefined) ?? actionLine(message.kind, message.data, labels.actions);
   if (!words) return null;
   return (
     <li className="flex justify-center">

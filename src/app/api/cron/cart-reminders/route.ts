@@ -9,6 +9,7 @@ import { sendDueCartReminders } from "@/server/cart-reminders";
 import { catalogTag } from "@/server/catalog";
 import { pruneChatUsage } from "@/server/chat-agent";
 import { endIdleConversations } from "@/server/support";
+import { expireActions } from "@/server/support-actions";
 import { summarisePending } from "@/server/support-summary";
 import { cronAuthorised } from "@/server/cron-auth";
 import { expireDrafts } from "@/server/draft-orders";
@@ -108,6 +109,11 @@ async function run(request: Request) {
     // Support (D216, step 7): the summaries of ended conversations not yet written, each tried again until it is done or failed.
     summarisePending().catch((error) => {
       console.error("[cron] support summaries failed", error);
+      return null;
+    }),
+    // Support (D216, step 10): proposals nobody confirmed in time are marked expired.
+    expireActions().catch((error) => {
+      console.error("[cron] support action expiry failed", error);
       return null;
     }),
   ]);

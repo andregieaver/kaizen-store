@@ -28,7 +28,8 @@ import {
 } from "@/lib/support-rules";
 import { REFUSALS, type Refusal, type SupportEvent } from "@/lib/support-state";
 import type { ToneBand } from "@/lib/support-tone";
-import type { ConversationRef, VisitorMessage, VisitorMessageData, VisitorState } from "@/lib/support-visitor";
+import { isCustomerAction, type CustomerActionKind } from "@/lib/support-actions";
+import type { ConversationRef, VisitorAction, VisitorMessage, VisitorMessageData, VisitorState } from "@/lib/support-visitor";
 
 import { avatarPictureUrl } from "@/lib/avatar";
 
@@ -103,6 +104,8 @@ export type DeskSettings = {
   summariesOn: boolean;
   /** The silent partner may help this desk's people (2.5, step 8). */
   partner: boolean;
+  /** The customer actions the AI may propose (4.4, step 10); null: all of them. The owner's alone to change. */
+  aiActions: CustomerActionKind[] | null;
 };
 
 /** The desk's settings, made on its first conversation with support off (S5): the chat agent alone, as before. */
@@ -130,6 +133,7 @@ export function settingsOf(row: Row): DeskSettings {
     toneHandoff: row.tone_handoff === null || row.tone_handoff === undefined ? null : Number(row.tone_handoff),
     summariesOn: row.summaries_on === undefined ? true : Boolean(row.summaries_on),
     partner: row.partner === undefined ? true : Boolean(row.partner),
+    aiActions: Array.isArray(row.ai_actions) ? (row.ai_actions as string[]).filter(isCustomerAction) : null,
   };
 }
 
@@ -290,14 +294,14 @@ export async function addMessage(
   author: MessageAuthor,
   accountId: string | null,
   body: string,
-  extra: { kind?: string; data?: unknown } = {},
+  extra: { kind?: string; data?: unknown; action?: string } = {},
 ): Promise<{ id: string; seq: number } | null> {
   await assertOnDesk(desk, conversationId);
   const words = author === "system" ? "" : body.slice(0, MESSAGE_MAX[author]);
   const [row] = await guarded(() =>
     db().execute<Row>(sql`
       select * from commerce.support_add_message(${conversationId}::uuid, ${author}, ${accountId}::uuid, ${words}, ${extra.kind ?? null},
-        ${extra.data === undefined ? null : JSON.stringify(extra.data)}::jsonb)
+        ${extra.data === undefined ? null : JSON.stringify(extra.data)}::jsonb, ${extra.action ?? null}::uuid)
     `),
   );
   return row?.id ? { id: String(row.id), seq: Number(row.seq) } : null;
@@ -327,10 +331,13 @@ async function assertOnDesk(desk: Desk, conversationId: string): Promise<void> {
 /** The messages after `after` that the visitor may see: never a note or the partner's help (a scan test holds the condition). */
 export async function visitorFeed(desk: Desk, conversationId: string, after: number, limit = 100): Promise<VisitorMessage[]> {
   const rows = await db().execute<Row>(sql`
-    select seq, author, body, kind, data, created_at from commerce.support_messages
-    where conversation_id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)} and seq > ${after}
-      and author in ('customer', 'ai', 'agent', 'system')
-    order by seq limit ${limit}
+    select m.seq, m.author, m.body, m.kind, m.data, m.created_at, a.id as action_id, a.summary as action_summary, a.confirmer as action_confirmer,
+      case when a.status = 'proposed' and a.expires_at < now() then 'expired' else a.status end as action_status
+    from commerce.support_messages m
+    left join commerce.support_actions a on a.id = m.action_id and m.author = 'ai'
+    where m.conversation_id = ${conversationId}::uuid and ${deskIs(desk, sql`m.store_id`)} and m.seq > ${after}
+      and m.author in ('customer', 'ai', 'agent', 'system')
+    order by m.seq limit ${limit}
   `);
   return rows.map((r) => ({
     seq: Number(r.seq),
@@ -338,6 +345,9 @@ export async function visitorFeed(desk: Desk, conversationId: string, after: num
     body: String(r.body),
     ...(r.kind ? { kind: String(r.kind) } : {}),
     ...(r.data ? { data: r.data as VisitorMessageData } : {}),
+    ...(r.action_id
+      ? { action: { id: String(r.action_id), summary: String(r.action_summary), status: String(r.action_status) as VisitorAction["status"], confirmer: String(r.action_confirmer) as VisitorAction["confirmer"] } }
+      : {}),
     at: iso(r.created_at),
   }));
 }

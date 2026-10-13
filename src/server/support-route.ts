@@ -35,6 +35,7 @@ import {
 } from "./support";
 import { visitorDesk, type Desk } from "./support-desk";
 import type { SupportCustomer } from "./support-tools";
+import { confirmAction } from "./support-actions";
 import { summarise } from "./support-summary";
 import { scoreTone, scoresTone } from "./support-tone";
 import { runSupportTurn } from "./support-turn";
@@ -328,4 +329,26 @@ export async function visitorSignInCode(raw: unknown, ref: { id: string; token: 
   const customer = customerFor({ id: customerId, email }, conversation);
   const answer = await visitorReply(found.desk, found.settings, conversation, after, customer);
   return Response.json({ ...answer, signedIn: customer !== null, ...(customer ? {} : { error: m.chat.signInCard.otherAccount }) }, { headers: NO_STORE });
+}
+
+/**
+ * The confirm card (D216, 2.1, step 10): the visitor confirms or declines a proposal of this conversation. The action runs only for
+ * the signed-in customer the conversation is for, and only while it is open (`confirmAction()`); the answer is the conversation as
+ * it stands, with the line saying what happened.
+ */
+export async function visitorConfirm(raw: unknown, ref: { id: string; token: string }, after: number, actionId: string, confirm: boolean): Promise<VisitorReply | Response> {
+  const found = await visitorPlace(raw, ref);
+  if (found instanceof Response) return found;
+  const { site } = found.place;
+  const m = t(found.place.lang);
+  if (site.kind !== "store") return fail(404, m.chat.sorry);
+  const customer = await customerOf(found.place, found.conversation);
+  const outcome = await confirmAction(
+    { site, settings: found.settings, customer, desk: found.desk, conversationId: found.conversation.id, conversation: found.conversation },
+    actionId,
+    confirm,
+  );
+  if (!outcome.ok) return fail(404, m.chat.actions.expired);
+  const conversation = (await visitorConversation(found.desk, ref)) ?? found.conversation;
+  return visitorReply(found.desk, found.settings, conversation, after, customer, outcome.status === "expired" ? { error: m.chat.actions.expired } : {});
 }

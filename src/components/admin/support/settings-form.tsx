@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
+import { ACTION_KIND_WORDS, CUSTOMER_ACTION_KINDS } from "@/lib/support-action-words";
 import { HoursEditor } from "@/components/admin/hours-editor";
 import { END_AFTER_MINUTES, NOTIFY_AFTER_MINUTES, TRANSCRIPT_DAYS, type SupportMode } from "@/lib/support-rules";
 import type { DeskSettingsView } from "@/server/support-settings";
@@ -104,6 +105,30 @@ export function SupportSettingsForm({
           people is online. In {deskName}&apos;s time zone.
         </p>
         <HoursEditor name="hours" initial={settings.hours} optional />
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">What the AI may do for customers</h2>
+        <p className="text-sm text-muted">
+          With the AI first, the assistant may propose these to a signed-in customer. Nothing happens until the customer presses Confirm in the chat, and it runs
+          with the same checks as on their own pages. Anything else (a refund, cancelling a paid order, a new address) it passes to your team as a request.
+          {owner ? "" : " Only the owner changes this."}
+        </p>
+        {owner && <input type="hidden" name="aiActionsShown" value="1" />}
+        <div className="grid gap-1 text-sm sm:grid-cols-2">
+          {CUSTOMER_ACTION_KINDS.map((kind) => (
+            <label key={kind} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                name={`aiAction.${kind}`}
+                defaultChecked={settings.aiActions === null || settings.aiActions.includes(kind)}
+                disabled={!owner}
+                className="size-4"
+              />
+              {ACTION_KIND_WORDS[kind]}
+            </label>
+          ))}
+        </div>
       </section>
 
       <section className="flex flex-col gap-3">

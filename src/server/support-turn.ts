@@ -52,7 +52,7 @@ export async function runSupportTurn(
   };
   let reply: ChatReply;
   try {
-    const support = context.site.kind === "store" ? await supportToolsFor({ site: context.site, settings: context.settings, customer }) : null;
+    const support = context.site.kind === "store" ? await supportToolsFor({ site: context.site, settings: context.settings, customer, desk, conversationId }) : null;
     reply = await runChat(context.site, context.agent, request, context.connection, { handoff: context.settings.mode === "ai_first", ...(support ? { support } : {}) });
   } catch (error) {
     console.warn(`[support] ${context.storeId ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);
@@ -65,6 +65,6 @@ export async function runSupportTurn(
   if (reply.chips?.length) data.chips = reply.chips;
   if (reply.card) data.card = reply.card;
   const body = (reply.reply || m.chat.sorry).slice(0, MESSAGE_MAX.ai);
-  await addMessage(desk, conversationId, "ai", null, body, Object.keys(data).length > 0 ? { data } : {});
+  await addMessage(desk, conversationId, "ai", null, body, { ...(Object.keys(data).length > 0 ? { data } : {}), ...(reply.action ? { action: reply.action } : {}) });
   return { reply, ...(reply.handoff ? { handoff: reply.handoff } : {}) };
 }

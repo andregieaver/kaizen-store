@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { lastSeqOf, mergeMessages, pollDelay, type ConversationRef, type VisitorMessage, type VisitorReply, type VisitorState } from "@/lib/support-visitor";
 
+import { actionLine, type ActionLabels } from "./confirm-card";
+
 /** The thread's words, in the conversation's language. */
 export type SupportThreadLabels = {
   you: string;
@@ -13,6 +15,8 @@ export type SupportThreadLabels = {
   sorry: string;
   ended: string;
   lines: { ended: string; reopened: string; queued: string; joined: string; left: string; assistantBack: string };
+  /** The lines after an action or a request was settled (step 10). */
+  actions: ActionLabels;
 };
 
 const isReply = (body: unknown): body is VisitorReply => Boolean(body && typeof body === "object" && Array.isArray((body as VisitorReply).messages) && (body as VisitorReply).state);
@@ -163,7 +167,7 @@ function Line({ message, labels }: { message: VisitorMessage; labels: SupportThr
       left: labels.lines.left.replace("{name}", who),
       assistant_back: labels.lines.assistantBack,
     };
-    const text = message.kind ? words[message.kind] : undefined;
+    const text = (message.kind ? words[message.kind] : undefined) ?? actionLine(message.kind, message.data, labels.actions);
     return text ? <li className="text-center text-xs text-muted">{text}</li> : null;
   }
   const mine = message.author === "customer";

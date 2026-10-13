@@ -7,6 +7,7 @@ import { renderEmail, type EmailBlock } from "@/lib/email-layout";
 import { marketPath, storeSiteUrl } from "@/lib/paths";
 import { can } from "@/lib/permissions";
 import { siteUrl } from "@/lib/site";
+import { t } from "@/lib/i18n";
 import { supportEmailText } from "@/lib/support-email-text";
 import { EMAIL_EVERY_MINUTES, EMAILS_MAX, ONLINE_SECONDS } from "@/lib/support-rules";
 
@@ -236,4 +237,58 @@ async function deskPeopleAway(storeId: string | null): Promise<{ id: string; ema
       ),
     )
     .map((r) => ({ id: String(r.id), email: String(r.email) }));
+}
+
+/**
+ * The customer is told by email that a person decided their request (step 10, `support.request_done`), when they are not looking at
+ * the conversation: to a signed-in customer's own address, else to the email they left on a desk with email follow-up. It carries
+ * the decision in the conversation's language, the person's note and a new link back. Never throws.
+ */
+export async function sendRequestDecisionEmail(conversationId: string, actionId: string): Promise<SendOutcome | null> {
+  try {
+    const [row] = await db().execute<Row>(sql`
+      select c.id, c.store_id, c.locale, c.market, coalesce(cu.email, case when s.email_followup then c.contact_email end) as address,
+        (c.visitor_seen_at is null or c.visitor_seen_at <= now() - make_interval(secs => ${REPLY_AFTER_SECONDS})) as away,
+        a.status, a.summary, a.result ->> 'note' as note
+      from commerce.support_conversations c
+      join commerce.support_settings s on s.store_id is not distinct from c.store_id
+      join commerce.support_actions a on a.conversation_id = c.id and a.id = ${actionId}::uuid
+      left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
+      where c.id = ${conversationId}::uuid and c.anonymised_at is null and s.mode <> 'off' and c.store_id is not null
+        and commerce.store_is_active(c.store_id)
+    `);
+    if (!row || !row.address || !row.away || (row.status !== "done" && row.status !== "declined")) return null;
+    const storeId = String(row.store_id);
+    const locale = String(row.locale);
+    const market = row.market ? String(row.market) : "";
+    const ctx = await emailContext(storeId, market.slice(0, 2).toUpperCase(), locale);
+    if (!ctx) return null;
+    const words = supportEmailText(locale);
+    const said = t(locale.split("-")[0] || "en").chat.actions;
+    const token = await newEmailToken(systemDesk(storeId), conversationId);
+    const url = `${storeSiteUrl(ctx.store.slug)}${marketPath(ctx.store.slug, ctx.market.slug, `/account/support/${token}`)}`;
+    const summary = String(row.summary);
+    const blocks: EmailBlock[] = [
+      { type: "heading", text: words.decisionHeading },
+      { type: "paragraph", text: row.status === "done" ? said.decidedDone(summary) : said.decidedDeclined(summary) },
+      // The person's own words, as text.
+      ...(row.note ? [{ type: "paragraph" as const, text: said.note(String(row.note)) }] : []),
+      { type: "button", text: words.button, url },
+      { type: "paragraph", text: words.linkNote },
+      { type: "paragraph", text: words.decisionWhy },
+    ];
+    const email = renderEmail({ subject: words.decisionSubject(ctx.store.name), preview: words.decisionSubject(ctx.store.name), blocks, footer: emailFooter(ctx.store, ctx.text), lang: locale.split("-")[0] || "en" });
+    return await sendEmail({
+      storeId,
+      kind: "support.request_done",
+      to: String(row.address),
+      email,
+      fromName: ctx.store.name,
+      replyTo: ctx.store.details.contactEmail,
+      idempotencyKey: `support.request_done:${actionId}`,
+    });
+  } catch (error) {
+    console.error(`[support] the decision email of ${actionId} failed`, error);
+    return null;
+  }
 }

@@ -24,10 +24,13 @@ export function Inbox({
   context,
   initial,
   initialTab,
+  initialOpen = null,
 }: {
   context: SupportDeskContext;
   initial: InboxFeed;
   initialTab: InboxTab;
+  /** A conversation to open at once (`?c=`, from the Requests page). */
+  initialOpen?: string | null;
 }) {
   const [tab, setTab] = useState<InboxTab>(initialTab);
   const [query, setQuery] = useState("");
@@ -36,7 +39,7 @@ export function Inbox({
   const [topic, setTopic] = useState("");
   const [rows, setRows] = useState(initial.rows);
   const [waiting, setWaiting] = useState(initial.waiting);
-  const [open, setOpen] = useState<{ id: string; store: string | null } | null>(null);
+  const [open, setOpen] = useState<{ id: string; store: string | null } | null>(initialOpen ? { id: initialOpen, store: null } : null);
   const [conversation, setConversation] = useState<ConversationFeed | null>(null);
   // Bumped after an action, so the conversation and the list are asked for again at once.
   const [refresh, setRefresh] = useState(0);

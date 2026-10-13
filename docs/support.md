@@ -1576,3 +1576,45 @@ and push to `main`; watch CI; for a migration, record its version and check the 
 - **Tests**: I `support-tools.int.test.ts` (C11 refused when not signed in, another customer's order not found; C12 a euro order's
   totals; chips; the AI's turn with a tool and its chips kept; another customer's session; the sign-in routes' same answer, the code,
   the link, another customer's conversation left as it is).
+
+**Step 10 (13 October 2026).**
+
+- **Proposals** (`src/server/support-actions.ts`, `proposeAction()`, the tool `propose_action`): only for a signed-in customer of the
+  conversation, only of the kinds the desk allows (`support_settings.ai_actions`, null = all; `allowedKinds()`), with the kind's
+  arguments read by `readActionArgs()`. Before anything is kept, `prepare()` checks it as it would run (the customer's own booking,
+  subscription, box list or order; `selfServiceOpen()`, `allowedChanges()`, the list's upcoming days, a resend once per order per
+  day, a parcel to resend about, return lines whose right is `return` and within what is left) and writes the summary in the
+  conversation's language (`m.chat.actions.summary`, by hand in nb, sv, da and en); amounts are never estimated (a cancellation
+  says "What you paid online for it is refunded to your card"; the done line then says the amount `cancelOwnBooking()` refunded).
+  The row (`support_actions`, confirmer `customer`, `expires_at` 30 minutes on) is linked to the AI's answer (`support_add_message(…,
+  p_action)`), and the visitor's feed carries it as `action {id, summary, status, confirmer}` (status `expired` once past its time).
+  The read tools now give the ids proposals need (`bookingId`, `subscriptionId`, `listId` and its `upcomingDates`, `lineId`), and
+  the tool's description lists each kind's arguments.
+- **Confirm** (`/api/chat/confirm`, `visitorConfirm()`, `confirmAction()`): an open proposal of this conversation only (another
+  conversation's is a 404, as is a second press); taken under a row lock so it runs once; expired, it is marked so and refused;
+  *No thanks* declines it; Confirm runs it through the existing function (`perform()`: `cancelOwnBooking()`/`moveOwnBooking()` with
+  `{customerId}`, `changeSubscription()` as the shopper, `setSkip()`/`setListStatus()`, `sendOrderConfirmation()`/`sendShipped()`
+  with `resend` to the order's own address, `startReturnRequest()` with the customer as proof), which checks everything again; and
+  only for the signed-in customer the conversation is for (anyone else: `failed`, `notYours`). A line follows (`action_done` with an
+  optional note in the site's words, `action_failed` with a reason key, `action_declined`); the widget words it from
+  `m.chat.actions`. `expireActions()` runs in the five-minute job.
+- **Requests** (`request_staff_action`, `requestStaffAction()`): any of `STAFF_REQUEST_KINDS` (a refund, cancel and change of address
+  need an order number, kept as typed), a summary by code and the AI's description as `details` for the staff. The widget shows
+  "Passed to a person: …". The store's **Requests** page (`/admin/{store}/support/requests`, `support:read`; Done and Decline with an
+  optional note, `support:write`) lists them with the order (linked when found), the customer and *Open the conversation*
+  (`/support?c=`, which opens it in the inbox), and the decided ones under `?show=decided`. `decideRequest()` decides once, writes
+  `request_done`/`request_declined` (with the note) in the conversation and `support.request_decided` in the activity log (kind,
+  decision, whether there was a note; never the words), and the action's `after()` sends `support.request_done`
+  (`sendRequestDecisionEmail()`) when the customer has not looked for a minute: to a signed-in customer's own address, else to
+  the email they left on a desk with email follow-up; one per request. Only the store level has the page: Kaizen's desk gets
+  requests with step 11, and the owner's combined view does not list them yet.
+- **Settings**: *What the AI may do for customers*, a box per kind, the owner's alone (the form sends them only for an owner, and
+  `saveDeskSettings()` refuses a change from anyone else); all on stores `null`.
+- **Staff transcript**: the action and request lines in words (`systemWords()`); the AI's proposal itself shows as its answer.
+- **Not built here**: the confirm card on the email link's page (it shows the lines, not the buttons); one-click executors for
+  requests (step 15).
+- **Tests**: I `support-actions.int.test.ts` (C13: kept, nothing before Confirm, run once, checked again at Confirm, No thanks,
+  expired, another conversation, another customer, every kind's refusal before anything is kept, a kind the owner switched off;
+  C14: listed, a reader cannot decide, decided once, the line with the note, the activity log, the email when away and none when
+  looking), `support-tools.int.test.ts` (the AI's turn keeps the proposal with its answer, the confirm route runs it once); U
+  `support-action-words.test.ts` (each kind has a check, a runner and a test), V `confirm-card.test.ts`.

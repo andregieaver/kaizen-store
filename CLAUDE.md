@@ -286,6 +286,13 @@ of running `playwright install`.
   here needs a euro case in `support-tools.int.test.ts`), links are `SupportChip`s made by code and passed `isSafeAddress()`, never
   in the model's text. Who a conversation is for is only `customerFor()` (a different customer signed in on the browser is not
   signed in here); the sign-in card is the store's own code sign-in through `/api/chat/sign-in` and `/sign-in/code`.
+  Actions and requests (step 10, `src/server/support-actions.ts`): the AI only proposes a customer action (`proposeAction()`,
+  checked by `prepare()`, kinds allowed by the owner's `ai_actions`); it runs only through `confirmAction()` on the customer's
+  Confirm (`/api/chat/confirm`), once, before it expires, for the conversation's own signed-in customer, through the existing
+  self-service function (`perform()`); a new kind is a schema in `CUSTOMER_ACTIONS`, a case in `prepare()` and `perform()`, words in
+  `m.chat.actions.summary` (4 languages) and `ACTION_KIND_WORDS`, and a test. Anything else is a staff request a person decides on
+  the Requests page (`decideRequest()`, the line in the chat, `support.request_done` when away); never a refund, a withdrawal, an
+  order edit, a code or credit from the AI.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

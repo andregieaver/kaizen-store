@@ -26,6 +26,8 @@ import { listOrderReturns } from "./returns";
 import { getStandingOrder } from "./standing-orders";
 import { allowedChanges, getSubscription } from "./subscriptions";
 import type { DeskSettings } from "./support";
+import { allowedKinds, proposeAction, requestStaffAction } from "./support-actions";
+import type { Desk } from "./support-desk";
 import { lookupWithdrawableOrder } from "./withdrawals";
 
 type Row = Record<string, unknown>;
@@ -37,16 +39,30 @@ type StoreSite = Extract<ChatSite, { kind: "store" }>;
  * same readers the customer's own pages use. Every tool's `needs` is checked here, before its handler runs and whatever the model
  * offered; an order is found only among the customer's own (another customer's is "not found", as one that does not exist). Amounts
  * are written by code in the order's or the credits' own currency (`formatMoney`), links are made by code and passed
- * `isSafeAddress()`, and nothing here changes anything: actions and requests are step 10.
+ * `isSafeAddress()`. Nothing here changes anything: a proposal only keeps an action for the customer's Confirm, and a request one for
+ * a person (`src/server/support-actions.ts`, step 10).
  */
 
 /** The customer the conversation is for: signed in on this browser and the conversation's own (a different signed-in customer is none). */
 export type SupportCustomer = { id: string; email: string } | null;
 
-export type SupportToolContext = { site: StoreSite; settings: DeskSettings; customer: SupportCustomer };
+export type SupportToolContext = { site: StoreSite; settings: DeskSettings; customer: SupportCustomer; desk: Desk; conversationId: string };
 
-/** The read-only tools of this step (proposals and staff requests come with step 10; `handoff_to_human` is the chat's own). */
-const READ_TOOLS = new Set(["ask_to_sign_in", "ask_for_email", "my_orders", "order_details", "return_options", "my_bookings", "my_subscriptions", "my_boxes", "bonus_balance", "check_code"]);
+/** The first line's tools (`handoff_to_human` is the chat's own): the read-only ones (step 9), proposals and staff requests (step 10). */
+const FIRST_LINE_TOOLS = new Set([
+  "ask_to_sign_in",
+  "ask_for_email",
+  "my_orders",
+  "order_details",
+  "return_options",
+  "my_bookings",
+  "my_subscriptions",
+  "my_boxes",
+  "bonus_balance",
+  "check_code",
+  "propose_action",
+  "request_staff_action",
+]);
 
 /** At most this many orders, bookings or subscriptions in one answer. */
 const LIST_MAX = 10;
@@ -92,7 +108,10 @@ export async function supportToolsFor(ctx: SupportToolContext): Promise<SupportT
   const facts = factsOf(ctx);
   const offered: SupportTool[] = [];
   for (const tool of SUPPORT_TOOLS) {
-    if (READ_TOOLS.has(tool.name) && (await needsMet(tool.needs, facts, false))) offered.push(tool);
+    if (!FIRST_LINE_TOOLS.has(tool.name) || !(await needsMet(tool.needs, facts, false))) continue;
+    // Proposals only of the kinds the desk allows (none: not offered).
+    if (tool.name === "propose_action" && allowedKinds(ctx.settings).length === 0) continue;
+    offered.push(tool);
   }
   if (offered.length === 0) return null;
   const definitions: ToolDefinition[] = offered.map((tool) => ({ name: tool.name, description: tool.description, parameters: z.toJSONSchema(tool.input) as Record<string, unknown> }));
@@ -120,6 +139,10 @@ export async function runTool(ctx: SupportToolContext, name: string, args: Recor
       return { result: json({ ok: true, note: "The visitor sees a form to leave their email under your reply. Tell them in one short sentence." }), card: "email" };
     case "check_code":
       return checkCode(ctx, String(args.code));
+    case "request_staff_action": {
+      const kept = await requestStaffAction(ctx, String(args.kind), typeof args.number === "string" ? args.number : undefined, String(args.details));
+      return { result: json(kept.result), ...(kept.actionId ? { action: kept.actionId } : {}) };
+    }
   }
   if (!customer) return NOT_SIGNED_IN;
   switch (name) {
@@ -137,6 +160,10 @@ export async function runTool(ctx: SupportToolContext, name: string, args: Recor
       return myBoxes(ctx, customer.id);
     case "bonus_balance":
       return bonusBalance(ctx, customer.id);
+    case "propose_action": {
+      const kept = await proposeAction(ctx, String(args.kind), args.args);
+      return { result: json(kept.result), ...(kept.actionId ? { action: kept.actionId } : {}) };
+    }
   }
   return refuse("unknown_tool", `No tool called ${name}.`);
 }
@@ -247,7 +274,7 @@ async function returnOptions(ctx: SupportToolContext, customerId: string, number
       daysLeft: window.daysLeft,
       returnShippingPaidBy: view.whoPaysReturn === "store" ? "the store" : "the customer",
       business: view.business,
-      lines: view.lines.map((line) => ({ title: line.title, can: line.right, upTo: line.maxQuantity, ...(line.refusal ? { why: line.refusal } : {}), ...(line.sealed ? { onlyWhileSealed: true } : {}) })),
+      lines: view.lines.map((line) => ({ lineId: line.lineId, title: line.title, can: line.right, upTo: line.maxQuantity, ...(line.refusal ? { why: line.refusal } : {}), ...(line.sealed ? { onlyWhileSealed: true } : {}) })),
       note: anything
         ? "The customer withdraws or returns on the withdrawal page, shown as a link under your answer. You never withdraw for them and never ask why."
         : "Nothing in this order can be withdrawn or returned now; say why from `why` in plain words.",
@@ -277,7 +304,7 @@ async function myBookings(ctx: SupportToolContext, customerId: string): Promise<
     for (const line of order.lines) {
       const booking = line.booking;
       if (!booking || booking.status !== "confirmed" || Date.parse(booking.endsAt) <= now) continue;
-      bookings.push({ order: order.number, title: line.title, when: bookingWhen(booking, ctx.site.market.locale, m), canChangeOrCancel: selfServiceOpen(booking.startsAt, booking.cancelHours, now) });
+      bookings.push({ bookingId: booking.id, kind: booking.kind, order: order.number, title: line.title, when: bookingWhen(booking, ctx.site.market.locale, m), canChangeOrCancel: selfServiceOpen(booking.startsAt, booking.cancelHours, now) });
     }
     chips.push(...chip("booking", order.number, path(ctx, `/account/orders/${order.id}`)));
   }
@@ -296,6 +323,7 @@ async function mySubscriptions(ctx: SupportToolContext, customerId: string): Pro
     const view = await getSubscription(storeId, row.id);
     const allowed = view ? allowedChanges(view) : null;
     subscriptions.push({
+      subscriptionId: row.id,
       number: row.number,
       status: row.status,
       items: row.titles,
@@ -320,8 +348,10 @@ async function myBoxes(ctx: SupportToolContext, customerId: string): Promise<Sup
   if (!list) return { result: json({ boxes: null, note: "The customer has no subscription box." }) };
   return {
     result: json({
+      listId: list.id,
       status: list.status,
       deliveryDay: list.schedule.name,
+      upcomingDates: list.upcoming,
       nextDelivery: storeDay(ctx, list.next.date),
       changesUntil: new Date(list.next.cutoffAt).toLocaleString(ctx.site.market.locale, { dateStyle: "long", timeStyle: "short", timeZone: ctx.site.store.timeZone }),
       items: list.lines.map((line) => ({ title: line.title, quantity: line.quantity, available: line.available })),

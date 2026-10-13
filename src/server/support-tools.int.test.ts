@@ -102,6 +102,8 @@ beforeAll(async () => {
     connection: { provider: "openai", source: "store", apiUrl: "https://ai.example.com/v1", apiKey: "sk-test", textModel: "text-model", embeddingModel: null, space: null } as never,
     settings: (await support.deskSettings(systemDesk(storeId)))!,
   };
+  const [conversation] = await db().execute<Row>(sql`insert into commerce.support_conversations (store_id, source, handler, token_hash, locale) values (${storeId}::uuid, 'site', 'ai', ${`t-${run}`}, 'nb-NO') returning id`);
+  toolConversation = String(conversation.id);
 });
 
 afterEach(() => {
@@ -110,7 +112,8 @@ afterEach(() => {
 });
 afterAll(async () => closeDb());
 
-const toolCtx = (customer: ToolContext["customer"]): ToolContext => ({ site: ctx.site as ToolContext["site"], settings: ctx.settings, customer });
+let toolConversation = "";
+const toolCtx = (customer: ToolContext["customer"]): ToolContext => ({ site: ctx.site as ToolContext["site"], settings: ctx.settings, customer, desk: systemDesk(storeId), conversationId: toolConversation });
 const parsed = (outcome: { result: string }) => JSON.parse(outcome.result) as Record<string, unknown>;
 
 /** Signs the browser in as a customer (the session cookie, as the store's sign-in sets it). */
@@ -121,9 +124,7 @@ describe("the first line's tools (C11, C12)", () => {
     const tools = (await supportToolsFor(toolCtx(null)))!;
     const names = tools.definitions.map((tool) => tool.name);
     expect(names).toEqual(expect.arrayContaining(["ask_to_sign_in", "my_orders", "order_details", "return_options", "check_code"]));
-    // Step 10's tools are not offered yet.
-    expect(names).not.toContain("propose_action");
-    expect(names).not.toContain("request_staff_action");
+    expect(names).toEqual(expect.arrayContaining(["propose_action", "request_staff_action"]));
     // Tools of features the store has off are not offered to a visitor who is not signed in; their handlers refuse all the same.
     for (const name of ["my_orders", "order_details", "return_options", "my_bookings", "my_subscriptions", "my_boxes", "bonus_balance"]) {
       const outcome = names.includes(name) ? await tools.run(name, { number: anaNok }) : await runTool(toolCtx(null), name, { number: anaNok });
@@ -221,6 +222,22 @@ describe("the AI's turn with the tools", () => {
     expect(second.state.signedIn).toBe(false);
     expect(JSON.parse(again[again.length - 1]).error).toBe("not_signed_in");
     expect(JSON.stringify(second.messages)).not.toContain(`T-${run}-2`);
+  });
+
+  it("keeps a proposal with the AI's answer, and the confirm route runs it only on Confirm (step 10)", async () => {
+    await signIn(ana);
+    model([call("propose_action", { kind: "order.resend_shipped", args: { orderNumber: anaNok } }), { content: "Press Confirm and I'll send it." }]);
+    const reply = await route.visitorTurn(ctx, { after: 0, signals: { views: [], searches: [] } }, "Please send the shipping email again.");
+    if (reply instanceof Response) throw new Error(await reply.text());
+    const answer = reply.messages.find((m) => m.author === "ai")!;
+    expect(answer.action).toMatchObject({ confirmer: "customer", status: "proposed" });
+    expect(answer.action!.summary).toContain(anaNok);
+    const ref = { id: reply.conversation!.id, token: reply.conversation!.token! };
+    const done = await route.visitorConfirm(raw, ref, answer.seq, answer.action!.id, true);
+    if (done instanceof Response) throw new Error(await done.text());
+    expect(done.messages.at(-1)).toMatchObject({ author: "system", kind: "action_done" });
+    // A second press is refused.
+    expect(((await route.visitorConfirm(raw, ref, 0, answer.action!.id, true)) as Response).status).toBe(404);
   });
 
   it("refuses the order tools to a visitor who is not signed in", async () => {

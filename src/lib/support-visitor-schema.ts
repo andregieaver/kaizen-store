@@ -64,3 +64,6 @@ export const signInCodeInput = signInInput.extend({
     .transform((code) => code.replace(/\D/g, ""))
     .pipe(z.string().length(6)),
 });
+
+/** The confirm card (step 10): the visitor's answer to a proposal, Confirm (`true`) or No thanks. */
+export const confirmInput = feedInput.extend({ action: z.uuid(), confirm: z.boolean() });

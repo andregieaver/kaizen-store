@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import type { SupportMode } from "@/lib/support-rules";
+import { CUSTOMER_ACTION_KINDS } from "@/lib/support-actions";
 import { deskSettingsInput } from "@/lib/support-settings-schema";
 
 import { aiFor } from "./ai";
@@ -17,7 +18,7 @@ type Row = Record<string, unknown>;
 /**
  * A desk's settings (D216, `docs/support.md` 2.10, step 5): who answers its customers, email follow-up, opening hours, when quiet
  * conversations end, when people are emailed about a waiting customer, how people are named, the customer's tone (step 6) and (the
- * owner's alone) how long transcripts are kept. Saved by people who may answer the desk (`support:write`, or a platform admin for Kaizen's).
+ * owner's alone) how long transcripts are kept and what the AI may do for customers (`ai_actions`, step 10). Saved by people who may answer the desk (`support:write`, or a platform admin for Kaizen's).
  */
 
 export type DeskSettingsView = DeskSettings & {
@@ -49,6 +50,12 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
   const current = await ensureDesk(staff.desk);
   const transcriptDays = input.transcriptDays ?? current.transcriptDays;
   if (transcriptDays !== current.transcriptDays && !may.owner) return { ok: false, problems: ["Only the store's owner can change how long transcripts are kept."] };
+  // What the AI may propose to customers (step 10): the owner's form sends every kind's box; anyone else's keeps the desk's.
+  const fields = (raw ?? {}) as Record<string, unknown>;
+  const chosen = fields.aiActionsShown === "1" ? CUSTOMER_ACTION_KINDS.filter((kind) => fields[`aiAction.${kind}`] === "on") : null;
+  const aiActions = chosen === null ? current.aiActions : chosen.length === CUSTOMER_ACTION_KINDS.length ? null : chosen;
+  const aiActionsChanged = JSON.stringify(aiActions) !== JSON.stringify(current.aiActions);
+  if (aiActionsChanged && !may.owner) return { ok: false, problems: ["Only the store's owner can change what the AI may do for customers."] };
 
   const storeId = staff.desk.storeId;
   const desk = storeId ? sql`store_id = ${storeId}::uuid` : sql`store_id is null`;
@@ -58,7 +65,7 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
         mode = ${input.mode}, email_followup = ${input.emailFollowup}, hours = ${input.hours ? JSON.stringify(input.hours) : null}::jsonb,
         end_after_minutes = ${input.endAfterMinutes}, notify_after_minutes = ${input.notifyAfterMinutes}, agent_naming = ${input.agentNaming},
         tone_on = ${input.toneOn}, tone_alert = ${input.toneAlert}, tone_handoff = ${input.toneHandoff}, summaries_on = ${input.summariesOn}, partner = ${input.partner},
-        transcript_days = ${transcriptDays}, updated_at = now(), updated_by = ${staff.account.id}::uuid
+        transcript_days = ${transcriptDays}, ai_actions = ${aiActions === null ? null : sql`${`{${aiActions.join(",")}}`}::text[]`}, updated_at = now(), updated_by = ${staff.account.id}::uuid
       where ${desk}
     `);
     if (input.mode === current.mode) return 0;
@@ -83,6 +90,7 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
       ["tone_alert", current.toneAlert, input.toneAlert],
       ["tone_handoff", current.toneHandoff, input.toneHandoff],
       ["transcript_days", current.transcriptDays, transcriptDays],
+      ["ai_actions", JSON.stringify(current.aiActions), JSON.stringify(aiActions)],
     ] as const
   )
     .filter(([, before, after]) => before !== after)

@@ -31,6 +31,9 @@ export const CHIPS_MAX = 8;
 /** What a message from the AI carries for the widget to draw: product cards, the page it opened, link chips and a card. Drawn by code, never from model text. */
 export type VisitorMessageData = { products?: ChatProduct[]; actions?: ChatAction[]; chips?: SupportChip[]; card?: SupportCard };
 
+/** A proposal or request the AI's message carries (step 10): the summary written by code, and where it stands. */
+export type VisitorAction = { id: string; summary: string; status: "proposed" | "done" | "declined" | "failed" | "expired"; confirmer: "customer" | "staff" };
+
 export type VisitorMessage = {
   seq: number;
   author: VisitorAuthor;
@@ -38,6 +41,8 @@ export type VisitorMessage = {
   /** A system line's kind (`ended`, `reopened`, `queued`, `joined`, `left`, `assistant_back`). */
   kind?: string;
   data?: VisitorMessageData;
+  /** The AI's proposal for the customer to confirm, or its request to the staff (step 10). */
+  action?: VisitorAction;
   /** ISO time. */
   at: string;
 };
