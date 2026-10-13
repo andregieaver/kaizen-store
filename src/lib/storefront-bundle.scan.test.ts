@@ -16,14 +16,13 @@ const SRC = join(process.cwd(), "src");
 const FORBIDDEN = ["zod", "lib/page-content", "lib/i18n", "lib/email-text"];
 
 /**
- * The interface text (D212): all four hand-written languages are 270 KB, so a visitor's browser loads only its page's, through
- * `LanguageTexts`, whose module for a language is the one place that may import it. Everything else reads `browserText()`.
+ * The interface text (D212): every text of every language is 270 KB, which a visitor's browser never loads. Its client components
+ * read `browserText()` (`messages/*-browser.ts`) and the withdrawal function `returnsText()` (`messages/*-returns.ts`); a language's
+ * whole module (`messages/nb.ts`) is the server's and the admin's.
  */
-function forbidden(entry: string, target: string): boolean {
+function forbidden(target: string): boolean {
   const name = rel(target);
-  if (FORBIDDEN.includes(name)) return true;
-  const language = /^lib\/messages\/(\w+)$/.exec(name)?.[1];
-  return language !== undefined && rel(entry) !== `components/language-texts/${language}`;
+  return FORBIDDEN.includes(name) || /^lib\/messages\/[a-z]{2}$/.test(name);
 }
 
 const IMPORT = /(?:^|\n)\s*(?:import|export)\s+([^;]*?)\s+from\s+["']([^"']+)["']|(?:^|\n)\s*import\s+["']([^"']+)["']/g;
@@ -96,7 +95,7 @@ describe("the visitor's scripts", () => {
     for (const entry of ENTRIES) {
       const seen = reach(entry);
       for (const target of seen.keys()) {
-        if (!forbidden(entry, target)) continue;
+        if (!forbidden(target)) continue;
         const chain = [rel(target)];
         for (let at = seen.get(target); at; at = seen.get(at)) chain.unshift(rel(at));
         found.push(chain.join(" -> "));
@@ -105,12 +104,10 @@ describe("the visitor's scripts", () => {
     expect(found).toEqual([]);
   });
 
-  it("would notice: a language's module is reached only from its own loader", () => {
-    const loader = join(SRC, "components/language-texts/nb.tsx");
-    const reached = [...reach(loader).keys()];
-    expect(reached.map(rel)).toContain("lib/messages/nb");
-    expect(reached.some((target) => forbidden(loader, target))).toBe(false);
-    expect(reached.some((target) => forbidden(join(SRC, "components/language-texts/sv.tsx"), target))).toBe(true);
+  it("would notice: the whole of a language reaches the server's text, its browser texts do not", () => {
+    expect([...reach(join(SRC, "lib/i18n.ts")).keys()].some(forbidden)).toBe(true);
+    expect([...reach(join(SRC, "lib/browser-text.ts")).keys()].some(forbidden)).toBe(false);
+    expect([...reach(join(SRC, "lib/returns-text.ts")).keys()].some(forbidden)).toBe(false);
   });
 
   it("would notice: the product editor (admin) reaches zod", () => {

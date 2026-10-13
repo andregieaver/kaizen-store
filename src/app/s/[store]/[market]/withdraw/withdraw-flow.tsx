@@ -18,7 +18,7 @@ import {
   windowNote,
 } from "@/components/withdraw/withdraw-parts";
 import { RETURN_REASONS } from "@/lib/withdrawal";
-import { browserText as t } from "@/lib/browser-text";
+import { returnsText } from "@/lib/returns-text";
 import { FIELD, lineField, returnableLines, withdrawableLines, type FormState, type WithdrawState } from "@/lib/withdraw-form";
 
 import { withdrawAction } from "./actions";
@@ -49,7 +49,7 @@ export function WithdrawFlow({
   contactEmail: string | null;
   initial: WithdrawState;
 }) {
-  const m = t(lang).returns;
+  const m = returnsText(lang);
   const [state, formAction, pending] = useActionState(withdrawAction.bind(null, storeSlug, marketSlug), initial);
   const root = useRef<HTMLDivElement>(null);
   const seen = useRef(state.serial);
@@ -96,7 +96,7 @@ export function WithdrawFlow({
   );
 }
 
-type R = ReturnType<typeof t>["returns"];
+type R = ReturnType<typeof returnsText>;
 
 function Confirm({ state, m, pending }: { state: Extract<WithdrawState, { phase: "confirm" }>; m: R; pending: boolean }) {
   return (

@@ -49,20 +49,20 @@ with its processor slowed four times, and a computer.
   first scripts. `next/dynamic` (not
   `React.lazy`) is what lets the server ask for a drawn part's script with the page's: with `React.lazy` alone, galleries, tabs
   and filters answered only a moment after the rest of the page, and 27 end-to-end tests failed.
-- **A page loads only its own language's interface text (D212).** The hand-written languages are each a module
-  (`src/lib/messages/{nb,sv,da,en}.ts`, about 67 KB each before compression); `t()` in `i18n.ts` imports all four, for the server,
-  emails and the admin. Every root layout draws its body inside `LanguageTexts` (`components/language-texts/`): one
-  `next/dynamic` module per language, which registers its text (`registerHandText()`) and gives the page its language
-  (`PageLanguageContext`, read by `usePageLanguage()`); the server asks for that language's script with the page's, and since no
-  `<Suspense>` waits around it, the page wakes up only once the text is there. A visitor's client component reads
-  `browserText()` (`src/lib/browser-text.ts`), never `t()`: the scan test fails for a visitor's component that reaches `lib/i18n`,
-  `lib/email-text` or a language's module other than through its own loader. A language translated by AI loads English and lays
-  its texts over it (`UiTexts`). Unit tests register all four (`src/test/browser-text.ts`).
+- **A visitor's browser gets only the interface text its client components read (D212).** Every text of the four hand-written
+  languages is 270 KB (`src/lib/messages/{nb,sv,da,en}.ts`), which `t()` in `i18n.ts` gives the server, emails and the admin. A
+  visitor's client components read `browserText()` (`src/lib/browser-text.ts`): the few texts they use, in
+  `messages/{lang}-browser.ts` (about 4 KB a language), which each language's whole module spreads in, so a text is written once.
+  The withdrawal function's words are `messages/{lang}-returns.ts`, read through `returnsText()` by its page alone. These load
+  with the page's first scripts: a first try loaded the page's language on its own and made the page wait for it before waking
+  up, and a press in that moment was lost (`e2e/gallery.spec.ts`). A new text a visitor's client component reads goes in each
+  `*-browser.ts`; the scan test fails for a visitor's component that reaches `lib/i18n`, `lib/email-text` or a whole language. A
+  language translated by AI lays the catalogue's texts over these (`UiTexts`, which also keeps them for `returnsText()`).
 - **Font stylesheets are kept for a year** (`immutable`); a change to how one is written raises `FONT_CSS_VERSION`, which is in
   every stylesheet's address.
 
-After D212 the demo store's front page, built locally, loads 217 KB of scripts (compressed; 266 KB after D211, 469 KB before) and
-scores 95 for performance on a phone.
+After D212 the demo store's front page, built locally, loads 206 KB of scripts (compressed; 266 KB after D211, 469 KB before) and
+scores 92 to 96 for performance on a phone.
 
 Not changed: Next's own polyfills (14 KB, flagged as legacy JavaScript; the audit carries no weight and the browsers Next targets
 need none of them), React (70 KB) and the router (35 KB).
@@ -73,7 +73,7 @@ need none of them), React (70 KB) and the router (35 KB).
   address given (`pnpm perf https://kaizenalabs.com/`), for a phone and a computer, and lists the scores, the measures and the
   largest scripts; `--min=90` fails below a score.
 - `e2e/performance.spec.ts` holds what does not wobble: the demo front page's first scripts under a byte budget, without zod, the
-  lightbox or the checkout's payment form; a Norwegian page loading Norwegian's text and no other language's; the first grid's and the first row's pictures eager and the next ones lazy; a blurred
+  lightbox or the checkout's payment form; no language's whole interface text; the first grid's and the first row's pictures eager and the next ones lazy; a blurred
   background from its small copy; an embedded frame named.
 
 Scores move a few points between runs, and a page's own content (large pictures, many components) decides much of it.

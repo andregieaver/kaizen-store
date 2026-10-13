@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 import { AdminProgress } from "@/components/admin/admin-progress";
-import { LanguageTexts } from "@/components/language-texts";
 import { ADMIN_COLOR_KEY, colorModeScript } from "@/lib/color-mode";
 import { siteIcons } from "@/lib/site-icons";
 import { getPlatformFavicon } from "@/server/platform-navigation";
@@ -27,14 +26,11 @@ export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
         <script dangerouslySetInnerHTML={{ __html: colorModeScript(ADMIN_COLOR_KEY) }} />
       </head>
       <body className="min-h-full bg-surface font-sans">
-        {/* The page's interface text, only its own language (D212). */}
-        <LanguageTexts lang="en">
-          {/* Reads the address, so it waits in its own boundary and never holds the page back. */}
-          <Suspense fallback={null}>
-            <AdminProgress />
-          </Suspense>
-          {children}
-        </LanguageTexts>
+        {/* Reads the address, so it waits in its own boundary and never holds the page back. */}
+        <Suspense fallback={null}>
+          <AdminProgress />
+        </Suspense>
+        {children}
       </body>
     </html>
   );

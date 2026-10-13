@@ -7,8 +7,8 @@ import { storePageRows, testDb } from "./db";
  * would move with but that do not wobble as a score does. `pnpm perf` runs Lighthouse itself.
  */
 
-/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 922 KB when this was set (D212; 1.01 MB before each page loaded only its own language). */
-const FIRST_SCRIPTS_MAX = 1_000_000;
+/** The first scripts of the demo store's front page may not grow past this, raw (before compression): 893 KB when this was set (D212; 1.01 MB while every language's whole interface text came with it). */
+const FIRST_SCRIPTS_MAX = 960_000;
 
 const base = `http://localhost:${process.env.PORT ?? 3000}`;
 
@@ -30,8 +30,8 @@ test("the front page's first scripts stay within their budget, without zod or th
   expect(scripts.filter((script) => script.text.includes("CheckoutSdkContext")).map((s) => s.url)).toEqual([]);
 });
 
-test("a page loads its own language's interface text and no other's (D212)", async ({ page }) => {
-  // Each language's words for a store's summary, which only its own module holds.
+test("a page's scripts carry the texts its client components read, never a language's whole interface text (D212)", async ({ page }) => {
+  // Each language's words for a store's summary, which only its whole module holds (the server's and the admin's).
   const summaries = { nb: "nettbutikk med levering i", sv: "webbutik med leverans i", da: "webshop med levering i", en: "online store delivering in" };
   const loaded: Promise<string>[] = [];
   const errors: string[] = [];
@@ -43,8 +43,7 @@ test("a page loads its own language's interface text and no other's (D212)", asy
   await page.waitForLoadState("networkidle");
   const text = (await Promise.all(loaded)).join("\n");
   const found = Object.entries(summaries).filter(([, words]) => text.includes(words)).map(([lang]) => lang);
-  expect(found).toEqual(["nb"]);
-  // A client component that found no text would have thrown (`browserText()`).
+  expect(found).toEqual([]);
   expect(errors).toEqual([]);
 });
 

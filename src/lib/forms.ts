@@ -1,4 +1,7 @@
 import type { Messages } from "./i18n";
+
+/** The texts the form functions read: only `form`, which the browser has too (`browserText()`, D212). */
+type FormTexts = Pick<Messages, "form">;
 import type { EmailFormBlock, FormField, FormFieldKind, NewsletterBlock } from "./page-content";
 import type { FormRequest } from "./forms-schema";
 
@@ -27,7 +30,7 @@ export function publicForm(block: EmailFormBlock | NewsletterBlock): PublicForm 
 }
 
 /** A question's words: its own, else its kind's usual name in the language. */
-export function fieldLabel(field: Pick<FormField, "kind" | "label">, m: Messages): string {
+export function fieldLabel(field: Pick<FormField, "kind" | "label">, m: FormTexts): string {
   if (field.label) return field.label;
   const usual: Partial<Record<FormFieldKind, string>> = { name: m.form.name, email: m.form.email, phone: m.form.phone, textarea: m.form.message };
   return usual[field.kind] ?? "";
@@ -77,8 +80,8 @@ export function checkMessage(
   block: Pick<EmailFormBlock, "fields" | "consent">,
   values: FormRequest["values"],
   consent: boolean,
-  visitor: Messages,
-  owner: Messages,
+  visitor: FormTexts,
+  owner: FormTexts,
 ): CheckedMessage {
   const errors: FormErrors = {};
   const answers: Answer[] = [];
@@ -133,7 +136,7 @@ export function checkSignup(
   block: Pick<NewsletterBlock, "askName">,
   values: FormRequest["values"],
   consent: boolean,
-  visitor: Messages,
+  visitor: FormTexts,
 ): CheckedSignup {
   const errors: FormErrors = {};
   const raw = values[NEWSLETTER_KEYS.email];

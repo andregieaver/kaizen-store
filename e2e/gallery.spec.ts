@@ -47,7 +47,9 @@ test("a gallery as a carousel scrolls with its arrows", async ({ page }) => {
   const url = await storePageWith("galleri-rull", [gallery("g2", { view: "carousel", columns: 2 })]);
   await page.setViewportSize({ width: 1200, height: 800 });
   await page.goto(url);
-  const track = page.locator("[data-gallery][data-carousel-track]");
+  // The page's own, in <main>: while the page streams, React keeps a part that came late hidden at the end of the body until it
+  // moves it into place, and a locator of the whole document would find both.
+  const track = page.getByRole("main").locator("[data-gallery][data-carousel-track]");
   await expect(track).toBeVisible();
   await page.getByRole("button", { name: "Neste" }).click();
   await expect.poll(() => track.evaluate((el) => el.scrollLeft)).toBeGreaterThan(20);

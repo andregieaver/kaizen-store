@@ -96,8 +96,8 @@ of running `playwright install`.
   query takes a store id; never query a store-owned table without it.
 - Interface text lives in `src/lib/i18n.ts` (each hand-written language in
   `src/lib/messages/{lang}.ts`, D212: a visitor's client component reads
-  `browserText()`, never `t()`, and a root layout draws its body inside
-  `LanguageTexts`, so the browser loads only the page's language) and
+  `browserText()` (`{lang}-browser.ts`, so a text it uses goes there in every
+  language) or the withdrawal flow's `returnsText()`, never `t()`) and
   `src/lib/email-text.ts`, by language, with English as the fallback. Legal texts do not: they need
   human review. Norwegian, Swedish, Danish and English are written by hand;
   other languages are translated by AI into `commerce.ui_translations` from the

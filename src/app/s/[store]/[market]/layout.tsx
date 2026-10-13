@@ -14,7 +14,6 @@ import { StoreBottomBar, StoreFooter, StoreHeader, StoreMenu, WithdrawalStrip } 
 import { CustomCss } from "@/components/custom-css";
 import { StoreColorScript } from "@/components/store-color-switch";
 import { UiTexts } from "@/components/ui-texts";
-import { LanguageTexts } from "@/components/language-texts";
 import { StoreThemeStyles } from "@/components/store-theme";
 import { buyerScript } from "@/lib/b2b";
 import { t } from "@/lib/i18n";
@@ -150,102 +149,98 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
         className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0"
         style={siteFontStyle(store.fonts)}
       >
-        {/* The page's interface text, only its own language (D212). */}
-        <LanguageTexts lang={market.lang}>
-          {/* The page's interface text, only its own language (D212). */}
-          {/* The interface text of a language translated by AI (D111), for client components. */}
-          <UiTexts lang={market.lang} texts={uiTexts} />
-          {store.audience === "both" && <script dangerouslySetInnerHTML={{ __html: buyerScript(store.id) }} />}
-          <StoreColorScript store={store} />
-          {/* The store's own fonts (D59) and theme (D60). */}
-          <StoreThemeStyles store={store} />
-          {/* The owner's own CSS for every page, and the header's and footer's (D100), after the theme. */}
-          <CustomCss css={store.customCss} name={`store-${store.id}`} />
-          <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />
-          <CustomCss css={footerLayout?.content.css} name={`footer-${footerLayout?.id}`} />
-          <a
-            href="#main"
-            className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"
-          >
-            {m.skipToContent}
-          </a>
-          {/* Shoppers are told when a store is a preview, cannot take payment yet, or takes test payments only. */}
-          {headerLayout ? (
-            <StoreSiteHeader store={store} market={market} notice={notice} layout={headerLayout} withdrawal={withdrawal} />
-          ) : (
-            <StoreHeader store={store} market={market} notice={notice} />
-          )}
-          {/* A store's page (D54) spans the window: its rows keep to this width themselves. */}
-          <main
-            id="main"
-            // A footer revealed on scroll (D184) lies under the page, which covers it.
-            className={`mx-auto w-full max-w-(--content-width) flex-1 px-4 py-8 has-[>.store-page]:max-w-none has-[>.store-page]:p-0 ${
-              footerLayout?.content.footerReveal ? "relative z-10 bg-background" : ""
-            }`}
-          >
-            {children}
-          </main>
-          {footerLayout?.content.footerReveal && <FooterRevealGuard />}
-          {footerLayout ? (
-            <StoreSiteFooter store={store} market={market} layout={footerLayout} withdrawal={withdrawal} />
-          ) : (
-            <StoreFooter store={store} market={market} legal={legalLinks} withdrawal={withdrawal} />
-          )}
-          {/* The withdrawal function is always reachable (D153): a footer of the store's own without its link gets the standard one. */}
-          {withdrawal && footerLayout && !footerHasWithdrawal(footerLayout.content) && <WithdrawalStrip store={store} market={market} />}
-          {/*
-            Phone enhancements, each in its own boundary: React counts
-            everything outside boundaries towards a 12.8 kB budget, past which
-            the page's own content is sent as a block that needs JavaScript
-            to show. Keeping these out keeps product pages readable without it.
-          */}
-          <Suspense fallback={null}>
-            <StoreBottomBar store={store} market={market} />
-          </Suspense>
-          <Suspense fallback={null}>
-            <StoreMenu store={store} market={market} />
-          </Suspense>
-          {/* The slide-out cart on phones, when the cart is opened from a page of the store. */}
-          {drawer}
-          {/*
-            What other sites' code can come in through (wave 1, 1e): the store's assistant, referral capture, the business popup, and the
-            consent banner with the tracking tools and the owner's own code it loads. Not drawn on the cart, checkout and order, where a
-            shopper types a card (`docs/pci.md`); everywhere else they stay as they were across navigations.
-          */}
-          <Suspense fallback={null}>
-            <OffPayRoutes>
-              <MarketExtras store={store} market={market} />
-            </OffPayRoutes>
-          </Suspense>
-          <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
-          {/* Notes when this document has left the pay routes, so the cart, checkout and order load afresh (wave 1, 1e). */}
-          <Suspense fallback={null}>
-            <PayDocumentWatcher />
-          </Suspense>
-          {/* Cookieless visit counting (D152), while the owner has it on; the beacon reads the path, so it sits in a boundary. */}
-          <Suspense fallback={null}>
-            <StoreVisits store={store} />
-          </Suspense>
-          {/* A test of the header or the footer (D148): which version this page has, for the exposure. */}
-          {[header, footer].map(
-            (drawn, index) =>
-              drawn.test && (
-                <AbMarker
-                  key={index}
-                  storeId={store.id}
-                  store={store.slug}
-                  market={market.slug}
-                  experiment={drawn.test.id}
-                  variant={drawn.version}
-                  goalBlock={drawn.test.goalBlock}
-                />
-              ),
-          )}
-          {/* A/B tests of the store's pages (D148): a visitor's versions, once they have accepted statistics cookies. */}
-          <Suspense fallback={null}>
-            <StoreExperiments storeId={store.id} store={store.slug} market={market.slug} />
-          </Suspense>
-        </LanguageTexts>
+        {/* The interface text of a language translated by AI (D111), for client components. */}
+        <UiTexts lang={market.lang} texts={uiTexts} />
+        {store.audience === "both" && <script dangerouslySetInnerHTML={{ __html: buyerScript(store.id) }} />}
+        <StoreColorScript store={store} />
+        {/* The store's own fonts (D59) and theme (D60). */}
+        <StoreThemeStyles store={store} />
+        {/* The owner's own CSS for every page, and the header's and footer's (D100), after the theme. */}
+        <CustomCss css={store.customCss} name={`store-${store.id}`} />
+        <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />
+        <CustomCss css={footerLayout?.content.css} name={`footer-${footerLayout?.id}`} />
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"
+        >
+          {m.skipToContent}
+        </a>
+        {/* Shoppers are told when a store is a preview, cannot take payment yet, or takes test payments only. */}
+        {headerLayout ? (
+          <StoreSiteHeader store={store} market={market} notice={notice} layout={headerLayout} withdrawal={withdrawal} />
+        ) : (
+          <StoreHeader store={store} market={market} notice={notice} />
+        )}
+        {/* A store's page (D54) spans the window: its rows keep to this width themselves. */}
+        <main
+          id="main"
+          // A footer revealed on scroll (D184) lies under the page, which covers it.
+          className={`mx-auto w-full max-w-(--content-width) flex-1 px-4 py-8 has-[>.store-page]:max-w-none has-[>.store-page]:p-0 ${
+            footerLayout?.content.footerReveal ? "relative z-10 bg-background" : ""
+          }`}
+        >
+          {children}
+        </main>
+        {footerLayout?.content.footerReveal && <FooterRevealGuard />}
+        {footerLayout ? (
+          <StoreSiteFooter store={store} market={market} layout={footerLayout} withdrawal={withdrawal} />
+        ) : (
+          <StoreFooter store={store} market={market} legal={legalLinks} withdrawal={withdrawal} />
+        )}
+        {/* The withdrawal function is always reachable (D153): a footer of the store's own without its link gets the standard one. */}
+        {withdrawal && footerLayout && !footerHasWithdrawal(footerLayout.content) && <WithdrawalStrip store={store} market={market} />}
+        {/*
+          Phone enhancements, each in its own boundary: React counts
+          everything outside boundaries towards a 12.8 kB budget, past which
+          the page's own content is sent as a block that needs JavaScript
+          to show. Keeping these out keeps product pages readable without it.
+        */}
+        <Suspense fallback={null}>
+          <StoreBottomBar store={store} market={market} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <StoreMenu store={store} market={market} />
+        </Suspense>
+        {/* The slide-out cart on phones, when the cart is opened from a page of the store. */}
+        {drawer}
+        {/*
+          What other sites' code can come in through (wave 1, 1e): the store's assistant, referral capture, the business popup, and the
+          consent banner with the tracking tools and the owner's own code it loads. Not drawn on the cart, checkout and order, where a
+          shopper types a card (`docs/pci.md`); everywhere else they stay as they were across navigations.
+        */}
+        <Suspense fallback={null}>
+          <OffPayRoutes>
+            <MarketExtras store={store} market={market} />
+          </OffPayRoutes>
+        </Suspense>
+        <BackToAdmin storeSlug={store.slug} adminOrigin={adminOrigin(store.slug)} />
+        {/* Notes when this document has left the pay routes, so the cart, checkout and order load afresh (wave 1, 1e). */}
+        <Suspense fallback={null}>
+          <PayDocumentWatcher />
+        </Suspense>
+        {/* Cookieless visit counting (D152), while the owner has it on; the beacon reads the path, so it sits in a boundary. */}
+        <Suspense fallback={null}>
+          <StoreVisits store={store} />
+        </Suspense>
+        {/* A test of the header or the footer (D148): which version this page has, for the exposure. */}
+        {[header, footer].map(
+          (drawn, index) =>
+            drawn.test && (
+              <AbMarker
+                key={index}
+                storeId={store.id}
+                store={store.slug}
+                market={market.slug}
+                experiment={drawn.test.id}
+                variant={drawn.version}
+                goalBlock={drawn.test.goalBlock}
+              />
+            ),
+        )}
+        {/* A/B tests of the store's pages (D148): a visitor's versions, once they have accepted statistics cookies. */}
+        <Suspense fallback={null}>
+          <StoreExperiments storeId={store.id} store={store.slug} market={market.slug} />
+        </Suspense>
       </body>
     </html>
   );

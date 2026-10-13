@@ -14,7 +14,7 @@ import {
   type PublicNewsletter,
 } from "@/lib/forms";
 import { browserText as t } from "@/lib/browser-text";
-import type { Messages } from "@/lib/messages/en";
+import type { BrowserMessages as Messages } from "@/lib/browser-text";
 import type { FormField } from "@/lib/page-content";
 
 import { Dropdown } from "./dropdown";

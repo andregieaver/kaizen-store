@@ -8,7 +8,8 @@
  * a language that is not there is English, as before.
  */
 
-type Entry = { ui?: unknown; email?: unknown };
+/** `texts`: the catalogue's own texts by key, kept in the browser for a part whose English is not in `ui` (`returnsText()`, D212). */
+type Entry = { ui?: unknown; email?: unknown; texts?: Record<string, string> };
 
 const KEY = "__kaizenUiRegistry";
 
@@ -19,6 +20,7 @@ function registry(): Map<string, Entry> {
 
 export const registeredUi = (lang: string): unknown => registry().get(lang)?.ui;
 export const registeredEmail = (lang: string): unknown => registry().get(lang)?.email;
+export const registeredTexts = (lang: string): Record<string, string> | undefined => registry().get(lang)?.texts;
 
 /** Sets a language's messages (either or both namespaces); the language's other namespace is kept. */
 export function registerMessages(lang: string, entry: Entry): void {

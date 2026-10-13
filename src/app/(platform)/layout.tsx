@@ -5,7 +5,6 @@ import { Suspense } from "react";
 import { SiteConsent } from "@/components/consent/site-consent";
 import { CustomCss } from "@/components/custom-css";
 import { FontLinks } from "@/components/font-links";
-import { LanguageTexts } from "@/components/language-texts";
 import { BreakpointSheet } from "@/components/part-styles";
 import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
@@ -51,43 +50,40 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
         className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0"
         style={siteFontStyle(chrome.fonts)}
       >
-        {/* The page's interface text, only its own language (D212). */}
-        <LanguageTexts lang="en">
-          {/* Kaizen's own fonts, from its copies (D59). */}
-          <FontLinks families={siteFontFamilies(chrome.fonts)} />
-          {/* Kaizen's screen sizes are the defaults (D179): the breakpoint classes of what is drawn outside rows. */}
-          <BreakpointSheet breakpoints={DEFAULT_BREAKPOINTS} />
-          {/* Kaizen's own CSS for every page, and its header's and footer's (D100). */}
-          <CustomCss css={chrome.customCss} name="kaizen" />
-          <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />
-          <CustomCss css={footerLayout?.content.css} name={`footer-${footerLayout?.id}`} />
-          <a
-            href="#main"
-            className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"
-          >
-            {t("en").skipToContent}
-          </a>
-          {headerLayout ? <KaizenSiteHeader chrome={chrome} layout={headerLayout} /> : <PlatformHeader chrome={chrome} />}
-          {/* A footer revealed on scroll (D184) lies under the page, which covers it. */}
-          {footerLayout?.content.footerReveal ? <div className="relative z-10 bg-background">{children}</div> : children}
-          {footerLayout?.content.footerReveal && <FooterRevealGuard />}
-          {footerLayout ? <KaizenSiteFooter chrome={chrome} layout={footerLayout} /> : <PlatformFooter chrome={chrome} />}
-          {/* Phone enhancements, each in its own boundary, as in the storefront (D30). */}
-          <Suspense fallback={null}>
-            <PlatformBottomBar />
-          </Suspense>
-          <Suspense fallback={null}>
-            <PlatformMenu chrome={chrome} />
-          </Suspense>
-          {/* Kaizen's AI assistant (D81), while it is on. */}
-          <Suspense fallback={null}>
-            <KaizenChat />
-          </Suspense>
-          {/* Asks about Kaizen's optional tools, if it has any (D58). */}
-          <Suspense fallback={null}>
-            <SiteConsent storeId={null} tracking={chrome.tracking} lang="en" locale="en-GB" cookiePage="/cookies" />
-          </Suspense>
-        </LanguageTexts>
+        {/* Kaizen's own fonts, from its copies (D59). */}
+        <FontLinks families={siteFontFamilies(chrome.fonts)} />
+        {/* Kaizen's screen sizes are the defaults (D179): the breakpoint classes of what is drawn outside rows. */}
+        <BreakpointSheet breakpoints={DEFAULT_BREAKPOINTS} />
+        {/* Kaizen's own CSS for every page, and its header's and footer's (D100). */}
+        <CustomCss css={chrome.customCss} name="kaizen" />
+        <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />
+        <CustomCss css={footerLayout?.content.css} name={`footer-${footerLayout?.id}`} />
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:m-2 focus:rounded focus:bg-background focus:p-2"
+        >
+          {t("en").skipToContent}
+        </a>
+        {headerLayout ? <KaizenSiteHeader chrome={chrome} layout={headerLayout} /> : <PlatformHeader chrome={chrome} />}
+        {/* A footer revealed on scroll (D184) lies under the page, which covers it. */}
+        {footerLayout?.content.footerReveal ? <div className="relative z-10 bg-background">{children}</div> : children}
+        {footerLayout?.content.footerReveal && <FooterRevealGuard />}
+        {footerLayout ? <KaizenSiteFooter chrome={chrome} layout={footerLayout} /> : <PlatformFooter chrome={chrome} />}
+        {/* Phone enhancements, each in its own boundary, as in the storefront (D30). */}
+        <Suspense fallback={null}>
+          <PlatformBottomBar />
+        </Suspense>
+        <Suspense fallback={null}>
+          <PlatformMenu chrome={chrome} />
+        </Suspense>
+        {/* Kaizen's AI assistant (D81), while it is on. */}
+        <Suspense fallback={null}>
+          <KaizenChat />
+        </Suspense>
+        {/* Asks about Kaizen's optional tools, if it has any (D58). */}
+        <Suspense fallback={null}>
+          <SiteConsent storeId={null} tracking={chrome.tracking} lang="en" locale="en-GB" cookiePage="/cookies" />
+        </Suspense>
       </body>
     </html>
   );
