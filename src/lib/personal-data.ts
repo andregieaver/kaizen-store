@@ -166,6 +166,12 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("recommendation_adds", "pseudonymous", via("visitor", "session"), ["session"], null, "none", PSEUDO, { until: "recommendation_events" }),
   entry("chat_usage", "pseudonymous", via("none"), [], null, "none", "Counts of turns and checks by a hashed key; no person."),
 
+  // Support (D216, docs/support.md 3.5) -----------------------------------------------------------------------------------------------
+  // Step 1 makes the tables only; nothing writes them until step 2, which adds the export section and the erasure step.
+  entry("support_conversations", "shopper", via("customer", "customer_id", "contact_email"), ["customer_id", "contact_name", "contact_email", "page_path", "token_hash", "email_token_hash", "summary", "brief", "rating_comment"], null, "anonymise", "A support conversation's personal fields are cleared and its transcript deleted; the counts stay for the desk's reports. Its export section comes with the conversations themselves (docs/support.md step 2)."),
+  entry("support_messages", "shopper", via("none"), ["body", "data"], null, "delete", "The messages of a support conversation are deleted with its transcript, at the desk's transcript period or on erasure (docs/support.md 3.5)."),
+  entry("support_actions", "shopper", via("none"), ["args", "summary", "details", "result"], null, "delete", "What the AI proposed or asked staff to decide for a customer is deleted with the conversation's transcript (docs/support.md 3.5)."),
+
   // Fields ----------------------------------------------------------------------------------------------------------------------------
   entry("field_values", "shopper", via("customer", "entity_id"), ["values"], "customFields", "delete", "Fields staff filled in about the customer are deleted with the account; an order's are deleted when the order is anonymised."),
 
@@ -220,6 +226,9 @@ export const NOT_PERSONAL: Record<string, string> = {
   campaigns: "The name and rules of an offer.",
   cart_reminder_steps: "The store's own reminder email text, written for every shopper.",
   chat_agents: "The name and instructions of the store's chat agent.",
+  support_settings: "A support desk's settings (D216): its mode, hours, thresholds and the staff account that changed them; no shopper's data.",
+  support_replies: "A support desk's saved replies (D216), written by staff for every customer, and the staff account that wrote them.",
+  support_agents: "Who answers on a support desk (D216): a staff account, its status, its limit and the name customers see; staff data, not a shopper's.",
   cookie_notes: "A cookie's description.",
   countries: "Reference data.",
   customer_tiers: "A customer group's name and percentage, and the owner's note about the group.",

@@ -30,9 +30,9 @@ test("a carousel that keeps moving moves, and stops under the pointer", async ({
   await page.goto(url);
   const strip = page.locator(".kz-brands-marquee");
   const x = () => strip.evaluate((el) => el.getBoundingClientRect().left);
+  // The strip loops back to its start every turn, so one late sample can land past the wrap: wait until it is seen moving.
   const first = await x();
-  await page.waitForTimeout(700);
-  expect(await x()).toBeLessThan(first - 5);
+  await expect.poll(async () => Math.abs((await x()) - first), { timeout: 5000, intervals: [200] }).toBeGreaterThan(5);
   // It stops under the pointer; there is no Pause button.
   await expect(page.getByRole("button", { name: /pause/i })).toHaveCount(0);
   const window = (await page.locator(".kz-brands-window").boundingBox())!;

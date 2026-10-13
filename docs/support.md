@@ -1281,3 +1281,27 @@ and push to `main`; watch CI; for a migration, record its version and check the 
 ## 11. Changes found while building
 
 (Each step appends here what it found in the code that differs from this document, and what it did.)
+
+**Step 1 (13 October 2026).**
+
+- **The AI writes on desks in mode `off` too.** 3.2 rule 5 and 3.3 item 3 said "not `ai_first`", but mode `off` is the chat agent
+  alone, as today, and step 2 keeps its conversations (4.2 says staff may read them). `support_add_message()` refuses a
+  message from the AI only on a desk in mode `people` (`support_no_ai`); `src/db/support.test.ts` holds both.
+- **The database also guards the writers.** `support_add_message()` and `support_transition()` set a transaction-local flag
+  (`kaizen.support_writer`, `kaizen.support_transition`); a trigger refuses an insert into `support_messages`, a change of
+  `status`, `handler`, `assignee_id` or `message_seq`, and any update of a message, without it. A new conversation must start
+  open, with nobody, at its desk's first handler (`queue` in mode `people`, else `ai`). An action takes its conversation's
+  `store_id` by trigger. A desk without a settings row reads as mode `off` (`commerce.support_mode()`).
+- **Realtime keys** default to `replace(gen_random_uuid()::text, '-', '')` (122 random bits): `gen_random_bytes()` lives in
+  `extensions` on Supabase and does not exist in PGlite.
+- **`ended_by`** is `timeout` when the system ends with reason `timeout`, else `system`; a system hand-over must pass its
+  reason (`tone`, `no_ai`, `limit`). Ending sets `summary_status` to `pending` when the mode is not `off` and `summaries_on`;
+  whether a text model exists is the application's to check (it marks `skipped`). Reopening clears the end and the summary.
+- **`support_take_partner_turn()`** also refuses a number past the last message and a conversation that is not open.
+- **Registries deferred**: `PERSONAL_DATA` has the three shopper tables with `export: null` until step 2 adds the export
+  section, the erasure step and the retention kinds (`support_transcripts`, `support_records`), which their tests need code
+  for; `EMAIL_KINDS` waits for the steps that send each email; the audit area waits for step 3 with the permission area.
+  `support_settings` and `support_replies` are `never` in `COPY_RULES` for now (as `order_settings`: a copy starts with support
+  off and the row is made on first use); copying saved replies needs `duplicate_store()` patched and is left for the step that
+  builds the replies page.
+- Migrations: `20261013163732_support_tables`, `20261013163816_support_foundation`.

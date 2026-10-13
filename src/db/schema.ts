@@ -32,6 +32,7 @@ import {
   pgSchema,
   primaryKey,
   real,
+  smallint,
   text,
   timestamp,
   unique,
@@ -9230,5 +9231,295 @@ export const unsentClosures = commerce.table(
       .where(sql`${t.refundId} is not null`),
     index("unsent_closures_created_by_idx").on(t.createdBy),
     check("unsent_closures_quantity", sql`${t.quantity} > 0`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Support (D216, docs/support.md)
+// ---------------------------------------------------------------------------
+
+/**
+ * A desk's support settings (D216): a store's, or Kaizen's (`store_id` null). `mode` says who answers its customers: the chat
+ * agent alone (`off`), the AI first and then people (`ai_first`), or people only (`people`). Made on first use.
+ */
+export const supportSettings = commerce.table(
+  "support_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    mode: text("mode").notNull().default("off"),
+    emailFollowup: boolean("email_followup").notNull().default(true),
+    /** `OpeningHours` (D40) in the store's time zone; null: whenever an agent is online. */
+    hours: jsonb("hours"),
+    endAfterMinutes: smallint("end_after_minutes").notNull().default(30),
+    /** The silent partner may run on this desk (each agent also has their own switch). */
+    partner: boolean("partner").notNull().default(true),
+    toneOn: boolean("tone_on").notNull().default(true),
+    summariesOn: boolean("summaries_on").notNull().default(true),
+    toneAlert: smallint("tone_alert").default(-40),
+    toneHandoff: smallint("tone_handoff").default(-60),
+    notifyAfterMinutes: smallint("notify_after_minutes").notNull().default(5),
+    /** The customer actions the AI may propose (`CUSTOMER_ACTION_KINDS`); null: all of them. */
+    aiActions: text("ai_actions").array(),
+    transcriptDays: smallint("transcript_days").notNull().default(90),
+    agentNaming: text("agent_naming").notNull().default("first_name"),
+    /** The desk's realtime topic (`sd:{key}`): random, handed out only after the inbox's own check. */
+    channelKey: text("channel_key").notNull().default(sql`replace(gen_random_uuid()::text, '-', '')`),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id, { onDelete: "set null" }),
+  },
+  (t) => [
+    unique("support_settings_store_key").on(t.storeId).nullsNotDistinct(),
+    index("support_settings_updated_by_idx").on(t.updatedBy),
+    check("support_settings_mode", sql`${t.mode} in ('off', 'ai_first', 'people')`),
+    check("support_settings_end_after", sql`${t.endAfterMinutes} between 10 and 240`),
+    check("support_settings_tone_alert", sql`${t.toneAlert} is null or ${t.toneAlert} between -100 and 0`),
+    check("support_settings_tone_handoff", sql`${t.toneHandoff} is null or ${t.toneHandoff} between -100 and 0`),
+    check("support_settings_notify_after", sql`${t.notifyAfterMinutes} between 1 and 60`),
+    check("support_settings_transcript_days", sql`${t.transcriptDays} in (30, 60, 90)`),
+    check("support_settings_agent_naming", sql`${t.agentNaming} in ('first_name', 'desk')`),
+  ],
+);
+
+/**
+ * A support conversation (D216): between a customer of a store (or a visitor of Kaizen's site, or an account asking Kaizen from
+ * the admin) and a desk. Its state (`status`, `handler`, `assignee_id`) changes only through `commerce.support_transition()`, and
+ * its messages are written only by `commerce.support_add_message()`. The visitor's token is kept only as a hash.
+ */
+export const supportConversations = commerce.table(
+  "support_conversations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** Null for Kaizen's desk. */
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    /** `site` (a site's chat) or `admin` (an account asking Kaizen). */
+    source: text("source").notNull(),
+    status: text("status").notNull().default("open"),
+    handler: text("handler").notNull(),
+    assigneeId: uuid("assignee_id").references(() => accounts.id, { onDelete: "set null" }),
+    /** sha-256 hex of the visitor's tab token. */
+    tokenHash: text("token_hash"),
+    /** sha-256 hex of the email link's token. */
+    emailTokenHash: text("email_token_hash"),
+    /** The signed-in customer (store desks only). */
+    customerId: uuid("customer_id"),
+    /** The account asking Kaizen (source `admin`). */
+    requesterId: uuid("requester_id").references(() => accounts.id, { onDelete: "set null" }),
+    /** The store an owner asks Kaizen about. */
+    aboutStoreId: uuid("about_store_id").references(() => stores.id, { onDelete: "set null" }),
+    market: text("market"),
+    locale: text("locale").notNull(),
+    /** Typed by the visitor for the email follow-up: never proof of anything. */
+    contactName: text("contact_name"),
+    contactEmail: text("contact_email"),
+    pagePath: text("page_path"),
+    tone: smallint("tone"),
+    toneAlertAt: timestamp("tone_alert_at", { withTimezone: true }),
+    handoffReason: text("handoff_reason"),
+    aiReason: text("ai_reason"),
+    messageSeq: integer("message_seq").notNull().default(0),
+    /** The last customer message the silent partner has answered. */
+    partnerSeq: integer("partner_seq").notNull().default(0),
+    partnerPaused: boolean("partner_paused").notNull().default(false),
+    visitorSeenAt: timestamp("visitor_seen_at", { withTimezone: true }),
+    emailSentSeq: integer("email_sent_seq").notNull().default(0),
+    emailCount: smallint("email_count").notNull().default(0),
+    contactChanges: smallint("contact_changes").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }).notNull().defaultNow(),
+    lastCustomerAt: timestamp("last_customer_at", { withTimezone: true }),
+    firstAgentAt: timestamp("first_agent_at", { withTimezone: true }),
+    queuedAt: timestamp("queued_at", { withTimezone: true }),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    endedBy: text("ended_by"),
+    waitingAlertAt: timestamp("waiting_alert_at", { withTimezone: true }),
+    /** `{title, text, outcome, topics, followUp, at, editedBy?, editedAt?}`, written by AI for staff. */
+    summary: jsonb("summary"),
+    summaryStatus: text("summary_status").notNull().default("none"),
+    summaryTries: smallint("summary_tries").notNull().default(0),
+    /** `{seq, text, at}`: the conversation so far, for an agent taking over. */
+    brief: jsonb("brief"),
+    rating: text("rating"),
+    ratingComment: text("rating_comment"),
+    /** The conversation's realtime topic (`sc:{key}`). */
+    channelKey: text("channel_key").notNull().default(sql`replace(gen_random_uuid()::text, '-', '')`),
+    /** The transcript was deleted and the personal fields cleared; only counts stay. */
+    anonymisedAt: timestamp("anonymised_at", { withTimezone: true }),
+  },
+  (t) => [
+    unique("support_conversations_token_key").on(t.tokenHash),
+    unique("support_conversations_email_token_key").on(t.emailTokenHash),
+    foreignKey({ name: "support_conversations_customer_fk", columns: [t.storeId, t.customerId], foreignColumns: [customers.storeId, customers.id] }).onDelete("set null"),
+    index("support_conversations_list_idx").on(t.storeId, t.status, t.lastMessageAt),
+    index("support_conversations_open_idx")
+      .on(t.storeId, t.handler)
+      .where(sql`${t.status} = 'open'`),
+    index("support_conversations_assignee_idx")
+      .on(t.assigneeId)
+      .where(sql`${t.status} = 'open'`),
+    index("support_conversations_customer_idx").on(t.storeId, t.customerId),
+    index("support_conversations_requester_idx").on(t.requesterId),
+    index("support_conversations_about_store_idx").on(t.aboutStoreId),
+    index("support_conversations_ended_idx")
+      .on(t.endedAt)
+      .where(sql`${t.anonymisedAt} is null`),
+    check("support_conversations_source", sql`${t.source} in ('site', 'admin')`),
+    check("support_conversations_status", sql`${t.status} in ('open', 'ended')`),
+    check("support_conversations_handler", sql`${t.handler} in ('ai', 'queue', 'human')`),
+    check("support_conversations_assignee", sql`(${t.assigneeId} is not null) = (${t.status} = 'open' and ${t.handler} = 'human') or ${t.anonymisedAt} is not null`),
+    check("support_conversations_token", sql`${t.source} <> 'site' or ${t.tokenHash} is not null or ${t.anonymisedAt} is not null`),
+    check("support_conversations_requester", sql`(${t.source} = 'admin') = (${t.requesterId} is not null) or ${t.anonymisedAt} is not null`),
+    check("support_conversations_kaizen_customer", sql`${t.storeId} is not null or ${t.customerId} is null`),
+    check("support_conversations_handoff_reason", sql`${t.handoffReason} is null or ${t.handoffReason} in ('customer', 'ai', 'tone', 'no_ai', 'limit')`),
+    check("support_conversations_ended_by", sql`${t.endedBy} is null or ${t.endedBy} in ('customer', 'agent', 'timeout', 'system')`),
+    check("support_conversations_summary_status", sql`${t.summaryStatus} in ('none', 'pending', 'done', 'failed', 'skipped')`),
+    check("support_conversations_rating", sql`${t.rating} is null or ${t.rating} in ('good', 'bad')`),
+    check("support_conversations_tone", sql`${t.tone} is null or ${t.tone} between -100 and 100`),
+    check(
+      "support_conversations_lengths",
+      sql`coalesce(length(${t.contactName}) <= 120, true) and coalesce(length(${t.contactEmail}) <= 254, true) and coalesce(length(${t.pagePath}) <= 300, true) and coalesce(length(${t.aiReason}) <= 200, true) and coalesce(length(${t.ratingComment}) <= 500, true) and length(${t.locale}) between 2 and 16`,
+    ),
+    check("support_conversations_emails", sql`${t.emailCount} between 0 and 20 and ${t.contactChanges} between 0 and 3`),
+  ],
+);
+
+/** A support action (D216): something the AI proposed for the customer to confirm, or a request for a person to decide. */
+export const supportActions = commerce.table(
+  "support_actions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => supportConversations.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    /** `customer` (self-service, on their Confirm) or `staff` (a person decides). */
+    confirmer: text("confirmer").notNull(),
+    args: jsonb("args").notNull(),
+    /** What it does, in words made by code from the checked arguments. */
+    summary: text("summary").notNull(),
+    /** The AI's description of a staff request. */
+    details: text("details"),
+    status: text("status").notNull().default("proposed"),
+    result: jsonb("result"),
+    decidedBy: uuid("decided_by").references(() => accounts.id, { onDelete: "set null" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index("support_actions_conversation_idx").on(t.conversationId),
+    index("support_actions_open_idx")
+      .on(t.storeId, t.confirmer)
+      .where(sql`${t.status} = 'proposed'`),
+    index("support_actions_decided_by_idx").on(t.decidedBy),
+    check("support_actions_confirmer", sql`${t.confirmer} in ('customer', 'staff')`),
+    check("support_actions_status", sql`${t.status} in ('proposed', 'done', 'declined', 'failed', 'expired')`),
+    check("support_actions_lengths", sql`length(${t.summary}) between 1 and 500 and coalesce(length(${t.details}) <= 500, true) and length(${t.kind}) between 1 and 60`),
+    check("support_actions_expiry", sql`(${t.confirmer} = 'customer') = (${t.expiresAt} is not null)`),
+  ],
+);
+
+/**
+ * A message of a support conversation (D216), numbered gap-free per conversation. `note` (an agent's internal note) and `partner`
+ * (the silent partner's help) are staff only and never reach the customer. Written only by `commerce.support_add_message()`.
+ */
+export const supportMessages = commerce.table(
+  "support_messages",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => supportConversations.id, { onDelete: "cascade" }),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    seq: integer("seq").notNull(),
+    author: text("author").notNull(),
+    accountId: uuid("account_id").references(() => accounts.id, { onDelete: "set null" }),
+    body: text("body").notNull(),
+    /** A system line's kind, or the partner's (`suggestion`, `answer`, `brief`). */
+    kind: text("kind"),
+    data: jsonb("data"),
+    actionId: uuid("action_id").references(() => supportActions.id, { onDelete: "set null" }),
+    tone: smallint("tone"),
+    toneLabel: text("tone_label"),
+    /** `[{name, ok}]`: which tools an answer used; never their arguments or results. */
+    tools: jsonb("tools"),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique("support_messages_seq_key").on(t.conversationId, t.seq),
+    index("support_messages_account_idx").on(t.accountId),
+    index("support_messages_action_idx").on(t.actionId),
+    index("support_messages_store_idx").on(t.storeId),
+    check("support_messages_author", sql`${t.author} in ('customer', 'ai', 'agent', 'system', 'note', 'partner')`),
+    check(
+      "support_messages_body",
+      sql`case ${t.author} when 'customer' then length(${t.body}) between 1 and 1000 when 'ai' then length(${t.body}) between 1 and 2000 when 'agent' then length(${t.body}) between 1 and 4000 when 'note' then length(${t.body}) between 1 and 2000 when 'partner' then length(${t.body}) <= 3000 else ${t.body} = '' end`,
+    ),
+    check("support_messages_tone", sql`${t.tone} is null or (${t.author} = 'customer' and ${t.tone} between -100 and 100)`),
+    check("support_messages_tone_label", sql`${t.toneLabel} is null or ${t.toneLabel} in ('happy', 'calm', 'neutral', 'confused', 'worried', 'frustrated', 'angry')`),
+  ],
+);
+
+/** Who answers on a desk (D216): online or away, how many conversations at most, their own partner switch, the name customers see. */
+export const supportAgents = commerce.table(
+  "support_agents",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("away"),
+    maxChats: smallint("max_chats").notNull().default(5),
+    partner: boolean("partner").notNull().default(true),
+    displayName: text("display_name"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("support_agents_key").on(t.storeId, t.accountId).nullsNotDistinct(),
+    index("support_agents_account_idx").on(t.accountId),
+    check("support_agents_status", sql`${t.status} in ('online', 'away')`),
+    check("support_agents_max_chats", sql`${t.maxChats} between 1 and 20`),
+    check("support_agents_display_name", sql`coalesce(length(${t.displayName}) between 1 and 40, true)`),
+  ],
+);
+
+/** How far each agent has read a conversation (D216), for the unread dots. */
+export const supportReads = commerce.table(
+  "support_reads",
+  {
+    conversationId: uuid("conversation_id")
+      .notNull()
+      .references(() => supportConversations.id, { onDelete: "cascade" }),
+    accountId: uuid("account_id")
+      .notNull()
+      .references(() => accounts.id, { onDelete: "cascade" }),
+    lastReadSeq: integer("last_read_seq").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.conversationId, t.accountId] }), index("support_reads_account_idx").on(t.accountId)],
+);
+
+/** A desk's saved replies (D216). */
+export const supportReplies = commerce.table(
+  "support_replies",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id").references(() => stores.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    shortcut: text("shortcut"),
+    /** Null: any language. */
+    locale: text("locale"),
+    createdBy: uuid("created_by").references(() => accounts.id, { onDelete: "set null" }),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("support_replies_shortcut_key").on(t.storeId, t.shortcut).nullsNotDistinct(),
+    index("support_replies_created_by_idx").on(t.createdBy),
+    check("support_replies_lengths", sql`length(${t.title}) between 1 and 80 and length(${t.body}) between 1 and 2000 and coalesce(length(${t.shortcut}) between 1 and 20, true)`),
   ],
 );
