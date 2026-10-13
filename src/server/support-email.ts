@@ -60,12 +60,14 @@ export async function sendReplyEmails(now: Date = new Date(), limit = 100): Prom
   const out: SupportEmailRun = { replies: 0, waiting: 0, failed: 0 };
   const at = sql`${now.toISOString()}::timestamptz`;
   const rows = await db().execute<Row>(sql`
-    select c.id, c.store_id, c.locale, c.market, c.email_sent_seq, coalesce(cu.email, c.contact_email) as address
+    select c.id, c.store_id, c.locale, c.market, c.email_sent_seq, c.source, coalesce(cu.email, ra.email, c.contact_email) as address
     from commerce.support_conversations c
     join commerce.support_settings s on s.store_id is not distinct from c.store_id
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
-    where c.anonymised_at is null and s.mode <> 'off' and s.email_followup
-      and coalesce(cu.email, c.contact_email) is not null and c.email_count < ${EMAILS_MAX}
+    -- An account asking Kaizen from the admin (step 11) is answered at its own address.
+    left join commerce.accounts ra on c.source = 'admin' and ra.id = c.requester_id
+    where c.anonymised_at is null and s.mode <> 'off' and (s.email_followup or c.source = 'admin')
+      and coalesce(cu.email, ra.email, c.contact_email) is not null and c.email_count < ${EMAILS_MAX}
       and (c.email_sent_at is null or c.email_sent_at <= ${at} - make_interval(mins => ${EMAIL_EVERY_MINUTES}))
       and (c.visitor_seen_at is null or c.visitor_seen_at <= ${at} - make_interval(secs => ${REPLY_AFTER_SECONDS}))
       and (c.store_id is null or commerce.store_is_active(c.store_id))
@@ -112,8 +114,14 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
   let url: string;
   let footer: string[];
   let replyTo: string | null = null;
-  const token = await newEmailToken(desk, id);
-  if (storeId) {
+  // An account's request from the admin is opened in the admin, by its session; no token is made.
+  const admin = row.source === "admin";
+  const token = admin ? "" : await newEmailToken(desk, id);
+  if (admin) {
+    deskName = "Kaizen";
+    url = `${siteUrl()}/admin/account/kaizen-support?c=${id}`;
+    footer = ["Kaizen"];
+  } else if (storeId) {
     const market = row.market ? String(row.market) : "";
     const ctx = await emailContext(storeId, market.slice(0, 2).toUpperCase(), locale);
     if (!ctx) return null;
@@ -132,8 +140,12 @@ async function sendReply(row: Row): Promise<SendOutcome | null> {
     // The people's own words, as text.
     ...lines,
     { type: "button", text: words.button, url },
-    { type: "paragraph", text: words.linkNote },
-    { type: "paragraph", text: words.why },
+    ...(admin
+      ? [{ type: "paragraph" as const, text: "You get this email because you asked Kaizen for help in the admin. The link opens the conversation after you sign in." }]
+      : [
+          { type: "paragraph" as const, text: words.linkNote },
+          { type: "paragraph" as const, text: words.why },
+        ]),
   ];
   const email = renderEmail({ subject: words.subject(deskName), preview: words.preview(deskName), blocks, footer, lang: locale.split("-")[0] || "en" });
   const outcome = await sendEmail({

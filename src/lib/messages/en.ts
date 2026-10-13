@@ -958,6 +958,7 @@ export const en = {
       subscription: (n: string) => `Subscription ${n}`,
       boxes: "My subscription box",
       bonus: "My bonus credits",
+      page: (title: string) => title,
     },
     newMessage: "New message",
     // legal: needs review (D216, docs/support.md 8): the notices before the first message while support is on.

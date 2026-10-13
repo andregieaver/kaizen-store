@@ -477,7 +477,7 @@ export async function runChat(
   agent: ChatAgent,
   request: ChatRequest,
   connection: AiConnection,
-  options: { handoff?: boolean; support?: SupportToolSet } = {},
+  options: { handoff?: boolean; support?: SupportToolSet; admin?: boolean } = {},
 ): Promise<ChatReply> {
   const lang = site.kind === "store" ? site.market.lang : "en";
   const m = t(lang);
@@ -494,7 +494,8 @@ export async function runChat(
         path: request.path ?? null,
         today: new Date().toISOString().slice(0, 10),
         handoff: options.handoff,
-        support: Boolean(options.support?.definitions.length),
+        support: Boolean(options.support?.definitions.length) && !options.admin,
+        admin: options.admin,
       }),
     },
     ...request.messages.map((message) => ({ role: message.role, content: message.content }) as ToolChatMessage),

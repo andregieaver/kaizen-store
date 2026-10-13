@@ -815,6 +815,8 @@ export function approvalSummary(name: string, input: Record<string, unknown>): s
       return `Mark order ${text("order")} as sent with ${text("carrier")}${text("tracking_number") ? `, tracking number ${text("tracking_number")}` : ""}${input.notify === false ? "" : ", and email the customer"}.`;
     case "send_draft_order":
       return sendDraftSummary(text("draft"), input.valid_days ? Number(input.valid_days) : null);
+    case "contact_kaizen_support":
+      return `Ask Kaizen support${text("store") ? ` about ${text("store")}` : ""}: "${text("summary").slice(0, 300)}"`;
     case "cancel_booking":
       return `Cancel booking ${text("booking")}${input.notify === false ? "" : " and email the customer"}.`;
     case "archive_product":

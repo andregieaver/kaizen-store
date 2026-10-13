@@ -55,6 +55,15 @@ export const MANAGER_TOOLS = [
     z.object({}),
   ),
   tool(
+    "contact_kaizen_support",
+    "Asks Kaizen's own support for help on the person's behalf (D216): opens a conversation with Kaizen with their summary as the first message, which Kaizen's assistant and people answer under Your requests to Kaizen. Use it when they want help from Kaizen itself (a bug, billing with Kaizen, something the admin cannot do), never for their customers. Needs their approval.",
+    z.object({
+      summary: z.string().trim().min(10).max(1000).describe("What they need help with, in their words, as the first message to Kaizen."),
+      store: z.string().trim().max(63).optional().describe("The store it is about (its address name), if any."),
+    }),
+    "send",
+  ),
+  tool(
     "decide_approval",
     "Carries out the person's answer to a change waiting for their yes (listed in your instructions with its id), when they answer it in words, spoken or typed, in this message. Approving needs a plain yes from them in this message; never approve what they did not clearly agree to.",
     z.object({ approval: z.uuid(), approve: z.boolean() }),
@@ -247,6 +256,7 @@ export const TOOL_WORDS: Record<string, string> = {
   stop_experiment: "Preparing to stop the test",
   apply_winner: "Preparing the choice",
   decide_approval: "Carrying out your answer",
+  contact_kaizen_support: "Writing to Kaizen support",
   add_order_note: "Adding a note",
   mark_order_sent: "Preparing the shipment",
   cancel_booking: "Preparing the cancellation",

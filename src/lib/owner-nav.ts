@@ -16,6 +16,7 @@ export type OwnerItem = { path: string; label: string; description: string; exac
 /** The Account section's pages, after `/admin`: the person's own first, then what concerns the stores they own. */
 export const ACCOUNT_ITEMS: OwnerItem[] = [
   { path: "/account", label: "Your account", description: "Your name, picture, password, light or dark, and Kaizen Life.", exact: true },
+  { path: "/account/kaizen-support", label: "Kaizen support", description: "Ask Kaizen for help with your stores or your account, and read the answers." },
   { path: "/account/billing", label: "Billing", description: "The plan of each store you own, what it costs and when it renews.", owner: true },
   { path: "/account/usage", label: "AI usage", description: "What the AI used for the stores you own, with what it cost.", owner: true },
   { path: "/account/referrals", label: "Referrals", description: "Your referral link, the stores that opened through it and your credit.", owner: true },

@@ -12,6 +12,8 @@ import { runChat } from "./chat-agent";
 import type { ChatContext } from "./chat-route";
 import { addMessage, historyForAi } from "./support";
 import type { Desk } from "./support-desk";
+import type { Account } from "./auth";
+import { aboutStoreOf, kaizenToolsFor } from "./support-kaizen";
 import { supportToolsFor, type SupportCustomer } from "./support-tools";
 
 /**
@@ -35,6 +37,8 @@ export async function runSupportTurn(
   conversationId: string,
   input: { path?: string; signals: Signals },
   customer: SupportCustomer = null,
+  /** An account asking Kaizen from the admin (step 11): Kaizen's tools for their stores and the admin's pages. */
+  admin: { requester: Account } | null = null,
 ): Promise<SupportTurn> {
   const m = t(context.lang);
   if (!context.agent || !context.connection) return { reply: null, error: m.chat.sorry };
@@ -52,8 +56,13 @@ export async function runSupportTurn(
   };
   let reply: ChatReply;
   try {
-    const support = context.site.kind === "store" ? await supportToolsFor({ site: context.site, settings: context.settings, customer, desk, conversationId }) : null;
-    reply = await runChat(context.site, context.agent, request, context.connection, { handoff: context.settings.mode === "ai_first", ...(support ? { support } : {}) });
+    const support =
+      context.site.kind === "store"
+        ? await supportToolsFor({ site: context.site, settings: context.settings, customer, desk, conversationId })
+        : admin
+          ? kaizenToolsFor(admin.requester, await aboutStoreOf(conversationId))
+          : null;
+    reply = await runChat(context.site, context.agent, request, context.connection, { handoff: context.settings.mode === "ai_first", ...(support ? { support } : {}), admin: admin !== null });
   } catch (error) {
     console.warn(`[support] ${context.storeId ?? "Kaizen"}: ${error instanceof Error ? error.message : String(error)}`);
     if (error instanceof AiError) return { reply: null, error: m.chat.sorry };

@@ -128,7 +128,7 @@ export async function visitorReply(
  * system did because the AI failed or is not set up (`no_ai`) or reached its daily limit (`limit`). A conversation a person took in
  * the meantime is left as it is.
  */
-async function handOver(desk: Desk, conversationId: string, by: "ai" | "system", reason: "ai" | "no_ai" | "limit", aiReason?: string): Promise<void> {
+export async function handOver(desk: Desk, conversationId: string, by: "ai" | "system", reason: "ai" | "no_ai" | "limit", aiReason?: string): Promise<void> {
   try {
     await transition(desk, conversationId, "handoff", { kind: by }, { reason });
     if (aiReason) await setAiReason(desk, conversationId, aiReason);

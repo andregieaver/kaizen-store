@@ -1,11 +1,13 @@
 import "server-only";
 
 import { sql } from "drizzle-orm";
+import { z } from "zod";
 
 import { db } from "@/db/client";
 import { OWNER_TOOLS_BY_NAME, toolDefinition } from "@/lib/owner-tools";
 import { toolOffered } from "@/lib/owner-tool-features";
 import { PARTNER_OWNER_TOOLS, guardedForVisitor, parsePartner, partnerMayRun, partnerPrompt, partnerToolsFor, type PartnerTool } from "@/lib/support-partner";
+import { KAIZEN_SUPPORT_TOOLS } from "@/lib/support-tools";
 import { AI_HISTORY, MESSAGE_MAX, PARTNER_QUESTION_MAX, PARTNER_ROUNDS } from "@/lib/support-rules";
 
 import { AiError, aiFor, chatWithTools, type ToolChatMessage, type ToolDefinition } from "./ai";
@@ -15,6 +17,7 @@ import { runOwnerTool } from "./owner-tools";
 import { getStore } from "./stores";
 import { addMessage, deskSettings, presence, SupportError } from "./support";
 import type { StaffDesk } from "./support-desk";
+import { adminPages, myStores, storeStatus } from "./support-kaizen";
 
 type Row = Record<string, unknown>;
 
@@ -33,6 +36,13 @@ export type PartnerResult = { ok: true; ran: boolean } | { ok: false; problem: s
 
 const RESULT_MAX = 6000;
 const COULD_NOT = "The partner could not answer just now.";
+
+/** Kaizen's desk (step 11): the requester's stores and the admin's page map, as Kaizen's first line has them. */
+const KAIZEN_REQUESTER_TOOLS: ToolDefinition[] = KAIZEN_SUPPORT_TOOLS.filter((tool) => tool.name !== "handoff_to_human").map((tool) => ({
+  name: tool.name,
+  description: `${tool.description} (For the person who asked, not you.)`,
+  parameters: z.toJSONSchema(tool.input) as Record<string, unknown>,
+}));
 
 const OWN_TOOLS: ToolDefinition[] = [
   {
@@ -142,7 +152,9 @@ export async function runPartner(staff: StaffDesk, conversationId: string, trigg
   const store = staff.store ? await getStore(staff.store.slug) : null;
   if (staff.store && !store) return { ok: false, problem: "This conversation is no longer here." };
   const allowed: PartnerTool[] = store && staff.holder ? partnerToolsFor(staff.holder).filter((name) => !(PARTNER_OWNER_TOOLS as readonly string[]).includes(name) || toolOffered(store, name)) : [];
-  const tools: ToolDefinition[] = [...allowed.filter((name) => OWNER_TOOLS_BY_NAME[name]).map((name) => toolDefinition(OWNER_TOOLS_BY_NAME[name])), ...OWN_TOOLS];
+  // On Kaizen's desk, an account's request from the admin (step 11): that account's stores and the admin's page map, read-only.
+  const kaizenAdmin = !staff.store && facts.requesterId ? KAIZEN_REQUESTER_TOOLS : [];
+  const tools: ToolDefinition[] = [...allowed.filter((name) => OWNER_TOOLS_BY_NAME[name]).map((name) => toolDefinition(OWNER_TOOLS_BY_NAME[name])), ...OWN_TOOLS, ...kaizenAdmin];
   const site: ChatSite | null = store
     ? { kind: "store", store, market: store.markets.find((m) => m.slug === facts.market) ?? store.markets[0] }
     : staff.store
@@ -238,6 +250,15 @@ async function runTool(
         };
       case "earlier_conversations":
         return { conversations: await earlier(staff, facts) };
+      case "my_stores":
+      case "store_status":
+      case "find_admin_page": {
+        // The requester's own, never the agent's: only on Kaizen's desk, for a conversation from the admin.
+        if (staff.store || !facts.requesterId) return { error: "That tool is not yours to use here." };
+        if (name === "my_stores") return { stores: await myStores(facts.requesterId) };
+        if (name === "store_status") return (await storeStatus(facts.requesterId, String(args.store ?? ""))) ?? { error: "Not one of the requester's stores." };
+        return { pages: adminPages(String(args.query ?? ""), null) };
+      }
       default: {
         // Only the AI manager's read-only tools this agent's role may use: never a gated or writing tool (`PARTNER_OWNER_TOOLS`).
         if (!store || !allowed.includes(name) || !OWNER_TOOLS_BY_NAME[name]) return { error: "That tool is not yours to use here." };

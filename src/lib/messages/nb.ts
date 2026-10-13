@@ -961,6 +961,7 @@ export const nb: Messages = {
       subscription: (n: string) => `Abonnement ${n}`,
       boxes: "Abonnementskassen min",
       bonus: "Bonuspoengene mine",
+      page: (title: string) => title,
     },
     newMessage: "Ny melding",
     // legal: needs review (D216, docs/support.md 8): the notices before the first message while support is on.

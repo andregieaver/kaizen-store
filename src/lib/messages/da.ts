@@ -955,6 +955,7 @@ export const da: Messages = {
       subscription: (n: string) => `Abonnement ${n}`,
       boxes: "Min abonnementskasse",
       bonus: "Mine bonuspoint",
+      page: (title: string) => title,
     },
     newMessage: "Ny besked",
     // legal: needs review (D216, docs/support.md 8): the notices before the first message while support is on.

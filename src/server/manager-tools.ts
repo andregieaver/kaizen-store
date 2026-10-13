@@ -206,6 +206,8 @@ const MANAGER_HANDLERS: Record<ManagerToolName, Handler> = {
   forget: forgetTool,
   recall: recallTool,
   decide_approval: decideApprovalTool,
+  // Gated (`send`): never run from the model; the approval runs it (`decideApproval()` in owner-assistant.ts).
+  contact_kaizen_support: async () => fail("This needs the person's approval first."),
 };
 
 export async function runManagerTool(ctx: ManagerContext, name: string, raw: unknown): Promise<unknown> {

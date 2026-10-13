@@ -37,6 +37,7 @@ export function AdminAccountMenu({ account, role }: { account: Account; role?: s
   return (
     <AccountMenu avatar={<Avatar avatar={avatarFor(account)} size={32} />} name={account.name} email={account.email}>
       <MenuLink href="/admin/account">Your account{role ? <span className="ml-auto text-xs text-muted">{role}</span> : null}</MenuLink>
+      <MenuLink href="/admin/account/kaizen-support">Contact Kaizen support</MenuLink>
       <MenuRow label="Colours">
         <AdminColorSwitch save={colorModeAction} />
       </MenuRow>

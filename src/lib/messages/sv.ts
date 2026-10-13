@@ -957,6 +957,7 @@ export const sv: Messages = {
       subscription: (n: string) => `Prenumeration ${n}`,
       boxes: "Min prenumerationslåda",
       bonus: "Mina bonuspoäng",
+      page: (title: string) => title,
     },
     newMessage: "Nytt meddelande",
     // legal: needs review (D216, docs/support.md 8): the notices before the first message while support is on.

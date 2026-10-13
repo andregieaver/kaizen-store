@@ -545,7 +545,7 @@ async function callTool(
     const input = readToolInput(tool, args);
     if (!input.ok) return { error: `The arguments could not be read: ${input.problem}` };
     // What could not be done, or must be reworded (claims), is refused now, never kept for a yes.
-    if (ctx.store) {
+    if (ctx.store && !manager) {
       try {
         await preflightOwnerTool({ account: ctx.account, store: ctx.store, invalidate: ctx.invalidate, holder: ctx.holder }, name, args);
       } catch (error) {
@@ -665,7 +665,9 @@ export async function decideApproval(
   try {
     const tool = String(claimed.tool);
     const answer = (
-      p.store
+      tool === "contact_kaizen_support"
+        ? await contactKaizen(p, claimed.args as Record<string, unknown>)
+        : p.store
         ? await runOwnerTool({ account: p.account, store: p.store, invalidate, holder: holderOfPrincipal(p) }, tool, claimed.args)
         : await runPlatformTool({ account: p.account, store: null, flags: {}, connection: null, navigate: () => {}, invalidate }, tool, claimed.args)
     ) as { done?: string };
@@ -725,4 +727,20 @@ export async function rateAnswer(
     });
   }
   return true;
+}
+
+/**
+ * The AI manager's `contact_kaizen_support` once the person said yes (D216, step 11): their summary is the first message of a new
+ * conversation with Kaizen's desk, about the store they work in unless they named another of theirs, and Kaizen's assistant answers it.
+ */
+async function contactKaizen(p: Principal, args: Record<string, unknown>): Promise<{ done: string }> {
+  const { requesterTurn } = await import("./support-kaizen");
+  const answer = await requesterTurn(p.account, {
+    message: String(args.summary ?? ""),
+    aboutStore: typeof args.store === "string" && args.store ? args.store : (p.store?.slug ?? null),
+    after: 0,
+    path: null,
+  });
+  if ("status" in answer) throw new OwnerToolError(answer.error);
+  return { done: "Sent to Kaizen support. Their answer comes under Kaizen support (/admin/account/kaizen-support), and by email when you are away." };
 }

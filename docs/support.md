@@ -1618,3 +1618,33 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   C14: listed, a reader cannot decide, decided once, the line with the note, the activity log, the email when away and none when
   looking), `support-tools.int.test.ts` (the AI's turn keeps the proposal with its answer, the confirm route runs it once); U
   `support-action-words.test.ts` (each kind has a check, a runner and a test), V `confirm-card.test.ts`.
+
+**Step 11 (13 October 2026).**
+
+- **The page is `/admin/account/kaizen-support`**, not `/admin/account/support/kaizen`: the owner's combined inbox (`/account/support`)
+  is a section of its own shown only to people who may read a store's support, while asking Kaizen is for every account, so it sits
+  in the Account section (*Kaizen support*, `ACCOUNT_ITEMS` for owners and staff alike, `account.kaizen_support` in the map; `?c=`
+  opens one). *Contact Kaizen support* in the account menu links there.
+- **Conversations** (`src/server/support-kaizen.ts`): Kaizen's desk (`store_id` null), source `admin`, `requester_id` the account,
+  `about_store_id` a store the account is a member of (another store named is not recorded), no token: the account's session is the
+  proof, and every reader takes the account (`requesterConversations()`, `requesterConversation()`, `requesterFeed()`,
+  `requesterEnd()`), so another account's conversation is a 404. The desk is `requesterDesk(account)` in `support-desk.ts`. The
+  routes are `kaizen-support/turn` (POST, `sameSite()`), `kaizen-support/c/{id}` (GET, `?after=`) and `kaizen-support/c/{id}/end`
+  (POST); the page polls every 3 seconds while a conversation is open (`KaizenRequests`). An ended one opens again within a day.
+- **Kaizen's assistant** answers as Kaizen's desk's mode says (`chatContext()` for Kaizen's site, English), with the chat's own
+  tools and, for these conversations, `my_stores`, `store_status` (only a store the account is a member of: status, plan, billing,
+  card payments ready, setup steps left, features on; read-only) and `find_admin_page` (the AI manager's map, pages of the store the
+  conversation is about, or the account's only store, as `page` chips, `/admin/…` only) through `kaizenToolsFor()`, and the admin
+  rules in `systemPrompt()` (`admin`: never changes a store, never promises a fix). It hands over as on any desk.
+- **The partner** on Kaizen's desk gets the same three tools for a conversation from the admin, for the person who asked (never the
+  agent's own stores).
+- **The AI manager's `contact_kaizen_support`** (`MANAGER_TOOLS`, gated `send`): the approval's summary quotes the person's words;
+  on yes, `decideApproval()` opens the conversation with them as its first message (about the store the manager works in unless
+  another of theirs is named) and Kaizen's assistant answers it there. Gated manager tools skip the owner tools' preflight.
+- **Answers by email**: `sendReplyEmails()` sends a person's answers in such a conversation to the account's own email (whatever
+  the desk's email follow-up switch says), linking to `/admin/account/kaizen-support?c={id}` (no token; signing in opens it).
+- **Not tested here**: the answer email of an admin conversation (it needs Kaizen's desk in a mode where people answer, which the
+  shared test database does not hold); the partner's Kaizen tools are typed and read the same functions the first line's tests
+  hold.
+- **Tests**: I `support-kaizen.int.test.ts` (another account cannot list, read, write in or end a request; a store that is not the
+  account's is not recorded; Kaizen's tools give only the account's stores and status, and admin page chips).

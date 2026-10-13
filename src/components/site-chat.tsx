@@ -84,6 +84,7 @@ function chatLabels(lang: string, locale: string, profile: ChatWidgetProfile, de
       subscription: c.chips.subscription("{label}"),
       boxes: c.chips.boxes,
       bonus: c.chips.bonus,
+      page: c.chips.page("{label}"),
     },
     newMessage: c.newMessage,
     vatIncluded: m.vatIncluded,

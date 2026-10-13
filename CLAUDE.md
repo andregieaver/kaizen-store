@@ -293,6 +293,10 @@ of running `playwright install`.
   `m.chat.actions.summary` (4 languages) and `ACTION_KIND_WORDS`, and a test. Anything else is a staff request a person decides on
   the Requests page (`decideRequest()`, the line in the chat, `support.request_done` when away); never a refund, a withdrawal, an
   order edit, a code or credit from the AI.
+  Kaizen's desk for owners and staff (step 11, `src/server/support-kaizen.ts`, `/admin/account/kaizen-support`, *Contact Kaizen
+  support* in the account menu, the manager tool `contact_kaizen_support`): source `admin`, `requester_id` the account, no token;
+  every reader takes the account (`requesterConversation()` and co.), and Kaizen's tools (`kaizenToolsFor()`, also the partner's
+  there) read only stores the account is a member of and never change one.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

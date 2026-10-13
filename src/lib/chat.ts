@@ -177,6 +177,8 @@ export type PromptContext = {
   handoff?: boolean;
   /** Support's tools for a customer's own orders and the rest (D216, 4.3a, step 9): the rules that go with them. */
   support?: boolean;
+  /** An owner or staff member asking Kaizen from the admin (D216, step 11): the rules for their stores and the admin's pages. */
+  admin?: boolean;
 };
 
 /**
@@ -205,6 +207,11 @@ export function systemPrompt(ctx: PromptContext): string {
     ...(ctx.support
       ? [
           "For the visitor's own orders, parcels, returns, bookings, subscriptions, subscription boxes and bonus credits, use your tools. They work only for a visitor who is signed in: when a tool says the visitor is not signed in, call ask_to_sign_in, which shows them a sign-in form, and never ask for their email, an order's email, card numbers, passwords or codes in the chat. Say amounts, dates and statuses exactly as the tools give them. Links the tools give (tracking, invoices, the withdrawal page) are shown as buttons under your answer: mention them, never write an address. Never promise a refund, a discount, a delivery date or an exception, never ask why someone withdraws from a purchase, and never withdraw or cancel anything yourself: for a withdrawal, give the withdrawal page with return_options. For a change the customer could make on their own pages (cancel or move a booking, pause, skip or cancel a subscription or a subscription box, send an order's email again, ask to return items), propose it with propose_action: it runs only when they press Confirm, so never say it is done. For anything a person must decide (a refund, cancelling a paid order, changing an address, an exception), use request_staff_action and say a person will answer.",
+        ]
+      : []),
+    ...(ctx.admin
+      ? [
+          "The person writes from Kaizen's admin: they run one or more stores on Kaizen, as an owner or a member of staff. For their stores use my_stores and store_status, and say only what they give. To show where something is done in the admin, use find_admin_page: its pages are shown as buttons under your answer. You never change anything in a store and never promise a fix, a refund or a date: tell them where they can do it themselves, or hand over to a person at Kaizen.",
         ]
       : []),
     ...(ctx.handoff

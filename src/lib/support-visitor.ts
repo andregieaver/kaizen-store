@@ -15,10 +15,10 @@ export type VisitorAuthor = Extract<MessageAuthor, "customer" | "ai" | "agent" |
 
 /**
  * A link the AI's tools gave (D216, 2.1, step 9): a parcel's tracking page, an invoice or credit note, an order, a return, the withdrawal
- * page, a subscription, the subscription boxes, the bonus page. Drawn by the widget as a chip in the site's words for its `kind`, with
+ * page, a subscription, the subscription boxes, the bonus page, or (Kaizen's desk, step 11) an admin page. Drawn by the widget as a chip in the site's words for its `kind`, with
  * `label` (a number) put in; the address is made by code and passed `isSafeAddress()`, never written by the model.
  */
-export const CHIP_KINDS = ["order", "tracking", "invoice", "credit_note", "return", "withdraw", "booking", "subscription", "boxes", "bonus"] as const;
+export const CHIP_KINDS = ["order", "tracking", "invoice", "credit_note", "return", "withdraw", "booking", "subscription", "boxes", "bonus", "page"] as const;
 export type ChipKind = (typeof CHIP_KINDS)[number];
 export type SupportChip = { kind: ChipKind; label: string; href: string };
 

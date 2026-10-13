@@ -29,6 +29,16 @@ export function visitorDesk(site: ChatSite): Desk {
   return make(site.kind === "store" ? site.store.id : null);
 }
 
+/**
+ * Kaizen's desk as an owner or a member of staff writes to it from the admin (D216, 2.8, step 11): the signed-in account (from
+ * `getAccount()`, which verified the session) asks Kaizen; each of their conversations is found by `requester_id` alone
+ * (`src/server/support-kaizen.ts`).
+ */
+export function requesterDesk(account: Account): Desk {
+  void account;
+  return make(null);
+}
+
 /** A desk for the platform's own jobs (ending idle conversations, retention, erasure), which act on every store's data by design. */
 export function systemDesk(storeId: string | null): Desk {
   return make(storeId);

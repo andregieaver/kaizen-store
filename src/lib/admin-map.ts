@@ -699,6 +699,10 @@ const PAGES: readonly AdminPage[] = [
   account("account.support", "/account/support", "Support", "The support inboxes of every store where you may read them, in one list: who is waiting and what was said, filterable by store.", {
     keywords: ["inbox", "live chat", "customer service", "conversations"],
   }),
+  account("account.kaizen_support", "/account/kaizen-support", "Kaizen support", "Ask Kaizen itself for help (a problem with the admin, billing with Kaizen, how something works): your conversations with Kaizen's support, answered first by Kaizen's assistant and then by people from Kaizen, with answers also by email. A new request may name the store it is about. ?c= opens one.", {
+    keywords: ["help", "contact kaizen", "kaizen support", "bug", "problem", "ask kaizen"],
+    tasks: ["Ask Kaizen for help", "Read Kaizen's answer to a request"],
+  }),
   account("account", "/account", "Your account", "Your name, picture, password, light or dark, and Kaizen Life.", {
     keywords: ["profile", "password", "avatar", "dark mode"],
   }),
