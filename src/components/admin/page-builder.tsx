@@ -60,7 +60,9 @@ import {
   useRef,
   useState,
   useTransition,
+  useLayoutEffect,
   type CSSProperties,
+  type RefObject,
   type PointerEventHandler,
   type ReactNode,
 } from "react";
@@ -93,6 +95,7 @@ import { SavedLayoutDialog } from "./saved-layout-dialog";
 import { ModalBar } from "./modal-preview";
 import { BackgroundMotionFields, GradientFields } from "./gradient-fields";
 import { AnimationFields, MotionFields } from "./motion-fields";
+import { ShopPartIcon } from "./shop-part-icons";
 import { MotionMark, MotionPreviewToggle, canvasBackground, canvasFx, useCanvasMotion } from "./motion-canvas";
 import { menuHoverStyle } from "@/lib/menu-hover";
 import {
@@ -698,6 +701,8 @@ export function PageBuilder({
   const [motionOn, setMotionOn] = useState(false);
   const [motionRun, setMotionRun] = useState(0);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const columnsRef = useRef<HTMLDivElement>(null);
+  useStandaloneColumns(columnsRef);
   // The theme the Theme tab edits (D182): what it holds, what is saved, and the canvas drawn with it before it is saved.
   const [themeValue, setThemeValue] = useState<ThemeTabValue | null>(() => (themeTab ? themeTabValue(themeTab.settings) : null));
   const [themeSaved, setThemeSaved] = useState<ThemeTabValue | null>(themeValue);
@@ -1088,7 +1093,8 @@ export function PageBuilder({
           },
         }}
       >
-        <div className={`grid items-start gap-6 ${railColumns(leftFolded, rightFolded)}`}>
+        {/* On a computer the three columns each scroll on their own, between the admin's header and the editor's bar (`useStandaloneColumns`). */}
+        <div ref={columnsRef} className={`grid items-start gap-6 lg:h-(--builder-h) lg:items-stretch ${railColumns(leftFolded, rightFolded)}`}>
           {leftFolded && <Rail side="left" label="building blocks" controls={`${panelId}-left`} onOpen={() => setLeftFolded(false)} />}
           {translate ? (
             <TranslateNote
@@ -1141,7 +1147,8 @@ export function PageBuilder({
           />
           )}
 
-          <div className="flex min-w-0 flex-col gap-3">
+          {/* Its own scroll, with room at the sides for the rows' handles and tools, which reach past the canvas. */}
+          <div className={`flex min-w-0 flex-col gap-3 lg:-mx-3 lg:px-3 lg:pb-6 ${STANDALONE}`}>
           {!translate && (
             <div className="flex flex-wrap items-start gap-3">
               <div className="min-w-0 flex-1">
@@ -1210,7 +1217,7 @@ export function PageBuilder({
             <Rail side="right" label="settings" controls={`${panelId}-right`} onOpen={() => setRightFolded(false)} className="order-first lg:order-none" />
           )}
           {/* On phones the title and settings come first. */}
-          <div id={`${panelId}-right`} hidden={rightFolded} className="order-first flex min-w-0 flex-col gap-6 lg:order-none">
+          <div id={`${panelId}-right`} hidden={rightFolded} className={`order-first flex min-w-0 flex-col gap-6 lg:order-none lg:pb-6 ${STANDALONE}`}>
             <RailHeader side="right" label="settings" controls={`${panelId}-right`} onFold={() => setRightFolded(true)} />
             {aside}
           </div>
@@ -1227,10 +1234,12 @@ export function PageBuilder({
                 dragging.part
                   ? dragging.type === "site"
                     ? SITE_PARTS[dragging.part as SitePart]
-                    : PRODUCT_PARTS[dragging.part as ProductPart]
+                    : dragging.type === "storePart"
+                      ? shopPartCopy(dragging.part as ShopPart).name
+                      : PRODUCT_PARTS[dragging.part as ProductPart]
                   : blockLabels[dragging.type]
               }
-              preview={<BlockIcon type={dragging.type} />}
+              preview={dragging.type === "storePart" && dragging.part ? <ShopPartIcon part={dragging.part as ShopPart} /> : <BlockIcon type={dragging.type} />}
               lifted
             />
           ) : dragging?.kind === "block" ? (
@@ -1425,7 +1434,7 @@ function Sidebar({
       id={panelId}
       hidden={hidden}
       aria-label="Building blocks"
-      className="flex min-w-0 flex-col rounded-lg border border-border bg-background lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto"
+      className={`flex min-w-0 flex-col rounded-lg border border-border bg-background ${STANDALONE}`}
     >
       <div className="border-b border-border px-4 py-1.5">
         {themePanel ? (
@@ -1535,7 +1544,7 @@ function Sidebar({
                         id={`palette:shop:${part}`}
                         data={{ kind: "palette-block", type: "storePart", part }}
                         label={STORE_PARTS[part].name}
-                        preview={<BlockIcon type="storePart" />}
+                        preview={<ShopPartIcon part={part} />}
                         onAdd={() => onAddBlock("storePart", part)}
                         disabled={blocksFull}
                       />
@@ -1555,7 +1564,7 @@ function Sidebar({
                           id={`palette:shop:${part}`}
                           data={{ kind: "palette-block", type: "storePart", part }}
                           label={shopPartCopy(part).name}
-                          preview={<BlockIcon type="storePart" />}
+                          preview={<ShopPartIcon part={part} />}
                           onAdd={() => onAddBlock("storePart", part)}
                           disabled={blocksFull}
                         />
@@ -1586,7 +1595,7 @@ function Sidebar({
                       id={`palette:shop:${part}`}
                       data={{ kind: "palette-block", type: "storePart", part }}
                       label={STORE_PARTS[part].name}
-                      preview={<BlockIcon type="storePart" />}
+                      preview={<ShopPartIcon part={part} />}
                       onAdd={() => onAddBlock("storePart", part)}
                       disabled={blocksFull}
                     />
@@ -2286,6 +2295,39 @@ function Canvas({
 
 /** Below the last row: where a row dropped goes last, and what an empty page says. */
 /** The canvas's part stylesheet (D179): container queries against the canvas, worked out again only when the rows change. */
+/** A column of the builder that scrolls on its own on a computer, never handing its scroll on to the page. */
+const STANDALONE = "lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain";
+
+/**
+ * Fits the builder's columns between where they start and the editor's bar at the foot of the screen (`data-editor-bar`), as
+ * `--builder-h`, so each column scrolls on its own and nothing lies behind the header or the bar. Measured from the top of the
+ * document, again when the window or the bar changes size.
+ */
+function useStandaloneColumns(ref: RefObject<HTMLDivElement | null>) {
+  useLayoutEffect(() => {
+    const grid = ref.current;
+    if (!grid) return;
+    const fit = () => {
+      const top = grid.getBoundingClientRect().top + window.scrollY;
+      const bar = document.querySelector<HTMLElement>("[data-editor-bar]")?.offsetHeight ?? 0;
+      grid.style.setProperty("--builder-h", `${Math.max(MIN_COLUMNS_HEIGHT, Math.floor(window.innerHeight - top - bar - COLUMNS_GAP))}px`);
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    const bar = document.querySelector("[data-editor-bar]");
+    if (bar) observer.observe(bar);
+    if (grid.parentElement) observer.observe(grid.parentElement);
+    window.addEventListener("resize", fit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, [ref]);
+}
+/** Room between the columns' foot and the editor's bar, and the least the columns are given on a very low window. */
+const COLUMNS_GAP = 16;
+const MIN_COLUMNS_HEIGHT = 420;
+
 function CanvasPartStyles({ rows, source, breakpoints, hideHidden }: { rows: PageRow[]; /** The page's own rows, which the parts hidden at a size are read from. */ source: PageRow[]; breakpoints: Breakpoints; hideHidden: boolean }) {
   // With the parts hidden at a size: faded with their eye there, or left out (D179).
   const css = useMemo(
@@ -3991,7 +4033,7 @@ function Dialogs({
 /** In place of the sidebar while translating: what can be done here, and where the rest is. */
 function TranslateNote({ translate, id, hidden, header }: { translate: Translating; id: string; hidden: boolean; header: ReactNode }) {
   return (
-    <section id={id} hidden={hidden} aria-labelledby="translate-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm">
+    <section id={id} hidden={hidden} aria-labelledby="translate-heading" className={`flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm ${STANDALONE}`}>
       <div className="flex items-start justify-between gap-2">
         <h2 id="translate-heading" className="font-medium">
           Translating into {translate.name}
@@ -6628,7 +6670,7 @@ function ShopIcon() {
   return (
     <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
       <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M6 7h12l-1 13H7L6 7zM9 7a3 3 0 0 1 6 0" />
+        <path d="M4 9l1.5-5h13L20 9M4 9h16a2.7 2.7 0 0 1-5.3 0 2.7 2.7 0 0 1-5.4 0A2.7 2.7 0 0 1 4 9M5.5 12v8h13v-8M10 20v-5h4v5" />
       </svg>
     </span>
   );

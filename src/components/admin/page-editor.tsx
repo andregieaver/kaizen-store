@@ -427,7 +427,7 @@ export function PageEditor({
       }
     >
     {/* Full width (see `AdminMain`): a left sidebar, the content and a right sidebar, a quarter, a half and a quarter. */}
-    <div className="flex flex-col gap-6 pb-28">
+    <div className={`flex flex-col gap-6 pb-28 ${problems.length > 0 ? "" : "lg:pb-0"}`}>
       <PageBuilder
         // A new language starts with its dialogs closed.
         key={locale}
@@ -789,7 +789,7 @@ export function PageEditor({
         />
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
+      <div data-editor-bar="" className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
           {context.draftOnly ? (
             // A design profile's workspace (D177): every save is the profile's draft, published with the profile from its own page.

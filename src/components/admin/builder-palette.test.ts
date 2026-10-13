@@ -50,4 +50,15 @@ describe("the builder's palette and the store's features", () => {
     expect(html).toContain(">Checkout<");
     expect(html.indexOf(">Checkout<")).toBeLessThan(more);
   });
+
+  it("draws each shop component with its own picture, the Cookies page a cookie", () => {
+    const html = palette(["shop"]);
+    const tile = (name: string) => {
+      const at = html.indexOf(`>${name}<`);
+      return html.slice(html.lastIndexOf("<svg", at), at);
+    };
+    expect(tile("Cookies")).toContain("M12 3a9 9 0 1 0 9 9");
+    expect(tile("Cart")).toContain("M3 4h2l2.4 10.2");
+    expect(tile("Cookies")).not.toEqual(tile("Cart"));
+  });
 });
