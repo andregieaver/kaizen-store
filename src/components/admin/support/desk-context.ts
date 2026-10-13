@@ -18,8 +18,22 @@ export type SupportDeskContext = {
   actions: {
     heartbeat: () => Promise<{ ok: boolean }>;
     presence: ((status: "online" | "away") => Promise<{ ok: boolean }>) | null;
+    /**
+     * Take over, answer, note, hand over, give back, end, ask to sign in (step 4), or null for those who only read. A single desk's
+     * action takes the conversation and the act; the owner's level's takes the conversation's store first.
+     */
+    act: { byStore: false; run: (conversationId: string, act: unknown) => Promise<ActResult> } | { byStore: true; run: (store: string, conversationId: string, act: unknown) => Promise<ActResult> } | null;
   };
 };
+
+export type ActResult = { ok: true } | { ok: false; problem: string };
+
+/** Runs an act through the level's action. */
+export function runAct(context: Pick<SupportDeskContext, "actions">, store: string | null, conversationId: string, act: unknown): Promise<ActResult> {
+  const action = context.actions.act;
+  if (!action) return Promise.resolve({ ok: false, problem: "You can read this desk's conversations but not answer them." });
+  return action.byStore ? action.run(store ?? "", conversationId, act) : action.run(conversationId, act);
+}
 
 /** A conversation's feed address for a row (its store at the owner's level). */
 export const conversationHref = (context: Pick<SupportDeskContext, "conversationUrl">, id: string, store: string | null, after: number) =>

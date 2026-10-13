@@ -882,7 +882,17 @@ export const en = {
     full: "This conversation has grown long. Start a new one to go on.",
     // legal: needs review (D216, docs/support.md 8): how long a conversation is kept while the chat assistant answers alone.
     kept: "We keep this conversation for one day after it ends.",
-    lines: { ended: "The conversation has ended.", reopened: "The conversation was opened again." },
+    lines: {
+      ended: "The conversation has ended.",
+      reopened: "The conversation was opened again.",
+      queued: "Waiting for a person.",
+      joined: (name: string) => `${name} joined the conversation.`,
+      left: (name: string) => `${name} left the conversation.`,
+      assistantBack: "The assistant is back.",
+    },
+    signIn: "Sign in so we can look at your orders.",
+    signInButton: "Sign in",
+    newMessage: "New message",
   },
   booking: {
     changeTime: "Change time",

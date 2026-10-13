@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 
 import { TAB_WORDS } from "@/lib/support-inbox-text";
 import { HEARTBEAT_SECONDS, POLL_STAFF_MS } from "@/lib/support-rules";
-import type { InboxRow, InboxTab, StaffConversation } from "@/server/support";
+import type { InboxRow, InboxTab } from "@/server/support";
+import type { ConversationFeed } from "@/server/support-inbox";
 
+import { ConversationActions } from "./conversation-actions";
 import { ConversationList } from "./conversation-list";
 import { ConversationContext, ConversationView } from "./conversation-view";
-import { conversationHref, type SupportDeskContext } from "./desk-context";
+import { conversationHref, runAct, type SupportDeskContext } from "./desk-context";
 
 /**
  * The support inbox (D216, `docs/support.md` 2.4, 5.4), the same at every level: the list on the left, the conversation in the middle
@@ -30,7 +32,9 @@ export function Inbox({
   const [rows, setRows] = useState(initial.rows);
   const [waiting, setWaiting] = useState(initial.waiting);
   const [open, setOpen] = useState<{ id: string; store: string | null } | null>(null);
-  const [conversation, setConversation] = useState<StaffConversation | null>(null);
+  const [conversation, setConversation] = useState<ConversationFeed | null>(null);
+  // Bumped after an action, so the conversation and the list are asked for again at once.
+  const [refresh, setRefresh] = useState(0);
   const [presence, setPresenceState] = useState(context.presence);
   const [now, setNow] = useState(() => new Date());
   const [gone, setGone] = useState(false);
@@ -81,7 +85,7 @@ export function Inbox({
           return;
         }
         if (response.ok) {
-          const fresh = (await response.json()) as StaffConversation;
+          const fresh = (await response.json()) as ConversationFeed;
           setConversation((current) => {
             if (!current || current.id !== fresh.id) return fresh;
             const seen = new Set(current.messages.map((m) => m.seq));
@@ -100,7 +104,7 @@ export function Inbox({
       stopped = true;
       clearTimeout(timer);
     };
-  }, [context, open]);
+  }, [context, open, refresh]);
 
   // The heartbeat keeps an online agent counted as online while the inbox is open.
   useEffect(() => {
@@ -192,7 +196,18 @@ export function Inbox({
             </button>
           )}
           {conversation ? (
-            <ConversationView conversation={conversation} now={now} />
+            <>
+              <ConversationView conversation={conversation} now={now} />
+              <ConversationActions
+                key={conversation.id}
+                conversation={conversation}
+                act={(input) => runAct(context, conversation.store?.slug ?? null, conversation.id, input)}
+                onDone={() => {
+                  setRefresh((n) => n + 1);
+                  void loadList();
+                }}
+              />
+            </>
           ) : (
             <p className="p-6 text-sm text-muted">{gone ? "This conversation is no longer here." : showing ? "Opening…" : "Choose a conversation to read it as it happens."}</p>
           )}

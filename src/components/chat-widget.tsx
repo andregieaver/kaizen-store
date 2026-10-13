@@ -12,10 +12,12 @@ import {
   mergeMessages,
   readStored,
   storedValue,
+  pollDelay,
   type ConversationRef,
   type StoredConversation,
   type VisitorMessage,
   type VisitorReply,
+  type VisitorState,
 } from "@/lib/support-visitor";
 
 import type { UnitLabels } from "@/lib/unit-price-text";
@@ -42,8 +44,13 @@ export type ChatLabels = {
   conversation: string;
   /** How long the site keeps the conversation (D216, legal: needs review). */
   kept: string;
-  /** The words of the conversation's system lines, by kind. */
-  lines: { ended: string; reopened: string };
+  /** The words of the conversation's system lines, by kind; `{name}` stands for a person's name. */
+  lines: { ended: string; reopened: string; queued: string; joined: string; left: string; assistantBack: string };
+  /** The card asking the customer to sign in (D216, step 4), and its button. */
+  signIn: string;
+  signInButton: string;
+  /** On the closed chat's button when a person wrote. */
+  newMessage: string;
   vatIncluded: string;
   vatExcluded: string;
   fromPrice: string;
@@ -55,6 +62,8 @@ export type ChatLabels = {
 export type ChatWidgetProps = {
   /** Which site the messages are for: a store in one of its countries, or Kaizen's (neither). */
   site: { store?: string; market?: string };
+  /** Where a customer signs in (a store's account page), for the card a person can send; none on Kaizen's site. */
+  signInHref?: string;
   locale: string;
   agent: { name: string; occupation: string; avatar: { url: string; width: number; height: number } | null; voice: boolean };
   labels: ChatLabels;
@@ -113,7 +122,7 @@ function recorderType(): string | undefined {
  * The conversation is the site's (D216): the widget sends only the new
  * message and draws what the site answers.
  */
-export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
+export function ChatWidget({ site, signInHref, locale, agent, labels }: ChatWidgetProps) {
   const router = useRouter();
   const key = `${site.store ?? ""}/${site.market ?? ""}`;
   const [open, setOpen] = useState(false);
@@ -124,6 +133,12 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
   const [waiting, setWaiting] = useState(false);
   const [recording, setRecording] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // The conversation's state as the site last said it (who answers, the person who joined); not kept in the tab.
+  const [state, setState] = useState<VisitorState | null>(null);
+  // A person wrote while the chat was closed.
+  const [unseen, setUnseen] = useState(false);
+  const storedRef = useRef(stored);
+  const openRef = useRef(open);
   const panelId = useId();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLOListElement>(null);
@@ -134,8 +149,58 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
 
   const messages = stored.messages;
   useEffect(() => {
+    storedRef.current = stored;
+    openRef.current = open;
+  }, [stored, open]);
+  useEffect(() => {
     if (loaded) saveStored(stored);
   }, [loaded, stored]);
+
+  // While a conversation is open, the widget asks the site for what is new (D216): every 3 seconds while waiting for or talking to a
+  // person, 10 with the AI, 15 with the chat closed or the tab hidden. A person's answer while the chat is closed marks its button.
+  const conversationId = stored.conversation?.id ?? null;
+  const live = loaded && conversationId !== null && stored.status === "open";
+  const handler = state?.handler ?? "ai";
+  useEffect(() => {
+    if (!live) return;
+    let timer: ReturnType<typeof setTimeout>;
+    let stopped = false;
+    const tick = async () => {
+      const current = storedRef.current;
+      if (current.conversation) {
+        try {
+          const response = await fetch("/api/chat/feed", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ ...site, conversation: current.conversation, after: current.lastSeq }),
+          });
+          const body = (await response.json().catch(() => ({}))) as unknown;
+          if (response.ok && isReply(body) && !stopped) {
+            setState(body.state);
+            if (body.messages.length > 0) {
+              setStored((now) => {
+                const merged = mergeMessages(now.messages, body.messages);
+                return { ...now, status: body.state.status, messages: merged, lastSeq: lastSeqOf(merged, now.lastSeq) };
+              });
+              if (!openRef.current && body.messages.some((m) => m.author === "agent")) setUnseen(true);
+            } else if (body.state.status !== storedRef.current.status) {
+              setStored((now) => ({ ...now, status: body.state.status }));
+            }
+          }
+        } catch {
+          // Offline for a moment: the next time asks again.
+        }
+      }
+      const hidden = document.visibilityState === "hidden" || !openRef.current;
+      const delay = pollDelay({ status: "open", handler }, hidden);
+      if (!stopped && delay !== null) timer = setTimeout(tick, delay);
+    };
+    timer = setTimeout(tick, pollDelay({ status: "open", handler }, !openRef.current) ?? 10_000);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [live, conversationId, handler, site]);
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: "end" });
   }, [messages, notices, pending, waiting, open]);
@@ -167,6 +232,7 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
         return { ...current, conversation: conversation && conversation.token ? conversation : null, status: reply.state.status, messages: merged, lastSeq: lastSeqOf(merged, same ? current.lastSeq : 0) };
       });
       setNotices(reply.error ? [{ id: Date.now(), text: reply.error }] : []);
+      setState(reply.state);
       const go = reply.messages
         .filter((message) => message.author === "ai")
         .flatMap((message) => message.data?.actions ?? [])
@@ -264,6 +330,7 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
       const body = (await response.json().catch(() => ({}))) as unknown;
       if (response.status === 404) setStored({ ...copy, conversation: null, messages: [], lastSeq: 0, status: "open" });
       else if (response.ok && isReply(body)) {
+        setState(body.state);
         setStored((current) => {
           const merged = mergeMessages(current.messages, body.messages);
           return { ...current, status: body.state.status, messages: merged, lastSeq: lastSeqOf(merged, current.lastSeq) };
@@ -326,6 +393,9 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
     inputRef.current?.focus();
   }
 
+  // A person who has taken the conversation over is shown instead of the AI persona, never with the AI label (D216, S11).
+  const person = state?.status === "open" && state.handler === "human" ? state.agent : null;
+
   const avatar = (size: string) =>
     agent.avatar ? (
       // eslint-disable-next-line @next/next/no-img-element -- the owner's uploaded picture, already small
@@ -349,13 +419,19 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
           className="fixed inset-x-0 bottom-0 z-[90] flex h-[85dvh] flex-col overflow-hidden rounded-t-2xl border border-border bg-background text-foreground shadow-2xl md:inset-x-auto md:right-6 md:bottom-24 md:h-[36rem] md:max-h-[calc(100dvh-8rem)] md:w-[24rem] md:rounded-2xl"
         >
           <header className="flex items-center gap-3 border-b border-border px-4 py-3">
-            {avatar("size-10")}
+            {person ? <PersonPicture person={person} size="size-10" /> : avatar("size-10")}
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{agent.name}</p>
-              <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted">
-                {agent.occupation && <span className="truncate">{agent.occupation}</span>}
-                <span className="shrink-0 rounded-button bg-accent px-1.5 py-0.5 text-xs whitespace-nowrap text-accent-foreground">{labels.aiAssistant}</span>
-              </p>
+              {person ? (
+                <p className="truncate font-semibold">{person.name}</p>
+              ) : (
+                <>
+                  <p className="truncate font-semibold">{agent.name}</p>
+                  <p className="flex min-w-0 items-center gap-1.5 text-sm text-muted">
+                    {agent.occupation && <span className="truncate">{agent.occupation}</span>}
+                    <span className="shrink-0 rounded-button bg-accent px-1.5 py-0.5 text-xs whitespace-nowrap text-accent-foreground">{labels.aiAssistant}</span>
+                  </p>
+                </>
+              )}
             </div>
             {messages.length > 0 && (
               <button type="button" onClick={restart} className="rounded-button px-2 py-1 text-sm text-muted hover:text-foreground">
@@ -378,7 +454,15 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
                   <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-foreground px-3 py-2 whitespace-pre-line text-background">{message.body}</p>
                 </li>
               ) : message.author === "system" ? (
-                <SystemLine key={message.seq} message={message} labels={labels} />
+                <SystemLine key={message.seq} message={message} labels={labels} signInHref={signInHref} signedIn={state?.signedIn ?? false} />
+              ) : message.author === "agent" ? (
+                <li key={message.seq} className="flex flex-col gap-1">
+                  <span className="ml-9 text-xs text-muted">{agentOf(message)?.name ?? ""}</span>
+                  <div className="flex items-end gap-2">
+                    <PersonPicture person={agentOf(message)} size="size-7" />
+                    <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 whitespace-pre-line">{message.body}</p>
+                  </div>
+                </li>
               ) : (
                 <li key={message.seq} className="flex flex-col gap-2">
                   <div className="flex items-end gap-2">
@@ -481,6 +565,7 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
           onClick={() => {
             // The conversation so far in this tab, read when the chat is first opened.
             if (!loaded) void load();
+            setUnseen(false);
             setOpen(true);
           }}
           aria-expanded={false}
@@ -489,15 +574,60 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
         >
           {avatar("size-12")}
           <span className="hidden text-sm font-medium md:inline">{labels.open}</span>
+          {unseen && (
+            <span className="absolute -top-1 -right-1 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">{labels.newMessage}</span>
+          )}
         </button>
       )}
     </div>
   );
 }
 
-/** A line about the conversation itself (it ended, it was opened again), in the site's words; kinds the widget has no words for are left out. */
-function SystemLine({ message, labels }: { message: VisitorMessage; labels: ChatLabels }) {
-  const words = message.kind && message.kind in labels.lines ? labels.lines[message.kind as keyof ChatLabels["lines"]] : null;
+/** A person's name and picture as the message was written with (`data`, D216): never an email. */
+function agentOf(message: VisitorMessage): { name: string; picture: string | null } | null {
+  const data = message.data as { name?: unknown; picture?: unknown } | undefined;
+  return data && typeof data.name === "string" ? { name: data.name, picture: typeof data.picture === "string" ? data.picture : null } : null;
+}
+
+/** A person's own picture, else the first letter of their name. */
+function PersonPicture({ person, size }: { person: { name: string; picture: string | null } | null; size: string }) {
+  if (person?.picture) {
+    // eslint-disable-next-line @next/next/no-img-element -- the person's own uploaded picture
+    return <img src={person.picture} alt="" className={`${size} shrink-0 rounded-full object-cover`} />;
+  }
+  return (
+    <span aria-hidden className={`${size} flex shrink-0 items-center justify-center rounded-full bg-surface text-sm font-semibold`}>
+      {(person?.name ?? "?").slice(0, 1).toLocaleUpperCase()}
+    </span>
+  );
+}
+
+/**
+ * A line about the conversation itself (it ended, it was opened again, waiting for a person, a person joined or left, the assistant
+ * is back), in the site's words, and the card asking the customer to sign in; kinds the widget has no words for are left out.
+ */
+function SystemLine({ message, labels, signInHref, signedIn }: { message: VisitorMessage; labels: ChatLabels; signInHref?: string; signedIn: boolean }) {
+  if (message.kind === "sign_in") {
+    if (!signInHref || signedIn) return null;
+    return (
+      <li className="flex flex-col items-start gap-2 rounded-lg border border-border p-3 text-sm">
+        <p>{labels.signIn}</p>
+        <a href={signInHref} className="button-primary rounded-button px-3 py-1.5">
+          {labels.signInButton}
+        </a>
+      </li>
+    );
+  }
+  const name = (message.data as { name?: unknown } | undefined)?.name;
+  const byKind: Record<string, string> = {
+    ended: labels.lines.ended,
+    reopened: labels.lines.reopened,
+    queued: labels.lines.queued,
+    joined: labels.lines.joined.replace("{name}", typeof name === "string" ? name : ""),
+    left: labels.lines.left.replace("{name}", typeof name === "string" ? name : ""),
+    assistant_back: labels.lines.assistantBack,
+  };
+  const words = message.kind ? byKind[message.kind] : undefined;
   if (!words) return null;
   return (
     <li className="flex justify-center">

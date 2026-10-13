@@ -1,6 +1,9 @@
 import "server-only";
 
-import { INBOX_TABS, markRead, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
+import type { SupportMode } from "@/lib/support-rules";
+
+import { INBOX_TABS, deskSettings, markRead, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
+import { deskAgents } from "./support-agent";
 import type { StaffDesk } from "./support-desk";
 
 /**
@@ -35,11 +38,21 @@ export async function inboxFeed(desks: StaffDesk[], query: ReturnType<typeof inb
   return { rows, waiting };
 }
 
+/** A conversation as the inbox draws it: the conversation, who is looking (to know whether it is theirs), what they may do and to whom it can be handed. */
+export type ConversationFeed = StaffConversation & {
+  me: string;
+  canWrite: boolean;
+  /** The desk's mode: with support off nobody takes over (the chat assistant answers alone). */
+  mode: SupportMode;
+  agents: { id: string; name: string; online: boolean }[];
+};
+
 /** One conversation for staff after `after`; looking at it counts as read up to its last message. */
-export async function conversationFeed(desk: StaffDesk, id: string, after: number): Promise<StaffConversation | null> {
+export async function conversationFeed(desk: StaffDesk, id: string, after: number): Promise<ConversationFeed | null> {
   const conversation = await staffConversation(desk.desk, id, after);
-  if (conversation) await markRead(desk.desk, id, desk.account.id, conversation.messageSeq);
-  return conversation;
+  if (!conversation) return null;
+  const [, agents, settings] = await Promise.all([markRead(desk.desk, id, desk.account.id, conversation.messageSeq), deskAgents(desk), deskSettings(desk.desk)]);
+  return { ...conversation, me: desk.account.id, canWrite: desk.canWrite, mode: settings?.mode ?? "off", agents: agents.filter((a) => a.id !== desk.account.id) };
 }
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

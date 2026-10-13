@@ -7,13 +7,13 @@ import { presence } from "@/server/support";
 import { memberDesk } from "@/server/support-desk";
 import { inboxFeed } from "@/server/support-inbox";
 
-import { supportHeartbeatAction, supportPresenceAction } from "./actions";
+import { supportActAction, supportHeartbeatAction, supportPresenceAction } from "./actions";
 
 export const metadata: Metadata = { title: "Support inbox" };
 
 /**
  * A store's support inbox (D216, `docs/support.md` 2.4, step 3): every conversation with the store's customers as it happens, for
- * members who may read support. Read-only in this step: taking over and answering come with step 4.
+ * members who may read support; those who may write take conversations over, answer, hand them on or back and end them (step 4).
  */
 export default async function SupportInboxPage({ params }: PageProps<"/admin/[store]/support">) {
   const { store: slug } = await params;
@@ -30,6 +30,7 @@ export default async function SupportInboxPage({ params }: PageProps<"/admin/[st
     actions: {
       heartbeat: supportHeartbeatAction.bind(null, slug),
       presence: staff.canWrite ? supportPresenceAction.bind(null, slug) : null,
+      act: staff.canWrite ? { byStore: false, run: supportActAction.bind(null, slug) } : null,
     },
   };
   return <Inbox context={context} initial={initial} initialTab="waiting" />;

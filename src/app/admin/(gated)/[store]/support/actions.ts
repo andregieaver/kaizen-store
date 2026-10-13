@@ -2,6 +2,7 @@
 
 import { checkPermission } from "@/server/permissions";
 import { heartbeat, setPresence } from "@/server/support";
+import { agentAct, readAct, type AgentActResult } from "@/server/support-agent";
 import { memberDesk } from "@/server/support-desk";
 
 /**
@@ -23,4 +24,13 @@ export async function supportHeartbeatAction(slug: string): Promise<{ ok: boolea
   const staff = memberDesk(member);
   await heartbeat([staff.desk], staff.account.id);
   return { ok: true };
+}
+
+/** Take over, answer, note, hand over, give back, end or ask to sign in, in a conversation of the store's desk (step 4): `support:write`. */
+export async function supportActAction(slug: string, conversationId: string, raw: unknown): Promise<AgentActResult> {
+  const member = await checkPermission(slug, "support:write");
+  if (!member) return { ok: false, problem: "You do not have access to this." };
+  const act = readAct(raw);
+  if (!act) return { ok: false, problem: "That could not be done." };
+  return agentAct(memberDesk(member), conversationId, act);
 }

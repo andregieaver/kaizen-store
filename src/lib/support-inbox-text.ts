@@ -40,6 +40,8 @@ export function systemWords(kind: string | null, data: unknown): string | null {
       return "The conversation ended";
     case "reopened":
       return "The conversation was opened again";
+    case "sign_in":
+      return "Asked the customer to sign in";
     default:
       return null;
   }

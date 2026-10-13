@@ -146,3 +146,63 @@ test("a store's chat agent answers, shows products and opens the page for the vi
     await sql.end();
   }
 });
+
+/**
+ * A person takes over (D216, step 4): the widget asks the site for what is new while a conversation waits for or is with a person,
+ * and draws the person's line, name and answer, without the AI label. The site's answers are the browser's stand-ins (the take-over
+ * itself is tested in src/server/support.int.test.ts).
+ */
+test("the customer sees a person join and answer within seconds, without the AI label", async ({ page }) => {
+  const slug = `chat-person-${Date.now()}`;
+  const sql = testDb();
+  try {
+    const [access] = await sql`
+      insert into commerce.access_requests (email, name, store_name)
+      values (${`${slug}@example.com`}, 'Siri', 'Siris Butikk') returning id`;
+    const [{ id: storeId }] = await sql`select commerce.approve_access_request(${access.id}, ${slug}, 'Siris Butikk', null) as id`;
+    const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!;
+    await sql`
+      insert into commerce.ai_providers (store_id, provider, api_key_encrypted, api_key_hint, text_model)
+      values (${storeId}, 'openai', ${encryptSecret("sk-test", key)}, '…test', 'text-model')`;
+    await sql`insert into commerce.chat_agents (store_id, enabled, name, occupation) values (${storeId}, true, 'Ingrid', 'Kundeservice')`;
+
+    const ref = { id: "0b5c1d2e-3f40-4a51-8b62-7c83d94ea5f6", token: "tok_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123" };
+    const base = { status: "open", mode: "ai_first", queue: null, available: true, emailLeft: 0, signedIn: false, emailFollowup: false };
+    const at = "2026-10-13T12:00:00.000Z";
+    await page.route("**/api/chat", async (route) => {
+      const body = route.request().postDataJSON() as { message: string };
+      await route.fulfill({
+        json: { conversation: { ...ref, channel: "sc:abc" }, state: { ...base, handler: "queue", agent: null }, messages: [{ seq: 1, author: "customer", body: body.message, at }, { seq: 2, author: "system", body: "", kind: "queued", at }] },
+      });
+    });
+    let polled = 0;
+    await page.route("**/api/chat/feed", async (route) => {
+      polled += 1;
+      await route.fulfill({
+        json: {
+          state: { ...base, handler: "human", agent: { name: "Kari", picture: null } },
+          messages: [
+            { seq: 3, author: "system", body: "", kind: "joined", data: { name: "Kari" }, at },
+            { seq: 4, author: "agent", body: "Hei! Jeg ser på bestillingen din nå.", data: { name: "Kari", picture: null }, at },
+          ],
+        },
+      });
+    });
+
+    await page.goto(`/s/${slug}`);
+    await page.getByRole("button", { name: /Chat med oss/ }).click();
+    const chat = page.getByRole("dialog");
+    await chat.getByRole("textbox", { name: "Skriv en melding" }).fill("Hvor er pakken min?");
+    await chat.getByRole("textbox", { name: "Skriv en melding" }).press("Enter");
+    await expect(chat.getByText("Venter på en person.")).toBeVisible();
+    // Waiting for a person, the widget asks every 3 seconds: the person's line and answer are there within 5.
+    await expect(chat.getByText("Kari ble med i samtalen.")).toBeVisible({ timeout: 5000 });
+    await expect(chat.getByText("Hei! Jeg ser på bestillingen din nå.")).toBeVisible();
+    expect(polled).toBeGreaterThan(0);
+    // The header is the person's now, never labelled AI.
+    await expect(chat.locator("header")).toContainText("Kari");
+    await expect(chat.locator("header")).not.toContainText("AI-assistent");
+  } finally {
+    await sql.end();
+  }
+});

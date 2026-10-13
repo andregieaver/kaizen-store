@@ -10,6 +10,7 @@ import { getCustomer } from "./customers";
 import {
   SupportError,
   addMessage,
+  agentIdentity,
   channelOf,
   claimForCustomer,
   deskSettings,
@@ -65,7 +66,9 @@ export async function visitorPlace(raw: unknown, ref: { id: string; token: strin
 
 /** The state and the messages after `after`, as every visitor route answers. */
 export async function visitorReply(desk: Desk, settings: DeskSettings, conversation: Conversation, after: number, signedIn: boolean, extra: Partial<VisitorReply> = {}): Promise<VisitorReply> {
-  return { ...extra, state: visitorState(conversation, settings, signedIn), messages: await visitorFeed(desk, conversation.id, after) };
+  const withPerson = conversation.status === "open" && conversation.handler === "human" && conversation.assigneeId;
+  const [messages, agent] = await Promise.all([visitorFeed(desk, conversation.id, after), withPerson ? agentIdentity(desk, conversation.assigneeId!, settings) : Promise.resolve(null)]);
+  return { ...extra, state: visitorState(conversation, settings, signedIn, agent), messages };
 }
 
 /**
@@ -110,8 +113,9 @@ export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "
     if (error instanceof SupportError) return fail(409, m.chat.sorry);
     throw error;
   }
-  // Support off or the AI first: the agent answers (people-only desks wait for a person, step 5).
-  const turn = settings.mode === "people" ? { reply: null } : await runSupportTurn(desk, context, conversation.id, { path: input.path, signals: input.signals });
+  // The AI answers only while it has the conversation (support off or the AI first); with a person or in the queue the message waits for them.
+  const current = (await visitorConversation(desk, { id: conversation.id, token: token ?? input.conversation!.token })) ?? conversation;
+  const turn = settings.mode !== "people" && current.handler === "ai" ? await runSupportTurn(desk, context, conversation.id, { path: input.path, signals: input.signals }) : { reply: null };
   const fresh = (await visitorConversation(desk, { id: conversation.id, token: token ?? input.conversation!.token })) ?? conversation;
   return visitorReply(desk, settings, fresh, after, customerId !== null, {
     conversation: { id: conversation.id, ...(token ? { token } : {}), channel: channelOf(conversation) },

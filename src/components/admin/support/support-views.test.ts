@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { agoWords, handlerWords, systemWords, toneWords } from "@/lib/support-inbox-text";
 import type { InboxRow, StaffConversation } from "@/server/support";
 
+import { availableActs, ConversationActions } from "./conversation-actions";
 import { ConversationList } from "./conversation-list";
 import { ConversationContext, ConversationView } from "./conversation-view";
 import { conversationHref } from "./desk-context";
@@ -143,5 +144,42 @@ describe("the conversation (C19)", () => {
     expect(out).toContain("Demo store");
     expect(out).toContain("/s/demo/p/lamp");
     expect(out).toContain("nb-NO");
+  });
+});
+
+describe("what a person may do with a conversation (step 4)", () => {
+  const base = { status: "open" as const, handler: "ai" as const, assignee: null, me: "me", canWrite: true, mode: "ai_first" as const, store: { slug: "demo", name: "Demo" }, signedIn: false, source: "site" as const };
+
+  it("offers Take over while the AI or the queue has it, and the rest once it is yours", () => {
+    expect(availableActs(base)).toMatchObject({ claim: true, reply: false, note: true, handBack: false, why: null });
+    expect(availableActs({ ...base, handler: "queue" }).claim).toBe(true);
+    const mine = availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" } });
+    expect(mine).toMatchObject({ claim: false, reply: true, transfer: true, end: true, handBack: true, askSignIn: true });
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, mode: "people" }).handBack).toBe(false);
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, signedIn: true }).askSignIn).toBe(false);
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "me", name: "Me" }, store: null }).askSignIn).toBe(false);
+  });
+
+  it("says who has it, and why nothing can be done", () => {
+    expect(availableActs({ ...base, handler: "human", assignee: { id: "ola", name: "Ola" } })).toMatchObject({ claim: false, reply: false, note: true, why: "Ola has this conversation." });
+    expect(availableActs({ ...base, mode: "off" })).toMatchObject({ claim: false, note: true, why: expect.stringContaining("switched off") });
+    expect(availableActs({ ...base, canWrite: false })).toMatchObject({ note: false, why: expect.stringContaining("not answer") });
+    expect(availableActs({ ...base, status: "ended" })).toMatchObject({ claim: false, reply: false, why: "This conversation has ended." });
+  });
+
+  it("draws the buttons and a composer that says when a text is an internal note", () => {
+    const feed = { ...conversation({ handler: "human", assignee: { id: "me", name: "Me" } }), me: "me", canWrite: true, mode: "ai_first" as const, agents: [{ id: "ola", name: "Ola", online: true }] };
+    const out = html(h(ConversationActions, { conversation: feed, act: async () => ({ ok: true as const }), onDone: () => {} }));
+    expect(out).toContain("Hand back to the AI");
+    expect(out).toContain("Transfer");
+    expect(out).toContain("Back to the queue");
+    expect(out).toContain("Ola");
+    expect(out).toContain("Ask to sign in");
+    expect(out).toContain("Reply to the customer");
+    expect(out).toContain("Internal note");
+    const watching = html(h(ConversationActions, { conversation: { ...feed, handler: "ai", assignee: null }, act: async () => ({ ok: true as const }), onDone: () => {} }));
+    expect(watching).toContain("Take over");
+    expect(watching).toContain("Internal note (only your team sees it)");
+    expect(watching).not.toContain("Reply to the customer");
   });
 });

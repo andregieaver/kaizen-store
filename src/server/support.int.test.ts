@@ -353,3 +353,114 @@ describe("the inbox at three levels sees only its desks (C15, step 3)", () => {
     expect(await support.waitingCount([desk])).toBe(0);
   });
 });
+
+describe("a person takes over, answers and hands back (C4, C5, C6, step 4)", () => {
+  async function setMode(storeId: string, mode: string) {
+    await db().execute(sql`
+      insert into commerce.support_settings (store_id, mode) values (${storeId}::uuid, ${mode})
+      on conflict on constraint support_settings_store_key do update set mode = excluded.mode
+    `);
+  }
+
+  async function agentDesk(name: string) {
+    const s = `${name}-${run}`;
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${s}@example.com`}, 'T', 'T') returning id`);
+    const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${s}, ${name}, null) as id`);
+    const [owner] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`${s}@example.com`}`);
+    await db().execute(sql`update commerce.accounts set name = 'Kari Nordmann' where id = ${String(owner.id)}::uuid`);
+    const [second] = await db().execute<Row>(sql`insert into commerce.accounts (email, name) values (${`ola-${s}@example.com`}, 'Ola Hansen') returning id`);
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role) values (${String(created.id)}::uuid, ${String(second.id)}::uuid, 'admin')`);
+    const store = { id: String(created.id), slug: s, name };
+    type Staff = import("./support-desk").StaffDesk;
+    const staff = (id: string, email: string): Staff => ({ desk: systemDesk(store.id), store, account: { id, email } as unknown as Staff["account"], canWrite: true });
+    return { store, kari: staff(String(owner.id), String(owner.email)), ola: staff(String(second.id), `ola-${s}@example.com`) };
+  }
+
+  it("lets one person take over, drops the AI's late answer, shows the customer who joined and what they wrote, and keeps notes from them", async () => {
+    const { agentAct } = await import("./support-agent");
+    const { store, kari, ola } = await agentDesk("handover");
+    await setMode(store.id, "ai_first");
+    const id = await (async () => {
+      const [c] = await db().execute<Row>(sql`insert into commerce.support_conversations (store_id, source, handler, token_hash, locale) values (${store.id}::uuid, 'site', 'ai', ${`t-${run}`}, 'en') returning id`);
+      return String(c.id);
+    })();
+    await support.addMessage(systemDesk(store.id), id, "customer", null, "Where is my parcel?");
+
+    expect(await agentAct(kari, id, { kind: "claim" })).toEqual({ ok: true });
+    // A second person is told who has it (C6).
+    expect(await agentAct(ola, id, { kind: "claim" })).toEqual({ ok: false, problem: "Kari Nordmann has this conversation now." });
+    // The AI's answer that was on its way is dropped (C4).
+    expect(await support.addMessage(systemDesk(store.id), id, "ai", null, "Late answer")).toBeNull();
+    // Only the one who has it answers.
+    expect(await agentAct(ola, id, { kind: "reply", body: "Hi from Ola" })).toEqual({ ok: false, problem: "This conversation is not yours to answer." });
+    expect(await agentAct(kari, id, { kind: "reply", body: "I'll look it up." })).toEqual({ ok: true });
+    expect(await agentAct(ola, id, { kind: "note", body: "VIP customer" })).toEqual({ ok: true });
+
+    // The customer sees who joined and the answer with the person's first name, never a note (C5).
+    const feed = await support.visitorFeed(systemDesk(store.id), id, 0);
+    expect(feed.map((m) => m.kind ?? m.author)).toEqual(["customer", "joined", "agent"]);
+    expect(feed[1].data).toEqual({ name: "Kari" });
+    expect(feed[2]).toMatchObject({ body: "I'll look it up.", data: { name: "Kari", picture: null } });
+    expect(JSON.stringify(feed)).not.toContain("VIP");
+    const row = (await db().execute<Row>(sql`select handler, assignee_id from commerce.support_conversations where id = ${id}::uuid`))[0];
+    expect(row).toMatchObject({ handler: "human", assignee_id: kari.account.id });
+
+    // The activity log says who took it over, under Support.
+    const [logged] = await db().execute<Row>(sql`select area from commerce.audit_log where action = 'support.claimed' and target_id = ${id}`);
+    expect(logged.area).toBe("support");
+  });
+
+  it("hands over to a person of the desk or the queue, gives back to the AI, and ends", async () => {
+    const { agentAct } = await import("./support-agent");
+    const { store, kari, ola } = await agentDesk("transfer");
+    await setMode(store.id, "ai_first");
+    const [c] = await db().execute<Row>(sql`insert into commerce.support_conversations (store_id, source, handler, token_hash, locale) values (${store.id}::uuid, 'site', 'ai', ${`u-${run}`}, 'en') returning id`);
+    const id = String(c.id);
+    await support.addMessage(systemDesk(store.id), id, "customer", null, "Hello");
+    await agentAct(kari, id, { kind: "claim" });
+
+    // Not to someone who does not answer on the desk.
+    expect(await agentAct(kari, id, { kind: "transfer", target: ola.account.id })).toEqual({ ok: false, problem: "That person does not answer on this desk." });
+    await support.setPresence([systemDesk(store.id)], ola.account.id, "online");
+    expect(await agentAct(kari, id, { kind: "transfer", target: ola.account.id })).toEqual({ ok: true });
+    expect(await agentAct(ola, id, { kind: "transfer", target: null })).toEqual({ ok: true });
+    expect((await db().execute<Row>(sql`select handler from commerce.support_conversations where id = ${id}::uuid`))[0].handler).toBe("queue");
+    await agentAct(ola, id, { kind: "claim" });
+    expect(await agentAct(ola, id, { kind: "hand_back" })).toEqual({ ok: true });
+    const lines = (await support.visitorFeed(systemDesk(store.id), id, 0)).filter((m) => m.author === "system").map((m) => m.kind);
+    expect(lines).toEqual(["joined", "joined", "queued", "joined", "left", "assistant_back"]);
+
+    await agentAct(kari, id, { kind: "claim" });
+    expect(await agentAct(kari, id, { kind: "ask_sign_in" })).toEqual({ ok: true });
+    expect(await agentAct(kari, id, { kind: "end" })).toEqual({ ok: true });
+    expect(await agentAct(kari, id, { kind: "reply", body: "Too late" })).toEqual({ ok: false, problem: "This conversation has ended." });
+    expect((await db().execute<Row>(sql`select count(*)::int as n from commerce.audit_log where target_id = ${id} and action like 'support.%'`))[0].n).toBe(7);
+  });
+
+  it("lets nobody take over while support is off, and someone who only reads do nothing", async () => {
+    const { agentAct } = await import("./support-agent");
+    const { store, kari } = await agentDesk("off-desk");
+    await setMode(store.id, "off");
+    const [c] = await db().execute<Row>(sql`insert into commerce.support_conversations (store_id, source, handler, token_hash, locale) values (${store.id}::uuid, 'site', 'ai', ${`v-${run}`}, 'en') returning id`);
+    expect(await agentAct(kari, String(c.id), { kind: "claim" })).toEqual({ ok: false, problem: "Support is switched off for this desk." });
+    expect(await agentAct({ ...kari, canWrite: false }, String(c.id), { kind: "note", body: "x" })).toEqual({ ok: false, problem: "You can read this desk's conversations but not answer them." });
+  });
+
+  it("does not ask the AI while a person has the conversation", async () => {
+    const { agentAct } = await import("./support-agent");
+    await setMode(storeId, "ai_first");
+    const sent = fakeModel(["Hei!"]);
+    const first = ok(await turn("Hei"));
+    const ref = { id: first.conversation!.id, token: first.conversation!.token! };
+    const [owner] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${storeId}::uuid and role = 'owner' limit 1`);
+    type Staff = import("./support-desk").StaffDesk;
+    const kari: Staff = { desk: systemDesk(storeId), store: { id: storeId, slug, name: "Support test" }, account: { id: String(owner.account_id), email: "x@example.com" } as unknown as Staff["account"], canWrite: true };
+    expect(await agentAct(kari, ref.id, { kind: "claim" })).toEqual({ ok: true });
+    const before = sent.length;
+    const next = ok(await turn("Are you there?", ref, 2));
+    expect(sent.length).toBe(before);
+    expect(next.messages.map((m) => m.kind ?? m.author)).toEqual(["joined", "customer"]);
+    expect(next.state).toMatchObject({ handler: "human", agent: { name: expect.any(String) } });
+    await setMode(storeId, "off");
+  });
+});

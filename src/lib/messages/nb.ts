@@ -885,7 +885,17 @@ export const nb: Messages = {
     full: "Samtalen har blitt lang. Start en ny for å fortsette.",
     // legal: needs review (D216, docs/support.md 8): how long a conversation is kept while the chat assistant answers alone.
     kept: "Vi tar vare på samtalen i ett døgn etter at den er avsluttet.",
-    lines: { ended: "Samtalen er avsluttet.", reopened: "Samtalen ble åpnet igjen." },
+    lines: {
+      ended: "Samtalen er avsluttet.",
+      reopened: "Samtalen ble åpnet igjen.",
+      queued: "Venter på en person.",
+      joined: (name: string) => `${name} ble med i samtalen.`,
+      left: (name: string) => `${name} forlot samtalen.`,
+      assistantBack: "Assistenten er tilbake.",
+    },
+    signIn: "Logg inn, så kan vi se på bestillingene dine.",
+    signInButton: "Logg inn",
+    newMessage: "Ny melding",
   },
   booking: {
     changeTime: "Endre tid",

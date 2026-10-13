@@ -1,5 +1,6 @@
 import { t } from "@/lib/i18n";
 import type { Market } from "@/lib/markets";
+import { marketPath } from "@/lib/paths";
 import { unitLabelsOf } from "@/lib/unit-price-text";
 import { chatWidgetFor } from "@/server/chat-agent";
 import type { Store } from "@/server/stores";
@@ -28,7 +29,17 @@ function chatLabels(lang: string, locale: string, name: string, greeting: Record
     restart: c.restart,
     conversation: c.conversation,
     kept: c.kept,
-    lines: { ended: c.lines.ended, reopened: c.lines.reopened },
+    lines: {
+      ended: c.lines.ended,
+      reopened: c.lines.reopened,
+      queued: c.lines.queued,
+      joined: c.lines.joined("{name}"),
+      left: c.lines.left("{name}"),
+      assistantBack: c.lines.assistantBack,
+    },
+    signIn: c.signIn,
+    signInButton: c.signInButton,
+    newMessage: c.newMessage,
     vatIncluded: m.vatIncluded,
     vatExcluded: m.vatExcluded,
     fromPrice: m.fromPrice,
@@ -44,6 +55,7 @@ export async function StoreChat({ store, market }: { store: Store; market: Marke
   return (
     <ChatWidget
       site={{ store: store.slug, market: market.slug }}
+      signInHref={marketPath(store.slug, market.slug, "/account")}
       locale={market.locale}
       agent={agent}
       labels={chatLabels(market.lang, market.locale, agent.name, agent.greeting)}

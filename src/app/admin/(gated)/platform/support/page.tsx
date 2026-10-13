@@ -6,7 +6,7 @@ import { presence } from "@/server/support";
 import { kaizenDesk } from "@/server/support-desk";
 import { inboxFeed } from "@/server/support-inbox";
 
-import { kaizenSupportHeartbeatAction, kaizenSupportPresenceAction } from "./actions";
+import { kaizenSupportActAction, kaizenSupportHeartbeatAction, kaizenSupportPresenceAction } from "./actions";
 
 export const metadata: Metadata = { title: "Support inbox" };
 
@@ -24,7 +24,7 @@ export default async function PlatformSupportPage() {
     stores: [],
     canWrite: true,
     presence: mine.status,
-    actions: { heartbeat: kaizenSupportHeartbeatAction, presence: kaizenSupportPresenceAction },
+    actions: { heartbeat: kaizenSupportHeartbeatAction, presence: kaizenSupportPresenceAction, act: { byStore: false, run: kaizenSupportActAction } },
   };
   return <Inbox context={context} initial={initial} initialTab="waiting" />;
 }

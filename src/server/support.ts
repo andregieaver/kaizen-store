@@ -19,6 +19,8 @@ import {
 import { REFUSALS, type Refusal, type SupportEvent } from "@/lib/support-state";
 import type { ConversationRef, VisitorMessage, VisitorMessageData, VisitorState } from "@/lib/support-visitor";
 
+import { avatarPictureUrl } from "@/lib/avatar";
+
 import type { Desk } from "./support-desk";
 
 type Row = Record<string, unknown>;
@@ -73,6 +75,8 @@ export type DeskSettings = {
   endAfterMinutes: number;
   emailFollowup: boolean;
   channelKey: string;
+  /** How a person is named to customers: their first name, or the desk's name (D216, 2.10). */
+  agentNaming: "first_name" | "desk";
 };
 
 /** The desk's settings, made on its first conversation with support off (S5): the chat agent alone, as before. */
@@ -87,7 +91,7 @@ export async function ensureDesk(desk: Desk): Promise<DeskSettings> {
 /** The desk's settings, or null before its first conversation. */
 export async function deskSettings(desk: Desk): Promise<DeskSettings | null> {
   const [row] = await db().execute<Row>(sql`
-    select mode, transcript_days, end_after_minutes, email_followup, channel_key from commerce.support_settings where ${deskIs(desk, sql`store_id`)}
+    select mode, transcript_days, end_after_minutes, email_followup, channel_key, agent_naming from commerce.support_settings where ${deskIs(desk, sql`store_id`)}
   `);
   if (!row) return null;
   return {
@@ -96,6 +100,7 @@ export async function deskSettings(desk: Desk): Promise<DeskSettings | null> {
     endAfterMinutes: Number(row.end_after_minutes),
     emailFollowup: Boolean(row.email_followup),
     channelKey: String(row.channel_key),
+    agentNaming: row.agent_naming === "desk" ? "desk" : "first_name",
   };
 }
 
@@ -111,6 +116,7 @@ export type Conversation = {
   endedAt: string | null;
   channelKey: string;
   locale: string;
+  assigneeId: string | null;
 };
 
 function toConversation(row: Row): Conversation {
@@ -124,10 +130,11 @@ function toConversation(row: Row): Conversation {
     endedAt: row.ended_at ? iso(row.ended_at) : null,
     channelKey: String(row.channel_key),
     locale: String(row.locale),
+    assigneeId: row.assignee_id ? String(row.assignee_id) : null,
   };
 }
 
-const CONVERSATION_COLUMNS = sql`id, store_id, status, handler, customer_id, message_seq, ended_at, channel_key, locale`;
+const CONVERSATION_COLUMNS = sql`id, store_id, status, handler, customer_id, message_seq, ended_at, channel_key, locale, assignee_id`;
 
 /** A new conversation on the visitor's site, started as the desk's mode says; its token is given once and kept only as a hash. */
 export async function openConversation(
@@ -228,13 +235,13 @@ export async function markSeen(desk: Desk, conversationId: string): Promise<void
   await db().execute(sql`update commerce.support_conversations set visitor_seen_at = now() where id = ${conversationId}::uuid and ${deskIs(desk, sql`store_id`)}`);
 }
 
-/** The conversation's state as the visitor's widget draws it. */
-export function visitorState(conversation: Pick<Conversation, "status" | "handler">, settings: DeskSettings, signedIn: boolean): VisitorState {
+/** The conversation's state as the visitor's widget draws it; `agent` is the person who has it, as customers see them. */
+export function visitorState(conversation: Pick<Conversation, "status" | "handler">, settings: DeskSettings, signedIn: boolean, agent: AgentIdentity | null = null): VisitorState {
   return {
     status: conversation.status,
     handler: conversation.handler,
     mode: settings.mode,
-    agent: null,
+    agent: conversation.status === "open" && conversation.handler === "human" ? agent : null,
     queue: null,
     available: true,
     emailLeft: 0,
@@ -577,6 +584,34 @@ export async function markRead(desk: Desk, conversationId: string, accountId: st
     insert into commerce.support_reads (conversation_id, account_id, last_read_seq) values (${conversationId}::uuid, ${accountId}::uuid, ${Math.max(0, Math.floor(seq))})
     on conflict (conversation_id, account_id) do update set last_read_seq = greatest(commerce.support_reads.last_read_seq, excluded.last_read_seq)
   `);
+}
+
+// How a person is shown to customers ----------------------------------------------------------------------------------------------
+
+/** A person as customers see them (2.4, S11): a name (never an email) and their own uploaded picture, or none. */
+export type AgentIdentity = { name: string; picture: string | null };
+
+/**
+ * The name and picture customers see for a person of the desk: the name they chose for support, else their first name (or the
+ * desk's name when the desk says so), never their email; the picture only if they uploaded one (a Gravatar would be looked up from
+ * their email, so it is never shown to customers).
+ */
+export async function agentIdentity(desk: Desk, accountId: string, settings?: Pick<DeskSettings, "agentNaming"> | null): Promise<AgentIdentity> {
+  const [row] = await db().execute<Row>(sql`
+    select a.name, a.avatar_path, ag.display_name, s.name as store_name,
+      (select agent_naming from commerce.support_settings ss where ${deskIs(desk, sql`ss.store_id`)}) as naming
+    from commerce.accounts a
+    left join commerce.support_agents ag on ag.account_id = a.id and ${deskIs(desk, sql`ag.store_id`)}
+    left join commerce.stores s on s.id = ${desk.storeId}::uuid
+    where a.id = ${accountId}::uuid
+  `);
+  const deskName = row?.store_name ? String(row.store_name) : "Kaizen";
+  const naming = settings?.agentNaming ?? (row?.naming === "desk" ? "desk" : "first_name");
+  const first = String(row?.name ?? "").trim().split(/\s+/)[0] ?? "";
+  const name = row?.display_name ? String(row.display_name) : naming === "desk" ? deskName : first || deskName;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const picture = naming !== "desk" && row?.avatar_path && supabaseUrl ? avatarPictureUrl(supabaseUrl, String(row.avatar_path)) : null;
+  return { name: name.slice(0, 40), picture };
 }
 
 // Presence ------------------------------------------------------------------------------------------------------------------------

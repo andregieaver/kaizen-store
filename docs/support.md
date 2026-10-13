@@ -1359,3 +1359,30 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   Kaizen's desk's waiting count.
 - **Tone tokens** `--tone-1` … `--tone-5` are in `admin.css` for light and dark; a tone is always shown with its band in words.
 - Migrations: `20261013175335_support_area`, `20261013175347_support_area_rules`.
+
+**Step 4 (13 October 2026).**
+
+- **One action per level** (`supportActAction` for a store, bound to its slug, `support:write`; `ownerSupportActAction`, which checks
+  `support:write` in the conversation's store again; `kaizenSupportActAction` for platform admins), each calling `agentAct()` in
+  `src/server/support-agent.ts` with an act checked by `readAct()`. `SupportDeskContext.actions.act` carries it (`byStore` at the
+  owner's level). The database decides, and refusals come back in plain words; "Someone else has this conversation" names who.
+- **Audited**: `support.claimed`, `support.transferred`, `support.handed_back`, `support.ended` (area Support, target the
+  conversation). Replies and notes are not audited: the conversation is their record.
+- **How a person is shown to customers** (`agentIdentity()`): the name they set for support, else their first name (or the desk's
+  name when `agent_naming` is `desk`), never an email; the picture only if they uploaded one — a Gravatar is looked up from the
+  email, so it is never shown to customers. It is written into the message's `data` when the message is sent and into the state's
+  `agent`; the joined, left and assistant-back lines carry the name.
+- **Transfer** goes to a person with presence on the desk (online or away, marked so) or back to the queue; anyone else is refused.
+- **Ask to sign in** writes a `sign_in` system line; the widget draws it as a card with a button to the store's account page
+  (`marketPath(…, "/account")`, which signed out is the sign-in form). The code-by-email card in the chat itself (2.1) comes with
+  step 9; the conversation is tied to the customer on their next message after signing in.
+- **The AI is asked only while it has the conversation**: with a person or in the queue the customer's message waits for them (the
+  database would drop a late answer anyway, but no model is called).
+- **With support off** (the only mode until step 5's settings page; set by hand in the database to try the rest) nobody takes over:
+  the inbox says so and allows only notes.
+- **The widget asks for what is new** while a conversation is open (3 s waiting or with a person, 10 s with the AI, 15 s closed or
+  hidden), draws a person's name and picture instead of the AI persona, never with the AI label, and marks its closed button
+  "New message" when a person wrote. New texts in nb, sv, da and en (`m.chat.lines.*`, `signIn`, `signInButton`, `newMessage`).
+- **Tests**: I `support.int.test.ts` (C4, C5, C6, transfer, hand back, end, support off, no AI call while a person has it); V
+  `availableActs()` and the buttons; E `chat.spec.ts` (a person joins and answers within 5 s, the header without the AI label).
+  `e2e/support.spec.ts` against the real routes starts in step 5, when a desk in mode `people` draws the widget without AI.

@@ -881,7 +881,17 @@ export const sv: Messages = {
     full: "Konversationen har blivit lång. Starta en ny för att fortsätta.",
     // legal: needs review (D216, docs/support.md 8): how long a conversation is kept while the chat assistant answers alone.
     kept: "Vi sparar konversationen i ett dygn efter att den har avslutats.",
-    lines: { ended: "Konversationen är avslutad.", reopened: "Konversationen öppnades igen." },
+    lines: {
+      ended: "Konversationen är avslutad.",
+      reopened: "Konversationen öppnades igen.",
+      queued: "Väntar på en person.",
+      joined: (name: string) => `${name} gick med i konversationen.`,
+      left: (name: string) => `${name} lämnade konversationen.`,
+      assistantBack: "Assistenten är tillbaka.",
+    },
+    signIn: "Logga in så att vi kan titta på dina beställningar.",
+    signInButton: "Logga in",
+    newMessage: "Nytt meddelande",
   },
   booking: {
     changeTime: "Ändra tid",
