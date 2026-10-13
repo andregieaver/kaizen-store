@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 
+import { withSpokenTurn } from "@/lib/chat";
 import { t } from "@/lib/i18n";
 import { AiError, canSpeak, speakText, transcribeAudio } from "@/server/ai";
 import { answer, chatContext, fail, sameSite, takeTurn } from "@/server/chat-route";
@@ -34,8 +35,7 @@ export async function POST(request: Request) {
   }
 
   // The conversation so far, with a stand-in for what was said until it is written down.
-  const history = Array.isArray(body.messages) ? body.messages : [];
-  const context = await chatContext({ ...body, messages: [...history, { role: "user", content: "…" }] });
+  const context = await chatContext({ ...body, messages: withSpokenTurn(body.messages) });
   if (context instanceof Response) return context;
   const m = t(context.lang);
   if (!context.agent.voice || !canSpeak(context.connection)) return fail(404, m.chat.sorry);
