@@ -55,6 +55,7 @@ import { activeFieldGroups, fieldsTag, getFieldData, listFieldGroups, pageFacts,
 import { listIntegrations, postToSlack } from "./integrations";
 import { ownedStores, usageRows } from "./ai-usage";
 import { analyticsAlertsTool, analyticsOverviewTool, explainChangeTool } from "./analytics-tools";
+import { listSupportConversationsTool, supportOverviewTool } from "./support-manager-tools";
 import { NOT_EDIT_REFUND } from "./analytics-sql";
 import { ordersToSend, pickListData } from "./pick-list";
 import { textList } from "./sql-arrays";
@@ -1957,6 +1958,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   analytics_overview: analyticsOverviewTool,
   explain_change: explainChangeTool,
   analytics_alerts: analyticsAlertsTool,
+  support_overview: supportOverviewTool,
+  list_support_conversations: listSupportConversationsTool,
   list_data_jobs: listDataJobsTool,
   explain_import_problems: explainImportProblemsTool,
   redirect_overview: redirectOverviewTool,

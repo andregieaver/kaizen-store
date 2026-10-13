@@ -79,6 +79,11 @@ const slug = z
 
 export const PLATFORM_TOOLS = [
   tool(
+    "support_overview",
+    "Kaizen's own support desk in figures (waiting now, with the AI or a person, tone alerts, today, and the last 30 days: the AI alone, hand-overs, first answer, missed, ratings, topics), and the stores' support in totals over the last 30 days: how many stores have it, conversations, how many wait now and the busiest stores, counts and rates only. A store's conversations are its own: never ask for or describe one. Rates and medians need 10 conversations; repeat what is missing when it says so.",
+    z.object({}),
+  ),
+  tool(
     "platform_overview",
     "Kaizen at a glance: stores by status, stores on a plan, access requests waiting, plans, and stores with their own AI.",
     z.object({}),
@@ -184,6 +189,8 @@ export const PLATFORM_TOOLS_BY_NAME: Record<string, OwnerTool> = Object.fromEntr
 
 /** What the person sees while a tool runs. */
 export const TOOL_WORDS: Record<string, string> = {
+  support_overview: "Looking at support",
+  list_support_conversations: "Looking at support conversations",
   store_overview: "Looking at the store",
   sales_summary: "Adding up sales",
   list_orders: "Looking at orders",

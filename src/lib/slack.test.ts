@@ -113,3 +113,13 @@ describe("Slack messages (D101)", () => {
     expect(slackMessage({ event: "something.else", store }, "nb-NO")).toBeNull();
   });
 });
+
+describe("someone waiting in support (D216, step 14)", () => {
+  it("says how many wait and links to the inbox, never who", () => {
+    const message = slackMessage({ event: "support.waiting", store, support: { waiting: 2, admin_url: "https://kaizenstore.cloud/admin/kaffe/support" } }, "nb-NO")!;
+    expect(text(message)).toBe("Support: 2 customers are waiting for a person");
+    expect(all(message)).toContain("https://kaizenstore.cloud/admin/kaffe/support");
+    expect(text(slackMessage({ event: "support.waiting", store, support: { waiting: 1 } }, "nb-NO"))).toBe("Support: 1 customer is waiting for a person");
+    expect(slackMessage({ event: "support.waiting", store }, "nb-NO")).toBeNull();
+  });
+});

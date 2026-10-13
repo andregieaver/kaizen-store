@@ -1702,3 +1702,35 @@ and push to `main`; watch CI; for a migration, record its version and check the 
 - **Tests**: U `support-replies.test.ts` (placeholders, the picker's matching and insertion, shortcuts), `support-translate.test.ts`;
   I `support-helpers.int.test.ts` (the desk's own replies and shortcuts, filled in for a conversation, a translation writes nothing
   until the person sends it and then carries the mark); E `support.spec.ts` (the widget shows the mark on a translated reply only).
+
+**Step 14 (14 October 2026).**
+
+- **Figures first**: `docs/analytics.md` has a *Support* section with every definition; `src/lib/support-reports.ts`
+  (`supportReport()`, `duration()`, `rate()`, words for the AI manager) is the one implementation, from one row per conversation
+  read by `src/server/support-reports.ts` (`deskReport()`, `supportNow()`) with the summary's title, text and follow-up taken out in
+  SQL. Rates and medians from `MIN_SUPPORT_SAMPLE`; fewer shows "4 of the 10 needed". A period has no comparison yet.
+- **A conversation keeps its desk's mode at the start** (`support_conversations.desk_mode`, set by the trigger
+  `support_conversations_desk_mode`, never changed after): the AI-alone share and the hand-over rate are of conversations started
+  with the AI first, which the desk's current mode cannot say. Conversations from before the migration are *mode not recorded*.
+  Migrations `20261013233028_support_desk_mode` (the column) and `20261013233036_support_desk_mode_rules` (the trigger); no backfill.
+- **The partner's drafts**: *Use* in the partner's panel marks the composer, and the reply it sends carries `tools =
+  ["partner_draft"]` (staff-only: the visitor's feed never reads `tools`); the inbox shows *Started from the partner's draft*. Counted
+  per desk only.
+- **Pages**: `/admin/{store}/support/reports` (`support:read`), `/admin/platform/support/reports` (Kaizen's desk, Europe/Oslo days)
+  and `/admin/platform/support/stores` (each store's mode, waiting now and the period's counts and rates, from
+  `src/server/support-platform.ts`, which reads only the counted columns; `support-platform.scan.test.ts`), with the analytics
+  period picker (no comparison). `ReportsView` and `StoreTotalsView` are presentational (`reports-view.test.ts`). The owner level
+  has no combined report.
+- **The AI manager** (`src/server/support-manager-tools.ts`, the desk from `managerDesk()` after the tool's own permission check):
+  owner tools `support_overview` and `list_support_conversations` (`support:read`, read-only, ungated; titles, summaries, status and
+  links, never a transcript), and the platform tool `support_overview` (Kaizen's desk and the stores' totals, counts only).
+- **The control center**: "{store}: Support: {n} waiting for a person." (urgent, to the inbox) for the stores where the member holds
+  `support:read` (`StoreFigures.supportWaiting`).
+- **Integrations**: event `support.waiting`, queued in the same statement that marks the waiting alert (once per conversation per
+  time it enters the queue, store desks only); its payload is the number waiting now and the inbox's address, never the
+  conversation, a name, an email or words; Slack says "Support: n customers are waiting for a person" with a link.
+- **Parity**: `ai.ai-customer-support-chat-agent` and `platform.merchant-support-channels` have new gaps and evidence and stay
+  partial (the first waits for section 8's legal review; the second is bucket D by rule).
+- **Tests**: U `support-reports.test.ts`, `control-center.test.ts`, `slack.test.ts`; V `reports-view.test.ts`; P the mode kept at
+  the start (`src/db/support.test.ts`); I `support-reports.int.test.ts` (seeded conversations, the tools, the queued event and its
+  payload); S `support-platform.scan.test.ts`.

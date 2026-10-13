@@ -77,7 +77,9 @@ function MessageItem({ message, toneMeasured, translate }: { message: StaffMessa
       >
         {message.body}
       </p>
-      {message.tools.length > 0 && <span className="text-xs text-muted">Used: {message.tools.join(", ")}</span>}
+      {message.author === "agent"
+        ? message.tools.includes("partner_draft") && <span className="text-xs text-muted">Started from the partner&apos;s draft</span>
+        : message.tools.length > 0 && <span className="text-xs text-muted">Used: {message.tools.join(", ")}</span>}
       {message.author === "agent" && (message.data as { translated?: unknown } | null)?.translated === true && (
         <span className="text-xs text-muted">Translated by AI · the customer sees this mark</span>
       )}

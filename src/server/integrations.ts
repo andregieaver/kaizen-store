@@ -326,7 +326,19 @@ export async function buildPayload(
     const subscription = await subscriptionData(store.id, store.slug, delivery.subjectId);
     return subscription && { ...head, subscription };
   }
+  if (delivery.event === "support.waiting") return { ...head, support: await supportWaitingData(store.id, store.slug) };
   return null;
+}
+
+/**
+ * A support conversation waiting for a person (D216, step 14): how many of the store's wait now and the inbox's address. Never the
+ * conversation, the customer's name, email or words, so the subject is not read beyond the store.
+ */
+async function supportWaitingData(storeId: string, storeSlug: string) {
+  const [row] = await db().execute<Row>(sql`
+    select count(*)::int as waiting from commerce.support_conversations where store_id = ${storeId}::uuid and status = 'open' and handler = 'queue'
+  `);
+  return { waiting: Number(row?.waiting ?? 0), admin_url: `${siteUrl()}/admin/${storeSlug}/support` };
 }
 
 /** What a test sends when the store has no orders yet: the fields a real order has. */

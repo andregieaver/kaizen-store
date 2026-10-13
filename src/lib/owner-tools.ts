@@ -772,6 +772,16 @@ export const OWNER_TOOLS = [
     "public",
   ),
   tool(
+    "support_overview",
+    "The store's support desk (live chat) in figures, worked out in code: who answers (the AI first, people only, or the chat assistant alone), how many wait for a person now, are with the AI or a person, open tone alerts and conversations started today; and the last 30 days: conversations, the share the AI handled alone and the share it resolved (its own judgement), hand-overs and why, time to a person's first answer, missed conversations, ratings, top topics and requests. Rates and medians need 10 conversations; a figure with fewer says what is missing: repeat that, never a percentage of a few. For the desk, never per person. Read-only.",
+    z.object({}),
+  ),
+  tool(
+    "list_support_conversations",
+    "The store's support conversations, most recent first: each one's title and summary (written by AI for staff), whether it is waiting, with the AI, with a person or ended, its outcome, topics, tone alert, rating and the link that opens it in the inbox. Never the words of a conversation: to read one, give the link. Read-only.",
+    z.object({ status: z.enum(["open", "ended", "all"]).default("all").describe("Open ones only, ended ones only, or all."), limit: limit(20, 10) }),
+  ),
+  tool(
     "unpublish_page",
     "Takes a published page or article off the site; its draft is kept. Needs the owner's approval.",
     z.object({ page: z.uuid("A page is given by its id, from list_pages."), type: z.enum(["page", "article"]).default("page") }),

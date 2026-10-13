@@ -79,6 +79,8 @@ export function ConversationActions({
   const [editing, setEditing] = useState(false);
   /** The person's own words before a translation, while the composer holds the AI's translation of them. */
   const [original, setOriginal] = useState<string | null>(null);
+  /** The composer was filled from the partner's draft (*Use*), and has not been emptied since: counted for the desk (step 14). */
+  const [fromDraft, setFromDraft] = useState(Boolean(initialDraft));
   const [replies, setReplies] = useState<SavedReply[] | null>(null);
   const [slash, setSlash] = useState<{ query: string; start: number } | null>(null);
   const [active, setActive] = useState(0);
@@ -106,7 +108,10 @@ export function ConversationActions({
 
   function typed(text: string, cursor: number) {
     setDraft(text);
-    if (!text) setOriginal(null);
+    if (!text) {
+      setOriginal(null);
+      setFromDraft(false);
+    }
     const found = slashQuery(text, cursor);
     setSlash(found);
     setActive(0);
@@ -163,9 +168,10 @@ export function ConversationActions({
   function send() {
     const body = draft.trim();
     if (!body || busy) return;
-    void run(writingNote ? { kind: "note", body } : { kind: "reply", body, ...(translated ? { translated: true } : {}) }, () => {
+    void run(writingNote ? { kind: "note", body } : { kind: "reply", body, ...(translated ? { translated: true } : {}), ...(fromDraft ? { partnerDraft: true } : {}) }, () => {
       setDraft("");
       setOriginal(null);
+      setFromDraft(false);
     });
   }
 

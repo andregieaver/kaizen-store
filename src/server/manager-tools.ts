@@ -22,6 +22,7 @@ import { saysYes } from "@/lib/speech-text";
 import { siteUrl } from "@/lib/site";
 
 import type { AiConnection } from "./ai";
+import { platformSupportOverviewTool } from "./support-manager-tools";
 import { countStoresWithOwnAi } from "./ai";
 import { usageRows } from "./ai-usage";
 import { keepMemory, memoriesFor, deleteMemory } from "./assistant-memory";
@@ -451,6 +452,7 @@ const PLATFORM_HANDLERS: Record<PlatformToolName, Handler> = {
   get_referral_program: getReferralProgram,
   set_referral_program: setReferralProgram,
   platform_overview: platformOverview,
+  support_overview: platformSupportOverviewTool,
   list_access_requests: listRequests,
   approve_access_request: approveRequest,
   decline_access_request: declineRequest,

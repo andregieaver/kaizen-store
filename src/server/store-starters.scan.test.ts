@@ -38,6 +38,7 @@ const READERS: Record<string, "real" | "template" | "both"> = {
   "src/server/store-closure.ts": "template",
   "src/server/store-copy.ts": "real",
   "src/server/stores.ts": "both",
+  "src/server/support-platform.ts": "real",
   "src/server/vat-admin.ts": "real",
   "src/server/wordpress.ts": "real",
 };

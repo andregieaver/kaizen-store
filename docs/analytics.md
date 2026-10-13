@@ -344,6 +344,41 @@ from the page's. No figure is defined here that is not defined above; the file a
   writer (`src/lib/csv.ts`), so a product titled `=1+1` is written as text. Defaults: Excel (Nordic), a semicolon and a decimal comma with a byte order mark.
 - Orders and customers are not tables of these pages: they are the owner's exports of `docs/wave-2-data.md` 2.3 and 2.4.
 
+## Support (D216, step 14)
+
+The support desk's report (`/admin/{store}/support/reports`, `/admin/platform/support/reports`) and the platform's per-store
+totals (`/admin/platform/support/stores`). Every figure is worked out once, in `src/lib/support-reports.ts`, from one row per
+conversation that `src/server/support-reports.ts` reads (no words, no names, no customer: the times, the mode, the outcome and
+topics of the summary, the rating and the tone). The AI manager's support tools and the platform's totals call the same
+functions. **Per desk, never per agent** (`docs/support.md` 7: monitoring employees is the owner's decision with their staff).
+
+A conversation belongs to the period it **started** in (`created_at`, the store's days in its time zone; Kaizen's desk uses
+Europe/Oslo). Conversations whose transcripts were deleted (`anonymised_at`) still count in every figure that the conversation's
+own row holds; requests and partner drafts lived in the deleted messages and actions, so those two count only conversations
+still holding them, and the page says how many conversations of the period that leaves out.
+
+| Figure | Definition |
+|---|---|
+| **Conversations** | Count of conversations started, split by the desk's mode when each started (`support_conversations.desk_mode`: `off`, `ai_first`, `people`; null for a conversation started before step 14, counted as *mode not recorded*). |
+| **Handled by the AI alone** | Of the **ended** conversations started in mode `ai_first`: the share never queued for a person, never taken over and never answered by one (`queued_at`, `claimed_at` and `first_agent_at` all null). A fact, not a judgement. |
+| **Resolved by the AI (the AI's judgement)** | Of the conversations handled by the AI alone that have a summary with an outcome other than `spam`: the share whose outcome is `resolved`. The outcome is written by the AI in the summary (or corrected by staff), so the label says it is the AI's judgement. |
+| **Hand-over rate** | Of the ended conversations started in mode `ai_first`: the share queued for a person or taken over (1 − handled by the AI alone). Split by why (`handoff_reason`: the customer asked, the AI passed it, the tone, no AI, the daily limit; a person who took over unasked has none: *taken over*). |
+| **Time to a person's first answer** | For conversations with `queued_at` and `first_agent_at`, `first_agent_at − queued_at`, when that is not negative. `queued_at` is the last time it entered the queue, so a conversation queued again after a person answered is left out. Median, and the **slowest tenth** (the value under which 90 % fall, nearest rank). |
+| **Missed** | Ended conversations that were queued (`queued_at` set) and that no person ever answered (`first_agent_at` null). Shown as a count and as a share of the ended conversations that were queued. |
+| **Time to the end** | Ended conversations: `ended_at − created_at`, median. |
+| **Rating** | The share of rated conversations rated *good*; the count of ratings beside it. |
+| **Tone at the end** | Ended conversations by the band of their tone (`bandOf()` of `support_conversations.tone`, the rolling tone when it ended); *not measured* is its own count, never a band. |
+| **Topics** | How many ended conversations' summaries name each topic (a summary names one to three, so they add up to more than the conversations). |
+| **Requests** | Staff requests (`support_actions`, `confirmer = 'staff'`) of the period's conversations: opened, done, declined, still open; the median time to decide (`decided_at − created_at`) over done and declined ones. |
+| **The partner's drafts** | Partner messages with a draft in the period's conversations, and the people's replies that started from one (*Use the partner's draft*, recorded on the reply as `tools = ["partner_draft"]`). For the desk, never for a person. |
+
+**Minimum**: every rate (a share) and every median or slowest tenth is shown only from `MIN_SUPPORT_SAMPLE` (10) cases; with
+fewer it shows how many there are and how many it needs ("4 of the 10 needed"), never a percentage of four. Counts are always
+shown. A period has no comparison yet. The platform's per-store totals are the same figures for each store over the period
+(Europe/Oslo days), counts and rates only, without requests and the partner's drafts (they live with the transcripts, which the
+platform never reads): never a conversation, a customer, a message or a summary's words (`src/server/support-platform.ts`,
+held by `support-platform.scan.test.ts`).
+
 ## Not tracked (said on the pages)
 
 Refunds made only in Stripe's dashboard; returns made without Kaizen's withdrawal function or return request; subscription expansion, contraction and

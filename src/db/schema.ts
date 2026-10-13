@@ -9296,6 +9296,8 @@ export const supportConversations = commerce.table(
     source: text("source").notNull(),
     status: text("status").notNull().default("open"),
     handler: text("handler").notNull(),
+    /** The desk's mode when the conversation started (step 14's reports), set by a trigger; null before step 14. */
+    deskMode: text("desk_mode"),
     assigneeId: uuid("assignee_id").references(() => accounts.id, { onDelete: "set null" }),
     /** sha-256 hex of the visitor's tab token. */
     tokenHash: text("token_hash"),
@@ -9369,6 +9371,7 @@ export const supportConversations = commerce.table(
       .where(sql`${t.anonymisedAt} is null`),
     check("support_conversations_source", sql`${t.source} in ('site', 'admin')`),
     check("support_conversations_status", sql`${t.status} in ('open', 'ended')`),
+    check("support_conversations_desk_mode", sql`${t.deskMode} is null or ${t.deskMode} in ('off', 'ai_first', 'people')`),
     check("support_conversations_handler", sql`${t.handler} in ('ai', 'queue', 'human')`),
     check("support_conversations_assignee", sql`(${t.assigneeId} is not null) = (${t.status} = 'open' and ${t.handler} = 'human') or ${t.anonymisedAt} is not null`),
     check("support_conversations_token", sql`${t.source} <> 'site' or ${t.tokenHash} is not null or ${t.anonymisedAt} is not null`),

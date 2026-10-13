@@ -307,6 +307,13 @@ of running `playwright install`.
   address), every one with a shortcut (the key treats empty ones as the same); a translation (feature `support_partner`) is only
   shown to the person or put in their composer, never stored or sent, and a reply they send translated carries `data.translated`
   (*Translated by AI*, `m.chat.translatedByAi`).
+  Reports (step 14, `docs/analytics.md` Support): every figure is `supportReport()` (`src/lib/support-reports.ts`) over the rows
+  `deskReport()` reads (`src/server/support-reports.ts`: times, `desk_mode` (the desk's mode at the start, kept by a trigger),
+  outcome and topics, never words or a customer); a rate or median needs `MIN_SUPPORT_SAMPLE` and otherwise says what is missing;
+  per desk, never per agent. The platform's per-store totals are `src/server/support-platform.ts` only (counted columns, a scan
+  test); the AI manager's `support_overview`/`list_support_conversations` (owner, `support:read`) and the platform's
+  `support_overview` repeat them; the control center says how many wait (`supportWaiting`); the integrations' `support.waiting`
+  carries the count and the inbox, never who.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

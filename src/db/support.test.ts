@@ -290,6 +290,16 @@ describe("support in the database (D216)", () => {
     expect(await refusal(add(withCustomer, "customer", null, "x".repeat(1001)))).toMatch(/support_messages_body/);
   });
 
+  it("keeps the desk's mode when a conversation started, and never changes it (step 14's reports)", async () => {
+    const first = await conversation("ai_first");
+    expect((await one<{ desk_mode: string }>("select desk_mode from commerce.support_conversations where id = $1", [first])).desk_mode).toBe("ai_first");
+    await setMode("people");
+    await db.query("update commerce.support_conversations set desk_mode = 'off' where id = $1", [first]);
+    expect((await one<{ desk_mode: string }>("select desk_mode from commerce.support_conversations where id = $1", [first])).desk_mode).toBe("ai_first");
+    const second = await conversation("people");
+    expect((await one<{ desk_mode: string }>("select desk_mode from commerce.support_conversations where id = $1", [second])).desk_mode).toBe("people");
+  });
+
   it("puts an action on its conversation's desk", async () => {
     const id = await conversation("ai_first");
     const action = await one<{ store_id: string }>(

@@ -39,6 +39,8 @@ export const PLAN_ITEMS: SectionItem[] = [
 /** Support (D216): Kaizen's own desk, and the chat assistant that answers its visitors first. */
 export const SUPPORT_ITEMS: SectionItem[] = [
   item("/support", "Inbox", "Kaizen's support desk: conversations with visitors of Kaizen's site and owners asking Kaizen, live.", true),
+  item("/support/reports", "Reports", "How Kaizen's own desk did: conversations, the AI alone, waiting times, ratings and topics."),
+  item("/support/stores", "Stores", "Each store's support in figures: counts and rates only, never a conversation."),
   item("/support/replies", "Saved replies", "Texts Kaizen's people put in an answer with / in the inbox, filled in with names."),
   item("/chat", "Chat assistant", "Kaizen's public site chat assistant and its knowledge base."),
   item("/support/settings", "Settings", "Who answers Kaizen's visitors (the assistant alone, the AI first, or people only), opening hours, email follow-up and how long conversations are kept."),

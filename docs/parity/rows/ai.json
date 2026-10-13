@@ -492,7 +492,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "D81: typed or spoken, answers only from the site's tools (search, recommend, product, content search, store info, navigate); since D153 store_info carries the store's return policy from its settings and points to the withdrawal page. Still no lookup of a customer's order or return (it points to the account page) and no human handoff: a visitor cannot leave a message or pass the conversation to staff, and conversations live only in the visitor's tab.",
+    "gap": "D81 and D216 (docs/support.md, steps 1-14): the chat keeps its conversations on the site; a visitor asks for a person and a store's people answer in a shared inbox (or the AI hands over when it cannot help, the tone falls, or it reaches its limit), with email follow-up when nobody is online; a signed-in customer's orders, returns, bookings, subscriptions and bonus are answered from read-only tools (support-tools.ts) through cleanReply(), with link chips made by code; the AI proposes self-service actions the customer confirms and passes other requests to staff. What keeps it partial: the consumer texts of docs/support.md section 8 need human legal review before the row is rated full. Proposed criteria change (docs/support.md 1.5; the criteria themselves are not edited here): order status only to a customer proven by an emailed code or a signed-in session, since an order number with an email proves nothing.",
     "bucket": "A",
     "wave": 8,
     "criteria": [
@@ -503,25 +503,41 @@
     ],
     "evidence": {
       "files": [
+        "src/app/api/chat/route.ts",
+        "src/app/api/chat/voice/route.ts",
+        "src/components/chat-widget.tsx",
         "src/lib/chat.ts",
+        "src/lib/knowledge.ts",
+        "src/lib/support-reports.ts",
+        "src/lib/support-state.ts",
+        "src/lib/support-visitor.ts",
         "src/server/chat-agent.ts",
         "src/server/chat-route.ts",
         "src/server/knowledge.ts",
-        "src/lib/knowledge.ts",
-        "src/components/chat-widget.tsx",
-        "src/app/api/chat/route.ts",
-        "src/app/api/chat/voice/route.ts"
+        "src/server/support-actions.ts",
+        "src/server/support-email.ts",
+        "src/server/support-reports.ts",
+        "src/server/support-route.ts",
+        "src/server/support-tools.ts",
+        "src/server/support.ts"
       ],
       "tests": [
+        "e2e/support.spec.ts",
+        "src/db/support.test.ts",
         "src/lib/chat.test.ts",
+        "src/lib/knowledge.test.ts",
         "src/server/chat.int.test.ts",
-        "src/lib/knowledge.test.ts"
+        "src/server/support-actions.int.test.ts",
+        "src/server/support-reports.int.test.ts",
+        "src/server/support-tools.int.test.ts",
+        "src/server/support.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D81",
-      "D153"
+      "D153",
+      "D216"
     ],
     "history": []
   },

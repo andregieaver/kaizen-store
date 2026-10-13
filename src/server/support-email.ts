@@ -207,8 +207,14 @@ export async function sendWaitingAlerts(now: Date = new Date(), limit = 100): Pr
         if (TOLD.includes(outcome)) out.waiting += 1;
         else out.failed += 1;
       }
-      // Marked whatever was sent: one alert for each time it entered the queue (a new time in the queue clears the mark).
-      await db().execute(sql`update commerce.support_conversations set waiting_alert_at = now() where id = ${id}::uuid and waiting_alert_at is null`);
+      // Marked whatever was sent: one alert for each time it entered the queue (a new time in the queue clears the mark). A store's
+      // integrations hear of it once too, in the same statement (event `support.waiting`, step 14: the count and the inbox, never who).
+      await db().execute(sql`
+        with marked as (
+          update commerce.support_conversations set waiting_alert_at = now() where id = ${id}::uuid and waiting_alert_at is null returning id, store_id
+        )
+        select commerce.queue_integration_event(m.store_id, 'support.waiting', m.id) from marked m where m.store_id is not null
+      `);
     } catch (error) {
       out.failed += 1;
       console.error(`[support] the waiting alert of ${id} failed`, error);

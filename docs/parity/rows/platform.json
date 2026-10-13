@@ -1172,7 +1172,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "AI-first help only: Kaizen's chat agent answers about Kaizen's own pages and articles from its knowledge (D81) and the AI manager guides owners through the admin (D103). No ticketing, no contact route to a person from the admin, no stated response time. People and a promised response time are not software, so the row is bucket D; the inbox can be built.",
+    "gap": "D216 (docs/support.md, steps 3-14) meets the criteria in code: owners and staff write to Kaizen from the admin (Contact Kaizen support, the AI manager's contact_kaizen_support) and see their requests' status, answered first by Kaizen's AI with read-only tools on their own stores and then by platform admins in Kaizen's inbox (assignee, replies by email, every message kept); the chat hands a conversation to the inbox when the visitor asks; the time to a person's first answer is measured from the inbox (queued_at to first_agent_at, the support report, step 14), never typed. The row stays partial by rule: people answering and a promised response time are not software (bucket D).",
     "bucket": "D",
     "wave": null,
     "criteria": [
@@ -1182,22 +1182,33 @@
     ],
     "evidence": {
       "files": [
-        "src/server/chat-agent.ts",
+        "src/components/admin/support/kaizen-requests.tsx",
         "src/lib/chat.ts",
+        "src/lib/support-reports.ts",
+        "src/server/chat-agent.ts",
+        "src/server/chat-route.ts",
         "src/server/knowledge.ts",
-        "src/server/chat-route.ts"
+        "src/server/support-email.ts",
+        "src/server/support-inbox.ts",
+        "src/server/support-kaizen.ts",
+        "src/server/support-reports.ts",
+        "src/server/support.ts"
       ],
       "tests": [
-        "src/server/chat.int.test.ts",
+        "e2e/chat.spec.ts",
         "src/lib/chat.test.ts",
         "src/lib/knowledge.test.ts",
-        "e2e/chat.spec.ts"
+        "src/lib/support-reports.test.ts",
+        "src/server/chat.int.test.ts",
+        "src/server/support-kaizen.int.test.ts",
+        "src/server/support-reports.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D81",
-      "D103"
+      "D103",
+      "D216"
     ],
     "history": []
   },

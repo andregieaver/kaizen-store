@@ -39,6 +39,14 @@ export function requesterDesk(account: Account): Desk {
   return make(null);
 }
 
+/**
+ * The desk the AI manager's support tools read (D216, 5.5, step 14): a store's, after `runOwnerTool()` checked the member's
+ * `support:read`, or Kaizen's, after `runPlatformTool()` checked a platform admin. Counts, titles and summaries only.
+ */
+export function managerDesk(storeId: string | null): Desk {
+  return make(storeId);
+}
+
 /** A desk for the platform's own jobs (ending idle conversations, retention, erasure), which act on every store's data by design. */
 export function systemDesk(storeId: string | null): Desk {
   return make(storeId);

@@ -150,6 +150,18 @@ export function slackMessage(payload: Data, locale: string): SlackMessage | null
       unfurl_media: false,
     };
   }
+  // Someone waiting in support (D216, step 14): the count and the inbox, never who or what they wrote.
+  if (event === "support.waiting" && payload.support) {
+    const support = payload.support as Data;
+    const waiting = Math.max(0, Math.trunc(Number(support.waiting) || 0));
+    const count = waiting === 1 ? "1 customer is waiting" : `${waiting} customers are waiting`;
+    return {
+      text: escapeSlack(`Support: ${count} for a person`),
+      blocks: [section(`*Someone is waiting in support*\n${count} for a person.`), footer(store, support.admin_url, "Open the inbox in Kaizen")],
+      unfurl_links: false,
+      unfurl_media: false,
+    };
+  }
   if (event.startsWith("subscription.") && payload.subscription) {
     const subscription = payload.subscription as Data;
     const number = `#${str(subscription.number)}`;

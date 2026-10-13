@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."support_conversations" ADD COLUMN "desk_mode" text;--> statement-breakpoint
+ALTER TABLE "commerce"."support_conversations" ADD CONSTRAINT "support_conversations_desk_mode" CHECK ("commerce"."support_conversations"."desk_mode" is null or "commerce"."support_conversations"."desk_mode" in ('off', 'ai_first', 'people'));

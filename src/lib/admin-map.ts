@@ -560,6 +560,10 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["requests", "refund request", "cancel order", "change address", "exception", "support"],
     tasks: ["Decide a request the chat assistant passed on", "See decided requests"],
   }),
+  store("support.reports", "/support/reports", "Support reports", "Store", "Figures for the store's support desk over a period: conversations started, the share the AI handled alone and the share it resolved (its own judgement), the hand-over rate and why, time to a person's first answer (median and slowest tenth), missed conversations, time to the end, ratings, tone at the end, topics, requests and the partner's drafts. Per desk, never per person; rates and medians from 10 conversations.", {
+    keywords: ["support report", "response time", "first response", "csat", "handover rate", "missed chats", "deflection"],
+    tasks: ["See how long customers wait for an answer", "See how many chats the AI handles alone"],
+  }),
   store("support.replies", "/support/replies", "Saved replies", "Store", "The support desk's saved replies: texts with a title and a /shortcut, optionally for one language, that your team puts in an answer by typing / in the inbox's composer. {customer_first_name}, {agent_first_name} and {store} are filled in for the conversation.", {
     keywords: ["saved replies", "canned responses", "macros", "templates", "shortcuts", "support"],
     tasks: ["Add a saved reply", "Change a saved reply's text"],
@@ -719,6 +723,12 @@ const PAGES: readonly AdminPage[] = [
   }),
   platform("support", "/support", "Support inbox", "Support", "Kaizen's own support desk: conversations with visitors of Kaizen's site and owners asking Kaizen, live.", {
     keywords: ["inbox", "live chat", "helpdesk", "conversations"],
+  }),
+  platform("support.reports", "/support/reports", "Support reports", "Support", "Figures for Kaizen's own support desk over a period: conversations, the AI alone, hand-overs, waiting times, ratings, tone and topics.", {
+    keywords: ["support report", "response time", "kaizen support"],
+  }),
+  platform("support.stores", "/support/stores", "Stores' support", "Support", "Each store's support desk in figures over a period: mode, waiting now, conversations, the AI alone, hand-overs, first answer, missed and ratings. Counts and rates only, never a conversation.", {
+    keywords: ["stores support", "support totals", "support per store"],
   }),
   platform("support.replies", "/support/replies", "Saved replies", "Support", "Kaizen's support desk's saved replies: texts with a /shortcut that Kaizen's people put in an answer from the inbox, with {customer_first_name}, {agent_first_name} and {store} filled in.", {
     keywords: ["saved replies", "canned responses", "macros"],

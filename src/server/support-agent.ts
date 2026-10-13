@@ -28,7 +28,7 @@ type Row = Record<string, unknown>;
 
 export type AgentAct =
   | { kind: "claim" }
-  | { kind: "reply"; body: string; translated?: boolean }
+  | { kind: "reply"; body: string; translated?: boolean; partnerDraft?: boolean }
   | { kind: "note"; body: string }
   | { kind: "transfer"; target: string | null }
   | { kind: "hand_back" }
@@ -104,8 +104,10 @@ export function readAct(raw: unknown): AgentAct | null {
       const body = typeof value.body === "string" ? value.body.trim() : "";
       const max = value.kind === "reply" ? MESSAGE_MAX.agent : MESSAGE_MAX.note;
       if (body.length === 0 || body.length > max) return null;
-      // A reply the AI translated says so to the customer (step 13); a note is never sent, so it has no such mark.
-      return value.kind === "reply" && value.translated === true ? { kind: "reply", body, translated: true } : { kind: value.kind, body };
+      if (value.kind === "note") return { kind: "note", body };
+      // A reply the AI translated says so to the customer (step 13); one that started from the partner's draft is counted for the
+      // desk's report (step 14). A note is never sent, so it has neither.
+      return { kind: "reply", body, ...(value.translated === true ? { translated: true } : {}), ...(value.partnerDraft === true ? { partnerDraft: true } : {}) };
     }
     case "transfer":
       return value.target === null || (typeof value.target === "string" && UUID.test(value.target)) ? { kind: "transfer", target: value.target as string | null } : null;
@@ -162,7 +164,11 @@ export async function agentAct(staff: StaffDesk, conversationId: string, act: Ag
       case "reply": {
         const identity = await agentIdentity(staff.desk, me);
         // The name and picture the customer sees are kept with the message, as they were when it was written.
-        await addMessage(staff.desk, conversationId, "agent", me, act.body, { data: act.translated ? { ...identity, translated: true } : identity });
+        await addMessage(staff.desk, conversationId, "agent", me, act.body, {
+          data: act.translated ? { ...identity, translated: true } : identity,
+          // Staff-only (the customer's feed never reads `tools`): counted per desk in the report, never per person.
+          ...(act.partnerDraft ? { tools: ["partner_draft"] } : {}),
+        });
         return { ok: true };
       }
       case "note":

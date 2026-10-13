@@ -79,7 +79,8 @@ export type IntegrationEvent =
   | "order.refunded"
   | "customer.created"
   | "subscription.started"
-  | "subscription.cancelled";
+  | "subscription.cancelled"
+  | "support.waiting";
 
 export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "order.paid", label: "Order paid", hint: "A shopper paid, or a subscription renewed." },
@@ -89,6 +90,7 @@ export const EVENTS: { id: IntegrationEvent; label: string; hint: string }[] = [
   { id: "customer.created", label: "New customer account", hint: "A shopper made an account." },
   { id: "subscription.started", label: "Subscription started", hint: "A subscription's first payment went through." },
   { id: "subscription.cancelled", label: "Subscription cancelled", hint: "A subscription was cancelled." },
+  { id: "support.waiting", label: "Someone waiting in support", hint: "A customer has waited for a person in the support chat as long as the support settings say: how many wait now, and a link to the inbox. Never who they are or what they wrote." },
 ];
 
 export const isEvent = (value: string): value is IntegrationEvent => EVENTS.some((e) => e.id === value);

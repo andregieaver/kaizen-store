@@ -2213,6 +2213,20 @@
       "when": 1791920807109,
       "tag": "20261013194647_support_tone",
       "breakpoints": true
+    },
+    {
+      "idx": 316,
+      "version": "7",
+      "when": 1791934228543,
+      "tag": "20261013233028_support_desk_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 317,
+      "version": "7",
+      "when": 1791934236698,
+      "tag": "20261013233036_support_desk_mode_rules",
+      "breakpoints": true
     }
   ]
 }

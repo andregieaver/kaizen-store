@@ -83,6 +83,8 @@ export type StoreFigures = {
   partlySent?: PartlySentFigures;
   /** Order changes waiting for the customer's payment (D174), only when some do and only for a member who may read orders. Counts only. */
   orderChanges?: OrderChangeFigures;
+  /** Support conversations waiting for a person (D216, step 14), only when some do and only for a member who may read the desk. A count only. */
+  supportWaiting?: number;
 };
 
 /** Paid orders partly sent (D174): how many, and when the oldest one's first parcel left. */
@@ -153,6 +155,15 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
         text: `${s.name}: the acknowledgement of ${plural(returns.unacknowledged, "withdrawal was", "withdrawals were")} not sent.`,
         href: `${base}/returns`,
         action: "Send again",
+        urgent: true,
+      });
+    }
+    // Customers waiting in the support chat for a person (D216): urgent, since they are waiting now.
+    if (s.supportWaiting && s.supportWaiting > 0) {
+      items.push({
+        text: `${s.name}: Support: ${s.supportWaiting} waiting for a person.`,
+        href: `${base}/support`,
+        action: "Answer",
         urgent: true,
       });
     }

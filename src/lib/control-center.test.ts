@@ -269,3 +269,13 @@ describe("the control center, parcels and order changes (D174)", () => {
     expect(texts({ ...both, hides: ["sales"] }, now)).toEqual([]);
   });
 });
+
+describe("support waiting (D216, step 14)", () => {
+  it("says how many wait for a person, urgent, links to the inbox, and nothing when none or not given", () => {
+    const items = attentionFor([store({ supportWaiting: 3 })]);
+    expect(items.map((i) => `${i.text} -> ${i.href}`)).toEqual(["Kaffe: Support: 3 waiting for a person. -> /admin/kaffe/support"]);
+    expect(items[0].urgent).toBe(true);
+    expect(attentionFor([store({ supportWaiting: 0 })])).toEqual([]);
+    expect(attentionFor([store()])).toEqual([]);
+  });
+});

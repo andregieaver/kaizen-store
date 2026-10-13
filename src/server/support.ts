@@ -294,14 +294,15 @@ export async function addMessage(
   author: MessageAuthor,
   accountId: string | null,
   body: string,
-  extra: { kind?: string; data?: unknown; action?: string } = {},
+  extra: { kind?: string; data?: unknown; action?: string; tools?: string[] } = {},
 ): Promise<{ id: string; seq: number } | null> {
   await assertOnDesk(desk, conversationId);
   const words = author === "system" ? "" : body.slice(0, MESSAGE_MAX[author]);
   const [row] = await guarded(() =>
     db().execute<Row>(sql`
       select * from commerce.support_add_message(${conversationId}::uuid, ${author}, ${accountId}::uuid, ${words}, ${extra.kind ?? null},
-        ${extra.data === undefined ? null : JSON.stringify(extra.data)}::jsonb, ${extra.action ?? null}::uuid)
+        ${extra.data === undefined ? null : JSON.stringify(extra.data)}::jsonb, ${extra.action ?? null}::uuid,
+        ${extra.tools ? JSON.stringify(extra.tools) : null}::jsonb)
     `),
   );
   return row?.id ? { id: String(row.id), seq: Number(row.seq) } : null;

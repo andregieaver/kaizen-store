@@ -85,9 +85,11 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const ownerIds = idsWith(storeRows, "owner");
   // Privacy requests (D162) are shown to those who may open the log: `customers:read`, like the page.
   const customerIds = idsWith(storeRows, "customers:read");
+  // Support (D216, step 14): conversations waiting for a person, for the stores where the member may read the desk. Counts only.
+  const supportIds = idsWith(storeRows, "support:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -186,6 +188,12 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       where e.store_id in (${idList(orderIds)}) and e.status = 'awaiting_payment'
       group by e.store_id
     `),
+    supportIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+      select c.store_id, count(*)::int as waiting
+      from commerce.support_conversations c
+      where c.store_id in (${idList(supportIds)}) and c.status = 'open' and c.handler = 'queue'
+      group by c.store_id
+    `),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -200,6 +208,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const draftsBy = new Map(draftRows.map((r) => [String(r.store_id), r]));
   const partlyBy = new Map(partlyRows.map((r) => [String(r.store_id), r]));
   const changesBy = new Map(changeRows.map((r) => [String(r.store_id), r]));
+  const supportBy = new Map(supportRows.map((r) => [String(r.store_id), Number(r.waiting)]));
 
   const stores: StoreFigures[] = storeRows.map((r) => {
     const id = String(r.id);
@@ -245,6 +254,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         ? { drafts: { waiting: Number(draftsBy.get(id)!.waiting), oldestSentAt: draftsBy.get(id)!.oldest ? new Date(String(draftsBy.get(id)!.oldest)).toISOString() : null, expiringSoon: Number(draftsBy.get(id)!.expiring) } }
         : {}),
       ...(partlyBy.has(id) ? { partlySent: { orders: Number(partlyBy.get(id)!.n), oldestFirstParcelAt: partlyBy.get(id)!.oldest ? new Date(String(partlyBy.get(id)!.oldest)).toISOString() : null } } : {}),
+      ...(supportBy.has(id) ? { supportWaiting: supportBy.get(id) } : {}),
       ...(changesBy.has(id) ? { orderChanges: { waiting: Number(changesBy.get(id)!.waiting), expiringSoon: Number(changesBy.get(id)!.expiring) } } : {}),
     };
   });
