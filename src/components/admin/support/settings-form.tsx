@@ -107,6 +107,26 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
+        <h2 className="text-lg font-semibold">The customer&apos;s tone</h2>
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="toneOn" defaultChecked={settings.toneOn} className="mt-0.5 size-4" />
+          <span>
+            <span className="font-medium">Read the tone of customers&apos; messages.</span> The AI scores each message from very bad to very good, only
+            for your team; the customer never sees it and nothing is decided about them from it. Needs a text model{settings.aiReady ? "" : " (none is connected)"}.
+          </span>
+        </label>
+        <label className="flex flex-wrap items-center gap-2 text-sm">
+          Alert the inbox when a conversation&apos;s tone reaches
+          <ToneLine name="toneAlert" value={settings.toneAlert} />
+          (or falls by 40 within three messages).
+        </label>
+        <label className="flex flex-wrap items-center gap-2 text-sm">
+          With the AI first, hand a conversation from the AI to your team when its tone reaches
+          <ToneLine name="toneHandoff" value={settings.toneHandoff} />
+        </label>
+      </section>
+
+      <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold">Conversations</h2>
         <label className="flex flex-wrap items-center gap-2 text-sm">
           End a conversation with the assistant after
@@ -150,5 +170,21 @@ export function SupportSettingsForm({
     </ActionForm>
   ) : (
     body
+  );
+}
+
+/** A tone line: off, or a score from the bands' edges (the band is named beside the number). */
+function ToneLine({ name, value }: { name: string; value: number | null }) {
+  const choices = [-20, -40, -60, -80];
+  const options = value !== null && !choices.includes(value) ? [...choices, value].sort((a, b) => b - a) : choices;
+  return (
+    <select name={name} defaultValue={value === null ? "off" : String(value)} className={field}>
+      <option value="off">Off</option>
+      {options.map((score) => (
+        <option key={score} value={score}>
+          {score} ({score <= -60 ? "very bad" : "bad"})
+        </option>
+      ))}
+    </select>
   );
 }

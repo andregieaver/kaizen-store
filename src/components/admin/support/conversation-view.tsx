@@ -1,7 +1,7 @@
 import { HANDOFF_WORDS, authorWords, handlerWords, systemWords, toneWords } from "@/lib/support-inbox-text";
 import type { StaffConversation, StaffMessage } from "@/server/support";
 
-import { ToneDot } from "./tone";
+import { ToneChart, ToneDot } from "./tone";
 
 /**
  * A conversation as staff see it (D216, 2.4): the transcript, live, with every author marked — the customer, the AI (and the tools it
@@ -15,6 +15,7 @@ export function ConversationView({ conversation, now }: { conversation: StaffCon
         <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{conversation.who}</h2>
         <span className="rounded-full border border-border px-2 py-0.5 text-xs">{handlerWords({ ...conversation, queuedAt: null }, now)}</span>
         <ToneDot score={conversation.tone} />
+        {conversation.toneAlertAt && conversation.status === "open" && <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium">Tone alert</span>}
         {conversation.handoffReason && conversation.handler !== "ai" && (
           <p className="w-full text-xs text-muted">{HANDOFF_WORDS[conversation.handoffReason] ?? null}</p>
         )}
@@ -27,14 +28,14 @@ export function ConversationView({ conversation, now }: { conversation: StaffCon
       )}
       <ol role="log" aria-live="polite" aria-label="Messages" className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
         {conversation.messages.map((message) => (
-          <MessageItem key={message.seq} message={message} />
+          <MessageItem key={message.seq} message={message} toneMeasured={conversation.toneMeasured} />
         ))}
       </ol>
     </article>
   );
 }
 
-function MessageItem({ message }: { message: StaffMessage }) {
+function MessageItem({ message, toneMeasured }: { message: StaffMessage; toneMeasured: boolean }) {
   if (message.author === "system") {
     const words = systemWords(message.kind, message.data);
     if (!words) return null;
@@ -61,6 +62,8 @@ function MessageItem({ message }: { message: StaffMessage }) {
       </p>
       {message.tools.length > 0 && <span className="text-xs text-muted">Used: {message.tools.join(", ")}</span>}
       {tone && <ToneDot score={message.tone} />}
+      {/* A score that is missing is never shown as 0 (2.6). */}
+      {customer && !tone && toneMeasured && <span className="text-xs text-muted">Tone: not measured</span>}
     </li>
   );
 }
@@ -80,13 +83,16 @@ export function ConversationContext({ conversation }: { conversation: StaffConve
     ["From", conversation.source === "admin" ? "The admin" : "The site's chat"],
   ];
   return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 p-4 text-sm">
-      {rows.map(([term, value]) => (
-        <div key={term} className="contents">
-          <dt className="text-muted">{term}</dt>
-          <dd className="min-w-0 break-words">{value}</dd>
-        </div>
-      ))}
-    </dl>
+    <div className="flex flex-col gap-4 p-4">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+        {rows.map(([term, value]) => (
+          <div key={term} className="contents">
+            <dt className="text-muted">{term}</dt>
+            <dd className="min-w-0 break-words">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {conversation.toneMeasured && <ToneChart messages={conversation.messages} />}
+    </div>
   );
 }

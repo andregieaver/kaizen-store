@@ -1,5 +1,7 @@
 import "server-only";
 
+import { after as afterResponse } from "next/server";
+
 import { t } from "@/lib/i18n";
 import { CONVERSATION_MESSAGES_MAX, REOPEN_HOURS } from "@/lib/support-rules";
 import type { VisitorMessage, VisitorReply, VisitorState } from "@/lib/support-visitor";
@@ -30,6 +32,7 @@ import {
   type DeskSettings,
 } from "./support";
 import { visitorDesk, type Desk } from "./support-desk";
+import { scoreTone, scoresTone } from "./support-tone";
 import { runSupportTurn } from "./support-turn";
 
 /**
@@ -156,11 +159,18 @@ export async function visitorTurn(context: ChatContext, input: Omit<TurnInput, "
   }
   const ref = { id: conversation.id, token: token ?? input.conversation!.token };
 
+  let added: { seq: number } | null;
   try {
-    await addMessage(desk, conversation.id, "customer", null, words);
+    added = await addMessage(desk, conversation.id, "customer", null, words);
   } catch (error) {
     if (error instanceof SupportError) return fail(409, m.chat.sorry);
     throw error;
+  }
+  // The message's tone is scored after the answer is sent (step 6), where the desk has support and tone on.
+  if (added && scoresTone(settings)) {
+    const id = conversation.id;
+    const seq = added.seq;
+    afterResponse(() => scoreTone(desk, id, seq).catch((error) => console.warn(`[support] tone of ${id}: ${error instanceof Error ? error.message : String(error)}`)));
   }
 
   let error: string | undefined;

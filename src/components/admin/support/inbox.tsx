@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { TAB_WORDS } from "@/lib/support-inbox-text";
+import { TONE_BAND_WORDS, TONE_BANDS } from "@/lib/support-tone";
 import { HEARTBEAT_SECONDS, POLL_STAFF_MS } from "@/lib/support-rules";
 import type { InboxTab } from "@/server/support";
 import type { ConversationFeed, InboxFeed } from "@/server/support-inbox";
@@ -29,6 +30,7 @@ export function Inbox({
   const [tab, setTab] = useState<InboxTab>(initialTab);
   const [query, setQuery] = useState("");
   const [store, setStore] = useState("");
+  const [tone, setTone] = useState("");
   const [rows, setRows] = useState(initial.rows);
   const [waiting, setWaiting] = useState(initial.waiting);
   const [open, setOpen] = useState<{ id: string; store: string | null } | null>(null);
@@ -39,15 +41,17 @@ export function Inbox({
   const [now, setNow] = useState(() => new Date());
   const [gone, setGone] = useState(false);
   const [mineUnread, setMineUnread] = useState(initial.mineUnread);
+  const [toneAlertAt, setToneAlertAt] = useState(initial.lastToneAlert);
   // Sound and browser notifications, once the person turned them on (2.9): the browser asks first.
   const [alerts, setAlerts] = useState(false);
-  const seen = useRef({ waiting: initial.waiting, mineUnread: initial.mineUnread });
+  const seen = useRef({ waiting: initial.waiting, mineUnread: initial.mineUnread, toneAlertAt: initial.lastToneAlert });
   const hidden = () => typeof document !== "undefined" && document.visibilityState === "hidden";
 
   const loadList = useCallback(async () => {
     const params = new URLSearchParams({ tab });
     if (query.trim()) params.set("q", query.trim());
     if (store) params.set("store", store);
+    if (tone) params.set("tone", tone);
     try {
       const response = await fetch(`${context.feedUrl}?${params}`, { cache: "no-store" });
       if (!response.ok) return;
@@ -55,11 +59,12 @@ export function Inbox({
       setRows(body.rows);
       setWaiting(body.waiting);
       setMineUnread(body.mineUnread);
+      setToneAlertAt(body.lastToneAlert);
       setNow(new Date());
     } catch {
       // Offline for a moment: the next poll tries again.
     }
-  }, [context.feedUrl, tab, query, store]);
+  }, [context.feedUrl, tab, query, store, tone]);
 
   // The list: at once when the filters change, then every 3 seconds (15 in a hidden tab).
   useEffect(() => {
@@ -122,11 +127,21 @@ export function Inbox({
   // Someone new waiting, or a customer writing in one of the person's own conversations: a sound and a notification, if on.
   useEffect(() => {
     const before = seen.current;
-    seen.current = { waiting, mineUnread };
+    seen.current = { waiting, mineUnread, toneAlertAt };
     if (!alerts) return;
-    const words = waiting > before.waiting ? (waiting === 1 ? "Someone is waiting for a person." : `${waiting} are waiting for a person.`) : mineUnread > before.mineUnread ? "A customer wrote in your conversation." : null;
+    const toneFell = toneAlertAt !== null && (before.toneAlertAt === null || toneAlertAt > before.toneAlertAt);
+    const words =
+      waiting > before.waiting
+        ? waiting === 1
+          ? "Someone is waiting for a person."
+          : `${waiting} are waiting for a person.`
+        : toneFell
+          ? "A customer's tone fell in a conversation."
+          : mineUnread > before.mineUnread
+            ? "A customer wrote in your conversation."
+            : null;
     if (words) alert(words);
-  }, [waiting, mineUnread, alerts]);
+  }, [waiting, mineUnread, toneAlertAt, alerts]);
 
   // The tab's title says how many wait while the inbox is open.
   useEffect(() => {
@@ -215,6 +230,14 @@ export function Inbox({
               aria-label="Search conversations"
               className="rounded-md border border-border bg-background px-2 py-1 text-sm"
             />
+            <select value={tone} onChange={(event) => setTone(event.target.value)} aria-label="Tone" className="rounded-md border border-border bg-background px-2 py-1 text-sm">
+              <option value="">Any tone</option>
+              {TONE_BANDS.map((band) => (
+                <option key={band} value={band}>
+                  {TONE_BAND_WORDS[band]}
+                </option>
+              ))}
+            </select>
             {context.stores.length > 1 && (
               <select value={store} onChange={(event) => setStore(event.target.value)} aria-label="Store" className="rounded-md border border-border bg-background px-2 py-1 text-sm">
                 <option value="">All stores</option>

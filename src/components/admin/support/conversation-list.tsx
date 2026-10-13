@@ -50,6 +50,7 @@ export function ConversationList({
                 {row.signedIn && <span className="text-muted">Signed in</span>}
                 {row.source === "admin" && <span className="text-muted">From the admin</span>}
                 <ToneDot score={row.tone} compact />
+                {row.toneAlert && <span className="font-medium">Tone alert</span>}
               </span>
             </button>
           </li>

@@ -1442,3 +1442,28 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   save); U `pay-routes.test.ts` (the link paths); E `support.spec.ts` cases 1 and 5.
 - Migration: `20261013190519_support_email_sent`.
 
+**Step 6 (13 October 2026).**
+
+- **Where the score is written**: messages were never changed (3.3), so a tone needs a way in of its own:
+  `commerce.support_record_tone(conversation, seq, score, label)` sets a transaction-local flag (`kaizen.support_tone`) under which
+  the message trigger lets exactly a customer message's `tone` and `tone_label` go from nothing to a score, once; every other update
+  is still refused (`src/db/support.test.ts` 5b). Migration `20261013194647_support_tone`.
+- **When**: `scoreTone()` runs in `after()` from the visitor's message (`visitorTurn()`, so the chat, voice and the email link's page
+  alike), on a desk with support on and `tone_on`, with a text model (`aiFor(store, { feature: "support_tone" })`). It sends the
+  scored message and up to four before it as `Customer:`/`Assistant:`/`Staff:` lines (`tonePrompt()`), 60 tokens at temperature 0;
+  an `AiError` or an answer `parseTone()` cannot read leaves the message *not measured*. Both modes are scored; mode `off` never is.
+- **The conversation**: under the conversation's row lock, its tone is `rollingTone()` of its customer messages, and the alert
+  (`tone_alert_at`) is set when `toneFell()` says the tone just reached the desk's line or fell 40 within three messages, once per
+  fall. With the AI first, a conversation the AI has goes to the queue (reason `tone`) when the tone *just* reaches the hand-over line
+  (`crossedLine()`), so a customer who goes back to the assistant is not handed over again at every message while it stays low.
+- **The inbox**: a tone filter (by band) beside the search; *Tone alert* on the row and the conversation's header while it is open;
+  *Tone: not measured* under an unscored customer message where the desk scores tone; the Context column's chart of the tone after
+  each scored message, with its figures in a table; the alerts sound and notify when a tone alert is raised (`lastToneAlert` in the
+  list's feed).
+- **Settings**: *Read the tone of customers' messages* (on), the alert line (off, −20, −40, −60, −80; −40 by default) and the
+  hand-over line (with the AI first; −60 by default), always on the page so a save never clears them.
+- **Tests**: U `support-tone.test.ts` (history, crossing, prompt); P `src/db/support.test.ts` 5b; I `support.int.test.ts` (C9: the
+  rolling value, one alert, the hand-over at the line, a second score refused, a failing or unreadable model *not measured*, a
+  people-only desk scored, none with support or tone off, the route's background task, the list's filter and mark).
+- Migration: `20261013194647_support_tone`.
+

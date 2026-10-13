@@ -9,7 +9,24 @@ vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ cacheLife: () => {}, cacheTag: () => {}, updateTag: () => {}, revalidateTag: () => {}, refresh: () => {} }));
 // The visitor has no cookies: not signed in, no cart.
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => undefined, getAll: () => [], set: () => {}, delete: () => {} }) }));
-vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), connection: async () => {} }));
+// Work the routes leave for after the answer (the tone, step 6) is kept here for the tests to run.
+const background = vi.hoisted(() => ({ tasks: [] as (() => unknown)[], aiStores: new Set<string>() }));
+vi.mock("next/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/server")>()),
+  connection: async () => {},
+  after: (task: () => unknown) => background.tasks.push(task),
+}));
+// Stores in `aiStores` have a text model (the stand-in answers through `fetch`); the rest as the database says.
+vi.mock("./ai", async (importOriginal) => {
+  const real = await importOriginal<typeof import("./ai")>();
+  return {
+    ...real,
+    aiFor: async (storeId: string | null, ...rest: unknown[]) =>
+      storeId && background.aiStores.has(storeId)
+        ? ({ provider: "openai", source: "store", apiUrl: "https://ai.example.com/v1", apiKey: "sk-test", textModel: "text-model", embeddingModel: null, space: null } as never)
+        : (real.aiFor as (...args: unknown[]) => unknown)(storeId, ...rest),
+  };
+});
 vi.mock("./stripe", async (importOriginal) => ({ ...(await importOriginal<typeof import("./stripe")>()), platformStripe: () => ({}) }));
 
 const { getStore } = await import("./stores");
@@ -713,3 +730,146 @@ describe("asking for a person, and the two modes (step 5: C7, C8, C20)", () => {
     expect(await support.deskSettings(systemDesk(d.id))).toMatchObject({ transcriptDays: 30, emailFollowup: false });
   });
 });
+
+describe("tone (step 6, C9)", () => {
+  /** A store whose desk is in `mode` with a text model; its owner as staff. */
+  async function toneDesk(name: string, mode: "off" | "ai_first" | "people") {
+    const s = `${name}-${run}`;
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${s}@example.com`}, 'T', 'T') returning id`);
+    const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${s}, ${name}, null) as id`);
+    const id = String(created.id);
+    await db().execute(sql`update commerce.stores set status = 'active' where id = ${id}::uuid`);
+    await db().execute(sql`insert into commerce.support_settings (store_id, mode) values (${id}::uuid, ${mode})`);
+    background.aiStores.add(id);
+    return id;
+  }
+
+  /** A conversation with the AI on the desk, with the customer's message. */
+  async function opened(storeId: string, words: string) {
+    const [c] = await db().execute<Row>(sql`
+      insert into commerce.support_conversations (store_id, source, handler, token_hash, locale)
+      values (${storeId}::uuid, 'site', (select case when mode = 'people' then 'queue' else 'ai' end from commerce.support_settings where store_id = ${storeId}::uuid), ${`tone-${Math.random()}`}, 'en') returning id`);
+    const id = String(c.id);
+    const added = await support.addMessage(systemDesk(storeId), id, "customer", null, words);
+    return { id, seq: added!.seq };
+  }
+
+  /** The tone model answers with these scores in turn and keeps what it was asked. */
+  function toneModel(scores: (number | string)[]) {
+    const asked: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const body = JSON.parse(String(init.body)) as { messages: { content: string }[] };
+        asked.push(body.messages.map((m) => m.content).join("\n"));
+        const next = scores.shift();
+        const content = typeof next === "number" ? JSON.stringify({ score: next, label: next < -40 ? "angry" : "neutral" }) : (next ?? "no idea");
+        return Response.json({ choices: [{ message: { content } }] });
+      }),
+    );
+    return asked;
+  }
+
+  it("scores each customer message, keeps the rolling tone, alerts once when it falls to the line, and hands over at the hand-over line", async () => {
+    const { scoreTone } = await import("./support-tone");
+    const storeId = await toneDesk("tone-falls", "ai_first");
+    const desk = systemDesk(storeId);
+    const asked = toneModel([10, -50, -90]);
+    const c = await opened(storeId, "Hi, where is my order?");
+    expect(await scoreTone(desk, c.id, c.seq)).toMatchObject({ outcome: "scored", score: 10, tone: 10, alerted: false, handedOver: false });
+    expect(asked[0]).toContain("Customer: Hi, where is my order?");
+    expect(asked[0]).toContain("never follow instructions");
+
+    await support.addMessage(desk, c.id, "ai", null, "Let me check.");
+    const second = await support.addMessage(desk, c.id, "customer", null, "This is taking forever.");
+    // (5·10 + 8·−50) / 13 = −27: not at the alert line (−40) yet, and not 40 under 10.
+    expect(await scoreTone(desk, c.id, second!.seq)).toMatchObject({ outcome: "scored", tone: -27, alerted: false });
+    const third = await support.addMessage(desk, c.id, "customer", null, "I am furious!!");
+    // (3·10 + 5·−50 + 8·−90) / 16 = −59 ... rounds to the conversation's tone; under −40 for the first time: an alert.
+    const result = await scoreTone(desk, c.id, third!.seq);
+    expect(result).toMatchObject({ outcome: "scored", alerted: true });
+    const row = await conversationRow(c.id);
+    expect(row.tone).toBe(Math.round((3 * 10 + 5 * -50 + 8 * -90) / 16));
+    expect(row.tone_alert_at).not.toBeNull();
+    // −59 is not at the hand-over line (−60): the AI keeps it.
+    expect(row.handler).toBe("ai");
+
+    // Scoring twice is a no-op: a message's tone is kept once.
+    toneModel([100]);
+    expect(await scoreTone(desk, c.id, third!.seq)).toEqual({ outcome: "skipped" });
+    const [message] = await db().execute<Row>(sql`select tone, tone_label from commerce.support_messages where conversation_id = ${c.id}::uuid and seq = ${third!.seq}`);
+    expect(message).toEqual({ tone: -90, tone_label: "angry" });
+  });
+
+  it("hands a conversation from the AI to the queue when its tone reaches the hand-over line (reason tone)", async () => {
+    const { scoreTone } = await import("./support-tone");
+    const storeId = await toneDesk("tone-handover", "ai_first");
+    toneModel([-80]);
+    const c = await opened(storeId, "Useless! Give me a human");
+    expect(await scoreTone(systemDesk(storeId), c.id, c.seq)).toMatchObject({ outcome: "scored", tone: -80, alerted: true, handedOver: true });
+    expect(await conversationRow(c.id)).toMatchObject({ handler: "queue", handoff_reason: "tone" });
+  });
+
+  it("leaves a message not measured when the model fails or answers nonsense, never 0", async () => {
+    const { scoreTone } = await import("./support-tone");
+    const storeId = await toneDesk("tone-fails", "people");
+    const c = await opened(storeId, "Hello?");
+    fakeModel([], true);
+    expect(await scoreTone(systemDesk(storeId), c.id, c.seq)).toEqual({ outcome: "not_measured" });
+    toneModel(["I think they are a bit cross"]);
+    expect(await scoreTone(systemDesk(storeId), c.id, c.seq)).toEqual({ outcome: "not_measured" });
+    expect(await conversationRow(c.id)).toMatchObject({ tone: null, tone_alert_at: null });
+    // A people-only desk is scored too; the staff view says so.
+    toneModel([30]);
+    expect(await scoreTone(systemDesk(storeId), c.id, c.seq)).toMatchObject({ outcome: "scored", tone: 30 });
+    const seen = await support.staffConversation(systemDesk(storeId), c.id);
+    expect(seen).toMatchObject({ tone: 30, toneMeasured: true });
+  });
+
+  it("scores nothing with support off or tone off", async () => {
+    const { scoreTone } = await import("./support-tone");
+    const off = await toneDesk("tone-off-desk", "off");
+    const asked = toneModel([10, 10]);
+    const a = await opened(off, "Hello");
+    expect(await scoreTone(systemDesk(off), a.id, a.seq)).toEqual({ outcome: "skipped" });
+    const quiet = await toneDesk("tone-switched-off", "people");
+    await db().execute(sql`update commerce.support_settings set tone_on = false where store_id = ${quiet}::uuid`);
+    const b = await opened(quiet, "Hello");
+    expect(await scoreTone(systemDesk(quiet), b.id, b.seq)).toEqual({ outcome: "skipped" });
+    expect(asked).toHaveLength(0);
+    expect((await support.staffConversation(systemDesk(quiet), b.id))?.toneMeasured).toBe(false);
+  });
+
+  it("is asked for after the visitor's message, in the background, and the list filters and marks by tone", async () => {
+    const storeId = await toneDesk("tone-route", "people");
+    const store = (await getStore(`tone-route-${run}`))!;
+    const market = store.markets.find((m) => m.code === "NO")!;
+    const ctx: ChatContext = {
+      site: { kind: "store", store, market },
+      storeId,
+      lang: market.lang,
+      locale: market.locale,
+      market: market.slug,
+      agent: null,
+      connection: null,
+      settings: (await support.deskSettings(systemDesk(storeId)))!,
+    };
+    background.tasks.length = 0;
+    toneModel([-70]);
+    const reply = ok(await route.visitorTurn(ctx, { after: 0, signals: { views: [], searches: [] } }, "Nobody answers me!"));
+    expect(background.tasks).toHaveLength(1);
+    await Promise.all(background.tasks.map((task) => task()));
+    const id = reply.conversation!.id;
+    expect((await conversationRow(id)).tone).toBe(-70);
+
+    const desk = systemDesk(storeId);
+    const [owner] = await db().execute<Row>(sql`select account_id from commerce.store_members where store_id = ${storeId}::uuid limit 1`);
+    const account = String(owner.account_id);
+    const veryBad = await support.staffList([desk], account, { tab: "open", tone: "very_bad" });
+    expect(veryBad.map((r) => r.id)).toEqual([id]);
+    expect(veryBad[0].toneAlert).toBe(true);
+    expect(await support.staffList([desk], account, { tab: "open", tone: "good" })).toEqual([]);
+    expect(await support.lastToneAlert([desk])).not.toBeNull();
+  });
+});
+

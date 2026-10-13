@@ -253,6 +253,13 @@ of running `playwright install`.
   `account/support/{token}` and Kaizen's `/support/c/{token}` are no-extras
   paths, `isSupportLinkPath()`), and a typed email is never proof (*Email not
   verified*).
+  Tone (step 6, `src/server/support-tone.ts`): `scoreTone()` runs in `after()`
+  from the visitor's message (support on, `tone_on`, a text model, feature
+  `support_tone`); a message's tone is written only by
+  `commerce.support_record_tone()` (once, a customer's; messages are otherwise
+  never changed), the conversation's tone and alert come from `rollingTone()`/
+  `toneFell()` under its lock, the hand-over at the line from `crossedLine()`;
+  a missing score is *not measured*, never 0, and the customer never sees one.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

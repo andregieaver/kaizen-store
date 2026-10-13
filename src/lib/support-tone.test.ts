@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { bandOf, parseTone, rollingTone, TONE_BANDS, TONE_BAND_WORDS, TONE_WEIGHTS, toneFell } from "./support-tone";
+import { bandOf, crossedLine, parseTone, rollingTone, TONE_BANDS, TONE_BAND_WORDS, TONE_WEIGHTS, toneFell, toneHistory, tonePrompt } from "./support-tone";
 
 describe("a customer's tone (D216, 2.6)", () => {
   it("puts a score in one of five bands, each with its words", () => {
@@ -48,5 +48,25 @@ describe("a customer's tone (D216, 2.6)", () => {
     expect(parseTone('{"score": 2.5, "label": "happy"}')).toBeNull();
     expect(parseTone('{"score": 10, "label": "ecstatic"}')).toBeNull();
     expect(parseTone("I would say quite angry")).toBeNull();
+  });
+
+  it("keeps the rolling value after each scored message, leaving unscored ones out", () => {
+    expect(toneHistory([])).toEqual([]);
+    expect(toneHistory([null, 40, null, -80])).toEqual([40, Math.round((5 * 40 + 8 * -80) / 13)]);
+  });
+
+  it("hands over once, when the tone just reaches the line", () => {
+    expect(crossedLine([-70], -60)).toBe(true);
+    expect(crossedLine([10, -60], -60)).toBe(true);
+    expect(crossedLine([-61, -70], -60)).toBe(false);
+    expect(crossedLine([-70], null)).toBe(false);
+    expect(crossedLine([], -60)).toBe(false);
+  });
+
+  it("gives the model the last lines by role, the scored one last, on one line each", () => {
+    expect(tonePrompt([
+      { author: "ai", body: "Hello!" },
+      { author: "customer", body: "Where is\nmy parcel?" },
+    ])).toBe("Assistant: Hello!\nCustomer: Where is my parcel?\n\nRate the last customer message.");
   });
 });

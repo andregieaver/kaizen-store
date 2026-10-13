@@ -26,6 +26,7 @@ import {
   type SupportMode,
 } from "@/lib/support-rules";
 import { REFUSALS, type Refusal, type SupportEvent } from "@/lib/support-state";
+import type { ToneBand } from "@/lib/support-tone";
 import type { ConversationRef, VisitorMessage, VisitorMessageData, VisitorState } from "@/lib/support-visitor";
 
 import { avatarPictureUrl } from "@/lib/avatar";
@@ -93,6 +94,10 @@ export type DeskSettings = {
   hours: OpeningHours | null;
   /** Email the desk's people after a conversation has waited this long (2.9). */
   notifyAfterMinutes: number;
+  /** Customers' messages are scored for tone (2.6), and the lines of the alert and of the hand-over to a person (the AI first), or null for off. */
+  toneOn: boolean;
+  toneAlert: number | null;
+  toneHandoff: number | null;
 };
 
 /** The desk's settings, made on its first conversation with support off (S5): the chat agent alone, as before. */
@@ -115,6 +120,9 @@ export function settingsOf(row: Row): DeskSettings {
     agentNaming: row.agent_naming === "desk" ? "desk" : "first_name",
     hours: row.hours ? parseOpeningHours(row.hours) : null,
     notifyAfterMinutes: Number(row.notify_after_minutes ?? NOTIFY_AFTER_MINUTES.default),
+    toneOn: row.tone_on === undefined ? true : Boolean(row.tone_on),
+    toneAlert: row.tone_alert === null || row.tone_alert === undefined ? null : Number(row.tone_alert),
+    toneHandoff: row.tone_handoff === null || row.tone_handoff === undefined ? null : Number(row.tone_handoff),
   };
 }
 
@@ -484,7 +492,23 @@ export async function deleteOldRecords(cutoff: Date, limit = 5000): Promise<numb
 export const INBOX_TABS = ["waiting", "mine", "ai", "open", "ended"] as const;
 export type InboxTab = (typeof INBOX_TABS)[number];
 
-export type InboxFilters = { tab: InboxTab; q?: string; storeId?: string | null };
+export type InboxFilters = { tab: InboxTab; q?: string; storeId?: string | null; tone?: ToneBand };
+
+/** A tone band as a condition on a conversation alias `c` (2.6's edges). */
+function toneBandCondition(band: ToneBand): SQL {
+  switch (band) {
+    case "very_bad":
+      return sql`c.tone <= -60`;
+    case "bad":
+      return sql`c.tone between -59 and -20`;
+    case "neutral":
+      return sql`c.tone between -19 and 19`;
+    case "good":
+      return sql`c.tone between 20 and 59`;
+    case "very_good":
+      return sql`c.tone >= 60`;
+  }
+}
 
 export type InboxRow = {
   id: string;
@@ -507,6 +531,8 @@ export type InboxRow = {
   unread: boolean;
   summaryTitle: string | null;
   endedAt: string | null;
+  /** The tone fell to the desk's alert line (or by 40) and the conversation is still open (2.6). */
+  toneAlert: boolean;
 };
 
 const PREVIEW_MAX = 140;
@@ -549,13 +575,14 @@ export const visitorLabel = (id: string) => `Visitor ${id.replace(/-/g, "").slic
 export async function staffList(desks: Desk[], accountId: string, filters: InboxFilters): Promise<InboxRow[]> {
   const q = filters.q?.trim().slice(0, 100);
   const storeOnly = filters.storeId ? sql`and c.store_id = ${filters.storeId}::uuid` : sql``;
+  const toneOnly = filters.tone ? sql`and ${toneBandCondition(filters.tone)}` : sql``;
   const search = q
     ? sql`and (cu.name ilike ${likeOf(q)} or cu.email ilike ${likeOf(q)} or c.contact_name ilike ${likeOf(q)} or c.contact_email ilike ${likeOf(q)}
         or ra.name ilike ${likeOf(q)} or ra.email ilike ${likeOf(q)} or c.summary->>'title' ilike ${likeOf(q)})`
     : sql``;
   const order = filters.tab === "waiting" ? sql`c.queued_at asc nulls last, c.created_at asc` : sql`c.last_message_at desc`;
   const rows = await db().execute<Row>(sql`
-    select c.id, c.status, c.handler, c.source, c.last_message_at, c.queued_at, c.tone, c.ended_at, c.message_seq, c.customer_id,
+    select c.id, c.status, c.handler, c.source, c.last_message_at, c.queued_at, c.tone, c.tone_alert_at, c.ended_at, c.message_seq, c.customer_id,
       c.summary->>'title' as summary_title,
       s.slug as store_slug, s.name as store_name,
       coalesce(nullif(cu.name, ''), nullif(c.contact_name, ''), nullif(ra.name, '')) as who_name,
@@ -570,7 +597,7 @@ export async function staffList(desks: Desk[], accountId: string, filters: Inbox
     left join commerce.accounts ra on ra.id = c.requester_id
     left join commerce.accounts a on a.id = c.assignee_id
     left join commerce.support_reads rd on rd.conversation_id = c.id and rd.account_id = ${accountId}::uuid
-    where ${onDesks(desks)} and c.anonymised_at is null and ${tabCondition(filters.tab, accountId)} ${storeOnly} ${search}
+    where ${onDesks(desks)} and c.anonymised_at is null and ${tabCondition(filters.tab, accountId)} ${storeOnly} ${toneOnly} ${search}
     order by ${order}
     limit ${LIST_MAX}
   `);
@@ -592,7 +619,18 @@ export async function staffList(desks: Desk[], accountId: string, filters: Inbox
     unread: Number(r.message_seq) > Number(r.last_read),
     summaryTitle: r.summary_title ? String(r.summary_title) : null,
     endedAt: r.ended_at ? iso(r.ended_at) : null,
+    toneAlert: r.status === "open" && r.tone_alert_at !== null,
   }));
+}
+
+/** When a tone alert was last raised on the desks' open conversations (the inbox notifies when it moves), or null. */
+export async function lastToneAlert(desks: Desk[]): Promise<string | null> {
+  if (desks.length === 0) return null;
+  const [row] = await db().execute<Row>(sql`
+    select max(c.tone_alert_at) as at from commerce.support_conversations c
+    where ${onDesks(desks)} and c.status = 'open' and c.anonymised_at is null
+  `);
+  return row?.at ? iso(row.at) : null;
 }
 
 const firstLine = (text: string) => {
@@ -659,6 +697,9 @@ export type StaffConversation = {
   summary: { title: string; text: string; outcome: string; topics: string[] } | null;
   rating: string | null;
   messageSeq: number;
+  /** The desk scores customers' messages (support and tone on): a customer message without a score is *not measured*. */
+  toneMeasured: boolean;
+  toneAlertAt: string | null;
   messages: StaffMessage[];
 };
 
@@ -668,12 +709,14 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
     select c.*, s.slug as store_slug, s.name as store_name,
       coalesce(nullif(cu.name, ''), nullif(c.contact_name, ''), nullif(ra.name, '')) as who_name,
       coalesce(cu.email, c.contact_email, ra.email) as who_email,
-      coalesce(nullif(a.name, ''), a.email) as assignee_name
+      coalesce(nullif(a.name, ''), a.email) as assignee_name,
+      coalesce(ss.mode, 'off') <> 'off' and coalesce(ss.tone_on, true) as tone_measured
     from commerce.support_conversations c
     left join commerce.stores s on s.id = c.store_id
     left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
     left join commerce.accounts ra on ra.id = c.requester_id
     left join commerce.accounts a on a.id = c.assignee_id
+    left join commerce.support_settings ss on ss.store_id is not distinct from c.store_id
     where c.id = ${conversationId}::uuid and ${deskIs(desk, sql`c.store_id`)} and c.anonymised_at is null
   `);
   if (!c) return null;
@@ -708,6 +751,8 @@ export async function staffConversation(desk: Desk, conversationId: string, afte
         : null,
     rating: c.rating ? String(c.rating) : null,
     messageSeq: Number(c.message_seq),
+    toneMeasured: Boolean(c.tone_measured),
+    toneAlertAt: c.tone_alert_at ? iso(c.tone_alert_at) : null,
     messages: messages.map((m) => ({
       seq: Number(m.seq),
       author: String(m.author) as MessageAuthor,

@@ -194,6 +194,26 @@ describe("support in the database (D216)", () => {
     ).rejects.toThrow("support_bad_event");
   });
 
+  it("5b. records a customer message's tone once, through support_record_tone() only (step 6)", async () => {
+    const id = await conversation("ai_first");
+    await add(id, "customer", null, "This is broken!");
+    await add(id, "ai", null, "Sorry to hear that.");
+    const record = (seq: number, score: number, label = "angry") =>
+      one<{ done: boolean }>("select commerce.support_record_tone($1, $2, $3, $4) as done", [id, seq, score, label]);
+    // Not by a plain update, even of the tone.
+    expect(await refusal(db.query("update commerce.support_messages set tone = -50, tone_label = 'angry' where conversation_id = $1 and seq = 1", [id]))).toBe("support_bad_event");
+    expect((await record(1, -70)).done).toBe(true);
+    // Once: a second score is not taken, and only a customer's message has one.
+    expect((await record(1, 50, "happy")).done).toBe(false);
+    expect((await record(2, -10, "neutral")).done).toBe(false);
+    expect(await one("select tone, tone_label, body from commerce.support_messages where conversation_id = $1 and seq = 1", [id])).toEqual({ tone: -70, tone_label: "angry", body: "This is broken!" });
+    // The flag is the function's own: after it, a message is as unchangeable as before.
+    expect(await refusal(db.query("update commerce.support_messages set body = 'x' where conversation_id = $1 and seq = 1", [id]))).toBe("support_bad_event");
+    // A label outside the closed list is refused by the table's check.
+    await add(id, "customer", null, "Still waiting");
+    await expect(record(3, -20, "furious")).rejects.toThrow();
+  });
+
   it("6. lets an agent write only in a conversation they have", async () => {
     const id = await conversation("people");
     expect(await refusal(add(id, "agent", agentA, "Hello"))).toBe("support_not_yours");

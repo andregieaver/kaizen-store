@@ -16,8 +16,8 @@ type Row = Record<string, unknown>;
 
 /**
  * A desk's settings (D216, `docs/support.md` 2.10, step 5): who answers its customers, email follow-up, opening hours, when quiet
- * conversations end, when people are emailed about a waiting customer, how people are named, and (the owner's alone) how long
- * transcripts are kept. Saved by people who may answer the desk (`support:write`, or a platform admin for Kaizen's).
+ * conversations end, when people are emailed about a waiting customer, how people are named, the customer's tone (step 6) and (the
+ * owner's alone) how long transcripts are kept. Saved by people who may answer the desk (`support:write`, or a platform admin for Kaizen's).
  */
 
 export type DeskSettingsView = DeskSettings & {
@@ -57,6 +57,7 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
       update commerce.support_settings set
         mode = ${input.mode}, email_followup = ${input.emailFollowup}, hours = ${input.hours ? JSON.stringify(input.hours) : null}::jsonb,
         end_after_minutes = ${input.endAfterMinutes}, notify_after_minutes = ${input.notifyAfterMinutes}, agent_naming = ${input.agentNaming},
+        tone_on = ${input.toneOn}, tone_alert = ${input.toneAlert}, tone_handoff = ${input.toneHandoff},
         transcript_days = ${transcriptDays}, updated_at = now(), updated_by = ${staff.account.id}::uuid
       where ${desk}
     `);
@@ -76,6 +77,9 @@ export async function saveDeskSettings(staff: StaffDesk, raw: unknown, may: { ow
       ["end_after_minutes", current.endAfterMinutes, input.endAfterMinutes],
       ["notify_after_minutes", current.notifyAfterMinutes, input.notifyAfterMinutes],
       ["agent_naming", current.agentNaming, input.agentNaming],
+      ["tone_on", current.toneOn, input.toneOn],
+      ["tone_alert", current.toneAlert, input.toneAlert],
+      ["tone_handoff", current.toneHandoff, input.toneHandoff],
       ["transcript_days", current.transcriptDays, transcriptDays],
     ] as const
   )

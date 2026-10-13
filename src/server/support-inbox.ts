@@ -1,8 +1,9 @@
 import "server-only";
 
 import type { SupportMode } from "@/lib/support-rules";
+import { TONE_BANDS, type ToneBand } from "@/lib/support-tone";
 
-import { INBOX_TABS, deskSettings, markRead, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
+import { INBOX_TABS, deskSettings, lastToneAlert, markRead, mineUnreadCount, staffConversation, staffList, waitingCount, type InboxRow, type InboxTab, type StaffConversation } from "./support";
 import { deskAgents } from "./support-agent";
 import type { StaffDesk } from "./support-desk";
 
@@ -15,17 +16,19 @@ import type { StaffDesk } from "./support-desk";
 export const NO_STORE = { "Cache-Control": "no-store" } as const;
 
 /** The list, how many wait for a person, and how many of the person's own conversations have a customer message they have not read (the alerts, 2.9). */
-export type InboxFeed = { rows: InboxRow[]; waiting: number; mineUnread: number };
+export type InboxFeed = { rows: InboxRow[]; waiting: number; mineUnread: number; /** When a tone alert was last raised (2.6): the inbox notifies when it moves. */ lastToneAlert: string | null };
 
 /** The list's filters from the address: the tab (waiting by default), the words searched and, at the owner's level, the store. */
-export function inboxQuery(search: URLSearchParams): { tab: InboxTab; q?: string; store?: string } {
+export function inboxQuery(search: URLSearchParams): { tab: InboxTab; q?: string; store?: string; tone?: ToneBand } {
   const tab = search.get("tab");
+  const tone = search.get("tone");
   const q = search.get("q")?.trim().slice(0, 100);
   const store = search.get("store")?.trim();
   return {
     tab: (INBOX_TABS as readonly string[]).includes(tab ?? "") ? (tab as InboxTab) : "waiting",
     ...(q ? { q } : {}),
     ...(store && /^[a-z0-9-]{1,63}$/.test(store) ? { store } : {}),
+    ...((TONE_BANDS as readonly string[]).includes(tone ?? "") ? { tone: tone as ToneBand } : {}),
   };
 }
 
@@ -33,10 +36,15 @@ export function inboxQuery(search: URLSearchParams): { tab: InboxTab; q?: string
 export async function inboxFeed(desks: StaffDesk[], query: ReturnType<typeof inboxQuery>): Promise<InboxFeed> {
   const shown = query.store ? desks.filter((d) => d.store?.slug === query.store) : desks;
   const account = desks[0]?.account.id;
-  if (!account || shown.length === 0) return { rows: [], waiting: 0, mineUnread: 0 };
+  if (!account || shown.length === 0) return { rows: [], waiting: 0, mineUnread: 0, lastToneAlert: null };
   const plain = shown.map((d) => d.desk);
-  const [rows, waiting, mineUnread] = await Promise.all([staffList(plain, account, { tab: query.tab, q: query.q }), waitingCount(plain), mineUnreadCount(plain, account)]);
-  return { rows, waiting, mineUnread };
+  const [rows, waiting, mineUnread, toneAlert] = await Promise.all([
+    staffList(plain, account, { tab: query.tab, q: query.q, tone: query.tone }),
+    waitingCount(plain),
+    mineUnreadCount(plain, account),
+    lastToneAlert(plain),
+  ]);
+  return { rows, waiting, mineUnread, lastToneAlert: toneAlert };
 }
 
 /** A conversation as the inbox draws it: the conversation, who is looking (to know whether it is theirs), what they may do and to whom it can be handed. */
