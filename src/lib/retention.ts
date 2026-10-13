@@ -31,6 +31,8 @@ export const RETENTION_KINDS = [
   "abandoned_checkouts",
   "recommendation_events",
   "ai_usage",
+  "support_transcripts",
+  "support_records",
 ] as const;
 export type RetentionKind = (typeof RETENTION_KINDS)[number];
 
@@ -81,8 +83,8 @@ export type RetentionRuleRow = Period & {
 const CHECKED = "2026-10-04";
 const SEED_FROM = "2000-01-01";
 
-type Seed = Omit<RetentionRuleRow, "validFrom" | "validTo" | "checkedOn" | "verifiedAt" | "sourceUrl"> & { sourceUrl?: string | null };
-const seed = (row: Seed): RetentionRuleRow => ({ sourceUrl: null, ...row, checkedOn: CHECKED, validFrom: SEED_FROM, validTo: null, verifiedAt: null });
+type Seed = Omit<RetentionRuleRow, "validFrom" | "validTo" | "checkedOn" | "verifiedAt" | "sourceUrl"> & { sourceUrl?: string | null; checkedOn?: string };
+const seed = ({ checkedOn, ...row }: Seed): RetentionRuleRow => ({ sourceUrl: null, ...row, checkedOn: checkedOn ?? CHECKED, validFrom: SEED_FROM, validTo: null, verifiedAt: null });
 
 const POLICY = "Kaizen's own choice under GDPR Art. 5(1)(e) (kept no longer than necessary), not a statute: a proportionality decision for review.";
 
@@ -184,6 +186,9 @@ export const RETENTION_SEED: readonly RetentionRuleRow[] = [
   seed({ kind: "abandoned_checkouts", country: null, periodValue: 30, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "cart reminders' erase", note: "The code's constant is the source; a test holds them equal." }),
   seed({ kind: "recommendation_events", country: null, periodValue: 90, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "recommendations' EVENT_DAYS", note: "The code's constant is the source; a test holds them equal." }),
   seed({ kind: "ai_usage", country: null, periodValue: 400, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "ai-usage's USAGE_KEEP_DAYS", note: "The code's constant is the source; a test holds them equal." }),
+  // Support (D216, docs/support.md 3.5): the longest a desk may keep a transcript (desks choose 30, 60 or 90 days; one with support off keeps it a day).
+  seed({ kind: "support_transcripts", country: null, periodValue: 90, periodUnit: "days", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: support_transcripts", note: "Counts from the conversation's end. The desk's own choice (TRANSCRIPT_DAYS) or a day with support off is shorter; a test holds the default equal.", checkedOn: "2026-10-13" }),
+  seed({ kind: "support_records", country: null, periodValue: 24, periodUnit: "months", countsFrom: "event", source: POLICY, basis: "policy", enforcedBy: "runRetention: support_records", note: "Anonymised conversations (dates, counts, closed fields) for the desk's reports; RECORD_MONTHS, a test holds them equal.", checkedOn: "2026-10-13" }),
 ];
 
 /** What an empty rules table means: the safe side, never "keep nothing" and never "delete everything". */

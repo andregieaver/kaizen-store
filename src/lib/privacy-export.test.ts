@@ -100,6 +100,19 @@ function full(): ExportInput {
     forms: [{ kind: "form.subscription", createdAt: "2026-01-05T00:00:00.000Z", status: "confirmed" }],
     company: { company: { name: "Fjord AS", role: "employee" }, invites: [{ status: "accepted", createdAt: "2026-01-06T00:00:00.000Z", expiresAt: "2026-01-20T00:00:00.000Z", acceptedAt: "2026-01-07T00:00:00.000Z" }] },
     customFields: [{ entity: "customer", reference: null, group: "Notes", label: "Allergy", value: "Nuts", locale: null }, { entity: "order", reference: "1001", group: "Packing", label: "Gift note", value: "Happy birthday", locale: "nb" }],
+    support: [
+      {
+        startedAt: "2026-03-02T09:00:00.000Z",
+        endedAt: "2026-03-02T09:20:00.000Z",
+        messages: [
+          { at: "2026-03-02T09:00:00.000Z", from: "customer", text: "Where is order 1001?" },
+          { at: "2026-03-02T09:00:05.000Z", from: "ai", text: "It was sent yesterday." },
+        ],
+        summary: null,
+        rating: "good",
+        ratingComment: null,
+      },
+    ],
   };
 }
 
@@ -110,7 +123,7 @@ describe("shaping an export", () => {
     expect(validateExport(file)).toEqual([]);
     expect(Object.keys(file.sections).sort()).toEqual([...EXPORT_SECTIONS].sort());
     expect(file.counts).toEqual({
-      profile: 1, addresses: 3, orders: 2, invoices: 1, creditNotes: 1, returns: 2, subscriptions: 1, deliveries: 1, wishlists: 2, bonus: 1, referrals: 3, consents: 2, emails: 1, carts: 2, forms: 1, company: 2, customFields: 2,
+      profile: 1, addresses: 3, orders: 2, invoices: 1, creditNotes: 1, returns: 2, subscriptions: 1, deliveries: 1, wishlists: 2, bonus: 1, referrals: 3, consents: 2, emails: 1, carts: 2, forms: 1, company: 2, customFields: 2, support: 1,
     });
     expect(totalRows(file.counts)).toBe(Object.values(file.counts).reduce((a, b) => a + b, 0));
     expect(file.generatedAt).toBe("2026-10-04T10:00:00.000Z");

@@ -250,6 +250,15 @@ export type CompanySource = {
   company: { name: string; role: string | null } | null;
   invites: { status: string; createdAt: Ts; expiresAt: Ts; acceptedAt: Ts }[];
 };
+/** A support conversation of the customer (D216): what they, the AI and the store's people wrote; never staff's notes or the partner's help. */
+export type SupportRow = {
+  startedAt: Ts;
+  endedAt: Ts;
+  messages: { at: Ts; from: "customer" | "ai" | "agent"; text: string }[];
+  summary: { title: string; outcome: string } | null;
+  rating: string | null;
+  ratingComment: string | null;
+};
 export type CustomFieldRow = { entity: "customer" | "order"; reference: string | null; group: string; label: string; value: string | null; locale: string | null };
 
 /** What `exportCustomerData()` gathers, by `store_id`, before shaping. */
@@ -283,6 +292,8 @@ export type ExportInput = {
   forms: FormRow[];
   company: CompanySource;
   customFields: CustomFieldRow[];
+  /** Support conversations (D216); absent is none. */
+  support?: SupportRow[];
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------------
@@ -312,6 +323,7 @@ export type ExportSections = {
   forms: Json[];
   company: { company: Json | null; invites: Json[] };
   customFields: Json[];
+  support: Json[];
 };
 
 export type ExportCounts = Record<ExportSection, number>;
@@ -621,6 +633,7 @@ export function countsOf(input: ExportInput): ExportCounts {
     forms: input.forms.length,
     company: (input.company.company ? 1 : 0) + input.company.invites.length,
     customFields: input.customFields.length,
+    support: (input.support ?? []).length,
   };
 }
 
@@ -678,6 +691,14 @@ export function shapeExport(input: ExportInput): ExportFile {
       invites: input.company.invites.map((i) => ({ status: i.status, createdAt: iso(i.createdAt), expiresAt: iso(i.expiresAt), acceptedAt: iso(i.acceptedAt) })),
     },
     customFields: input.customFields.map((f) => ({ entity: f.entity, reference: text(f.reference), group: f.group, label: f.label, value: text(f.value), locale: text(f.locale) })),
+    support: (input.support ?? []).map((c) => ({
+      startedAt: iso(c.startedAt),
+      endedAt: iso(c.endedAt),
+      messages: c.messages.map((m) => ({ at: iso(m.at), from: m.from, text: m.text })),
+      summary: c.summary ? { title: c.summary.title, outcome: c.summary.outcome } : null,
+      rating: text(c.rating),
+      ratingComment: text(c.ratingComment),
+    })),
   };
   return {
     schema: EXPORT_SCHEMA,
@@ -812,6 +833,7 @@ export function validateExport(file: unknown): string[] {
     carts: listOf((sections.carts as Row | undefined)?.carts) + listOf((sections.carts as Row | undefined)?.abandonedCheckouts) + listOf((sections.carts as Row | undefined)?.draftOrders),
     forms: listOf(sections.forms),
     customFields: listOf(sections.customFields),
+    support: listOf(sections.support),
   };
   for (const [s, n] of Object.entries(expected)) {
     if (counts[s] !== n) out.push(`counts.${s} is ${String(counts[s])} but the section holds ${n}`);

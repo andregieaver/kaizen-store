@@ -4,8 +4,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
-import { HISTORY_MAX, MESSAGE_MAX, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
+import { MESSAGE_MAX, type ChatProduct } from "@/lib/chat";
 import { readSession, signalsOf } from "@/lib/recommend-session";
+import {
+  STORAGE_KEY,
+  lastSeqOf,
+  mergeMessages,
+  readStored,
+  storedValue,
+  type ConversationRef,
+  type StoredConversation,
+  type VisitorMessage,
+  type VisitorReply,
+} from "@/lib/support-visitor";
 
 import type { UnitLabels } from "@/lib/unit-price-text";
 
@@ -29,6 +40,10 @@ export type ChatLabels = {
   micDenied: string;
   restart: string;
   conversation: string;
+  /** How long the site keeps the conversation (D216, legal: needs review). */
+  kept: string;
+  /** The words of the conversation's system lines, by kind. */
+  lines: { ended: string; reopened: string };
   vatIncluded: string;
   vatExcluded: string;
   fromPrice: string;
@@ -45,14 +60,8 @@ export type ChatWidgetProps = {
   labels: ChatLabels;
 };
 
-type Message = {
-  role: "user" | "assistant";
-  content: string;
-  products?: ChatProduct[];
-  actions?: ChatAction[];
-  /** A notice from the widget (a limit, an error): shown, never sent to the agent. */
-  notice?: boolean;
-};
+/** A sentence from the widget itself (a limit, an error): shown after the conversation, never kept or sent. */
+type Notice = { id: number; text: string };
 
 /** What the tab remembers of the products looked at and the searches made (D139), for the agent's recommendations; none without it. */
 function tabSignals() {
@@ -63,35 +72,31 @@ function tabSignals() {
   }
 }
 
-/** The conversation is kept in the tab only (`kaizen_chat`, D58), for the site it was held on. */
-const STORAGE = "kaizen_chat";
 /** A spoken message's longest recording. */
 const RECORDING_MS = 60_000;
 
-function readStored(key: string): Message[] {
+/**
+ * The tab's copy of its conversation (`kaizen_chat`, D58, version 2): which conversation is the visitor's and what it has shown. The
+ * conversation itself is the site's (D216); the copy only lets a reload draw at once before asking for what is new.
+ */
+function loadStored(site: string): StoredConversation {
   try {
-    const stored = JSON.parse(sessionStorage.getItem(STORAGE) ?? "null") as { site?: string; messages?: Message[] } | null;
-    return stored?.site === key && Array.isArray(stored.messages) ? stored.messages.slice(-40) : [];
+    return readStored(sessionStorage.getItem(STORAGE_KEY), site);
   } catch {
-    return [];
+    return readStored(null, site);
   }
 }
 
-function writeStored(key: string, messages: Message[]) {
+function saveStored(stored: StoredConversation) {
   try {
-    if (messages.length === 0) sessionStorage.removeItem(STORAGE);
-    else sessionStorage.setItem(STORAGE, JSON.stringify({ site: key, messages: messages.slice(-40) }));
+    if (!stored.conversation) sessionStorage.removeItem(STORAGE_KEY);
+    else sessionStorage.setItem(STORAGE_KEY, storedValue(stored));
   } catch {
     // Private windows and full storage: the conversation lasts as long as the page.
   }
 }
 
-/** What the agent is sent: the conversation's last messages, without the widget's own notices. */
-const history = (messages: Message[]) =>
-  messages
-    .filter((message) => !message.notice)
-    .slice(-HISTORY_MAX)
-    .map((message) => ({ role: message.role, content: message.content.slice(0, MESSAGE_MAX) }));
+const isReply = (body: unknown): body is VisitorReply => Boolean(body && typeof body === "object" && Array.isArray((body as VisitorReply).messages) && (body as VisitorReply).state);
 
 const phone = () => window.matchMedia("(max-width: 767px)").matches;
 
@@ -105,12 +110,16 @@ function recorderType(): string | undefined {
  * conversation with the AI assistant, typed or spoken. It opens the pages
  * the agent opens for the visitor, and shows the products it found as
  * cards with the site's own prices. It is labelled as AI, as the AI Act asks.
+ * The conversation is the site's (D216): the widget sends only the new
+ * message and draws what the site answers.
  */
 export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
   const router = useRouter();
   const key = `${site.store ?? ""}/${site.market ?? ""}`;
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [stored, setStored] = useState<StoredConversation>(() => readStored(null, key));
+  const [pending, setPending] = useState<string | null>(null);
+  const [notices, setNotices] = useState<Notice[]>([]);
   const [draft, setDraft] = useState("");
   const [waiting, setWaiting] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -123,12 +132,13 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
   const launcherRef = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
 
+  const messages = stored.messages;
   useEffect(() => {
-    if (loaded) writeStored(key, messages);
-  }, [key, loaded, messages]);
+    if (loaded) saveStored(stored);
+  }, [loaded, stored]);
   useEffect(() => {
     listRef.current?.lastElementChild?.scrollIntoView({ block: "end" });
-  }, [messages, waiting, open]);
+  }, [messages, notices, pending, waiting, open]);
   // Focus moves into the chat as it opens, and back to its button as it closes.
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -144,10 +154,23 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
     [],
   );
 
+  const notice = (text: string) => setNotices((current) => [...current, { id: Date.now() + current.length, text }]);
+
+  /** Takes what the site answered: the conversation (a new one replaces the old), its state and the new messages; opens a page the agent opened. */
   const received = useCallback(
-    (reply: ChatReply) => {
-      setMessages((current) => [...current, { role: "assistant", content: reply.reply, products: reply.products, actions: reply.actions }]);
-      const go = reply.actions.find((action) => action.type === "navigate");
+    (reply: VisitorReply, ref: ConversationRef | null) => {
+      const conversation = reply.conversation ? { id: reply.conversation.id, token: reply.conversation.token ?? ref?.token ?? "" } : ref;
+      setStored((current) => {
+        const same = current.conversation?.id === conversation?.id;
+        const base = same ? current.messages : [];
+        const merged = mergeMessages(base, reply.messages);
+        return { ...current, conversation: conversation && conversation.token ? conversation : null, status: reply.state.status, messages: merged, lastSeq: lastSeqOf(merged, same ? current.lastSeq : 0) };
+      });
+      setNotices(reply.error ? [{ id: Date.now(), text: reply.error }] : []);
+      const go = reply.messages
+        .filter((message) => message.author === "ai")
+        .flatMap((message) => message.data?.actions ?? [])
+        .find((action) => action.type === "navigate");
       if (go) {
         router.push(go.href);
         // On a phone the conversation covers the page, so it steps aside to show it.
@@ -157,24 +180,68 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
     [router],
   );
 
-  const notice = (content: string) => setMessages((current) => [...current, { role: "assistant", content, notice: true }]);
+  /** The request every message carries: the site, the page, the tab's signals and the conversation with the last message seen. */
+  const turn = () => ({
+    ...site,
+    path: window.location.pathname,
+    signals: tabSignals(),
+    ...(stored.conversation ? { conversation: stored.conversation } : {}),
+    after: stored.lastSeq,
+  });
+
+  /** What to do with a refused request: a conversation the site no longer has is forgotten, so the next message starts a new one. */
+  function refused(status: number, error: string | undefined) {
+    if (status === 404 && stored.conversation) setStored((current) => ({ ...current, conversation: null, messages: [], lastSeq: 0, status: "open" }));
+    notice(error ?? labels.sorry);
+  }
 
   async function sendText(text: string) {
     const content = text.trim().slice(0, MESSAGE_MAX);
     if (!content || waiting) return;
-    const next: Message[] = [...messages, { role: "user", content }];
-    setMessages(next);
+    setPending(content);
     setDraft("");
     setWaiting(true);
+    const ref = stored.conversation;
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...site, path: window.location.pathname, signals: tabSignals(), messages: history(next) }),
+        body: JSON.stringify({ ...turn(), message: content }),
       });
-      const body = (await response.json().catch(() => ({}))) as Partial<ChatReply> & { error?: string };
-      if (!response.ok || typeof body.reply !== "string") notice(body.error ?? labels.sorry);
-      else received({ reply: body.reply, actions: body.actions ?? [], products: body.products ?? [] });
+      const body = (await response.json().catch(() => ({}))) as unknown;
+      if (!response.ok || !isReply(body)) {
+        refused(response.status, (body as { error?: string }).error);
+        setDraft((current) => current || content);
+      } else received(body, ref);
+    } catch {
+      notice(labels.sorry);
+      setDraft((current) => current || content);
+    } finally {
+      setPending(null);
+      setWaiting(false);
+    }
+  }
+
+  async function sendRecording(audio: Blob) {
+    setWaiting(true);
+    const ref = stored.conversation;
+    try {
+      const form = new FormData();
+      form.set("audio", audio, "message");
+      form.set("request", JSON.stringify(turn()));
+      const response = await fetch("/api/chat/voice", { method: "POST", body: form });
+      const body = (await response.json().catch(() => ({}))) as unknown;
+      if (!response.ok || !isReply(body)) {
+        refused(response.status, (body as { error?: string }).error);
+        return;
+      }
+      received(body, ref);
+      const spoken = (body as { audio?: string | null }).audio;
+      if (spoken) {
+        audioRef.current?.pause();
+        audioRef.current = new Audio(`data:audio/mpeg;base64,${spoken}`);
+        void audioRef.current.play().catch(() => undefined);
+      }
     } catch {
       notice(labels.sorry);
     } finally {
@@ -182,29 +249,28 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
     }
   }
 
-  async function sendRecording(audio: Blob) {
-    setWaiting(true);
+  /** On opening: the tab's copy at once, then what is new since (the conversation may have ended, or a person may have written). */
+  async function load() {
+    const copy = loadStored(key);
+    setStored(copy);
+    setLoaded(true);
+    if (!copy.conversation) return;
     try {
-      const form = new FormData();
-      form.set("audio", audio, "message");
-      form.set("request", JSON.stringify({ ...site, path: window.location.pathname, signals: tabSignals(), messages: history(messages) }));
-      const response = await fetch("/api/chat/voice", { method: "POST", body: form });
-      const body = (await response.json().catch(() => ({}))) as Partial<ChatReply> & { error?: string; transcript?: string; audio?: string | null };
-      if (!response.ok || typeof body.reply !== "string") {
-        notice(body.error ?? labels.sorry);
-        return;
-      }
-      if (body.transcript) setMessages((current) => [...current, { role: "user", content: body.transcript! }]);
-      received({ reply: body.reply, actions: body.actions ?? [], products: body.products ?? [] });
-      if (body.audio) {
-        audioRef.current?.pause();
-        audioRef.current = new Audio(`data:audio/mpeg;base64,${body.audio}`);
-        void audioRef.current.play().catch(() => undefined);
+      const response = await fetch("/api/chat/feed", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...site, conversation: copy.conversation, after: copy.lastSeq }),
+      });
+      const body = (await response.json().catch(() => ({}))) as unknown;
+      if (response.status === 404) setStored({ ...copy, conversation: null, messages: [], lastSeq: 0, status: "open" });
+      else if (response.ok && isReply(body)) {
+        setStored((current) => {
+          const merged = mergeMessages(current.messages, body.messages);
+          return { ...current, status: body.state.status, messages: merged, lastSeq: lastSeqOf(merged, current.lastSeq) };
+        });
       }
     } catch {
-      notice(labels.sorry);
-    } finally {
-      setWaiting(false);
+      // Offline: the copy is shown; the next message asks again.
     }
   }
 
@@ -243,10 +309,20 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
     setRecording(true);
   }
 
+  /** A new conversation: the old one is ended at the site (kept for its period, then anonymised) and forgotten by the tab. */
   function restart() {
     recorderRef.current?.stop();
     audioRef.current?.pause();
-    setMessages([]);
+    const ref = stored.conversation;
+    if (ref && stored.status === "open") {
+      void fetch("/api/chat/end", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...site, conversation: ref, after: stored.lastSeq }),
+      }).catch(() => undefined);
+    }
+    setStored({ ...stored, conversation: null, messages: [], lastSeq: 0, status: "open" });
+    setNotices([]);
     inputRef.current?.focus();
   }
 
@@ -291,25 +367,25 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
             </button>
           </header>
 
-          <ol ref={listRef} aria-label={labels.conversation} aria-live="polite" className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
+          <ol ref={listRef} role="log" aria-label={labels.conversation} aria-live="polite" className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4">
             <li className="flex items-end gap-2">
               {avatar("size-7")}
               <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 whitespace-pre-line">{labels.greeting}</p>
             </li>
-            {messages.map((message, index) =>
-              message.role === "user" ? (
-                <li key={index} className="flex justify-end">
-                  <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-foreground px-3 py-2 whitespace-pre-line text-background">{message.content}</p>
+            {messages.map((message) =>
+              message.author === "customer" ? (
+                <li key={message.seq} className="flex justify-end">
+                  <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-foreground px-3 py-2 whitespace-pre-line text-background">{message.body}</p>
                 </li>
+              ) : message.author === "system" ? (
+                <SystemLine key={message.seq} message={message} labels={labels} />
               ) : (
-                <li key={index} className="flex flex-col gap-2">
+                <li key={message.seq} className="flex flex-col gap-2">
                   <div className="flex items-end gap-2">
                     {avatar("size-7")}
-                    <p className={`max-w-[85%] rounded-2xl rounded-bl-sm px-3 py-2 whitespace-pre-line ${message.notice ? "border border-border text-muted" : "bg-surface"}`}>
-                      {message.content}
-                    </p>
+                    <p className="max-w-[85%] rounded-2xl rounded-bl-sm bg-surface px-3 py-2 whitespace-pre-line">{message.body}</p>
                   </div>
-                  {message.actions?.map((action) => (
+                  {message.data?.actions?.map((action) => (
                     <Link
                       key={action.href}
                       href={action.href}
@@ -319,9 +395,9 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
                       {labels.opened.replace("{label}", action.label)} →
                     </Link>
                   ))}
-                  {message.products && message.products.length > 0 && (
+                  {message.data?.products && message.data.products.length > 0 && (
                     <ul className="ml-9 flex snap-x gap-2 overflow-x-auto pb-1">
-                      {message.products.map((product) => (
+                      {message.data.products.map((product) => (
                         <li key={product.handle} className="w-36 shrink-0 snap-start">
                           <ProductCard product={product} locale={locale} labels={labels} onOpen={() => phone() && setOpen(false)} />
                         </li>
@@ -331,6 +407,17 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
                 </li>
               ),
             )}
+            {pending && (
+              <li className="flex justify-end">
+                <p className="max-w-[85%] rounded-2xl rounded-br-sm bg-foreground px-3 py-2 whitespace-pre-line text-background opacity-80">{pending}</p>
+              </li>
+            )}
+            {notices.map((item) => (
+              <li key={item.id} className="flex items-end gap-2">
+                {avatar("size-7")}
+                <p className="max-w-[85%] rounded-2xl rounded-bl-sm border border-border px-3 py-2 whitespace-pre-line text-muted">{item.text}</p>
+              </li>
+            ))}
             {(waiting || recording) && (
               <li className="flex items-end gap-2 text-sm text-muted">
                 {avatar("size-7")}
@@ -380,7 +467,9 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
                 <Icon name="send" className="size-5" />
               </button>
             </div>
-            <p className="mt-2 text-xs text-muted">{labels.disclaimer}</p>
+            <p className="mt-2 text-xs text-muted">
+              {labels.disclaimer} {labels.kept}
+            </p>
           </form>
         </section>
       )}
@@ -391,10 +480,7 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
           type="button"
           onClick={() => {
             // The conversation so far in this tab, read when the chat is first opened.
-            if (!loaded) {
-              setMessages(readStored(key));
-              setLoaded(true);
-            }
+            if (!loaded) void load();
             setOpen(true);
           }}
           aria-expanded={false}
@@ -406,6 +492,17 @@ export function ChatWidget({ site, locale, agent, labels }: ChatWidgetProps) {
         </button>
       )}
     </div>
+  );
+}
+
+/** A line about the conversation itself (it ended, it was opened again), in the site's words; kinds the widget has no words for are left out. */
+function SystemLine({ message, labels }: { message: VisitorMessage; labels: ChatLabels }) {
+  const words = message.kind && message.kind in labels.lines ? labels.lines[message.kind as keyof ChatLabels["lines"]] : null;
+  if (!words) return null;
+  return (
+    <li className="flex justify-center">
+      <p className="text-center text-xs text-muted">{words}</p>
+    </li>
   );
 }
 

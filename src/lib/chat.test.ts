@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { cleanReply, HISTORY_MAX, kaizenTools, returnFacts, SPOKEN_STAND_IN, storeTools, systemPrompt, withSpokenTurn } from "./chat";
+import { cleanReply, HISTORY_MAX, kaizenTools, returnFacts, storeTools, systemPrompt } from "./chat";
 import { chatAgentInput, chatRequest } from "./chat-schema";
 
 const agent = { enabled: true, name: "Ingrid", occupation: "Customer service", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
@@ -19,21 +19,6 @@ describe("the chat agent's requests (D81)", () => {
     const many = Array.from({ length: HISTORY_MAX + 1 }, () => ({ role: "user", content: "hei" }));
     expect(chatRequest.safeParse({ messages: many }).success).toBe(false);
     expect(chatRequest.safeParse({ path: "https://elsewhere.example", messages: [{ role: "user", content: "hei" }] }).success).toBe(false);
-  });
-
-  it("fits a spoken message into a full conversation, where the stand-in once made one message too many", () => {
-    const full = Array.from({ length: HISTORY_MAX }, (_, i) => ({ role: i % 2 ? "assistant" : "user", content: `message ${i}` }));
-    // What the voice route did before: every earlier message and the stand-in, one more than a request may hold.
-    expect(chatRequest.safeParse({ messages: [...full, { role: "user", content: SPOKEN_STAND_IN }] }).success).toBe(false);
-    const messages = withSpokenTurn(full);
-    expect(messages).toHaveLength(HISTORY_MAX);
-    // The oldest message gives way; the stand-in for what was said comes last.
-    expect(messages[0]).toEqual(full[1]);
-    expect(messages.at(-1)).toEqual({ role: "user", content: SPOKEN_STAND_IN });
-    expect(chatRequest.safeParse({ messages }).success).toBe(true);
-    // A first message, or a request without a conversation, is the stand-in alone.
-    expect(withSpokenTurn([])).toEqual([{ role: "user", content: SPOKEN_STAND_IN }]);
-    expect(withSpokenTurn(undefined)).toEqual([{ role: "user", content: SPOKEN_STAND_IN }]);
   });
 });
 

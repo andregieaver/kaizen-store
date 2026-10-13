@@ -21,6 +21,7 @@ import {
   type CompanySource,
   type ConsentRow,
   type CustomFieldRow,
+  type SupportRow,
   type DocumentRow,
   type EmailRow,
   type ExportCounts,
@@ -100,6 +101,7 @@ async function countRows(s: PrivacySubject): Promise<number> {
       (select count(*) from commerce.form_submissions where store_id = ${store}::uuid and lower(email) = any(${addresses})) +
       (select count(*) from commerce.carts where store_id = ${store}::uuid and id = any(${carts})) +
       (select count(*) from commerce.draft_orders where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid) +
+      (select count(*) from commerce.support_conversations where store_id = ${store}::uuid and customer_id = ${s.customerId}::uuid and anonymised_at is null) +
       (select count(*) from commerce.abandoned_checkouts where store_id = ${store}::uuid and (lower(email) = any(${addresses}) or cart_id = any(${carts}))) +
       ${s.orderIds.length}::bigint + ${s.subscriptionIds.length}::bigint as n
   `);
@@ -741,6 +743,38 @@ async function loadCompany(s: PrivacySubject): Promise<CompanySource> {
   };
 }
 
+/**
+ * The customer's support conversations (D216, docs/support.md 3.5): by the account only (a conversation is never matched by an address
+ * someone typed), with what the customer, the AI and the store's people wrote. Staff's notes and the partner's help stay out.
+ */
+async function loadSupport(s: PrivacySubject): Promise<SupportRow[]> {
+  if (!s.customerId) return [];
+  const conversations = await db().execute<Row>(sql`
+    select id, created_at, ended_at, summary, rating, rating_comment from commerce.support_conversations
+    where store_id = ${s.storeId}::uuid and customer_id = ${s.customerId}::uuid and anonymised_at is null order by created_at, id
+  `);
+  if (conversations.length === 0) return [];
+  const messages = await db().execute<Row>(sql`
+    select conversation_id, created_at, author, body from commerce.support_messages
+    where store_id = ${s.storeId}::uuid and conversation_id = any(${uuidList(conversations.map((c) => String(c.id)))})
+      and author in ('customer', 'ai', 'agent')
+    order by conversation_id, seq
+  `);
+  return conversations.map((c) => {
+    const summary = c.summary as { title?: unknown; outcome?: unknown } | null;
+    return {
+      startedAt: iso(c.created_at),
+      endedAt: iso(c.ended_at),
+      messages: messages
+        .filter((m) => String(m.conversation_id) === String(c.id))
+        .map((m) => ({ at: iso(m.created_at), from: String(m.author) as "customer" | "ai" | "agent", text: strs(m.body) })),
+      summary: summary && typeof summary.title === "string" ? { title: summary.title, outcome: String(summary.outcome ?? "") } : null,
+      rating: str(c.rating),
+      ratingComment: str(c.rating_comment),
+    };
+  });
+}
+
 /** What staff entered in the customer's and their orders' custom fields, as label and words in the store's main language. */
 async function loadCustomFields(s: PrivacySubject, orders: OrderRow[], main: string): Promise<CustomFieldRow[]> {
   const groups = await listFieldGroups(s.storeId);
@@ -791,7 +825,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     loadForms(s),
     loadCompany(s),
   ]);
-  const [consents, customFields] = await Promise.all([loadConsents(s, orders), loadCustomFields(s, orders, store.mainLocale)]);
+  const [consents, customFields, support] = await Promise.all([loadConsents(s, orders), loadCustomFields(s, orders, store.mainLocale), loadSupport(s)]);
   const today = now.toISOString().slice(0, 10);
   return {
     generatedAt: now,
@@ -820,6 +854,7 @@ export async function gatherExport(s: PrivacySubject, language: string, now: Dat
     forms,
     company,
     customFields,
+    support,
   };
 }
 

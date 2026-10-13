@@ -31,6 +31,7 @@ export const EXPORT_SECTIONS = [
   "forms",
   "company",
   "customFields",
+  "support",
 ] as const;
 export type ExportSection = (typeof EXPORT_SECTIONS)[number];
 
@@ -167,10 +168,9 @@ export const PERSONAL_DATA: PersonalEntry[] = [
   entry("chat_usage", "pseudonymous", via("none"), [], null, "none", "Counts of turns and checks by a hashed key; no person."),
 
   // Support (D216, docs/support.md 3.5) -----------------------------------------------------------------------------------------------
-  // Step 1 makes the tables only; nothing writes them until step 2, which adds the export section and the erasure step.
-  entry("support_conversations", "shopper", via("customer", "customer_id", "contact_email"), ["customer_id", "contact_name", "contact_email", "page_path", "token_hash", "email_token_hash", "summary", "brief", "rating_comment"], null, "anonymise", "A support conversation's personal fields are cleared and its transcript deleted; the counts stay for the desk's reports. Its export section comes with the conversations themselves (docs/support.md step 2)."),
-  entry("support_messages", "shopper", via("none"), ["body", "data"], null, "delete", "The messages of a support conversation are deleted with its transcript, at the desk's transcript period or on erasure (docs/support.md 3.5)."),
-  entry("support_actions", "shopper", via("none"), ["args", "summary", "details", "result"], null, "delete", "What the AI proposed or asked staff to decide for a customer is deleted with the conversation's transcript (docs/support.md 3.5)."),
+  entry("support_conversations", "shopper", via("customer", "customer_id"), ["customer_id", "contact_name", "contact_email", "page_path", "token_hash", "email_token_hash", "summary", "brief", "rating_comment"], "support", "anonymise", "A support conversation is anonymised: its messages and actions are deleted and its personal fields cleared; the dates and counts stay for the desk's reports, and go after 24 months.", { until: "support_transcripts" }),
+  entry("support_messages", "shopper", via("none"), ["body", "data"], "support", "delete", "The messages of a support conversation are deleted with its transcript, at the desk's period (support off: a day after it ends) or on erasure; staff's notes and the partner's help are never exported.", { until: "support_transcripts" }),
+  entry("support_actions", "shopper", via("none"), ["args", "summary", "details", "result"], null, "delete", "What the AI proposed or asked staff to decide for a customer is deleted with the conversation's transcript; the outcome is in the conversation's messages, which the export carries.", { until: "support_transcripts" }),
 
   // Fields ----------------------------------------------------------------------------------------------------------------------------
   entry("field_values", "shopper", via("customer", "entity_id"), ["values"], "customFields", "delete", "Fields staff filled in about the customer are deleted with the account; an order's are deleted when the order is anonymised."),

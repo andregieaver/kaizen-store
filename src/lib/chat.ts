@@ -17,18 +17,6 @@ export const OCCUPATION_MAX = 80;
 export const GREETING_MAX = 300;
 export const INSTRUCTIONS_MAX = 2000;
 
-/** What a spoken message stands in with until the speech-to-text model has written it down (`/api/chat/voice`). */
-export const SPOKEN_STAND_IN = "…";
-
-/**
- * A spoken message's conversation: the earlier messages the widget sent (at most `HISTORY_MAX`), cut to leave room for the
- * stand-in, so a long conversation fits `chatRequest` as a typed message's does.
- */
-export function withSpokenTurn(history: unknown): unknown[] {
-  const earlier = Array.isArray(history) ? history.slice(-(HISTORY_MAX - 1)) : [];
-  return [...earlier, { role: "user", content: SPOKEN_STAND_IN }];
-}
-
 /** Something the widget does for the visitor after an answer: open a page of the site. */
 export type ChatAction = { type: "navigate"; href: string; label: string };
 

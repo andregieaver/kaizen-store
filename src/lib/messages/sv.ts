@@ -877,6 +877,11 @@ export const sv: Messages = {
     didntHear: "Jag uppfattade inte det. Försök igen.",
     restart: "Ny konversation",
     conversation: "Konversation",
+    gone: "Den här konversationen finns inte längre. Starta en ny.",
+    full: "Konversationen har blivit lång. Starta en ny för att fortsätta.",
+    // legal: needs review (D216, docs/support.md 8): how long a conversation is kept while the chat assistant answers alone.
+    kept: "Vi sparar konversationen i ett dygn efter att den har avslutats.",
+    lines: { ended: "Konversationen är avslutad.", reopened: "Konversationen öppnades igen." },
   },
   booking: {
     changeTime: "Ändra tid",

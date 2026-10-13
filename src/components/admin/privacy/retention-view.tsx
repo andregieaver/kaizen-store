@@ -31,6 +31,8 @@ export const KIND_LABELS: Record<RetentionKind, string> = {
   abandoned_checkouts: "Abandoned checkouts",
   recommendation_events: "Recommendation events",
   ai_usage: "AI usage log",
+  support_transcripts: "Support chat transcripts",
+  support_records: "Anonymised support records",
 };
 
 const BASIS_WORDS: Record<RetentionBasis, string> = {

@@ -881,6 +881,11 @@ export const nb: Messages = {
     didntHear: "Jeg fikk ikke med meg det. Prøv igjen.",
     restart: "Ny samtale",
     conversation: "Samtale",
+    gone: "Denne samtalen finnes ikke lenger. Start en ny.",
+    full: "Samtalen har blitt lang. Start en ny for å fortsette.",
+    // legal: needs review (D216, docs/support.md 8): how long a conversation is kept while the chat assistant answers alone.
+    kept: "Vi tar vare på samtalen i ett døgn etter at den er avsluttet.",
+    lines: { ended: "Samtalen er avsluttet.", reopened: "Samtalen ble åpnet igjen." },
   },
   booking: {
     changeTime: "Endre tid",

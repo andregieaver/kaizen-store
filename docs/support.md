@@ -1300,8 +1300,35 @@ and push to `main`; watch CI; for a migration, record its version and check the 
 - **`support_take_partner_turn()`** also refuses a number past the last message and a conversation that is not open.
 - **Registries deferred**: `PERSONAL_DATA` has the three shopper tables with `export: null` until step 2 adds the export
   section, the erasure step and the retention kinds (`support_transcripts`, `support_records`), which their tests need code
-  for; `EMAIL_KINDS` waits for the steps that send each email; the audit area waits for step 3 with the permission area.
+  for (done in step 2); `EMAIL_KINDS` waits for the steps that send each email; the audit area waits for step 3 with the permission area.
   `support_settings` and `support_replies` are `never` in `COPY_RULES` for now (as `order_settings`: a copy starts with support
   off and the row is made on first use); copying saved replies needs `duplicate_store()` patched and is left for the step that
   builds the replies page.
 - Migrations: `20261013163732_support_tables`, `20261013163816_support_foundation`.
+
+**Step 2 (13 October 2026).**
+
+- **The routes share `chatPlace()` and `chatContext()`** (`src/server/chat-route.ts`, split): the site alone for the feed and the
+  end (they work while the agent is off), the site with its agent and AI for a message. `answer()` and the old request body are
+  gone; `runChat()` still takes a `ChatRequest`, which `runSupportTurn()` now builds from the database (`chatRequest` stays for it
+  and its tests). `withSpokenTurn()` is gone: the voice route keeps the words it heard as the customer's message and the history
+  comes from the database however long the conversation is.
+- **A failing AI answers 200 with `error`**, not 503, once the conversation exists: the customer's message is kept and the reply
+  carries the conversation's reference, so a first message whose answer failed does not lose its conversation. Before a
+  conversation exists the refusals are as before (403, 400, 404, 429).
+- **An ended conversation**: a message within `REOPEN_HOURS` reopens it (system line `reopened`); later, a new conversation starts
+  and the reply carries its new token (the widget replaces its reference). The widget's *New conversation* ends the old one at the
+  site (`/api/chat/end`) and forgets it.
+- **Body limit 8000 characters** (the spec's 8 kB), the voice route's `request` field the same.
+- **The customer** of a store's desk is the signed-in one (`getCustomer()`), set on a new conversation or on the first message
+  after signing in (`claimForCustomer()`, never moving it to another customer). The export reads conversations by the account
+  only; matching by `contact_email` waits for the email card (step 5), which fills it.
+- **`systemDesk(storeId)`** in `support-desk.ts` is the desk the platform's own jobs use (ending idle conversations, retention,
+  erasure); the visitor's is `visitorDesk()`.
+- **The notice** in mode `off` is one sentence under the disclaimer, `m.chat.kept` ("We keep this conversation for one day after it
+  ends."), hand-written in the four languages, flagged for legal review and in `HAND_WRITTEN_ONLY`; the AI-first and people-only
+  notices come with step 5.
+- **Retention**: `support_transcripts` is the longest any desk keeps a transcript (90 days); a desk's own choice, or a day with
+  support off, is shorter and wins. Anonymising an open conversation ends it first (`ended_by` `system`). The two kinds widen
+  `retention_rules_kind` (`20261013171729_support_retention_kinds`) and are seeded by `20261013171740_support_retention_rules`.
+- Migrations: `20261013171729_support_retention_kinds`, `20261013171740_support_retention_rules`.

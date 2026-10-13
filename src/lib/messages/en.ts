@@ -878,6 +878,11 @@ export const en = {
     didntHear: "I didn't catch that. Please try again.",
     restart: "New conversation",
     conversation: "Conversation",
+    gone: "This conversation is no longer here. Start a new one.",
+    full: "This conversation has grown long. Start a new one to go on.",
+    // legal: needs review (D216, docs/support.md 8): how long a conversation is kept while the chat assistant answers alone.
+    kept: "We keep this conversation for one day after it ends.",
+    lines: { ended: "The conversation has ended.", reopened: "The conversation was opened again." },
   },
   booking: {
     changeTime: "Change time",

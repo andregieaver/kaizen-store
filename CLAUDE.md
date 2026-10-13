@@ -208,8 +208,30 @@ of running `playwright install`.
   Voice is push to talk (`/api/chat/voice`: `transcribeAudio()`, then the
   same answer, then `speakText()`), with the provider's voice models.
   `/api/chat` routes refuse other sites and count turns (`takeTurn()`)
-  before any model call. Conversations live only in the visitor's tab
-  (`kaizen_chat`).
+  before any model call. Conversations are kept by the site (D216, below):
+  the tab holds only its conversation's reference and a copy
+  (`kaizen_chat` v2), and sends only the new message.
+- **Support (D216, `docs/support.md`, built in steps; §11 says what each step
+  found)**: a desk is a store's or Kaizen's (`store_id` null) with a `mode`
+  (`off`, `ai_first`, `people`; made with `off` on its first conversation by
+  `ensureDesk()`). Messages are written only by `commerce.support_add_message()`
+  and a conversation's state only by `commerce.support_transition()` (the
+  database's copy of `nextState()` in `src/lib/support-state.ts`; triggers refuse
+  any other writer), through `addMessage()`/`transition()` in
+  `src/server/support.ts`; a `Desk` comes only from `src/server/support-desk.ts`
+  (`visitorDesk()` for the chat routes, `systemDesk()` for jobs). The chat's
+  routes (`/api/chat`, `/feed`, `/end`, `/voice`) share `support-route.ts`; a
+  visitor's conversation is found only by its token's hash on its own site
+  (`visitorConversation()`), and the visitor never sees a note or the partner's
+  help (`visitorFeed()`). The AI's history comes from the database
+  (`runSupportTurn()`). Transcripts go after the desk's period (support off: a
+  day after the end) and anonymised records after 24 months (`runRetention()`);
+  the export's `support` section and the erasure (`anonymiseConversations()`)
+  include them. In mode `people` the AI never writes to a customer; the silent
+  partner reads with the agent's own permissions through read-only owner
+  tools, never acts and never writes to the customer; platform admins never
+  read a store's conversations; tone is customers' only; realtime only pings,
+  polling is always there; the chat never runs on pay routes.
 - Prices are shown with `<Price>`, which adds the VAT label and shows the
   30-day reference only for a genuine reduction.
 - Choosing in the storefront (D82) uses `Dropdown` (`src/components/dropdown.tsx`,

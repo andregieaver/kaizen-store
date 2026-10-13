@@ -8,9 +8,11 @@ import { testDb } from "./db";
  * The chat agent (D81): a store with an agent and an AI shows the widget,
  * labelled as AI, with the agent's name, occupation and greeting; answers
  * show the store's product cards and open the page the agent opened; the
- * conversation lasts the tab. The model is not called here: the answer is
- * the browser's stand-in for /api/chat (the agent itself is tested in
- * src/server/chat.int.test.ts).
+ * conversation is the site's (D216): the tab sends only the new message
+ * with the conversation's reference, and keeps a copy to draw after a
+ * reload. The model is not called here: the answers are the browser's
+ * stand-ins for /api/chat (the agent is tested in src/server/chat.int.test.ts
+ * and the conversations in src/server/support.int.test.ts).
  */
 test("a store's chat agent answers, shows products and opens the page for the visitor", async ({ page, request }) => {
   const slug = `chat-${Date.now()}`;
@@ -22,7 +24,7 @@ test("a store's chat agent answers, shows products and opens the page for the vi
     const [{ id: storeId }] = await sql`select commerce.approve_access_request(${access.id}, ${slug}, 'Siris Butikk', null) as id`;
 
     // A store that is not there has no chat.
-    const missing = await request.post("/api/chat", { data: { store: `${slug}-none`, market: "no", messages: [{ role: "user", content: "Hei" }] } });
+    const missing = await request.post("/api/chat", { data: { store: `${slug}-none`, market: "no", message: "Hei" } });
     expect(missing.status()).toBe(404);
 
     const key = parseKey(process.env.SETTINGS_ENCRYPTION_KEY)!;
@@ -36,31 +38,62 @@ test("a store's chat agent answers, shows products and opens the page for the vi
     // Requests from other sites are refused before anything else.
     const foreign = await request.post("/api/chat", {
       headers: { origin: "https://elsewhere.example" },
-      data: { store: slug, market: "no", messages: [{ role: "user", content: "Hei" }] },
+      data: { store: slug, market: "no", message: "Hei" },
     });
     expect(foreign.status()).toBe(403);
-    const unreadable = await request.post("/api/chat", { data: { store: slug, market: "no", messages: [{ role: "assistant", content: "Hei" }] } });
+    const unreadable = await request.post("/api/chat", { data: { store: slug, market: "no", message: "" } });
     expect(unreadable.status()).toBe(400);
+    // A conversation that is not the visitor's is not there.
+    const stranger = await request.post("/api/chat/feed", {
+      data: { store: slug, market: "no", conversation: { id: "6f1e4c2a-1b2c-4d3e-8f90-123456789abc", token: "x".repeat(32) }, after: 0 },
+    });
+    expect(stranger.status()).toBe(404);
 
-    const sent: unknown[] = [];
+    const ref = { id: "0b5c1d2e-3f40-4a51-8b62-7c83d94ea5f6", token: "tok_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123" };
+    const state = { status: "open", handler: "ai", mode: "off", agent: null, queue: null, available: true, emailLeft: 0, signedIn: false, emailFollowup: false };
+    const at = "2026-10-13T12:00:00.000Z";
+
+    const sent: Record<string, unknown>[] = [];
+    const lamp = {
+      handle: "demo-bordlampe",
+      title: "Demo: Bordlampe",
+      href: `/s/${slug}/no/p/demo-bordlampe`,
+      image: null,
+      price: { amountMinor: 49900, currency: "NOK", referenceMinor: null, vat: { rate: 0.25, shown: "incl" }, measure: null },
+      from: false,
+    };
     await page.route("**/api/chat", async (route) => {
-      sent.push(route.request().postDataJSON());
+      const body = route.request().postDataJSON() as Record<string, unknown>;
+      sent.push(body);
+      const first = sent.length === 1;
       await route.fulfill({
-        json: {
-          reply: "Her er bordlampen vår. Jeg har åpnet siden for deg.",
-          actions: [{ type: "navigate", href: `/s/${slug}/no/p/demo-bordlampe`, label: "Bordlampe" }],
-          products: [
-            {
-              handle: "demo-bordlampe",
-              title: "Demo: Bordlampe",
-              href: `/s/${slug}/no/p/demo-bordlampe`,
-              image: null,
-              price: { amountMinor: 49900, currency: "NOK", referenceMinor: null, vat: { rate: 0.25, shown: "incl" } },
-              from: false,
-            },
-          ],
-        },
+        json: first
+          ? {
+              conversation: { ...ref, channel: "sc:abc" },
+              state,
+              messages: [
+                { seq: 1, author: "customer", body: body.message, at },
+                {
+                  seq: 2,
+                  author: "ai",
+                  body: "Her er bordlampen vår. Jeg har åpnet siden for deg.",
+                  data: { products: [lamp], actions: [{ type: "navigate", href: `/s/${slug}/no/p/demo-bordlampe`, label: "Bordlampe" }] },
+                  at,
+                },
+              ],
+            }
+          : { conversation: { id: ref.id, channel: "sc:abc" }, state, messages: [{ seq: 3, author: "customer", body: body.message, at }, { seq: 4, author: "ai", body: "Bare hyggelig!", at }] },
       });
+    });
+    const fed: Record<string, unknown>[] = [];
+    await page.route("**/api/chat/feed", async (route) => {
+      fed.push(route.request().postDataJSON() as Record<string, unknown>);
+      await route.fulfill({ json: { state, messages: [] } });
+    });
+    const ended: Record<string, unknown>[] = [];
+    await page.route("**/api/chat/end", async (route) => {
+      ended.push(route.request().postDataJSON() as Record<string, unknown>);
+      await route.fulfill({ json: { state: { ...state, status: "ended" }, messages: [{ seq: 5, author: "system", body: "", kind: "ended", at }] } });
     });
 
     await page.goto(`/s/${slug}`);
@@ -75,7 +108,10 @@ test("a store's chat agent answers, shows products and opens the page for the vi
     await chat.getByRole("textbox", { name: "Skriv en melding" }).fill("Har dere lamper?");
     await chat.getByRole("textbox", { name: "Skriv en melding" }).press("Enter");
     await expect(chat.getByText("Her er bordlampen vår. Jeg har åpnet siden for deg.")).toBeVisible();
-    expect(sent[0]).toMatchObject({ store: slug, market: "no", path: `/s/${slug}`, messages: [{ role: "user", content: "Har dere lamper?" }] });
+    // Only the new message goes: no conversation yet, nothing seen before.
+    expect(sent[0]).toMatchObject({ store: slug, market: "no", path: `/s/${slug}`, after: 0, message: "Har dere lamper?" });
+    expect(sent[0]).not.toHaveProperty("messages");
+    expect(sent[0]).not.toHaveProperty("conversation");
 
     // The agent opened the product page, with the chat still open beside it on a large screen.
     await expect(page).toHaveURL(new RegExp(`/s/${slug}/p/demo-bordlampe$`));
@@ -86,22 +122,24 @@ test("a store's chat agent answers, shows products and opens the page for the vi
     await expect(card).toContainText("inkl. mva.");
     await expect(chat.getByRole("link", { name: "Åpnet: Bordlampe →" })).toBeVisible();
 
-    // The conversation lasts the tab: after a reload it is still there, and the next message carries it.
+    // The tab keeps a copy and the conversation's reference: after a reload it draws at once, asks for what is new, and the next
+    // message carries the reference and the last message seen, never the conversation itself.
     await page.reload();
     await page.getByRole("button", { name: /Chat med oss/ }).click();
     await expect(chat.getByText("Har dere lamper?")).toBeVisible();
+    await expect.poll(() => fed.length).toBe(1);
+    expect(fed[0]).toMatchObject({ store: slug, market: "no", conversation: ref, after: 2 });
     await chat.getByRole("textbox", { name: "Skriv en melding" }).fill("Takk!");
     await chat.getByRole("button", { name: "Send" }).click();
-    await expect.poll(() => sent.length).toBe(2);
-    expect((sent[1] as { messages: unknown[] }).messages).toEqual([
-      { role: "user", content: "Har dere lamper?" },
-      { role: "assistant", content: "Her er bordlampen vår. Jeg har åpnet siden for deg." },
-      { role: "user", content: "Takk!" },
-    ]);
+    await expect(chat.getByText("Bare hyggelig!")).toBeVisible();
+    expect(sent[1]).toMatchObject({ conversation: ref, after: 2, message: "Takk!" });
+    expect(sent[1]).not.toHaveProperty("messages");
 
     // A new conversation forgets it.
     await chat.getByRole("button", { name: "Ny samtale" }).click();
     await expect(chat.getByText("Har dere lamper?")).toHaveCount(0);
+    await expect.poll(() => ended.length).toBe(1);
+    expect(ended[0]).toMatchObject({ conversation: ref });
     await chat.getByRole("button", { name: "Lukk chatten" }).click();
     await expect(chat).toHaveCount(0);
   } finally {

@@ -2171,6 +2171,20 @@
       "when": 1791909496179,
       "tag": "20261013163816_support_foundation",
       "breakpoints": true
+    },
+    {
+      "idx": 310,
+      "version": "7",
+      "when": 1791911849505,
+      "tag": "20261013171729_support_retention_kinds",
+      "breakpoints": true
+    },
+    {
+      "idx": 311,
+      "version": "7",
+      "when": 1791911860694,
+      "tag": "20261013171740_support_retention_rules",
+      "breakpoints": true
     }
   ]
 }

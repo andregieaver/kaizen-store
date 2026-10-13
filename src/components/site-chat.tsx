@@ -27,6 +27,8 @@ function chatLabels(lang: string, locale: string, name: string, greeting: Record
     micDenied: c.micDenied,
     restart: c.restart,
     conversation: c.conversation,
+    kept: c.kept,
+    lines: { ended: c.lines.ended, reopened: c.lines.reopened },
     vatIncluded: m.vatIncluded,
     vatExcluded: m.vatExcluded,
     fromPrice: m.fromPrice,

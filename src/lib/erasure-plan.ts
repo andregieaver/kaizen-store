@@ -125,6 +125,8 @@ export const TABLE_LABELS: Record<string, string> = {
   email_messages: "Emails sent",
   email_opt_outs: "Email opt-out",
   form_submissions: "Form submissions",
+  support_conversations: "Support conversations",
+  support_messages: "Support messages",
   field_values: "Custom fields",
   vat_checks: "VAT number checks",
 };

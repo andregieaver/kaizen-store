@@ -95,6 +95,8 @@ export const CHOOSING: Record<string, { template: string; prepare?: (args: unkno
  * added here, not left to the generator (`ui-catalog.test.ts` holds the list).
  */
 export const HAND_WRITTEN_ONLY: readonly string[] = [
+  // Support (D216, docs/support.md 8): how long a chat conversation is kept is for legal review, never machine-translated.
+  "ui:chat.kept",
   "ui:backorder.",
   "email:backorder.",
   // Wave 3, run 2 (D173): what is done with a buyer's gift text and the third party it names, the page of a pay link and its email. The plain labels of the gift box

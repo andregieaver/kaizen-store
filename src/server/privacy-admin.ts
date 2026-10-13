@@ -39,6 +39,7 @@ export const SECTION_LABELS: Record<(typeof EXPORT_SECTIONS)[number], string> = 
   forms: "form submissions",
   company: "company records",
   customFields: "custom fields",
+  support: "support conversations",
 };
 
 export type PrivacyCard = {

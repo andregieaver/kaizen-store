@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { AUDIT_RETENTION_MONTHS } from "./audit";
 import { RETENTION_MONTHS } from "./visit-record";
 import { EVENT_DAYS } from "./recommendations";
+import { RECORD_MONTHS, TRANSCRIPT_DAYS, TRANSCRIPT_DAYS_DEFAULT } from "./support-rules";
 import {
   ANONYMISE_FLOOR_YEARS,
   CEILING_RETENTION_MONTHS,
@@ -80,6 +81,10 @@ describe("the seed of the retention schedule", () => {
     expect(rule("form_submissions").periodValue).toBe(30);
     expect(read("src/server/forms.ts")).toContain("interval '30 days'");
     expect(rule("consents").periodValue).toBe(12);
+    // Support (D216): the longest transcript period is the desks' longest choice, and the records' the constant.
+    expect(rule("support_transcripts").periodValue).toBe(Math.max(...TRANSCRIPT_DAYS));
+    expect(rule("support_transcripts").periodValue).toBe(TRANSCRIPT_DAYS_DEFAULT);
+    expect([rule("support_records").periodValue, rule("support_records").periodUnit]).toEqual([RECORD_MONTHS, "months"]);
   });
 });
 

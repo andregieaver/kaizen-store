@@ -875,6 +875,11 @@ export const da: Messages = {
     didntHear: "Det fangede jeg ikke. Prøv igen.",
     restart: "Ny samtale",
     conversation: "Samtale",
+    gone: "Denne samtale findes ikke længere. Start en ny.",
+    full: "Samtalen er blevet lang. Start en ny for at fortsætte.",
+    // legal: needs review (D216, docs/support.md 8): how long a conversation is kept while the chat assistant answers alone.
+    kept: "Vi gemmer samtalen i et døgn, efter at den er afsluttet.",
+    lines: { ended: "Samtalen er afsluttet.", reopened: "Samtalen blev åbnet igen." },
   },
   booking: {
     changeTime: "Skift tid",

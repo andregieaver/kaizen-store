@@ -24,6 +24,7 @@ import { textList, uuidList } from "./sql-arrays";
 import { platformStripe } from "./stripe";
 import { closeSession, completeOrderPayment } from "./checkout";
 import { getCheckoutAccount } from "./settings";
+import { anonymiseConversations } from "./support";
 import { changeSubscription } from "./subscriptions";
 
 type Row = Record<string, unknown>;
@@ -121,6 +122,9 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
            and e.kind <> all(${textList(EVIDENCE_EMAIL_KINDS)}))::int as email_messages,
         (select count(*) from commerce.email_opt_outs where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as email_opt_outs,
         (select count(*) from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as form_submissions,
+        (select count(*) from commerce.support_conversations where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and anonymised_at is null)::int as support_conversations,
+        (select count(*) from commerce.support_messages m join commerce.support_conversations c on c.id = m.conversation_id
+           where c.store_id = ${sid}::uuid and c.customer_id = ${cid}::uuid and c.anonymised_at is null)::int as support_messages,
         (select count(*) from commerce.field_values where store_id = ${sid}::uuid and entity = 'customer' and entity_id = ${cid}::uuid)::int as field_values,
         (select count(*) from commerce.customer_sessions where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as customer_sessions,
         (select count(*) from commerce.customer_codes where store_id = ${sid}::uuid and lower(email) = any(${addresses}))::int as customer_codes,
@@ -179,6 +183,8 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
       email_messages: n(c.email_messages),
       email_opt_outs: n(c.email_opt_outs),
       form_submissions: n(c.form_submissions),
+      support_conversations: n(c.support_conversations),
+      support_messages: n(c.support_messages),
       field_values: n(c.field_values),
       customer_sessions: n(c.customer_sessions),
       customer_codes: n(c.customer_codes),
@@ -641,6 +647,14 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
     delete from commerce.company_invites where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or customer_id = ${cid}::uuid)
   `);
   await tx.execute(sql`delete from commerce.form_submissions where store_id = ${sid}::uuid and lower(email) = any(${addresses})`);
+
+  // Support conversations of the account (D216): anonymised at once, by the same function as the retention step (an open one is ended first).
+  if (cid) {
+    const conversations = await tx.execute<Row>(sql`
+      select id from commerce.support_conversations where store_id = ${sid}::uuid and customer_id = ${cid}::uuid and anonymised_at is null
+    `);
+    await anonymiseConversations(tx, conversations.map((row) => String(row.id)));
+  }
 
   // Carts: the person and the company details; their delivery quotes lose the postal code; reminders lose the address and the lines (the opt-out stays).
   const cartIds = uuidList(s.cartIds);

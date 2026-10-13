@@ -22,6 +22,7 @@ import { anonymiseDocuments } from "./invoice-retention";
 import { pruneDraftOrders } from "./draft-orders";
 import { pruneAnonymisedOrderTags } from "./order-tags";
 import { pruneInventoryMovements } from "./stock-alerts";
+import { anonymiseConversations, deleteOldRecords, transcriptsDue } from "./support";
 import { textList } from "./sql-arrays";
 
 type Row = Record<string, unknown>;
@@ -115,6 +116,8 @@ export const RETENTION_STEPS = [
   "inventory_movements",
   "draft_orders",
   "order_tags",
+  "support_transcripts",
+  "support_records",
 ] as const;
 export type RetentionStep = (typeof RETENTION_STEPS)[number];
 
@@ -357,6 +360,24 @@ const STEPS: Record<RetentionStep, StepFn> = {
   // The tags of orders that are anonymised (D162): staff text about a person's order goes with the person (the SQL anonymising function holds no delete, so this is application code).
   async order_tags() {
     return { count: await pruneAnonymisedOrderTags() };
+  },
+
+  // Support (D216, docs/support.md 3.5): a transcript past its desk's period (support off: a day) loses its messages and actions and the
+  // conversation is anonymised; anonymised conversations go after the records' period.
+  async support_transcripts(ctx) {
+    const cutoff = cutoffInstant(await period(ctx, "support_transcripts"), ctx.now);
+    let count = 0;
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      const ids = await transcriptsDue(ctx.now, cutoff, ctx.batch);
+      if (ids.length === 0) break;
+      count += await db().transaction((tx) => anonymiseConversations(tx, ids));
+      if (ids.length < ctx.batch) break;
+    }
+    return { count };
+  },
+
+  async support_records(ctx) {
+    return { count: await deleteOldRecords(cutoffInstant(await period(ctx, "support_records"), ctx.now), ctx.batch) };
   },
 };
 

@@ -177,10 +177,11 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     on: "both",
     chat: true,
     purpose: {
-      en: "Keeps your conversation with the chat assistant while you move between pages; gone when you close the tab.",
-      nb: "Husker samtalen din med chatassistenten mens du går mellom sidene; forsvinner når du lukker fanen.",
-      sv: "Kommer ihåg ditt samtal med chattassistenten medan du går mellan sidorna; försvinner när du stänger fliken.",
-      da: "Husker din samtale med chatassistenten, mens du går mellem siderne; forsvinder, når du lukker fanen.",
+      // legal: needs review (D216, docs/support.md 8).
+      en: "Remembers which chat conversation is yours and a copy of it while you move between pages; gone when you close the tab. The conversation itself is kept by the site for a limited time.",
+      nb: "Husker hvilken chatsamtale som er din og en kopi av den mens du går mellom sidene; forsvinner når du lukker fanen. Selve samtalen lagres av nettstedet en begrenset tid.",
+      sv: "Kommer ihåg vilken chattkonversation som är din och en kopia av den medan du går mellan sidorna; försvinner när du stänger fliken. Själva konversationen sparas av webbplatsen en begränsad tid.",
+      da: "Husker, hvilken chatsamtale der er din, og en kopi af den, mens du går mellem siderne; forsvinder, når du lukker fanen. Selve samtalen gemmes af webstedet i en begrænset tid.",
     },
   },
   {
