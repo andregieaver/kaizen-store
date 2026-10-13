@@ -4,13 +4,19 @@ import { updateTag } from "next/cache";
 import { z } from "zod";
 
 import { altTextsInput, altRunInput } from "@/lib/alt-text";
+import { CONTENT_TYPES } from "@/lib/taxonomy";
 import { writeAltText, writeAltTexts, type AltResult, type AltRun } from "@/server/alt-texts";
 import { audit } from "@/server/auth";
 import { NO_ACCESS, checkPermission, requirePermission } from "@/server/permissions";
 import { catalogTag } from "@/server/catalog";
-import { pickerPictures } from "@/server/media-library";
+import { compressibleMedia, pickerPictures, type MediaItem } from "@/server/media-library";
 import { MEDIA_DELETE_MAX, deleteMedia, deleteMediaMany, describeMedia, measureMedia } from "@/server/media-library";
+import { fieldsTag } from "@/server/custom-fields";
+import type { VideoUpload } from "@/server/media";
+import { replacePicture, replaceVideo, startVideoReplacement, type CompressOutcome } from "@/server/media-compress";
 import { pagesTag } from "@/server/pages";
+import { storeTag } from "@/server/stores";
+import { termsTag } from "@/server/taxonomy";
 
 const id = z.uuid();
 
@@ -87,4 +93,54 @@ export async function measureMediaAction(storeSlug: string, mediaId: string, wid
 export async function pickMediaAction(storeSlug: string, query: { q: string; limit: number }) {
   const { store } = await requirePermission(storeSlug, "website:read");
   return pickerPictures({ storeId: store.id, storeSlug: store.slug }, { q: String(query?.q ?? ""), limit: Number(query?.limit) });
+}
+
+/** Every cache a compressed file's new address can be in (D213): the catalogue, pages, the store's settings, fields and terms. */
+function addressesMoved(store: { id: string; slug: string }) {
+  altTextsChanged(store.id);
+  updateTag(storeTag(store.slug));
+  updateTag(fieldsTag(store.id));
+  for (const contentType of CONTENT_TYPES) updateTag(termsTag({ storeId: store.id, contentType }));
+}
+
+/** A picture the library compressed in the browser takes the original's place (D213). */
+export async function compressPictureAction(storeSlug: string, mediaId: string, formData: FormData): Promise<CompressOutcome> {
+  const held = await checkPermission(storeSlug, "website:write");
+  if (!held) return { ok: false, problem: NO_ACCESS };
+  const image = formData.get("image");
+  const thumbnail = formData.get("thumbnail");
+  if (!id.safeParse(mediaId).success || !(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Compress it again." };
+  const owner = { storeId: held.store.id, storeSlug: held.store.slug };
+  const outcome = await replacePicture(owner, held.account.id, mediaId, image, thumbnail);
+  if (outcome.ok) addressesMoved(held.store);
+  return outcome;
+}
+
+const videoFile = z.object({ type: z.literal("video/mp4"), size: z.number().int().positive() });
+
+/** Starts the upload of a video the library compressed, beside the original (D213). */
+export async function startCompressedVideoAction(storeSlug: string, mediaId: string, file: unknown): Promise<VideoUpload> {
+  const held = await checkPermission(storeSlug, "website:write");
+  if (!held) return { ok: false, problem: NO_ACCESS };
+  const parsed = videoFile.safeParse(file);
+  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: "Compress it again." };
+  return startVideoReplacement({ storeId: held.store.id, storeSlug: held.store.slug }, mediaId, parsed.data);
+}
+
+/** The compressed video, uploaded, takes the original's place (D213). */
+export async function finishCompressedVideoAction(storeSlug: string, mediaId: string, path: unknown): Promise<CompressOutcome> {
+  const held = await checkPermission(storeSlug, "website:write");
+  if (!held) return { ok: false, problem: NO_ACCESS };
+  const parsed = z.string().min(3).max(300).safeParse(path);
+  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: "Compress it again." };
+  const outcome = await replaceVideo({ storeId: held.store.id, storeSlug: held.store.slug }, held.account.id, mediaId, parsed.data);
+  if (outcome.ok) addressesMoved(held.store);
+  return outcome;
+}
+
+/** The store's files that wait for Compress (D213), the largest first. */
+export async function compressibleMediaAction(storeSlug: string): Promise<MediaItem[]> {
+  const held = await checkPermission(storeSlug, "website:write");
+  if (!held) return [];
+  return compressibleMedia({ storeId: held.store.id, storeSlug: held.store.slug });
 }

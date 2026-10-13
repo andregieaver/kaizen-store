@@ -7,10 +7,21 @@ import { requirePermission } from "@/server/permissions";
 import { aiFor } from "@/server/ai";
 import { altSite, missingAltTexts } from "@/server/alt-texts";
 import { uploadsEnabled } from "@/server/media";
-import { listMedia } from "@/server/media-library";
+import { compressibleCount, listMedia } from "@/server/media-library";
 
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
-import { deleteManyMediaAction, deleteMediaAction, describeMediaAction, measureMediaAction, writeAltTextAction, writeAltTextsAction } from "./actions";
+import {
+  compressibleMediaAction,
+  compressPictureAction,
+  deleteManyMediaAction,
+  deleteMediaAction,
+  describeMediaAction,
+  finishCompressedVideoAction,
+  measureMediaAction,
+  startCompressedVideoAction,
+  writeAltTextAction,
+  writeAltTextsAction,
+} from "./actions";
 
 export const metadata: Metadata = { title: "Media library" };
 
@@ -41,11 +52,12 @@ async function Library({ storeSlug, searchParams }: { storeSlug: string; searchP
   const { store } = await requirePermission(storeSlug, "website:read");
   const query = mediaQuery(await searchParams);
   const owner = { storeId: store.id, storeSlug: store.slug };
-  const [{ items, total, searched }, ai, site, altMissing] = await Promise.all([
+  const [{ items, total, searched }, ai, site, altMissing, waiting] = await Promise.all([
     listMedia(owner, query),
     aiFor(store.id),
     altSite(owner),
     missingAltTexts(owner),
+    compressibleCount(owner),
   ]);
   return (
     <MediaLibrary
@@ -68,6 +80,17 @@ async function Library({ storeSlug, searchParams }: { storeSlug: string; searchP
       languages={site?.languages ?? []}
       altAi={Boolean(ai?.textModel) && Boolean(site)}
       altMissing={altMissing}
+      compress={
+        uploadsEnabled()
+          ? {
+              picture: compressPictureAction.bind(null, store.slug),
+              startVideo: startCompressedVideoAction.bind(null, store.slug),
+              finishVideo: finishCompressedVideoAction.bind(null, store.slug),
+              waiting: compressibleMediaAction.bind(null, store.slug),
+            }
+          : null
+      }
+      waiting={waiting}
     />
   );
 }

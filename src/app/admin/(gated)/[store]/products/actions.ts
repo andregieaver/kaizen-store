@@ -128,7 +128,7 @@ export async function archiveProductAction(storeSlug: string, productId: string,
 }
 
 /** The video the browser means to upload: its name, type and size, checked again by the bucket. */
-const videoFile = z.object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative() });
+const videoFile = z.object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative(), compressed: z.boolean().optional() });
 
 /** Starts an upload of a row's background video straight from the browser to the public bucket. */
 export async function startVideoUploadAction(storeSlug: string, file: unknown): Promise<VideoUpload> {

@@ -625,7 +625,8 @@
     "criteria": [
       "Every uploaded picture and video is registered once per store; the library shows where each is used and deletes the file from storage.",
       "Search finds a file by name alone and pictures by their alt texts in every language, with AI alt texts that never overwrite staff's.",
-      "The site shows library alt texts where a picture has none of its own."
+      "The site shows library alt texts where a picture has none of its own.",
+      "Files from before compressing was measured are offered Compress, one or all, in the browser, and every editable use moves to the smaller file (D213)."
     ],
     "evidence": {
       "files": [
@@ -635,20 +636,26 @@
         "src/server/alt-texts.ts",
         "src/lib/alt-text.ts",
         "src/lib/media-query.ts",
-        "src/components/admin/media-library.tsx"
+        "src/components/admin/media-library.tsx",
+        "src/server/media-compress.ts",
+        "src/lib/media-compress.ts",
+        "src/components/admin/media-compress.ts"
       ],
       "tests": [
         "src/server/media-library.int.test.ts",
         "src/server/alt-texts.int.test.ts",
         "src/lib/media-query.test.ts",
-        "src/lib/alt-text.test.ts"
+        "src/lib/alt-text.test.ts",
+        "src/server/media-compress.int.test.ts",
+        "src/lib/media-compress.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D88",
       "D89",
-      "D90"
+      "D90",
+      "D213"
     ],
     "history": []
   },
@@ -669,7 +676,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Prerendered Next.js pages on Vercel's network, functions pinned to Dublin next to the database, and a few guarded budgets (campaign notices cached under 0.5 s, A/B proxy overhead measured by `scripts/ab-ttfb.mjs`). No merchant-facing speed report, and pictures are shrunk once in the browser and drawn `unoptimized` (no AVIF or WebP per device, no responsive `srcset`).",
+    "gap": "Prerendered Next.js pages on Vercel's network, functions pinned to Dublin next to the database, and guarded budgets (`e2e/performance.spec.ts`: the first scripts' bytes and eager first pictures; campaign notices under 0.5 s; A/B proxy overhead by `scripts/ab-ttfb.mjs`). Pictures are compressed in the browser at upload to the smallest quality that measures the same (D213: WebP, AVIF for page pictures, at most 1600 px with a 480 px copy), videos to at most 1080p, and background pictures carry a `srcset` of the two (D211). No merchant-facing speed report (`pnpm perf` is a developer's Lighthouse run), and product pictures are not offered per device size beyond the two copies.",
     "bucket": "A",
     "wave": 7,
     "criteria": [
@@ -685,13 +692,24 @@
         "src/components/product-card.tsx",
         "src/components/page-parts.tsx",
         "scripts/ab-ttfb.mjs",
-        "src/lib/health.ts"
+        "src/lib/health.ts",
+        "src/lib/image-compress.ts",
+        "src/lib/image-quality.ts",
+        "src/lib/video-compress.ts",
+        "e2e/performance.spec.ts",
+        "e2e/compress.spec.ts"
       ],
-      "tests": [],
+      "tests": [
+        "src/lib/image-quality.test.ts",
+        "e2e/compress.spec.ts",
+        "e2e/performance.spec.ts"
+      ],
       "untested": false
     },
     "decisions": [
-      "D115"
+      "D115",
+      "D211",
+      "D213"
     ],
     "history": []
   },

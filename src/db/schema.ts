@@ -4941,6 +4941,12 @@ export const media = commerce.table(
     altWrittenAt: timestamp("alt_written_at", { withTimezone: true }),
     /** When the AI last failed to write one (or a language of it), so that picture waits a day. */
     altTriedAt: timestamp("alt_tried_at", { withTimezone: true }),
+    /**
+     * When the file was last compressed until it was as small as it could be while it still looked the same (D213): at upload
+     * or by the library's Compress. Null for files from before, which Compress offers; a compressed file is never compressed
+     * again, so a picture cannot lose a little more each time.
+     */
+    compressedAt: timestamp("compressed_at", { withTimezone: true }),
     createdAt: createdAt(),
     createdBy: uuid("created_by").references(() => accounts.id),
     updatedAt: updatedAt(),

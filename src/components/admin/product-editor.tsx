@@ -687,6 +687,8 @@ async function uploadPicture(storeSlug: string, file: File): Promise<{ url: stri
     // Its name as it was on the owner's computer, for the media library (D88).
     data.set("name", file.name);
     data.set("thumbnail", new File([thumbnail], `thumb.${ext}`, { type: thumbnail.type }));
+    // Compressed until it was as small as it could be while it looked the same (D213).
+    data.set("compressed", "1");
     const outcome = await uploadImageAction(storeSlug, data);
     return outcome.ok ? { url: outcome.url, thumbnailUrl: outcome.thumbnailUrl } : { problem: outcome.problem };
   } catch {

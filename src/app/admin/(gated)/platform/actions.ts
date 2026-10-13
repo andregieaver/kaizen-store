@@ -280,7 +280,7 @@ export async function uploadPlatformImageAction(formData: FormData): Promise<Upl
 export async function startPlatformVideoUploadAction(file: unknown): Promise<VideoUpload> {
   const admin = await requirePlatformAdmin();
   const parsed = z
-    .object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative() })
+    .object({ name: z.string().max(255).optional(), type: z.string().max(100), size: z.number().int().nonnegative(), compressed: z.boolean().optional() })
     .safeParse(file);
   if (!parsed.success) return { ok: false, problem: "Choose a video to upload." };
   const started = await startVideoUpload("platform", parsed.data);

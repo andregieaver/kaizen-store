@@ -5,12 +5,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import type { AltLanguage } from "@/lib/alt-text";
+import { savingWords } from "@/lib/image-quality";
 import { describeType, formatBytes } from "@/lib/image-size";
 import { MEDIA_PAGE, MEDIA_SORTS, mediaAddress, type MediaQuery, type MediaSort } from "@/lib/media-query";
 import type { AltResult, AltRun } from "@/server/alt-texts";
 import type { MediaItem } from "@/server/media-library";
+import type { CompressOutcome } from "@/server/media-compress";
 
-import { uploadPicture, type Upload } from "./image-upload";
+import { compressPlan } from "@/lib/media-compress";
+
+import { uploadPicture, type Saving, type Upload } from "./image-upload";
+import { compressLibraryFile, type CompressActions } from "./media-compress";
 import { Modal } from "./modal";
 import { uploadVideoFile, type StartVideo } from "./video-upload";
 
@@ -69,6 +74,8 @@ export function MediaLibrary({
   languages,
   altAi,
   altMissing,
+  compress,
+  waiting,
 }: {
   items: MediaItem[];
   total: number;
@@ -87,6 +94,10 @@ export function MediaLibrary({
   altAi: boolean;
   /** How many pictures have no alt text. */
   altMissing: number;
+  /** Compressing files uploaded before compressing was measured (D213); null where uploads are not set up. */
+  compress: CompressActions | null;
+  /** How many files wait for Compress. */
+  waiting: number;
 }) {
   const router = useRouter();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -140,6 +151,8 @@ export function MediaLibrary({
       <Uploader upload={upload} startVideo={startVideo} onDone={() => router.refresh()} />
 
       <AltTexts missing={altMissing} ai={altAi} writeAlts={actions.writeAlts} onChanged={() => router.refresh()} />
+
+      {compress && <CompressAll waiting={waiting} compress={compress} onChanged={() => router.refresh()} />}
 
       <form
         role="search"
@@ -329,8 +342,10 @@ export function MediaLibrary({
           key={open.id}
           item={open}
           actions={actions}
+          compress={compress}
           languages={languages}
           altAi={altAi}
+          onCompressed={() => router.refresh()}
           onClose={() => setOpenId(null)}
           onDeleted={() => {
             setOpenId(null);
@@ -440,15 +455,19 @@ function Preview({ item, small = false }: { item: MediaItem; small?: boolean }) 
 function Details({
   item,
   actions,
+  compress,
   languages,
   altAi,
+  onCompressed,
   onClose,
   onDeleted,
 }: {
   item: MediaItem;
   actions: MediaActions;
+  compress: CompressActions | null;
   languages: AltLanguage[];
   altAi: boolean;
+  onCompressed: () => void;
   onClose: () => void;
   onDeleted: () => void;
 }) {
@@ -512,6 +531,7 @@ function Details({
             </h3>
             <Uses item={item} />
           </section>
+          {compress && <CompressOne item={item} compress={compress} onCompressed={onCompressed} />}
           {item.kind === "image" && <AltTextForm item={item} languages={languages} altAi={altAi} actions={actions} />}
         </div>
       </Modal>
@@ -566,6 +586,123 @@ function Details({
         </div>
       </Modal>
     </>
+  );
+}
+
+/** What a Compress run says it did (D213): a saving, and whether the original stayed in storage, or why nothing changed. */
+function outcomeWords(outcome: CompressOutcome): string {
+  if (!outcome.ok) return outcome.problem;
+  const saved = savingWords(outcome.before, outcome.after) ?? "Compressed";
+  return outcome.keptOriginal
+    ? `${saved}. The site now shows the smaller file; the original stays in storage, as it may be in emails or previews already sent.`
+    : `${saved}. Everywhere it is used now shows the smaller file, and it looks the same.`;
+}
+
+/**
+ * Compressing one file (D213): offered for a file from before compressing was measured, with what it will do, and done in
+ * this browser; anything that keeps it as it is says why.
+ */
+function CompressOne({ item, compress, onCompressed }: { item: MediaItem; compress: CompressActions; onCompressed: () => void }) {
+  const id = useId();
+  const plan = compressPlan(item);
+  const [state, setState] = useState<{ busy: string | null; said: string | null; failed: boolean }>({ busy: null, said: null, failed: false });
+  const run = async () => {
+    setState({ busy: "Compressing …", said: null, failed: false });
+    const outcome = await compressLibraryFile(item, compress, (progress) =>
+      setState((now) => ({ ...now, busy: progress < 1 ? `Compressing … ${Math.round(progress * 100)} %` : "Uploading …" })),
+    );
+    setState({ busy: null, said: outcomeWords(outcome), failed: !outcome.ok });
+    if (outcome.ok) onCompressed();
+  };
+  return (
+    <section aria-labelledby={`${id}-size`} className="flex flex-col gap-2">
+      <h3 id={`${id}-size`} className="text-sm font-medium">
+        Size
+      </h3>
+      {plan.offered ? (
+        <>
+          <p className="text-sm text-muted">
+            This file was uploaded before files were compressed. Compress makes it as small as it can be while it still looks the
+            same{item.kind === "video" ? " (at most 1080p)" : ""}, in this browser, and moves every place that uses it to the smaller file.
+          </p>
+          <button type="button" disabled={state.busy !== null} onClick={() => void run()} className={`${button} w-fit`}>
+            {state.busy ?? "Compress"}
+          </button>
+        </>
+      ) : (
+        !state.said && <p className="text-sm text-muted">{plan.why}</p>
+      )}
+      {state.said && (
+        <p role={state.failed ? "alert" : "status"} className={`text-sm ${state.failed ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+          {state.said}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Compressing every file from before compressing was measured (D213), the largest first, one at a time in this browser
+ * (each takes a few seconds; a video longer), with what was saved so far and a Stop.
+ */
+function CompressAll({ waiting, compress, onChanged }: { waiting: number; compress: CompressActions; onChanged: () => void }) {
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; of: number; saved: number; kept: number; now: string | null } | null>(null);
+  const stop = useRef(false);
+
+  const run = async () => {
+    stop.current = false;
+    setRunning(true);
+    let done = 0;
+    let saved = 0;
+    let kept = 0;
+    try {
+      const files = (await compress.waiting()).filter((file) => compressPlan(file).offered);
+      setProgress({ done, of: files.length, saved, kept, now: null });
+      for (const file of files) {
+        if (stop.current) break;
+        setProgress({ done, of: files.length, saved, kept, now: file.fileName });
+        const outcome = await compressLibraryFile(file, compress);
+        done += 1;
+        if (outcome.ok) saved += outcome.before - outcome.after;
+        else kept += 1;
+        setProgress({ done, of: files.length, saved, kept, now: null });
+      }
+    } catch {
+      setProgress((now) => (now ? { ...now, now: null } : null));
+    }
+    setRunning(false);
+    onChanged();
+  };
+
+  if (waiting === 0 && !progress) return null;
+  return (
+    <section aria-label="Compress files" className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+      <p className="text-sm">
+        <span className="font-medium">Compress files.</span>{" "}
+        {waiting === 0
+          ? "Every file is as small as it can be while it looks the same."
+          : `${waiting === 1 ? "1 file was" : `${waiting} files were`} uploaded before files were compressed. Compress makes each as small as it can be while it still looks the same, in this browser, and moves every place that uses it to the smaller file.`}
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="button" disabled={running || waiting === 0} onClick={() => void run()} className={`${button} bg-foreground text-background`}>
+          {running ? "Compressing …" : waiting === 1 ? "Compress 1 file" : `Compress ${waiting} files`}
+        </button>
+        {running && (
+          <button type="button" onClick={() => (stop.current = true)} className={button}>
+            Stop
+          </button>
+        )}
+      </div>
+      {progress && (
+        <p role="status" aria-live="polite" className="text-sm text-muted">
+          {`${progress.done} of ${progress.of} done`}
+          {progress.saved > 0 ? `, ${formatBytes(progress.saved)} saved` : ""}
+          {progress.kept > 0 ? `, ${progress.kept} already as small as they can be` : ""}
+          {progress.now ? `. Now: ${progress.now}` : "."}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -887,11 +1024,12 @@ function AltTexts({
   );
 }
 
-type Job = { key: string; name: string; state: "waiting" | "uploading" | "done" | "failed"; problem?: string };
+type Job = { key: string; name: string; state: "waiting" | "uploading" | "done" | "failed"; problem?: string; note?: string };
 
 /**
- * Adds files in bulk: dropped on it or chosen, several at once. Pictures are
- * shrunk in the browser as everywhere else; videos go straight to Storage.
+ * Adds files in bulk: dropped on it or chosen, several at once. Pictures and
+ * videos are compressed in the browser as everywhere else (D213), each saying
+ * what that saved, then uploaded; videos straight to Storage.
  */
 function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; startVideo: StartVideo | null; onDone: () => void }) {
   const inputId = useId();
@@ -912,21 +1050,24 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
       for (let next = queue.shift(); next; next = queue.shift()) {
         const { file, key } = next;
         set(key, { state: "uploading" });
-        let outcome: { ok: true } | { ok: false; problem: string };
+        let outcome: { ok: true; note?: string } | { ok: false; problem: string };
+        const noted = (saving: Saving) => savingWords(saving.before, saving.after) ?? undefined;
         if (IMAGE_TYPES.includes(file.type)) {
           try {
             const result = await uploadPicture(upload, file);
-            outcome = result.ok ? { ok: true } : result;
+            outcome = result.ok ? { ok: true, note: noted(result.saving) } : result;
           } catch {
             outcome = { ok: false, problem: `${file.name} could not be read as a picture.` };
           }
         } else if (VIDEO_TYPES.includes(file.type) && startVideo) {
-          const result = await uploadVideoFile(startVideo, null, file);
-          outcome = result.ok ? { ok: true } : result;
+          const result = await uploadVideoFile(startVideo, null, file, {
+            onProgress: (progress) => set(key, { note: progress < 1 ? `Compressing … ${Math.round(progress * 100)} %` : undefined }),
+          });
+          outcome = result.ok ? { ok: true, note: noted(result.saving) } : result;
         } else {
           outcome = { ok: false, problem: "Use a JPEG, PNG, WebP, AVIF or GIF picture, or an MP4 or WebM video." };
         }
-        set(key, outcome.ok ? { state: "done" } : { state: "failed", problem: outcome.problem });
+        set(key, outcome.ok ? { state: "done", note: outcome.note } : { state: "failed", problem: outcome.problem });
       }
     };
     await Promise.all(Array.from({ length: Math.min(AT_ONCE, batch.length) }, worker));
@@ -951,8 +1092,9 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
     >
       <p className="font-medium">Drop pictures and videos here</p>
       <p className="text-sm text-muted">
-        JPEG, PNG, WebP, AVIF or GIF pictures (made at most 1600 pixels wide, with a small copy), and MP4 or WebM videos up to
-        50 MB. As many as you like at once.
+        JPEG, PNG, WebP, AVIF or GIF pictures (made at most 1600 pixels wide, with a small copy), and MP4 or WebM videos (made
+        at most 1080p). Each is compressed in your browser until it is as small as it can be while it still looks the same. As many
+        as you like at once.
       </p>
       <label htmlFor={inputId} className={`${button} mx-auto w-fit cursor-pointer content-center bg-foreground text-background`}>
         {busy ? "Uploading …" : "Choose files"}
@@ -978,7 +1120,13 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
               <li key={job.key} className="flex items-center justify-between gap-3">
                 <span className="truncate">{job.name}</span>
                 <span className={job.state === "failed" ? "text-red-700" : "text-muted"}>
-                  {job.state === "waiting" ? "Waiting" : job.state === "uploading" ? "Uploading …" : job.state === "done" ? "Added" : job.problem}
+                  {job.state === "waiting"
+                    ? "Waiting"
+                    : job.state === "uploading"
+                      ? (job.note ?? "Compressing and uploading …")
+                      : job.state === "done"
+                        ? job.note ? `Added · ${job.note}` : "Added"
+                        : job.problem}
                 </span>
               </li>
             ))}

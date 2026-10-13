@@ -27,6 +27,8 @@ const READERS = [
   "src/server/field-tiles.ts",
   // Duplicating a page: copies a page's or article's values to the copy, staff only.
   "src/server/page-duplicate.ts",
+  // The media library's Compress (D213): moves a library file's address inside the values that hold it, staff only; reads none.
+  "src/server/media-compress.ts",
 ];
 
 /**

@@ -342,6 +342,8 @@ function LogoField({
       // Its name as it was on the owner's computer, for the media library (D88).
       data.set("name", file.name);
       data.set("thumbnail", new File([thumbnail], `logo-480.${ext}`, { type: thumbnail.type }));
+      // Compressed until it was as small as it could be while it looked the same (D213).
+      data.set("compressed", "1");
       const outcome = await upload(data);
       if (outcome.ok) onChange({ url: outcome.url, width: size.width, height: size.height });
       else setProblem(outcome.problem);

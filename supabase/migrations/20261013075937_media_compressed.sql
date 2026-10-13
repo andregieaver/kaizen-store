@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."media" ADD COLUMN "compressed_at" timestamp with time zone;

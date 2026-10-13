@@ -187,10 +187,11 @@ describe("the media library (D88)", () => {
           label: `Product: ${String(product.title)}`,
           href: `/admin/${storeSlug}/products/${String(product.id)}`,
           siteUrl: `${site}/p/demo-keramikkopp`,
+          source: "product",
         },
-        { label: "Page: Om oss", href: `/admin/${storeSlug}/pages/${String(page.id)}`, siteUrl: `${site}/om-${run}` },
-        { label: "Menu: Mega", href: `/admin/${storeSlug}/menus?menu=${String(menu.id)}`, siteUrl: null },
-        { label: "Logo and icon (Header and footer)", href: `/admin/${storeSlug}/settings/navigation`, siteUrl: site },
+        { label: "Page: Om oss", href: `/admin/${storeSlug}/pages/${String(page.id)}`, siteUrl: `${site}/om-${run}`, source: "page" },
+        { label: "Menu: Mega", href: `/admin/${storeSlug}/menus?menu=${String(menu.id)}`, siteUrl: null, source: "menu" },
+        { label: "Logo and icon (Header and footer)", href: `/admin/${storeSlug}/settings/navigation`, siteUrl: site, source: "navigation" },
       ]),
     );
     // A page not published is not on the site.

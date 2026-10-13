@@ -36,7 +36,13 @@ type Row = Record<string, unknown>;
  * (D89) its full address on the site while visitors see it there, on the
  * store's own domain in its main market.
  */
-export type MediaUse = { label: string; href: string | null; siteUrl?: string | null };
+export type MediaUse = {
+  label: string;
+  href: string | null;
+  siteUrl?: string | null;
+  /** What kind of place it is (`product`, `page`, `menu`, `saved`, `chat`, `navigation`, `seo`, `theme`), for Compress (D213). */
+  source?: string;
+};
 
 export type MediaItem = {
   id: string;
@@ -53,6 +59,8 @@ export type MediaItem = {
   altTranslations: Record<string, string>;
   /** Who wrote it: the site's AI or staff; null while there is none. */
   altSource: "ai" | "staff" | null;
+  /** When it was compressed until it was as small as it could be while it looked the same (D213); null for files from before. */
+  compressedAt: string | null;
   createdAt: string;
   uses: MediaUse[];
 };
@@ -86,7 +94,11 @@ export async function uploadToLibrary(
   const thumbnail = data.get("thumbnail");
   if (!(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Choose a picture to upload." };
   const given = data.get("name");
-  return storePicture(owner, image, thumbnail, { fileName: cleanName(typeof given === "string" ? given : "", image.name || "picture") });
+  return storePicture(owner, image, thumbnail, {
+    fileName: cleanName(typeof given === "string" ? given : "", image.name || "picture"),
+    // The browser measured it as it compressed it (D213); it only says so, and a wrong word costs a file one Compress less.
+    compressed: data.get("compressed") === "1",
+  });
 }
 
 /**
@@ -99,7 +111,7 @@ export async function storePicture(
   owner: { storeId: string | null; accountId: string },
   image: File,
   thumbnail: File,
-  details: { fileName: string; alt?: string },
+  details: { fileName: string; alt?: string; compressed?: boolean },
 ): Promise<UploadResult> {
   const uploaded = await uploadProductImage(owner.storeId ?? "platform", image, thumbnail);
   if (!uploaded.ok || !("stored" in uploaded)) return uploaded;
@@ -108,12 +120,12 @@ export async function storePicture(
   await db().execute(sql`
     insert into commerce.media (
       store_id, kind, url, thumbnail_url, bucket, path, thumbnail_path, file_name, content_type, size_bytes, width, height, created_by,
-      alt, alt_source, alt_written_at
+      alt, alt_source, alt_written_at, compressed_at
     ) values (
       ${owner.storeId}::uuid, 'image', ${uploaded.url}, ${uploaded.thumbnailUrl}, ${uploaded.stored.bucket}, ${uploaded.stored.path},
       ${uploaded.stored.thumbnailPath}, ${cleanName(details.fileName, "picture")},
       ${image.type}, ${image.size}, ${size?.width ?? null}, ${size?.height ?? null}, ${owner.accountId}::uuid,
-      ${alt ?? ""}, ${alt ? "ai" : null}, ${alt ? sql`now()` : null}
+      ${alt ?? ""}, ${alt ? "ai" : null}, ${alt ? sql`now()` : null}, ${details.compressed ? sql`now()` : null}
     )
     on conflict (url) do nothing
   `);
@@ -124,13 +136,14 @@ export async function storePicture(
 export async function registerVideo(
   owner: { storeId: string | null; accountId: string },
   video: { url: string; bucket: string; path: string },
-  file: { name?: string; type: string; size: number },
+  file: { name?: string; type: string; size: number; compressed?: boolean },
 ): Promise<void> {
   await db().execute(sql`
-    insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes, created_by)
+    insert into commerce.media (store_id, kind, url, bucket, path, file_name, content_type, size_bytes, created_by, compressed_at)
     values (
       ${owner.storeId}::uuid, 'video', ${video.url}, ${video.bucket}, ${video.path},
-      ${cleanName(file.name ?? "", video.path.split("/").pop() ?? "video")}, ${file.type}, ${file.size}, ${owner.accountId}::uuid
+      ${cleanName(file.name ?? "", video.path.split("/").pop() ?? "video")}, ${file.type}, ${file.size}, ${owner.accountId}::uuid,
+      ${file.compressed ? sql`now()` : null}
     )
     on conflict (url) do nothing
   `);
@@ -364,7 +377,7 @@ function siteUrlOf(row: UseRow, site: SiteAddresses | null, store: boolean): str
 
 function describeUse(row: UseRow, base: string, store: boolean, site: SiteAddresses | null): MediaUse {
   const use = describePlace(row, base, store);
-  return { ...use, siteUrl: siteUrlOf(row, site, store) };
+  return { ...use, siteUrl: siteUrlOf(row, site, store), source: row.source };
 }
 
 function describePlace(row: UseRow, base: string, store: boolean): MediaUse {
@@ -413,6 +426,7 @@ const toItem = (row: Row): Omit<MediaItem, "uses"> => ({
   alt: String(row.alt ?? ""),
   altTranslations: stringRecord(row.alt_translations),
   altSource: row.alt_source === "ai" || row.alt_source === "staff" ? row.alt_source : null,
+  compressedAt: row.compressed_at ? new Date(String(row.compressed_at)).toISOString() : null,
   createdAt: new Date(String(row.created_at)).toISOString(),
 });
 
@@ -489,6 +503,25 @@ async function meaningIds(storeId: string | null, text: string, limit: number): 
     if (error instanceof AiError) return [];
     throw error;
   }
+}
+
+/** Files uploaded before compressing was measured (D213), which the library's Compress offers: pictures and videos it can make smaller. */
+const COMPRESSIBLE = sql`compressed_at is null and content_type not in ('image/gif', 'image/svg+xml')`;
+
+/** How many of the owner's files wait for Compress (D213). */
+export async function compressibleCount(owner: MediaOwner): Promise<number> {
+  const [row] = await readDb().execute<Row>(sql`select count(*)::int as n from commerce.media where ${owned(owner.storeId)} and ${COMPRESSIBLE}`);
+  return Number(row?.n ?? 0);
+}
+
+/** The owner's files that wait for Compress, the largest first (most is saved there), with their uses, at most `limit`. */
+export async function compressibleMedia(owner: MediaOwner, limit = 500): Promise<MediaItem[]> {
+  const rows = await readDb().execute<Row>(sql`
+    select * from commerce.media where ${owned(owner.storeId)} and ${COMPRESSIBLE}
+    order by size_bytes desc, created_at limit ${Math.max(1, Math.min(limit, 500))}
+  `);
+  const uses = await mediaUses(owner, rows.map((row) => String(row.id)));
+  return rows.map((row) => ({ ...toItem(row), uses: uses.get(String(row.id)) ?? [] }));
 }
 
 /**

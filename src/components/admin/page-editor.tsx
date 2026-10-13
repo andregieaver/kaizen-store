@@ -262,6 +262,7 @@ export function PageEditor({
           data.set("image", image);
           data.set("name", file.name);
           data.set("thumbnail", thumbnail);
+          data.set("compressed", "1");
           const outcome = await upload(data);
           return outcome.ok ? { ok: true, url: outcome.url, thumbnailUrl: null } : { ok: false, problem: outcome.problem };
         })
@@ -1081,6 +1082,8 @@ function ThumbnailField({
       // Its name as it was on the owner's computer, for the media library (D88).
       data.set("name", file.name);
       data.set("thumbnail", new File([thumbnail], `page-480.${ext}`, { type: thumbnail.type }));
+      // Compressed until it was as small as it could be while it looked the same (D213).
+      data.set("compressed", "1");
       const outcome = await upload(data);
       if (outcome.ok) onChange({ url: outcome.url, width: size.width, height: size.height, alt: value?.alt ?? "" });
       else setProblem(outcome.problem);

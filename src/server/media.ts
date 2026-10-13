@@ -166,6 +166,23 @@ export async function startVideoUpload(folder: string, file: { type: string; siz
 }
 
 /**
+ * A video in the public bucket as Storage keeps it: its size, type and address, or null when there is none at that path.
+ * The library's Compress (D213) checks a replacement the browser uploaded with it before it takes the original's place.
+ */
+export async function storedVideo(path: string): Promise<{ size: number; type: string; url: string } | null> {
+  const secret = secretKey();
+  if ("problem" in secret) return null;
+  const storage = createClient(publicEnv().NEXT_PUBLIC_SUPABASE_URL, secret.key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  }).storage.from(VIDEOS_BUCKET);
+  const slash = path.lastIndexOf("/");
+  const { data } = await storage.list(path.slice(0, slash), { search: path.slice(slash + 1), limit: 1 });
+  const file = data?.find((entry) => entry.name === path.slice(slash + 1));
+  if (!file?.metadata) return null;
+  return { size: Number(file.metadata.size), type: String(file.metadata.mimetype ?? ""), url: storage.getPublicUrl(path).data.publicUrl };
+}
+
+/**
  * Puts bytes the server made or fetched in one of the public media buckets, at a path of its own (the page replicator's
  * previews and the videos it copies, D150). The buckets refuse other types and larger files themselves.
  */

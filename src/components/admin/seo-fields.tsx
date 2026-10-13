@@ -148,6 +148,8 @@ export function ShareImageField({
       // Its name as it was on the owner's computer, for the media library (D88).
       data.set("name", file.name);
       data.set("thumbnail", new File([thumbnail], `share-480.${ext}`, { type: thumbnail.type }));
+      // Compressed until it was as small as it could be while it looked the same (D213).
+      data.set("compressed", "1");
       const outcome = await upload(data);
       if (outcome.ok) setUrl(outcome.url);
       else setProblem(outcome.problem);

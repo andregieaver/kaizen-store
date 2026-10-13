@@ -8,14 +8,18 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { aiFor } from "@/server/ai";
 import { altSite, missingAltTexts } from "@/server/alt-texts";
 import { uploadsEnabled } from "@/server/media";
-import { listMedia } from "@/server/media-library";
+import { compressibleCount, listMedia } from "@/server/media-library";
 
 import { startPlatformVideoUploadAction, uploadPlatformImageAction } from "../actions";
 import {
+  compressiblePlatformMediaAction,
+  compressPlatformPictureAction,
   deleteManyPlatformMediaAction,
   deletePlatformMediaAction,
   describePlatformMediaAction,
+  finishCompressedPlatformVideoAction,
   measurePlatformMediaAction,
+  startCompressedPlatformVideoAction,
   writePlatformAltTextAction,
   writePlatformAltTextsAction,
 } from "./actions";
@@ -48,11 +52,12 @@ async function Library({ searchParams }: { searchParams: PageProps<"/admin/platf
   await requirePlatformAdmin();
   const query = mediaQuery(await searchParams);
   const owner = { storeId: null, storeSlug: null };
-  const [{ items, total, searched }, ai, site, altMissing] = await Promise.all([
+  const [{ items, total, searched }, ai, site, altMissing, waiting] = await Promise.all([
     listMedia(owner, query),
     aiFor(null),
     altSite(owner),
     missingAltTexts(owner),
+    compressibleCount(owner),
   ]);
   return (
     <MediaLibrary
@@ -75,6 +80,17 @@ async function Library({ searchParams }: { searchParams: PageProps<"/admin/platf
       languages={site?.languages ?? []}
       altAi={Boolean(ai?.textModel)}
       altMissing={altMissing}
+      compress={
+        uploadsEnabled()
+          ? {
+              picture: compressPlatformPictureAction,
+              startVideo: startCompressedPlatformVideoAction,
+              finishVideo: finishCompressedPlatformVideoAction,
+              waiting: compressiblePlatformMediaAction,
+            }
+          : null
+      }
+      waiting={waiting}
     />
   );
 }

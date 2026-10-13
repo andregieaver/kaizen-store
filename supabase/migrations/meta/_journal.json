@@ -2150,6 +2150,13 @@
       "when": 1791572514784,
       "tag": "20261009190154_product_excerpt_copy",
       "breakpoints": true
+    },
+    {
+      "idx": 307,
+      "version": "7",
+      "when": 1791878377879,
+      "tag": "20261013075937_media_compressed",
+      "breakpoints": true
     }
   ]
 }

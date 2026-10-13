@@ -6,9 +6,14 @@ import { z } from "zod";
 import { altTextsInput, altRunInput } from "@/lib/alt-text";
 import { writeAltText, writeAltTexts, type AltResult, type AltRun } from "@/server/alt-texts";
 import { audit, requirePlatformAdmin } from "@/server/auth";
-import { pickerPictures } from "@/server/media-library";
+import { compressibleMedia, pickerPictures, type MediaItem } from "@/server/media-library";
 import { MEDIA_DELETE_MAX, deleteMedia, deleteMediaMany, describeMedia, measureMedia } from "@/server/media-library";
+import { CONTENT_TYPES } from "@/lib/taxonomy";
+import type { VideoUpload } from "@/server/media";
+import { replacePicture, replaceVideo, startVideoReplacement, type CompressOutcome } from "@/server/media-compress";
 import { pagesTag } from "@/server/pages";
+import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
+import { termsTag } from "@/server/taxonomy";
 
 const id = z.uuid();
 const KAIZEN = { storeId: null, storeSlug: null };
@@ -76,4 +81,46 @@ export async function measurePlatformMediaAction(mediaId: string, width: number,
 export async function pickPlatformMediaAction(query: { q: string; limit: number }) {
   await requirePlatformAdmin();
   return pickerPictures(KAIZEN, { q: String(query?.q ?? ""), limit: Number(query?.limit) });
+}
+
+/** Every cache a compressed file's new address can be in (D213): Kaizen's pages, header and footer, settings and terms. */
+function addressesMoved() {
+  updateTag(pagesTag(null));
+  updateTag(PLATFORM_NAVIGATION_TAG);
+  for (const contentType of CONTENT_TYPES) updateTag(termsTag({ storeId: null, contentType }));
+}
+
+/** A picture the library compressed in the browser takes the original's place (D213). */
+export async function compressPlatformPictureAction(mediaId: string, formData: FormData): Promise<CompressOutcome> {
+  const admin = await requirePlatformAdmin();
+  const image = formData.get("image");
+  const thumbnail = formData.get("thumbnail");
+  if (!id.safeParse(mediaId).success || !(image instanceof File) || !(thumbnail instanceof File)) return { ok: false, problem: "Compress it again." };
+  const outcome = await replacePicture(KAIZEN, admin.id, mediaId, image, thumbnail);
+  if (outcome.ok) addressesMoved();
+  return outcome;
+}
+
+/** Starts the upload of a video the library compressed, beside the original (D213). */
+export async function startCompressedPlatformVideoAction(mediaId: string, file: unknown): Promise<VideoUpload> {
+  await requirePlatformAdmin();
+  const parsed = z.object({ type: z.literal("video/mp4"), size: z.number().int().positive() }).safeParse(file);
+  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: "Compress it again." };
+  return startVideoReplacement(KAIZEN, mediaId, parsed.data);
+}
+
+/** The compressed video, uploaded, takes the original's place (D213). */
+export async function finishCompressedPlatformVideoAction(mediaId: string, path: unknown): Promise<CompressOutcome> {
+  const admin = await requirePlatformAdmin();
+  const parsed = z.string().min(3).max(300).safeParse(path);
+  if (!id.safeParse(mediaId).success || !parsed.success) return { ok: false, problem: "Compress it again." };
+  const outcome = await replaceVideo(KAIZEN, admin.id, mediaId, parsed.data);
+  if (outcome.ok) addressesMoved();
+  return outcome;
+}
+
+/** Kaizen's files that wait for Compress (D213), the largest first. */
+export async function compressiblePlatformMediaAction(): Promise<MediaItem[]> {
+  await requirePlatformAdmin();
+  return compressibleMedia(KAIZEN);
 }

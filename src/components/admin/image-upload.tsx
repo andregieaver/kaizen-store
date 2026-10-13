@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 
-import { shrinkImage } from "@/lib/image-resize";
+import { compressPicture, extensionOf } from "@/lib/image-compress";
+import { savingWords } from "@/lib/image-quality";
 
 import { LibraryButton } from "./media-picker";
 
@@ -10,26 +11,28 @@ export type Upload = (data: FormData) => Promise<{ ok: true; url: string } | { o
 
 export type Uploaded = { url: string; width: number; height: number };
 
+/** What compressing saved (D213): the file's size as chosen and as uploaded. */
+export type Saving = { before: number; after: number };
+
 /**
- * Shrinks a picture in the browser (1600 px, with a 480 px thumbnail) and
- * uploads it; also used for a background video's first picture.
+ * Compresses a picture in the browser (1600 px, with a 480 px thumbnail; the smallest that still looks the same, AVIF where
+ * it is clearly smaller, D213) and uploads it; also used for a background video's first picture.
  */
 export async function uploadPicture(
   upload: Upload,
   file: File,
-): Promise<{ ok: true; image: Uploaded } | { ok: false; problem: string }> {
-  const [image, thumbnail] = await Promise.all([shrinkImage(file, 1600), shrinkImage(file, 480)]);
-  const size = await createImageBitmap(image);
-  const ext = image.type === "image/webp" ? "webp" : "jpg";
+): Promise<{ ok: true; image: Uploaded; saving: Saving } | { ok: false; problem: string }> {
+  const [image, thumbnail] = await Promise.all([compressPicture(file, 1600, { avif: true }), compressPicture(file, 480)]);
   const data = new FormData();
-  data.set("image", new File([image], `picture.${ext}`, { type: image.type }));
+  data.set("image", new File([image.blob], `picture.${extensionOf(image.type)}`, { type: image.type }));
   // Its name as it was on the owner's computer, for the media library (D88).
   data.set("name", file.name);
-  data.set("thumbnail", new File([thumbnail], `picture-480.${ext}`, { type: thumbnail.type }));
+  data.set("thumbnail", new File([thumbnail.blob], `picture-480.${extensionOf(thumbnail.type)}`, { type: thumbnail.type }));
+  // Compressed until it was as small as it could be while it looked the same (D213).
+  data.set("compressed", "1");
   const outcome = await upload(data);
-  const dimensions = { width: size.width, height: size.height };
-  size.close();
-  return outcome.ok ? { ok: true, image: { url: outcome.url, ...dimensions } } : outcome;
+  if (!outcome.ok) return outcome;
+  return { ok: true, image: { url: outcome.url, width: image.width, height: image.height }, saving: { before: file.size, after: image.blob.size } };
 }
 
 /**
@@ -47,15 +50,19 @@ export function ImageUploadButton({
 }) {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
 
   const choose = async (file: File | undefined) => {
     if (!file || !upload) return;
     setBusy(true);
     setProblem(null);
+    setSaved(null);
     try {
       const outcome = await uploadPicture(upload, file);
-      if (outcome.ok) onUploaded(outcome.image);
-      else setProblem(outcome.problem);
+      if (outcome.ok) {
+        onUploaded(outcome.image);
+        setSaved(savingWords(outcome.saving.before, outcome.saving.after));
+      } else setProblem(outcome.problem);
     } catch {
       setProblem(`${file.name} could not be read as a picture. Use a JPEG, PNG, WebP or AVIF.`);
     } finally {
@@ -70,7 +77,7 @@ export function ImageUploadButton({
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
       <label className="w-fit cursor-pointer rounded-md border border-border px-3 py-2 text-sm focus-within:outline-2">
-        {busy ? "Uploading …" : label}
+        {busy ? "Compressing and uploading …" : label}
         <input
           type="file"
           accept="image/png,image/jpeg,image/webp,image/avif"
@@ -84,6 +91,11 @@ export function ImageUploadButton({
       </label>
       {library}
       </div>
+      {saved && (
+        <p role="status" className="text-xs text-muted">
+          {saved}, and it looks the same.
+        </p>
+      )}
       {problem && (
         <p role="alert" className="text-sm text-red-700 dark:text-red-400">
           {problem}
