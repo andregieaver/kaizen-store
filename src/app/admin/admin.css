@@ -61,6 +61,12 @@ html[data-admin] {
   --chart-grid: #dde2ec;
   --chart-axis: #b9c0d0;
   --chart-compare: #8a93a8;
+  /* Support's tone bands (D216), very bad to very good; a band is never shown by colour alone (its words go with it). */
+  --tone-1: #b91c1c;
+  --tone-2: #c2410c;
+  --tone-3: #8a93a8;
+  --tone-4: #15803d;
+  --tone-5: #006300;
 
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   accent-color: var(--brand-solid);
@@ -114,6 +120,11 @@ html[data-admin] {
     --chart-grid: #2b3350;
     --chart-axis: #3b4566;
     --chart-compare: #7c86a3;
+    --tone-1: #f87171;
+    --tone-2: #fb923c;
+    --tone-3: #7c86a3;
+    --tone-4: #4ade80;
+    --tone-5: #0ca30c;
   }
 }
 
@@ -161,6 +172,11 @@ html[data-admin][data-color-mode="dark"] {
   --chart-grid: #2b3350;
   --chart-axis: #3b4566;
   --chart-compare: #7c86a3;
+  --tone-1: #f87171;
+  --tone-2: #fb923c;
+  --tone-3: #7c86a3;
+  --tone-4: #4ade80;
+  --tone-5: #0ca30c;
 }
 
 /* ------------------------------------------------------------ page and type */

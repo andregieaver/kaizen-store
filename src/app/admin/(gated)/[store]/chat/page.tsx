@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Chat agent" };
 /** The store's chat agent and its knowledge base (D81). */
 export default async function StoreChatPage({ params }: PageProps<"/admin/[store]/chat">) {
   const { store: slug } = await params;
-  const { store } = await requirePermission(slug, "settings:read");
+  const { store } = await requirePermission(slug, "support:read");
   return (
     <ChatAgentView
       storeId={store.id}

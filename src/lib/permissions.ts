@@ -55,7 +55,7 @@ export function permissionsOf(holder: PermissionHolder): PermissionKey[] {
   const held = new Set<string>();
   for (const key of base) {
     if (OWNER_HELD.includes(key as PermissionKey)) continue;
-    if (!/^(orders|products|customers|marketing|analytics|website|bookings|settings|billing|staff):(read|write)$/.test(key)) continue;
+    if (!/^(orders|products|customers|marketing|analytics|website|bookings|support|settings|billing|staff):(read|write)$/.test(key)) continue;
     held.add(key);
     if (key.endsWith(":write")) held.add(key.replace(/:write$/, ":read"));
   }
@@ -161,6 +161,7 @@ export const AREA_LABELS: Record<Area, string> = {
   analytics: "Analytics",
   website: "Website",
   bookings: "Bookings",
+  support: "Support",
   settings: "Settings",
   billing: "Billing",
   staff: "Team",
@@ -190,7 +191,7 @@ export function permissionsFromLevels(levels: Partial<Record<Area, AreaLevel>>):
 // Role templates and collaborators
 // ---------------------------------------------------------------------------
 
-export const ROLE_TEMPLATE_KEYS = ["orders", "products", "marketing", "content", "analytics", "read_only"] as const;
+export const ROLE_TEMPLATE_KEYS = ["orders", "products", "marketing", "content", "analytics", "support", "read_only"] as const;
 export type RoleTemplateKey = (typeof ROLE_TEMPLATE_KEYS)[number];
 
 /** The roles `ensureStoreRoles()` offers a store on first visit; the owner can edit or delete them. Already normalised. */
@@ -220,10 +221,16 @@ export const ROLE_TEMPLATES: Record<RoleTemplateKey, { name: string; description
     description: "Reads the figures and what lies behind them.",
     permissions: normalisePermissions(["analytics:write", "orders:read", "products:read", "customers:read", "marketing:read"]),
   },
+  // Support (D216): answers customers in the inbox, and looks up their orders, accounts and the products they ask about.
+  support: {
+    name: "Support agent",
+    description: "Answers customers in the support inbox, and can look up their orders, accounts and products.",
+    permissions: normalisePermissions(["support:write", "orders:read", "customers:read", "products:read"]),
+  },
   read_only: {
     name: "Read-only",
     description: "Can look at everything except billing and the team, and change nothing.",
-    permissions: normalisePermissions(["orders:read", "products:read", "customers:read", "marketing:read", "analytics:read", "website:read", "bookings:read", "settings:read"]),
+    permissions: normalisePermissions(["orders:read", "products:read", "customers:read", "marketing:read", "analytics:read", "website:read", "bookings:read", "support:read", "settings:read"]),
   },
 };
 

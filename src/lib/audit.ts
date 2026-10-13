@@ -10,7 +10,7 @@
  */
 
 /** The areas of an entry: the store admin's ten, the platform's, and a person's own account. */
-export const AUDIT_AREA_KEYS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "settings", "billing", "staff", "platform", "account"] as const;
+export const AUDIT_AREA_KEYS = ["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "settings", "billing", "staff", "platform", "account"] as const;
 export type AuditArea = (typeof AUDIT_AREA_KEYS)[number];
 
 export const isAuditArea = (value: unknown): value is AuditArea => (AUDIT_AREA_KEYS as readonly unknown[]).includes(value);
@@ -117,6 +117,10 @@ const PREFIXES: Record<string, AuditArea> = {
   "host.": "bookings",
   "hosts.": "bookings",
   "bookings.": "bookings",
+  // Support (D216): the inbox, its desk's settings and saved replies, and the chat agent and its knowledge, which moved into Support.
+  "support.": "support",
+  "chat.": "support",
+  "knowledge.": "support",
   // Billing
   "billing.": "billing",
   // Staff
@@ -142,8 +146,6 @@ const PREFIXES: Record<string, AuditArea> = {
   "integration.": "settings",
   "localization.": "settings",
   "cookies.": "settings",
-  "chat.": "settings",
-  "knowledge.": "settings",
   "google.": "settings",
   "work.": "settings",
 };

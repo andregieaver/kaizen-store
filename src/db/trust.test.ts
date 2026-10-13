@@ -329,9 +329,9 @@ describe("roles and members (1f)", () => {
     for (const key of ["staff:write", "billing:write", "owner", "orders:delete", "ORDERS:READ"]) {
       await rejects("insert into commerce.store_roles (store_id, name, permissions) values ($1, $2, $3::text[])", [store, `bad ${key}`, [key]], /store_roles_permissions/);
     }
-    // All 18 grantable keys are accepted at once.
+    // All 20 grantable keys are accepted at once.
     await role(store, "Everything grantable", [...GRANTABLE_PERMISSIONS]);
-    expect(GRANTABLE_PERMISSIONS).toHaveLength(18);
+    expect(GRANTABLE_PERMISSIONS).toHaveLength(20);
   });
 
   it("names a role once per store, whatever the case, in 1 to 60 characters", async () => {

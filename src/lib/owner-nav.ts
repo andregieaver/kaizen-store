@@ -26,16 +26,21 @@ export const ACCOUNT_ITEMS: OwnerItem[] = [
 export const ACCOUNT_EXTRA = ["/account/kaizen-life"];
 
 type Link = { href: string; label: string; exact?: boolean };
-export type OwnerWho = { owner: boolean; work: boolean };
+/** Who the person is at this level: an owner of a store, someone with Work in a store, someone who may read a store's support inbox (D216). */
+export type OwnerWho = { owner: boolean; work: boolean; support?: boolean };
+
+/** The owner's combined support inbox (D216): every store where the person may read support. */
+export const SUPPORT_PATH = "/account/support";
 
 const accountItems = (who: OwnerWho) => ACCOUNT_ITEMS.filter((i) => who.owner || !i.owner);
 const accountPaths = (who: OwnerWho) => [...accountItems(who).map((i) => i.path), ...ACCOUNT_EXTRA];
 
-/** The tabs: Home (owners), Stores, Work (owners, or where a store has it on) and Account. */
-export function ownerTabs(who: OwnerWho): (Link & { icon: NavIconName; also?: string[] })[] {
+/** The tabs: Home (owners), Stores, Support (where the person may read a store's inbox, with the number waiting), Work (owners, or where a store has it on) and Account. */
+export function ownerTabs(who: OwnerWho, counts: { support?: number } = {}): (Link & { icon: NavIconName; also?: string[]; badge?: number })[] {
   return [
     ...(who.owner ? [{ href: OWNER_BASE, label: "Home", exact: true, icon: "home" as const }] : []),
     { href: `${OWNER_BASE}/stores`, label: "Stores", icon: "shopping-bag" as const },
+    ...(who.support ? [{ href: `${OWNER_BASE}${SUPPORT_PATH}`, label: "Support", icon: "chat" as const, ...(counts.support ? { badge: counts.support } : {}) }] : []),
     ...(who.work ? [{ href: WORK_ROOT, label: "Work", icon: "briefcase" as const }] : []),
     { href: `${OWNER_BASE}/account`, label: "Account", exact: true, icon: "user" as const, also: accountPaths(who).map((p) => `${OWNER_BASE}${p}`) },
   ];
@@ -46,6 +51,7 @@ export function ownerAreas(who: OwnerWho): { prefixes: string[]; exact?: string[
   return [
     { prefixes: [], exact: [OWNER_BASE], groups: [] },
     { prefixes: [`${OWNER_BASE}/stores`], groups: [] },
+    { prefixes: [`${OWNER_BASE}${SUPPORT_PATH}`], groups: [] },
     { prefixes: [WORK_ROOT], groups: [] },
     {
       prefixes: accountPaths(who).map((p) => `${OWNER_BASE}${p}`),

@@ -32,11 +32,11 @@ const admin: PermissionHolder = { role: "admin" };
 const withRole = (permissions: string[], extra: Partial<PermissionHolder> = {}): PermissionHolder => ({ role: "admin", permissions, ...extra });
 
 describe("the keys", () => {
-  it("are ten areas with read and write, and the owner key: 21 in all, 18 of them grantable", () => {
-    expect(AREAS).toHaveLength(10);
-    expect(AREA_PERMISSIONS).toHaveLength(20);
-    expect(PERMISSION_KEYS).toHaveLength(21);
-    expect(GRANTABLE_PERMISSIONS).toHaveLength(18);
+  it("are eleven areas with read and write, and the owner key: 23 in all, 20 of them grantable", () => {
+    expect(AREAS).toHaveLength(11);
+    expect(AREA_PERMISSIONS).toHaveLength(22);
+    expect(PERMISSION_KEYS).toHaveLength(23);
+    expect(GRANTABLE_PERMISSIONS).toHaveLength(20);
     expect(OWNER_HELD).toEqual(["owner", "staff:write", "billing:write"]);
     for (const key of OWNER_HELD) expect(GRANTABLE_PERMISSIONS as readonly string[]).not.toContain(key);
   });
@@ -203,9 +203,12 @@ describe("the key a page needs", () => {
 });
 
 describe("the role templates", () => {
-  it("are the six the owner is offered", () => {
-    expect(ROLE_TEMPLATE_KEYS).toEqual(["orders", "products", "marketing", "content", "analytics", "read_only"]);
-    expect(Object.values(ROLE_TEMPLATES).map((t) => t.name)).toEqual(["Orders", "Products", "Marketing", "Content", "Analytics", "Read-only"]);
+  it("are the seven the owner is offered", () => {
+    expect(ROLE_TEMPLATE_KEYS).toEqual(["orders", "products", "marketing", "content", "analytics", "support", "read_only"]);
+    expect(Object.values(ROLE_TEMPLATES).map((t) => t.name)).toEqual(["Orders", "Products", "Marketing", "Content", "Analytics", "Support agent", "Read-only"]);
+    // Support (D216): an agent answers in the inbox and looks up orders, customers and products; the read-only role can read the inbox.
+    expect(ROLE_TEMPLATES.support.permissions).toEqual(["orders:read", "products:read", "customers:read", "support:read", "support:write"]);
+    expect(ROLE_TEMPLATES.read_only.permissions).toContain("support:read");
   });
 
   it("hold only grantable keys, already normalised", () => {

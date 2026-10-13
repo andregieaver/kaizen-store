@@ -42,7 +42,7 @@ describe("the role editor", () => {
 
   it("starts a new role with no access anywhere, and a template with its own levels", () => {
     const fresh = editor();
-    expect(fresh.match(/checked="" value="none"/g)).toHaveLength(8);
+    expect(fresh.match(/checked="" value="none"/g)).toHaveLength(9);
     const orders = editor({ name: ROLE_TEMPLATES.orders.name, permissions: ROLE_TEMPLATES.orders.permissions });
     expect(orders).toContain('value="Orders"');
     expect(orders).toMatch(/name="level:orders" checked="" value="write"/);

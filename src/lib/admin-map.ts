@@ -549,8 +549,12 @@ const PAGES: readonly AdminPage[] = [
     keywords: ["site search", "queries"],
     feature: "shop",
   }),
-  store("chat", "/chat", "Chat agent", "Store", "The storefront chat agent that helps shoppers, and its knowledge base.", {
-    keywords: ["customer chat", "chatbot", "knowledge"],
+  store("chat", "/chat", "Chat assistant", "Store", "The storefront chat assistant that helps shoppers first, and its knowledge base.", {
+    keywords: ["customer chat", "chatbot", "knowledge", "chat agent"],
+  }),
+  store("support", "/support", "Support inbox", "Store", "Every conversation with the store's customers, live: who is waiting for a person, who is talking to the chat assistant, and what was said. Open one to read it as it happens.", {
+    keywords: ["inbox", "live chat", "customer service", "helpdesk", "conversations", "tickets"],
+    tasks: ["See who is waiting", "Read a conversation with the chat assistant", "Set yourself online or away"],
   }),
   store("seo", "/settings/seo", "SEO & Reach", "Store", "How search engines, social sharing and AI crawlers see the store, per country.", {
     keywords: ["google", "meta description", "crawlers"],
@@ -684,6 +688,9 @@ const PAGES: readonly AdminPage[] = [
     needs: "owner",
     keywords: ["approve", "authorize", "connect wordpress"],
   }),
+  account("account.support", "/account/support", "Support", "The support inboxes of every store where you may read them, in one list: who is waiting and what was said, filterable by store.", {
+    keywords: ["inbox", "live chat", "customer service", "conversations"],
+  }),
   account("account", "/account", "Your account", "Your name, picture, password, light or dark, and Kaizen Life.", {
     keywords: ["profile", "password", "avatar", "dark mode"],
   }),
@@ -693,6 +700,9 @@ const PAGES: readonly AdminPage[] = [
   platform("settings", "/settings", "Settings", "Platform", "Kaizen's own settings: header and footer, search, SEO, cookies, Google reviews, Stripe, AI, chat agent, emails and languages, each a card.", { keywords: ["configuration"] }),
   platform("overview", "", "Home", "Platform", "The operator's first look: requests waiting, stores by state, plans, failed emails and AI use.", {
     keywords: ["dashboard", "home", "attention", "status"],
+  }),
+  platform("support", "/support", "Support inbox", "Support", "Kaizen's own support desk: conversations with visitors of Kaizen's site and owners asking Kaizen, live.", {
+    keywords: ["inbox", "live chat", "helpdesk", "conversations"],
   }),
   platform("requests", "/requests", "Access requests", "Platform", "People asking to open a store: approving creates it and emails a sign-in link.", {
     keywords: ["sign-ups", "waiting list", "approve"],
@@ -781,7 +791,7 @@ const PAGES: readonly AdminPage[] = [
   platform("ai.prices", "/ai/prices", "AI prices", "Platform", "What each AI model costs per million tokens in US dollars: set a price, see earlier ones, and the models used without a price. The usage pages show cost from these.", {
     keywords: ["cost", "price", "dollars", "model"],
   }),
-  platform("chat", "/chat", "Chat agent", "Kaizen site", "Kaizen's public site chat agent and its knowledge base."),
+  platform("chat", "/chat", "Chat assistant", "Support", "Kaizen's public site chat assistant and its knowledge base."),
   platform("google-reviews", "/google-reviews", "Google reviews", "Kaizen site", "Kaizen's own Google reviews for testimonials."),
   platform("experiments", "/experiments", "A/B tests", "Platform", "Every store's A/B tests, read-only: what is running, which need a look (a version lowering orders, visitors nobody sees, a test past its end or forgotten) and what waits for a decision.", {
     keywords: ["experiment", "a/b", "test", "split", "guardrail"],

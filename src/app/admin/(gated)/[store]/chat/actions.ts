@@ -13,7 +13,7 @@ import { uploadToLibrary } from "@/server/media-library";
 
 /** The store's chat agent (D81): who it is and how it works. */
 export async function saveChatAgentAction(storeSlug: string, json: string) {
-  const { account, store } = await requirePermission(storeSlug, "settings:write");
+  const { account, store } = await requirePermission(storeSlug, "support:write");
   let raw: unknown;
   try {
     raw = JSON.parse(json);
@@ -30,13 +30,13 @@ export async function saveChatAgentAction(storeSlug: string, json: string) {
 
 /** The agent's picture, shrunk by the browser. */
 export async function uploadChatAvatarAction(storeSlug: string, formData: FormData): Promise<UploadResult> {
-  const { account, store } = await requirePermission(storeSlug, "settings:write");
+  const { account, store } = await requirePermission(storeSlug, "support:write");
   return uploadToLibrary({ storeId: store.id, accountId: account.id }, formData);
 }
 
 /** A document for the knowledge base, pasted or from a file. */
 export async function addDocumentAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
-  const held = await checkPermission(storeSlug, "settings:write");
+  const held = await checkPermission(storeSlug, "support:write");
   if (!held) return { status: "error", messages: [NO_ACCESS] };
   const { account, store } = held;
   const result = await addDocumentFromForm(account, store.id, formData);
@@ -47,7 +47,7 @@ export async function addDocumentAction(storeSlug: string, _state: FormState, fo
 }
 
 export async function deleteDocumentAction(storeSlug: string, id: string) {
-  const { account, store } = await requirePermission(storeSlug, "settings:write");
+  const { account, store } = await requirePermission(storeSlug, "support:write");
   if (!z.uuid().safeParse(id).success) return { ok: false as const, problems: ["No such document."] };
   await deleteDocument(account, store.id, id);
   refresh();

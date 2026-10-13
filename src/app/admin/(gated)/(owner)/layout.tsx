@@ -5,6 +5,8 @@ import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/ad
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
 import { ownerAreas, ownerTabs } from "@/lib/owner-nav";
 import { requireAccount } from "@/server/auth";
+import { waitingCount } from "@/server/support";
+import { ownerDesks } from "@/server/support-desk";
 
 /**
  * The store owner's level (D107, D147): the control center over all their
@@ -19,8 +21,11 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
   const stores = await storesOf(account);
   const owner = stores.some((store) => store.role === "owner");
   // Work (D123): the owner's, across their stores, so owners always have it (to switch it on); staff only where it is on.
-  const who = { owner, work: owner || stores.some((store) => store.workOn) };
-  const tabs: NavItem[] = ownerTabs(who);
+  // Support (D216): the combined inbox of the stores whose support the account may read, with the number waiting.
+  const desks = await ownerDesks(account);
+  const who = { owner, work: owner || stores.some((store) => store.workOn), support: desks.length > 0 };
+  const waiting = desks.length > 0 ? await waitingCount(desks.map((d) => d.desk)) : 0;
+  const tabs: NavItem[] = ownerTabs(who, { support: waiting });
   const areas: NavArea[] = ownerAreas(who);
   return (
     <AdminFrame

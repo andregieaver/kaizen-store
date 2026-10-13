@@ -16,7 +16,7 @@ const perms = await import("./permissions");
 type Row = Record<string, unknown>;
 
 /**
- * Roles, assigning them, and collaborators (wave 1, 1f, docs/wave-1-trust.md 2.7): the six templates made once and never again once deleted,
+ * Roles, assigning them, and collaborators (wave 1, 1f, docs/wave-1-trust.md 2.7): the seven templates made once and never again once deleted,
  * the owner's own roles held to the keys a role may contain, a role in use that cannot be deleted, one active owner always, and an
  * agency's account invited with an expiry. Only an owner changes any of it.
  */
@@ -38,11 +38,11 @@ afterAll(async () => {
 });
 
 describe("the role templates", () => {
-  it("are made once for the store, as the six the frame names, with their keys", async () => {
+  it("are made once for the store, as the seven the frame names, with their keys", async () => {
     await r.ensureStoreRoles(store.id);
     const made = await roles();
     expect(made.map((x) => x.template)).toEqual([...ROLE_TEMPLATE_KEYS]);
-    expect(made.map((x) => x.name)).toEqual(["Orders", "Products", "Marketing", "Content", "Analytics", "Read-only"]);
+    expect(made.map((x) => x.name)).toEqual(["Orders", "Products", "Marketing", "Content", "Analytics", "Support agent", "Read-only"]);
     expect(made.find((x) => x.template === "orders")?.permissions).toEqual(ROLE_TEMPLATES.orders.permissions);
     // Read-only: everything is view, nothing is change, and neither billing nor the team.
     const readOnly = made.find((x) => x.template === "read_only")!;
@@ -52,7 +52,7 @@ describe("the role templates", () => {
 
   it("are idempotent, also when the page loads race", async () => {
     await Promise.all([r.ensureStoreRoles(store.id), r.ensureStoreRoles(store.id), r.ensureStoreRoles(store.id)]);
-    expect(await roles()).toHaveLength(6);
+    expect(await roles()).toHaveLength(7);
   });
 
   it("stay deleted: a template an owner removed is not made again", async () => {
@@ -60,7 +60,7 @@ describe("the role templates", () => {
     expect(await r.deleteRole(owner, marketing.id)).toEqual({ ok: true });
     await r.ensureStoreRoles(store.id);
     expect((await roles()).map((x) => x.name)).not.toContain("Marketing");
-    expect(await roles()).toHaveLength(5);
+    expect(await roles()).toHaveLength(6);
   });
 
   it("take another name where the owner already has a role of that name", async () => {
@@ -76,7 +76,7 @@ describe("the role templates", () => {
   it("belong to the store they were made for", async () => {
     await r.ensureStoreRoles(other.id);
     const ids = new Set([...(await roles()), ...(await r.listStoreRoles(other.id))].map((x) => x.id));
-    expect(ids.size).toBe(5 + 6);
+    expect(ids.size).toBe(6 + 7);
   });
 });
 

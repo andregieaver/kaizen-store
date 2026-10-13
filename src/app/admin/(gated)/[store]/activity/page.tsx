@@ -32,7 +32,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
   const base = `/admin/${member.store.slug}/activity`;
   const owner = can(holderOf(member), "owner");
   const canSee = new Set(readableAreas(member));
-  const areas = (["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "settings", "billing", "staff"] as const).filter((a) => owner || canSee.has(a));
+  const areas = (["orders", "products", "customers", "marketing", "analytics", "website", "bookings", "support", "settings", "billing", "staff"] as const).filter((a) => owner || canSee.has(a));
 
   return (
     <div className="flex flex-col gap-6">

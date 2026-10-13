@@ -1,0 +1,30 @@
+import type { Metadata } from "next";
+
+import { Inbox } from "@/components/admin/support/inbox";
+import type { SupportDeskContext } from "@/components/admin/support/desk-context";
+import { presence } from "@/server/support";
+import { kaizenDesk } from "@/server/support-desk";
+import { inboxFeed } from "@/server/support-inbox";
+
+import { kaizenSupportHeartbeatAction, kaizenSupportPresenceAction } from "./actions";
+
+export const metadata: Metadata = { title: "Support inbox" };
+
+/**
+ * Kaizen's own support inbox (D216, 2.8, step 3): conversations with visitors of Kaizen's site (and, later, owners asking Kaizen), for
+ * platform admins. Never a store's conversations: those are their desks' alone.
+ */
+export default async function PlatformSupportPage() {
+  const desk = await kaizenDesk();
+  const [initial, mine] = await Promise.all([inboxFeed([desk], { tab: "waiting" }), presence(desk.desk, desk.account.id)]);
+  const context: SupportDeskContext = {
+    level: "platform",
+    feedUrl: "/admin/platform/support/feed",
+    conversationUrl: "/admin/platform/support/c",
+    stores: [],
+    canWrite: true,
+    presence: mine.status,
+    actions: { heartbeat: kaizenSupportHeartbeatAction, presence: kaizenSupportPresenceAction },
+  };
+  return <Inbox context={context} initial={initial} initialTab="waiting" />;
+}

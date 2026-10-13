@@ -1332,3 +1332,30 @@ and push to `main`; watch CI; for a migration, record its version and check the 
   support off, is shorter and wins. Anonymising an open conversation ends it first (`ended_by` `system`). The two kinds widen
   `retention_rules_kind` (`20261013171729_support_retention_kinds`) and are seeded by `20261013171740_support_retention_rules`.
 - Migrations: `20261013171729_support_retention_kinds`, `20261013171740_support_retention_rules`.
+
+**Step 3 (13 October 2026).**
+
+- **The permission area `support`** joins `AREAS` and `WORKING_AREAS` (so an admin with no custom role holds `support:read` and
+  `support:write`, as every working area), the role-key pattern in `permissionsOf()`, `AREA_LABELS`, `WHEN_NOT_OPEN`
+  (`support:read`), the role templates (*Support agent*: `support:write`, `orders:read`, `customers:read`, `products:read`;
+  *Read-only* gains `support:read`; `ensureStoreRoles()` offers the new template to existing stores once) and the
+  `store_roles_permissions` and `store_roles_template` checks (`20261013175335_support_area`).
+- **The audit area `support`** takes `support.`, and also `chat.` and `knowledge.`, which were Settings' before the chat agent
+  moved into Support; `commerce.audit_area_of()` is replaced by one generated from `AUDIT_AREAS`
+  (`20261013175347_support_area_rules`). Entries already written keep their area.
+- **The chat agent's page** (`/chat`) moved into the Support section at the store and platform levels, renamed *Chat assistant*;
+  its page and actions ask `support:read` and `support:write` (were `settings:*`).
+- **Guards in the files**: a store's support page, routes and actions call `requirePermission()`/`checkPermission()` with a
+  literal key (the permissions scan reads them) and make the desk with `memberDesk(member)`; `storeDesk()` and `checkStoreDesk()`
+  exist for code outside the store tree. `supportHeartbeatAction` is a read-only action (`READ_ONLY_ACTIONS`); going online needs
+  `support:write`.
+- **The owner's level** reads a conversation through its store's own route (`/admin/{store}/support/c/{id}`), which checks
+  `support:read` there again, so there is no owner conversation route. Presence at the owner's level is set on every store where
+  the account may answer.
+- **Read-only in this step**: the inbox lists, opens and follows conversations (3 s list, 2 s conversation, 15 s in a hidden tab),
+  marks them read, and sets presence; taking over and answering are step 4. The Context tab shows who, email, signed in, language,
+  store, the page it started on and the times; orders and earlier conversations come with step 9.
+- **Badges**: `storeTabs()` takes optional counts (`{ support }`), `ownerTabs()` the same, and the platform's Support tab shows
+  Kaizen's desk's waiting count.
+- **Tone tokens** `--tone-1` … `--tone-5` are in `admin.css` for light and dark; a tone is always shown with its band in words.
+- Migrations: `20261013175335_support_area`, `20261013175347_support_area_rules`.

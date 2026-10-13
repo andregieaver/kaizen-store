@@ -22,7 +22,7 @@ export type StoreItem = { path: string; label: string; description: string; exac
 export type StoreGroup = { heading: string; items: StoreItem[] };
 
 export type StoreSection = {
-  key: "orders" | "products" | "customers" | "marketing" | "analytics" | "website" | "bookings" | "settings";
+  key: "orders" | "products" | "customers" | "marketing" | "analytics" | "website" | "bookings" | "support" | "settings";
   label: string;
   icon: NavIconName;
   /** The tab's address after the store's: the section's main page, or its hub. */
@@ -195,6 +195,24 @@ export const STORE_SECTIONS: StoreSection[] = [
     ],
   },
   {
+    // Support (D216, docs/support.md): every conversation with the store's customers, live, and the chat assistant that answers first.
+    key: "support",
+    label: "Support",
+    icon: "chat",
+    start: "/support",
+    hub: false,
+    intro: "Conversations with the store's customers: the inbox, and the chat assistant that answers them first.",
+    groups: [
+      {
+        heading: "Support",
+        items: [
+          item("/support", "Inbox", "Every conversation with the store's customers as it happens: who is waiting, who is talking to the assistant, and what was said."),
+          item("/chat", "Chat assistant", "The store's chat assistant for shoppers, and the knowledge it answers from."),
+        ],
+      },
+    ],
+  },
+  {
     key: "settings",
     label: "Settings",
     icon: "cog",
@@ -239,7 +257,6 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Tools",
         items: [
           item("/search", "Search", "How the store's search works: keywords, meaning and what shoppers searched for.", { feature: "shop" }),
-          item("/chat", "Chat agent", "The store's chat agent for shoppers, and the knowledge it answers from."),
           item("/settings/ai", "AI", "The AI provider and models the store uses, or its own key."),
         ],
       },
@@ -302,8 +319,11 @@ export const storeLink = (base: string, item: Pick<StoreItem, "path" | "exact">)
 
 type Link = { href: string; label: string; exact?: boolean };
 
-/** The tabs of a store's admin: Home, then each section offered, with the addresses inside it. A page of cards marks only itself, its pages are inside their own section. */
-export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen): (Link & { icon: NavIconName; also: string[] })[] {
+/**
+ * The tabs of a store's admin: Home, then each section offered, with the addresses inside it. A page of cards marks only itself, its pages are
+ * inside their own section. `counts` puts a number on a section's tab (Support: the conversations waiting for a person, D216).
+ */
+export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): (Link & { icon: NavIconName; also: string[]; badge?: number })[] {
   return [
     { href: base, label: "Home", icon: "home", exact: true, also: HOME_PATHS.map((p) => `${base}${p}`) },
     ...storeSections(flags, canOpen).map((s) => ({
@@ -311,6 +331,7 @@ export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen): (
       label: s.label,
       icon: s.icon,
       ...(s.hub && { exact: true }),
+      ...(counts[s.key] ? { badge: counts[s.key] } : {}),
       // The page of cards is the tab's own address; only the pages in the sidebar are inside it (Design is `/settings/design`, the Website's).
       also: s.groups.flatMap((g) => g.items.map((i) => `${base}${i.path}`)),
     })),

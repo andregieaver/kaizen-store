@@ -823,7 +823,7 @@ export const storeRoles = commerce.table(
     check("store_roles_name", sql`length(btrim(${t.name})) between 1 and 60`),
     check(
       "store_roles_template",
-      sql`${t.template} is null or ${t.template} in ('orders', 'products', 'marketing', 'content', 'analytics', 'read_only')`,
+      sql`${t.template} is null or ${t.template} in ('orders', 'products', 'marketing', 'content', 'analytics', 'support', 'read_only')`,
     ),
     check("store_roles_permissions", sql`${t.permissions} <@ array[${grantableList}]::text[]`),
   ],

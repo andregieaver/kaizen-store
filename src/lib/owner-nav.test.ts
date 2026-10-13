@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ADMIN_PAGES } from "./admin-map";
-import { ACCOUNT_EXTRA, ACCOUNT_ITEMS, ownerAreas, ownerTabs } from "./owner-nav";
+import { ACCOUNT_EXTRA, ACCOUNT_ITEMS, SUPPORT_PATH, ownerAreas, ownerTabs } from "./owner-nav";
 
 const ROOT = "src/app/admin/(gated)/(owner)";
 
@@ -43,7 +43,8 @@ describe("the store owner's sections (D147)", () => {
   it("puts every page folder of the owner's level in a section", () => {
     const inAccount = new Set([...ACCOUNT_ITEMS.map((i) => i.path.split("/")[2]), ...ACCOUNT_EXTRA.map((p) => p.split("/")[2])].filter(Boolean));
     const dirs = (dir: string) => readdirSync(join(ROOT, dir)).filter((name) => statSync(join(ROOT, dir, name)).isDirectory());
-    for (const sub of dirs("account")) expect(inAccount.has(sub) || sub === "work", `account/${sub}`).toBe(true);
+    // Work and Support (D216) are tabs of their own, not Account's pages.
+    for (const sub of dirs("account")) expect(inAccount.has(sub) || sub === "work" || `/account/${sub}` === SUPPORT_PATH, `account/${sub}`).toBe(true);
     expect(dirs("")).toEqual(expect.arrayContaining(["account", "stores"]));
   });
 });

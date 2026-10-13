@@ -275,3 +275,81 @@ describe("ending, retention, export and erasure (C16)", () => {
     expect(row.status).toBe("ended");
   });
 });
+
+describe("the inbox at three levels sees only its desks (C15, step 3)", () => {
+  const desks = async () => import("./support-desk");
+
+  async function newStore(name: string) {
+    const s = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${run}`;
+    const [request] = await db().execute<Row>(sql`insert into commerce.access_requests (email, name, store_name) values (${`${s}@example.com`}, 'T', 'T') returning id`);
+    const [created] = await db().execute<Row>(sql`select commerce.approve_access_request(${String(request.id)}::uuid, ${s}, ${name}, null) as id`);
+    const [owner] = await db().execute<Row>(sql`select id, email from commerce.accounts where email = ${`${s}@example.com`}`);
+    return { id: String(created.id), slug: s, owner: { id: String(owner.id), email: String(owner.email) } };
+  }
+
+  /** A conversation made straight in the database on a desk (the visitor's route is tested above). */
+  async function conversationOn(storeId: string | null, words: string) {
+    const [c] = await db().execute<Row>(sql`
+      insert into commerce.support_conversations (store_id, source, handler, token_hash, locale)
+      values (${storeId}::uuid, 'site', 'ai', ${`h-${Math.random()}`}, 'en') returning id`);
+    const id = String(c.id);
+    await support.addMessage(systemDesk(storeId), id, "customer", null, words);
+    return id;
+  }
+
+  it("lists a store's conversations to its own desk only, and refuses another desk's conversation", async () => {
+    const a = await newStore("Inbox A");
+    const b = await newStore("Inbox B");
+    const inA = await conversationOn(a.id, "Question to A");
+    const inB = await conversationOn(b.id, "Question to B");
+    const kaizen = await conversationOn(null, "Question to Kaizen");
+
+    const listA = await support.staffList([systemDesk(a.id)], a.owner.id, { tab: "ai" });
+    expect(listA.map((r) => r.id)).toEqual([inA]);
+    expect(listA[0]).toMatchObject({ preview: "Question to A", unread: true, handler: "ai" });
+    expect(await support.staffConversation(systemDesk(a.id), inB)).toBeNull();
+    expect(await support.staffConversation(systemDesk(null), inA)).toBeNull();
+    const kaizenList = await support.staffList([systemDesk(null)], a.owner.id, { tab: "open" });
+    expect(kaizenList.map((r) => r.id)).toContain(kaizen);
+    expect(kaizenList.map((r) => r.id)).not.toContain(inA);
+
+    // Reading it marks it read for that person only.
+    const seen = await support.staffConversation(systemDesk(a.id), inA);
+    await support.markRead(systemDesk(a.id), inA, a.owner.id, seen!.messageSeq);
+    expect((await support.staffList([systemDesk(a.id)], a.owner.id, { tab: "ai" }))[0].unread).toBe(false);
+    await expect(support.markRead(systemDesk(b.id), inA, a.owner.id, 1)).rejects.toThrow();
+  });
+
+  it("gives the owner's level every store where the account may read support, and no other", async () => {
+    const { ownerDesks } = await desks();
+    const a = await newStore("Owner A");
+    const b = await newStore("Owner B");
+    // The owner of A is a member of B with a role that may read orders but not support.
+    const [role] = await db().execute<Row>(sql`insert into commerce.store_roles (store_id, name, permissions) values (${b.id}::uuid, 'Orders only', array['orders:read']::text[]) returning id`);
+    await db().execute(sql`insert into commerce.store_members (store_id, account_id, role, role_id) values (${b.id}::uuid, ${a.owner.id}::uuid, 'admin', ${String(role.id)}::uuid)`);
+    const account = { id: a.owner.id, email: a.owner.email } as never;
+    expect((await ownerDesks(account)).map((d) => d.store?.slug)).toEqual([a.slug]);
+
+    // With support:read the store joins the list, read-only.
+    await db().execute(sql`update commerce.store_roles set permissions = array['orders:read', 'support:read']::text[] where id = ${String(role.id)}::uuid`);
+    const both = await ownerDesks(account);
+    expect(both.map((d) => [d.store?.slug, d.canWrite]).sort()).toEqual([[a.slug, true], [b.slug, false]].sort());
+    const inB = await conversationOn(b.id, "Hello B");
+    const rows = await support.staffList(both.map((d) => d.desk), a.owner.id, { tab: "open" });
+    expect(rows.find((r) => r.id === inB)?.store).toEqual({ slug: b.slug, name: "Owner B" });
+  });
+
+  it("keeps presence per desk, and counts an agent online only while their heartbeat is fresh", async () => {
+    const a = await newStore("Presence");
+    const desk = systemDesk(a.id);
+    expect((await support.presence(desk, a.owner.id)).status).toBe("away");
+    await support.setPresence([desk], a.owner.id, "online");
+    expect((await support.presence(desk, a.owner.id)).status).toBe("online");
+    expect(await support.onlineCount(desk)).toBe(1);
+    await db().execute(sql`update commerce.support_agents set last_seen_at = now() - interval '5 minutes' where store_id = ${a.id}::uuid`);
+    expect(await support.onlineCount(desk)).toBe(0);
+    await support.heartbeat([desk], a.owner.id);
+    expect(await support.onlineCount(desk)).toBe(1);
+    expect(await support.waitingCount([desk])).toBe(0);
+  });
+});

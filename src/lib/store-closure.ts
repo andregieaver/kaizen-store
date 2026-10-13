@@ -91,7 +91,7 @@ export function cleanReason(value: unknown): string | null {
  * the analytics, returns are under orders) and what only the owner holds (to reopen). Nothing that sells, publishes or changes the shop. Keys are
  * the areas of `permission-keys.ts`.
  */
-const WHEN_NOT_OPEN: readonly string[] = ["owner", "orders:read", "orders:write", "customers:read", "customers:write", "analytics:read", "analytics:write", "billing:read", "staff:read"];
+const WHEN_NOT_OPEN: readonly string[] = ["owner", "orders:read", "orders:write", "customers:read", "customers:write", "analytics:read", "analytics:write", "support:read", "billing:read", "staff:read"];
 
 export const allowedWhenNotOpen = (key: PermissionKey): boolean => WHEN_NOT_OPEN.includes(key);
 

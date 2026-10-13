@@ -12,6 +12,7 @@ export const AUDIT_AREA_LABELS: Record<AuditArea, string> = {
   analytics: "Analytics",
   website: "Website",
   bookings: "Bookings",
+  support: "Support",
   settings: "Settings",
   billing: "Billing",
   staff: "Team",

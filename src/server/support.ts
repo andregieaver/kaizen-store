@@ -8,6 +8,7 @@ import { db } from "@/db/client";
 import {
   END_AFTER_MINUTES,
   MESSAGE_MAX,
+  ONLINE_SECONDS,
   TRANSCRIPT_DAYS_DEFAULT,
   TRANSCRIPT_DAYS_OFF,
   type ConversationStatus,
@@ -334,4 +335,289 @@ export async function deleteOldRecords(cutoff: Date, limit = 5000): Promise<numb
     returning id
   `);
   return rows.length;
+}
+
+// Staff: the inbox (D216, step 3) ---------------------------------------------------------------------------------------------------
+
+/** The inbox's tabs (2.4): waiting for a person, the agent's own, with the AI, every open one, and ended ones. */
+export const INBOX_TABS = ["waiting", "mine", "ai", "open", "ended"] as const;
+export type InboxTab = (typeof INBOX_TABS)[number];
+
+export type InboxFilters = { tab: InboxTab; q?: string; storeId?: string | null };
+
+export type InboxRow = {
+  id: string;
+  /** The store's slug and name at the owner's level; null on a single desk. */
+  store: { slug: string; name: string } | null;
+  status: ConversationStatus;
+  handler: Handler;
+  source: "site" | "admin";
+  /** Who wrote: the customer's or the account's name, else their email, else "Visitor" and four letters of the id. */
+  who: string;
+  email: string | null;
+  signedIn: boolean;
+  /** The last message's first line (a customer's, the AI's or a person's). */
+  preview: string;
+  lastMessageAt: string;
+  /** In the queue since, for "Waiting 3 min". */
+  queuedAt: string | null;
+  assignee: { id: string; name: string } | null;
+  tone: number | null;
+  unread: boolean;
+  summaryTitle: string | null;
+  endedAt: string | null;
+};
+
+const PREVIEW_MAX = 140;
+const LIST_MAX = 100;
+
+/** The desks' ids as a SQL condition on a conversation alias `c` (Kaizen's desk is `store_id is null`). */
+function onDesks(desks: Desk[]): SQL {
+  const ids = desks.map((d) => d.storeId).filter((id): id is string => id !== null);
+  const kaizen = desks.some((d) => d.storeId === null);
+  const parts: SQL[] = [];
+  if (ids.length > 0) parts.push(sql`c.store_id = any(array[${sql.join(ids.map((id) => sql`${id}::uuid`), sql`, `)}])`);
+  if (kaizen) parts.push(sql`c.store_id is null`);
+  return parts.length === 0 ? sql`false` : sql`(${sql.join(parts, sql` or `)})`;
+}
+
+function tabCondition(tab: InboxTab, accountId: string): SQL {
+  switch (tab) {
+    case "waiting":
+      return sql`c.status = 'open' and c.handler = 'queue'`;
+    case "mine":
+      return sql`c.status = 'open' and c.handler = 'human' and c.assignee_id = ${accountId}::uuid`;
+    case "ai":
+      return sql`c.status = 'open' and c.handler = 'ai'`;
+    case "open":
+      return sql`c.status = 'open'`;
+    case "ended":
+      return sql`c.status = 'ended'`;
+  }
+}
+
+/** Words to search for, escaped for `ilike` (a person's name, an email, a summary's title). */
+const likeOf = (q: string) => `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
+
+export const visitorLabel = (id: string) => `Visitor ${id.replace(/-/g, "").slice(0, 4).toUpperCase()}`;
+
+/**
+ * The inbox's list for one or several desks (the owner's level), newest first (the queue oldest first), at most 100 rows. Never an
+ * anonymised conversation. A row is unread for the account when it has messages after the last the account read.
+ */
+export async function staffList(desks: Desk[], accountId: string, filters: InboxFilters): Promise<InboxRow[]> {
+  const q = filters.q?.trim().slice(0, 100);
+  const storeOnly = filters.storeId ? sql`and c.store_id = ${filters.storeId}::uuid` : sql``;
+  const search = q
+    ? sql`and (cu.name ilike ${likeOf(q)} or cu.email ilike ${likeOf(q)} or c.contact_name ilike ${likeOf(q)} or c.contact_email ilike ${likeOf(q)}
+        or ra.name ilike ${likeOf(q)} or ra.email ilike ${likeOf(q)} or c.summary->>'title' ilike ${likeOf(q)})`
+    : sql``;
+  const order = filters.tab === "waiting" ? sql`c.queued_at asc nulls last, c.created_at asc` : sql`c.last_message_at desc`;
+  const rows = await db().execute<Row>(sql`
+    select c.id, c.status, c.handler, c.source, c.last_message_at, c.queued_at, c.tone, c.ended_at, c.message_seq, c.customer_id,
+      c.summary->>'title' as summary_title,
+      s.slug as store_slug, s.name as store_name,
+      coalesce(nullif(cu.name, ''), nullif(c.contact_name, ''), nullif(ra.name, '')) as who_name,
+      coalesce(cu.email, c.contact_email, ra.email) as who_email,
+      a.id as assignee_id, coalesce(nullif(a.name, ''), a.email) as assignee_name,
+      coalesce(rd.last_read_seq, 0) as last_read,
+      (select m.body from commerce.support_messages m
+        where m.conversation_id = c.id and m.author in ('customer', 'ai', 'agent') order by m.seq desc limit 1) as preview
+    from commerce.support_conversations c
+    left join commerce.stores s on s.id = c.store_id
+    left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
+    left join commerce.accounts ra on ra.id = c.requester_id
+    left join commerce.accounts a on a.id = c.assignee_id
+    left join commerce.support_reads rd on rd.conversation_id = c.id and rd.account_id = ${accountId}::uuid
+    where ${onDesks(desks)} and c.anonymised_at is null and ${tabCondition(filters.tab, accountId)} ${storeOnly} ${search}
+    order by ${order}
+    limit ${LIST_MAX}
+  `);
+  const several = desks.length > 1;
+  return rows.map((r) => ({
+    id: String(r.id),
+    store: several && r.store_slug ? { slug: String(r.store_slug), name: String(r.store_name) } : null,
+    status: String(r.status) as ConversationStatus,
+    handler: String(r.handler) as Handler,
+    source: String(r.source) as InboxRow["source"],
+    who: r.who_name ? String(r.who_name) : r.who_email ? String(r.who_email) : visitorLabel(String(r.id)),
+    email: r.who_email ? String(r.who_email) : null,
+    signedIn: Boolean(r.customer_id),
+    preview: firstLine(r.preview ? String(r.preview) : ""),
+    lastMessageAt: iso(r.last_message_at),
+    queuedAt: r.queued_at ? iso(r.queued_at) : null,
+    assignee: r.assignee_id ? { id: String(r.assignee_id), name: String(r.assignee_name) } : null,
+    tone: r.tone == null ? null : Number(r.tone),
+    unread: Number(r.message_seq) > Number(r.last_read),
+    summaryTitle: r.summary_title ? String(r.summary_title) : null,
+    endedAt: r.ended_at ? iso(r.ended_at) : null,
+  }));
+}
+
+const firstLine = (text: string) => {
+  const line = text.split(/\r?\n/).find((l) => l.trim()) ?? "";
+  return line.length > PREVIEW_MAX ? `${line.slice(0, PREVIEW_MAX - 1)}…` : line;
+};
+
+/** How many conversations wait for a person on the desks (the tabs' badges). */
+export async function waitingCount(desks: Desk[]): Promise<number> {
+  if (desks.length === 0) return 0;
+  const [row] = await db().execute<Row>(sql`
+    select count(*)::int as n from commerce.support_conversations c
+    where ${onDesks(desks)} and c.status = 'open' and c.handler = 'queue' and c.anonymised_at is null
+  `);
+  return Number(row?.n ?? 0);
+}
+
+/** A message as staff see it: every author, notes and the partner's help included, with the person who wrote it. */
+export type StaffMessage = {
+  seq: number;
+  author: MessageAuthor;
+  body: string;
+  kind: string | null;
+  data: unknown;
+  /** The agent's or note writer's name. */
+  by: string | null;
+  tone: number | null;
+  toneLabel: string | null;
+  /** Which tools an AI answer used, by name. */
+  tools: string[];
+  at: string;
+};
+
+export type StaffConversation = {
+  id: string;
+  store: { slug: string; name: string } | null;
+  status: ConversationStatus;
+  handler: Handler;
+  source: "site" | "admin";
+  who: string;
+  email: string | null;
+  signedIn: boolean;
+  locale: string;
+  market: string | null;
+  pagePath: string | null;
+  assignee: { id: string; name: string } | null;
+  tone: number | null;
+  startedAt: string;
+  endedAt: string | null;
+  endedBy: string | null;
+  handoffReason: string | null;
+  summary: { title: string; text: string; outcome: string; topics: string[] } | null;
+  rating: string | null;
+  messageSeq: number;
+  messages: StaffMessage[];
+};
+
+/** A conversation on the desk for staff, with its messages after `after` (at most 200), or null when it is not the desk's or is gone. */
+export async function staffConversation(desk: Desk, conversationId: string, after = 0): Promise<StaffConversation | null> {
+  const [c] = await db().execute<Row>(sql`
+    select c.*, s.slug as store_slug, s.name as store_name,
+      coalesce(nullif(cu.name, ''), nullif(c.contact_name, ''), nullif(ra.name, '')) as who_name,
+      coalesce(cu.email, c.contact_email, ra.email) as who_email,
+      coalesce(nullif(a.name, ''), a.email) as assignee_name
+    from commerce.support_conversations c
+    left join commerce.stores s on s.id = c.store_id
+    left join commerce.customers cu on cu.store_id = c.store_id and cu.id = c.customer_id
+    left join commerce.accounts ra on ra.id = c.requester_id
+    left join commerce.accounts a on a.id = c.assignee_id
+    where c.id = ${conversationId}::uuid and ${deskIs(desk, sql`c.store_id`)} and c.anonymised_at is null
+  `);
+  if (!c) return null;
+  const messages = await db().execute<Row>(sql`
+    select m.seq, m.author, m.body, m.kind, m.data, m.tone, m.tone_label, m.tools, m.created_at, coalesce(nullif(a.name, ''), a.email) as by_name
+    from commerce.support_messages m left join commerce.accounts a on a.id = m.account_id
+    where m.conversation_id = ${conversationId}::uuid and m.seq > ${after}
+    order by m.seq limit 200
+  `);
+  const summary = c.summary as { title?: unknown; text?: unknown; outcome?: unknown; topics?: unknown } | null;
+  return {
+    id: String(c.id),
+    store: c.store_slug ? { slug: String(c.store_slug), name: String(c.store_name) } : null,
+    status: String(c.status) as ConversationStatus,
+    handler: String(c.handler) as Handler,
+    source: String(c.source) as StaffConversation["source"],
+    who: c.who_name ? String(c.who_name) : c.who_email ? String(c.who_email) : visitorLabel(String(c.id)),
+    email: c.who_email ? String(c.who_email) : null,
+    signedIn: Boolean(c.customer_id),
+    locale: String(c.locale),
+    market: c.market ? String(c.market) : null,
+    pagePath: c.page_path ? String(c.page_path) : null,
+    assignee: c.assignee_id ? { id: String(c.assignee_id), name: String(c.assignee_name) } : null,
+    tone: c.tone == null ? null : Number(c.tone),
+    startedAt: iso(c.created_at),
+    endedAt: c.ended_at ? iso(c.ended_at) : null,
+    endedBy: c.ended_by ? String(c.ended_by) : null,
+    handoffReason: c.handoff_reason ? String(c.handoff_reason) : null,
+    summary:
+      summary && typeof summary.title === "string"
+        ? { title: summary.title, text: String(summary.text ?? ""), outcome: String(summary.outcome ?? ""), topics: Array.isArray(summary.topics) ? summary.topics.map(String) : [] }
+        : null,
+    rating: c.rating ? String(c.rating) : null,
+    messageSeq: Number(c.message_seq),
+    messages: messages.map((m) => ({
+      seq: Number(m.seq),
+      author: String(m.author) as MessageAuthor,
+      body: String(m.body),
+      kind: m.kind ? String(m.kind) : null,
+      data: m.data ?? null,
+      by: m.by_name ? String(m.by_name) : null,
+      tone: m.tone == null ? null : Number(m.tone),
+      toneLabel: m.tone_label ? String(m.tone_label) : null,
+      tools: Array.isArray(m.tools) ? (m.tools as { name?: unknown }[]).map((t) => String(t?.name ?? "")).filter(Boolean) : [],
+      at: iso(m.created_at),
+    })),
+  };
+}
+
+/** The account has read the conversation up to `seq` (never back). */
+export async function markRead(desk: Desk, conversationId: string, accountId: string, seq: number): Promise<void> {
+  await assertOnDesk(desk, conversationId);
+  await db().execute(sql`
+    insert into commerce.support_reads (conversation_id, account_id, last_read_seq) values (${conversationId}::uuid, ${accountId}::uuid, ${Math.max(0, Math.floor(seq))})
+    on conflict (conversation_id, account_id) do update set last_read_seq = greatest(commerce.support_reads.last_read_seq, excluded.last_read_seq)
+  `);
+}
+
+// Presence ------------------------------------------------------------------------------------------------------------------------
+
+export type Presence = { status: "online" | "away"; maxChats: number; partner: boolean; displayName: string | null };
+
+const presenceOf = (row: Row | undefined): Presence =>
+  row
+    ? { status: row.status === "online" ? "online" : "away", maxChats: Number(row.max_chats), partner: Boolean(row.partner), displayName: row.display_name ? String(row.display_name) : null }
+    : { status: "away", maxChats: 5, partner: true, displayName: null };
+
+/** The account's presence on a desk (away until they say otherwise). */
+export async function presence(desk: Desk, accountId: string): Promise<Presence> {
+  const [row] = await db().execute<Row>(sql`select * from commerce.support_agents where ${deskIs(desk, sql`store_id`)} and account_id = ${accountId}::uuid`);
+  return presenceOf(row);
+}
+
+/** Online or away on the desks; the open inbox's heartbeat keeps an online agent counted as online (`ONLINE_SECONDS`). */
+export async function setPresence(desks: Desk[], accountId: string, status: "online" | "away"): Promise<void> {
+  for (const desk of desks) {
+    await db().execute(sql`
+      insert into commerce.support_agents (store_id, account_id, status, last_seen_at) values (${desk.storeId}::uuid, ${accountId}::uuid, ${status}, now())
+      on conflict on constraint support_agents_key do update set status = excluded.status, last_seen_at = now()
+    `);
+  }
+}
+
+/** The open inbox says the agent is still there (every `HEARTBEAT_SECONDS`). */
+export async function heartbeat(desks: Desk[], accountId: string): Promise<void> {
+  for (const desk of desks) {
+    await db().execute(sql`
+      update commerce.support_agents set last_seen_at = now() where ${deskIs(desk, sql`store_id`)} and account_id = ${accountId}::uuid
+    `);
+  }
+}
+
+/** How many of the desk's people are online now: switched on and seen in the last `ONLINE_SECONDS`. */
+export async function onlineCount(desk: Desk): Promise<number> {
+  const [row] = await db().execute<Row>(sql`
+    select count(*)::int as n from commerce.support_agents
+    where ${deskIs(desk, sql`store_id`)} and status = 'online' and last_seen_at > now() - make_interval(secs => ${ONLINE_SECONDS})
+  `);
+  return Number(row?.n ?? 0);
 }

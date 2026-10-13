@@ -55,7 +55,7 @@ describe("the store admin's sections (D147)", () => {
 
   it("gives a page of cards a sidebar that leads to the same pages, and marks only itself on its tab", () => {
     const tabs = storeTabs("/admin/s", ALL);
-    expect(tabs.map((t) => t.label)).toEqual(["Home", "Orders", "Products", "Customers", "Marketing", "Analytics", "Website", "Bookings", "Settings"]);
+    expect(tabs.map((t) => t.label)).toEqual(["Home", "Orders", "Products", "Customers", "Marketing", "Analytics", "Website", "Bookings", "Support", "Settings"]);
     expect(tabs[0]).toMatchObject({ href: "/admin/s", exact: true, icon: "home" });
     const settings = tabs.find((t) => t.label === "Settings")!;
     expect(settings).toMatchObject({ href: "/admin/s/settings", exact: true });
@@ -101,7 +101,7 @@ describe("the store admin's sections (D147)", () => {
   it("leaves the online shop's sections and pages out of a website, and opens a section on what is left (D178 step 5)", () => {
     const website = { features: [] as string[] };
     const tabs = storeTabs("/admin/s", website);
-    expect(tabs.map((t) => t.label)).toEqual(["Home", "Products", "Customers", "Marketing", "Analytics", "Website", "Settings"]);
+    expect(tabs.map((t) => t.label)).toEqual(["Home", "Products", "Customers", "Marketing", "Analytics", "Website", "Support", "Settings"]);
     // Orders is not in the menu (reached from Home while an order can still be withdrawn from or returned).
     expect(tabs.map((t) => t.href)).not.toContain("/admin/s/orders");
     // A section whose main page is hidden opens on the first page it has left.

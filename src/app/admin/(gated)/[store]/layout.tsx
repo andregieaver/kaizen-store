@@ -15,6 +15,8 @@ import { storeAreas, storeTabs } from "@/lib/store-nav";
 import { holderOf } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { ensureStorePaymentMethods, ensureTestAccount, requestIp } from "@/server/connect";
+import { waitingCount } from "@/server/support";
+import { memberDesk } from "@/server/support-desk";
 
 import {
   assistantHearAction,
@@ -59,7 +61,9 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   // A store that is not open (suspended or closed, D171) offers only what a member may still do there: its orders, customers and analytics.
   const open = store.status === "active";
   const canOpen = (path: string) => canOpenPath(holder, path) && (open || keyAllowedWhenNotOpen(permissionOfPath(path, "read")));
-  const tabs: NavItem[] = storeTabs(base, store, canOpen);
+  // Support (D216): the number of conversations waiting for a person, on the Support tab of those who may read it.
+  const waiting = memberCan(member, "support:read") ? await waitingCount([memberDesk(member).desk]) : 0;
+  const tabs: NavItem[] = storeTabs(base, store, canOpen, { support: waiting });
   const areas: NavArea[] = storeAreas(base, store, canOpen);
   return (
     <AdminFrame

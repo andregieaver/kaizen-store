@@ -36,6 +36,12 @@ export const PLAN_ITEMS: SectionItem[] = [
   item("/referrals", "Referrals", "Kaizen's referral program: commission, referrers, referred stores."),
 ];
 
+/** Support (D216): Kaizen's own desk, and the chat assistant that answers its visitors first. */
+export const SUPPORT_ITEMS: SectionItem[] = [
+  item("/support", "Inbox", "Kaizen's support desk: conversations with visitors of Kaizen's site and owners asking Kaizen, live.", true),
+  item("/chat", "Chat assistant", "Kaizen's public site chat assistant and its knowledge base."),
+];
+
 export const SETTINGS_ITEMS: SectionItem[] = [
   item("/navigation", "Header and footer", "Kaizen's logos, icon, business details and which menus its standard header and footer show."),
   item("/experiments", "A/B tests", "Every store's A/B tests: what is running, what needs a look and what waits for a decision."),
@@ -49,7 +55,6 @@ export const SETTINGS_ITEMS: SectionItem[] = [
   item("/ai", "AI", "Kaizen's default AI provider and models.", true),
   item("/ai/usage", "AI usage", "What every store, owner and Kaizen itself used of the AI."),
   item("/ai/prices", "AI prices", "What each model costs per million tokens, per picture, per audio minute and per million characters, so the usage pages can show cost."),
-  item("/chat", "Chat agent", "Kaizen's public site chat agent and its knowledge base."),
   item("/emails", "Emails", "Every email Kaizen and the stores sent, and email setup."),
   item("/languages", "Languages", "The languages stores can offer, and where each one's interface text stands."),
   item("/activity", "Activity log", "What platform admins and the platform did: two-step sign-in events, approvals and settings, with who did it and when."),

@@ -224,7 +224,15 @@ of running `playwright install`.
   visitor's conversation is found only by its token's hash on its own site
   (`visitorConversation()`), and the visitor never sees a note or the partner's
   help (`visitorFeed()`). The AI's history comes from the database
-  (`runSupportTurn()`). Transcripts go after the desk's period (support off: a
+  (`runSupportTurn()`). Staff read conversations in the inbox at three levels
+  (`/admin/{store}/support`, the owner's `/admin/account/support`, the platform's
+  `/admin/platform/support`; `src/components/admin/support/`, one set of
+  components given a `SupportDeskContext`), through `staffList()`,
+  `staffConversation()` and the GET feeds in `src/server/support-inbox.ts`; a
+  store's files ask `support:read`/`support:write` themselves and make the desk
+  with `memberDesk()`, the owner's level only the stores `ownerDesks()` gives
+  (where the role holds `support:read`), the platform's only Kaizen's desk
+  (`kaizenDesk()`). Transcripts go after the desk's period (support off: a
   day after the end) and anonymised records after 24 months (`runRetention()`);
   the export's `support` section and the erasure (`anonymiseConversations()`)
   include them. In mode `people` the AI never writes to a customer; the silent
