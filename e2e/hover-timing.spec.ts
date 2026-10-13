@@ -21,6 +21,8 @@ test("buttons take the theme's hover time, easing and effect, and a button's own
   const url = await storePageWith("hovertime", [
     { id: "b1", type: "button", label: "Temaets", href: "/" },
     { id: "b2", type: "button", label: "Egen", href: "/", hover: "grow", motion: { hoverTime: { duration: 900, ease: "linear" } } },
+    // A resting shadow of its own is written `!important` by the part stylesheet; the hover's shadow still shows.
+    { id: "b3", type: "button", label: "Skygge", href: "/", hover: "shadow", shadow: "md" },
   ]);
   await themeHover(url, { duration: 450, ease: "snappy", button: "lift" });
   await page.setViewportSize({ width: 1200, height: 800 });
@@ -36,6 +38,10 @@ test("buttons take the theme's hover time, easing and effect, and a button's own
   await expect.poll(() => theirs.evaluate((el) => getComputedStyle(el).transform)).not.toBe("none");
   await own.hover();
   await expect.poll(() => own.evaluate((el) => getComputedStyle(el).transform)).toMatch(/matrix\(1\.0[1-4]/);
+  const shadowed = page.getByRole("link", { name: "Skygge" });
+  await expect(shadowed).toHaveCSS("box-shadow", /12px 0px/);
+  await shadowed.hover();
+  await expect(shadowed).toHaveCSS("box-shadow", /26px -10px/);
 });
 
 test("brand logos fill their shape with the brand colour and show as uploaded on hover", async ({ page }) => {

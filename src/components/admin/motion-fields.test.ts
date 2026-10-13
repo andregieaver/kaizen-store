@@ -10,6 +10,7 @@ vi.mock("@/lib/motion-attrs", () => ({
   partFx: vi.fn(() => ({ attrs: { "data-fx": "mock" }, style: { "--fx": "1" } })),
   backgroundFx: vi.fn(() => ({ attrs: {}, style: {} })),
   pageUsesMotion: vi.fn(() => false),
+  POINTER_HOVER: ["tilt", "magnetic", "spotlight"],
 }));
 vi.mock("@/lib/motion-runtime", () => ({ initMotion: vi.fn(() => () => {}) }));
 
@@ -388,6 +389,13 @@ describe("the canvas's motion preview", () => {
       parentStagger: 100,
       preview: true,
     });
+    // A hover effect answers the pointer, so the canvas shows it with the preview off; one that follows the pointer needs the runtime.
+    vi.mocked(partFx).mockClear();
+    canvasFx(false, { enter: { effect: "fade" }, hover: { effect: "lift" } }, "block");
+    expect(partFx).toHaveBeenCalledWith({ hover: { effect: "lift" }, hoverTime: undefined }, "block");
+    vi.mocked(partFx).mockClear();
+    expect(canvasFx(false, { hover: { effect: "tilt" } }, "block")).toEqual({ attrs: {}, style: {} });
+    expect(partFx).not.toHaveBeenCalled();
     expect(canvasBackground(false, { effect: "drift" })).toEqual({});
     expect(canvasBackground(true, { effect: "drift" }, true)).toEqual({
       motion: { effect: "drift" },
@@ -450,11 +458,13 @@ const builder = (over: Partial<ComponentProps<typeof PageBuilder>> = {}) =>
   );
 
 describe("the builder's canvas", () => {
-  it("has the motion switch off, draws no motion at all and marks only the parts that have some", () => {
+  it("has the motion switch off, draws no motion but the hover effects, and marks only the parts that have some", () => {
     const out = builder();
     expect(out).toMatch(/role="switch"[^>]*aria-checked="false"[^>]*>[\s\S]*?Preview motion/);
-    expect(partFx).not.toHaveBeenCalled();
-    expect(out).not.toContain('data-fx="mock"');
+    // The row's entrance is not drawn; the heading's hover is, as it answers the pointer.
+    expect(partFx).toHaveBeenCalledTimes(1);
+    expect(partFx).toHaveBeenCalledWith({ hover: { effect: "lift" }, hoverTime: undefined }, "text");
+    expect(out.match(/data-fx="mock"/g)).toHaveLength(1);
     // The row and the heading have motion; the column and the text do not.
     expect(out.match(/>Has motion effects<\/span>/g)).toHaveLength(2);
   });

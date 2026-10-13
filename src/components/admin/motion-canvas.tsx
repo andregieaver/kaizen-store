@@ -3,7 +3,7 @@
 import { hoverTimingVars } from "@/lib/hover-timing";
 import { useEffect, useId, type RefObject } from "react";
 
-import { partFx, type FxProps } from "@/lib/motion-attrs";
+import { POINTER_HOVER, partFx, type FxProps } from "@/lib/motion-attrs";
 import { initMotion } from "@/lib/motion-runtime";
 import type { BackgroundMotion, EnterMotion, MotionTarget, PartMotion } from "@/lib/motion";
 import { REDUCED_NOTE, useReducedMotion } from "./motion-fields";
@@ -25,7 +25,7 @@ export type CanvasFxOptions = {
   parentEnter?: EnterMotion;
 };
 
-/** A part's attributes and styles for the canvas: none unless the preview is on. */
+/** A part's attributes and styles for the canvas: with the preview off, only what answers the pointer (its hover). */
 export function canvasFx(
   on: boolean,
   motion: PartMotion | undefined,
@@ -33,8 +33,11 @@ export function canvasFx(
   options: CanvasFxOptions = {},
 ): FxProps {
   // A part with no motion of its own may still take part in its parent's stagger, so the renderer decides.
-  // Hover timing (D206) is no motion to preview: the canvas always shows it.
+  // Hover timing (D206) and a hover effect drawn by CSS alone are no motion to preview: they answer the pointer, so the canvas
+  // always shows them (the pointer-following ones need the runtime, which runs only with the preview on).
   if (!on) {
+    const hover = motion?.hover && !(POINTER_HOVER as readonly string[]).includes(motion.hover.effect) ? motion.hover : undefined;
+    if (hover) return partFx({ hover, hoverTime: motion?.hoverTime }, target);
     const style = hoverTimingVars(motion?.hoverTime);
     return Object.keys(style).length > 0 ? { attrs: {}, style } : NO_FX;
   }

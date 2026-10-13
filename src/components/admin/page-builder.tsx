@@ -1405,6 +1405,12 @@ function Sidebar({
   blocksFull: boolean;
 }) {
   const id = useId();
+  // The shop's components the store's features let it use (D178): a section with none is not drawn, and a component behind no feature
+  // (the Cookies page) is in More, as a website needs it as much as a shop.
+  const offered = (part: ShopPart) => partFeatureOn({ type: "storePart", part }, features);
+  const shopPages = STORE_PART_KEYS.filter((part) => "feature" in STORE_PARTS[part] && offered(part));
+  const siteWideParts = STORE_PART_KEYS.filter((part) => !("feature" in STORE_PARTS[part]) && offered(part));
+  const pieceGroups = PIECE_GROUPS.map((group) => ({ ...group, pieces: piecesOf(group.route).filter(offered) })).filter((group) => group.pieces.length > 0);
   // The sidebar shows the building blocks or, where the store has a theme to edit here, the theme (D182).
   const [mode, setMode] = useState<"blocks" | "theme">("blocks");
   const showing = themePanel ? mode : "blocks";
@@ -1518,12 +1524,12 @@ function Sidebar({
                   <h3 className="text-xs font-medium tracking-wide text-muted uppercase">More</h3>
                 </>
               )}
-              {shop && (
+              {shop && shopPages.length > 0 && (
                 <>
                   <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Shop pages</h3>
                   <p className="text-xs text-muted">Each draws its working page where the page you choose for it is shown, and nothing elsewhere.</p>
                   <div className="grid grid-cols-2 gap-3">
-                    {STORE_PART_KEYS.filter((part) => partFeatureOn({ type: "storePart", part }, features)).map((part) => (
+                    {shopPages.map((part) => (
                       <PaletteTile
                         key={part}
                         id={`palette:shop:${part}`}
@@ -1535,27 +1541,30 @@ function Sidebar({
                       />
                     ))}
                   </div>
-                  {PIECE_GROUPS.map((group) => (
-                    <div key={group.route} className="flex flex-col gap-3">
-                      <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{group.name}</h3>
-                      <p className="text-xs text-muted">{group.hint}</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {piecesOf(group.route).filter((part) => partFeatureOn({ type: "storePart", part }, features)).map((part) => (
-                          <PaletteTile
-                            key={part}
-                            id={`palette:shop:${part}`}
-                            data={{ kind: "palette-block", type: "storePart", part }}
-                            label={shopPartCopy(part).name}
-                            preview={<BlockIcon type="storePart" />}
-                            onAdd={() => onAddBlock("storePart", part)}
-                            disabled={blocksFull}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  <h3 className="text-xs font-medium tracking-wide text-muted uppercase">More</h3>
                 </>
+              )}
+              {shop &&
+                pieceGroups.map((group) => (
+                  <div key={group.route} className="flex flex-col gap-3">
+                    <h3 className="text-xs font-medium tracking-wide text-muted uppercase">{group.name}</h3>
+                    <p className="text-xs text-muted">{group.hint}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {group.pieces.map((part) => (
+                        <PaletteTile
+                          key={part}
+                          id={`palette:shop:${part}`}
+                          data={{ kind: "palette-block", type: "storePart", part }}
+                          label={shopPartCopy(part).name}
+                          preview={<BlockIcon type="storePart" />}
+                          onAdd={() => onAddBlock("storePart", part)}
+                          disabled={blocksFull}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              {shop && (shopPages.length > 0 || pieceGroups.length > 0) && (
+                <h3 className="text-xs font-medium tracking-wide text-muted uppercase">More</h3>
               )}
               <div className="grid grid-cols-2 gap-3">
                 {[...BLOCK_TYPES, ...(search && partFeatureOn({ type: "search" }, features) ? (["search"] as const) : []), ...(plans ? (["plans"] as const) : []), ...(customFields ? (["customField", "fieldLoop"] as const) : [])].map((type) => (
@@ -1569,6 +1578,19 @@ function Sidebar({
                     disabled={blocksFull}
                   />
                 ))}
+                {/* A shop component behind no feature (the Cookies page) belongs to a website as much as to a shop. */}
+                {shop &&
+                  siteWideParts.map((part) => (
+                    <PaletteTile
+                      key={part}
+                      id={`palette:shop:${part}`}
+                      data={{ kind: "palette-block", type: "storePart", part }}
+                      label={STORE_PARTS[part].name}
+                      preview={<BlockIcon type="storePart" />}
+                      onAdd={() => onAddBlock("storePart", part)}
+                      disabled={blocksFull}
+                    />
+                  ))}
               </div>
             </>
           )}
@@ -1999,10 +2021,12 @@ function NewsletterIcon() {
 
 function TableIcon() {
   return (
-    <span aria-hidden className="grid h-9 grid-cols-3 gap-px overflow-hidden rounded-sm bg-background/40 p-1 text-background">
-      {Array.from({ length: 9 }, (_, i) => (
-        <span key={i} className={`rounded-[1px] ${i < 3 ? "bg-current" : "bg-current opacity-40"}`} />
-      ))}
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+      <span className="grid h-6 w-10 grid-cols-3 grid-rows-3 gap-0.5">
+        {Array.from({ length: 9 }, (_, i) => (
+          <span key={i} className={`rounded-[1px] bg-current ${i < 3 ? "" : "opacity-50"}`} />
+        ))}
+      </span>
     </span>
   );
 }
@@ -2535,7 +2559,12 @@ function RowItem({
       {/* A modal's row stays in the page here (D121): badged, with a preview of the real modal. */}
       {row.modal && <ModalBar row={row} lang={actions.lang} />}
       <div className={box.className} style={{ ...box.style, ...fx.style }} {...fx.attrs}>
-        <PartBackground background={row.background} fixed={row.backgroundFixed} align={row.backgroundAlign} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
+        {/*
+          A background that stays in place while the page scrolls (D184) is pinned to the browser's window on the site. The canvas's page
+          is a container (its screen sizes are container queries), which a pinned layer takes as its window, so it would lie at the top of
+          the whole canvas and the row's frame would cut it away: here it fills its row as any background does.
+        */}
+        <PartBackground background={row.background} align={row.backgroundAlign} {...canvasBackground(actions.motionPreview, row.backgroundMotion, first)} />
         <div className={rowInnerClass(row, "canvas")} style={rowInnerStyle(row, "canvas")}>
           {resizable && widthLimited && row.width === "full" && (
             <RowWidthHandles inset={24} value={contentMax} label={name} onWidth={setWidth} onReset={resetWidth} />

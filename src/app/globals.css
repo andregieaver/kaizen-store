@@ -674,6 +674,8 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
 /*
  * Buttons' hover (D206, `BUTTON_HOVERS` in `src/lib/hover-timing.ts`): the button's own `data-hover`, else the theme's
  * `data-button-hover`, else `fade` (what buttons always did). Times and easing are the hover timing's custom properties.
+ * A shadow they give is `!important`: a button's resting shadow (its own or the theme's Button element, D182) is written so
+ * by the part stylesheet, and would otherwise hide it.
  */
 :is(.kz-btn, .button-primary) {
   isolation: isolate;
@@ -689,7 +691,7 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
 .kz-btn[data-hover="lift"]:is(:hover, :focus-visible),
 :where([data-button-hover="lift"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 22px -10px rgb(0 0 0 / 0.45);
+  box-shadow: 0 10px 22px -10px rgb(0 0 0 / 0.45) !important;
 }
 .kz-btn[data-hover="grow"]:is(:hover, :focus-visible),
 :where([data-button-hover="grow"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
@@ -697,11 +699,11 @@ dialog .kz-table-box[data-fixed="popup"] .kz-th-section {
 }
 .kz-btn[data-hover="shadow"]:is(:hover, :focus-visible),
 :where([data-button-hover="shadow"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
-  box-shadow: 0 12px 26px -10px rgb(0 0 0 / 0.45);
+  box-shadow: 0 12px 26px -10px rgb(0 0 0 / 0.45) !important;
 }
 .kz-btn[data-hover="glow"]:is(:hover, :focus-visible),
 :where([data-button-hover="glow"]) :is(.kz-btn, .button-primary):not([data-hover]):is(:hover, :focus-visible) {
-  box-shadow: 0 0 20px 2px color-mix(in srgb, var(--kz-btn-fill, var(--accent)) 45%, transparent);
+  box-shadow: 0 0 20px 2px color-mix(in srgb, var(--kz-btn-fill, var(--accent)) 45%, transparent) !important;
 }
 .kz-btn[data-hover="fade"].kz-btn-filled:is(:hover, :focus-visible),
 :where([data-button-hover="fade"]) :is(.kz-btn, .button-primary):not([data-hover]).kz-btn-filled:is(:hover, :focus-visible),
