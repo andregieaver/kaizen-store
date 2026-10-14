@@ -42,7 +42,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       </div>
 
       {trouble && status === "running" && (
-        <p className="rounded-panel border border-line bg-card p-3 text-sm">
+        <p className={`p-3 text-sm ${CARD_CLASS}`}>
           The latest news could not be fetched. The copy carries on in the background, and this page keeps trying.
         </p>
       )}
@@ -97,7 +97,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
         <h2 id="copy-steps" className="text-title text-ink">
           Steps
         </h2>
-        <ol className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+        <ol className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
           {steps.map((step) => (
             <li
               key={step.phase}
@@ -119,7 +119,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
           <h2 id="copy-counts" className="text-title text-ink">
             What is copied
           </h2>
-          <ul className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+          <ul className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
             {rows.map((row) => (
               <li key={row.key} className="flex flex-col gap-1">
                 <span className="flex justify-between gap-3">
@@ -139,7 +139,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       )}
 
       {progress.mediaLeftOut > 0 && (
-        <p className="rounded-panel border border-line bg-card p-3 text-sm">
+        <p className={`p-3 text-sm ${CARD_CLASS}`}>
           {leftOutText(progress.mediaLeftOut)}
         </p>
       )}

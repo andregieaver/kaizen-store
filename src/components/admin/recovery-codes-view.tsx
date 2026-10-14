@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 
 import { formatCodes } from "@/lib/recovery-codes";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * A set of recovery codes, shown once (wave 1, 1f, `docs/wave-1-trust.md` 2.6): to copy, download or print, and the person must say they
@@ -59,7 +60,7 @@ export function RecoveryCodesView({
           <strong className="font-medium text-ink"> This is the only time they are shown.</strong>
         </p>
       </div>
-      <div data-print-area="" className="rounded-panel border border-line bg-card p-4">
+      <div data-print-area="" className={`p-4 ${CARD_CLASS}`}>
         <p className="mb-3 text-sm">Kaizen Store recovery codes for {account}. Made {madeOn}.</p>
         <ol className="grid grid-cols-1 gap-x-8 gap-y-2 font-mono text-base sm:grid-cols-2">
           {codes.map((code) => (

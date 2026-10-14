@@ -7,6 +7,7 @@ import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 import { cashRuleWords } from "@/lib/cash-limits";
 import { MANUAL_METHOD_LABELS, MANUAL_PAYMENT_METHODS, type ManualPaymentMethod } from "@/lib/draft-input";
 import { DRAFT_REFERENCE_MAX, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, MANUAL_RECEIVED_DAYS_MAX } from "@/lib/order-limits";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The cash warning beside the Cash method (wave 3, D173, `docs/wave-3-orders.md` section 8, items 6 and 7). English admin text, flagged for review. It names the cash register rules and the ceilings on cash
@@ -104,7 +105,7 @@ export function SendBox({
       onResult(answer);
     });
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+    <section aria-labelledby={`${id}-h`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
       <h2 id={`${id}-h`} className="text-title text-ink">
         Send it
       </h2>
@@ -157,14 +158,14 @@ export function PaidOutsideBox({
   const [working, startTransition] = useTransition();
   if (!allowed) {
     return (
-      <section className="rounded-panel border border-line bg-card p-4 text-sm">
+      <section className={`p-4 text-sm ${CARD_CLASS}`}>
         <h2 className="mb-1 text-title text-ink">Paid outside Kaizen</h2>
         <p className="text-muted">Only the owner can record a payment taken outside Kaizen, unless the owner allows staff to (Settings, Orders).</p>
       </section>
     );
   }
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+    <section aria-labelledby={`${id}-h`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
       <h2 id={`${id}-h`} className="text-title text-ink">
         Mark as paid outside Kaizen
       </h2>

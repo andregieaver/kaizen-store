@@ -18,6 +18,7 @@ import { uploadPicture, type Saving, type Upload } from "./image-upload";
 import { compressLibraryFile, type CompressActions } from "./media-compress";
 import { Modal } from "./modal";
 import { uploadVideoFile, type StartVideo } from "./video-upload";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /** What the library can ask of its owner's server (bound to the store, or Kaizen's). */
 export type MediaActions = {
@@ -157,7 +158,7 @@ export function MediaLibrary({
       <form
         role="search"
         action={basePath}
-        className="flex flex-wrap items-end gap-3 rounded-panel border border-line bg-card p-4"
+        className={`flex flex-wrap items-end gap-3 p-4 ${CARD_CLASS}`}
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -361,7 +362,7 @@ export function MediaLibrary({
 function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpen: (id: string) => void; chosen: ReadonlySet<string> | null; onPick: (id: string) => void }) {
   const cell = "px-3 py-2 align-middle";
   return (
-    <div className="overflow-x-auto rounded-panel border border-line bg-card">
+    <div className={`overflow-x-auto ${CARD_CLASS}`}>
       <table className="w-full min-w-[40rem] text-left text-sm">
         <caption className="sr-only">Files</caption>
         <thead className="border-b border-line text-xs text-muted">
@@ -677,7 +678,7 @@ function CompressAll({ waiting, compress, onChanged }: { waiting: number; compre
 
   if (waiting === 0 && !progress) return null;
   return (
-    <section aria-label="Compress files" className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4">
+    <section aria-label="Compress files" className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
       <p className="text-sm">
         <span className="font-medium">Compress files.</span>{" "}
         {waiting === 0
@@ -980,7 +981,7 @@ function AltTexts({
   };
 
   return (
-    <section aria-label="Alt texts" className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4">
+    <section aria-label="Alt texts" className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
       <p className="text-sm">
         <span className="font-medium">Alt texts.</span>{" "}
         {missing === 0

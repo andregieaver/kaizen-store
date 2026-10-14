@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { CartAddTable, WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
 import { listCartAdds } from "@/server/wishlist-admin";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "From wishlist to purchase" };
 
@@ -54,13 +54,13 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
       </nav>
 
       {rows.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           {show === "all"
             ? "Nothing has gone from a wishlist to the cart yet. It shows here the moment a shopper adds items from a list."
             : "Nothing here."}
         </p>
       ) : (
-        <div className="rounded-panel border border-line bg-card px-4">
+        <div className={`px-4 ${CARD_CLASS}`}>
           <CartAddTable rows={rows} storeSlug={store.slug} locale={locale} />
         </div>
       )}

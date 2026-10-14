@@ -4,6 +4,7 @@ import { addCalendarDays, startOfMonth } from "@/lib/work-dates";
 import { TIME_BILLING_OPTIONS, activeFilterCount, timeFilterQuery, type TimeFilters } from "@/lib/work-ui";
 
 import { control, secondaryButton } from "./work-parts";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 type Option = { id: string; label: string };
 
@@ -37,7 +38,7 @@ export function TimeFiltersForm({
       method="get"
       role="search"
       aria-label="Filter time"
-      className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4"
+      className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm font-medium">

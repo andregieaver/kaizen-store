@@ -19,7 +19,7 @@ import {
 } from "@/app/admin/(gated)/[store]/experiments/actions";
 import { DEVICES, MAX_VARIANTS, type Device } from "@/lib/experiments";
 import type { ExperimentInfo } from "@/server/experiment-admin";
-import { Button, Card } from "@/components/admin/ui";
+import { Button, Card, CARD_CLASS } from "@/components/admin/ui";
 
 import { PAGE_TYPE_COPY } from "./page-type-copy";
 import { RuntimeEstimate } from "./runtime-estimate";
@@ -350,7 +350,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
         </Card>
       )}
       {(test.status === "applied" || test.status === "discarded") && (
-        <p className="rounded-panel border border-line bg-card p-4 text-sm">
+        <p className={`p-4 text-sm ${CARD_CLASS}`}>
           {test.status === "applied"
             ? `${test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "A version"} is now your page.`
             : "The original was kept."}{" "}

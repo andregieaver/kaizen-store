@@ -7,7 +7,7 @@ import { money } from "@/lib/control-center";
 import { requireAccount } from "@/server/auth";
 import { ownedStores } from "@/server/ai-usage";
 import { listStoreBilling, type StoreBilling } from "@/server/billing";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Billing" };
 
@@ -59,7 +59,7 @@ export default async function OwnerBillingPage() {
             <Stat label="Stores without a plan" value={rows.filter((r) => !r.status || ["canceled", "incomplete", "incomplete_expired"].includes(r.status)).length} />
           </StatGrid>
           <Section id="plans-heading" title="Your stores' plans">
-            <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+            <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
               {rows.map((row) => (
                 <li key={row.slug} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
                   <span className="min-w-40 flex-1">

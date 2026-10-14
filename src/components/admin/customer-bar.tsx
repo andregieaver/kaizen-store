@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/avatar";
 import { formatMoney } from "@/lib/money";
 import { avatarFor } from "@/server/avatars";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 export type CustomerBarData = {
   /** Where the customer's page is. */
@@ -39,7 +40,7 @@ export function CustomerBar({ customer }: { customer: CustomerBarData }) {
   return (
     <section
       aria-label="Customer"
-      className="flex flex-wrap items-center gap-4 rounded-panel border border-line bg-card p-4"
+      className={`flex flex-wrap items-center gap-4 p-4 ${CARD_CLASS}`}
     >
       <Avatar avatar={avatarFor(customer)} size={44} className="bg-brand font-medium text-brand-ink" />
       <div className="min-w-0 flex-1">

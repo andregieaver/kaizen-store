@@ -128,7 +128,7 @@ export function OwnerReportView({
           Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-panel border border-line bg-card">
+        <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-sm">
             <caption className="sr-only">
               Work report from {report.from} to {report.to}, by {report.by}

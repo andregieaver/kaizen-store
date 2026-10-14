@@ -8,7 +8,7 @@ import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { requirePermission } from "@/server/permissions";
 import { listCampaigns } from "@/server/campaigns";
-import { Button, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 
 import { deleteCampaignAction, setCampaignActiveAction } from "./actions";
 
@@ -51,7 +51,7 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
         </Link>
       </div>
       {campaigns.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           No campaigns yet. Try 3 for 2 on a category, or a free product above a basket amount.
         </p>
       ) : (

@@ -51,7 +51,7 @@ export default async function PlatformPage() {
           <h2 id="decided-heading" className="mb-3 text-title text-ink">
             Recently decided
           </h2>
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {decided.map((request) => (
               <li key={request.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
                 <span>

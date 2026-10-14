@@ -13,7 +13,7 @@ import {
   type AbandonedCheckoutRow,
 } from "@/server/cart-reminders";
 import { listDiscounts } from "@/server/discounts";
-import { Button, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 import { setCartRemindersAction } from "./actions";
 
@@ -126,7 +126,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
           </Link>
         </div>
         {settings.steps.length === 0 ? (
-          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
             No reminders yet. Turn reminders on to start with three, or make one.
           </p>
         ) : (
@@ -164,7 +164,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
           Latest carts
         </h2>
         {carts.length === 0 ? (
-          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
             No carts yet. They show here once a shopper types their email at checkout.
           </p>
         ) : (

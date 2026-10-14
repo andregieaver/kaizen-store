@@ -13,7 +13,7 @@ import { MAX_STORES_PER_OWNER } from "@/server/platform";
 import { listStoreCopies } from "@/server/store-copy";
 import { designChoices } from "@/server/design-presets";
 import { starterCards } from "@/server/store-starters";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { createStoreAction } from "./actions";
 
@@ -87,7 +87,7 @@ export default async function AllStoresPage() {
           <h2 id="closed-heading" className="text-title text-ink">
             Closed stores
           </h2>
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {closed.map((c) => (
               <li key={c.slug} className="p-4">
                 <Link href={`/admin/${c.slug}`} className="font-medium underline-offset-2 hover:underline">
@@ -107,7 +107,7 @@ export default async function AllStoresPage() {
           <h2 id="copies-heading" className="text-title text-ink">
             Recent copies
           </h2>
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {copies.map((copy) => (
               <li key={copy.id} className="p-4">
                 <Link href={copyProgressPath(copy.id)} className="font-medium underline-offset-2 hover:underline">
@@ -127,7 +127,7 @@ export default async function AllStoresPage() {
           <h2 id="hosting-heading" className="text-title text-ink">
             Hosting
           </h2>
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {hostings.map((h) => (
               <li key={h.slug} className="p-4">
                 <Link href={`/admin/hosting/${h.slug}`} className="font-medium underline-offset-2 hover:underline">

@@ -519,7 +519,7 @@ function ProductLayoutsTable({
     );
   };
   return (
-    <div className="overflow-x-auto rounded-panel border border-line bg-card">
+    <div className={`overflow-x-auto ${CARD_CLASS}`}>
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-line">

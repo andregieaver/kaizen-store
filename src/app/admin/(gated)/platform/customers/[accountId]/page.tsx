@@ -15,7 +15,7 @@ import { getStore } from "@/server/stores";
 import { requirePlatformAdmin } from "@/server/auth";
 import { twoStepOfAccount } from "@/server/team";
 import { avatarFor } from "@/server/avatars";
-import { List, ListRow, PageHeader, RowDate, RowFact, RowLead } from "@/components/admin/ui";
+import { CARD_CLASS, List, ListRow, PageHeader, RowDate, RowFact, RowLead } from "@/components/admin/ui";
 
 import { resetTwoStepAction } from "./actions";
 
@@ -71,7 +71,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
           ["On a plan", String(customer.onPlan)],
           ["Plan reminders", customer.planRemindersOptedOut ? "Said no" : "Allowed"],
         ].map(([label, value]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-panel border border-line bg-card p-4">
+          <div key={label} className={`flex flex-col gap-1 p-4 ${CARD_CLASS}`}>
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
           </div>

@@ -7,7 +7,7 @@ import { moneyByCurrency } from "@/components/admin/customer-bar";
 import { WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
 import { listStoreWishlists, mostWishedProducts, wishlistFigures } from "@/server/wishlist-admin";
-import { Card, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Wishlists" };
 
@@ -50,7 +50,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           ["Put in the cart", String(figures.toCart), "from a list"],
           ["Bought", String(figures.bought), [conversion !== null && `${conversion} %`, moneyByCurrency(figures.boughtMinor, locale)].filter(Boolean).join(" · ") || null],
         ].map(([label, value, note]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-panel border border-line bg-card p-4">
+          <div key={label} className={`flex flex-col gap-1 p-4 ${CARD_CLASS}`}>
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
             {note && <span className="text-xs text-muted">{note}</span>}
@@ -91,7 +91,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           )}
 
           {lists.length === 0 ? (
-            <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+            <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
               {q || customerId ? "No list matches." : "No wishlists yet. They show here once a shopper taps a heart."}
             </p>
           ) : (

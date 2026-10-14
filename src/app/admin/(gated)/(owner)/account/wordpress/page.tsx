@@ -5,7 +5,7 @@ import { primaryButton, secondaryButton } from "@/components/admin/work/work-par
 import { WORDPRESS_PLUGIN_FILE, WORDPRESS_PLUGIN_VERSION } from "@/lib/wordpress-plugin";
 import { requireAccount } from "@/server/auth";
 import { connectionsOf } from "@/server/wordpress";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { revokeConnectionAction } from "./actions";
 
@@ -47,7 +47,7 @@ export default async function WordpressPage() {
           Connected sites
         </h2>
         {sites.length === 0 ? (
-          <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">No site is connected.</p>
+          <p className={`p-4 text-sm text-muted ${CARD_CLASS}`}>No site is connected.</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {sites.map((site) => (

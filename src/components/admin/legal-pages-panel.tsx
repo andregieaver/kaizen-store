@@ -44,7 +44,7 @@ export function LegalPagesPanel({
       </p>
 
       {overview.missing.length > 0 && (
-        <section aria-labelledby="missing-heading" className="rounded-panel border border-line bg-card p-4 text-sm">
+        <section aria-labelledby="missing-heading" className={`p-4 text-sm ${CARD_CLASS}`}>
           <h2 id="missing-heading" className="mb-1 text-title text-ink">
             Details the starters need and the store has not given
           </h2>

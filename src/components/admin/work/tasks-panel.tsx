@@ -47,6 +47,7 @@ import { LogTimeForm } from "./log-time-form";
 import { useWorkTimerApi } from "./timer-context";
 import { TimerToggle } from "./timer-controls";
 import { Problems, errorText, primaryButton, smallButton, smallControl } from "./work-parts";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 type PendingAdd = { key: string; title: string; estimatedMinutes: number | null; serverId?: string };
 
@@ -238,13 +239,13 @@ export function TasksPanel({
       <Problems messages={listProblems} />
 
       {empty ? (
-        <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">
+        <p className={`p-4 text-sm text-muted ${CARD_CLASS}`}>
           No tasks yet. Tasks split the job into parts you can estimate, time and tick off. They are optional.
         </p>
       ) : (
         <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-            <ul className="divide-y divide-line rounded-panel border border-line bg-card">
+            <ul className={`divide-y divide-line ${CARD_CLASS}`}>
               {ids.map((id, index) => {
                 const task = byId.get(id)!;
                 return (

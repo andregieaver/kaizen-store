@@ -17,6 +17,7 @@ import type { DraftVariantChoice } from "@/server/draft-orders";
 
 import { EditOutcome, OutsidePaymentForm, type OutsideInput } from "./order-edit-parts";
 import { OrderEditSummary } from "./order-edit-summary";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 export type OrderEditActions = {
   preview: (raw: unknown) => Promise<EditPreviewResponse>;
@@ -155,7 +156,7 @@ export function OrderEditEditor({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="flex min-w-0 flex-col gap-6">
-        <section aria-labelledby={`${id}-lines`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+        <section aria-labelledby={`${id}-lines`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
           <h2 id={`${id}-lines`} className="text-title text-ink">
             Items on order #{number}
           </h2>
@@ -215,7 +216,7 @@ export function OrderEditEditor({
           </div>
         </section>
 
-        <section aria-labelledby={`${id}-add`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+        <section aria-labelledby={`${id}-add`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
           <h2 id={`${id}-add`} className="text-title text-ink">
             Add a product
           </h2>
@@ -286,7 +287,7 @@ export function OrderEditEditor({
           <p className={hint}>A price you type is the price charged, never shown as a &ldquo;was&rdquo; price. At most {EDIT_ADDED_LINES_MAX} products in one change.</p>
         </section>
 
-        <section aria-labelledby={`${id}-ship`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+        <section aria-labelledby={`${id}-ship`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
           <h2 id={`${id}-ship`} className="text-title text-ink">
             Shipping
           </h2>
@@ -321,7 +322,7 @@ export function OrderEditEditor({
           </fieldset>
         </section>
 
-        <section aria-labelledby={`${id}-how`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+        <section aria-labelledby={`${id}-how`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
           <h2 id={`${id}-how`} className="text-title text-ink">
             Reason and stock
           </h2>
@@ -379,7 +380,7 @@ export function OrderEditEditor({
         {link ? (
           <LinkNotice link={link} onClose={() => router.push(orderHref)} />
         ) : (
-          <section aria-labelledby={`${id}-save`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+          <section aria-labelledby={`${id}-save`} className={`flex flex-col gap-3 p-4 text-sm ${CARD_CLASS}`}>
             <h2 id={`${id}-save`} className="text-title text-ink">
               {summary?.money === "charge" ? "Ask the customer to pay" : "Save the change"}
             </h2>

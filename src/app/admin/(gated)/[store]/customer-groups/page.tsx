@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requirePermission } from "@/server/permissions";
 import { listTiers } from "@/server/customer-tiers";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { saveGroupAction } from "./actions";
 
@@ -35,11 +35,11 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
       />
 
       {groups.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           No groups yet. Make one, for example Wholesale at 10 %.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-panel border border-line bg-card">
+        <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line">

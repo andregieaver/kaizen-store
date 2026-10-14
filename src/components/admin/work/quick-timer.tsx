@@ -8,6 +8,7 @@ import { FormDialogButton } from "./client-actions";
 import { LogTimeForm } from "./log-time-form";
 import { useWorkTimerApi } from "./timer-context";
 import { Field, control, primaryButton } from "./work-parts";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * Time for the person at the top of the Time page: start a timer on any
@@ -32,7 +33,7 @@ export function QuickTimer({
 
   if (choices.length === 0) {
     return (
-      <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">
+      <p className={`p-4 text-sm text-muted ${CARD_CLASS}`}>
         There is no active assignment to log time on. Add an assignment to a client to start.
       </p>
     );
@@ -41,7 +42,7 @@ export function QuickTimer({
   return (
     <section
       aria-labelledby="quick-heading"
-      className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4"
+      className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`}
     >
       <h2 id="quick-heading" className="text-title text-ink">
         Track time

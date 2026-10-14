@@ -6,7 +6,7 @@ import { primaryButton, secondaryButton } from "@/components/admin/work/work-par
 import { readApproval } from "@/lib/wordpress";
 import { getAccount } from "@/server/auth";
 import { storesOf } from "@/server/wordpress";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { answerApprovalAction } from "../actions";
 
@@ -45,7 +45,7 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
         title={<>Connect {host} to your stores?</>}
         description={<>The Kaizen plugin on <strong className="text-ink">{request.name}</strong> ({request.site}) asks to read the products of your stores, so it can show them on its pages. Only approve a site you run.</>}
       />
-      <section aria-labelledby="reads-heading" className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4 text-sm">
+      <section aria-labelledby="reads-heading" className={`flex flex-col gap-2 p-4 text-sm ${CARD_CLASS}`}>
         <h2 id="reads-heading" className="text-title text-ink">
           What it can read
         </h2>

@@ -24,7 +24,7 @@ import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
 import { privacyCard } from "@/server/privacy-admin";
-import { Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
+import { CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
 
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
@@ -107,7 +107,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           // Subscriptions (D178): the figure and the list are there while the feature is on (off, none can be running).
           ...(subscriptionsOn ? [["Active subscriptions", String(customer.liveSubscriptions)]] : []),
         ].map(([label, value]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-panel border border-line bg-card p-4">
+          <div key={label} className={`flex flex-col gap-1 p-4 ${CARD_CLASS}`}>
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
           </div>

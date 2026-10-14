@@ -11,6 +11,7 @@ import { CohortTable, type CohortRow as CohortTableRow } from "./charts";
 import { DataTable, ShareBar, type Column } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The Customers page's body (D152): everything under the page's header, drawn from the one report object it is handed and nothing
@@ -155,7 +156,7 @@ function PeriodGroup({
   money: (minor: number | null | undefined) => string;
 }) {
   return (
-    <div className="min-w-0 rounded-panel border border-line bg-card p-4">
+    <div className={`min-w-0 p-4 ${CARD_CLASS}`}>
       <h3 className="text-body-strong text-ink">{title}</h3>
       <p className="mb-3 text-xs text-muted">{caption}</p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3">

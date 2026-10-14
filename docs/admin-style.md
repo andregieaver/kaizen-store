@@ -605,6 +605,13 @@ Step 15, the rest (D231): every button and button-like link is a pill, section t
 pages and components; the scan test holds each. What is left is judgement rather than spelling: tables that should be lists
 (D227 did the clear ones), and white boxes on the canvas that are cards.
 
+Step 16, white boxes that are cards (D232): a white box lying on the canvas, at the top of what a page or component draws (a
+section of the order editor, the recommendations page's panels, Work's overviews, the media library's and menu editor's
+columns, the analytics views' panels, empty states once dashed), is a card: `CARD_CLASS`, keeping its own padding and layout.
+A box inside a card, a table cell, a field's label, a floating panel (menus, dialogs, popovers, sticky bars) and a box a caller
+may put in a card (`ActionForm`'s notice, Work's report table and invoice list) stays a `rounded-panel` within it. The builder,
+the product and page editors and the preview panels keep their own.
+
 ---
 
 ## 9. Do and don't

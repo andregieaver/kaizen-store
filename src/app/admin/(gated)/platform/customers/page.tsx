@@ -7,7 +7,7 @@ import { SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listPlatformCustomers } from "@/server/platform-customers";
 import { requirePlatformAdmin } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
-import { Card, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -46,7 +46,7 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
         )}
       </form>
       {customers.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           {q ? "No customer matches the search." : "No customers yet."}
         </p>
       ) : (

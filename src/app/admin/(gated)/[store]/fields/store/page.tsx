@@ -4,7 +4,7 @@ import Link from "next/link";
 import { EntityFieldsCard } from "@/components/admin/entity-fields-card";
 import { requirePermission } from "@/server/permissions";
 import { storeFieldsForEditor } from "@/server/field-entities";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { saveStoreFieldsAction } from "../actions";
 import { entityFieldsSetup } from "../data";
@@ -31,7 +31,7 @@ export default async function StoreFieldsPage({ params }: PageProps<"/admin/[sto
         description={<>Extra information about the whole store, from the groups of custom fields you made for it. A field is shown on the site only if you made it public, and you place it in a page, a product layout, a header or a footer.</>}
       />
       {editor.groups.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           No group of custom fields is on the store yet.{" "}
           <Link href={`${base}/new?entity=store`} className="underline">
             Make one

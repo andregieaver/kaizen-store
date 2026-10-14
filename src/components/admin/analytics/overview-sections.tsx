@@ -13,6 +13,7 @@ import { DataTable, StatusPill, type Column, type DeltaView } from "./data-table
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
 import { dayText, factorRows, forecastLines, formatTimes, moneyLines, moneySignals, moneyWriter, noSales, plural, targetLines, type OverviewDiagnosis, type OverviewForecast, type OverviewTarget } from "./overview-text";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The Overview's sections (D152): each one is drawn from the plain props it is handed and nothing else (no data access), so it can be
@@ -134,7 +135,7 @@ function VisitCountingOff({ base, isOwner, gives }: { base: string; isOwner: boo
 
 function Stat({ label, caption, value, reason }: { label: string; caption: string; value: string | null; reason: string }) {
   return (
-    <div className="min-w-0 rounded-panel border border-line bg-card p-3">
+    <div className={`min-w-0 p-3 ${CARD_CLASS}`}>
       <dt className="text-xs font-medium text-muted" title={caption}>
         {label}
       </dt>
@@ -361,7 +362,7 @@ export function DiagnosisSection({ frame, diagnosis }: { frame: OverviewFrame; d
           <ChartCard title="What moved revenue" description="Each factor's own change. Together they make the change in revenue.">
             <HorizontalBars label="Change in each factor" rows={factorRows(diagnosis.explanation)} exportId="overview.factors" />
           </ChartCard>
-          <div className="min-w-0 space-y-2 rounded-panel border border-line bg-card p-4 text-sm">
+          <div className={`min-w-0 space-y-2 p-4 text-sm ${CARD_CLASS}`}>
             {diagnosis.explanation.sentences.map((line, i) => (
               <p key={i} className={i === 0 ? "text-base font-medium" : "text-muted"}>
                 {line}
@@ -564,7 +565,7 @@ export function TargetSection({ frame, target }: { frame: OverviewFrame; target:
           )}
         </div>
       ) : (
-        <div className="space-y-3 rounded-panel border border-line bg-card p-4">
+        <div className={`space-y-3 p-4 ${CARD_CLASS}`}>
           <Meter label={`Net revenue against the target for ${target.monthLabel}`} value={p.actualMinor} target={p.targetMinor} expected={p.tooEarly ? null : p.expectedByTodayMinor} format={money} />
           <ul className="space-y-1 text-sm text-muted">
             {lines.map((line, i) => (
@@ -588,7 +589,7 @@ export function ForecastSection({ frame, forecast }: { frame: OverviewFrame; for
       description="Where the month's net revenue is heading if the last weeks' pace holds. An estimate, not a promise."
       action={<StatusPill tone="neutral">Estimate</StatusPill>}
     >
-      <div className="space-y-2 rounded-panel border border-line bg-card p-4 text-sm">
+      <div className={`space-y-2 p-4 text-sm ${CARD_CLASS}`}>
         {forecastLines(forecast, money).map((line, i) => (
           <p key={i} className={i === 0 ? "text-base font-medium" : "text-muted"}>
             {line}

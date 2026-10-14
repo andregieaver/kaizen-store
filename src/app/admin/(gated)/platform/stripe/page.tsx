@@ -8,7 +8,7 @@ import { platformModes, WEBHOOK_KINDS } from "@/server/stripe";
 
 import { connectWebhooksAction, saveCheckoutUiAction, saveSaleFeeAction } from "../actions";
 import { requirePlatformAdmin } from "@/server/auth";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Stripe" };
 
@@ -61,7 +61,7 @@ export default async function PlatformStripePage() {
       <ActionForm
         action={saveCheckoutUiAction}
         successMessage="Saved. New checkouts use it from now on."
-        className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4"
+        className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`}
       >
         <fieldset className="flex flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">Where shoppers pay</legend>
@@ -87,7 +87,7 @@ export default async function PlatformStripePage() {
           <SubmitButton>Save</SubmitButton>
         </div>
       </ActionForm>
-      <ActionForm action={saveSaleFeeAction} className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4">
+      <ActionForm action={saveSaleFeeAction} className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Default fee on each sale (%)
           <input

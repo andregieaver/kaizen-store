@@ -40,6 +40,7 @@ import {
   type TargetKind,
   type Targets,
 } from "./menu-links";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /** An item while edited: a key, so React keeps each item's fields as items move. */
 type Item = AnyMenuEntry & { key: string };
@@ -179,7 +180,7 @@ export function MenuEditor({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-2 rounded-panel border border-line bg-card p-4 text-sm">
+      <div className={`flex flex-wrap items-center gap-2 p-4 text-sm ${CARD_CLASS}`}>
         {menus.length > 0 && (
           <>
             <label className="flex flex-wrap items-center gap-2">
@@ -211,7 +212,7 @@ export function MenuEditor({
       <div className="grid items-start gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <AddItems kinds={kinds} targets={targets} copy={copy} locale={main.locale} full={items.length >= MENU_MAX_ITEMS} onAdd={add} />
 
-        <section aria-labelledby="menu-structure-heading" className="flex min-w-0 flex-col rounded-panel border border-line bg-card">
+        <section aria-labelledby="menu-structure-heading" className={`flex min-w-0 flex-col ${CARD_CLASS}`}>
           <div className="flex flex-wrap items-end gap-3 border-b border-line p-4">
             <h2 id="menu-structure-heading" className="sr-only">
               Menu structure
@@ -372,7 +373,7 @@ function AddItems({
   const targetKinds = kinds.filter((k): k is KindOption & { kind: TargetKind } => k.kind in TARGET_NOUNS);
   const own = kinds.filter((k) => !(k.kind in TARGET_NOUNS) && k.kind !== "url");
   return (
-    <aside aria-labelledby="add-items-heading" className="flex flex-col rounded-panel border border-line bg-card">
+    <aside aria-labelledby="add-items-heading" className={`flex flex-col ${CARD_CLASS}`}>
       <h2 id="add-items-heading" className="border-b border-line p-4 text-title text-ink">
         Add menu items
       </h2>

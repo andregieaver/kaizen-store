@@ -11,6 +11,7 @@ import type { TimeEntryItem } from "@/server/work-time";
 
 import { Badge, Problems, dangerLink, smallControl } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 function EntryRow({
   storeSlug,
@@ -159,7 +160,7 @@ export function TimeEntryList({
     return <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">{empty}</p>;
   }
   return (
-    <ul className="divide-y divide-line rounded-panel border border-line bg-card">
+    <ul className={`divide-y divide-line ${CARD_CLASS}`}>
       {entries.map((entry) => (
         <EntryRow
           key={entry.id}

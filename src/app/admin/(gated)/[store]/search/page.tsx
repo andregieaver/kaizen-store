@@ -6,7 +6,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { aiFor } from "@/server/ai";
 import { requirePermission } from "@/server/permissions";
 import { SEARCH_LOG_DAYS, searchStats } from "@/server/search";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Search" };
 
@@ -34,15 +34,15 @@ export default async function SearchStatsPage({ params }: PageProps<"/admin/[sto
         description={<>What shoppers searched for in the last {stats.days} days. Searches are kept {SEARCH_LOG_DAYS} days, as they can contain personal details.</>}
       />
       <dl className="grid grid-cols-2 gap-4 sm:max-w-md">
-        <div className="rounded-panel border border-line bg-card p-4">
+        <div className={`p-4 ${CARD_CLASS}`}>
           <dt className="text-sm text-muted">Searches</dt>
           <dd className="text-metric text-ink tabular-nums">{stats.searches}</dd>
         </div>
-        <div className="rounded-panel border border-line bg-card p-4">
+        <div className={`p-4 ${CARD_CLASS}`}>
           <dt className="text-sm text-muted">Found nothing</dt>
           <dd className="text-metric text-ink tabular-nums">{stats.searches === 0 ? "–" : percent.format(stats.zeroRate)}</dd>
         </div>
-        <div className="col-span-2 rounded-panel border border-line bg-card p-4">
+        <div className={`col-span-2 p-4 ${CARD_CLASS}`}>
           <dt className="text-sm text-muted">Helped by meaning</dt>
           <dd className="text-metric text-ink tabular-nums">
             {stats.meaningSearches === 0 ? "–" : percent.format(stats.meaningHelped / stats.meaningSearches)}
@@ -70,7 +70,7 @@ export default async function SearchStatsPage({ params }: PageProps<"/admin/[sto
         {stats.zero.length === 0 ? (
           <p className="text-sm text-muted">None.</p>
         ) : (
-          <ol className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ol className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {stats.zero.map((row) => (
               <li key={row.query} className="flex justify-between gap-3 p-3">
                 <span className="break-all">{row.query}</span>

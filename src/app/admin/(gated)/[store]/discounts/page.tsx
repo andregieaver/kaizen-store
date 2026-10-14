@@ -8,7 +8,7 @@ import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import { requirePermission } from "@/server/permissions";
 import { listDiscounts } from "@/server/discounts";
-import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 
 import { deleteDiscountAction } from "./actions";
 
@@ -46,7 +46,7 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
         </Link>
       </div>
       {discounts.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           No codes yet. Make one for a campaign, a newsletter or a loyal customer.
         </p>
       ) : (

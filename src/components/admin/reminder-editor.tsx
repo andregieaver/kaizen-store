@@ -10,6 +10,7 @@ import {
   type ReminderText,
 } from "@/lib/cart-reminders";
 import { renderEmail } from "@/lib/email-layout";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 type Save = (input: ReminderStepInput) => Promise<{ ok: true; id?: string } | { ok: false; problems: string[] }>;
 type SendTest = (locale: string) => Promise<{ ok: boolean; message: string }>;
@@ -281,7 +282,7 @@ export function ReminderEditor({
         )}
         {sendTest && <p className={hint}>The test sends the saved version, with a sample {purpose === "plan" ? "plan" : "cart"}.</p>}
         {preview && (
-          <div className="overflow-hidden rounded-panel border border-line bg-card">
+          <div className={`overflow-hidden ${CARD_CLASS}`}>
             <p className="border-b border-line px-4 py-2 text-sm">
               <span className="text-muted">Subject:</span> {preview.subject}
             </p>

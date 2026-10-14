@@ -5,7 +5,7 @@ import { targetLabel } from "@/lib/ab-site";
 import { GOAL_WORDS, STATUS_SIGNAL, STATUS_WORDS } from "@/lib/experiments";
 import { requirePermission } from "@/server/permissions";
 import { listExperiments } from "@/server/experiment-admin";
-import { Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B tests" };
 
@@ -29,7 +29,7 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
         </Link>
       </div>
       {tests.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           No tests yet. Pick a page, say what you want more of, and change one thing: a heading, a picture, a button.
         </p>
       ) : (

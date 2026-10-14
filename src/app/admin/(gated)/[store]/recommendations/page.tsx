@@ -11,7 +11,7 @@ import { recommendationReport } from "@/server/recommend-events";
 import { REPLAY_ORDERS, replayOnOrders } from "@/server/recommend-eval";
 import { costWords } from "@/lib/ai-usage";
 import { getRecommendSettingsFresh, listRules, ruleProducts, usedThisMonth, type RuleKind } from "@/server/recommend-settings";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { addRuleAction, removeRuleAction, saveRecommendSettingsAction } from "./actions";
 
@@ -105,9 +105,9 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           and a hidden product is never recommended anywhere. Margins are not part of the catalogue, so the ceiling above is the upsell rule.
         </p>
         {rules.length === 0 ? (
-          <p className="rounded-panel border border-dashed border-line bg-card p-6 text-center text-sm text-muted">No rules yet.</p>
+          <p className={`p-6 text-center text-sm text-muted ${CARD_CLASS}`}>No rules yet.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card">
+          <ul className={`divide-y divide-line ${CARD_CLASS}`}>
             {rules.map((rule) => (
               <li key={rule.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm">
                 <span>
@@ -122,7 +122,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
             ))}
           </ul>
         )}
-        <ActionForm action={addRuleAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3 rounded-panel border border-line bg-card p-4">
+        <ActionForm action={addRuleAction.bind(null, store.slug)} className={`flex flex-wrap items-end gap-3 p-4 ${CARD_CLASS}`}>
           <label className="flex flex-col gap-1 text-sm font-medium">
             Product
             <select name="productId" required className={control} defaultValue="">
@@ -161,11 +161,11 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         </p>
         {replay ? (
           replay.evaluated === 0 ? (
-            <p className="rounded-panel border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
+            <p className={`p-6 text-center text-sm text-muted ${CARD_CLASS}`}>
               No order to check yet: the store needs paid orders of two goods or more that are still on sale ({replay.considered} found, {replay.skipped.notOnSaleNow} of them for products not on sale now).
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-panel border border-line bg-card">
+            <div className={`overflow-x-auto ${CARD_CLASS}`}>
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line">
@@ -217,7 +217,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           Visitors are browser tabs that were shown a recommendation (a random id kept in the tab, never joined to a person). Revenue is what the
           recommended products&apos; lines came to, with VAT and after discounts, in orders of a cart they were added to from a recommendation, placed within 14 days; per currency, never added across them.
         </p>
-        <div className="overflow-x-auto rounded-panel border border-line bg-card">
+        <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line">
@@ -269,7 +269,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           )}
         </p>
         {report.placements.length > 0 && (
-          <div className="overflow-x-auto rounded-panel border border-line bg-card">
+          <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
@@ -293,7 +293,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           </div>
         )}
         {report.topProducts.length > 0 && (
-          <div className="overflow-x-auto rounded-panel border border-line bg-card">
+          <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">

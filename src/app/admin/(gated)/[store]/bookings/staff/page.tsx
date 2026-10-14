@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { weekSummary } from "@/lib/opening-hours";
 import { requirePermission } from "@/server/permissions";
 import { listResources } from "@/server/bookings";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Staff and hours" };
 
@@ -31,7 +31,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/bo
           No one yet. Add the people who take appointments, with their working hours.
         </p>
       ) : (
-        <ul className="divide-y divide-line rounded-panel border border-line bg-card">
+        <ul className={`divide-y divide-line ${CARD_CLASS}`}>
           {staff.map((s) => (
             <li key={s.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
               <div className="min-w-0">

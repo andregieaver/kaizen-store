@@ -92,7 +92,7 @@ export function ActivityFilters({
       </form>
       <p className="text-xs text-muted">Days are in {zoneName}. Entries are kept for 24 months.</p>
       {exportAction && (
-        <form method="get" action={exportAction} className="flex flex-wrap items-end gap-3 rounded-panel border border-line bg-card p-4">
+        <form method="get" action={exportAction} className={`flex flex-wrap items-end gap-3 p-4 ${CARD_CLASS}`}>
           <input type="hidden" name="person" value={values.person} />
           <input type="hidden" name="area" value={values.area} />
           <input type="hidden" name="action" value={values.action} />
@@ -137,7 +137,7 @@ export function ActivityList({
   if (entries.length === 0) return <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>{empty}</p>;
   return (
     <div className="flex flex-col gap-4">
-      <ol className="divide-y divide-line rounded-panel border border-line bg-card">
+      <ol className={`divide-y divide-line ${CARD_CLASS}`}>
         {entries.map((entry) => {
           const lines = entry.changes ? Object.entries(entry.changes).map(([key, change]) => changeLine(key, change)) : [];
           return (

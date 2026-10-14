@@ -3,6 +3,7 @@ import { GOAL_WORDS } from "@/lib/experiments";
 import { formatMoney } from "@/lib/money";
 import type { ExperimentInfo } from "@/server/experiment-admin";
 import type { ExperimentResults } from "@/server/experiment-results";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 const SOFT = { few: "border-line", early: "border-line", better: "border-positive-text", worse: "border-danger-text", even: "border-line", broken: "border-danger-text" } as const;
 const COLORS = ["#6b7280", "#2563eb", "#d97706", "#7c3aed"];
@@ -91,7 +92,7 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
         <h2 id="ab-versions" className="text-title text-ink">
           The versions, for: {goal.label.toLowerCase()}
         </h2>
-        <div className="overflow-x-auto rounded-panel border border-line bg-card">
+        <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line text-muted">
@@ -139,7 +140,7 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
 
       <section aria-labelledby="ab-funnel" className="flex flex-col gap-2">
         <h2 id="ab-funnel" className="text-title text-ink">What visitors did</h2>
-        <div className="overflow-x-auto rounded-panel border border-line bg-card">
+        <div className={`overflow-x-auto ${CARD_CLASS}`}>
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line text-muted">
@@ -187,7 +188,7 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
         {results.weekly.length > 0 && (
           <details className="text-sm">
             <summary className="cursor-pointer underline">Week by week</summary>
-            <div className="mt-2 overflow-x-auto rounded-panel border border-line bg-card">
+            <div className={`mt-2 overflow-x-auto ${CARD_CLASS}`}>
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-muted">

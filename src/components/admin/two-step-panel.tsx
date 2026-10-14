@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 import { RecoveryCodesView } from "./recovery-codes-view";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /** What starting an enrolment gives back: the QR code (an SVG as a data address), the secret to type by hand and the factor to finish. */
 export type EnrolStarted = { ok: true; factorId: string; qrCode: string; secret: string; uri: string } | { ok: false; problem: string };
@@ -65,7 +66,7 @@ export function EnrolPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      {why && <p className="rounded-panel border border-line bg-card p-3 text-sm">{why}</p>}
+      {why && <p className={`p-3 text-sm ${CARD_CLASS}`}>{why}</p>}
       {!started ? (
         <div className="flex flex-col gap-3 text-sm">
           <p className="text-muted">
@@ -239,7 +240,7 @@ export function ManageTwoStep({
       </div>
       <p className="text-muted">Making new codes ends the old ones.{platformAdmin ? " Platform admins cannot switch two-step sign-in off." : ""}</p>
       {confirming && (
-        <div className="flex flex-col gap-2 rounded-panel border border-line bg-card p-3">
+        <div className={`flex flex-col gap-2 p-3 ${CARD_CLASS}`}>
           <p>
             Switch it off? Your account will be protected by your password or sign-in link alone. A store that requires two-step sign-in will ask you to set it up again.
           </p>

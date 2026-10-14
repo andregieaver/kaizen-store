@@ -6,7 +6,7 @@ import { CompanyFields } from "@/components/admin/company-fields";
 import { requirePermission } from "@/server/permissions";
 import { listCompanies, employeePercent } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
-import { Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 import { lookupRegisterCompanyAction, saveCompanyAction, searchRegisterCompaniesAction } from "./actions";
 
@@ -33,7 +33,7 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
       />
 
       {companies.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">No companies yet.</p>
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>No companies yet.</p>
       ) : (
         <Card compact>
           <List label="Companies">

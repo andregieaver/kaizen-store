@@ -7,7 +7,7 @@ import { daysBetween } from "@/lib/platform-experiments";
 import { requirePlatformAdmin } from "@/server/auth";
 import { platformExperiments } from "@/server/platform-experiments";
 import { platformUnitTests } from "@/server/platform-unit-tests";
-import { Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B tests" };
 
@@ -41,7 +41,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           ["Stopped", overview.stopped, "waiting for a decision"],
           ["Need a look", overview.needAttention, "see the notes below"],
         ].map(([label, value, note]) => (
-          <div key={label} className="rounded-panel border border-line bg-card p-4">
+          <div key={label} className={`p-4 ${CARD_CLASS}`}>
             <dt className="text-sm text-muted">{label}</dt>
             <dd className="text-metric text-ink tabular-nums">{value}</dd>
             <dd className="text-xs text-muted">{note}</dd>
@@ -59,7 +59,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
       </div>
 
       {tests.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           {everything ? "No store has made a test yet." : "No test is running, scheduled or waiting for a decision."}
         </p>
       ) : (
@@ -115,11 +115,11 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           </p>
         </div>
         {own.length === 0 ? (
-          <p className="rounded-panel border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
+          <p className={`p-6 text-center text-sm text-muted ${CARD_CLASS}`}>
             No search test is running, and no store has recommendations with a held-out ranking and tabs to count.
           </p>
         ) : (
-          <ul className="flex flex-col divide-y divide-line rounded-panel border border-line bg-card">
+          <ul className={`flex flex-col divide-y divide-line ${CARD_CLASS}`}>
             {own.map((t) => (
               <li key={t.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">

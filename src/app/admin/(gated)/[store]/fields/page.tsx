@@ -6,7 +6,7 @@ import { FieldsToolbar } from "@/components/admin/fields-toolbar";
 import { describeLocation, entitiesText } from "@/lib/field-group-editor";
 import { requirePermission } from "@/server/permissions";
 import { listFieldGroups } from "@/server/custom-fields";
-import { Button, buttonClass, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, buttonClass, ButtonLink, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 
 import {
   createFromPresetAction,
@@ -53,7 +53,7 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
         importGroups={importFieldGroupsAction.bind(null, store.slug)}
       />
       {groups.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           No groups yet. Start from a preset such as Specifications or Size guide, or make your own.
         </p>
       ) : (

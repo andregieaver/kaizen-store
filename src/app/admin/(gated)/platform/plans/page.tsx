@@ -84,7 +84,7 @@ export default async function PlansPage() {
         </section>
       ))}
 
-      <section aria-labelledby="new-plan" className="flex flex-col gap-4 rounded-panel border border-dashed border-line bg-card p-5">
+      <section aria-labelledby="new-plan" className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
         <h2 id="new-plan" className="text-title text-ink">
           New plan
         </h2>

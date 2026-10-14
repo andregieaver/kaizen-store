@@ -8,7 +8,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { listCustomers } from "@/server/customer-admin";
 import { featureOn } from "@/lib/store-features";
-import { Card, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
+import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -63,7 +63,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
       </form>
 
       {customers.length === 0 ? (
-        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
           {q ? "No customer matches the search." : "No customers yet. They show here once someone signs up or buys."}
         </p>
       ) : (

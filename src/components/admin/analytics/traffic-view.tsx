@@ -15,6 +15,7 @@ import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { dayText } from "./overview-view";
 import { AnalyticsSection, Note } from "./section";
 import { safeMoney } from "./subscriptions-view";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The Traffic page's body (D152, docs/analytics.md): where visitors drop out on the way to a purchase, which devices and countries sell,
@@ -298,7 +299,7 @@ function FunnelSection({ base, traffic, orders }: { base: string; traffic: Traff
       {known ? (
         <>
           <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <div className="min-w-0 rounded-panel border border-line bg-card p-4">
+            <div className={`min-w-0 p-4 ${CARD_CLASS}`}>
               <Funnel
                 label="Visits, product views, carts, checkouts and purchases"
                 stages={traffic.funnel.stages.map((s) => ({
@@ -618,12 +619,12 @@ function WhenSection({ time, timeZone, money }: { time: TimeReport; timeZone: st
         </ul>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="min-w-0 rounded-panel border border-line bg-card p-4">
+        <div className={`min-w-0 p-4 ${CARD_CLASS}`}>
           <h3 className="mb-3 text-body-strong text-ink">Orders by weekday and time of day</h3>
           <Heatmap label="Paid orders by weekday and two-hour band" columns={[...WEEKDAY_LABELS]} rows={rows} format={formatCount} emptyText="No paid orders in this period yet." exportId="traffic.heatmap" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
         </div>
         {orders > 0 ? (
-          <div className="min-w-0 rounded-panel border border-line bg-card p-4">
+          <div className={`min-w-0 p-4 ${CARD_CLASS}`}>
             <h3 className="mb-3 text-body-strong text-ink">Orders by weekday</h3>
             <HorizontalBars label="Paid orders for each weekday" rows={weekdays} exportId="traffic.weekdays" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
           </div>

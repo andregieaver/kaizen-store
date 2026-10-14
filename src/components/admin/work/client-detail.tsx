@@ -11,6 +11,7 @@ import { ASSIGNMENT_STATUS_LABELS, BILLING_TYPE_LABELS, STAGE_STYLES, progressVi
 import type { WorkAssignmentItem, WorkClientItem } from "@/server/work";
 
 import { Badge, card } from "./work-parts";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 const th = "px-4 py-2 text-left text-eyebrow text-muted uppercase";
 
@@ -119,7 +120,7 @@ export function ClientAssignments({
     );
   }
   return (
-    <div className="overflow-x-auto rounded-panel border border-line bg-card">
+    <div className={`overflow-x-auto ${CARD_CLASS}`}>
       <table className="w-full text-sm">
         <caption className="sr-only">Assignments</caption>
         <thead>

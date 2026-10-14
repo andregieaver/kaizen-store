@@ -16,6 +16,7 @@ import {
   type StudioMessage,
   type StudioResult,
 } from "@/lib/page-ai";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /** The studio's steps on the server, bound to the owner by the route. */
 export type StudioActions = {
@@ -271,7 +272,7 @@ export function PageStudio({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <section aria-labelledby={`${inputId}-talk`} className="flex min-h-[32rem] flex-col rounded-panel border border-line bg-card">
+      <section aria-labelledby={`${inputId}-talk`} className={`flex min-h-[32rem] flex-col ${CARD_CLASS}`}>
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
           <h2 id={`${inputId}-talk`} className="text-title text-ink">
             Talk to the AI

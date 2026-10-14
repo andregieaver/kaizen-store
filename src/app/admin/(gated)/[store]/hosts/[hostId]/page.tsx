@@ -10,7 +10,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { getHostTaxDetails, hostTaxStatus } from "@/server/dac7";
 import { getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { getHost, hostListings } from "@/server/hosts";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { setHostDisabledAction, updateHostAction } from "../actions";
 import { HostForm } from "../host-form";
@@ -64,7 +64,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
         {listings.length === 0 ? (
           <p className="text-sm text-muted">None yet. Choose this host in a stay or rental.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {listings.map((l) => (
               <li key={l.id} className="flex justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/products/${l.id}`} className="underline-offset-2 hover:underline">
@@ -100,7 +100,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
           </p>
         )}
         {earnings.length > 0 && (
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {earnings.map((e) => (
               <li key={e.paymentId} className="flex flex-wrap justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/orders/${e.orderId}`} className="underline-offset-2 hover:underline">

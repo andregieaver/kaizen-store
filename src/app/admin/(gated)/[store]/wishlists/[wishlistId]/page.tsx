@@ -10,7 +10,7 @@ import { formatMoney } from "@/lib/money";
 import { requirePermission } from "@/server/permissions";
 import { customerSummary } from "@/server/customer-admin";
 import { getStoreWishlist, listCartAdds } from "@/server/wishlist-admin";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Wishlist" };
 
@@ -53,7 +53,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
       {customer ? (
         <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />
       ) : (
-        <section aria-label="Shopper" className="rounded-panel border border-line bg-card p-4 text-sm">
+        <section aria-label="Shopper" className={`p-4 text-sm ${CARD_CLASS}`}>
           <p className="font-medium">A guest, not signed in</p>
           <p className="text-muted">
             The list is kept in the shopper&apos;s browser and joins their account if they sign in. Who they are shows below

@@ -13,6 +13,7 @@ import { arrowOf, StatusPill } from "./data-table";
 import { ExportButton } from "./export-scope";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, ChartCard, Note } from "./section";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The Finance page's body (D152): everything under the page's header, drawn from the report objects it is handed and nothing else
@@ -259,7 +260,7 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
   const th = "whitespace-nowrap border-b border-line px-3 py-2 align-bottom";
   return (
     <>
-    <div className="relative overflow-x-auto rounded-panel border border-line bg-card">
+    <div className={`relative overflow-x-auto ${CARD_CLASS}`}>
       <table data-export-id="finance.bridge" className="w-full min-w-[40rem] border-collapse text-sm">
         <caption className="sr-only">From gross sales to operating profit, one line for each step, in {current.label}</caption>
         <thead>

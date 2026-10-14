@@ -11,7 +11,7 @@ import { hoursOn } from "@/lib/opening-hours";
 import { requirePermission } from "@/server/permissions";
 import { NoShowForm } from "@/components/admin/no-show-form";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { CancelBookingForm } from "./cancel-booking-form";
 
@@ -120,7 +120,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
       )}
 
       {/* The week as a grid, on screens wide enough for seven columns. */}
-      <div className="hidden overflow-x-auto rounded-panel border border-line bg-card md:block" data-week-grid>
+      <div className={`hidden overflow-x-auto md:block ${CARD_CLASS}`} data-week-grid>
         <div className="grid min-w-[48rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
           <div className="border-b border-line" />
           {days.map((day) => (
@@ -193,7 +193,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
             .map((day) => (
               <section key={day} aria-label={longDay.format(noon(day))}>
                 <h2 className="mb-2 text-title text-ink">{longDay.format(noon(day))}</h2>
-                <ul className="divide-y divide-line rounded-panel border border-line bg-card">
+                <ul className={`divide-y divide-line ${CARD_CLASS}`}>
                   {bookings
                     .filter((b) => dayOf(b) === day)
                     .map((b) => (

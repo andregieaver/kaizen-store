@@ -25,6 +25,7 @@ import {
 } from "./data-table";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { AnalyticsSection, Note } from "./section";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The Inventory page's body (D152): everything under the page's header, drawn from the one report object it is handed and nothing else
@@ -763,7 +764,7 @@ export function InventoryView({
               : `Nothing that sells is out, or estimated to run out within ${STOCKOUT_ALERT_DAYS} days.`}
           </div>
         ) : (
-          <div className="rounded-panel border border-line bg-card p-4">
+          <div className={`p-4 ${CARD_CLASS}`}>
             <ul className="space-y-3 text-sm">{shownAlerts.map(alertItem)}</ul>
             {foldedAlerts.length > 0 ? (
               <details className="mt-3 text-sm">

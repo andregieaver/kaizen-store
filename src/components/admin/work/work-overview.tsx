@@ -87,7 +87,7 @@ export function OverviewBody(props: OverviewProps) {
       <PageHeader title="Work" description={<>Your clients, the hours you log for them and the invoices you send.</>} />
 
       {props.missing.length > 0 && (
-        <section aria-labelledby="ready-heading" className="rounded-panel border border-line bg-card p-4 text-sm">
+        <section aria-labelledby="ready-heading" className={`p-4 text-sm ${CARD_CLASS}`}>
           <h2 id="ready-heading" className="mb-1 text-title text-ink">
             Before your first invoice
           </h2>
@@ -233,7 +233,7 @@ export function OverviewBody(props: OverviewProps) {
             {overview.runningTimers.length === 0 ? (
               <Empty>No timer is running.</Empty>
             ) : (
-              <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+              <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
                 {overview.runningTimers.map((timer) => {
                   const assignment = props.assignmentNames[timer.assignmentId];
                   return (

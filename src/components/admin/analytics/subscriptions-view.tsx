@@ -10,6 +10,7 @@ import { ExportButton } from "./export-scope";
 import { KpiCard, type KpiCardProps } from "./kpi-card";
 import { dayText, moneyWriter } from "./overview-view";
 import { AnalyticsSection, Note } from "./section";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The Subscriptions page's body (D152, docs/analytics.md): how much recurring revenue the store has, how it moved over the period, who
@@ -289,7 +290,7 @@ function BridgeTable({ report, money }: { report: SubscriptionsReport; money: (m
   const rows = bridgeRows(report);
   return (
     <>
-    <div className="relative overflow-x-auto rounded-panel border border-line bg-card">
+    <div className={`relative overflow-x-auto ${CARD_CLASS}`}>
       <table data-export-id="subscriptions.bridge" className="w-full min-w-[32rem] border-collapse text-sm">
         <caption className="sr-only">{`How monthly recurring revenue moved over ${periodText(report.period)}, one row for each step`}</caption>
         <thead>
@@ -418,7 +419,7 @@ export function SubscriptionsView(props: SubscriptionsViewProps) {
         <p className="max-w-prose text-sm">{growthLine(report, money)}</p>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <BridgeTable report={report} money={money} />
-          <div className="min-w-0 rounded-panel border border-line bg-card p-4">
+          <div className={`min-w-0 p-4 ${CARD_CLASS}`}>
             <h3 className="mb-3 text-body-strong text-ink">MRR, start to end</h3>
             <HorizontalBars label="MRR at the start, what was added and lost, and MRR at the end" rows={bridgeBars(report, money)} exportId="subscriptions.mrr_bridge" />
           </div>

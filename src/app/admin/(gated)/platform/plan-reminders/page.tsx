@@ -14,7 +14,7 @@ import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { setPlanRemindersAction } from "./actions";
 import { requirePlatformAdmin } from "@/server/auth";
-import { Button, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
+import { Button, Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Plan reminders" };
 
@@ -107,7 +107,7 @@ export default async function PlanRemindersPage() {
           </Link>
         </div>
         {settings.steps.length === 0 ? (
-          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
             No reminders yet. Turn reminders on to start with three, or make one.
           </p>
         ) : (
@@ -145,7 +145,7 @@ export default async function PlanRemindersPage() {
           Latest
         </h2>
         {checkouts.length === 0 ? (
-          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
             Nothing yet. Owners show here once they go to pay for a plan.
           </p>
         ) : (

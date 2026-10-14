@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { hostTaxStatus } from "@/server/dac7";
 import { listHosts } from "@/server/hosts";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { inviteHostAction } from "./actions";
 import { HostForm } from "./host-form";
@@ -40,7 +40,7 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
       {hosts.length === 0 ? (
         <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">No hosts yet.</p>
       ) : (
-        <ul className="divide-y divide-line rounded-panel border border-line bg-card">
+        <ul className={`divide-y divide-line ${CARD_CLASS}`}>
           {hosts.map((h) => (
             <li key={h.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
               <div className="min-w-0">

@@ -9,7 +9,7 @@ import { requestIp } from "@/server/connect";
 import { hostTaxStatus } from "@/server/dac7";
 import { ensureHostTestAccount, getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { hostListings, hostResources, requireHost } from "@/server/hosts";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { HostPayouts } from "./host-payouts";
 
@@ -88,7 +88,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         {bookings.length === 0 ? (
           <p className="text-sm text-muted">None yet.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {bookings.map((b) => (
               <li key={b.id} className="flex flex-wrap justify-between gap-2 p-3">
                 <span>
@@ -117,7 +117,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         {resources.length === 0 ? (
           <p className="text-sm text-muted">The store has not given you any yet.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {resources.map((r) => (
               <li key={r.id} className="flex justify-between gap-3 p-3">
                 <span>{r.name}</span>
@@ -137,7 +137,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         {listings.length === 0 ? (
           <p className="text-sm text-muted">The store has not listed anything for you yet.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {listings.map((l) => (
               <li key={l.id} className="flex justify-between gap-3 p-3">
                 <span>{l.title}</span>

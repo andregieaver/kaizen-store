@@ -138,11 +138,11 @@ export default async function PlatformReferralsPage() {
 
       <Section id="referrers-heading" title="Referrers">
         {referrers.length === 0 ? (
-          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
             No one has opened Referrals yet.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-panel border border-line bg-card">
+          <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
@@ -198,11 +198,11 @@ export default async function PlatformReferralsPage() {
 
       <Section id="referred-heading" title="Referred stores">
         {referrals.length === 0 ? (
-          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className={`p-8 text-center text-sm text-muted ${CARD_CLASS}`}>
             No store has opened through a referral yet.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-panel border border-line bg-card">
+          <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">

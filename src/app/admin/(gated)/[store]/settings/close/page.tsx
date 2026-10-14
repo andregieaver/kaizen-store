@@ -6,7 +6,7 @@ import { REOPEN_DAYS, closureBlockers, closureWarnings, ownerMayReopen, reopenDe
 import { signedInRecently } from "@/server/auth";
 import { requireOwnerRole } from "@/server/permissions";
 import { storeObligations, storeState } from "@/server/store-closure";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { closeStoreAction, reopenStoreAction, signInAgainAction } from "./actions";
 
@@ -102,7 +102,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       </section>
 
       {blockers.length === 0 && !fresh && (
-        <section aria-labelledby="signin" className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4">
+        <section aria-labelledby="signin" className={`flex flex-col gap-2 p-4 ${CARD_CLASS}`}>
           <h2 id="signin" className="text-title text-ink">
             Sign in again first
           </h2>
@@ -114,7 +114,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       )}
 
       {blockers.length === 0 && fresh && (
-        <ActionForm action={closeStoreAction.bind(null, store.slug)} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4" successMessage="The store is closed.">
+        <ActionForm action={closeStoreAction.bind(null, store.slug)} className={`flex flex-col gap-3 p-4 ${CARD_CLASS}`} successMessage="The store is closed.">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Type the store&apos;s address, <span className="font-mono">{store.slug}</span>, to confirm
             <input name="address" required autoComplete="off" spellCheck={false} className={control} />

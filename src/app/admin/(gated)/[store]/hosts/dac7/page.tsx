@@ -5,7 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { decimalAmount } from "@/lib/dac7";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { dac7Report } from "@/server/dac7";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Tax report (DAC7)" };
 
@@ -70,7 +70,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
         {report.sellers.length === 0 ? (
           <p className="text-sm text-muted">No host was paid in {year}: there is nothing to report.</p>
         ) : (
-          <div className="overflow-x-auto rounded-panel border border-line bg-card">
+          <div className={`overflow-x-auto ${CARD_CLASS}`}>
             <table className="w-full text-sm">
               <thead className="text-left text-muted">
                 <tr>
@@ -110,7 +110,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
           <h2 id="properties-heading" className="text-title text-ink">
             Homes rented out
           </h2>
-          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
+          <ul className={`divide-y divide-line text-sm ${CARD_CLASS}`}>
             {report.properties.map((p) => (
               <li key={`${p.resourceId}:${p.currency}`} className="flex flex-wrap justify-between gap-2 p-3">
                 <span>
