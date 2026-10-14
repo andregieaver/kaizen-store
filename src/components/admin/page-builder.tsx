@@ -1140,7 +1140,7 @@ export function PageBuilder({
                 />
               ) : null
             }
-            templates={templates && { actions: templates, controller, use: templateUse, source, onSource: setSource, onBrowse: () => setBrowsing({ kind: "all" }), onPreview: openPreview }}
+            templates={templates && { actions: templates, controller, use: templateUse, source, onSource: setSource, onBrowse: () => setBrowsing({ kind: "all" }), onPreview: openPreview, own: templates.previewStore === null }}
             onShared={(id, sharing) => setParts(parts.map((p) => (p.id === id ? { ...p, sharing } : p)))}
             rowsFull={rowsFull}
             blocksFull={blocksFull}
@@ -1268,7 +1268,7 @@ export function PageBuilder({
           grid={grid}
           fonts={fonts}
           translate={translate}
-          sharing={templates !== null}
+          sharing={templates !== null && templates.previewStore !== null}
           pageType={pageType}
         />
         {templates && (
@@ -1278,6 +1278,7 @@ export function PageBuilder({
               use={templateUse}
               source={source}
               onSource={setSource}
+              own={templates.previewStore === null}
               open={browsing !== null}
               kind={browsing?.kind}
               onClose={() => setBrowsing(null)}
@@ -1296,6 +1297,7 @@ export function PageBuilder({
               usingAny={templateUse.using !== null}
               problems={previewed ? [...(controller.problems[previewed.id] ?? []), ...(templateUse.issues[previewed.id] ?? [])] : []}
               onToggleActive={() => preview && previewed && controller.setActive(preview.source, previewed.id, !previewed.active)}
+              own={templates.previewStore === null}
               onUse={() => previewed && templateUse.run(previewed)}
               onClose={() => setPreview(null)}
             />
@@ -1333,7 +1335,7 @@ const TEMPLATES_TAB = { key: "templates", label: "Templates" } as const;
 const CHECKS_TAB = { key: "checks", label: "Checks" } as const;
 type Tab = (typeof TABS)[number]["key"] | typeof TEMPLATES_TAB.key | typeof CHECKS_TAB.key;
 
-/** What the Templates tab needs (D125); none on Kaizen's own pages, which have no such tab. */
+/** What the Templates tab needs (D125); on Kaizen's own pages, Kaizen's own templates only (D236, `own`). */
 type TemplatesInSidebar = {
   actions: TemplateActions;
   controller: TemplateController;
@@ -1344,6 +1346,8 @@ type TemplatesInSidebar = {
   onBrowse: () => void;
   /** Opens a template's preview; `opener` gets the focus back when it closes. */
   onPreview: (item: TemplateItem, source: TemplateSource, opener: HTMLElement) => void;
+  /** Kaizen's own builder (D236): one source, its own templates, always on. */
+  own: boolean;
 };
 
 function Sidebar({
@@ -1651,6 +1655,7 @@ function Sidebar({
               shown={tab === "templates" && !hidden}
               onBrowse={templates.onBrowse}
               onPreview={templates.onPreview}
+              own={templates.own}
               pageType={pageType}
               rowsFull={rowsFull}
               blocksFull={blocksFull}

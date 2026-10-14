@@ -756,7 +756,8 @@ export function PageEditor({
         create={actions.createPart}
         layout={layoutOf(content, context.type)}
         defaultName={defaultTemplateName(content.title)}
-        canShare={context.templates !== null}
+        // Kaizen's own parts are always the marketplace's (D125): nothing to choose there.
+        canShare={context.templates !== null && context.templates.previewStore !== null}
         onClose={() => setTemplateOpen(false)}
         onSaved={(next) => {
           updateParts(next);

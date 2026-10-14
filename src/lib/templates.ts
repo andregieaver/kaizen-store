@@ -89,8 +89,9 @@ export type TemplateActions = {
    * The store a template is previewed for (D127): the builder shows `templatePreviewPath(previewStore, id)`, a page
    * with nothing but the template on it, drawn as the store's own pages are, in a frame. Nothing is copied or saved.
    * A plain value, not a function: this object is handed from the server to the browser, which cannot take a function.
+   * Null in Kaizen's own builder (D236), whose templates are Kaizen's own only: one source, always on, nothing to share.
    */
-  previewStore: string;
+  previewStore: string | null;
   /** Changes how one of this store's own saved parts is shared. */
   setSharing: (id: string, sharing: PartSharing) => Promise<TemplateResult>;
 };

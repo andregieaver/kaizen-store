@@ -27,6 +27,7 @@ export function TemplatesTab({
   pageType,
   rowsFull,
   blocksFull,
+  own = false,
 }: {
   controller: TemplateController;
   use: TemplateUse;
@@ -35,6 +36,8 @@ export function TemplatesTab({
   /** The tab is the one open, in a sidebar that is open. */
   shown: boolean;
   onBrowse: () => void;
+  /** Kaizen's own builder (D236): one source, its own templates, always on. */
+  own?: boolean;
   /** Opens the preview of a template; `opener` is the button, which gets the focus back when the preview closes. */
   onPreview: (item: TemplateItem, source: TemplateSource, opener: HTMLElement) => void;
   /** The kind of page being edited. */
@@ -49,15 +52,16 @@ export function TemplatesTab({
 
   const list = controller.lists[source];
   const groups = groupTemplates(forPage(list.items, pageType));
-  const empty = noneActivated(source);
+  const empty = noneActivated(source, own);
 
   return (
     <>
       <p className="text-xs text-muted">
-        Templates you have switched on. Press Preview to see one first, or Use to add a copy to the page: it is yours to
-        change, and later edits by whoever shared it never reach it.
+        {own
+          ? "Kaizen's own templates: page layouts, rows, columns and components saved as templates. Press Preview to see one first, or Use to add a copy to the page."
+          : "Templates you have switched on. Press Preview to see one first, or Use to add a copy to the page: it is yours to change, and later edits by whoever shared it never reach it."}
       </p>
-      <div role="group" aria-label="Templates from" className="grid grid-cols-2 gap-1 rounded-md bg-sunken p-1">
+      <div role="group" aria-label="Templates from" hidden={own} className="grid grid-cols-2 gap-1 rounded-md bg-sunken p-1">
         {TEMPLATE_SOURCES.map((each) => (
           <button
             key={each}

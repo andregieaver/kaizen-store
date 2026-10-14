@@ -23,6 +23,7 @@ export function TemplatePreviewDialog({
   usingAny,
   problems,
   onToggleActive,
+  own = false,
   onUse,
   onClose,
 }: {
@@ -41,6 +42,8 @@ export function TemplatePreviewDialog({
   usingAny: boolean;
   problems: readonly string[];
   onToggleActive: () => void;
+  /** Kaizen's own builder (D236): its templates are always on, so there is nothing to switch. */
+  own?: boolean;
   onUse: () => void;
   onClose: () => void;
 }) {
@@ -127,6 +130,7 @@ export function TemplatePreviewDialog({
             </button>
             <button
               type="button"
+              hidden={own}
               onClick={onToggleActive}
               disabled={switching}
               aria-pressed={item.active}

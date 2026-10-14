@@ -944,3 +944,36 @@ describe("previewing a template (D127)", () => {
     expect(await templates.previewTemplate(theirs, other, String(broken.id))).toMatchObject({ ok: false });
   });
 });
+
+describe("Kaizen's own builder (D236)", () => {
+  it("lists only Kaizen's own templates that are not hidden, always on and from Kaizen", async () => {
+    const own = await part(null, moderator, "K own");
+    const hidden = await part(null, moderator, "K hidden");
+    const store = await part(pub, both, "K store", "marketplace");
+    await templates.setTemplateHidden(moderator, hidden, true);
+    const listed = (await templates.listKaizenTemplates()).filter((t) => t.name.endsWith(run));
+    const names = listed.map((t) => t.name.replace(` ${run}`, ""));
+    expect(names).toContain("K own");
+    expect(names).not.toContain("K hidden");
+    expect(names).not.toContain("K store");
+    expect(listed.find((t) => t.id === own)).toMatchObject({ active: true, fromKaizen: true, publisher: "Kaizen", sharing: "marketplace" });
+    expect(listed.some((t) => t.id === store)).toBe(false);
+  });
+
+  it("uses and previews Kaizen's own only, unchanged and audited, and refuses a hidden one or a store's", async () => {
+    const own = await part(null, moderator, "K use");
+    const used = await templates.applyKaizenTemplate(moderator, own);
+    expect(used).toMatchObject({ ok: true, part: { id: own, kind: "block", sharing: "private", global: false } });
+    expect(await audited("platform.template_used", null)).toBeGreaterThan(0);
+    expect(await templates.previewKaizenTemplate(own)).toMatchObject({ ok: true, preview: { id: own, publisher: "Kaizen", fromKaizen: true } });
+
+    const store = await part(pub, both, "K theirs", "marketplace");
+    const hidden = await part(null, moderator, "K gone");
+    await templates.setTemplateHidden(moderator, hidden, true);
+    const unavailable = { ok: false, problems: ["This template is not available."] };
+    for (const id of [store, hidden, "nope"]) {
+      expect(await templates.applyKaizenTemplate(moderator, id)).toEqual(unavailable);
+      expect(await templates.previewKaizenTemplate(id)).toEqual(unavailable);
+    }
+  });
+});

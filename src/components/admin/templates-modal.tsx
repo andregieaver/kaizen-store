@@ -37,6 +37,8 @@ export function TemplatesModal({
   source: TemplateSource;
   onSource: (source: TemplateSource) => void;
   open: boolean;
+  /** Kaizen's own builder (D236): one source, its own templates, always on. */
+  own?: boolean;
   /** The kind the list starts on each time it opens. */
   kind?: KindFilter;
   onClose: () => void;
@@ -78,6 +80,7 @@ function Browser({
   pageType,
   rowsFull,
   blocksFull,
+  own = false,
 }: Omit<Parameters<typeof TemplatesModal>[0], "onClose">) {
   const id = useId();
   const [filters, setFilters] = useState<TemplateFilters>({ ...NO_FILTERS, kind });
@@ -93,11 +96,11 @@ function Browser({
     onSource(next);
     document.getElementById(`${id}-${next}`)?.focus();
   };
-  const nothing = nothingShared(source);
+  const nothing = nothingShared(source, own);
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="tablist" aria-label="Where templates come from" className="grid grid-cols-2 border-b border-line">
+      <div role="tablist" aria-label="Where templates come from" hidden={own} className="grid grid-cols-2 border-b border-line">
         {TEMPLATE_SOURCES.map((each, index) => (
           <button
             key={each}
@@ -119,7 +122,7 @@ function Browser({
         ))}
       </div>
 
-      <div id={`${id}-panel`} role="tabpanel" aria-labelledby={`${id}-${source}`} className="flex flex-col gap-4">
+      <div id={`${id}-panel`} role={own ? undefined : "tabpanel"} aria-labelledby={own ? undefined : `${id}-${source}`} className="flex flex-col gap-4">
         <div className="flex flex-col gap-3">
           <label htmlFor={`${id}-search`} className="sr-only">
             Search templates
@@ -204,7 +207,7 @@ function Browser({
                           <span className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-medium">{item.name}</span>
                             <PageTypeBadge item={item} warn={!fitsPage(item, pageType)} />
-                            {item.active && (
+                            {item.active && !own && (
                               <span className="rounded-full bg-sunken px-1.5 py-px text-[11px] leading-4 text-muted">
                                 Activated
                               </span>
@@ -223,6 +226,7 @@ function Browser({
                         >
                           <button
                             type="button"
+                            hidden={own}
                             onClick={() => controller.setActive(source, item.id, !item.active)}
                             disabled={controller.busy.has(item.id)}
                             aria-label={`${item.active ? "Deactivate" : "Activate"} ${item.name}`}

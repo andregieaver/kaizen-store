@@ -6,7 +6,10 @@
  */
 export const TEMPLATES_ROOT = "/admin/account/templates";
 
-/** The preview of one template as store `storeSlug` would see it, for example `/admin/account/templates/s/acme/{id}/preview`. */
-export function templatePreviewPath(storeSlug: string, id: string): string {
-  return `${TEMPLATES_ROOT}/s/${storeSlug}/${id}/preview`;
+/**
+ * The preview of one template as store `storeSlug` would see it, for example `/admin/account/templates/s/acme/{id}/preview`;
+ * with no store, one of Kaizen's own as Kaizen's site would draw it (D236), `/admin/account/templates/kaizen/{id}/preview`.
+ */
+export function templatePreviewPath(storeSlug: string | null, id: string): string {
+  return storeSlug === null ? `${TEMPLATES_ROOT}/kaizen/${id}/preview` : `${TEMPLATES_ROOT}/s/${storeSlug}/${id}/preview`;
 }

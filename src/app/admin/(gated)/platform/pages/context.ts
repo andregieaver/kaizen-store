@@ -30,6 +30,9 @@ import {
   savePlatformThemeTabAction,
   gridPreviewAction,
   gridTermsAction,
+  kaizenTemplateFixedAction,
+  kaizenTemplatesListAction,
+  applyKaizenTemplateAction,
   platformLinkTargetsAction,
   savePageAction,
   unpublishPageAction,
@@ -73,7 +76,14 @@ export async function platformPageContext(type: PageType = "page", author = ""):
       breakpoints: breakpointsOf(chrome.theme.settings),
       settings: chrome.theme.settings,
     },
-    templates: null,
+    // Kaizen's own templates (D236): its saved parts, page layouts among them, always on; previewed in Kaizen's look.
+    templates: {
+      list: kaizenTemplatesListAction,
+      setActive: kaizenTemplateFixedAction,
+      use: applyKaizenTemplateAction,
+      setSharing: kaizenTemplateFixedAction,
+      previewStore: null,
+    },
     // The page checker reads contrast against Kaizen's colours (wave 1, 1e); Kaizen has no checkout page.
     check: { theme: themeSetsOf(chrome.theme.settings), checkoutPageId: null },
     colours: themeSwatches(chrome.theme.settings),

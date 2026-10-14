@@ -102,7 +102,14 @@ export const patchTemplate = (
 ): TemplateItem[] => items.map((item) => (item.id === id ? { ...item, ...patch } : item));
 
 /** What the tab says when nothing from a source is switched on. */
-export function noneActivated(source: TemplateSource): { title: string; hint: string } {
+/** Kaizen's own builder (D236): its templates are its own saved parts, always on. */
+const OWN_NONE = {
+  title: "No templates yet",
+  hint: "Save a page, row, column or component as a template (Save as template, or from Saved) and it is listed here.",
+};
+
+export function noneActivated(source: TemplateSource, own = false): { title: string; hint: string } {
+  if (own) return OWN_NONE;
   return {
     title: `No templates activated from ${SOURCE_PHRASES[source]}`,
     hint:
@@ -113,7 +120,8 @@ export function noneActivated(source: TemplateSource): { title: string; hint: st
 }
 
 /** What the modal says when a source has nothing to list at all. */
-export function nothingShared(source: TemplateSource): { title: string; hint: string } {
+export function nothingShared(source: TemplateSource, own = false): { title: string; hint: string } {
+  if (own) return OWN_NONE;
   return source === "stores"
     ? {
         title: "Your other stores have not shared anything yet",

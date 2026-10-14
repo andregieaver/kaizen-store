@@ -14,6 +14,8 @@ import type { FormState } from "@/components/admin/action-form";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { saveSiteCss } from "@/server/site-css";
 import { savePlatformThemeLibrary, savePlatformThemeTab } from "@/server/themes";
+import { listKaizenTemplates, applyKaizenTemplate } from "@/server/templates";
+import type { TemplateItem, TemplateSource } from "@/lib/templates";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import { gridData } from "@/server/content-grid";
@@ -103,6 +105,24 @@ function readJson(payload: string): unknown {
   } catch {
     return null;
   }
+}
+
+/** Kaizen's own templates for its own builder (D236): its saved parts, always on; there is no "my stores" source. */
+export async function kaizenTemplatesListAction(source: TemplateSource): Promise<TemplateItem[]> {
+  await requirePlatformAdmin();
+  return source === "marketplace" ? listKaizenTemplates() : [];
+}
+
+/** A copy of one of Kaizen's own templates for a Kaizen page (D236). */
+export async function applyKaizenTemplateAction(id: string) {
+  const admin = await requirePlatformAdmin();
+  return applyKaizenTemplate(admin, String(id));
+}
+
+/** Kaizen's own templates are always on in its builder, and their sharing is always the marketplace's (D125, D236). */
+export async function kaizenTemplateFixedAction(): Promise<{ ok: false; problems: string[] }> {
+  await requirePlatformAdmin();
+  return { ok: false, problems: ["Kaizen's own templates are always on, and always shared with the marketplace."] };
 }
 
 /** Kaizen's own CSS for every one of its pages (D100): live at once. */

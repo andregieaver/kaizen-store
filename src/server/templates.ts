@@ -340,6 +340,99 @@ export async function previewTemplate(
 }
 
 // ---------------------------------------------------------------------------
+// Kaizen's own builder (D236)
+// ---------------------------------------------------------------------------
+
+const kaizenUnavailable = problem("This template is not available.");
+
+/** One of Kaizen's own saved parts (null store), not hidden, as stored; null when there is none or it cannot be read. */
+async function kaizenPart(id: string): Promise<SavedPart | null> {
+  if (!isId(id)) return null;
+  const [row] = await db().execute<Row>(sql`
+    select id, kind, name, content, updated_at from commerce.saved_parts
+    where id = ${id}::uuid and store_id is null and hidden_at is null
+  `);
+  if (!row) return null;
+  return parseSavedPart({ id, kind: String(row.kind), name: String(row.name), content: row.content, updatedAt: new Date(String(row.updated_at)).toISOString() });
+}
+
+/**
+ * The templates Kaizen's own page builder offers (D236): Kaizen's own saved parts, page layouts among them, newest first. A
+ * store's builder sees them in the marketplace (and other stores' shared parts); Kaizen's builder sees only its own, always on.
+ */
+export async function listKaizenTemplates(): Promise<TemplateItem[]> {
+  const rows = await db().execute<Row>(sql`
+    select id, kind, name, content, updated_at from commerce.saved_parts
+    where store_id is null and hidden_at is null
+    order by updated_at desc, id
+    limit ${TEMPLATES_LIST_MAX}
+  `);
+  return rows.flatMap((row): TemplateItem[] => {
+    const updatedAt = new Date(String(row.updated_at)).toISOString();
+    const part = parseSavedPart({ id: String(row.id), kind: String(row.kind), name: String(row.name), content: row.content, updatedAt });
+    if (!part) return [];
+    return [
+      {
+        id: part.id,
+        kind: part.kind,
+        pageType: part.kind === "page" ? part.content.pageType : null,
+        name: part.name,
+        summary: templateSummary(part.kind, part.content),
+        publisher: "Kaizen",
+        fromKaizen: true,
+        sharing: "marketplace",
+        active: true,
+        updatedAt,
+      },
+    ];
+  });
+}
+
+/**
+ * One of Kaizen's own templates made ready for a Kaizen page (D236): its content as saved, checked again. Nothing is copied:
+ * its pictures are already in Kaizen's library, and nothing in it belongs to a store.
+ */
+export async function applyKaizenTemplate(account: Account, id: string): Promise<TemplateResult<{ part: SavedPart }>> {
+  const template = await kaizenPart(id);
+  if (!template) return kaizenUnavailable;
+  const checked = savedPartInput.safeParse({ kind: template.kind, name: template.name, content: template.content, sharing: "private" });
+  if (!checked.success) return problem("This template can no longer be read.");
+  await audit(account.id, null, "platform.template_used", { part: id, name: template.name, kind: template.kind });
+  const part = {
+    id,
+    updatedAt: template.updatedAt,
+    kind: checked.data.kind,
+    name: checked.data.name,
+    content: checked.data.content,
+    global: false,
+    translations: {},
+    uses: 0,
+    sharing: "private",
+  } as SavedPart;
+  return { ok: true, part };
+}
+
+/** One of Kaizen's own templates shown before it is used (D236), as `previewTemplate()` shows a store's: view-only. */
+export async function previewKaizenTemplate(id: string): Promise<TemplateResult<{ preview: TemplatePreview }>> {
+  const template = await kaizenPart(id);
+  if (!template) return kaizenUnavailable;
+  return {
+    ok: true,
+    preview: {
+      id,
+      kind: template.kind,
+      name: template.name,
+      publisher: "Kaizen",
+      fromKaizen: true,
+      pageType: template.kind === "page" ? template.content.pageType : null,
+      summary: templateSummary(template.kind, template.content),
+      rows: previewRows(template),
+      css: template.kind === "page" ? (template.content as PageLayout).css : "",
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Sharing
 // ---------------------------------------------------------------------------
 
