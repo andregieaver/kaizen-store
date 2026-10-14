@@ -43,7 +43,43 @@ export type OrderListItem = {
   edited?: boolean;
   /** A change waits for the customer's payment (D174: *Change awaiting payment*). */
   editPending?: boolean;
+  /** How the goods reach the buyer (D237); absent for a row read before it was known. */
+  delivery?: DeliveryCell;
 };
+
+/**
+ * The *Delivery* cell (D237, `docs/wave-3-shipping-methods.md` 2.2, 2.3): the method's label kept on the order (a method's or the flat rate's name, a
+ * carrier's service, the pickup place, the local area), and for local delivery where it goes and the start of the driver's note. An erased person's
+ * order shows no postal code, city, phone or note (D162).
+ */
+export type DeliveryCell = {
+  method: "ship" | "pickup" | "local";
+  label: string | null;
+  /** Marked *Ready for pickup*. */
+  ready: boolean;
+  postalCode: string | null;
+  city: string | null;
+  phone: string | null;
+  /** The first 80 characters of the driver's note. */
+  note: string | null;
+};
+
+/** The first 80 characters of a note, with an ellipsis when cut. */
+export const noteStart = (note: string | null): string | null => (note ? (note.length > 80 ? `${note.slice(0, 79).trimEnd()}…` : note) : null);
+
+/** The fulfilment cell's words, saying *To hand over* and *Collected* for a pickup order and *To deliver* and *Taken out* for local delivery. */
+export function shipWords(item: Pick<OrderListItem, "ship" | "delivery">): string {
+  const method = item.delivery?.method ?? "ship";
+  if (method === "pickup") {
+    if (item.ship === "to_send" || item.ship === "partly_sent") return item.delivery?.ready ? "Ready for pickup" : "To hand over";
+    if (item.ship === "sent") return "Collected";
+  }
+  if (method === "local") {
+    if (item.ship === "to_send" || item.ship === "partly_sent") return "To deliver";
+    if (item.ship === "sent") return "Taken out";
+  }
+  return SHIP_CELL_LABELS[item.ship];
+}
 
 /** What the payment cell says. The captured and refunded sums are of the order's own payments (`PAY_STATE`'s two figures). */
 export function payCellOf(order: {

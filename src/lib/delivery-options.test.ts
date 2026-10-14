@@ -4,7 +4,10 @@ import {
   cleanPostalCode,
   estimateDays,
   parseCheckoutSettings,
+  pickupPlaceLine,
   pickupPointLine,
+  postalMismatch,
+  readDelivery,
   readOrderDelivery,
   shopperPrice,
 } from "./delivery-options";
@@ -147,5 +150,87 @@ describe("settings for a carrier whose prices the store enters", () => {
     const bad = parseCheckoutSettings(form({ enabled: "on", service: "17", "price:NO:17": "free", "freeOver:NO": "0", defaultWeight: "1000" }), known, options);
     expect(bad.ok).toBe(false);
     if (!bad.ok) expect(bad.problems).toHaveLength(2);
+  });
+});
+
+describe("what an order keeps of every kind of delivery (D237)", () => {
+  const carrier = { carrier: "bring", serviceId: "3584", label: "Posten home", postalCode: "0150", pickupPoint: null, window: null };
+
+  it("reads a row without a kind (every order before D237) as a carrier's, as readOrderDelivery() reads it", () => {
+    expect(readDelivery(carrier)).toEqual({ ...readOrderDelivery(carrier), kind: "carrier" });
+    expect(readDelivery({ ...carrier, kind: "carrier" })?.kind).toBe("carrier");
+  });
+
+  it("reads a method, the flat rate, a pickup snapshot and a local area, keeping a label for each", () => {
+    expect(readDelivery({ kind: "method", methodId: "m1", label: "Express", zone: { id: "z1", name: "Oslo" }, postalCode: "0150", estimate: { min: 1, max: 3 } })).toEqual({
+      kind: "method",
+      methodId: "m1",
+      label: "Express",
+      zone: { id: "z1", name: "Oslo" },
+      postalCode: "0150",
+      estimate: { min: 1, max: 3 },
+    });
+    expect(readDelivery({ kind: "method", methodId: "m1", label: "Standard", zone: null, postalCode: null, estimate: "soon" })).toMatchObject({ zone: null, postalCode: null, estimate: null });
+    expect(readDelivery({ kind: "flat", label: "Shipping", postalCode: null })).toEqual({ kind: "flat", label: "Shipping", postalCode: null });
+    const pickup = {
+      kind: "pickup",
+      label: "Collect in store",
+      locationId: "l1",
+      name: "Shop",
+      street: "Storgata 1",
+      postalCode: "0155",
+      city: "Oslo",
+      country: "NO",
+      hours: { week: {}, exceptions: [] },
+      instructions: "Ask at the till.",
+      readyInHours: 24,
+    };
+    expect(readDelivery(pickup)).toEqual(pickup);
+    expect(pickupPlaceLine(pickup)).toBe("Shop, Storgata 1, 0155 Oslo");
+    expect(readDelivery({ kind: "local", label: "Local delivery", areaId: "a1", name: "Oslo centre", postalCode: "0150", info: "Evenings" })).toEqual({
+      kind: "local",
+      label: "Local delivery",
+      areaId: "a1",
+      name: "Oslo centre",
+      postalCode: "0150",
+      info: "Evenings",
+    });
+  });
+
+  it("drops what is not as written: no label, no id, an unknown kind", () => {
+    expect(readDelivery({ kind: "method", label: "Express" })).toBeNull();
+    expect(readDelivery({ kind: "pickup", label: "Collect", locationId: "" })).toBeNull();
+    expect(readDelivery({ kind: "drone", label: "Fly" })).toBeNull();
+    expect(readDelivery({ kind: "flat" })).toBeNull();
+    expect(readDelivery(null)).toBeNull();
+  });
+});
+
+describe("a priced postal code against the address Stripe collected (2.7)", () => {
+  const method = { kind: "method" as const, methodId: "m", label: "Standard", zone: { id: "z-oslo", name: "Oslo" }, postalCode: "0150", estimate: null };
+  const zoneOf = (code: string) => (code.startsWith("0") ? "z-oslo" : null);
+
+  it("flags a method's order when the address is in another zone, and not when it is in the same one", () => {
+    expect(postalMismatch(method, "NO", "5003", { zoneOf })).toEqual({ priced: "0150", address: "5003" });
+    expect(postalMismatch(method, "NO", "0250", { zoneOf })).toBeNull();
+    expect(postalMismatch(method, "NO", " 0150 ", { zoneOf })).toBeNull();
+    expect(postalMismatch({ ...method, zone: null }, "NO", "5003", { zoneOf })).toBeNull();
+  });
+
+  it("flags a carrier's service for any other code, and a local delivery when the address is outside its area", () => {
+    const carrier = { kind: "carrier" as const, carrier: "bring" as const, serviceId: "x", label: "Posten", postalCode: "0150", pickupPoint: null, window: null };
+    expect(postalMismatch(carrier, "NO", "0151")).toEqual({ priced: "0150", address: "0151" });
+    const local = { kind: "local" as const, label: "Local", areaId: "a", name: "A", postalCode: "0150", info: "" };
+    expect(postalMismatch(local, "NO", "0151", { areaCovers: (c) => c.startsWith("01") })).toBeNull();
+    expect(postalMismatch(local, "NO", "5003", { areaCovers: (c) => c.startsWith("01") })).toEqual({ priced: "0150", address: "5003" });
+  });
+
+  it("never flags pickup, the flat rate, a missing code or one that is not the country's", () => {
+    const pickup = { kind: "pickup" as const, label: "Collect", locationId: "l", name: "", street: "", postalCode: "0155", city: "", country: "NO", hours: null, instructions: "", readyInHours: 0 };
+    expect(postalMismatch(pickup, "NO", "5003")).toBeNull();
+    expect(postalMismatch({ kind: "flat", label: "Shipping", postalCode: "0150" }, "NO", "5003")).toBeNull();
+    expect(postalMismatch(method, "NO", null, { zoneOf })).toBeNull();
+    expect(postalMismatch(method, "NO", "50", { zoneOf })).toBeNull();
+    expect(postalMismatch(null, "NO", "5003")).toBeNull();
   });
 });

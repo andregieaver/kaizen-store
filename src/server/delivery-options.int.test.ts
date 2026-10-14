@@ -223,7 +223,7 @@ describe("choosing", () => {
     expect(await chooseDelivery(shop(), cart, pickup.id)).toEqual({ ok: false, problem: "pickup_point" });
     expect(await chooseDelivery(shop(), cart, pickup.id, "PP-made-up")).toEqual({ ok: false, problem: "pickup_point" });
     expect(await chooseDelivery(shop(), cart, pickup.id, "PP2")).toEqual({ ok: true });
-    expect((await chosenDelivery(db(), storeId, cart, no))?.delivery.pickupPoint).toEqual({ id: "PP2", name: "Joker Hjørnet", street: "Lillegata 2", postalCode: "0156", city: "OSLO" });
+    expect((await chosenDelivery(db(), storeId, cart, no))?.delivery).toMatchObject({ pickupPoint: { id: "PP2", name: "Joker Hjørnet", street: "Lillegata 2", postalCode: "0156", city: "OSLO" } });
   });
 
   it("is refused for an option that is gone, another cart's or not an id", async () => {

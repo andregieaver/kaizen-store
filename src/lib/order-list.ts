@@ -19,7 +19,11 @@ export const PAY_FILTERS = ["paid", "partially_refunded", "refunded", "balance_d
 export type PayFilter = (typeof PAY_FILTERS)[number];
 
 /** `partly_sent` (D174): a parcel is recorded and units are still to send; `edit_pending`: an order change waits for the customer's payment (the spec's `edit=pending`, kept with the fulfilment filters). */
-export const SHIP_FILTERS = ["to_send", "sent", "waiting", "no_shipping", "partly_sent", "edit_pending"] as const;
+/**
+ * D237: `pickup` (paid orders to collect, not handed over yet), `local` (paid orders for the store's own local delivery, not delivered yet) and
+ * `delivery_mismatch` (the priced postal code differs from the address); `to_send` holds parcels only.
+ */
+export const SHIP_FILTERS = ["to_send", "sent", "waiting", "no_shipping", "partly_sent", "edit_pending", "pickup", "local", "delivery_mismatch"] as const;
 export type ShipFilter = (typeof SHIP_FILTERS)[number];
 
 /** The order's own status (`orders.status`); an unfinished checkout is `pending_payment` and is the `unpaid` payment filter's, not a status. */
@@ -45,19 +49,21 @@ export const ARCHIVED_FILTERS = ["no", "yes", "all"] as const;
 export type ArchivedFilter = (typeof ARCHIVED_FILTERS)[number];
 
 /** The built-in views that are a `show` value. *All* is the absence of one. The old `?show=` addresses keep working. */
-export const SHOW_VIEWS = ["to-send", "waiting", "unpaid", "archived"] as const;
+export const SHOW_VIEWS = ["to-send", "waiting", "unpaid", "archived", "to-hand-over", "local"] as const;
 export type ShowView = (typeof SHOW_VIEWS)[number];
 
 /** Columns of the list: *Order* is always first and not listed; the others are shown or hidden, in this fixed order. */
-export const ORDER_COLUMNS = ["placed", "customer", "market", "payment", "fulfilment", "items", "total", "tags", "source"] as const;
+/** `delivery` (D237): how the goods reach the buyer, the method's label (a pickup place, a local area and its postal code and note, a method). */
+export const ORDER_COLUMNS = ["placed", "customer", "market", "payment", "fulfilment", "delivery", "items", "total", "tags", "source"] as const;
 export type OrderColumn = (typeof ORDER_COLUMNS)[number];
-export const DEFAULT_COLUMNS: readonly OrderColumn[] = ["placed", "customer", "payment", "fulfilment", "items", "total", "tags"];
+export const DEFAULT_COLUMNS: readonly OrderColumn[] = ["placed", "customer", "payment", "fulfilment", "delivery", "items", "total", "tags"];
 export const COLUMN_LABELS: Record<OrderColumn, string> = {
   placed: "Placed",
   customer: "Customer",
   market: "Market",
   payment: "Payment",
   fulfilment: "Fulfilment",
+  delivery: "Delivery",
   items: "Items",
   total: "Total",
   tags: "Tags",
@@ -372,6 +378,10 @@ export function expandShow(params: OrderListParams): OrderListParams {
       return { ...params, pay: add(params.pay, "unpaid") };
     case "archived":
       return { ...params, archived: "yes" };
+    case "to-hand-over":
+      return { ...params, ship: add(params.ship, "pickup") };
+    case "local":
+      return { ...params, ship: add(params.ship, "local") };
     default:
       return params;
   }
@@ -405,6 +415,8 @@ export const BUILT_IN_VIEWS: readonly { show: ShowView | null; label: string }[]
   { show: null, label: "All" },
   { show: "to-send", label: "To send" },
   { show: "waiting", label: "Waiting for stock" },
+  { show: "to-hand-over", label: "To hand over" },
+  { show: "local", label: "Local deliveries" },
   { show: "unpaid", label: "Unfinished checkouts" },
   { show: "archived", label: "Archived" },
 ];

@@ -239,7 +239,7 @@ export const STORE_SECTIONS: StoreSection[] = [
         heading: "Selling",
         items: [
           item("/settings/payments", "Payments", "Take payments through Stripe, and the methods shoppers can use.", { feature: "shop" }),
-          item("/settings/shipping", "Shipping", "The flat rate for each market, free shipping above an amount, and carriers.", { feature: "shop" }),
+          item("/settings/shipping", "Shipping", "Flat rates, shipping methods with zones and profiles, pickup at your places, local delivery and carriers.", { feature: "shop" }),
           item("/settings/orders", "Orders", "Gift messages at checkout, automatic archiving, how long a draft order's pay link lasts and who may record a payment taken outside Kaizen.", { feature: "shop" }),
           item("/settings/returns", "Returns", "How long customers have to return goods, who pays for sending them back, when refunds are made and the instructions they get.", { feature: "shop" }),
           item("/settings/legal", "Legal pages", "Starter drafts of the terms, privacy statement, returns and shipping policies, withdrawal information and imprint, and what checkout says about the terms."),

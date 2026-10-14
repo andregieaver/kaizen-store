@@ -767,7 +767,7 @@ export async function prepareDelivery(storeId: string, listId: string, round: De
         values (${storeId}::uuid, ${cartId}::uuid, ${line.variantId}::uuid, ${line.quantity})
       `);
     }
-    const placed = await placeOrder({ storeId, market: shopMarket }, cartId, {}, { customerId: String(list.customer_id), noBackorder: true });
+    const placed = await placeOrder({ storeId, market: shopMarket }, cartId, {}, { customerId: String(list.customer_id), noBackorder: true, flatRateOnly: true });
     // Nobody pays this cart at a checkout: it is done with.
     await db().execute(sql`update commerce.carts set status = 'converted', updated_at = now() where store_id = ${storeId}::uuid and id = ${cartId}::uuid`);
     if (!placed.ok) {

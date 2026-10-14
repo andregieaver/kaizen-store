@@ -89,7 +89,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const supportIds = idsWith(storeRows, "support:read");
 
   const none = <T>() => Promise.resolve<T[]>([]);
-  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows] = await Promise.all([
+  const [salesRows, sendRows, stockRows, owedRows, latestRows, usage, workItems, returnItems, taxItems, invoiceItems, taxReturnItems, privacyItems, draftRows, partlyRows, changeRows, supportRows, handRows] = await Promise.all([
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, o.currency,
         coalesce(sum(o.total_minor) filter (where o.placed_at >= now() - interval '7 days'), 0)::bigint as week,
@@ -104,7 +104,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
     orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
       select o.store_id, count(*)::int as n, min(o.placed_at) as oldest
       from commerce.orders o
-      where o.store_id in (${idList(orderIds)}) and o.status = 'paid' and o.copied_from is null
+      where o.store_id in (${idList(orderIds)}) and o.status = 'paid' and o.copied_from is null and o.delivery_method = 'ship'
         and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')
       group by o.store_id
     `),
@@ -194,6 +194,18 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
       where c.store_id in (${idList(supportIds)}) and c.status = 'open' and c.handler = 'queue'
       group by c.store_id
     `),
+    // Orders the store hands over itself (D237): the Orders page's *To hand over* (paid pickup orders) and *Local deliveries* (paid or taken out, not
+    // delivered), archived and copied orders left out as the views leave them out. Counts only.
+    orderIds.length === 0 ? none<Row>() : db().execute<Row>(sql`
+      select o.store_id,
+        count(*) filter (where o.delivery_method = 'pickup' and o.status = 'paid')::int as pickup,
+        min(o.placed_at) filter (where o.delivery_method = 'pickup' and o.status = 'paid') as oldest_pickup,
+        count(*) filter (where o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null)::int as local
+      from commerce.orders o
+      where o.store_id in (${idList(orderIds)}) and o.copied_from is null and o.archived_at is null and o.delivery_method in ('pickup', 'local')
+        and o.status in ('paid', 'fulfilled')
+      group by o.store_id
+    `),
   ]);
 
   const salesBy = new Map<string, SalesFigure[]>();
@@ -209,6 +221,7 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
   const partlyBy = new Map(partlyRows.map((r) => [String(r.store_id), r]));
   const changesBy = new Map(changeRows.map((r) => [String(r.store_id), r]));
   const supportBy = new Map(supportRows.map((r) => [String(r.store_id), Number(r.waiting)]));
+  const handBy = new Map(handRows.filter((r) => Number(r.pickup) > 0 || Number(r.local) > 0).map((r) => [String(r.store_id), r]));
 
   const stores: StoreFigures[] = storeRows.map((r) => {
     const id = String(r.id);
@@ -255,6 +268,9 @@ export async function controlCenter(account: Account, onlyStore?: string): Promi
         : {}),
       ...(partlyBy.has(id) ? { partlySent: { orders: Number(partlyBy.get(id)!.n), oldestFirstParcelAt: partlyBy.get(id)!.oldest ? new Date(String(partlyBy.get(id)!.oldest)).toISOString() : null } } : {}),
       ...(supportBy.has(id) ? { supportWaiting: supportBy.get(id) } : {}),
+      ...(handBy.has(id) && !website
+        ? { handOver: { pickup: Number(handBy.get(id)!.pickup), oldestPickupAt: handBy.get(id)!.oldest_pickup ? new Date(String(handBy.get(id)!.oldest_pickup)).toISOString() : null, local: Number(handBy.get(id)!.local) } }
+        : {}),
       ...(changesBy.has(id) ? { orderChanges: { waiting: Number(changesBy.get(id)!.waiting), expiringSoon: Number(changesBy.get(id)!.expiring) } } : {}),
     };
   });

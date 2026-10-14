@@ -103,6 +103,19 @@ export const ASSISTANT_SKILLS: readonly AssistantSkill[] = [
       "Marking sent needs the carrier and tracking number: mark_order_sent keeps it for their approval, one order at a time, and sends everything the order still has to send in one parcel.",
       "Sending only some items (the rest later) is done on the order's page, parcel by parcel: each parcel gets its own tracking and email, and the order shows Partly sent until nothing is left (list_orders with ship partly_sent finds them).",
       "Subscription box orders are charged as they are marked sent: say so, and send them from their order page.",
+      "Orders the customer collects at one of the store's places, and the store's own local deliveries, are not sent and are not in to_send: pickup_orders counts them by place or area. Ready for pickup (which emails the customer once), Collected and Out for delivery are pressed on each order's page; Ready for pickup also in bulk on the Orders page (view To hand over). You cannot press them.",
+    ],
+  },
+  {
+    id: "shipping-setup",
+    area: "store",
+    title: "Explain or plan shipping",
+    when: "The owner asks what shipping costs, about shipping methods, zones, profiles, weights, pickup in store or local delivery.",
+    steps: [
+      "Call shipping_overview (one country with market, or all) and say what is set up in plain words: the flat rate, each method's prices by zone and profile, the pickup places and the local delivery areas. Repeat the amounts as written; never work out what a particular basket pays, the cart and checkout do that.",
+      "Say any warning it lists first (a country with methods and no flat rate, zones without a Rest of country rate, subscriptions without a flat rate, goods using the default weight).",
+      "How it works, if asked: a basket's price is the sum over its shipping profiles; a weight or basket-value tier counts from its lower bound to under its upper bound; the most specific postal pattern picks the zone; pickup places and the cheapest local area that covers the shopper's postal code are offered beside the methods. A radius is measured between postal-code centres, so an address near the edge may be counted in or out.",
+      "You cannot change shipping. Methods, zones, profiles and the default weight are on the Shipping pages (open_admin_page with shipping, shipping.methods, shipping.zones, shipping.profiles), pickup on shipping.pickup and local delivery on shipping.local; a product's profile is set in the product editor.",
     ],
   },
   {

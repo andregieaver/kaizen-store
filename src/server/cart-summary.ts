@@ -13,7 +13,7 @@ import { bonusProgram, cartBonusOf, creditState, planFor } from "./bonus";
 import { readCartId, type Cart, type CartLine, type Shop } from "./cart";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
-import { chosenDelivery } from "./delivery-options";
+import { resolveDelivery } from "./delivery-options";
 import { getCustomer } from "./customers";
 import { previewCartDiscount } from "./discounts";
 import { getCheckoutInfo } from "./orders";
@@ -58,8 +58,12 @@ export async function cartSummary(
   // The delivery the shopper chose at checkout (D135) is the basket's shipping rate instead of the market's flat rate;
   // a subscription pays the flat rate on each delivery (D25), so there it counts for nothing.
   const cartId = who.cartId !== undefined ? who.cartId : await readCartId(shop);
-  const chosen = ships && !plan && cartId ? await chosenDelivery(db(), storeId, cartId, market) : null;
-  const rate = chosen?.rate ?? checkout.shipping;
+  // The one reader of the cart's delivery (D237): the store's own methods priced for this basket at the delivery postal code's zone, a pickup
+  // place or a local area, or the flat rate; `placeOrder()` reads the same with the same basket value (the lines' totals before discounts).
+  const basketValueMinor = payable.reduce((sum, line) => sum + line.unitPriceMinor * line.quantity, 0);
+  const resolved = ships && !plan && cartId ? await resolveDelivery(db(), storeId, cartId, market, { basketValueMinor }) : null;
+  const chosen = resolved?.chosen ?? null;
+  const rate = resolved ? resolved.rate : checkout.shipping;
   const basketLines = payable.map((line) => ({
     totalMinor: line.unitPriceMinor * line.quantity,
     delivery: line.delivery,
@@ -208,6 +212,11 @@ export async function cartSummary(
     shipping,
     /** The delivery chosen at checkout (D135), its order record, or null for the flat rate; `shippingAt()` prices another rate. */
     delivery: chosen,
+    /**
+     * The whole of the basket's delivery (D237): what is offered, the delivery postal code and its zone, whether the choice changed, whether a postal
+     * code is needed before paying; null for a basket with nothing to ship or a subscription (the flat rate).
+     */
+    deliveryState: resolved,
     shippingAt,
     code,
     applied,

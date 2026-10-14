@@ -1351,3 +1351,129 @@ export function orderVatParagraph(lang: string, order: OrderVatFacts): string | 
 /** The note a refund email adds when the order's VAT was not charged, or null. */
 export const refundVatNote = (lang: string, order: Pick<OrderVatFacts, "vatKind">): string | null =>
   order.vatKind === "reverse_charge" ? vatEmailText(lang).refundNet : null;
+
+// ---------------------------------------------------------------------------
+// Pickup and local delivery (D237, docs/wave-3-shipping-methods.md 2.5)
+// ---------------------------------------------------------------------------
+
+/**
+ * The *Ready for pickup* and *Out for delivery* emails and the delivery block of the order confirmation. Hand-written in nb, sv, da and en and never
+ * machine-translated (not part of `text`, so the AI catalogue never sees them); every other language shows English. They say nothing about the right of
+ * withdrawal. Needs human legal review before real use (docs/wave-3-shipping-methods.md section 8, items 2 and 4).
+ */
+// legal: needs review
+type DeliveryEmail = {
+  readySubject: (store: string, number: string) => string;
+  readyHeading: string;
+  readyIntro: (number: string) => string;
+  collectAt: string;
+  openingHours: string;
+  closed: string;
+  instructions: string;
+  toCollect: string;
+  bring: (number: string) => string;
+  outSubject: (store: string, number: string) => string;
+  outHeading: string;
+  outIntro: (number: string) => string;
+  deliveryTo: string;
+  deliveryInfo: string;
+  /** The confirmation's block. */
+  deliveryHeading: string;
+  pickupNotify: string;
+  readyIn: (hours: number) => string;
+  transit: (min: number, max: number) => string;
+  driverNote: string;
+};
+
+const DELIVERY_EMAIL: Record<"nb" | "sv" | "da" | "en", DeliveryEmail> = {
+  nb: {
+    readySubject: (store, number) => `Bestilling ${number} fra ${store} er klar til henting`,
+    readyHeading: "Bestillingen din er klar til henting",
+    readyIntro: (number) => `Bestilling ${number} ligger klar til deg.`,
+    collectAt: "Hentested",
+    openingHours: "Åpningstider de neste dagene",
+    closed: "stengt",
+    instructions: "Slik henter du",
+    toCollect: "Dette henter du",
+    bring: (number) => `Ta med bestillingsnummeret ${number} når du kommer.`,
+    outSubject: (store, number) => `Bestilling ${number} fra ${store} er på vei`,
+    outHeading: "Bestillingen din er på vei",
+    outIntro: (number) => `Bestilling ${number} kommer til deg i dag med vår egen levering.`,
+    deliveryTo: "Leveres til",
+    deliveryInfo: "Om leveringen",
+    deliveryHeading: "Levering",
+    pickupNotify: "Vi sender deg en e-post når bestillingen er klar til henting.",
+    readyIn: (hours) => (hours < 48 ? `Vanligvis klar innen ${hours} ${hours === 1 ? "time" : "timer"}.` : `Vanligvis klar innen ${Math.ceil(hours / 24)} dager.`),
+    transit: (min, max) => (min === max ? `Leveringstid: ${min} ${min === 1 ? "dag" : "dager"}` : `Leveringstid: ${min}–${max} dager`),
+    driverNote: "Beskjed til sjåføren",
+  },
+  sv: {
+    readySubject: (store, number) => `Beställning ${number} från ${store} är redo att hämtas`,
+    readyHeading: "Din beställning är redo att hämtas",
+    readyIntro: (number) => `Beställning ${number} ligger klar för dig.`,
+    collectAt: "Hämtställe",
+    openingHours: "Öppettider de närmaste dagarna",
+    closed: "stängt",
+    instructions: "Så hämtar du",
+    toCollect: "Det här hämtar du",
+    bring: (number) => `Ta med beställningsnumret ${number} när du kommer.`,
+    outSubject: (store, number) => `Beställning ${number} från ${store} är på väg`,
+    outHeading: "Din beställning är på väg",
+    outIntro: (number) => `Beställning ${number} kommer till dig i dag med vår egen leverans.`,
+    deliveryTo: "Levereras till",
+    deliveryInfo: "Om leveransen",
+    deliveryHeading: "Leverans",
+    pickupNotify: "Vi mejlar dig när beställningen är redo att hämtas.",
+    readyIn: (hours) => (hours < 48 ? `Brukar vara klar inom ${hours} ${hours === 1 ? "timme" : "timmar"}.` : `Brukar vara klar inom ${Math.ceil(hours / 24)} dagar.`),
+    transit: (min, max) => (min === max ? `Leveranstid: ${min} ${min === 1 ? "dag" : "dagar"}` : `Leveranstid: ${min}–${max} dagar`),
+    driverNote: "Meddelande till föraren",
+  },
+  da: {
+    readySubject: (store, number) => `Ordre ${number} fra ${store} er klar til afhentning`,
+    readyHeading: "Din ordre er klar til afhentning",
+    readyIntro: (number) => `Ordre ${number} ligger klar til dig.`,
+    collectAt: "Afhentningssted",
+    openingHours: "Åbningstider de næste dage",
+    closed: "lukket",
+    instructions: "Sådan henter du",
+    toCollect: "Det her henter du",
+    bring: (number) => `Tag ordrenummeret ${number} med, når du kommer.`,
+    outSubject: (store, number) => `Ordre ${number} fra ${store} er på vej`,
+    outHeading: "Din ordre er på vej",
+    outIntro: (number) => `Ordre ${number} kommer til dig i dag med vores egen levering.`,
+    deliveryTo: "Leveres til",
+    deliveryInfo: "Om leveringen",
+    deliveryHeading: "Levering",
+    pickupNotify: "Vi sender dig en e-mail, når ordren er klar til afhentning.",
+    readyIn: (hours) => (hours < 48 ? `Normalt klar inden for ${hours} ${hours === 1 ? "time" : "timer"}.` : `Normalt klar inden for ${Math.ceil(hours / 24)} dage.`),
+    transit: (min, max) => (min === max ? `Leveringstid: ${min} ${min === 1 ? "dag" : "dage"}` : `Leveringstid: ${min}–${max} dage`),
+    driverNote: "Besked til chaufføren",
+  },
+  en: {
+    readySubject: (store, number) => `Order ${number} from ${store} is ready to collect`,
+    readyHeading: "Your order is ready to collect",
+    readyIntro: (number) => `Order ${number} is ready for you.`,
+    collectAt: "Collect at",
+    openingHours: "Opening hours for the next few days",
+    closed: "closed",
+    instructions: "How to collect",
+    toCollect: "What you collect",
+    bring: (number) => `Bring your order number, ${number}, when you come.`,
+    outSubject: (store, number) => `Order ${number} from ${store} is on its way`,
+    outHeading: "Your order is on its way",
+    outIntro: (number) => `Order ${number} is on its way to you today with our own delivery.`,
+    deliveryTo: "Delivered to",
+    deliveryInfo: "About the delivery",
+    deliveryHeading: "Delivery",
+    pickupNotify: "We will email you when your order is ready to collect.",
+    readyIn: (hours) => (hours < 48 ? `Usually ready within ${hours} ${hours === 1 ? "hour" : "hours"}.` : `Usually ready within ${Math.ceil(hours / 24)} days.`),
+    transit: (min, max) => (min === max ? `Delivery time: ${min} ${min === 1 ? "day" : "days"}` : `Delivery time: ${min}–${max} days`),
+    driverNote: "Note for the driver",
+  },
+};
+
+export type DeliveryEmailText = DeliveryEmail;
+
+/** The pickup and local delivery wording of a language: nb, sv, da or en by hand, English for every other language. */
+export const deliveryEmailText = (lang: string): DeliveryEmailText =>
+  lang in DELIVERY_EMAIL ? DELIVERY_EMAIL[lang as keyof typeof DELIVERY_EMAIL] : DELIVERY_EMAIL.en;

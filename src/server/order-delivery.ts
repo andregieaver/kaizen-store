@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db/client";
 import { dayIn, noonOf } from "@/lib/work-dates";
 
+import { markSentWithin as sendWithin } from "./order-admin";
 import { guarded, refusal, type Refused } from "./return-errors";
 
 type Row = Record<string, unknown>;
@@ -38,7 +39,7 @@ export async function markDelivered(storeId: string, input: unknown, accountId: 
   return guarded(() =>
     db().transaction(async (tx): Promise<DeliveredDone> => {
       const [order] = await tx.execute<Row>(sql`
-        select o.status, o.copied_from is not null as copied, o.placed_at, s.time_zone,
+        select o.status, o.copied_from is not null as copied, o.placed_at, s.time_zone, o.delivery_method,
           (select min(sh.created_at) from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as first_sent
         from commerce.orders o join commerce.stores s on s.id = o.store_id
         where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid for update of o
@@ -47,14 +48,24 @@ export async function markDelivered(storeId: string, input: unknown, accountId: 
       if (Boolean(order.copied) || !["paid", "fulfilled", "closed"].includes(String(order.status))) {
         return refusal("not_deliverable", "Only a paid order that has been sent can be marked as delivered.");
       }
-      if (!order.first_sent) return refusal("not_sent", "Mark the order as sent before marking it delivered.");
+      // The store's own driver delivered a local order at once (D237 2.3): the handover is written first, in this transaction, so one press does.
+      let status = String(order.status);
+      if (!order.first_sent && order.delivery_method === "local" && status === "paid") {
+        const handed = await sendWithin(tx, storeId, orderId, { carrier: "other", trackingNumber: "", trackingUrl: null }, accountId, null, {}, "local");
+        if (!handed.ok) return refusal("not_sent", "The delivery could not be recorded: nothing of this order is left to hand over, or a change to it waits for payment.");
+        const [after] = await tx.execute<Row>(sql`select status from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid`);
+        status = String(after?.status ?? status);
+      } else if (!order.first_sent) {
+        return refusal("not_sent", "Mark the order as sent before marking it delivered.");
+      }
       // Goods ordered together and delivered separately are received when the last one is (CRD Art. 9(2)(b), D174): a partly sent order has no receipt yet.
-      if (String(order.status) === "paid") return refusal("not_sent_in_full", "Record the receipt when the last parcel has arrived: part of this order is still to send.");
+      if (status === "paid") return refusal("not_sent_in_full", "Record the receipt when the last parcel has arrived: part of this order is still to send.");
       const zone = String(order.time_zone ?? "Europe/Oslo");
       const day = on ?? dayIn(now, zone);
       let at = noonOf(day, zone);
       if (at.getTime() > now.getTime()) {
-        if (on) return refusal("future", "The goods cannot have been received in the future.");
+        // Today's date (the order page's default) before noon is now; only a later day is in the future.
+        if (day > dayIn(now, zone)) return refusal("future", "The goods cannot have been received in the future.");
         at = now;
       }
       if (day < dayIn(new Date(String(order.placed_at)), zone)) return refusal("before_order", "The goods cannot have been received before the order was placed.");

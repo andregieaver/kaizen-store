@@ -239,6 +239,32 @@ describe("the agent", () => {
     await db().execute(sql`delete from commerce.return_settings where store_id = ${storeId}::uuid`);
   });
 
+  it("names the places an order can be collected in the visitor's country, by name and town only, and only while the option is on (D237)", async () => {
+    const market = store.markets.find((m) => m.code === "NO")!;
+    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
+    const info = async () => {
+      const sent = fakeModel([{ content: null, tool_calls: [call("1", "store_info", {})] }, { content: "Du kan hente i butikken." }]);
+      await chat.runChat({ kind: "store", store, market }, agent, { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Kan jeg hente selv?" }], signals: { views: [], searches: [] } }, connection);
+      const result = (sent[1].messages as Row[]).find((message) => message.role === "tool");
+      return JSON.parse(String(result!.content)) as Record<string, unknown>;
+    };
+    expect(await info()).not.toHaveProperty("collectInStore");
+    const [place] = await db().execute<Row>(sql`
+      insert into commerce.store_locations (store_id, kind, name, street, postal_code, city, country) values (${storeId}::uuid, 'shop', 'Butikken på Torget', 'Torget 1', '0150', 'Oslo', 'NO') returning id
+    `);
+    await db().execute(sql`
+      insert into commerce.pickup_options (store_id, location_id, market_code, currency, amount_minor, ready_in_hours, instructions, active)
+      values (${storeId}::uuid, ${String(place.id)}::uuid, 'NO', 'NOK', 2900, 4, 'Ring på bakdøren.', true)
+    `);
+    const told = await info();
+    expect(told.collectInStore).toEqual({ places: [{ place: "Butikken på Torget", town: "Oslo" }], note: expect.stringContaining("checkout") });
+    // Never the price, the street or the instructions: the checkout says those.
+    expect(JSON.stringify(told.collectInStore)).not.toMatch(/29|Torget 1|bakdøren/);
+    await db().execute(sql`update commerce.pickup_options set active = false where store_id = ${storeId}::uuid`);
+    expect(await info()).not.toHaveProperty("collectInStore");
+    await db().execute(sql`delete from commerce.pickup_options where store_id = ${storeId}::uuid`);
+  });
+
   it("recommends through the store's recommendation engine, which it uses only while the store has it on (D139)", async () => {
     const market = store.markets.find((m) => m.code === "NO")!;
     const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };

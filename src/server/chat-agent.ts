@@ -34,6 +34,7 @@ import { getPlatformChrome } from "./platform-navigation";
 import { queryVector } from "./query-vector";
 import { recommendForChat } from "./recommend";
 import { searchProducts } from "./search";
+import { pickupFacts } from "./pickup-facts";
 import { getShippingFacts } from "./seo";
 import type { Store } from "./stores";
 import { siteTerms } from "./taxonomy";
@@ -342,7 +343,11 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
       };
     }
     case "store_info": {
-      const [shipping, pages] = await Promise.all([getShippingFacts(store.id, market), publishedPageNames(store.id, market.locale)]);
+      const [shipping, pages, pickup] = await Promise.all([
+        getShippingFacts(store.id, market),
+        publishedPageNames(store.id, market.locale),
+        selling ? pickupFacts(store.id, market.code) : Promise.resolve([]),
+      ]);
       const details = store.details;
       return {
         result: json({
@@ -360,6 +365,8 @@ async function storeTool(site: Extract<ChatSite, { kind: "store" }>, name: strin
                 freeOver: shipping.freeOverMinor === null ? null : formatMoney(shipping.freeOverMinor, shipping.currency, market.locale),
               }
             : null,
+          // D237: where an order can be collected in the visitor's country, by name and town; its price and hours are shown at checkout.
+          ...(pickup.length > 0 ? { collectInStore: { places: pickup, note: "Customers can choose to collect at these places at checkout, which shows the price." } } : {}),
           returns: selling ? returnFacts(store.returnPolicy, marketPath(store.slug, market.slug, "/withdraw")) : null,
           pages: [...new Map(pages.map(([, page]) => [page.slug, page.title])).entries()].slice(0, 30).map(([slug, title]) => ({ slug, title })),
         }),

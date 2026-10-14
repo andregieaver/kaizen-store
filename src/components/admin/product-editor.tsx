@@ -1148,6 +1148,14 @@ function VariantsSection({
         </table>
       </div>
       {!allDigital && <BackorderAll product={product} update={update} />}
+      {!allDigital && context.shippingProfiles && (
+        <ShippingProfileField
+          storeSlug={storeSlug}
+          value={product.shippingProfileId ?? null}
+          profiles={context.shippingProfiles}
+          onChange={(shippingProfileId) => update((p) => ({ ...p, shippingProfileId }))}
+        />
+      )}
       {context.activeLocations > 1 && !allDigital && (
         <p className="mt-3 text-sm text-muted">
           This store has several stock locations, so the stock here is the total over the active ones. Change it on the{" "}
@@ -2962,5 +2970,41 @@ function LegalSection({
         </fieldset>
       </div>
     </section>
+  );
+}
+
+/**
+ * The product's shipping profile (D237, `docs/wave-3-shipping-methods.md` 2.1): which rates of the store's shipping methods price it. General (no
+ * profile) is the default; the profiles themselves are made under Settings, Shipping, Profiles.
+ */
+function ShippingProfileField({
+  storeSlug,
+  value,
+  profiles,
+  onChange,
+}: {
+  storeSlug: string;
+  value: string | null;
+  profiles: { id: string; name: string }[];
+  onChange: (id: string | null) => void;
+}) {
+  return (
+    <label className="mt-4 flex max-w-md flex-col gap-1 text-sm">
+      <span className="font-medium">Shipping profile</span>
+      <select value={value ?? ""} onChange={(e) => onChange(e.target.value || null)} className="min-h-10 rounded-md border border-line bg-card px-3">
+        <option value="">General</option>
+        {profiles.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      <span className="text-muted">
+        Which rates of your shipping methods price it.{" "}
+        <Link href={`/admin/${storeSlug}/settings/shipping/profiles`} className="underline">
+          Shipping profiles
+        </Link>
+      </span>
+    </label>
   );
 }

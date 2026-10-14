@@ -19,6 +19,8 @@ export type ShipmentItem = {
   /** Recorded before parcels named their lines: counts as everything sent. */
   legacy: boolean;
   lines: { lineId: string; sku: string; title: string; quantity: number }[];
+  /** A parcel, or a handover (D237): collected at the store's place, or taken out by its own driver. Absent means a parcel. */
+  method?: "parcel" | "pickup" | "local";
   /** Staff took "sent" back (D174 follow-up): when, by whom and why. An undone parcel stays listed, muted, and counts nowhere. */
   undone: { at: string; by: string | null; reason: string | null } | null;
 };
@@ -82,6 +84,9 @@ export function ShipmentList({
             <p className="font-medium">
               Parcel {index + 1} <span className="font-normal text-muted">· {when(s.createdAt)}</span>
             </p>
+            {s.method === "pickup" || s.method === "local" ? (
+              <p>{s.method === "pickup" ? "Collected by the customer" : "Taken out by your own driver"}</p>
+            ) : (
             <p>
               {s.carrier || "Parcel"} {s.trackingNumber && <span className="font-mono">{s.trackingNumber}</span>}{" "}
               {s.trackingUrl && (
@@ -90,6 +95,7 @@ export function ShipmentList({
                 </a>
               )}
             </p>
+            )}
             {status?.(s)}
             {s.legacy ? (
               <p className="text-xs text-muted">Recorded before parcels listed their items: counts as everything sent.</p>
@@ -116,7 +122,7 @@ export function ShipmentList({
                   Print label
                 </a>
               )}
-              {emailAgain && <EmailAgainButton send={emailAgain(s.id)} />}
+              {emailAgain && s.method !== "pickup" && s.method !== "local" && <EmailAgainButton send={emailAgain(s.id)} />}
             </p>
             {undo && (
               <div className="mt-2">

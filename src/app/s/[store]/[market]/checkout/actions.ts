@@ -6,7 +6,7 @@ import { refresh } from "next/cache";
 import { z } from "zod";
 
 import type { CreditsState } from "@/lib/bonus-shopper";
-import type { DeliveryOptions } from "@/lib/delivery-options";
+import { withDeliveryWords, type ShownDeliveryOptions } from "@/lib/delivery-words";
 import { t } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 import { marketPath } from "@/lib/paths";
@@ -16,7 +16,8 @@ import { captureCheckout, setCheckoutOptOut } from "@/server/cart-reminders";
 import { getOpenCheckout, startCheckout } from "@/server/checkout";
 import { getCustomer } from "@/server/customers";
 import { deliveryView } from "@/server/delivery-choice";
-import { chooseDelivery, quoteDelivery } from "@/server/delivery-options";
+import { db } from "@/db/client";
+import { chooseDelivery, deliveryReady, marketShipping, quoteDelivery, setDeliveryPostalCode } from "@/server/delivery-options";
 import { checkCodeForOrder, setCartCode } from "@/server/discounts";
 import { resolveSellingShop } from "@/server/shop";
 
@@ -161,25 +162,58 @@ export async function checkoutCreditsAction(
 }
 
 /** What the delivery choice shows after a look-up: the options, or why there are none (a key of `m.deliveryChoice.problems`). */
-export type DeliveryLookup = { options: DeliveryOptions | null; problem: string | null };
+export type DeliveryLookup = { options: ShownDeliveryOptions | null; problem: string | null };
+
+/** Places the order again from the cart (after a change of delivery), with the consent to downloads already given, and sends the shopper to it. */
+async function placeAgain(found: NonNullable<Awaited<ReturnType<typeof openCheckout>>>, digital: boolean): Promise<never> {
+  const { shop, cartId } = found;
+  const header = (await headers()).get("origin");
+  const result = await startCheckout(
+    { storeId: shop.store.id, storeSlug: shop.store.slug, market: shop.market },
+    cartId,
+    header ? new URL(header).origin : siteUrl(),
+    t(shop.market.lang).shipping,
+    { digital, subscription: false },
+    { customerId: (await getCustomer(shop.store.id))?.id ?? null },
+  );
+  // On a problem (stock ran out meanwhile, ...) the cart says what.
+  redirect(result.ok ? result.url : marketPath(shop.store.slug, shop.market.slug, "/cart"));
+}
+
+/** The options as the page draws them, with a pickup place's sentences in the page's language. */
+async function shownOptions(found: NonNullable<Awaited<ReturnType<typeof openCheckout>>>): Promise<ShownDeliveryOptions | null> {
+  const { shop, cartId } = found;
+  const m = t(shop.market.lang);
+  const options = await deliveryView({ storeId: shop.store.id, market: shop.market }, cartId, m.shipping);
+  return options ? withDeliveryWords(options, m, { locale: shop.market.locale, timeZone: shop.store.timeZone }) : null;
+}
 
 /**
- * The shopper gave a postal code at checkout (D135): the store's carrier is asked for its services and what they cost,
- * and the answer is kept with the cart. Nothing about the order changes until a service is chosen; when the carrier does
- * not answer, the flat rate stays and the shopper is told so.
+ * The shopper gave a postal code at checkout (D135, D237 2.4): it is kept with the cart (`setDeliveryPostalCode()`, so the store's zones and local areas price
+ * the basket for it), and the store's carriers, when it has any on in the country, are asked for their services, kept with the cart too. When the code
+ * changes what the order is charged (another zone, a local area no longer covering it), the order is placed again at once; otherwise nothing about the
+ * order changes until an option is chosen. A carrier that does not answer leaves the store's own options, and the shopper is told so.
  */
 export async function lookUpDeliveryAction(storeSlug: string, marketSlug: string, postalCode: string): Promise<DeliveryLookup> {
   const found = await openCheckout(storeSlug, marketSlug);
   if (!found) return { options: null, problem: "gone" };
   const { shop, cartId } = found;
-  const quoted = await quoteDelivery({ storeId: shop.store.id, market: shop.market }, cartId, postalCode.slice(0, 20));
-  const options = await deliveryView({ storeId: shop.store.id, market: shop.market }, cartId, t(shop.market.lang).shipping);
-  return { options, problem: quoted.ok ? null : quoted.problem };
+  const cartShop = { storeId: shop.store.id, market: shop.market };
+  const typed = postalCode.slice(0, 20);
+  const kept = await setDeliveryPostalCode(cartShop, cartId, typed);
+  if (!kept.ok) return { options: await shownOptions(found), problem: kept.problem };
+  const carriers = (await marketShipping(db(), shop.store.id, shop.market)).carriers;
+  const quoted = carriers ? await quoteDelivery(cartShop, cartId, typed) : ({ ok: true } as const);
+  const open = await getOpenCheckout(shop.store.id, cartId);
+  // The order was placed for another postal code: placed again for this one, so what is paid is what the page now shows.
+  if (open && open.changed && !open.subscription) await placeAgain(found, open.digital);
+  return { options: await shownOptions(found), problem: quoted.ok ? null : quoted.problem };
 }
 
 /**
- * The shopper chose how the order is delivered (D135): one of the services asked for (with its pickup point), or the flat
- * rate. The order is placed again at that price, with the consent to downloads already given, as a discount code does.
+ * The shopper chose how the order is delivered (D135, D237): one of the store's methods, a pickup place, its local delivery (with a note for the driver),
+ * a carrier's service (with its pickup point), or the flat rate. The order is placed again at that price, with the consent to downloads already given, as
+ * a discount code does.
  */
 export async function chooseDeliveryAction(
   storeSlug: string,
@@ -199,18 +233,39 @@ export async function chooseDeliveryAction(
     return { problem: null };
   }
   const pickup = String(form.get("pickup") ?? "").slice(0, 80);
-  const chosen = await chooseDelivery({ storeId: shop.store.id, market: shop.market }, cartId, String(form.get("option") ?? ""), pickup || undefined);
+  const option = String(form.get("option") ?? "").slice(0, 80);
+  const note = form.get("note");
+  const chosen = await chooseDelivery({ storeId: shop.store.id, market: shop.market }, cartId, option, pickup || undefined, {
+    note: typeof note === "string" ? note : undefined,
+  });
   if (!chosen.ok) return { problem: chosen.problem };
+  return placeAgain(found, open.digital);
+}
 
+/** Why the pay press may not go ahead yet (a key of `ReadyProblem`), and, when the delivery changed, where the order placed again waits. */
+export type DeliveryReadyAnswer = { ok: true } | { ok: false; problem: "postal_code" | "changed" | "no_shipping"; next?: string };
+
+/**
+ * Asked by the pay press before Stripe's `confirm` (D237 2.4 point 4, 2.7): refused while the delivery price waits for a postal code, when nothing
+ * delivers the basket, or once when the chosen delivery no longer prices it. Then the order is placed again at the delivery it now gets, and `next` is its
+ * checkout, which the shopper opens to see the new price: nothing is paid at the old one. An order with nothing to choose is always ready.
+ */
+export async function deliveryReadyAction(storeSlug: string, marketSlug: string): Promise<DeliveryReadyAnswer> {
+  const found = await openCheckout(storeSlug, marketSlug);
+  if (!found) return { ok: true };
+  const { shop, cartId } = found;
+  const ready = await deliveryReady({ storeId: shop.store.id, market: shop.market }, cartId);
+  if (ready.ok) return { ok: true };
+  if (ready.problem !== "changed") return { ok: false, problem: ready.problem };
+  const open = await getOpenCheckout(shop.store.id, cartId);
   const header = (await headers()).get("origin");
   const result = await startCheckout(
     { storeId: shop.store.id, storeSlug: shop.store.slug, market: shop.market },
     cartId,
     header ? new URL(header).origin : siteUrl(),
     t(shop.market.lang).shipping,
-    { digital: open.digital, subscription: false },
+    { digital: open?.digital ?? false, subscription: false },
     { customerId: (await getCustomer(shop.store.id))?.id ?? null },
   );
-  // On a problem (stock ran out meanwhile, ...) the cart says what.
-  redirect(result.ok ? result.url : marketPath(shop.store.slug, shop.market.slug, "/cart"));
+  return { ok: false, problem: "changed", next: result.ok ? result.url : marketPath(shop.store.slug, shop.market.slug, "/cart") };
 }

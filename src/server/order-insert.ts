@@ -52,6 +52,10 @@ export type OrderInsert = {
   creditMinor?: number;
   referralDiscountMinor?: number;
   delivery?: unknown | null;
+  /** How the goods reach the buyer (D237): `ship` (a parcel), `pickup` at `pickupLocationId`, or `local` with the driver's note. */
+  deliveryMethod?: "ship" | "pickup" | "local";
+  pickupLocationId?: string | null;
+  deliveryNote?: string | null;
   standardShippingMinor?: number | null;
   returnCostPayer?: string | null;
   vatKind?: string;
@@ -92,7 +96,8 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       member_discount_minor, member_label, member_percent, campaign_discount_minor, campaign_label, credit_minor,
       referral_discount_minor, delivery, standard_shipping_minor, return_cost_payer,
       vat_kind, vat_relief_minor, shipping_tax_rate, vat_treatment, vat_check_id, subscription_id,
-      is_gift, gift_to, gift_from, gift_message, source, draft_id, made_by, staff_discount_minor, staff_discount_label
+      is_gift, gift_to, gift_from, gift_message, source, draft_id, made_by, staff_discount_minor, staff_discount_label,
+      delivery_method, pickup_location_id, delivery_note
     ) values (
       ${input.storeId}::uuid, ${number}, ${input.marketCode}, ${input.currency}, ${input.locale},
       ${input.cartId ?? null}::uuid, ${input.email ?? ""}, 'pending_payment',
@@ -109,7 +114,9 @@ export async function insertOrder(tx: Db, input: OrderInsert): Promise<{ orderId
       ${input.vatCheckId ?? null}::uuid, ${input.subscriptionId ?? null}::uuid,
       ${gift !== null}, ${gift?.to ?? null}, ${gift?.from ?? null}, ${gift?.message ?? null},
       ${input.draft ? "draft" : "checkout"}, ${input.draft?.id ?? null}::uuid, ${input.draft?.madeBy ?? null}::uuid,
-      ${input.staffDiscountMinor ?? 0}, ${input.staffDiscountLabel ?? null}
+      ${input.staffDiscountMinor ?? 0}, ${input.staffDiscountLabel ?? null},
+      ${input.deliveryMethod ?? "ship"}, ${input.deliveryMethod === "pickup" ? (input.pickupLocationId ?? null) : null}::uuid,
+      ${input.deliveryMethod === "local" ? (input.deliveryNote ?? null) : null}
     )
     returning id
   `);

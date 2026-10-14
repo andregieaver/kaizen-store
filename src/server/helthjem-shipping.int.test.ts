@@ -114,7 +114,7 @@ async function newCart(quantity = 2): Promise<string> {
 }
 
 /** A paid order whose shopper chose Helthjem's `service` (with the second service point for a collect). */
-async function paidOrder(service: "home" | "collect", address: Record<string, unknown> = { name: "Kari Nordmann", line1: "Fjellgata 48", postalCode: "0566", city: "Oslo", country: "NO", phone: "53582094" }): Promise<string> {
+async function paidOrder(service: "home" | "collect", address: Record<string, unknown> = { name: "Kari Nordmann", line1: "Fjellgata 48", postalCode: "0566", city: "Oslo", country: "NO", phone: "53582094" }, { plain = false } = {}): Promise<string> {
   const cartId = await newCart();
   expect(await quoteDelivery({ storeId, market: no }, cartId, "0566")).toEqual({ ok: true });
   const listed = await deliveryOptionsFor({ storeId, market: no }, cartId, flat, priceAs);
@@ -123,6 +123,7 @@ async function paidOrder(service: "home" | "collect", address: Record<string, un
   const result = await placeOrder({ storeId, market: no }, cartId);
   if (!result.ok) throw new Error(result.problem);
   const { orderId, totalMinor } = result.order;
+  if (plain) await db().execute(sql`update commerce.orders set delivery = null where id = ${orderId}::uuid`);
   await db().execute(sql`insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status) values (${storeId}::uuid, ${orderId}::uuid, 'stripe', ${`cs_${orderId}`}, ${`acct_${run}`}, ${totalMinor}, 'NOK', 'captured')`);
   await completeOrderPayment(orderId, `cs_${orderId}`);
   await db().execute(sql`update commerce.orders set email = 'kari@example.com', shipping_address = ${JSON.stringify(address)}::jsonb where id = ${orderId}::uuid`);
@@ -227,8 +228,8 @@ describe("shipping an order with Helthjem", () => {
   });
 
   it("refuses an order the customer did not choose Helthjem for, an incomplete address and a bad weight", async () => {
-    const plain = await paidOrder("home");
-    await db().execute(sql`update commerce.orders set delivery = null where id = ${plain}::uuid`);
+    // The order's delivery is frozen once it is paid (D237, orders_delivery_frozen), so the plain one is made so before it is paid.
+    const plain = await paidOrder("home", undefined, { plain: true });
     expect(await helthjemBook(accountId, storeId, plain, { parcel })).toEqual({ ok: false, problem: "The customer did not choose a Helthjem delivery." });
     const incomplete = await paidOrder("home", { name: "Kari", line1: "", postalCode: "0566", city: "Oslo", country: "NO" });
     expect(await helthjemBook(accountId, storeId, incomplete, { parcel })).toMatchObject({ ok: false, problem: expect.stringMatching(/address is not complete/) });

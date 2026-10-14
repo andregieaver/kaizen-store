@@ -7,7 +7,11 @@ import { db } from "@/db/client";
 import { type OpeningHours } from "@/lib/opening-hours";
 import { openingHoursInput, parseOpeningHours } from "@/lib/opening-hours-schema";
 
+import { cleanPostalCode } from "@/lib/postal-code";
+
 import { audit, type Membership } from "./auth";
+import { pickupBlockers } from "./pickup";
+import { shippingGuard } from "./shipping-errors";
 
 type Row = Record<string, unknown>;
 
@@ -32,6 +36,9 @@ export type StoreLocation = {
   phone: string;
   notes: string;
   hours: OpeningHours | null;
+  /** The place's position (D237): for local delivery measured by radius; filled from the postal-code reference data, or typed. */
+  latitude: number | null;
+  longitude: number | null;
 };
 
 export const MAX_LOCATIONS = 50;
@@ -48,6 +55,8 @@ function toLocation(row: Row): StoreLocation {
     phone: String(row.phone),
     notes: String(row.notes),
     hours: parseOpeningHours(row.hours),
+    latitude: row.latitude === null || row.latitude === undefined ? null : Number(row.latitude),
+    longitude: row.longitude === null || row.longitude === undefined ? null : Number(row.longitude),
   };
 }
 
@@ -95,6 +104,12 @@ export const locationInput = z.object({
       }
     })
     .pipe(openingHoursInput.nullable()),
+  /**
+   * The place's position (D237), as typed: both or neither. Left out of the form (undefined), the position is kept, or taken from the postal-code
+   * reference data when the address's postal code or country changed or it has none; sent empty, it is taken from the reference data.
+   */
+  latitude: z.string().trim().max(20).optional(),
+  longitude: z.string().trim().max(20).optional(),
 });
 
 export type LocationInput = z.input<typeof locationInput>;
@@ -110,6 +125,8 @@ export async function saveLocation(
   const parsed = locationInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: [...new Set(parsed.error.issues.map((i) => i.message))] };
   const l = parsed.data;
+  const typed = typedPosition(l.latitude, l.longitude);
+  if (typed === "invalid") return { ok: false, problems: ["Position: a latitude between -90 and 90 and a longitude between -180 and 180, both or neither."] };
   if (l.kind !== "office" && !l.name) {
     return { ok: false, problems: [l.kind === "shop" ? "Give the store a name." : "Give the pickup point a name."] };
   }
@@ -128,13 +145,23 @@ export async function saveLocation(
   }
 
   if (id) {
-    const rows = await db().execute<Row>(sql`
-      update commerce.store_locations set
-        name = ${l.name}, street = ${l.street}, postal_code = ${l.postalCode}, city = ${l.city}, country = ${l.country},
-        phone = ${l.phone}, notes = ${l.notes}, hours = ${hours}::jsonb, updated_at = now()
-      where store_id = ${store.id}::uuid and id = ${id}::uuid and kind <> 'office'
-      returning id
-    `);
+    const code = cleanPostalCode(l.country, l.postalCode);
+    const looked = sql`(select pp.latitude from commerce.postal_points pp where pp.country = ${l.country} and pp.postal_code = ${code})`;
+    const lookedLon = sql`(select pp.longitude from commerce.postal_points pp where pp.country = ${l.country} and pp.postal_code = ${code})`;
+    const moved = sql`(postal_code is distinct from ${l.postalCode} or country is distinct from ${l.country} or latitude is null)`;
+    const keep = l.latitude === undefined && l.longitude === undefined;
+    const rows = await shippingGuard(() =>
+      db().execute<Row>(sql`
+        update commerce.store_locations set
+          name = ${l.name}, street = ${l.street}, postal_code = ${l.postalCode}, city = ${l.city}, country = ${l.country},
+          phone = ${l.phone}, notes = ${l.notes}, hours = ${hours}::jsonb, updated_at = now(),
+          latitude = ${typed ? sql`${typed.lat}::numeric` : keep ? sql`case when ${moved} then ${looked} else latitude end` : looked},
+          longitude = ${typed ? sql`${typed.lon}::numeric` : keep ? sql`case when ${moved} then ${lookedLon} else longitude end` : lookedLon}
+        where store_id = ${store.id}::uuid and id = ${id}::uuid and kind <> 'office'
+        returning id
+      `),
+    );
+    if (!Array.isArray(rows)) return { ok: false, problems: [rows.message] };
     if (rows.length === 0) return { ok: false, problems: ["That place no longer exists."] };
     await audit(account.id, store.id, "company.place_saved", { id, kind: l.kind });
     return { ok: true, id };
@@ -144,17 +171,30 @@ export async function saveLocation(
     select count(*)::int as n from commerce.store_locations where store_id = ${store.id}::uuid and kind <> 'office'
   `);
   if (Number(count.n) >= MAX_LOCATIONS) return { ok: false, problems: [`A store can have at most ${MAX_LOCATIONS} places.`] };
+  const code = cleanPostalCode(l.country, l.postalCode);
   const [row] = await db().execute<Row>(sql`
-    insert into commerce.store_locations (store_id, kind, name, street, postal_code, city, country, phone, notes, hours, position)
+    insert into commerce.store_locations (store_id, kind, name, street, postal_code, city, country, phone, notes, hours, position, latitude, longitude)
     values (${store.id}::uuid, ${l.kind}, ${l.name}, ${l.street}, ${l.postalCode}, ${l.city}, ${l.country}, ${l.phone}, ${l.notes},
-      ${hours}::jsonb, ${Number(count.n)})
+      ${hours}::jsonb, ${Number(count.n)},
+      ${typed ? sql`${typed.lat}::numeric` : sql`(select pp.latitude from commerce.postal_points pp where pp.country = ${l.country} and pp.postal_code = ${code})`},
+      ${typed ? sql`${typed.lon}::numeric` : sql`(select pp.longitude from commerce.postal_points pp where pp.country = ${l.country} and pp.postal_code = ${code})`})
     returning id
   `);
   await audit(account.id, store.id, "company.place_added", { id: String(row.id), kind: l.kind });
   return { ok: true, id: String(row.id) };
 }
 
+/**
+ * Why a place cannot be deleted now (D237 2.2): how many paid orders still wait to be collected there (an order keeps its place's id without a foreign
+ * key). 0: it may go, and its pickup option and areas go with it.
+ */
+export async function placeDeleteBlockers(storeId: string, id: string): Promise<number> {
+  return pickupBlockers(db(), storeId, id);
+}
+
+/** Deletes a shop or pickup point. Refused (false) while orders wait to be collected there (`placeDeleteBlockers()`). */
 export async function deleteLocation({ account, store }: Membership, id: string): Promise<boolean> {
+  if ((await placeDeleteBlockers(store.id, id)) > 0) return false;
   const rows = await db().execute<Row>(sql`
     delete from commerce.store_locations where store_id = ${store.id}::uuid and id = ${id}::uuid and kind <> 'office'
     returning kind, name
@@ -162,4 +202,15 @@ export async function deleteLocation({ account, store }: Membership, id: string)
   if (rows.length === 0) return false;
   await audit(account.id, store.id, "company.place_deleted", { id, name: String(rows[0].name) });
   return true;
+}
+
+/** A position as typed: null when neither is given, `invalid` when one is missing or out of range. */
+function typedPosition(lat: string | undefined, lon: string | undefined): { lat: number; lon: number } | null | "invalid" {
+  const a = (lat ?? "").replace(",", ".");
+  const b = (lon ?? "").replace(",", ".");
+  if (!a && !b) return null;
+  if (!a || !b || !/^-?\d{1,3}(\.\d{1,6})?$/.test(a) || !/^-?\d{1,3}(\.\d{1,6})?$/.test(b)) return "invalid";
+  const la = Number(a);
+  const lo = Number(b);
+  return la >= -90 && la <= 90 && lo >= -180 && lo <= 180 ? { lat: la, lon: lo } : "invalid";
 }

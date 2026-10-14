@@ -18,6 +18,7 @@ import { GiftCard } from "@/components/admin/orders/gift-card";
 import { OrderEditCard } from "@/components/admin/orders/order-edit-card";
 import { SendParcelForm } from "@/components/admin/orders/send-parcel";
 import { ShipmentList } from "@/components/admin/orders/shipment-list";
+import { LocalDeliveryPanel, PickupPanel } from "@/components/admin/orders/handover-panel";
 import { ArchiveButton, TagsCard } from "@/components/admin/orders/order-ops";
 import { BonusEarnedRow, BonusRefundNote, BonusUsedRow } from "@/components/admin/order-bonus";
 import { BringBooking } from "@/components/admin/bring-booking";
@@ -77,6 +78,7 @@ import { resendShippedAction, saveOrderFieldsAction, sendOrderAction, undoShipme
 import { cancelOrderEditAction, recordWaitingEditPaidOutsideAction, resendOrderEditAction } from "./edit/actions";
 import { archiveOrderAction, changeTagsAction, unarchiveOrderAction } from "../ops-actions";
 import { markDeliveredAction, registerWithdrawalAction } from "../../returns/actions";
+import { collectedAction, outForDeliveryAction, readyForPickupAction } from "../handover-actions";
 import { todayIn } from "@/lib/work-dates";
 import { PageHeader } from "@/components/admin/ui";
 
@@ -445,7 +447,49 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             </section>
           )}
 
-          {(paid || toCharge) && order.ships && (
+          {/* Collected at the store's place, or delivered by its own driver (D237): handed over, never sent as a parcel here. */}
+          {paid && order.ships && order.deliveryMethod !== "ship" && (
+            <section aria-labelledby="handover" className={card}>
+              <h2 id="handover" className="mb-3 text-title text-ink">{order.deliveryMethod === "pickup" ? "Pickup" : "Local delivery"}</h2>
+              {order.shipments.length > 0 && (
+                <ShipmentList
+                  shipments={order.shipments}
+                  base={`/admin/${store.slug}/orders/${order.id}`}
+                  when={when}
+                  emailAgain={null}
+                  undo={canWrite && !order.copied && (order.status === "paid" || order.status === "fulfilled") ? (shipmentId) => undoShipmentAction.bind(null, store.slug, order.id, shipmentId) : null}
+                  receiptRecorded={Boolean(returns?.deliveredOn)}
+                />
+              )}
+              {order.deliveryMethod === "pickup" ? (
+                <PickupPanel
+                  delivery={order.deliveryKept?.kind === "pickup" ? order.deliveryKept : null}
+                  readyAt={order.readyForPickupAt}
+                  state={{ status: order.status, copied: order.copied, unitsToSend: fulfilment.unitsToSend, waitingUnits: owedUnits, editPending: Boolean(awaitingEdit), basis: fulfilment.basis, deliveredOn: returns?.deliveredOn ?? null }}
+                  canWrite={canWrite}
+                  today={todayIn(store.timeZone)}
+                  when={when}
+                  ready={readyForPickupAction.bind(null, store.slug, order.id)}
+                  collected={collectedAction.bind(null, store.slug, order.id)}
+                />
+              ) : (
+                <LocalDeliveryPanel
+                  delivery={order.deliveryKept?.kind === "local" ? order.deliveryKept : null}
+                  note={order.deliveryNote}
+                  phone={address.phone || order.billingAddress.phone || null}
+                  takenOutAt={liveShipments(order.shipments).find((s) => s.method === "local")?.createdAt ?? null}
+                  state={{ status: order.status, copied: order.copied, unitsToSend: fulfilment.unitsToSend, waitingUnits: owedUnits, editPending: Boolean(awaitingEdit), basis: fulfilment.basis, deliveredOn: returns?.deliveredOn ?? null }}
+                  canWrite={canWrite}
+                  today={todayIn(store.timeZone)}
+                  when={when}
+                  out={outForDeliveryAction.bind(null, store.slug, order.id)}
+                  delivered={markDeliveredAction.bind(null, store.slug, order.id)}
+                />
+              )}
+            </section>
+          )}
+
+          {(paid || toCharge) && order.ships && order.deliveryMethod === "ship" && (
             <section aria-labelledby="sending" className={card}>
               <h2 id="sending" className="mb-3 text-title text-ink">
                 {fulfilment.state === "partly_sent" ? "Partly sent" : sentParcels > 0 ? "Sent" : toCharge ? "Send and charge" : "Send the order"}
@@ -673,10 +717,27 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 <span className="block text-muted">Organisation number {order.company.number}</span>
               </p>
             )}
-            {order.ships && (
+            {order.ships && order.deliveryMethod === "pickup" && (
               <>
-                <h3 className="mt-3 mb-1 text-body-strong text-ink">Ship to</h3>
+                <h3 className="mt-3 mb-1 text-body-strong text-ink">Collects at</h3>
+                <p>{order.deliveryKept?.kind === "pickup" ? order.deliveryKept.name : "One of your places"}</p>
+              </>
+            )}
+            {order.ships && order.deliveryMethod !== "pickup" && (
+              <>
+                <h3 className="mt-3 mb-1 text-body-strong text-ink">{order.deliveryMethod === "local" ? "Deliver to" : "Ship to"}</h3>
                 <AddressBlock address={address} />
+                {(order.deliveryKept?.kind === "method" || order.deliveryKept?.kind === "flat") && (
+                  <p className="mt-2">
+                    <span className="text-muted">Chosen delivery:</span> {order.deliveryKept.label}
+                    {order.deliveryKept.kind === "method" && order.deliveryKept.zone && <span className="text-muted"> ({order.deliveryKept.zone.name})</span>}
+                  </p>
+                )}
+                {order.deliveryMismatchAt && order.deliveryKept?.kind !== "carrier" && (
+                  <p role="note" className="mt-2 rounded-md bg-warning-soft px-3 py-2 text-warning-text">
+                    Priced for postal code {order.deliveryKept && "postalCode" in order.deliveryKept && order.deliveryKept.postalCode ? order.deliveryKept.postalCode : "another code"}, but the address is {address.postalCode || "another"}: check the delivery before sending.
+                  </p>
+                )}
                 {order.delivery && (
                   <p className="mt-2">
                     <span className="text-muted">Chosen delivery:</span> {order.delivery.label}

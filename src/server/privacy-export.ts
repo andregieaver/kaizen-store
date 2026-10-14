@@ -158,7 +158,7 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
     db().execute<Row>(sql`
       select o.id, o.number, o.placed_at, o.status, trim(o.currency) as currency, o.subtotal_minor, o.shipping_minor, o.discount_minor,
         o.member_discount_minor, o.campaign_discount_minor, o.credit_minor, o.referral_discount_minor, o.vat_relief_minor, o.tax_minor, o.total_minor,
-        o.vat_kind, o.vat_treatment ->> 'reason' as vat_reason, o.delivery ->> 'label' as delivery_label, o.billing_address, o.shipping_address, o.email,
+        o.vat_kind, o.vat_treatment ->> 'reason' as vat_reason, o.delivery ->> 'label' as delivery_label, o.delivery_method, o.delivery ->> 'name' as pickup_place, o.delivery_note, o.billing_address, o.shipping_address, o.email,
         o.company_name, o.organisation_number, o.discount_code, o.copied_from is not null as copied, o.host_id is not null as host,
         o.restricted_at, o.anonymised_at, o.is_gift, o.gift_to, o.gift_from, o.gift_message
       from commerce.orders o where o.store_id = ${store}::uuid and o.id = any(${ids}) order by o.placed_at, o.id
@@ -253,6 +253,10 @@ async function loadOrders(s: PrivacySubject): Promise<OrderRow[]> {
       vatKind: strs(o.vat_kind),
       vatReason: str(o.vat_reason),
       deliveryLabel: str(o.delivery_label),
+      // D237: how it reached them, the pickup place's name and their own note for the driver.
+      deliveryMethod: str(o.delivery_method),
+      pickupPlace: o.delivery_method === "pickup" ? str(o.pickup_place) : null,
+      deliveryNote: str(o.delivery_note),
       billingAddress: o.billing_address,
       shippingAddress: o.shipping_address,
       email: strs(o.email),

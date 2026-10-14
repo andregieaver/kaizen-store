@@ -23,14 +23,27 @@ export function PackingSlipView({ slip, storeName, seller, breakAfter = false }:
       </div>
       <div className="grid grid-cols-2 gap-6">
         <div>
-          <p className="text-sm font-medium">{m.deliverTo}</p>
-          <address className="not-italic">
-            {address.map((part, i) => (
-              <span key={`${i}-${part}`} className="block">
-                {part}
-              </span>
-            ))}
-          </address>
+          {/* Collected at the store's place (D237): the place, not an address; local delivery: the driver's note under the address. */}
+          {slip.handover?.method === "pickup" ? (
+            <p className="text-lg font-semibold">{m.deliveryOptions.collectAt(slip.handover.place)}</p>
+          ) : (
+            <>
+              <p className="text-sm font-medium">{m.deliverTo}</p>
+              <address className="not-italic">
+                {address.map((part, i) => (
+                  <span key={`${i}-${part}`} className="block">
+                    {part}
+                  </span>
+                ))}
+              </address>
+            </>
+          )}
+          {slip.handover?.method === "local" && slip.handover.note && (
+            <div className="mt-3">
+              <p className="text-sm font-medium">{m.deliveryOptions.yourNote}</p>
+              <p className="whitespace-pre-line">{slip.handover.note}</p>
+            </div>
+          )}
         </div>
         <div className="text-right">
           <p className="text-sm font-medium">{m.orderNumber}</p>

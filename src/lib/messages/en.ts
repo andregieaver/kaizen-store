@@ -191,6 +191,44 @@ export const en = {
     pickupAt: (place: string) => `Pick up at ${place}`,
     windowLine: (when: string) => `Delivered ${when}`,
   },
+  /**
+   * The store's own delivery at checkout and on orders (D237, docs/wave-3-shipping-methods.md 2.4): its methods, pickup at its places and its local
+   * delivery. `priceInfo` holds the price sentences of CRD Art. 6(1)(e) and 8(2): hand-written in every language, needs legal review.
+   */
+  deliveryOptions: {
+    shipGroup: "Delivery",
+    localGroup: "Local delivery",
+    collectGroup: "Collect",
+    collectAt: (place: string) => `Collect at ${place}`,
+    localLine: (area: string) => `Local delivery: ${area}`,
+    readyNotify: "We will email you when it is ready.",
+    readyInHours: (hours: number) => (hours === 1 ? "Usually ready in 1 hour." : `Usually ready in ${hours} hours.`),
+    readyInDays: (days: number) => (days === 1 ? "Usually ready in 1 day." : `Usually ready in ${days} days.`),
+    openToday: (hours: string) => `Open today ${hours}`,
+    closedToday: "Closed today",
+    openingHours: "Opening hours",
+    closed: "closed",
+    instructions: "Pickup instructions",
+    noteLabel: "Note for the driver (optional)",
+    noteHint: "For example a door code or where to leave it. At most 500 characters.",
+    yourNote: "Your note for the driver",
+    localFrom: (minimum: string) => `Local delivery from ${minimum}`,
+    noShipping: (postalCode: string) => `We cannot deliver this basket to ${postalCode}. Collect it, or contact the store.`,
+    noShippingAnywhere: "We cannot deliver this basket. Collect it, or contact the store.",
+    readyForPickup: "Ready for pickup",
+    readySince: (day: string) => `Ready for pickup since ${day}`,
+    collectedOn: (day: string) => `Collected on ${day}`,
+    bringNumber: "Bring your order number.",
+    seeNewPrice: "See the new price",
+    checkFailed: "We could not check the delivery. Try again.",
+    problems: { note: "The note is too long. Keep it to 500 characters and 8 lines." } as Record<string, string>,
+    priceInfo: {
+      from: (price: string) => `From ${price}`,
+      atCheckout: "Choose delivery at checkout.",
+      needCode: "Enter your postal code to see the delivery price.",
+      changed: "Delivery has changed, check the price.",
+    },
+  },
   /** Product recommendations (D139): the line under a recommended product says why it is shown. */
   /** Pages for categories and tags (D140), as titles of the pages an owner builds for them. */
   catalogue: { category: "Category", tag: "Tag" },

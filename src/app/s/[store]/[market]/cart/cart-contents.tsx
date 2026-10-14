@@ -8,6 +8,7 @@ import { DiscountCodeForm } from "@/components/discount-code-form";
 import { LineUnitPrice } from "@/components/price";
 import { VatNotes } from "@/components/vat-notes";
 import { discountNote } from "@/lib/customer-tiers";
+import { deliveryRowLabel, priceLaterFrom } from "@/lib/delivery-words";
 import { companyRequired, withoutVat } from "@/lib/b2b";
 import { bookingWhen, isRange, rangeLength } from "@/lib/booking-text";
 import { creditsNet } from "@/lib/bonus-shopper";
@@ -412,6 +413,8 @@ function summaryList({ store, market, m, view }: Draw) {
     referral,
   } = summary;
   const { terms } = view;
+  // The delivery price is chosen at checkout while it depends on a postal code or a pickup place (D237 2.4): *From {price}*, and a sentence saying so.
+  const from = ships && shipping !== null ? priceLaterFrom(summary.deliveryState, shipping) : null;
   return (
     <>
       <dl className="flex flex-col gap-2">
@@ -435,10 +438,16 @@ function summaryList({ store, market, m, view }: Draw) {
         {shipping !== null && ships && (
           <div className="flex justify-between gap-4">
             <dt>
-              {summary.delivery?.delivery.label ?? m.shipping}
+              {deliveryRowLabel(summary.deliveryState?.delivery ?? summary.delivery?.delivery ?? null, m)}
               {basket.renewal > 0 && <span className="text-sm text-muted"> {m.perDelivery}</span>}
             </dt>
-            <dd>{shipping === 0 ? m.freeShipping : net(shipping, tax.shippingRate)}</dd>
+            <dd data-delivery-price={from !== null ? "from" : undefined}>
+              {from !== null
+                ? m.deliveryOptions.priceInfo.from(net(from, tax.shippingRate))
+                : shipping === 0
+                  ? m.freeShipping
+                  : net(shipping, tax.shippingRate)}
+            </dd>
           </div>
         )}
         {discountMinor > 0 && (
@@ -530,6 +539,7 @@ function summaryList({ store, market, m, view }: Draw) {
           </>
         )}
       </dl>
+      {from !== null && <p className="text-sm">{m.deliveryOptions.priceInfo.atCheckout}</p>}
       {((!business && !tax.reverseCharge) || shipping === null) && (
         <p className="text-sm text-muted">
           {[!business && !tax.reverseCharge && m.vatIncluded, shipping === null && m.shippingAtCheckout]

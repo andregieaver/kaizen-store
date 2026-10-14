@@ -32,6 +32,7 @@ import { baseFits, isBase, measureFromColumns, normaliseMeasureAmount } from "@/
 import { unitPriceProblems } from "@/lib/unit-price-rules";
 import { FEATURES_BY_ID, featureOffText, featureOn, kindFeature } from "@/lib/store-features";
 
+import { profileChoices } from "./shipping-admin";
 import { aiFor } from "./ai";
 import { productFacts, saveFieldData, variantFacts } from "./custom-fields";
 import { storedFileInfo, uploadsEnabled } from "./media";
@@ -98,6 +99,8 @@ export type EditorContext = {
   layouts: { id: string; title: string; published: boolean }[];
   /** The store's AI has a text model, so staff can ask it for texts (D76). */
   aiWriting: boolean;
+  /** The store's shipping profiles (D237), for the *Shipping profile* field; General is the empty choice. Absent: the field is not shown. */
+  shippingProfiles?: { id: string; name: string }[];
 };
 
 export async function getEditorContext(store: Store): Promise<EditorContext> {
@@ -169,6 +172,7 @@ export async function getEditorContext(store: Store): Promise<EditorContext> {
     hosts: hosts.map((row) => ({ id: String(row.id), name: String(row.name), vatRegistered: Boolean(row.vat_registered) })),
     layouts,
     aiWriting: Boolean((await aiFor(store.id))?.textModel),
+    shippingProfiles: await profileChoices(store.id),
   };
 }
 
@@ -339,7 +343,7 @@ export async function getProductForEdit(
 ): Promise<(ProductInput & { archived: boolean }) | null> {
   const [product] = await db().execute<Row>(sql`
     select id, handle, status, tax_code, withdrawal_exclusion, manufacturer_id, responsible_person_id,
-           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id, sold_by_measure
+           delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id, sold_by_measure, shipping_profile_id
     from commerce.products where store_id = ${store.id}::uuid and id = ${productId}::uuid
   `);
   if (!product) return null;
@@ -522,6 +526,7 @@ export async function getProductForEdit(
     kind,
     hostId: product.host_id ? String(product.host_id) : null,
     layoutId: product.product_layout_id ? String(product.product_layout_id) : null,
+    shippingProfileId: product.shipping_profile_id ? String(product.shipping_profile_id) : null,
     appointment: isBooked(kind)
         ? {
             durationMinutes: Number(appointment?.duration_minutes ?? DEFAULT_APPOINTMENT.durationMinutes),
@@ -863,7 +868,8 @@ async function upsertProduct(
         delivery = ${input.delivery}, download_limit = ${input.downloadLimit}, download_days = ${input.downloadDays},
         subscription_only = ${input.subscriptionOnly}, audience = ${input.audience},
         vat_category = ${input.vatCategory}, kind = ${input.kind}, host_id = ${hostOf(storeId, input)},
-        product_layout_id = ${input.layoutId}::uuid, sold_by_measure = ${input.soldByMeasure && input.kind === "goods"}, updated_at = now()
+        product_layout_id = ${input.layoutId}::uuid, sold_by_measure = ${input.soldByMeasure && input.kind === "goods"}, updated_at = now(),
+        shipping_profile_id = ${input.shippingProfileId === undefined ? sql`shipping_profile_id` : sql`(select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid)`}
       where store_id = ${storeId}::uuid and id = ${productId}::uuid
       returning id
     `);
@@ -874,12 +880,12 @@ async function upsertProduct(
     insert into commerce.products (
       store_id, handle, status, manufacturer_id, responsible_person_id, tax_code, withdrawal_exclusion,
       delivery, download_limit, download_days, subscription_only, audience, vat_category, kind, host_id, product_layout_id,
-      sold_by_measure
+      sold_by_measure, shipping_profile_id
     ) values (
       ${storeId}::uuid, ${input.handle}, 'draft', ${manufacturerId}::uuid, ${responsibleId}::uuid,
       ${input.taxCode}, ${input.withdrawalExclusion}, ${input.delivery}, ${input.downloadLimit}, ${input.downloadDays},
       ${input.subscriptionOnly}, ${input.audience}, ${input.vatCategory}, ${input.kind}, ${hostOf(storeId, input)},
-      ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}
+      ${input.layoutId}::uuid, ${input.soldByMeasure && input.kind === "goods"}, (select sp.id from commerce.shipping_profiles sp where sp.store_id = ${storeId}::uuid and sp.id = ${input.shippingProfileId ?? null}::uuid)
     )
     returning id
   `);

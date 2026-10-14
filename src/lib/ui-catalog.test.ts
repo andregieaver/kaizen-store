@@ -63,6 +63,8 @@ describe("a template gives the English message", () => {
     "ui:stay.nights": count,
     "ui:stay.days": count,
     "ui:stay.hours": count,
+    "ui:deliveryOptions.readyInHours": count,
+    "ui:deliveryOptions.readyInDays": count,
     "ui:stay.perBooking": [[true], [false]],
     "ui:stay.feeIncluded": [[true], [false]],
     "ui:stay.perNight": [[true], [false]],

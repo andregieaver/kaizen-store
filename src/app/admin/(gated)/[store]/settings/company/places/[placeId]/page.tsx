@@ -44,6 +44,23 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
           <input name="name" required maxLength={80} defaultValue={place.name} className={control} />
         </label>
         <PlaceFields place={place} countries={countries} defaultCountry={store.details.country ?? "NO"} what={`the ${what}`} />
+        <fieldset className="flex flex-col gap-2 border-t border-line pt-4 text-sm">
+          <legend className="text-title text-ink">Position</legend>
+          <p className="text-muted">
+            Used to measure local delivery by distance. Leave both empty to take it from the postal code (the postal code&apos;s centre, from GeoNames), or
+            type the place&apos;s own, for example from a map.
+          </p>
+          <div className="flex flex-wrap gap-4">
+            <label className={field}>
+              Latitude
+              <input name="latitude" inputMode="decimal" defaultValue={place.latitude ?? ""} placeholder="59.9139" className={control} />
+            </label>
+            <label className={field}>
+              Longitude
+              <input name="longitude" inputMode="decimal" defaultValue={place.longitude ?? ""} placeholder="10.7522" className={control} />
+            </label>
+          </div>
+        </fieldset>
         <div className="border-t border-line pt-4">
           <h2 className="mb-3 text-title text-ink">Opening hours</h2>
           <HoursEditor name="hours" initial={place.hours} optional />

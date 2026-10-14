@@ -21,8 +21,15 @@ export type LegalFacts = {
   country: string | null;
   /** The countries the store sells to, with the currency each is shown in, main market first. */
   markets: { code: string; currency: string }[];
-  /** The flat shipping rate of each market, in the country's own currency; null where none is set. */
-  shipping: { code: string; currency: string; rateMinor: number | null; freeAboveMinor: number | null }[];
+  /**
+   * The flat shipping rate of each market, in the country's own currency; null where none is set. `ownMethods`: the market has active shipping
+   * methods of the store's own (D237), so the flat rate is only their fallback and is not what checkout charges: the texts then ask for the prices.
+   */
+  shipping: { code: string; currency: string; rateMinor: number | null; freeAboveMinor: number | null; ownMethods: boolean }[];
+  /** Places a customer may collect at (D237 pickup options, active): the place's name and town, the price in the market's own currency. */
+  pickup: { place: string; marketCode: string; currency: string; amountMinor: number }[];
+  /** The store's own delivery areas (D237 local delivery, active), in the market's own currency. */
+  local: { name: string; marketCode: string; currency: string; amountMinor: number; freeAboveMinor: number | null; minBasketMinor: number | null }[];
   /** The names of the carriers the store has connected. */
   carriers: string[];
   returns: {
@@ -77,6 +84,10 @@ export type LegalFactsInput = {
   /** The store's active markets, main first, with their shown currency. */
   markets: { code: string; currency: string }[];
   shippingRates: { marketCode: string; currency: string; rateMinor: number; freeAboveMinor: number | null }[];
+  /** The markets with active shipping methods of the store's own (D237). */
+  methodMarkets?: string[];
+  pickupPlaces?: { name: string; town: string; marketCode: string; currency: string; amountMinor: number }[];
+  localAreas?: { name: string; marketCode: string; currency: string; amountMinor: number; freeAboveMinor: number | null; minBasketMinor: number | null }[];
   carrierNames: string[];
   returnSettings: ReturnSettings | null;
   chatOn: boolean;
@@ -103,7 +114,21 @@ export function assembleLegalFacts(input: LegalFactsInput): LegalFacts {
     markets: input.markets.map((m) => ({ code: m.code.toUpperCase(), currency: m.currency.toUpperCase() })),
     shipping: input.markets.map((m) => {
       const rate = rateOf(m.code);
-      return { code: m.code.toUpperCase(), currency: (rate?.currency ?? m.currency).toUpperCase(), rateMinor: rate ? rate.rateMinor : null, freeAboveMinor: rate?.freeAboveMinor ?? null };
+      return {
+        code: m.code.toUpperCase(),
+        currency: (rate?.currency ?? m.currency).toUpperCase(),
+        rateMinor: rate ? rate.rateMinor : null,
+        freeAboveMinor: rate?.freeAboveMinor ?? null,
+        ownMethods: (input.methodMarkets ?? []).some((code) => code.toUpperCase() === m.code.toUpperCase()),
+      };
+    }),
+    pickup: (input.pickupPlaces ?? []).flatMap((pl) => {
+      const place = [clean(pl.name), clean(pl.town)].filter(Boolean).join(", ");
+      return place ? [{ place, marketCode: pl.marketCode.toUpperCase(), currency: pl.currency.toUpperCase(), amountMinor: pl.amountMinor }] : [];
+    }),
+    local: (input.localAreas ?? []).flatMap((a) => {
+      const name = clean(a.name);
+      return name ? [{ ...a, name, marketCode: a.marketCode.toUpperCase(), currency: a.currency.toUpperCase() }] : [];
     }),
     carriers: [...new Set(input.carrierNames.map((n) => clean(n)).filter((n): n is string => n !== null))],
     returns: {

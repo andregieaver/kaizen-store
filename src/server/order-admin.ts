@@ -61,6 +61,8 @@ export type Shipment = {
   hasLabel: boolean;
   /** Recorded before parcels named their lines (D174): counts as everything sent. */
   legacy: boolean;
+  /** A parcel, or a handover (D237): collected at a pickup place, or taken out by the store's own driver. Absent means a parcel. */
+  method?: ShipmentMethod;
   /** What is in it (D174): empty for a legacy parcel that was not the order's first. */
   lines: ShipmentLineView[];
   /**
@@ -150,7 +152,7 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       group by 1
     `),
     db().execute<Row>(sql`
-      select s.id, s.carrier, s.tracking_number, s.tracking_url, s.created_at, s.carrier_id, s.label_url is not null as has_label, s.legacy,
+      select s.id, s.carrier, s.tracking_number, s.tracking_url, s.created_at, s.carrier_id, s.label_url is not null as has_label, s.legacy, s.method,
         s.undone_at, s.undo_reason, a.email as undone_by
       from commerce.shipments s left join commerce.accounts a on a.id = s.undone_by
       where s.store_id = ${storeId}::uuid and s.order_id = ${orderId}::uuid order by s.created_at, s.id
@@ -231,6 +233,7 @@ export async function getOrderAdmin(storeId: string, orderId: string): Promise<O
       carrierId: s.carrier_id ? String(s.carrier_id) : null,
       hasLabel: Boolean(s.has_label),
       legacy: Boolean(s.legacy),
+      method: s.method === "pickup" ? "pickup" : s.method === "local" ? "local" : "parcel",
       lines: shipmentLines.get(String(s.id)) ?? [],
       undone: s.undone_at
         ? { at: new Date(String(s.undone_at)).toISOString(), by: s.undone_by ? String(s.undone_by) : null, reason: s.undo_reason ? String(s.undo_reason) : null }
@@ -335,6 +338,9 @@ export type ParcelChoice = {
   seen?: string | null;
 };
 
+/** What a shipment is (D237): a carrier's or the store's own `parcel`, or a handover at a pickup place (`pickup`) or by the store's own driver (`local`). */
+export type ShipmentMethod = "parcel" | "pickup" | "local";
+
 /**
  * Records a parcel and what is in it (wave 3, run 3, D174, `docs/wave-3-fulfilment.md` 2.1, 3.4 and 4.2). In one transaction under the order's row lock: the order is paid
  * (or sent already), not a copy, has no change waiting for payment and something left to send; the chosen lines are checked against what is left (`shipmentProblems()`:
@@ -350,90 +356,116 @@ export async function markSent(
   /** A shipment booked through a carrier's connection (D134): kept to fetch its label and follow it. */
   booking?: { carrierId: string; consignmentNumber: string | null; labelUrl: string | null } | null,
   parcel: ParcelChoice = {},
+  handover: { method?: ShipmentMethod } = {},
 ): Promise<SendOutcome> {
-  type Done = SendOutcome;
-  return db().transaction(async (tx): Promise<Done> => {
-    const [order] = await tx.execute<Row>(sql`
-      select status, copied_from is not null as copied from commerce.orders
-      where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update
+  return db().transaction((tx) => sendWithin(tx, storeId, orderId, input, accountId, booking ?? null, parcel, handover.method ?? "parcel"));
+}
+
+/**
+ * `markSent()`'s work inside the caller's transaction, so *Collected* (D237) writes the handover and the receipt together. A `pickup` handover is only for
+ * an order of delivery method `pickup`, a `local` one only for `local`, and a parcel never for a pickup order (`pickup_order`); a handover takes every unit
+ * still to send and has no carrier, tracking or booking (the database holds the same, `shipments_method_rules()`).
+ */
+async function sendWithin(
+  tx: SentTx,
+  storeId: string,
+  orderId: string,
+  input: SendInput,
+  accountId: string | null,
+  booking: { carrierId: string; consignmentNumber: string | null; labelUrl: string | null } | null,
+  parcel: ParcelChoice,
+  method: ShipmentMethod,
+): Promise<SendOutcome> {
+  const [order] = await tx.execute<Row>(sql`
+    select status, copied_from is not null as copied, delivery_method from commerce.orders
+    where store_id = ${storeId}::uuid and id = ${orderId}::uuid for update
+  `);
+  if (!order) return { ok: false, reason: "not_found" };
+  if (order.copied) return { ok: false, reason: "copied" };
+  const deliveryMethod = String(order.delivery_method ?? "ship");
+  if (method === "parcel" && deliveryMethod === "pickup") return { ok: false, reason: "pickup_order" };
+  if (method === "pickup" && deliveryMethod !== "pickup") return { ok: false, reason: "not_pickup" };
+  if (method === "local" && deliveryMethod !== "local") return { ok: false, reason: "not_local" };
+  const handing = method !== "parcel";
+  if (handing && (parcel.lines || booking)) return { ok: false, reason: "handover_whole" };
+  if (handing) input = { carrier: "other", trackingNumber: "", trackingUrl: null };
+  if (!["paid", "fulfilled"].includes(String(order.status))) return { ok: false, reason: "unpaid" };
+  const found = await orderFulfilment(tx, storeId, orderId);
+  if (!found) return { ok: false, reason: "not_found" };
+  if (found.editPending) return { ok: false, reason: "edit_pending" };
+  if (parcel.seen && parcel.seen !== found.basis) return { ok: false, reason: "changed" };
+  const chosen = parcel.lines ?? null;
+  const check = shipmentProblems(found.lines, chosen, found.hasShipment);
+  if (!check.ok) {
+    const first = check.problems[0];
+    return { ok: false, reason: first.code, ...(first.lineId ? { lineId: first.lineId } : {}) };
+  }
+  // A weekly box is paid as it is sent and sent whole (D102): a part of it is refused.
+  if (check.left > 0) {
+    const [box] = await tx.execute<Row>(sql`select 1 from commerce.standing_deliveries where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid`);
+    if (box) return { ok: false, reason: "delivery_box_whole" };
+  }
+  const carrierName = CARRIERS.find((c) => c.id === input.carrier)?.name ?? input.carrier;
+  const [row] = await tx.execute<Row>(sql`
+    insert into commerce.shipments (
+      store_id, order_id, carrier, tracking_number, tracking_url, created_by, carrier_id, consignment_number, label_url, method
+    )
+    values (${storeId}::uuid, ${orderId}::uuid, ${input.carrier === "other" ? "" : carrierName},
+            ${input.trackingNumber}, ${handing ? null : trackingUrl(input)}, ${accountId}::uuid,
+            ${booking?.carrierId ?? null}, ${booking?.consignmentNumber ?? null}, ${booking?.labelUrl ?? null}, ${method})
+    returning id, carrier, tracking_number, tracking_url, created_at, carrier_id, label_url is not null as has_label
+  `);
+  for (const line of check.parcel) {
+    await tx.execute(sql`
+      insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
+      values (${storeId}::uuid, ${String(row.id)}::uuid, ${line.lineId}::uuid, ${line.quantity})
     `);
-    if (!order) return { ok: false, reason: "not_found" };
-    if (order.copied) return { ok: false, reason: "copied" };
-    if (!["paid", "fulfilled"].includes(String(order.status))) return { ok: false, reason: "unpaid" };
-    const found = await orderFulfilment(tx, storeId, orderId);
-    if (!found) return { ok: false, reason: "not_found" };
-    if (found.editPending) return { ok: false, reason: "edit_pending" };
-    if (parcel.seen && parcel.seen !== found.basis) return { ok: false, reason: "changed" };
-    const chosen = parcel.lines ?? null;
-    const check = shipmentProblems(found.lines, chosen, found.hasShipment);
-    if (!check.ok) {
-      const first = check.problems[0];
-      return { ok: false, reason: first.code, ...(first.lineId ? { lineId: first.lineId } : {}) };
-    }
-    // A weekly box is paid as it is sent and sent whole (D102): a part of it is refused.
-    if (check.left > 0) {
-      const [box] = await tx.execute<Row>(sql`select 1 from commerce.standing_deliveries where store_id = ${storeId}::uuid and order_id = ${orderId}::uuid`);
-      if (box) return { ok: false, reason: "delivery_box_whole" };
-    }
-    const carrierName = CARRIERS.find((c) => c.id === input.carrier)?.name ?? input.carrier;
-    const [row] = await tx.execute<Row>(sql`
-      insert into commerce.shipments (
-        store_id, order_id, carrier, tracking_number, tracking_url, created_by, carrier_id, consignment_number, label_url
-      )
-      values (${storeId}::uuid, ${orderId}::uuid, ${input.carrier === "other" ? "" : carrierName},
-              ${input.trackingNumber}, ${trackingUrl(input)}, ${accountId}::uuid,
-              ${booking?.carrierId ?? null}, ${booking?.consignmentNumber ?? null}, ${booking?.labelUrl ?? null})
-      returning id, carrier, tracking_number, tracking_url, created_at, carrier_id, label_url is not null as has_label
-    `);
-    for (const line of check.parcel) {
-      await tx.execute(sql`
-        insert into commerce.shipment_lines (store_id, shipment_id, order_line_id, quantity)
-        values (${storeId}::uuid, ${String(row.id)}::uuid, ${line.lineId}::uuid, ${line.quantity})
-      `);
-    }
-    await refreshFulfilment(tx, storeId, orderId);
-    // Goods sent in parts are received when the last part is (CRD Art. 9(2)(b)): a part sent after the receipt was recorded
-    // means the receipt is not complete, so the date is taken back and the consumer's 14 days start again when it is recorded.
-    const [reset] = await tx.execute<Row>(sql`
-      update commerce.orders o set delivered_at = null
-      from (select delivered_at from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid) before
-      where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
-      returning before.delivered_at as was_delivered_at
-    `);
-    if (reset?.was_delivered_at) {
-      await tx.execute(sql`
-        insert into commerce.order_events (store_id, order_id, type, data, actor)
-        values (${storeId}::uuid, ${orderId}::uuid, 'order.delivery_reopened',
-                ${JSON.stringify({ was: new Date(String(reset.was_delivered_at)).toISOString() })}::jsonb, 'system')
-      `);
-    }
-    const units = check.parcel.reduce((sum, l) => sum + l.quantity, 0);
+  }
+  await refreshFulfilment(tx, storeId, orderId);
+  // Goods sent in parts are received when the last part is (CRD Art. 9(2)(b)): a part sent after the receipt was recorded
+  // means the receipt is not complete, so the date is taken back and the consumer's 14 days start again when it is recorded.
+  const [reset] = await tx.execute<Row>(sql`
+    update commerce.orders o set delivered_at = null
+    from (select delivered_at from commerce.orders where store_id = ${storeId}::uuid and id = ${orderId}::uuid) before
+    where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
+    returning before.delivered_at as was_delivered_at
+  `);
+  if (reset?.was_delivered_at) {
     await tx.execute(sql`
       insert into commerce.order_events (store_id, order_id, type, data, actor)
-      values (${storeId}::uuid, ${orderId}::uuid, 'order.sent',
-              ${JSON.stringify({ carrier: row.carrier, tracking: row.tracking_number, shipment: String(row.id), units, left: check.left, lines: check.parcel })}::jsonb, 'staff')
+      values (${storeId}::uuid, ${orderId}::uuid, 'order.delivery_reopened',
+              ${JSON.stringify({ was: new Date(String(reset.was_delivered_at)).toISOString() })}::jsonb, 'system')
     `);
-    return {
-      ok: true,
-      left: check.left,
-      shipment: {
-        id: String(row.id),
-        carrier: String(row.carrier),
-        trackingNumber: String(row.tracking_number),
-        trackingUrl: row.tracking_url ? String(row.tracking_url) : null,
-        createdAt: new Date(String(row.created_at)).toISOString(),
-        carrierId: row.carrier_id ? String(row.carrier_id) : null,
-        hasLabel: Boolean(row.has_label),
-        legacy: false,
-        lines: check.parcel.map((p) => {
-          const line = found.lines.find((l) => l.lineId === p.lineId);
-          return { lineId: p.lineId, sku: line?.sku ?? "", title: line?.title ?? "", quantity: p.quantity };
-        }),
-        undone: null,
-      },
-    };
-  });
+  }
+  const units = check.parcel.reduce((sum, l) => sum + l.quantity, 0);
+  await tx.execute(sql`
+    insert into commerce.order_events (store_id, order_id, type, data, actor)
+    values (${storeId}::uuid, ${orderId}::uuid, 'order.sent',
+            ${JSON.stringify({ carrier: row.carrier, tracking: row.tracking_number, shipment: String(row.id), units, left: check.left, lines: check.parcel, method })}::jsonb, 'staff')
+  `);
+  return {
+    ok: true,
+    left: check.left,
+    shipment: {
+      id: String(row.id),
+      carrier: String(row.carrier),
+      trackingNumber: String(row.tracking_number),
+      trackingUrl: row.tracking_url ? String(row.tracking_url) : null,
+      createdAt: new Date(String(row.created_at)).toISOString(),
+      carrierId: row.carrier_id ? String(row.carrier_id) : null,
+      hasLabel: Boolean(row.has_label),
+      legacy: false,
+      lines: check.parcel.map((p) => {
+        const line = found.lines.find((l) => l.lineId === p.lineId);
+        return { lineId: p.lineId, sku: line?.sku ?? "", title: line?.title ?? "", quantity: p.quantity };
+      }),
+      undone: null,
+    },
+  };
 }
+
+/** `markSent()`'s work inside the caller's transaction (D237: *Collected* writes the handover and the receipt together). */
+export const markSentWithin = sendWithin;
 
 /** The sentence staff read for a refused parcel. */
 export const sendRefusalText = (reason: SendRefusal): string => shipmentProblemText(reason);

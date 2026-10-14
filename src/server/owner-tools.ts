@@ -117,6 +117,7 @@ import { invoiceCheckupFindings, invoiceCounts, listCreditNotes, listInvoices, w
 import { orderNumberAudit } from "./order-numbers";
 import { inventoryCounts, ledgerProblems } from "./inventory";
 import { preflightStockTool, setBackorderTool, setStockTool, stockHistoryTool, stockLevelsTool } from "./stock-tools";
+import { pickupOrdersTool, shippingOverviewTool } from "./shipping-tools";
 import { onHandActive } from "./stock-sql";
 import { taxCheckupFindings, taxProfileView } from "./tax-profile";
 import { addOrderNote, CARRIERS, getOrderAdmin, liveShipments, markSent, refundOrder, sendRefusalText } from "./order-admin";
@@ -759,10 +760,16 @@ async function storeCheckup(ctx: OwnerToolContext) {
     db().execute<Row>(sql`
       select
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
-           and o.placed_at < now() - interval '2 days'
+           and o.placed_at < now() - interval '2 days' and o.delivery_method = 'ship'
            and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')) as late_orders,
         (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.status = 'paid' and o.copied_from is null
+           and o.delivery_method = 'ship'
            and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')) as to_send,
+        -- Handed over by the store itself (D237): collected at a place, or its own local delivery not delivered yet (the Orders page's views).
+        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.copied_from is null and o.archived_at is null
+           and o.delivery_method = 'pickup' and o.status = 'paid') as to_collect,
+        (select count(*)::int from commerce.orders o where o.store_id = ${store.id}::uuid and o.copied_from is null and o.archived_at is null
+           and o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null) as local_waiting,
         (select count(distinct lower(q.query))::int from commerce.search_queries q
            where q.store_id = ${store.id}::uuid and q.results = 0 and q.created_at > now() - interval '7 days') as searches_missed,
         (select count(*)::int from commerce.assistant_approvals a
@@ -789,6 +796,8 @@ async function storeCheckup(ctx: OwnerToolContext) {
   add(!progress.readyToOpen, "The store is not ready to open yet: setup_progress says what is left.", "");
   add(Number(counts.late_orders) > 0, `${counts.late_orders} paid order(s) have waited more than two days to be sent.`, "/orders?show=to-send");
   add(Number(counts.to_send) > 0 && Number(counts.late_orders) === 0, `${counts.to_send} paid order(s) are waiting to be sent.`, "/orders?show=to-send");
+  add(Number(counts.to_collect) > 0, `${counts.to_collect} paid order(s) are waiting to be collected at a pickup place: pickup_orders lists them.`, "/orders?show=to-hand-over");
+  add(Number(counts.local_waiting) > 0, `${counts.local_waiting} ${Number(counts.local_waiting) === 1 ? "local delivery is" : "local deliveries are"} not delivered yet: pickup_orders lists them.`, "/orders?show=local");
   add(Number(low.n) > 0, `${low.n} variant(s) have 3 or fewer left in stock.`, "/products");
   // The owner's own levels and what is owed on backorder (D172): the Inventory page's own counts.
   add(levels.low > 0, `${levels.low} variant(s) are at or below the warning level you set: stock_levels with status low lists them.`, "/inventory?status=low");
@@ -1889,6 +1898,8 @@ const HANDLERS: Record<OwnerToolName, Handler> = {
   list_orders: listOrdersTool,
   get_order: getOrderTool,
   pick_list: pickListTool,
+  shipping_overview: shippingOverviewTool,
+  pickup_orders: pickupOrdersTool,
   list_draft_orders: listDraftOrdersTool,
   tag_orders: tagOrdersTool,
   archive_orders: archiveOrdersTool,

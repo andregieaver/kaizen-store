@@ -35,8 +35,8 @@ const sendable = (over: Partial<MarkSentFacts> = {}): MarkSentFacts => ({
 });
 
 describe("the bulk actions", () => {
-  it("are tag, untag, archive, unarchive, mark sent and print, each with words and a permission (printing is a read)", () => {
-    expect([...BULK_ACTIONS]).toEqual(["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list"]);
+  it("are tag, untag, archive, unarchive, mark sent, print and (D237) ready for pickup, each with words and a permission (printing is a read)", () => {
+    expect([...BULK_ACTIONS]).toEqual(["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list", "ready_for_pickup"]);
     for (const a of BULK_ACTIONS) {
       expect(BULK_ACTION_LABELS[a].length, a).toBeGreaterThan(3);
       expect(BULK_ACTION_PERMISSION[a], a).toBe(a === "print_slips" || a === "print_pick_list" ? "orders:read" : "orders:write");
@@ -158,5 +158,23 @@ describe("marking orders as sent in bulk: the pure pre-check", () => {
     expect(markSentBlock(sendable({ editPending: true }))).toBe("edit_pending");
     expect(markSentBlock(sendable({ editPending: true, backorderUnits: 2 }))).toBe("edit_pending");
     expect(markSentBlock(sendable({ editPending: true, withdrawnInFull: true }))).toBe("withdrawn_in_full");
+  });
+});
+
+describe("pickup orders in bulk (D237)", () => {
+  it("never marks a pickup order sent: it is handed over, not sent as a parcel", () => {
+    expect(markSentBlock(sendable({ deliveryMethod: "pickup" }))).toBe("pickup_order");
+    expect(markSentBlock(sendable({ deliveryMethod: "local" }))).toBeNull();
+    expect(markSentBlock(sendable({ deliveryMethod: "ship" }))).toBeNull();
+  });
+
+  it("offers Ready for pickup as a write, with a word for every refusal", async () => {
+    const { BULK_ACTIONS, BULK_ACTION_PERMISSION, BULK_REASONS, BULK_REASON_TEXT } = await import("./order-bulk");
+    expect(BULK_ACTIONS).toContain("ready_for_pickup");
+    expect(BULK_ACTION_PERMISSION.ready_for_pickup).toBe("orders:write");
+    for (const reason of ["pickup_order", "not_pickup", "already_ready", "collected", "cancelled"] as const) {
+      expect(BULK_REASONS).toContain(reason);
+      expect(BULK_REASON_TEXT[reason].length).toBeGreaterThan(5);
+    }
   });
 });

@@ -12,7 +12,7 @@ import {
 import { useId, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 
 import { checkoutAccountAction } from "@/app/s/[store]/[market]/account/actions";
-import { captureCheckoutEmailAction, checkoutRemindersAction } from "@/app/s/[store]/[market]/checkout/actions";
+import { captureCheckoutEmailAction, checkoutRemindersAction, deliveryReadyAction } from "@/app/s/[store]/[market]/checkout/actions";
 import { recordTermsAction } from "@/app/s/[store]/[market]/checkout/terms-actions";
 import { payHeld, payStep, type TermsDisplay } from "@/lib/checkout-terms";
 
@@ -65,6 +65,17 @@ export type CheckoutTermsOption = {
   labels: { hint: string; failed: string };
 };
 
+/**
+ * The store's own delivery (D237 2.4 point 4): the pay press first asks the server whether the delivery is settled. It waits for a postal code when the
+ * price depends on one, refuses a basket nothing delivers, and, once, a delivery that no longer prices the basket: the order is then placed again and the
+ * shopper opens it to see the new price.
+ */
+export type CheckoutDeliveryCheck = {
+  store: string;
+  market: string;
+  labels: { postal_code: string; changed: string; no_shipping: string; seeNewPrice: string; checkFailed: string };
+};
+
 const FONT = 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 /** Stripe's form in the storefront's own colours (globals.css), light or dark. */
@@ -105,6 +116,7 @@ export function CheckoutForm({
   reminders = null,
   terms = null,
   termsSlot = null,
+  delivery = null,
 }: {
   publishableKey: string;
   stripeAccount: string;
@@ -120,6 +132,7 @@ export function CheckoutForm({
   terms?: CheckoutTermsOption | null;
   /** The sentence and box for the terms (`CheckoutTerms`), drawn above the pay button; null where the page has its own piece. */
   termsSlot?: ReactNode;
+  delivery?: CheckoutDeliveryCheck | null;
 }) {
   // Stripe runs in the browser only; the server sends the waiting state.
   const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -135,7 +148,7 @@ export function CheckoutForm({
       stripe={stripe}
       options={{ clientSecret, elementsOptions: { appearance: appearance(dark), loader: "auto" } }}
     >
-      <Form labels={labels} links={links} ships={ships} account={account} reminders={reminders} terms={terms} termsSlot={termsSlot} />
+      <Form labels={labels} links={links} ships={ships} account={account} reminders={reminders} terms={terms} termsSlot={termsSlot} delivery={delivery} />
     </CheckoutElementsProvider>
   );
 }
@@ -159,6 +172,7 @@ function Form({
   reminders,
   terms,
   termsSlot,
+  delivery,
 }: {
   labels: CheckoutFormLabels;
   links: { cart: string; order: string };
@@ -167,8 +181,11 @@ function Form({
   reminders: CheckoutReminderOption | null;
   terms: CheckoutTermsOption | null;
   termsSlot: ReactNode;
+  delivery: CheckoutDeliveryCheck | null;
 }) {
   const state = useCheckoutElements();
+  // Where the order placed again after a delivery change waits (D237): the shopper opens it to see the new price.
+  const [nextHref, setNextHref] = useState<string | null>(null);
   const ticked = useTicked(terms ? termsKey(terms.store, terms.market) : "");
   const held = payHeld(terms?.display ?? null, ticked);
   const [busy, setBusy] = useState(false);
@@ -271,6 +288,25 @@ function Form({
     return false;
   };
 
+  /** Whether the delivery is settled before anything is kept or paid (D237); a refusal is said and focused. */
+  const deliverySettled = async (): Promise<boolean> => {
+    if (!delivery) return true;
+    let answer: Awaited<ReturnType<typeof deliveryReadyAction>>;
+    try {
+      answer = await deliveryReadyAction(delivery.store, delivery.market);
+    } catch {
+      // The check could not be asked: the pay press waits (D237 2.4 point 4 is refused, never let through); the mismatch flag (2.7) is the net for
+      // an order paid another way.
+      setNextHref(null);
+      fail(delivery.labels.checkFailed);
+      return false;
+    }
+    if (answer.ok) return true;
+    setNextHref(answer.problem === "changed" ? (answer.next ?? links.cart) : null);
+    fail(delivery.labels[answer.problem]);
+    return false;
+  };
+
   const pay = async (event: FormEvent) => {
     event.preventDefault();
     // The button is disabled while the box is unticked; a keyboard submit or a script gets the same answer.
@@ -280,6 +316,7 @@ function Form({
     }
     setBusy(true);
     setProblem(null);
+    if (!(await deliverySettled())) return;
     if (!(await saveAccount())) return;
     if (!(await recordTerms())) return;
     // On success Stripe takes the shopper to the order page.
@@ -301,7 +338,7 @@ function Form({
               fail(terms?.labels.hint ?? "");
               return;
             }
-            if (!(await saveAccount()) || !(await recordTerms())) {
+            if (!(await deliverySettled()) || !(await saveAccount()) || !(await recordTerms())) {
               event.paymentFailed();
               return;
             }
@@ -386,6 +423,15 @@ function Form({
         {termsSlot}
         <p ref={problemRef} tabIndex={-1} role="alert" className="text-sm text-red-700 empty:hidden dark:text-red-400">
           {problem}
+          {problem && nextHref && delivery && (
+            <>
+              {" "}
+              {/* A full page load: the checkout is a pay route, entered afresh (wave 1, 1e). */}
+              <a href={nextHref} className="underline">
+                {delivery.labels.seeNewPrice}
+              </a>
+            </>
+          )}
         </p>
         {held && terms && (
           <p id={`${id}-held`} className="text-sm text-muted">

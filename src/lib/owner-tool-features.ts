@@ -26,6 +26,8 @@ export const TOOL_FEATURES: Partial<Record<OwnerToolName, FeatureRequirement>> =
   list_orders: "shop",
   get_order: "shop",
   pick_list: "shop",
+  shipping_overview: "shop",
+  pickup_orders: "shop",
   list_draft_orders: "shop",
   list_returns: "shop",
   explain_return: "shop",

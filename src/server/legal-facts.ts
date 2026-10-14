@@ -33,9 +33,20 @@ export async function taxFactsOf(storeId: string): Promise<{ vatNumber: string |
  * null there and becomes a visible `[[Add: …]]` placeholder in the text, never an invented sentence.
  */
 export async function legalFacts(store: Store): Promise<LegalFacts> {
-  const [rates, carriers, returnSettings, tax, chat] = await Promise.all([
+  const [rates, methodMarkets, pickups, areas, carriers, returnSettings, tax, chat] = await Promise.all([
     db().execute<Row>(sql`
       select market_code, currency, amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${store.id}::uuid
+    `),
+    // D237: the markets the store's own methods price, its pickup places and its delivery areas (active ones).
+    db().execute<Row>(sql`select distinct market_code from commerce.shipping_methods where store_id = ${store.id}::uuid and active`),
+    db().execute<Row>(sql`
+      select l.name, l.city, o.market_code, o.currency, coalesce(o.amount_minor, 0) as amount_minor
+      from commerce.pickup_options o join commerce.store_locations l on l.store_id = o.store_id and l.id = o.location_id
+      where o.store_id = ${store.id}::uuid and o.active order by o.position, l.name
+    `),
+    db().execute<Row>(sql`
+      select name, market_code, currency, amount_minor, free_over_minor, min_basket_minor from commerce.local_delivery_areas
+      where store_id = ${store.id}::uuid and active order by position, name
     `),
     listCarriers(store.id),
     getReturnSettings(store.id),
@@ -43,6 +54,7 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
     chatWidgetFor(store.id),
   ]);
   const main = store.markets[0];
+  const offered = new Set(store.markets.map((m) => m.code.toUpperCase()));
   const modules = [store.bookingsOn ? "bookings" : null, store.deliveriesOn ? "deliveries" : null, store.workOn ? "work" : null].filter((m): m is string => m !== null);
   return assembleLegalFacts({
     store: {
@@ -65,6 +77,26 @@ export async function legalFacts(store: Store): Promise<LegalFacts> {
       rateMinor: Number(row.amount_minor),
       freeAboveMinor: row.free_over_minor == null ? null : Number(row.free_over_minor),
     })),
+    methodMarkets: methodMarkets.map((row) => String(row.market_code).trim().toUpperCase()),
+    pickupPlaces: pickups
+      .filter((row) => offered.has(String(row.market_code).trim().toUpperCase()))
+      .map((row) => ({
+        name: String(row.name ?? ""),
+        town: String(row.city ?? ""),
+        marketCode: String(row.market_code).trim(),
+        currency: String(row.currency).trim(),
+        amountMinor: Number(row.amount_minor),
+      })),
+    localAreas: areas
+      .filter((row) => offered.has(String(row.market_code).trim().toUpperCase()))
+      .map((row) => ({
+        name: String(row.name ?? ""),
+        marketCode: String(row.market_code).trim(),
+        currency: String(row.currency).trim(),
+        amountMinor: Number(row.amount_minor),
+        freeAboveMinor: row.free_over_minor == null ? null : Number(row.free_over_minor),
+        minBasketMinor: row.min_basket_minor == null ? null : Number(row.min_basket_minor),
+      })),
     // The carriers the store has connected: those whose agreement is complete.
     carrierNames: carriers.filter((c) => c.complete).map((c) => carrierInfo(c.carrier)?.name ?? c.carrier),
     returnSettings,

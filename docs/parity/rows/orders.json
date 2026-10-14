@@ -566,39 +566,72 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": "missing"
+      "was": "partial"
     },
     "weight": 4,
-    "gap": "A flat rate per market (`commerce.shipping_rates`), optionally free above a basket value. Connected carriers add carrier-quoted prices by weight (Bring, Porterbuddy) and a weight limit per service (Helthjem). A default weight per carrier connection (`shipping_carriers.default_weight_grams`) stands in for products without one, but only for carrier quotes; the flat rate never reads a weight. Missing: tiers by weight or basket value set by the merchant, zones by postal code inside a country, and shipping profiles per product. Rechecked 2026-10-14: no table, column or code for tiers, zones or profiles.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner defines tiers by basket weight and by basket value per market; the charge is the tier that matches, and a basket in no tier is refused or falls to a stated default (unit test).",
-      "A zone groups postal-code ranges inside a country, with its own rates (unit test of matching, integration test of checkout).",
+      "A zone groups postal codes and postal-code prefixes inside a country, with its own rates (unit test of matching, integration test of checkout).",
       "A shipping profile assigns products to rates, and a mixed basket is charged by the stated rule (the dearest profile, or the sum), the same in `cartSummary()` and `placeOrder()` (integration test, euro scenario).",
-      "A product with no weight uses the store's default weight."
+      "A product with no weight uses the store's default weight in weight-based rates."
     ],
     "evidence": {
       "files": [
+        "supabase/migrations/20261014230143_shipping_methods.sql",
+        "supabase/migrations/20261014230201_shipping_methods_rules.sql",
+        "src/db/schema.ts",
+        "src/lib/shipping-methods.ts",
         "src/lib/delivery-options.ts",
         "src/server/delivery-options.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/lib/postal-patterns.ts",
+        "src/lib/shipping-limits.ts",
+        "src/lib/shipping-methods-schema.ts",
+        "src/lib/shipping-method-form.ts",
+        "src/server/shipping-methods.ts",
+        "src/server/shipping-admin.ts",
+        "src/app/admin/(gated)/[store]/settings/shipping/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/shipping/actions.ts",
+        "src/app/admin/(gated)/[store]/settings/shipping/methods/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/shipping/zones/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/shipping/profiles/page.tsx",
+        "src/components/admin/shipping/method-editor.tsx",
+        "src/components/admin/shipping/zones-view.tsx",
+        "src/components/admin/shipping/profiles-view.tsx",
+        "src/components/delivery-choice.tsx",
         "src/lib/helthjem.ts",
-        "src/lib/shipping-carriers.ts",
-        "src/db/schema.ts"
+        "src/lib/shipping-carriers.ts"
       ],
       "tests": [
-        "src/lib/delivery-options.test.ts",
-        "src/lib/helthjem.test.ts",
+        "src/lib/shipping-methods.test.ts",
+        "src/lib/postal-patterns.test.ts",
+        "src/lib/shipping-limits.test.ts",
+        "src/lib/shipping-method-form.test.ts",
+        "src/lib/shipping-methods-schema.test.ts",
+        "src/lib/shipping-money-review.test.ts",
+        "src/db/shipping-methods.test.ts",
+        "src/server/shipping-methods.int.test.ts",
+        "src/server/shipping-actions.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
         "src/server/delivery-options.int.test.ts",
-        "src/server/helthjem-shipping.int.test.ts"
+        "src/server/shipping-money-review.int.test.ts",
+        "src/server/delivery-readers.scan.test.ts",
+        "src/components/admin/shipping/shipping-views.test.ts",
+        "src/components/delivery-choice.test.ts",
+        "src/lib/delivery-options.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D135",
-      "D138"
+      "D138",
+      "D237"
     ],
     "history": [
       {
@@ -606,6 +639,12 @@
         "from": "missing",
         "to": "partial",
         "why": "First report's skeptic recheck: carrier-quoted weight pricing and per-service weight limits exist for connected carriers, so not missing; no merchant-defined weight or price tiers, zones or profiles. Entry written in wave 0 from the first report, which did not log it."
+      },
+      {
+        "on": "2026-10-14",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 3 shipping methods run (docs/wave-3-shipping-methods.md; decision D237). Read shipping-methods.ts (`methodPrice()`, `deliveryOffer()`, `partsOf()`, `standardShippingMinor()`), postal-patterns.ts, the rules migration (tiers without gaps, one zone per pattern), shipping-methods.ts on the server and the settings actions, and re-ran on my own database w3_wave_3_shipping_methods_rerate: shipping-methods, shipping-actions, checkout-kinds, delivery-options, shipping-money-review and standing-orders integration tests (all pass) and the unit, PGlite and view tests (all pass). Held: weight and value tiers per market and method (minimum counts, maximum does not), a basket in no tier falls to the flat rate or is refused with no_shipping; zones of postal codes and prefixes, most specific wins, Rest of country for the rest; profiles with General, a mixed basket charged the sum of each profile's tier; goods without a weight at the store's default weight per unit; `cartSummary()` and `placeOrder()` equal in kroner and in the euro view (checkout-kinds scenarios a weight tier, a value tier, a zone, two profiles summed, a weightless variant, each with euro). Criteria 2 and 4 reworded as the spec's criteria changes 3 and 4 say. The review's findings on this row (weekly boxes charged a method, the refund cap counting an unoffered flat rate, structured data naming one method's price under zones or profiles) are fixed and each held by a test I ran. Admin screens are held by view tests and the actions' integration tests, not by a signed-in browser test."
       }
     ]
   },
@@ -780,28 +819,71 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "missing",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "missing"
     },
     "weight": 3,
-    "gap": "A store can list its shops and pickup places with address and opening hours (`store_locations`, kind `pickup`, D40), but they are information only: checkout offers no collect-from-store method, orders have no ready-for-pickup state and no email.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner switches pickup on for a store location with instructions and a price (free by default); checkout offers it as a delivery method for that market and `cartSummary()` and `placeOrder()` agree (integration test, euro scenario).",
       "The order keeps the chosen location; staff mark it ready for pickup, which sends the customer an email in the order's language with the address, hours and instructions, once (integration test).",
-      "Marking it collected closes the order without a shipment, and the order is excluded from To send."
+      "Marking it collected fulfils the order without a carrier parcel (no tracking, no shipped email), starts the withdrawal period on that day, and the order is excluded from To send."
     ],
     "evidence": {
       "files": [
-        "src/db/schema.ts"
+        "supabase/migrations/20261014230143_shipping_methods.sql",
+        "supabase/migrations/20261014230201_shipping_methods_rules.sql",
+        "src/db/schema.ts",
+        "src/lib/shipping-methods.ts",
+        "src/lib/delivery-options.ts",
+        "src/server/delivery-options.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/lib/pickup.ts",
+        "src/server/pickup.ts",
+        "src/server/pickup-facts.ts",
+        "src/server/order-delivery.ts",
+        "src/server/order-list-sql.ts",
+        "src/server/packing-slips.ts",
+        "src/server/shopper-emails.ts",
+        "src/lib/email-text.ts",
+        "src/lib/fulfilment.ts",
+        "src/app/admin/(gated)/[store]/settings/shipping/pickup/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/shipping/actions.ts",
+        "src/app/admin/(gated)/[store]/orders/handover-actions.ts",
+        "src/components/admin/orders/handover-panel.tsx",
+        "src/components/admin/shipping/pickup-view.tsx",
+        "src/components/delivery-choice.tsx",
+        "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx"
       ],
-      "tests": [],
+      "tests": [
+        "src/server/pickup.int.test.ts",
+        "src/server/pickup-morning.int.test.ts",
+        "src/server/shipping-actions.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/lib/pickup.test.ts",
+        "src/db/shipping-methods.test.ts",
+        "src/components/admin/orders/handover-views.test.ts",
+        "src/components/admin/shipping/shipping-views.test.ts",
+        "src/components/delivery-choice.test.ts",
+        "e2e/pickup.spec.ts"
+      ],
       "untested": false
     },
-    "decisions": [],
-    "history": []
+    "decisions": [
+      "D237"
+    ],
+    "history": [
+      {
+        "on": "2026-10-14",
+        "from": "missing",
+        "to": "full",
+        "why": "Wave 3 shipping methods run (docs/wave-3-shipping-methods.md; decision D237). Read pickup.ts (`savePickupOption()`, `markReadyForPickup()`, `markCollected()`), order-delivery.ts, the order-list SQL (`show=to-send` leaves pickup out, `show=to-hand-over`), handover-actions.ts and the handover panel, and re-ran on my own database: pickup, pickup-morning, shipping-actions and checkout-kinds integration tests (pass), the unit, PGlite and view tests (pass), and e2e/pickup.spec.ts on a fresh build. Held: pickup per shop or pickup place with instructions and a price (free by default), offered for that market and charged the same by `cartSummary()` and `placeOrder()` in kroner and euro (checkout-kinds free pickup and priced pickup); the order keeps the place; Ready for pickup writes the event and sends one email (key order-ready:{id}) in the order's language with address, hours and instructions, a second press sends none; Collected writes a pickup handover shipment of every unit with no tracking and no shipped email, fulfils the order and sets delivered_at that day (the review's before-noon refusal is fixed and held by pickup-morning.int.test.ts); the order is never in To send. Criterion 3 reworded as the spec's criteria change 1 says (the handover is a shipments row of method pickup so D174's counting holds); criterion 2's 'once' read as one email per order (change 2). Not proven: the checkout's delivery choice clicked in a browser through Stripe (the e2e server has no Stripe keys; the spec's manual test-mode check is the lead's), and the email and order-page words await legal review."
+      }
+    ]
   },
   {
     "id": "orders.local-delivery",
@@ -815,14 +897,14 @@
       "checkedOn": "2026-10-03"
     },
     "kaizen": {
-      "rating": "partial",
+      "rating": "full",
       "rechecked": true,
-      "was": null
+      "was": "partial"
     },
     "weight": 2,
-    "gap": "Porterbuddy's delivery windows for Norway (D137) and the subscription boxes' delivery rounds with a cutoff (D102); no merchant-defined delivery zones by radius or postal code, no minimum order amount, no own-driver route.",
-    "bucket": "A",
-    "wave": 3,
+    "gap": "",
+    "bucket": null,
+    "wave": null,
     "criteria": [
       "An owner defines a local delivery area by postal codes or a radius from a store location, with a price, a minimum basket and a free-above value; checkout offers it only inside the area (unit test of matching, integration test of checkout).",
       "`cartSummary()` and `placeOrder()` agree on its price in the euro view too.",
@@ -830,24 +912,61 @@
     ],
     "evidence": {
       "files": [
+        "supabase/migrations/20261014230143_shipping_methods.sql",
+        "supabase/migrations/20261014230201_shipping_methods_rules.sql",
+        "src/db/schema.ts",
+        "src/lib/shipping-methods.ts",
+        "src/lib/delivery-options.ts",
+        "src/server/delivery-options.ts",
+        "src/server/cart-summary.ts",
+        "src/server/checkout.ts",
+        "src/lib/local-delivery.ts",
+        "src/lib/postal-patterns.ts",
+        "src/server/local-delivery.ts",
+        "supabase/migrations/20261014230225_postal_points.sql",
+        "scripts/postal-points.mjs",
+        "src/server/order-delivery.ts",
+        "src/server/order-list-sql.ts",
+        "src/lib/order-list-row.ts",
+        "src/components/admin/orders/order-table.tsx",
+        "src/components/admin/orders/handover-panel.tsx",
+        "src/server/packing-slips.ts",
+        "src/app/admin/(gated)/[store]/settings/shipping/local/page.tsx",
+        "src/app/admin/(gated)/[store]/settings/shipping/actions.ts",
+        "src/components/admin/shipping/local-view.tsx",
+        "src/components/admin/shipping/area-form.tsx",
+        "src/components/delivery-choice.tsx",
         "src/server/carriers/porterbuddy.ts",
-        "src/lib/porterbuddy.ts",
-        "src/server/porterbuddy-shipping.ts",
-        "src/server/standing-orders.ts",
-        "src/lib/standing-orders.ts"
+        "src/server/standing-orders.ts"
       ],
       "tests": [
+        "src/lib/local-delivery.test.ts",
+        "src/db/shipping-methods.test.ts",
+        "src/server/local-delivery.int.test.ts",
+        "src/server/checkout-kinds.int.test.ts",
+        "src/server/shipping-actions.int.test.ts",
+        "src/components/admin/orders/handover-views.test.ts",
+        "src/components/admin/shipping/shipping-views.test.ts",
+        "src/components/delivery-choice.test.ts",
+        "e2e/pickup.spec.ts",
         "src/server/porterbuddy-shipping.int.test.ts",
-        "src/server/standing-orders.int.test.ts",
-        "src/lib/porterbuddy.test.ts"
+        "src/server/standing-orders.int.test.ts"
       ],
       "untested": false
     },
     "decisions": [
       "D102",
-      "D137"
+      "D137",
+      "D237"
     ],
-    "history": []
+    "history": [
+      {
+        "on": "2026-10-14",
+        "from": "partial",
+        "to": "full",
+        "why": "Wave 3 shipping methods run (docs/wave-3-shipping-methods.md; decision D237). Read local-delivery.ts (lib: `areaFor()`, haversine; server: areas, postal points), the postal_points migration and loader, order-delivery.ts (`markOutForDelivery()`, Delivered without a handover) and the list SQL (`show=local`), and re-ran on my own database: local-delivery, checkout-kinds and shipping-actions integration tests (pass), the unit, PGlite and view tests (pass) and e2e/pickup.spec.ts's local order page. Held: an area by postal codes and prefixes or by a radius from a place, with a price, a minimum basket and a free-above value, offered only inside the area and at or above the minimum, cheapest of overlapping areas; `cartSummary()` and `placeOrder()` agree in kroner and euro, free above its limit included (checkout-kinds local delivery scenarios); local orders list apart (`show=local`, never in To send) with postal code, town and the driver's note in the row, the order panel and the packing slip. Stated limit, not a gap in the criteria: a radius is measured between GeoNames postal-code centres (NO, SE, DK, FI loaded), not street addresses, so it is coarse inside cities; a code missing from the data is outside every radius area. Not proven in a browser: the checkout's choice through Stripe (manual test-mode check is the lead's)."
+      }
+    ]
   },
   {
     "id": "orders.packing-slips-and-pick-lists",

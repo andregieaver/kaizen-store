@@ -107,7 +107,7 @@ export async function planErasure(subject: PrivacySubject, now: Date = new Date(
         (select count(*) from commerce.wishlist_cart_adds where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as wishlist_cart_adds,
         (select count(*) from commerce.carts where store_id = ${sid}::uuid and id = any(${cartIds})
            and (customer_id is not null or company_name is not null or organisation_number is not null or vat_number is not null
-                or vat_check_id is not null or affiliate_code is not null or is_gift))::int as carts,
+                or vat_check_id is not null or affiliate_code is not null or is_gift or delivery_postal_code is not null or delivery_note is not null))::int as carts,
         (select count(*) from commerce.draft_orders where store_id = ${sid}::uuid and customer_id = ${cid}::uuid)::int as draft_orders,
         (select count(*) from commerce.delivery_quotes where store_id = ${sid}::uuid and cart_id = any(${cartIds}) and postal_code <> '')::int as delivery_quotes,
         (select count(*) from commerce.abandoned_checkouts where store_id = ${sid}::uuid and (lower(email) = any(${addresses}) or cart_id = any(${cartIds}))
@@ -660,7 +660,9 @@ async function eraseRows(tx: Tx, s: PrivacySubject, store: PrivacyStore): Promis
   const cartIds = uuidList(s.cartIds);
   await tx.execute(sql`
     update commerce.carts set customer_id = null, company_name = null, organisation_number = null, vat_number = null, vat_check_id = null, affiliate_code = null,
-      is_gift = false, gift_to = null, gift_from = null, gift_message = null
+      is_gift = false, gift_to = null, gift_from = null, gift_message = null,
+      -- The postal code typed for delivery prices and the note for the driver (D237).
+      delivery_postal_code = null, delivery_note = null
     where store_id = ${sid}::uuid and id = any(${cartIds})
   `);
   await tx.execute(sql`

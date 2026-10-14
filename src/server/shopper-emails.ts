@@ -8,9 +8,10 @@ import { bookingWhen, isRange } from "@/lib/booking-text";
 import { discountNote } from "@/lib/customer-tiers";
 import { hasGiftText } from "@/lib/gift";
 import { pickupPointLine } from "@/lib/delivery-options";
+import { confirmationDeliveryBlocks, outForDeliveryBlocks, pickupReadyBlocks } from "@/lib/delivery-email";
 import { formatWindow } from "@/lib/porterbuddy";
 import { renderEmail, type EmailBlock } from "@/lib/email-layout";
-import { emailText, orderBonusEarned, orderBonusRows, orderReferralRows, orderVatParagraph, orderVatReliefRows, refundVatNote, type EmailText } from "@/lib/email-text";
+import { deliveryEmailText, emailText, orderBonusEarned, orderBonusRows, orderReferralRows, orderVatParagraph, orderVatReliefRows, refundVatNote, type EmailText } from "@/lib/email-text";
 import { calendarFile, type CalendarEvent } from "@/lib/ics";
 import { t, type Messages } from "@/lib/i18n";
 import { conversionFor, localizationOf } from "@/lib/localization";
@@ -281,6 +282,8 @@ export async function sendOrderConfirmation(
     ),
     ...[companyText(order, m)].flatMap((company) => (company ? [{ type: "paragraph" as const, text: company }] : [])),
     ...(address ? [{ type: "paragraph" as const, text: `${text.deliverTo}:\n${address}` }] : []),
+    // How it reaches the buyer (D237): a method's transit time, the pickup place, or the local area with the buyer's own note.
+    ...confirmationDeliveryBlocks(deliveryEmailText(order.locale.split("-")[0]), order.deliveryKept, order.deliveryNote),
     ...(digital ? [{ type: "paragraph" as const, text: text.downloadsReady }] : []),
     // The buyer's own gift message (D173), to the buyer only: the store sends nothing to a recipient. Plain text, escaped by the renderer.
     ...(order.gift && hasGiftText(order.gift) ? [{ type: "paragraph" as const, text: giftParagraph(order.gift, text.giftMessage) }] : []),
@@ -431,9 +434,9 @@ async function parcelContents(
   storeId: string,
   orderId: string,
   shipmentId: string,
-): Promise<{ lines: { title: string; quantity: number }[]; left: number; legacy: boolean; undone: boolean }> {
+): Promise<{ lines: { title: string; quantity: number }[]; left: number; legacy: boolean; undone: boolean; handover: boolean }> {
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuid.test(shipmentId) || !uuid.test(orderId)) return { lines: [], left: 0, legacy: false, undone: false };
+  if (!uuid.test(shipmentId) || !uuid.test(orderId)) return { lines: [], left: 0, legacy: false, undone: false, handover: false };
   const [rows, [head]] = await Promise.all([
     db().execute<Row>(sql`
       select ol.title, sl.quantity from commerce.shipment_lines sl
@@ -445,7 +448,8 @@ async function parcelContents(
     db().execute<Row>(sql`
       select coalesce((select sum(commerce.line_to_send(ol.id)) from commerce.order_lines ol where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid), 0)::int as left_units,
         coalesce((select sh.legacy from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid), false) as legacy,
-        exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid and sh.undone_at is not null) as undone
+        exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid and sh.undone_at is not null) as undone,
+        exists (select 1 from commerce.shipments sh where sh.store_id = ${storeId}::uuid and sh.id = ${shipmentId}::uuid and sh.method <> 'parcel') as handover
     `),
   ]);
   return {
@@ -453,6 +457,7 @@ async function parcelContents(
     left: Number(head?.left_units ?? 0),
     legacy: Boolean(head?.legacy),
     undone: Boolean(head?.undone),
+    handover: Boolean(head?.handover),
   };
 }
 
@@ -470,7 +475,8 @@ export async function sendShipped(
   // Sent again on request: a key of its own, so the first sending does not stop it.
   const key = resend ? `order-sent:${shipment.id}:again:${crypto.randomUUID()}` : `order-sent:${shipment.id}`;
   const contents = await parcelContents(storeId, orderId, shipment.id);
-  if (contents.undone) return null;
+  // A handover at a pickup place or by the store's own driver (D237) is no parcel: never the shipped email.
+  if (contents.undone || contents.handover) return null;
   return orderNotice(
     storeId,
     orderId,
@@ -502,6 +508,69 @@ export async function sendShipped(
     // The invoice again, for the shopper who has lost it (D159).
     { want: { invoice: true }, switchable: true },
   );
+}
+
+/**
+ * *Ready for pickup* (D237 2.5, kind `order.ready_for_pickup`): once per order (key `order-ready:{order}`; `markReadyForPickup()` gives another key only to
+ * send again after a failure), to the order's own email in its language: the place, its hours for the next days, the instructions the order kept, what to
+ * collect (no prices) and what to bring. Only for a pickup order; never a copied one (`orderNotice()`), never a restricted or anonymised one or a store
+ * template's (`sendEmail()`).
+ */
+export async function sendReadyForPickup(storeId: string, orderId: string, key = `order-ready:${orderId}`): Promise<SendOutcome | null> {
+  const [facts] = await db().execute<Row>(sql`
+    select o.delivery_method, s.time_zone from commerce.orders o join commerce.stores s on s.id = o.store_id
+    where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
+  `);
+  if (!facts || facts.delivery_method !== "pickup") return null;
+  const lines = await db().execute<Row>(sql`
+    select ol.title, commerce.line_to_send(ol.id) as left_units from commerce.order_lines ol
+    where ol.store_id = ${storeId}::uuid and ol.order_id = ${orderId}::uuid and ol.delivery = 'physical'
+    order by ol.title, ol.sku, ol.id
+  `);
+  const now = new Date();
+  return orderNotice(storeId, orderId, "order.ready_for_pickup", key, ({ order, store }) => {
+    const words = deliveryEmailText(order.locale.split("-")[0]);
+    const kept = order.deliveryKept?.kind === "pickup" ? order.deliveryKept : null;
+    return {
+      subject: words.readySubject(store.name, order.number),
+      heading: words.readyHeading,
+      intro: words.readyIntro(order.number),
+      extra: kept
+        ? pickupReadyBlocks(words, kept, {
+            number: order.number,
+            lines: lines.filter((l) => Number(l.left_units) > 0).map((l) => ({ title: String(l.title), quantity: Number(l.left_units) })),
+            locale: order.locale,
+            timeZone: String(facts.time_zone ?? "Europe/Oslo"),
+            now,
+          })
+        : [],
+    };
+  });
+}
+
+/**
+ * *Out for delivery* (D237 2.5, kind `order.out_for_delivery`, key `order-out:{shipment}`): the order is on its way today with the store's own delivery,
+ * the area's information and where (postal code and city only). Only for a `local` handover that stands; not for a weekly box (D102 keeps its own).
+ */
+export async function sendOutForDelivery(storeId: string, orderId: string, shipmentId: string): Promise<SendOutcome | null> {
+  const [facts] = await db().execute<Row>(sql`
+    select o.delivery_method,
+      exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.id = ${shipmentId}::uuid and sh.order_id = o.id
+              and sh.method = 'local' and sh.undone_at is null) as standing,
+      exists (select 1 from commerce.standing_deliveries d where d.store_id = o.store_id and d.order_id = o.id) as box
+    from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
+  `);
+  if (!facts || facts.delivery_method !== "local" || !facts.standing || facts.box) return null;
+  return orderNotice(storeId, orderId, "order.out_for_delivery", `order-out:${shipmentId}`, ({ order, store }) => {
+    const words = deliveryEmailText(order.locale.split("-")[0]);
+    const kept = order.deliveryKept?.kind === "local" ? order.deliveryKept : null;
+    return {
+      subject: words.outSubject(store.name, order.number),
+      heading: words.outHeading,
+      intro: words.outIntro(order.number),
+      extra: kept ? outForDeliveryBlocks(words, kept, { postalCode: order.shippingAddress.postalCode ?? "", city: order.shippingAddress.city ?? "" }) : [],
+    };
+  });
 }
 
 export function sendRefunded(storeId: string, orderId: string, refundId: string, amountMinor: number) {

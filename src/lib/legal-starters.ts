@@ -108,11 +108,22 @@ const exclusionItems = (f: LegalFacts) => [...EXCLUSIONS, ...(f.bookingsOn ? SER
 function rateItems(f: LegalFacts, h: Helpers) {
   return f.shipping.map((s) => {
     const country = h.country(s.code);
+    // The store's own methods price the market (D237): the flat rate is only their fallback, so the owner writes the prices checkout charges.
+    if (s.ownMethods) return item("rate.methods", { country, check: h.add("methodPrices") });
     if (s.rateMinor === null) return item("rate.none", { country, check: h.add("shippingPrice") });
     if (s.rateMinor === 0) return item("rate.zero", { country });
     const rate = h.money(s.rateMinor, s.currency);
     return s.freeAboveMinor !== null ? item("rate.free", { country, rate, amount: h.money(s.freeAboveMinor, s.currency) }) : item("rate.plain", { country, rate });
   });
+}
+
+/** One line for a local delivery area (D237): its price, free above a basket value, from a smallest basket. */
+function localItem(a: LegalFacts["local"][number], h: Helpers) {
+  const rate = a.amountMinor === 0 ? null : h.money(a.amountMinor, a.currency);
+  const free = a.freeAboveMinor !== null && rate !== null ? h.money(a.freeAboveMinor, a.currency) : null;
+  const min = a.minBasketMinor !== null ? h.money(a.minBasketMinor, a.currency) : null;
+  const key = `local.${rate === null ? "zero" : free ? "free" : "plain"}${min ? ".min" : ""}`;
+  return item(key, { area: a.name, ...(rate !== null && { rate }), ...(free && { amount: free }), ...(min && { minimum: min }) });
 }
 
 function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
@@ -219,10 +230,24 @@ function shapeOf(role: StarterRole, f: LegalFacts, h: Helpers): Shape[] {
     case "shipping_policy":
       return [
         { topic: "markets", blocks: [p("shipping.markets.1", { markets: marketNames })] },
-        { topic: "rates", blocks: [p("shipping.rates.1"), rates.length > 0 ? ul(...rates) : p("shipping.rates.none", { check: h.add("shippingPrice") })] },
+        {
+          topic: "rates",
+          blocks: [
+            p("shipping.rates.1"),
+            rates.length > 0 ? ul(...rates) : p("shipping.rates.none", { check: h.add("shippingPrice") }),
+            // Collecting and the store's own delivery (D237), from the store's active pickup places and areas.
+            ...(f.pickup.length > 0
+              ? [
+                  p("shipping.pickup.1"),
+                  ul(...f.pickup.map((pl) => (pl.amountMinor === 0 ? item("pickup.zero", { place: pl.place }) : item("pickup.plain", { place: pl.place, rate: h.money(pl.amountMinor, pl.currency) })))),
+                ]
+              : []),
+            ...(f.local.length > 0 ? [p("shipping.local.1"), ul(...f.local.map((a) => localItem(a, h)))] : []),
+          ],
+        },
         { topic: "carriers", blocks: [carriers] },
         { topic: "delivery_time", blocks: [p("shipping.time.1", { check: h.add("deliveryTime") })] },
-        { topic: "tracking", blocks: [p("shipping.tracking.1")] },
+        { topic: "tracking", blocks: [p("shipping.tracking.1"), ...(f.pickup.length > 0 || f.local.length > 0 ? [p("shipping.tracking.handover")] : [])] },
         { topic: "outside_eu", blocks: [p("shipping.outside.1", { check: h.add("outsideEu") })] },
         { topic: "damaged_goods", blocks: [p("shipping.damaged.1", { check: h.add("damagedDays") })] },
         { topic: "contact", blocks: [p("shipping.contact.1", { email })] },

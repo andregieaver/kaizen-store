@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { z } from "zod";
 
 import { BackorderOrderLine } from "@/components/backorder-note";
+import { DeliveryBlock } from "@/components/delivery-block";
 import { GiftNote } from "@/components/gift-note";
 import { OrderDocuments } from "@/components/documents/order-documents";
 import { OrderShipments } from "@/components/order-shipments";
@@ -16,6 +17,7 @@ import { OrderReturns } from "@/components/withdraw/order-returns";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
+import { deliveryRowLabel } from "@/lib/delivery-words";
 import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { fileSize } from "@/lib/file-size";
@@ -94,8 +96,12 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
         </p>
       </div>
 
-      {/* The parcels and what is still to come (D174); nothing before the first parcel. */}
-      <OrderShipments fulfilment={fulfilment} m={m} locale={market.locale} timeZone={store.timeZone} business={order.company !== null} />
+      {/* The store's own delivery (D237): where to collect it, or the local delivery and the note. */}
+      <DeliveryBlock order={order} m={m} locale={market.locale} timeZone={store.timeZone} />
+      {/* The parcels and what is still to come (D174); nothing before the first parcel. A pickup order is collected, not sent. */}
+      {order.deliveryMethod !== "pickup" && (
+        <OrderShipments fulfilment={fulfilment} m={m} locale={market.locale} timeZone={store.timeZone} business={order.company !== null} />
+      )}
 
       <OwnBookings order={order} store={store.slug} market={market} m={m} sessionId={null} />
 
@@ -139,7 +145,7 @@ async function AccountOrder({ params }: { params: Props["params"] }) {
         <dl className="mt-3 flex flex-col gap-1 border-t border-border pt-3">
           {order.ships && (
             <div className="flex justify-between">
-              <dt>{order.delivery?.label ?? m.shipping}</dt>
+              <dt>{deliveryRowLabel(order.deliveryKept ?? order.delivery, m)}</dt>
               <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
             </div>
           )}

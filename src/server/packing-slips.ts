@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { pickupPlaceLine, readDelivery } from "@/lib/delivery-options";
 import { giftOfRow, NO_GIFT, type GiftFields } from "@/lib/gift";
 import { BULK_PRINT_MAX, slipSkip, type BulkRefusal, type BulkRequestProblem } from "@/lib/order-bulk";
 
@@ -29,6 +30,11 @@ export type PackingSlip = {
   lines: { quantity: number; title: string; sku: string }[];
   /** The buyer's gift (D173), null when the order is not one. */
   gift: GiftFields | null;
+  /**
+   * How it is handed over (D237): `pickup` with the place (name and address line, as the order kept it), `local` with the shopper's note for the driver;
+   * absent for a parcel.
+   */
+  handover?: { method: "pickup"; place: string } | { method: "local"; note: string | null } | null;
   /**
    * What the slip prints (D174, `docs/wave-3-fulfilment.md` 2.3): `to_send` the units still to send (the default), `reprint` every physical unit as sold for an order
    * with nothing left to send (the order's own slip, under *All items (already sent)*), `parcel` one shipment's lines. Absent on slips made before parcels named lines.
@@ -58,7 +64,7 @@ export async function packingSlipData(storeId: string, ids: readonly string[], o
   const valid = unique.filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)).map((id) => id.toLowerCase());
   const orders = valid.length
     ? await db().execute<Row>(sql`
-        select o.id, o.number, o.placed_at, o.locale, o.shipping_address, o.copied_from is not null as copied, o.is_gift, o.gift_to, o.gift_from, o.gift_message,
+        select o.id, o.number, o.placed_at, o.locale, o.shipping_address, o.copied_from is not null as copied, o.is_gift, o.gift_to, o.gift_from, o.gift_message, o.delivery_method, o.delivery, o.delivery_note,
           exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical') as physical
         from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = any(${uuidList(valid)})
       `)
@@ -100,7 +106,18 @@ function slipHead(order: Row): Omit<PackingSlip, "lines"> {
     lang: String(order.locale).split("-")[0] || "en",
     shipTo: { name: text(a.name), line1: text(a.line1), line2: text(a.line2), postalCode: text(a.postalCode), city: text(a.city), country: text(a.country) },
     gift: gift === NO_GIFT ? null : gift,
+    handover: handoverOf(order),
   };
+}
+
+/** The slip's handover line (D237) from the order's own snapshot. */
+function handoverOf(order: Row): PackingSlip["handover"] {
+  if (order.delivery_method === "pickup") {
+    const kept = readDelivery(order.delivery);
+    return { method: "pickup", place: kept && kept.kind === "pickup" ? pickupPlaceLine(kept) : "" };
+  }
+  if (order.delivery_method === "local") return { method: "local", note: text(order.delivery_note) };
+  return null;
 }
 
 /**
@@ -112,7 +129,7 @@ export async function parcelSlipData(storeId: string, orderId: string, shipmentI
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (!uuid.test(orderId) || !uuid.test(shipmentId)) return null;
   const [order] = await db().execute<Row>(sql`
-    select o.id, o.number, o.placed_at, o.locale, o.shipping_address, o.copied_from is not null as copied, o.is_gift, o.gift_to, o.gift_from, o.gift_message
+    select o.id, o.number, o.placed_at, o.locale, o.shipping_address, o.copied_from is not null as copied, o.is_gift, o.gift_to, o.gift_from, o.gift_message, o.delivery_method, o.delivery, o.delivery_note
     from commerce.orders o
     where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
       and exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.id = ${shipmentId}::uuid and sh.undone_at is null)

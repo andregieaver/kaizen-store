@@ -28,6 +28,7 @@ import { type OrderActor } from "./order-actor";
 import { changeOrderTags } from "./order-tags";
 import { packingSlipData } from "./packing-slips";
 import { pickListData } from "./pick-list";
+import { markReadyForPickup } from "./pickup";
 import { sendShipped } from "./shopper-emails";
 import { uuidList } from "./sql-arrays";
 
@@ -58,7 +59,8 @@ async function markSentFactsFor(storeId: string, ids: readonly string[]): Promis
       select o.id, o.number, o.status, o.copied_from is not null as copied,
         exists (select 1 from commerce.payments p where p.store_id = o.store_id and p.order_id = o.id and p.status = 'captured') as paid,
         exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.delivery = 'physical') as physical,
-        exists (select 1 from commerce.standing_deliveries sd where sd.store_id = o.store_id and sd.order_id = o.id) as weekly_box
+        exists (select 1 from commerce.standing_deliveries sd where sd.store_id = o.store_id and sd.order_id = o.id) as weekly_box,
+        o.delivery_method
       from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = any(${uuidList(ids)})
     `),
     fulfilmentOf(db(), storeId, ids),
@@ -82,6 +84,7 @@ async function markSentFactsFor(storeId: string, ids: readonly string[]): Promis
       backorderUnits: status === "paid" ? (state?.lines ?? []).reduce((sum, l) => sum + Math.min(l.backordered, l.toSend), 0) : 0,
       deliveryUnpaid: waitingForCharge,
       editPending: Boolean(state?.editPending),
+      deliveryMethod: row.delivery_method === "pickup" ? "pickup" : row.delivery_method === "local" ? "local" : "ship",
     });
   }
   return out;
@@ -173,7 +176,7 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
         const sent = await markSent(storeId, id, { carrier: "other", trackingNumber: "", trackingUrl: null }, actor.accountId);
         if (!sent.ok) {
           // It moved while the batch ran (cancelled, sent by someone else, withdrawn in full, a change waiting for payment).
-          const moved: Record<string, BulkReason> = { edit_pending: "edit_pending", withdrawn_in_full: "withdrawn_in_full", nothing_to_send: "nothing_to_send", copied: "copied", not_found: "not_found" };
+          const moved: Record<string, BulkReason> = { edit_pending: "edit_pending", withdrawn_in_full: "withdrawn_in_full", nothing_to_send: "nothing_to_send", copied: "copied", not_found: "not_found", pickup_order: "pickup_order" };
           refused.push(refusal(id, number, moved[sent.reason] ?? "changed"));
           continue;
         }
@@ -184,6 +187,28 @@ export async function runBulk(storeId: string, actor: OrderActor, request: BulkR
         }
       } catch (error) {
         console.error("[orders] bulk mark as sent failed for an order", id, error);
+        refused.push(refusal(id, number, "failed"));
+      }
+    }
+  } else if (action === "ready_for_pickup") {
+    // D237: each pickup order marked ready and emailed once (`markReadyForPickup()`), each refusal reported; backordered units are never confirmed in bulk.
+    emailed = 0;
+    for (const id of mine) {
+      const number = known.get(id) ?? null;
+      try {
+        const done = await markReadyForPickup(storeId, { orderId: id }, actor.accountId);
+        if (!done.ok) {
+          const reasons: Record<string, BulkReason> = {
+            not_found: "not_found", not_pickup: "not_pickup", unpaid: "unpaid", copied: "copied", cancelled: "cancelled", closed: "unpaid",
+            waiting_for_stock: "waiting_for_stock", edit_pending: "edit_pending", collected: "collected", already_ready: "already_ready",
+          };
+          refused.push(refusal(id, number, reasons[done.reason] ?? "failed"));
+          continue;
+        }
+        applied += 1;
+        if (done.email === "sent" || done.email === "logged") emailed += 1;
+      } catch (error) {
+        console.error("[orders] bulk ready for pickup failed for an order", id, error);
         refused.push(refusal(id, number, "failed"));
       }
     }

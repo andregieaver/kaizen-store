@@ -15,6 +15,7 @@ import { VatNotes } from "@/components/vat-notes";
 import { creditsNet } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
+import { deliveryRowLabel, withDeliveryWords } from "@/lib/delivery-words";
 import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { withoutVat } from "@/lib/b2b";
@@ -296,7 +297,7 @@ function totalsList(view: CheckoutView, market: Market) {
         </div>
         {order.ships && (
           <div className="flex justify-between">
-            <dt>{order.delivery?.label ?? m.shipping}</dt>
+            <dt>{deliveryRowLabel(order.deliveryKept ?? order.delivery, m)}</dt>
             <dd>{order.shippingMinor === 0 ? m.freeShipping : net(order.shippingMinor, order.shippingVatRate)}</dd>
           </div>
         )}
@@ -402,9 +403,12 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
   const { m, cartId, open, order } = view;
   // Not while the checkout is over and starts again: there is no order to change.
   if (open.expired || open.changed || open.subscription) return null;
-  const options = await deliveryView({ storeId: store.id, market }, cartId, m.shipping);
-  if (!options) return null;
+  const found = await deliveryView({ storeId: store.id, market }, cartId, m.shipping);
+  if (!found) return null;
+  // A pickup place's ready time and today's hours as sentences (D237): the client component gets words, never functions.
+  const options = withDeliveryWords(found, m, { locale: market.locale, timeZone: store.timeZone });
   const d = m.deliveryChoice;
+  const o = m.deliveryOptions;
   return (
     <DeliveryChoice
       store={store.slug}
@@ -427,6 +431,19 @@ async function deliveryBlock(store: Store, market: Market, view: CheckoutView) {
         pickupHeading: d.pickupHeading,
         choose: d.choose,
         choosing: d.choosing,
+        shipGroup: o.shipGroup,
+        localGroup: o.localGroup,
+        collectGroup: o.collectGroup,
+        noteLabel: o.noteLabel,
+        noteHint: o.noteHint,
+        instructions: o.instructions,
+        // Templates the component fills in: the minimum as it shows prices, the postal code typed.
+        localFrom: o.localFrom("{minimum}"),
+        noShipping: o.noShipping("{code}"),
+        noShippingAnywhere: o.noShippingAnywhere,
+        needCode: o.priceInfo.needCode,
+        changed: o.priceInfo.changed,
+        noteProblem: o.problems.note,
       }}
     />
   );
@@ -519,6 +536,22 @@ async function paymentForm(store: Store, market: Market, view: CheckoutView, dra
             // The terms (wave 1, 1e): drawn by the pay button unless the page has its own piece for them.
             termsSlot={drawTerms ? termsNode(store, market, view, display) : null}
             terms={display ? { store: store.slug, market: market.slug, display, labels: { hint: m.terms.hint, failed: m.terms.failed } } : null}
+            // The delivery settled before paying (D237 2.4 point 4): a postal code where the price needs one, something that delivers, no stale choice.
+            delivery={
+              order.ships
+                ? {
+                    store: store.slug,
+                    market: market.slug,
+                    labels: {
+                      postal_code: m.deliveryOptions.priceInfo.needCode,
+                      changed: m.deliveryOptions.priceInfo.changed,
+                      no_shipping: m.deliveryOptions.noShippingAnywhere,
+                      seeNewPrice: m.deliveryOptions.seeNewPrice,
+                      checkFailed: m.deliveryOptions.checkFailed,
+                    },
+                  }
+                : null
+            }
             links={{
               cart: `${base}/cart`,
               order: `${base}/order/${open.orderId}?session_id=${encodeURIComponent(open.sessionId)}`,

@@ -7,7 +7,7 @@ import { db } from "@/db/client";
 
 import type { OrderBonus } from "@/lib/bonus-shopper";
 import { giftOfRow, type GiftFields } from "@/lib/gift";
-import { readOrderDelivery, type OrderDelivery } from "@/lib/delivery-options";
+import { readDelivery, readOrderDelivery, type AnyOrderDelivery, type OrderDelivery } from "@/lib/delivery-options";
 import { shown, type Market } from "@/lib/markets";
 import { parseOrderTreatment, shopperTreatment, type OrderVatTreatment, type VatKind, type VatReason } from "@/lib/vat-treatment";
 import { parseDelivery, type Delivery } from "@/lib/product-input";
@@ -46,6 +46,17 @@ export type OrderView = {
   shippingMinor: number;
   /** The carrier's service the shopper chose (D135), with its pickup point; null for the market's flat rate. */
   delivery: OrderDelivery | null;
+  /** How the goods reach the buyer (D237): a parcel, collected at a place, or the store's own local delivery. */
+  deliveryMethod: "ship" | "pickup" | "local";
+  /** What the order keeps of its delivery, of any kind (D237, `readDelivery()`): a method, the flat rate, a pickup place's snapshot, a local area. */
+  deliveryKept: AnyOrderDelivery | null;
+  /** When staff marked a pickup order ready (D237), and the driver's note of a local delivery. */
+  readyForPickupAt: string | null;
+  /** When the goods reached the buyer (`orders.delivered_at`, D153): for a pickup order, the day it was collected (D237). */
+  deliveredAt: string | null;
+  deliveryNote: string | null;
+  /** The postal code the delivery was priced for differs from the address Stripe collected (D237 2.7): staff check before sending. */
+  deliveryMismatchAt: string | null;
   /**
    * What discount codes, groups and campaigns took off, and the code (D31): not the bonus credits used, which are
    * `creditMinor`, nor the friend's welcome discount (D131), which is `referralDiscountMinor` (the database keeps all in the
@@ -231,6 +242,12 @@ const toOrder = (row: Row, lines: Row[]): OrderView => ({
   subtotalMinor: Number(row.subtotal_minor),
   shippingMinor: Number(row.shipping_minor),
   delivery: readOrderDelivery(row.delivery),
+  deliveryMethod: row.delivery_method === "pickup" ? "pickup" : row.delivery_method === "local" ? "local" : "ship",
+  deliveryKept: readDelivery(row.delivery),
+  readyForPickupAt: row.ready_for_pickup_at ? new Date(String(row.ready_for_pickup_at)).toISOString() : null,
+  deliveredAt: row.delivered_at ? new Date(String(row.delivered_at)).toISOString() : null,
+  deliveryNote: row.delivery_note ? String(row.delivery_note) : null,
+  deliveryMismatchAt: row.delivery_mismatch_at ? new Date(String(row.delivery_mismatch_at)).toISOString() : null,
   discountMinor:
     Number(row.discount_minor ?? 0) -
     Number(row.credit_minor ?? 0) -
@@ -539,7 +556,7 @@ export async function listOrders(
         waiting
           ? sql`o.copied_from is null and o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0 and commerce.line_to_send(l.id) > 0)`
           : toSend
-          ? sql`o.copied_from is null and o.status = 'paid' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')`
+          ? sql`o.copied_from is null and o.status = 'paid' and o.delivery_method = 'ship' and exists (select 1 from commerce.order_lines l where l.order_id = o.id and l.delivery = 'physical')`
           : unpaid
             ? sql`o.copied_from is null and (o.status = 'pending_payment' or (o.status = 'cancelled' and not ${wasPaid}))`
             : sql`(o.copied_from is not null or o.status not in ('pending_payment', 'cancelled') or (o.status = 'cancelled' and ${wasPaid}))`

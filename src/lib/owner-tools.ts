@@ -88,6 +88,20 @@ export const OWNER_TOOLS = [
     }),
   ),
   tool(
+    "shipping_overview",
+    "The store's shipping as its Shipping pages show it (D237), per country: the flat rate (the default, and what subscriptions, subscription boxes and draft orders pay), the shipping methods with their rates per zone and profile (flat, by weight or by basket value; a tier's lower bound counts and its upper bound does not), the zones (postal codes and prefixes), the shipping profiles with how many products each holds, the default weight per unit used for goods without a weight, the pickup places (price, how soon an order is usually ready) and the local delivery areas (postal codes or a radius, price, minimum basket, free above), with the page's warnings. Every amount is written by the store, VAT included, in the country's own currency: repeat it, never work one out, and never say what a particular basket pays (the cart and checkout do). Read-only: shipping is changed on the Shipping pages (open_admin_page, shipping).",
+    z.object({
+      market: z.string().trim().regex(/^[A-Za-z]{2}$/).optional().describe("One country by its two-letter code (such as NO); leave it out for every country the store sells to."),
+    }),
+  ),
+  tool(
+    "pickup_orders",
+    "Paid orders the store hands over itself (D237), as the Orders page's views To hand over and Local deliveries list them: orders to be collected at a pickup place (and how many were marked ready) and orders for the store's own local delivery not delivered yet (and how many are out for delivery), grouped by place or area, with their numbers and the oldest one's date. Counts and order numbers only, never a name or an address: get_order gives one order. Read-only: Ready for pickup, Collected and Out for delivery are pressed on the order's page (or Ready for pickup in bulk on the Orders page), never here; these orders are not sent with mark_order_sent.",
+    z.object({
+      kind: z.enum(["all", "pickup", "local"]).default("all").describe("Pickup orders, local deliveries, or both."),
+    }),
+  ),
+  tool(
     "list_draft_orders",
     "The store's draft orders (D173): orders staff write for a customer and send as a pay link. Each has its number, status (open, sent and waiting for payment, paid, expired, cancelled), the customer's email, the total as the store prices it, its order number once sent and when the link ends. `status` narrows them. Read-only. A draft is made with create_draft_order and sent with send_draft_order (the owner's yes first); taking money outside Kaizen and deleting a draft are done on the draft's page.",
     listDraftOrdersInput,

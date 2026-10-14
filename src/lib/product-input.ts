@@ -302,6 +302,8 @@ export const productInput = z.object({
   hostId: z.uuid().nullable().default(null),
   /** Its own product layout (D79); null: from its categories, tags or the store. */
   layoutId: z.uuid().nullable().default(null),
+  /** The shipping profile (D237): null is General. Left out, the product keeps the one it has (an import, a bulk edit, an older editor). */
+  shippingProfileId: z.uuid().nullable().optional(),
   /** How new variants are delivered; each variant can differ. */
   delivery: z.enum(DELIVERIES).default("physical"),
   /** Files for digital variants: already uploaded to the store's folder. */

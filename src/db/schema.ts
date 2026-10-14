@@ -69,6 +69,18 @@ import {
 import { GRANTABLE_PERMISSIONS } from "../lib/permission-keys";
 import { COUNTS_FROM, PERIOD_UNITS, RETENTION_BASES, RETENTION_KINDS } from "../lib/retention";
 import { RETURN_REASONS } from "../lib/withdrawal";
+import {
+  ESTIMATE_DAYS_MAX,
+  INFO_MAX,
+  INSTRUCTIONS_MAX,
+  NAME_MAX,
+  NOTE_MAX,
+  PATTERNS_MAX,
+  RADIUS_KM_MAX,
+  RADIUS_KM_MIN,
+  READY_HOURS_MAX,
+  WEIGHT_GRAMS_MAX,
+} from "../lib/shipping-limits";
 
 export const commerce = pgSchema("commerce");
 
@@ -1277,6 +1289,258 @@ export const shippingRates = commerce.table(
 );
 
 // ---------------------------------------------------------------------------
+// Shipping methods, zones and profiles, pickup and local delivery (wave 3, D237, docs/wave-3-shipping-methods.md 3.2). The rules the
+// database holds beyond these checks (tiers without gaps, patterns in one zone of a market, limits, places of the right kind) are triggers in
+// the rules migration. Every amount is in the market's own currency, with VAT, as `shipping_rates`; weights in grams.
+// ---------------------------------------------------------------------------
+
+/** The store's shipping settings (D237): the weight of one unit of goods with no weight of its own, in methods' weight tiers. Made with the defaults when first read. */
+export const shippingSettings = commerce.table(
+  "shipping_settings",
+  {
+    storeId: uuid("store_id")
+      .primaryKey()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    defaultWeightGrams: integer("default_weight_grams").notNull().default(500),
+    updatedAt: updatedAt(),
+    updatedBy: uuid("updated_by").references(() => accounts.id),
+  },
+  (t) => [
+    check("shipping_settings_default_weight", sql`${t.defaultWeightGrams} between 1 and ${lit(WEIGHT_GRAMS_MAX)}`),
+    index("shipping_settings_updated_by_idx").on(t.updatedBy),
+  ],
+);
+
+/** A named group of products with rates of their own (D237); General is every product with none (`products.shipping_profile_id` null). */
+export const shippingProfiles = commerce.table(
+  "shipping_profiles",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId().references(() => stores.id),
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("shipping_profiles_store_id_key").on(t.storeId, t.id),
+    uniqueIndex("shipping_profiles_name_key").on(t.storeId, sql`lower(${t.name})`),
+    check("shipping_profiles_name", sql`char_length(${t.name}) between 1 and ${lit(NAME_MAX)} and ${t.name} = btrim(${t.name})`),
+  ],
+);
+
+/**
+ * A named group of postal-code patterns inside one market's country (D237): exact codes (`0150`) and prefixes (`01*`), the most specific
+ * matching pattern deciding a code's zone. A pattern is in one zone of a market at most (trigger `shipping_zones_patterns`).
+ */
+export const shippingZones = commerce.table(
+  "shipping_zones",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    name: text("name").notNull(),
+    patterns: text("patterns").array().notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("shipping_zones_store_id_key").on(t.storeId, t.id),
+    marketCountryRef("shipping_zones_market_fk", t).onDelete("cascade"),
+    index("shipping_zones_market_idx").on(t.storeId, t.marketCode, t.position),
+    check("shipping_zones_name", sql`char_length(${t.name}) between 1 and ${lit(NAME_MAX)} and ${t.name} = btrim(${t.name})`),
+    check("shipping_zones_patterns_count", sql`cardinality(${t.patterns}) between 1 and ${lit(PATTERNS_MAX)}`),
+  ],
+);
+
+/**
+ * A named way of shipping in one market that the store prices itself (D237): *Standard*, *Express*. Its rates are `shipping_method_rates`;
+ * `names` holds its name in the store's other languages, `free_over_minor` makes it free from a basket value (as shown, in the market's currency).
+ */
+export const shippingMethods = commerce.table(
+  "shipping_methods",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    name: text("name").notNull(),
+    names: jsonb("names").notNull().default({}),
+    estimateMinDays: integer("estimate_min_days"),
+    estimateMaxDays: integer("estimate_max_days"),
+    freeOverMinor: bigint("free_over_minor", { mode: "number" }),
+    active: boolean("active").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("shipping_methods_store_id_key").on(t.storeId, t.id),
+    marketRef("shipping_methods_market_fk", t).onDelete("cascade"),
+    index("shipping_methods_market_idx").on(t.storeId, t.marketCode, t.currency, t.position),
+    check("shipping_methods_name", sql`char_length(${t.name}) between 1 and ${lit(NAME_MAX)} and ${t.name} = btrim(${t.name})`),
+    check("shipping_methods_names", sql`jsonb_typeof(${t.names}) = 'object'`),
+    check(
+      "shipping_methods_estimate",
+      sql`(${t.estimateMinDays} is null) = (${t.estimateMaxDays} is null) and (${t.estimateMinDays} is null or (${t.estimateMinDays} between 0 and ${t.estimateMaxDays} and ${t.estimateMaxDays} <= ${lit(ESTIMATE_DAYS_MAX)}))`,
+    ),
+    check("shipping_methods_free_over", sql`${t.freeOverMinor} is null or ${t.freeOverMinor} > 0`),
+  ],
+);
+
+/**
+ * What a method costs one profile's part of a basket in one zone (D237): `basis` `flat` (one row), `weight` (grams) or `value` (the part's
+ * value as shown, in the market's minor units) with tiers from `min_value` (inclusive) to `max_value` (exclusive, null = and above). `zone_id`
+ * null is Rest of country, `profile_id` null is General. The tiers of a group meet without gaps (trigger `shipping_rates_tiers`, at commit).
+ */
+export const shippingMethodRates = commerce.table(
+  "shipping_method_rates",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    methodId: uuid("method_id").notNull(),
+    zoneId: uuid("zone_id"),
+    profileId: uuid("profile_id"),
+    basis: text("basis").notNull(),
+    minValue: bigint("min_value", { mode: "number" }).notNull().default(0),
+    maxValue: bigint("max_value", { mode: "number" }),
+    amountMinor: money("amount_minor"),
+  },
+  (t) => [
+    unique("shipping_method_rates_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "shipping_method_rates_method_fk",
+      columns: [t.storeId, t.methodId],
+      foreignColumns: [shippingMethods.storeId, shippingMethods.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "shipping_method_rates_zone_fk",
+      columns: [t.storeId, t.zoneId],
+      foreignColumns: [shippingZones.storeId, shippingZones.id],
+    }).onDelete("cascade"),
+    foreignKey({
+      name: "shipping_method_rates_profile_fk",
+      columns: [t.storeId, t.profileId],
+      foreignColumns: [shippingProfiles.storeId, shippingProfiles.id],
+    }).onDelete("cascade"),
+    index("shipping_method_rates_group_idx").on(t.storeId, t.methodId, t.zoneId, t.profileId),
+    index("shipping_method_rates_zone_idx").on(t.storeId, t.zoneId),
+    index("shipping_method_rates_profile_idx").on(t.storeId, t.profileId),
+    check("shipping_method_rates_basis", sql`${t.basis} in ('flat', 'weight', 'value')`),
+    check("shipping_method_rates_amount", sql`${t.amountMinor} >= 0`),
+    check("shipping_method_rates_range", sql`${t.minValue} >= 0 and (${t.maxValue} is null or ${t.maxValue} > ${t.minValue})`),
+    check("shipping_method_rates_flat", sql`${t.basis} <> 'flat' or (${t.minValue} = 0 and ${t.maxValue} is null)`),
+  ],
+);
+
+/**
+ * Collecting at one of the store's places (D237): a place of kind `shop` or `pickup` in the market's country (trigger), with a price (0 =
+ * free, in the market's currency), the usual time to get an order ready (0 = no promise) and instructions (`instructions_t` by locale).
+ */
+export const pickupOptions = commerce.table(
+  "pickup_options",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    locationId: uuid("location_id").notNull(),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    amountMinor: money("amount_minor").default(0),
+    readyInHours: integer("ready_in_hours").notNull().default(0),
+    instructions: text("instructions").notNull().default(""),
+    instructionsT: jsonb("instructions_t").notNull().default({}),
+    active: boolean("active").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("pickup_options_store_id_key").on(t.storeId, t.id),
+    unique("pickup_options_location_key").on(t.storeId, t.locationId),
+    foreignKey({
+      name: "pickup_options_location_fk",
+      columns: [t.storeId, t.locationId],
+      foreignColumns: [storeLocations.storeId, storeLocations.id],
+    }).onDelete("cascade"),
+    marketRef("pickup_options_market_fk", t).onDelete("cascade"),
+    index("pickup_options_market_idx").on(t.storeId, t.marketCode, t.currency),
+    check("pickup_options_amount", sql`${t.amountMinor} >= 0`),
+    check("pickup_options_ready", sql`${t.readyInHours} between 0 and ${lit(READY_HOURS_MAX)}`),
+    check("pickup_options_instructions", sql`char_length(${t.instructions}) <= ${lit(INSTRUCTIONS_MAX)} and jsonb_typeof(${t.instructionsT}) = 'object'`),
+  ],
+);
+
+/**
+ * An area the store's own drivers deliver to (D237): by postal-code patterns (`postal`) or within a radius of a place (`radius`, measured
+ * between postal-code centres of `postal_points`), with a price, an optional minimum basket and a free-above value (as shown, in the
+ * market's currency). Several areas may cover a code: the cheapest for the basket is offered.
+ */
+export const localDeliveryAreas = commerce.table(
+  "local_delivery_areas",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: storeId(),
+    locationId: uuid("location_id"),
+    marketCode: char("market_code", { length: 2 }).notNull(),
+    currency: char("currency", { length: 3 }).notNull(),
+    name: text("name").notNull(),
+    names: jsonb("names").notNull().default({}),
+    kind: text("kind").notNull(),
+    patterns: text("patterns").array().notNull().default(sql`'{}'::text[]`),
+    radiusKm: numeric("radius_km", { precision: 5, scale: 1 }),
+    amountMinor: money("amount_minor"),
+    minBasketMinor: bigint("min_basket_minor", { mode: "number" }),
+    freeOverMinor: bigint("free_over_minor", { mode: "number" }),
+    info: text("info").notNull().default(""),
+    infoT: jsonb("info_t").notNull().default({}),
+    active: boolean("active").notNull().default(true),
+    position: integer("position").notNull().default(0),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    unique("local_delivery_areas_store_id_key").on(t.storeId, t.id),
+    foreignKey({
+      name: "local_delivery_areas_location_fk",
+      columns: [t.storeId, t.locationId],
+      foreignColumns: [storeLocations.storeId, storeLocations.id],
+    }).onDelete("cascade"),
+    marketRef("local_delivery_areas_market_fk", t).onDelete("cascade"),
+    index("local_delivery_areas_market_idx").on(t.storeId, t.marketCode, t.currency),
+    index("local_delivery_areas_location_idx").on(t.storeId, t.locationId),
+    check("local_delivery_areas_name", sql`char_length(${t.name}) between 1 and ${lit(NAME_MAX)} and ${t.name} = btrim(${t.name})`),
+    check("local_delivery_areas_texts", sql`jsonb_typeof(${t.names}) = 'object' and jsonb_typeof(${t.infoT}) = 'object' and char_length(${t.info}) <= ${lit(INFO_MAX)}`),
+    check(
+      "local_delivery_areas_kind",
+      sql`(${t.kind} = 'postal' and cardinality(${t.patterns}) between 1 and ${lit(PATTERNS_MAX)} and ${t.radiusKm} is null)
+        or (${t.kind} = 'radius' and ${t.locationId} is not null and cardinality(${t.patterns}) = 0 and ${t.radiusKm} between ${lit(RADIUS_KM_MIN)} and ${lit(RADIUS_KM_MAX)})`,
+    ),
+    check("local_delivery_areas_amounts", sql`${t.amountMinor} >= 0 and (${t.minBasketMinor} is null or ${t.minBasketMinor} > 0) and (${t.freeOverMinor} is null or ${t.freeOverMinor} > 0)`),
+  ],
+);
+
+/**
+ * Postal-code centres (D237, reference data): GeoNames' postal codes (CC BY 4.0, https://download.geonames.org/export/zip/), loaded by a
+ * migration made once by `scripts/postal-points.mjs` for the countries listed there. `accuracy` is GeoNames' (1 estimated, 4 by geonameid,
+ * 6 centroid of addresses or shape). Read by everyone, written only by migrations; no `store_id`.
+ */
+export const postalPoints = commerce.table(
+  "postal_points",
+  {
+    country: char("country", { length: 2 }).notNull(),
+    postalCode: text("postal_code").notNull(),
+    latitude: numeric("latitude", { precision: 9, scale: 6 }).notNull(),
+    longitude: numeric("longitude", { precision: 9, scale: 6 }).notNull(),
+    accuracy: smallint("accuracy"),
+  },
+  (t) => [
+    primaryKey({ columns: [t.country, t.postalCode] }),
+    check("postal_points_position", sql`${t.latitude} between -90 and 90 and ${t.longitude} between -180 and 180`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Catalogue
 // ---------------------------------------------------------------------------
 
@@ -1332,6 +1596,8 @@ export const products = commerce.table(
     productLayoutId: uuid("product_layout_id"),
     /** Unit price (D160): every active goods variant needs its content (`measure_*`); never shown to shoppers. */
     soldByMeasure: boolean("sold_by_measure").notNull().default(false),
+    /** The product's shipping profile (D237): the rates its part of a basket takes; null is General. Moved to General before a profile is deleted. */
+    shippingProfileId: uuid("shipping_profile_id"),
     /**
      * When the product first became active (wave 2, D168): set by a trigger and never cleared. A handle that changes leaves a redirect only for a
      * product that was ever live (`OLD.status <> 'draft'` or this set). No backfill: a product active or archived today counts as ever live.
@@ -1370,6 +1636,12 @@ export const products = commerce.table(
     check("products_download_limit_positive", sql`${t.downloadLimit} > 0`),
     check("products_download_days_positive", sql`${t.downloadDays} > 0`),
     check("products_sold_by_measure_goods", sql`not ${t.soldByMeasure} or ${t.kind} = 'goods'`),
+    foreignKey({
+      name: "products_shipping_profile_fk",
+      columns: [t.storeId, t.shippingProfileId],
+      foreignColumns: [shippingProfiles.storeId, shippingProfiles.id],
+    }),
+    index("products_shipping_profile_idx").on(t.storeId, t.shippingProfileId),
   ],
 );
 
@@ -2390,6 +2662,17 @@ export const carts = commerce.table(
      */
     deliveryQuoteId: uuid("delivery_quote_id"),
     /**
+     * The store's own delivery the shopper chose (D237): a shipping method, a pickup option or a local delivery area; at most one of these and
+     * `delivery_quote_id` (`carts_one_delivery`). Plain foreign keys on the id, cleared when the thing goes. `delivery_postal_code` is the postal
+     * code the shopper typed for pricing (written only by `setDeliveryPostalCode()` after `cleanPostalCode()`); `delivery_note` the note for the
+     * driver of a local delivery (cleaned by `cleanShopperText()`, cleared with the area).
+     */
+    shippingMethodId: uuid("shipping_method_id").references((): AnyPgColumn => shippingMethods.id, { onDelete: "set null" }),
+    pickupOptionId: uuid("pickup_option_id").references((): AnyPgColumn => pickupOptions.id, { onDelete: "set null" }),
+    localAreaId: uuid("local_area_id").references((): AnyPgColumn => localDeliveryAreas.id, { onDelete: "set null" }),
+    deliveryPostalCode: text("delivery_postal_code"),
+    deliveryNote: text("delivery_note"),
+    /**
      * The visitor-day that made the cart (D152, only while the store counts visits), which is how a paid order knows
      * its channel and device. The visit is deleted after 25 months; the cart then keeps nothing.
      */
@@ -2421,6 +2704,18 @@ export const carts = commerce.table(
     check("carts_handoff_to", sql`${t.handoffTo} is null or ${t.handoffTo} in ('cart', 'checkout')`),
     check("carts_gift_fields", giftFieldsCheck(t)),
     check("carts_bonus_request", sql`${t.bonusRequestMinor} >= 0`),
+    check(
+      "carts_one_delivery",
+      sql`num_nonnulls(${t.deliveryQuoteId}, ${t.shippingMethodId}, ${t.pickupOptionId}, ${t.localAreaId}) <= 1`,
+    ),
+    check("carts_delivery_postal_code", sql`${t.deliveryPostalCode} is null or ${t.deliveryPostalCode} ~ '^[A-Z0-9-]{3,12}$'`),
+    check(
+      "carts_delivery_note",
+      sql`${t.deliveryNote} is null or (${t.localAreaId} is not null and char_length(${t.deliveryNote}) between 1 and ${lit(NOTE_MAX)})`,
+    ),
+    index("carts_shipping_method_idx").on(t.shippingMethodId),
+    index("carts_pickup_option_idx").on(t.pickupOptionId),
+    index("carts_local_area_idx").on(t.localAreaId),
     check("carts_vat_number", sql`${t.vatNumber} is null or ${t.vatNumber} ~ '^[A-Z]{2}[0-9A-Z+*.]{2,12}$'`),
     foreignKey({ name: "carts_vat_check_fk", columns: [t.storeId, t.vatCheckId], foreignColumns: [vatChecks.storeId, vatChecks.id] }),
     index("carts_vat_check_idx").on(t.storeId, t.vatCheckId),
@@ -2631,9 +2926,35 @@ export const orders = commerce.table(
      * (`kaizen.order_edit`, `applyOrderEdit()`); the money columns above change after `pending_payment` only there too (`orders_settled_guard()`).
      */
     editedAt: timestamp("edited_at", { withTimezone: true }),
+    /**
+     * How the goods reach the buyer (D237): `ship` (the flat rate, a shipping method or a carrier's service: a parcel), `pickup` (collected at
+     * `pickup_location_id`, a place of the store; no foreign key, the place may go once nothing waits for it) or `local` (the store's own driver).
+     * Frozen with `delivery` and `pickup_location_id` once the order leaves `pending_payment` (`orders_delivery_frozen()`).
+     */
+    deliveryMethod: text("delivery_method").notNull().default("ship"),
+    pickupLocationId: uuid("pickup_location_id"),
+    /** When staff marked a pickup order ready (`markReadyForPickup()`, which emails the buyer once). */
+    readyForPickupAt: timestamp("ready_for_pickup_at", { withTimezone: true }),
+    /** The buyer's note for the driver of a local delivery (personal data: null when the order is anonymised). */
+    deliveryNote: text("delivery_note"),
+    /** When the address Stripe collected turned out to have another postal code than the one the delivery was priced for (flag for staff only). */
+    deliveryMismatchAt: timestamp("delivery_mismatch_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
   (t) => [
+    check("orders_delivery_method", sql`${t.deliveryMethod} in ('ship', 'pickup', 'local')`),
+    check("orders_pickup_location", sql`(${t.deliveryMethod} = 'pickup') = (${t.pickupLocationId} is not null)`),
+    check("orders_ready_for_pickup", sql`${t.readyForPickupAt} is null or ${t.deliveryMethod} = 'pickup'`),
+    check(
+      "orders_delivery_note",
+      sql`${t.deliveryNote} is null or (${t.deliveryMethod} = 'local' and char_length(${t.deliveryNote}) between 1 and ${lit(NOTE_MAX)})`,
+    ),
+    index("orders_delivery_method_idx")
+      .on(t.storeId, t.deliveryMethod, t.status)
+      .where(sql`${t.deliveryMethod} <> 'ship'`),
+    index("orders_pickup_location_idx")
+      .on(t.storeId, t.pickupLocationId)
+      .where(sql`${t.pickupLocationId} is not null`),
     check("orders_archived_not_pending", sql`${t.archivedAt} is null or ${t.status} <> 'pending_payment'`),
     check("orders_source", sql`${t.source} in ('checkout', 'draft')`),
     check(
@@ -2692,7 +3013,7 @@ export const orders = commerce.table(
     index("orders_retention_idx").on(t.storeId, t.placedAt).where(sql`${t.anonymisedAt} is null`),
     check(
       "orders_anonymised",
-      sql`${t.anonymisedAt} is null or (${t.email} = '[removed]' and ${t.billingAddress} = '{}'::jsonb and ${t.shippingAddress} = '{}'::jsonb and ${t.companyName} is null and ${t.organisationNumber} is null and not ${t.isGift} and ${t.giftTo} is null and ${t.giftFrom} is null and ${t.giftMessage} is null)`,
+      sql`${t.anonymisedAt} is null or (${t.email} = '[removed]' and ${t.billingAddress} = '{}'::jsonb and ${t.shippingAddress} = '{}'::jsonb and ${t.companyName} is null and ${t.organisationNumber} is null and not ${t.isGift} and ${t.giftTo} is null and ${t.giftFrom} is null and ${t.giftMessage} is null and ${t.deliveryNote} is null)`,
     ),
     index("orders_email_idx").on(t.storeId, sql`lower(${t.email})`),
     /** The withdrawal function finds an order by its number typed without spaces or case (`matchOrder()`). */
@@ -3308,10 +3629,20 @@ export const shipments = commerce.table(
     undoneAt: timestamp("undone_at", { withTimezone: true }),
     undoneBy: uuid("undone_by").references(() => accounts.id),
     undoReason: text("undo_reason"),
+    /**
+     * What left the store (D237): `parcel` (sent, the default and every row before D237), or a handover: `pickup` (the buyer collected it) or `local`
+     * (the store's own driver took it out). A handover has no carrier, tracking, booking or label and sends no shipped email.
+     */
+    method: text("method").notNull().default("parcel"),
     createdAt: createdAt(),
   },
   (t) => [
     unique("shipments_store_id_key").on(t.storeId, t.id),
+    check("shipments_method", sql`${t.method} in ('parcel', 'pickup', 'local')`),
+    check(
+      "shipments_handover_bare",
+      sql`${t.method} = 'parcel' or (${t.carrier} = '' and ${t.trackingNumber} = '' and ${t.trackingUrl} is null and ${t.carrierId} is null and ${t.consignmentNumber} is null and ${t.labelUrl} is null)`,
+    ),
     orderRef("shipments_order_fk", t),
     index("shipments_order_idx").on(t.storeId, t.orderId),
     index("shipments_created_by_idx").on(t.createdBy),
@@ -4555,12 +4886,19 @@ export const storeLocations = commerce.table(
     /** How to find it, where to park, what to bring: shown with the address. */
     notes: text("notes").notNull().default(""),
     hours: jsonb("hours"),
+    /** Where it is (D237), for local delivery by radius: from its postal code's centre in `postal_points` when saved, or typed by the owner. */
+    latitude: numeric("latitude", { precision: 9, scale: 6 }),
+    longitude: numeric("longitude", { precision: 9, scale: 6 }),
     position: integer("position").notNull().default(0),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
     unique("store_locations_store_id_key").on(t.storeId, t.id),
+    check(
+      "store_locations_position",
+      sql`(${t.latitude} is null) = (${t.longitude} is null) and (${t.latitude} is null or (${t.latitude} between -90 and 90 and ${t.longitude} between -180 and 180))`,
+    ),
     uniqueIndex("store_locations_one_office").on(t.storeId).where(sql`${t.kind} = 'office'`),
     index("store_locations_store_idx").on(t.storeId, t.kind, t.position),
     check("store_locations_kind", sql`${t.kind} in ('office', 'shop', 'pickup')`),

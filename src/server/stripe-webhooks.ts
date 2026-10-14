@@ -6,6 +6,7 @@ import type Stripe from "stripe";
 import { db } from "@/db/client";
 
 import { cancelUnpaidOrder, completeOrderPayment } from "./checkout";
+import { flagDeliveryMismatch } from "./delivery-options";
 import { adoptDeliveryCard, isDeliveryOrder } from "./standing-orders";
 import { markCheckoutRecovered } from "./cart-reminders";
 import { sendReferrerRewardEmail } from "./affiliate-emails";
@@ -96,7 +97,11 @@ export async function applySession(
   // A weekly delivery paid by link (D102): its address and contact are the list's, and it stays when the link lapses.
   const delivery = await isDeliveryOrder(storeId, orderId);
 
-  if (session.status === "complete" && !delivery) await saveCustomer(storeId, orderId, session);
+  if (session.status === "complete" && !delivery) {
+    await saveCustomer(storeId, orderId, session);
+    // The postal code a delivery was priced for is the shopper's typing; the address is Stripe's (D237 2.7): a difference is flagged, never re-charged.
+    await flagDeliveryMismatch(storeId, orderId);
+  }
 
   const failed = eventType === "checkout.session.async_payment_failed";
   const expired = session.status === "expired" || eventType === "checkout.session.expired";
@@ -163,7 +168,9 @@ async function saveCustomer(storeId: string, orderId: string, session: Stripe.Ch
     update commerce.orders set
       email = coalesce(nullif(${details?.email ?? ""}, ''), email),
       billing_address = ${JSON.stringify({ ...address(details?.address, details?.name), phone: details?.phone ?? null })}::jsonb,
-      shipping_address = ${JSON.stringify(address(shipping?.address ?? details?.address, shipping?.name ?? details?.name))}::jsonb
+      -- Collected at the store's place (D237): no address is shipped to, so none is kept as one.
+      shipping_address = case when delivery_method = 'pickup' then '{}'::jsonb
+        else ${JSON.stringify(address(shipping?.address ?? details?.address, shipping?.name ?? details?.name))}::jsonb end
     where store_id = ${storeId}::uuid and id = ${orderId}::uuid
       -- An order whose person was erased (D162) stays without them, even when its payment arrives afterwards: the payment still completes it.
       and anonymised_at is null

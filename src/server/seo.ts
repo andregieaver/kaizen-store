@@ -322,6 +322,33 @@ export async function getShippingFacts(storeId: string, market: Pick<Market, "co
   "use cache";
   cacheLife("hours");
   cacheTag(CATALOG_TAG, catalogTag(storeId));
+  // D237 2.6: one unambiguous price for the General profile at Rest of country, or nothing (never a "from" price claimed as the price): the flat rate
+  // while the market has no active method, or the one active method whose General, Rest-of-country rate is a single flat tier.
+  const methods = await readDb().execute<Row>(sql`
+    select m.free_over_minor,
+      (select count(*)::int from commerce.shipping_method_rates r where r.store_id = m.store_id and r.method_id = m.id) as rates,
+      (select count(*)::int from commerce.shipping_method_rates r where r.store_id = m.store_id and r.method_id = m.id and r.zone_id is null and r.profile_id is null) as general,
+      (select r.amount_minor from commerce.shipping_method_rates r where r.store_id = m.store_id and r.method_id = m.id
+         and r.zone_id is null and r.profile_id is null and r.basis = 'flat') as flat_amount,
+      -- A zone in the market or a profile in the store sends some baskets elsewhere (a zone does not fall back to Rest of country, 4.2 point 2; a
+      -- product in another profile is not priced by the General rate): those pay the flat rate, so the method's price is not the one price.
+      exists (select 1 from commerce.shipping_zones z where z.store_id = m.store_id and z.market_code = m.market_code) as has_zones,
+      exists (select 1 from commerce.shipping_profiles p where p.store_id = m.store_id) as has_profiles
+    from commerce.shipping_methods m
+    where m.store_id = ${storeId}::uuid and m.market_code = ${market.code} and m.active
+  `);
+  if (methods.length > 1) return null;
+  if (methods.length === 1) {
+    const m = methods[0];
+    // Rates for zones or profiles too would make the price depend on the address or the product: no single price then.
+    if (Number(m.rates) !== 1 || Number(m.general) !== 1 || m.flat_amount === null || m.flat_amount === undefined) return null;
+    if (m.has_zones === true || m.has_profiles === true) return null;
+    return {
+      amountMinor: shown(market, Number(m.flat_amount)),
+      freeOverMinor: m.free_over_minor == null ? null : shown(market, Number(m.free_over_minor)),
+      currency: market.currency,
+    };
+  }
   const [row] = await readDb().execute<Row>(sql`
     select amount_minor, free_over_minor, currency from commerce.shipping_rates
     where store_id = ${storeId}::uuid and market_code = ${market.code}

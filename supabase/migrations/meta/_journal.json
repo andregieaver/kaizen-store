@@ -2255,6 +2255,41 @@
       "when": 1792006518131,
       "tag": "20261014193518_platform_theme",
       "breakpoints": true
+    },
+    {
+      "idx": 322,
+      "version": "7",
+      "when": 1792018903774,
+      "tag": "20261014230143_shipping_methods",
+      "breakpoints": true
+    },
+    {
+      "idx": 323,
+      "version": "7",
+      "when": 1792018921166,
+      "tag": "20261014230201_shipping_methods_rules",
+      "breakpoints": true
+    },
+    {
+      "idx": 324,
+      "version": "7",
+      "when": 1792018933432,
+      "tag": "20261014230213_shipping_methods_copy",
+      "breakpoints": true
+    },
+    {
+      "idx": 325,
+      "version": "7",
+      "when": 1792018945574,
+      "tag": "20261014230225_postal_points",
+      "breakpoints": true
+    },
+    {
+      "idx": 326,
+      "version": "7",
+      "when": 1792018957728,
+      "tag": "20261014230237_shipping_plan_features",
+      "breakpoints": true
     }
   ]
 }

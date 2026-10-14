@@ -9,7 +9,7 @@ import { bulkSummary, groupRefusals, notifyText, type BulkResult } from "@/lib/o
 import { pickListHref, selectionBanner, printHref } from "@/lib/order-list-admin";
 import { BULK_MAX, BULK_PRINT_MAX } from "@/lib/order-limits";
 import { COLUMN_LABELS, type OrderColumn } from "@/lib/order-list";
-import { PAY_CELL_LABELS, SHIP_CELL_LABELS, type OrderListItem } from "@/lib/order-list-row";
+import { PAY_CELL_LABELS, shipWords, type DeliveryCell, type OrderListItem } from "@/lib/order-list-row";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { SOURCE_LABELS } from "@/lib/order-list";
 
@@ -267,6 +267,11 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
                   {COLUMN_LABELS.fulfilment}
                 </th>
               )}
+              {col("delivery") && (
+                <th scope="col" className={`${th} hidden md:table-cell`}>
+                  {COLUMN_LABELS.delivery}
+                </th>
+              )}
               {col("items") && (
                 <th scope="col" className={`${th} hidden md:table-cell`}>
                   {COLUMN_LABELS.items}
@@ -345,12 +350,17 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
       {col("payment") && <td className={td}>{PAY_CELL_LABELS[row.pay]}</td>}
       {col("fulfilment") && (
         <td className={td}>
-          {row.ship === "none" ? (row.status === "pending_payment" ? "–" : ORDER_STATUS_LABELS[row.status]) : SHIP_CELL_LABELS[row.ship]}
+          {row.ship === "none" ? (row.status === "pending_payment" ? "–" : ORDER_STATUS_LABELS[row.status]) : shipWords(row)}
           {row.owed > 0 && (
             <span className="block text-xs">
               {row.owed} {row.owed === 1 ? "unit" : "units"} owed
             </span>
           )}
+        </td>
+      )}
+      {col("delivery") && (
+        <td className={`${td} hidden md:table-cell`}>
+          <DeliveryText cell={row.delivery} />
         </td>
       )}
       {col("items") && (
@@ -419,3 +429,20 @@ export function ResultPanel({ result, onClose }: { result: BulkResult; onClose?:
 }
 
 const refusedName = (r: { number: string | null }) => (r.number ? `#${r.number}` : "an order that was not found");
+
+/** The *Delivery* cell (D237): the label kept on the order; a pickup place says *Collect at*, a local delivery where it goes and the start of the note. */
+export function DeliveryText({ cell }: { cell: DeliveryCell | undefined }) {
+  if (!cell || (!cell.label && cell.method === "ship")) return <span className="text-muted">–</span>;
+  if (cell.method === "pickup") return <>Collect at {cell.label ?? "your place"}</>;
+  if (cell.method === "local") {
+    return (
+      <>
+        Local delivery{cell.label ? `: ${cell.label}` : ""}
+        {(cell.postalCode || cell.city) && <span className="block text-xs">{[cell.postalCode, cell.city].filter(Boolean).join(" ")}</span>}
+        {cell.phone && <span className="block text-xs">{cell.phone}</span>}
+        {cell.note && <span className="block text-xs text-muted">“{cell.note}”</span>}
+      </>
+    );
+  }
+  return <>{cell.label}</>;
+}

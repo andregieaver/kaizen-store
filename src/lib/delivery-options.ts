@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { cleanPostalCode as cleanCode } from "./postal-code";
 import type { CarrierId } from "./shipping-carriers";
 
 /**
@@ -29,21 +30,8 @@ export const MAX_OPTIONS = 6;
 export const MAX_WINDOWS = 8;
 export const MAX_PICKUP_POINTS = 5;
 
-/** A postal code as the country writes it, or null when it is not one. */
-export function cleanPostalCode(country: string, typed: string): string | null {
-  const text = typed.replace(/\s+/g, "").toUpperCase();
-  switch (country.toUpperCase()) {
-    case "NO":
-    case "DK":
-      return /^\d{4}$/.test(text) ? text : null;
-    case "SE":
-    case "FI":
-    case "DE":
-      return /^\d{5}$/.test(text) ? text : null;
-    default:
-      return /^[A-Z0-9-]{3,10}$/.test(text) ? text : null;
-  }
-}
+/** A postal code as the country writes it, or null when it is not one (`src/lib/postal-code.ts`, free of zod for the pay routes). */
+export { cleanPostalCode } from "./postal-code";
 
 /** What the store adds to a carrier's price. */
 export type Markup = { percent: number; minor: number };
@@ -80,6 +68,11 @@ export type QuotedPickupPoint = {
 export type DeliveryOption = {
   /** The quote's id; `flat` is the market's flat rate. */
   id: string;
+  /**
+   * What kind of delivery it is (D237): a carrier's service, the flat rate, one of the store's methods, a pickup place or a local area. Optional while the
+   * readers learn it; absent means what `carrier` says (a carrier's service, or `flat`).
+   */
+  kind?: DeliveryKind;
   carrier: CarrierId | "flat";
   label: string;
   /** What it costs this basket, free above the store's threshold already taken off. */
@@ -93,12 +86,26 @@ export type DeliveryOption = {
   /** The one chosen, for a service that needs one. */
   pickupPointId: string | null;
   selected: boolean;
+  /** A pickup place (D237, kind `pickup`): where, its hours, the usual ready time and the instructions in the page's language. */
+  place?: { name: string; street: string; postalCode: string; city: string; country: string; hours: unknown; readyInHours: number; instructions: string };
+  /** A local area's delivery information (kind `local`), in the page's language. */
+  info?: string;
 };
 
 export type DeliveryOptions = {
-  /** The postal code the prices are for, when there are carrier services. */
+  /** The postal code the prices are for (the cart's delivery postal code, D237, or the carriers' answer). */
   postalCode: string | null;
   options: DeliveryOption[];
+  /** The price depends on a postal code that is not given yet, and pickup is not chosen: the pay press waits (D237 2.4 point 4). */
+  needsPostalCode?: boolean;
+  /** The cart's choice no longer prices the basket: the default is charged (D237 2.7). */
+  changed?: boolean;
+  /** Nothing ships this basket to the code (pickup or local delivery may still be offered). */
+  noShipping?: boolean;
+  /** The note for the driver kept with a local delivery choice. */
+  note?: string | null;
+  /** A local area covers the code but the basket is below its minimum: "Local delivery from {minimum}" (as shown). */
+  localBelowMinimum?: { label: string; minimumMinor: number } | null;
 };
 
 /** What an order keeps of the delivery the shopper chose (`orders.delivery`). */
@@ -140,6 +147,160 @@ export function readOrderDelivery(value: unknown): OrderDelivery | null {
         : null,
   };
 }
+
+// ---------------------------------------------------------------------------
+// What an order keeps of every kind of delivery (D237, docs/wave-3-shipping-methods.md 3.1)
+// ---------------------------------------------------------------------------
+
+/** How the goods reach the buyer, as `orders.delivery_method` and the kinds of `orders.delivery` say it. */
+export type DeliveryKind = "carrier" | "method" | "flat" | "pickup" | "local";
+
+/** A carrier's service (D135), tagged; a row written before D237 has no `kind` and is read as this. */
+export type CarrierDelivery = OrderDelivery & { kind: "carrier" };
+
+/** One of the store's own shipping methods, with the zone its price came from (null: Rest of country). */
+export type MethodDelivery = {
+  kind: "method";
+  methodId: string;
+  label: string;
+  zone: { id: string; name: string } | null;
+  postalCode: string | null;
+  estimate: { min: number; max: number } | null;
+};
+
+/** The market's flat rate (written from D237 on, so every order says what it was). */
+export type FlatDelivery = { kind: "flat"; label: string; postalCode: string | null };
+
+/** Collecting at one of the store's places: a snapshot of the place as it was when bought (editing the place later changes nothing here). */
+export type PickupDelivery = {
+  kind: "pickup";
+  label: string;
+  locationId: string;
+  name: string;
+  street: string;
+  postalCode: string;
+  city: string;
+  country: string;
+  /** The place's opening hours (`OpeningHours`, src/lib/opening-hours.ts) as they were, or null. */
+  hours: unknown;
+  /** The pickup instructions in the order's language (else the store's main one), as plain text. */
+  instructions: string;
+  readyInHours: number;
+};
+
+/** The store's own local delivery to an area. */
+export type LocalDelivery = { kind: "local"; label: string; areaId: string; name: string; postalCode: string; info: string };
+
+/** `orders.delivery` of any kind; read only by `readDelivery()`. Every kind keeps a `label`. */
+export type AnyOrderDelivery = CarrierDelivery | MethodDelivery | FlatDelivery | PickupDelivery | LocalDelivery;
+
+const id = (value: unknown) => text(value, 80);
+
+/**
+ * Reads `orders.delivery` of any kind back (D237), dropping anything that is not as written: a row without `kind` (every order before D237) is a
+ * carrier's, as `readOrderDelivery()` reads it. Null for nothing, or for a kind it does not know.
+ */
+export function readDelivery(value: unknown): AnyOrderDelivery | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  const kind = v.kind === undefined ? "carrier" : v.kind;
+  const label = text(v.label);
+  switch (kind) {
+    case "carrier": {
+      const carrier = readOrderDelivery(value);
+      return carrier ? { ...carrier, kind: "carrier" } : null;
+    }
+    case "method": {
+      if (!label || !id(v.methodId)) return null;
+      const zone = v.zone && typeof v.zone === "object" ? (v.zone as Record<string, unknown>) : null;
+      return {
+        kind: "method",
+        methodId: id(v.methodId),
+        label,
+        zone: zone && id(zone.id) ? { id: id(zone.id), name: text(zone.name) } : null,
+        postalCode: text(v.postalCode, 12) || null,
+        estimate: estimateRange(v.estimate),
+      };
+    }
+    case "flat":
+      return label ? { kind: "flat", label, postalCode: text(v.postalCode, 12) || null } : null;
+    case "pickup": {
+      if (!label || !id(v.locationId)) return null;
+      const ready = typeof v.readyInHours === "number" && Number.isFinite(v.readyInHours) ? Math.max(0, Math.round(v.readyInHours)) : 0;
+      return {
+        kind: "pickup",
+        label,
+        locationId: id(v.locationId),
+        name: text(v.name),
+        street: text(v.street),
+        postalCode: text(v.postalCode, 12),
+        city: text(v.city),
+        country: text(v.country, 2),
+        hours: v.hours && typeof v.hours === "object" ? v.hours : null,
+        instructions: text(v.instructions, 1000),
+        readyInHours: ready,
+      };
+    }
+    case "local":
+      return label && id(v.areaId)
+        ? { kind: "local", label, areaId: id(v.areaId), name: text(v.name), postalCode: text(v.postalCode, 12), info: text(v.info, 500) }
+        : null;
+    default:
+      return null;
+  }
+}
+
+/** `{ min, max }` days as a method's snapshot keeps them, or null. */
+function estimateRange(value: unknown): { min: number; max: number } | null {
+  if (!value || typeof value !== "object") return null;
+  const { min, max } = value as { min?: unknown; max?: unknown };
+  if (typeof min !== "number" || typeof max !== "number" || !Number.isFinite(min) || !Number.isFinite(max)) return null;
+  return { min: Math.max(0, Math.round(min)), max: Math.max(0, Math.round(max)) };
+}
+
+/**
+ * Whether the postal code of the address Stripe collected differs from the one the delivery was priced for in a way that matters (2.7): another zone
+ * (a method), another local area, or another code for a carrier's service. Never for pickup or when the address has no code of the country.
+ *
+ * A delivery priced WITHOUT a postal code (the pay press's gate skipped, or Stripe's hosted page, 2.4) is priced at Rest of country (a method) or at the
+ * flat rate: it is flagged with `priced: null` when the address falls in a zone (a method: any zone other than the one it was priced for; the flat rate:
+ * a zone some active method prices, `pricedZoneOf`, so a zone the flat rate covers anyway is not flagged). The flat rate with a code is flagged only
+ * the same way: when the address's priced zone differs from the code's. `zoneOf`/`pricedZoneOf`/`areaCovers` say which zone or area a code falls in
+ * (`zoneFor()`/`areaFor()` over the store's rows). A flag is an alert for staff, never a change of the charge.
+ */
+export function postalMismatch(
+  delivery: AnyOrderDelivery | null,
+  country: string,
+  addressCode: string | null | undefined,
+  {
+    zoneOf,
+    pricedZoneOf,
+    areaCovers,
+  }: { zoneOf?: (code: string) => string | null; pricedZoneOf?: (code: string) => string | null; areaCovers?: (code: string) => boolean } = {},
+): { priced: string | null; address: string } | null {
+  if (!delivery || delivery.kind === "pickup" || !addressCode) return null;
+  const address = cleanCode(country, addressCode);
+  if (!address) return null;
+  const priced = delivery.postalCode ? cleanCode(country, delivery.postalCode) : null;
+  if (delivery.postalCode && !priced) return null;
+  if (priced === address) return null;
+  if (delivery.kind === "flat") {
+    const there = pricedZoneOf ? pricedZoneOf(address) : null;
+    if (!there) return null;
+    return there === (priced && pricedZoneOf ? pricedZoneOf(priced) : null) ? null : { priced, address };
+  }
+  if (delivery.kind === "method") {
+    const zone = zoneOf ? zoneOf(address) : null;
+    return zone === (delivery.zone?.id ?? null) ? null : { priced, address };
+  }
+  // A carrier's service or a local area is never priced without a code (the choice needs one); keep the old rule for an order that somehow was.
+  if (!priced) return null;
+  if (delivery.kind === "carrier") return { priced, address };
+  return areaCovers && areaCovers(address) ? null : { priced, address };
+}
+
+/** A pickup place's address in a line, for the order, the email and the slip: "Name, Street, 0150 City". */
+export const pickupPlaceLine = (p: Pick<PickupDelivery, "name" | "street" | "postalCode" | "city">) => pickupPointLine(p);
 
 /** A pickup point in a line, for the order, emails and the label: "Name, Street, 0150 City". */
 export const pickupPointLine = (p: { name: string; street: string; postalCode: string; city: string }) =>

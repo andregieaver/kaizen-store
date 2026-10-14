@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { closeDb, db } from "@/db/client";
 import { addDays, zonedDate, zonedTime } from "@/lib/booking-slots";
@@ -26,6 +26,8 @@ type Row = Record<string, unknown>;
  */
 
 vi.mock("server-only", () => ({}));
+// The shipping settings' saves (D237) refresh the catalogue's tag, which needs a request outside a test.
+vi.mock("./refresh", () => ({ refreshTag: () => {}, refreshTagNow: () => {} }));
 const jar = vi.hoisted(() => new Map<string, string>());
 vi.mock("next/headers", () => ({
   cookies: async () => ({
@@ -3035,3 +3037,220 @@ describe("checkout with the Countries and languages features switched off (D178)
   });
 });
 
+
+/**
+ * The store's own shipping (wave 3, D237, `docs/wave-3-shipping-methods.md` 6.1 to 6.3): a method's weight tiers, a value tier, a zone, two profiles summed,
+ * a weightless variant at the default weight, pickup (free and priced) and local delivery, each from the cart to Stripe's form to a paid order, in kroner and
+ * in euro. The cart page, the order and Stripe's charge agree; a pickup order asks Stripe for no address and a local one for a phone number; the invoice is
+ * the order. The setup is taken away after each scenario so the scenarios above keep the flat rate.
+ */
+describe("checkout with the store's own shipping methods, pickup and local delivery (D237)", () => {
+  type OwnScenario = {
+    name: string;
+    euro?: boolean;
+    /** Makes the store's setup and returns the cart's choice, if any. */
+    setup: () => Promise<{ choose?: string; note?: string } | void>;
+    fill: () => Promise<void>;
+    postalCode?: string;
+    /** What the basket's shipping comes to, in kroner (each part converted on its own in euro when given as parts). */
+    expectedNok: number[];
+    method: "ship" | "pickup" | "local";
+    kind: "method" | "flat" | "pickup" | "local";
+  };
+  let placeId = "";
+  const flatTier = (amountMinor: number) => [{ basis: "flat" as const, minValue: 0, maxValue: null, amountMinor }];
+  const methodRow = async (name: string, groups: { zoneId: string | null; profileId: string | null; tiers: { basis: "flat" | "weight" | "value"; minValue: number; maxValue: number | null; amountMinor: number }[] }[], freeOverMinor: number | null = null) => {
+    const { saveShippingMethod } = await import("./shipping-methods");
+    const saved = await saveShippingMethod(member.account.id, storeId, { id: null, marketCode: "NO", name, names: {}, estimate: null, freeOverMinor, active: true, groups });
+    if (!saved.ok) throw new Error(JSON.stringify(saved));
+    return saved.id;
+  };
+  const scenarios: OwnScenario[] = [];
+  for (const euro of [false, true]) {
+    const tag = euro ? ", shown in euro" : "";
+    scenarios.push(
+      {
+        name: `a weight tier${tag}`,
+        euro,
+        setup: async () => void (await methodRow("Standard", [{ zoneId: null, profileId: null, tiers: [{ basis: "weight", minValue: 0, maxValue: 1000, amountMinor: 4900 }, { basis: "weight", minValue: 1000, maxValue: null, amountMinor: 7900 }] }])),
+        fill: () => add("DEMO-MUG-WHITE", 3),
+        expectedNok: [7900],
+        method: "ship",
+        kind: "method",
+      },
+      {
+        name: `a value tier${tag}`,
+        euro,
+        setup: async () => void (await methodRow("Standard", [{ zoneId: null, profileId: null, tiers: [{ basis: "value", minValue: 0, maxValue: 40000, amountMinor: 6900 }, { basis: "value", minValue: 40000, maxValue: null, amountMinor: 2900 }] }])),
+        fill: () => add("DEMO-MUG-WHITE", 2),
+        expectedNok: [2900],
+        method: "ship",
+        kind: "method",
+      },
+      {
+        name: `a zone${tag}`,
+        euro,
+        setup: async () => {
+          const { saveShippingZone } = await import("./shipping-methods");
+          const zone = await saveShippingZone(member.account.id, storeId, { id: null, marketCode: "NO", name: "Nord", patterns: ["9*"] });
+          if (!zone.ok) throw new Error("zone");
+          await methodRow("Standard", [{ zoneId: null, profileId: null, tiers: flatTier(4900) }, { zoneId: zone.id, profileId: null, tiers: flatTier(12900) }]);
+        },
+        fill: () => add("DEMO-MUG-WHITE", 1),
+        postalCode: "9008",
+        expectedNok: [12900],
+        method: "ship",
+        kind: "method",
+      },
+      {
+        name: `two profiles summed${tag}`,
+        euro,
+        setup: async () => {
+          const { saveShippingProfile } = await import("./shipping-methods");
+          const made = await saveShippingProfile(member.account.id, storeId, { id: null, name: "Bulky", productIds: [await productOf("DEMO-MUG-WHITE")] });
+          if (!made.ok) throw new Error("profile");
+          await methodRow("Standard", [{ zoneId: null, profileId: null, tiers: flatTier(3900) }, { zoneId: null, profileId: made.id, tiers: flatTier(8900) }]);
+        },
+        fill: async () => {
+          await add("DEMO-MUG-WHITE", 1);
+          await add("DEMO-TOTE", 1);
+        },
+        expectedNok: [3900, 8900],
+        method: "ship",
+        kind: "method",
+      },
+      {
+        name: `a weightless variant at the default weight${tag}`,
+        euro,
+        setup: async () => {
+          await db().execute(sql`update commerce.product_variants set weight_grams = null where store_id = ${storeId}::uuid and sku = 'DEMO-TOTE'`);
+          await methodRow("Standard", [{ zoneId: null, profileId: null, tiers: [{ basis: "weight", minValue: 0, maxValue: 1000, amountMinor: 4900 }, { basis: "weight", minValue: 1000, maxValue: null, amountMinor: 7900 }] }]);
+        },
+        fill: () => add("DEMO-TOTE", 2),
+        expectedNok: [7900],
+        method: "ship",
+        kind: "method",
+      },
+      {
+        name: `free pickup${tag}`,
+        euro,
+        setup: async () => ({ choose: `pickup:${await pickupOption(0)}` }),
+        fill: () => add("DEMO-MUG-WHITE", 2),
+        expectedNok: [0],
+        method: "pickup",
+        kind: "pickup",
+      },
+      {
+        name: `priced pickup${tag}`,
+        euro,
+        setup: async () => ({ choose: `pickup:${await pickupOption(4900)}` }),
+        fill: () => add("DEMO-MUG-WHITE", 2),
+        expectedNok: [4900],
+        method: "pickup",
+        kind: "pickup",
+      },
+      {
+        name: `local delivery${tag}`,
+        euro,
+        setup: async () => ({ choose: `local:${await localArea()}`, note: "Ring på" }),
+        fill: () => add("DEMO-MUG-WHITE", 2),
+        postalCode: "0150",
+        expectedNok: [6900],
+        method: "local",
+        kind: "local",
+      },
+      {
+        name: `local delivery free above its limit${tag}`,
+        euro,
+        setup: async () => ({ choose: `local:${await localArea()}` }),
+        fill: () => add("DEMO-MUG-WHITE", 5),
+        postalCode: "0150",
+        expectedNok: [0],
+        method: "local",
+        kind: "local",
+      },
+    );
+  }
+
+  async function productOf(sku: string): Promise<string> {
+    const [row] = await db().execute<Row>(sql`select product_id from commerce.product_variants where store_id = ${storeId}::uuid and sku = ${sku}`);
+    return String(row.product_id);
+  }
+  async function place(): Promise<string> {
+    if (placeId) return placeId;
+    const [row] = await db().execute<Row>(sql`
+      insert into commerce.store_locations (store_id, kind, name, street, postal_code, city, country)
+      values (${storeId}::uuid, 'shop', 'Butikken', 'Storgata 1', '0155', 'Oslo', 'NO') returning id
+    `);
+    placeId = String(row.id);
+    return placeId;
+  }
+  async function pickupOption(amountMinor: number): Promise<string> {
+    const { savePickupOption } = await import("./pickup");
+    const saved = await savePickupOption(member.account.id, storeId, { locationId: await place(), active: true, amountMinor, readyInHours: 2, instructions: "Spør i kassen.", instructionsT: {} });
+    if (!saved.ok) throw new Error(JSON.stringify(saved));
+    return saved.id;
+  }
+  async function localArea(): Promise<string> {
+    const { saveLocalArea } = await import("./local-delivery");
+    const saved = await saveLocalArea(member.account.id, storeId, {
+      id: null, marketCode: "NO", locationId: null, name: "Oslo", names: {}, kind: "postal", patterns: ["0*"], radiusKm: null,
+      amountMinor: 6900, minBasketMinor: 30000, freeOverMinor: 100000, info: "Kveldslevering.", infoT: {}, active: true,
+    });
+    if (!saved.ok) throw new Error(JSON.stringify(saved));
+    return saved.id;
+  }
+
+  afterEach(async () => {
+    await db().execute(sql`delete from commerce.shipping_methods where store_id = ${storeId}::uuid`);
+    await db().execute(sql`delete from commerce.shipping_zones where store_id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.products set shipping_profile_id = null where store_id = ${storeId}::uuid`);
+    await db().execute(sql`delete from commerce.shipping_profiles where store_id = ${storeId}::uuid`);
+    await db().execute(sql`delete from commerce.pickup_options where store_id = ${storeId}::uuid`);
+    await db().execute(sql`delete from commerce.local_delivery_areas where store_id = ${storeId}::uuid`);
+    await db().execute(sql`update commerce.product_variants set weight_grams = 180 where store_id = ${storeId}::uuid and sku = 'DEMO-TOTE'`);
+  });
+
+  it.each(scenarios)("$name: the cart, the order and Stripe's charge agree, and the order keeps the delivery", async (scenario) => {
+    jar.clear();
+    view = scenario.euro ? noInEuro : no;
+    await db().execute(sql`delete from commerce.campaigns where store_id = ${storeId}::uuid`);
+    await db().execute(sql`
+      insert into commerce.order_settings (store_id, gift_messages) values (${storeId}::uuid, false)
+      on conflict (store_id) do update set gift_messages = false
+    `);
+    const choice = (await scenario.setup()) ?? {};
+    await scenario.fill();
+    const { chooseDelivery, setDeliveryPostalCode } = await import("./delivery-options");
+    if (scenario.postalCode) expect(await setDeliveryPostalCode(shop(), cartId(), scenario.postalCode)).toMatchObject({ ok: true });
+    if (choice.choose) expect(await chooseDelivery(shop(), cartId(), choice.choose, undefined, { note: choice.note })).toEqual({ ok: true });
+
+    const cart = await getCart(shop());
+    const summary = await cartSummary(shop(), cart);
+    const expected = scenario.expectedNok.reduce((sum, nok) => sum + (scenario.euro ? Math.round(nok / 11.5) : nok), 0);
+    expect(summary.shipping).toBe(expected);
+    expect(summary.deliveryState?.delivery).toMatchObject({ kind: scenario.kind });
+
+    const started = await startCheckout({ ...shop(), storeSlug: slug }, cartId(), origin, "Frakt", {}, { customerId: null });
+    expect(started).toEqual({ ok: true, url: `${origin}/s/${slug}/${view.slug}/checkout` });
+    const open = await getOpenCheckout(storeId, cartId());
+    expect(open).toMatchObject({ changed: false, expired: false, ships: scenario.method !== "pickup" });
+    const order = (await getOrder(storeId, open!.orderId))!;
+    expect({ total: order.totalMinor, vat: order.taxMinor, shipping: order.shippingMinor }).toEqual({ total: summary.total, vat: summary.vat, shipping: summary.shipping });
+    expect(order.deliveryMethod).toBe(scenario.method);
+    expect(order.deliveryKept).toMatchObject({ kind: scenario.kind });
+    if (scenario.kind === "local") expect(order.deliveryNote).toBe(choice.note ?? null);
+    const { params } = fake.created.at(-1)!;
+    expect(chargedNow(params)).toBe(summary.dueNowMinor);
+    // Collected at the store: no address asked. The store's own driver: a phone number asked.
+    if (scenario.method === "pickup") expect(params.shipping_address_collection).toBeUndefined();
+    else expect(params.shipping_address_collection).toBeDefined();
+    expect(Boolean(params.phone_number_collection)).toBe(scenario.method === "local");
+    if (scenario.euro) expect(JSON.stringify(params)).toContain('"currency":"eur"');
+
+    fake.sessions.set(open!.sessionId, { status: "complete", payment_status: "paid", mode: params.mode, payment_intent: `pi_${open!.sessionId}` });
+    const paid = await getShopperOrder(storeId, open!.orderId, open!.sessionId);
+    expect(paid?.status).toBe("paid");
+    await expectDocuments(open!.orderId, { euro: scenario.euro });
+  });
+});

@@ -14,6 +14,7 @@ import {
   PRODUCT_FIELDS,
   productUnits,
   returnInstructionsUnit,
+  shippingUnit,
   termUnit,
   type Accepted,
   type ProductField,
@@ -22,6 +23,7 @@ import {
   type Unit,
 } from "@/lib/store-translate";
 
+import { INFO_MAX, INSTRUCTIONS_MAX, NAME_MAX } from "@/lib/shipping-limits";
 import { parseTermSeo, termSeoFor, termSeoInput, type TermSeo } from "@/lib/term-seo";
 
 import { audit, type Membership } from "./auth";
@@ -139,6 +141,64 @@ async function termWork(storeId: string, from: string, to: string, mode: Transla
   });
 }
 
+const textIn = (texts: unknown, locale: string): string | null => {
+  const value = texts && typeof texts === "object" ? (texts as Record<string, unknown>)[locale] : undefined;
+  return typeof value === "string" ? value : null;
+};
+
+/**
+ * The store's shipping texts (D237): methods' names, pickup places' instructions, local areas' names and delivery information, from the main language (the
+ * row's own column) into `to` (its texts by locale). Listed where the language has none (or all of them again).
+ */
+async function shippingWork(storeId: string, to: string, mode: TranslateMode): Promise<Unit[]> {
+  const [methods, pickups, areas] = await Promise.all([
+    db().execute<Row>(sql`select id, name, names, market_code from commerce.shipping_methods where store_id = ${storeId}::uuid order by market_code, position, id`),
+    db().execute<Row>(sql`
+      select po.id, po.instructions, po.instructions_t, l.name from commerce.pickup_options po
+      join commerce.store_locations l on l.store_id = po.store_id and l.id = po.location_id
+      where po.store_id = ${storeId}::uuid order by po.position, po.id
+    `),
+    db().execute<Row>(sql`select id, name, names, info, info_t from commerce.local_delivery_areas where store_id = ${storeId}::uuid order by market_code, position, id`),
+  ]);
+  const units = [
+    ...methods.map((m) =>
+      shippingUnit("method", String(m.id), `${String(m.name)} (${String(m.market_code).trim()})`, [{ key: "name", label: "Name", max: NAME_MAX, source: String(m.name), target: textIn(m.names, to) }], mode),
+    ),
+    ...pickups.map((p) =>
+      shippingUnit("pickup", String(p.id), String(p.name), [{ key: "instructions", label: "Pickup instructions", max: INSTRUCTIONS_MAX, source: String(p.instructions ?? ""), target: textIn(p.instructions_t, to) }], mode),
+    ),
+    ...areas.map((a) =>
+      shippingUnit(
+        "area",
+        String(a.id),
+        String(a.name),
+        [
+          { key: "name", label: "Name", max: NAME_MAX, source: String(a.name), target: textIn(a.names, to) },
+          { key: "info", label: "Delivery information", max: INFO_MAX, source: String(a.info ?? ""), target: textIn(a.info_t, to) },
+        ],
+        mode,
+      ),
+    ),
+  ];
+  return units.filter((u): u is Unit => u !== null);
+}
+
+/** Writes accepted shipping texts in `to` beside the others (each table's texts by locale); the main language's own words are never changed. */
+async function writeShippingUnit(storeId: string, unitId: string, to: string, ok: Record<string, string | string[]>): Promise<boolean> {
+  const [kind, id] = unitId.split(":");
+  const text = (key: string) => (typeof ok[key] === "string" ? String(ok[key]).trim() : "");
+  const set = (column: string, key: string) => (text(key) ? sql`${sql.raw(column)} = ${sql.raw(column)} || jsonb_build_object(${to}::text, ${text(key)}::text)` : null);
+  const parts =
+    kind === "shipmethod" ? [set("names", "name")] : kind === "pickupopt" ? [set("instructions_t", "instructions")] : kind === "localarea" ? [set("names", "name"), set("info_t", "info")] : [];
+  const changes = parts.filter((p): p is NonNullable<typeof p> => p !== null);
+  if (changes.length === 0) return false;
+  const table = kind === "shipmethod" ? sql`commerce.shipping_methods` : kind === "pickupopt" ? sql`commerce.pickup_options` : sql`commerce.local_delivery_areas`;
+  const rows = await db().execute<Row>(sql`
+    update ${table} set ${sql.join(changes, sql`, `)}, updated_at = now() where store_id = ${storeId}::uuid and id = ${id}::uuid returning id
+  `);
+  return rows.length > 0;
+}
+
 /** What there is to translate into `to`, from the store's main language, in the scopes asked for. */
 export async function translationWorklist(
   { store }: Pick<Membership, "store">,
@@ -155,6 +215,7 @@ export async function translationWorklist(
     scopes.includes("fields") ? fieldWork(store.id, from, to, mode) : [],
     scopes.includes("returns") ? returnsWork(store.id, to, mode) : [],
     scopes.includes("terms") ? termWork(store.id, from, to, mode) : [],
+    scopes.includes("shipping") ? shippingWork(store.id, to, mode) : [],
   ]);
   const units = parts.flat();
   return { units: limit === null ? units : units.slice(0, limit), total: units.length };
@@ -165,8 +226,8 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
   const others = store.localization.locales.slice(1);
   const rows = await Promise.all(
     others.map(async (locale) => {
-      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields", "returns", "terms"], "missing", null);
-      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0, returns: 0, terms: 0 };
+      const { units } = await translationWorklist({ store }, locale, ["products", "menus", "pages", "fields", "returns", "terms", "shipping"], "missing", null);
+      const count: Record<TranslateScope, number> = { products: 0, menus: 0, pages: 0, fields: 0, returns: 0, terms: 0, shipping: 0 };
       for (const unit of units) count[unit.scope] += 1;
       return [locale, count] as const;
     }),
@@ -177,7 +238,7 @@ export async function translationCoverage({ store }: Pick<Membership, "store">):
 export type ApplyResult = { ok: true; saved: number; skipped: string[] } | { ok: false; problem: string };
 
 const APPLY_LIMIT = 300;
-const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields", returns: "returns", term: "terms" };
+const SCOPE_OF: Record<string, TranslateScope> = { product: "products", menu: "menus", page: "pages", fielddef: "fields", fieldval: "fields", returns: "returns", term: "terms", shipmethod: "shipping", pickupopt: "shipping", localarea: "shipping" };
 
 /**
  * Writes what staff accepted, in the language `to`. Each accepted text is
@@ -238,6 +299,9 @@ export async function applyTranslations(member: Membership, to: string, accepted
       const result = await saveInstructionTranslations(store.id, { ...kept, [to]: text }, others, member.account.id);
       if (result.ok) saved += 1;
       else skipped.push(`${unit.title}: ${result.problems[0]}`);
+    } else if (unit.scope === "shipping") {
+      if (await writeShippingUnit(store.id, unitId, to, ok)) saved += 1;
+      else skipped.push(`${unit.title}: nothing usable to save.`);
     } else if (unit.scope === "fields") {
       const result = await writeFieldUnit(member, unitId, to, ok);
       if (result === true) saved += 1;

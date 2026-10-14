@@ -15,12 +15,35 @@ import {
   estimateDays,
   shopperPrice,
   type CheckoutSettings,
+  postalMismatch,
+  readDelivery,
+  type AnyOrderDelivery,
+  type CarrierDelivery,
   type DeliveryOption,
   type DeliveryOptions,
-  type OrderDelivery,
   type QuotedPickupPoint,
 } from "@/lib/delivery-options";
+import type { ShippingRate } from "@/lib/checkout";
+import { cleanShopperText } from "@/lib/gift";
+import { t } from "@/lib/i18n";
+import { areaCovers, type AreaTerms } from "@/lib/local-delivery";
 import { shown, type Market } from "@/lib/markets";
+import { zoneFor } from "@/lib/postal-patterns";
+import { DEFAULT_WEIGHT_GRAMS, NOTE_MAX } from "@/lib/shipping-limits";
+import {
+  basketValue,
+  chosenFrom,
+  deliveryOffer,
+  partsOf,
+  standardShippingMinor,
+  type DeliveryChoice,
+  type DeliveryOffer,
+  type MethodTerms,
+  type OfferedDelivery,
+  type PickupTerms,
+  type RateBasis,
+  type ShippingLine,
+} from "@/lib/shipping-methods";
 import { carrierInfo, type CarrierContext, type CarrierId, type PickupPoint, type ShippingAddress, type ShippingOption } from "@/lib/shipping-carriers";
 import { BRING_PRODUCTS } from "@/lib/bring";
 import { POSTNORD_SERVICES } from "@/lib/postnord";
@@ -122,10 +145,6 @@ async function activeCarriers(runner: Runner, storeId: string, country: string):
   return active;
 }
 
-/** Whether a carrier's services are offered at checkout in this country: the page shows the choice only then. */
-export async function deliveryChoiceOn(storeId: string, country: string): Promise<boolean> {
-  return (await activeCarriers(db(), storeId, country)).length > 0;
-}
 
 // ---------------------------------------------------------------------------
 // Quotes
@@ -299,6 +318,11 @@ export async function quoteDelivery(
   ];
 
   await db().transaction(async (tx) => {
+    // The code the prices are for is the cart's delivery postal code too (D237): the store's own zones and areas read it.
+    await tx.execute(sql`
+      update commerce.carts set delivery_postal_code = ${postalCode}, updated_at = now()
+      where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open'
+    `);
     // Answers that ran out a day ago go, whichever cart they were for.
     await tx.execute(sql`delete from commerce.delivery_quotes where store_id = ${storeId}::uuid and expires_at < now() - interval '1 day'`);
     await tx.execute(sql`
@@ -326,24 +350,201 @@ export async function quoteDelivery(
   return { ok: true };
 }
 
-/** What the cart's chosen delivery costs, as the basket's shipping rate (in the currency shown), and what to keep of it on the order. */
-export type ChosenDelivery = {
-  quoteId: string;
-  rate: { amountMinor: number; freeOverMinor: number | null };
-  delivery: OrderDelivery;
+
+// ---------------------------------------------------------------------------
+// The cart's delivery (D237, docs/wave-3-shipping-methods.md 4.1): every kind, one reader
+// ---------------------------------------------------------------------------
+
+/** What the market offers to choose from, read once per resolution: its flat rate, methods with their rates, zones, pickup places and local areas. */
+export type MarketShipping = {
+  flat: ShippingRate | null;
+  methods: (MethodTerms & { name: string; zoneNames?: never })[];
+  zones: { id: string; name: string; patterns: string[]; position: number }[];
+  defaultWeightGrams: number;
+  pickups: (PickupTerms & { place: PickupPlace; instructions: string; instructionsT: Record<string, string> })[];
+  areas: (AreaTerms & { name: string; names: Record<string, string>; info: string; infoT: Record<string, string> })[];
+  /** Whether any carrier's checkout services are on in the country (D135). */
+  carriers: boolean;
 };
 
+/** A pickup place as an order keeps it (`PickupDelivery`'s snapshot without the order's words). */
+export type PickupPlace = { name: string; street: string; postalCode: string; city: string; country: string; hours: unknown };
+
+const localized = (texts: unknown, market: Pick<Market, "locale" | "lang">, fallback: string): string => {
+  const t = texts && typeof texts === "object" ? (texts as Record<string, unknown>) : {};
+  for (const key of [market.locale, market.lang]) {
+    const value = t[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return fallback;
+};
+
+const nullableNumber = (value: unknown) => (value === null || value === undefined ? null : Number(value));
+
 /**
- * The delivery the shopper chose for this cart, or null for the flat rate: a quote of the cart that has not run out, for
- * this country, with its pickup point chosen when it needs one. Read by `cartSummary()` and, inside its transaction, by
- * `placeOrder()`, so both charge the same.
+ * The market's shipping setup as the checkout reads it (only what is switched on): the flat rate (`shipping_rates`), active methods with their rates
+ * in their order, zones, the store's default weight, active pickup options with their place, active local areas with their place's position, and
+ * whether a carrier's checkout services are on. Amounts are native (the market's own currency); `deliveryOffer()` shows them.
  */
-export async function chosenDelivery(
-  runner: Runner,
-  storeId: string,
-  cartId: string,
-  market: Pick<Market, "code" | "conversion">,
-): Promise<ChosenDelivery | null> {
+export async function marketShipping(runner: Runner, storeId: string, market: Pick<Market, "code" | "locale" | "lang">): Promise<MarketShipping> {
+  const [flatRow] = await runner.execute<Row>(sql`
+    select amount_minor, free_over_minor from commerce.shipping_rates where store_id = ${storeId}::uuid and market_code = ${market.code}
+  `);
+  const methodRows = await runner.execute<Row>(sql`
+    select m.id, m.name, m.names, m.estimate_min_days, m.estimate_max_days, m.free_over_minor, m.position,
+      coalesce((select jsonb_agg(jsonb_build_object('zoneId', r.zone_id, 'profileId', r.profile_id, 'basis', r.basis, 'minValue', r.min_value,
+        'maxValue', r.max_value, 'amountMinor', r.amount_minor) order by r.min_value)
+        from commerce.shipping_method_rates r where r.store_id = m.store_id and r.method_id = m.id), '[]'::jsonb) as rates
+    from commerce.shipping_methods m
+    where m.store_id = ${storeId}::uuid and m.market_code = ${market.code} and m.active
+    order by m.position, m.id
+  `);
+  const zoneRows = await runner.execute<Row>(sql`
+    select id, name, patterns, position from commerce.shipping_zones
+    where store_id = ${storeId}::uuid and market_code = ${market.code} order by position, id
+  `);
+  const [settings] = await runner.execute<Row>(sql`select default_weight_grams from commerce.shipping_settings where store_id = ${storeId}::uuid`);
+  const pickupRows = await runner.execute<Row>(sql`
+    select po.id, po.location_id, po.amount_minor, po.ready_in_hours, po.instructions, po.instructions_t, po.position,
+      l.name, l.street, l.postal_code, l.city, l.country, l.hours
+    from commerce.pickup_options po
+    join commerce.store_locations l on l.store_id = po.store_id and l.id = po.location_id
+    where po.store_id = ${storeId}::uuid and po.market_code = ${market.code} and po.active and l.kind in ('shop', 'pickup') and l.country = ${market.code}
+    order by po.position, po.id
+  `);
+  const areaRows = await runner.execute<Row>(sql`
+    select a.id, a.kind, a.patterns, a.radius_km, a.amount_minor, a.min_basket_minor, a.free_over_minor, a.position, a.name, a.names, a.info, a.info_t,
+      l.latitude, l.longitude
+    from commerce.local_delivery_areas a
+    left join commerce.store_locations l on l.store_id = a.store_id and l.id = a.location_id
+    where a.store_id = ${storeId}::uuid and a.market_code = ${market.code} and a.active
+    order by a.position, a.id
+  `);
+  const carriers = (await activeCarriers(runner, storeId, market.code)).length > 0;
+  return {
+    flat: flatRow ? { amountMinor: Number(flatRow.amount_minor), freeOverMinor: nullableNumber(flatRow.free_over_minor) } : null,
+    methods: methodRows.map((m) => ({
+      id: String(m.id),
+      name: String(m.name),
+      label: localized(m.names, market, String(m.name)),
+      position: Number(m.position),
+      active: true,
+      freeOverMinor: nullableNumber(m.free_over_minor),
+      estimate:
+        m.estimate_min_days === null || m.estimate_min_days === undefined
+          ? null
+          : { min: Number(m.estimate_min_days), max: Number(m.estimate_max_days) },
+      rates: ((m.rates ?? []) as Record<string, unknown>[]).map((r) => ({
+        zoneId: r.zoneId ? String(r.zoneId) : null,
+        profileId: r.profileId ? String(r.profileId) : null,
+        basis: r.basis as RateBasis,
+        minValue: Number(r.minValue),
+        maxValue: nullableNumber(r.maxValue),
+        amountMinor: Number(r.amountMinor),
+      })),
+    })),
+    zones: zoneRows.map((z) => ({ id: String(z.id), name: String(z.name), patterns: (z.patterns ?? []) as string[], position: Number(z.position) })),
+    defaultWeightGrams: settings ? Number(settings.default_weight_grams) : DEFAULT_WEIGHT_GRAMS,
+    pickups: pickupRows.map((p) => ({
+      id: String(p.id),
+      locationId: String(p.location_id),
+      amountMinor: Number(p.amount_minor),
+      readyInHours: Number(p.ready_in_hours),
+      position: Number(p.position),
+      active: true,
+      instructions: String(p.instructions ?? ""),
+      instructionsT: (p.instructions_t ?? {}) as Record<string, string>,
+      place: {
+        name: String(p.name ?? ""),
+        street: String(p.street ?? ""),
+        postalCode: String(p.postal_code ?? ""),
+        city: String(p.city ?? ""),
+        country: String(p.country ?? "").trim(),
+        hours: p.hours ?? null,
+      },
+    })),
+    areas: areaRows.map((a) => ({
+      id: String(a.id),
+      kind: a.kind === "radius" ? ("radius" as const) : ("postal" as const),
+      patterns: (a.patterns ?? []) as string[],
+      radiusKm: nullableNumber(a.radius_km),
+      origin: a.latitude === null || a.latitude === undefined ? null : { lat: Number(a.latitude), lon: Number(a.longitude) },
+      amountMinor: Number(a.amount_minor),
+      minBasketMinor: nullableNumber(a.min_basket_minor),
+      freeOverMinor: nullableNumber(a.free_over_minor),
+      position: Number(a.position),
+      active: true,
+      name: String(a.name),
+      names: (a.names ?? {}) as Record<string, string>,
+      info: String(a.info ?? ""),
+      infoT: (a.info_t ?? {}) as Record<string, string>,
+    })),
+    carriers,
+  };
+}
+
+/** Whether the market has anything of the store's own to choose besides the flat rate, or carriers (the checkout shows the choice then). */
+export const hasChoice = (s: MarketShipping) => s.carriers || s.methods.length > 0 || s.zones.length > 0 || s.pickups.length > 0 || s.areas.length > 0;
+
+/** Whether the price may depend on the postal code: zones, a local area or a carrier (the pay press waits for a code then, unless pickup is chosen). */
+export const priceNeedsPostalCode = (s: MarketShipping) => s.zones.length > 0 || s.areas.length > 0;
+
+/** The cart's side of the resolution: its lines as shipping reads them, its choice, postal code and note. */
+type CartDeliveryFacts = {
+  lines: ShippingLine[];
+  subscription: boolean;
+  postalCode: string | null;
+  note: string | null;
+  quoteId: string | null;
+  methodId: string | null;
+  pickupId: string | null;
+  areaId: string | null;
+  /** What every line comes to as shown, before discounts: the fallback basket value when the caller gives none. */
+  valueMinor: number;
+};
+
+async function cartDeliveryFacts(runner: Runner, storeId: string, cartId: string, market: Pick<Market, "code" | "conversion">): Promise<CartDeliveryFacts | null> {
+  const [cart] = await runner.execute<Row>(sql`
+    select delivery_postal_code, delivery_note, delivery_quote_id, shipping_method_id, pickup_option_id, local_area_id
+    from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open' and market_code = ${market.code}
+  `);
+  if (!cart) return null;
+  const rows = await runner.execute<Row>(sql`
+    select cl.quantity, cl.selling_plan_id, cl.starts_at, v.delivery, v.weight_grams, p.shipping_profile_id, p.kind, cp.amount_minor
+    from commerce.cart_lines cl
+    join commerce.product_variants v on v.store_id = cl.store_id and v.id = cl.variant_id
+    join commerce.products p on p.store_id = v.store_id and p.id = v.product_id
+    left join commerce.current_prices cp on cp.variant_id = v.id and cp.market_code = ${market.code}
+    where cl.store_id = ${storeId}::uuid and cl.cart_id = ${cartId}::uuid
+  `);
+  const lines: ShippingLine[] = rows.map((r) => {
+    const unit = r.amount_minor === null || r.amount_minor === undefined ? 0 : shown(market, Number(r.amount_minor));
+    const ranged = Boolean(r.starts_at) && (r.kind === "stay" || r.kind === "rental");
+    return {
+      profileId: r.shipping_profile_id ? String(r.shipping_profile_id) : null,
+      quantity: Number(r.quantity),
+      weightGrams: nullableNumber(r.weight_grams),
+      totalMinor: ranged ? unit : unit * Number(r.quantity),
+      physical: r.delivery === "physical" && !r.starts_at,
+      gift: false,
+      recurring: r.selling_plan_id !== null && r.selling_plan_id !== undefined,
+    };
+  });
+  return {
+    lines,
+    subscription: lines.some((l) => l.recurring),
+    postalCode: cart.delivery_postal_code ? String(cart.delivery_postal_code) : null,
+    note: cart.delivery_note ? String(cart.delivery_note) : null,
+    quoteId: cart.delivery_quote_id ? String(cart.delivery_quote_id) : null,
+    methodId: cart.shipping_method_id ? String(cart.shipping_method_id) : null,
+    pickupId: cart.pickup_option_id ? String(cart.pickup_option_id) : null,
+    areaId: cart.local_area_id ? String(cart.local_area_id) : null,
+    valueMinor: basketValue(lines),
+  };
+}
+
+/** A carrier quote of the cart that is still good (D135), or null. */
+async function chosenQuote(runner: Runner, storeId: string, cartId: string, market: Pick<Market, "code" | "conversion">) {
   const [row] = await runner.execute<Row>(sql`
     select q.id, q.carrier, q.service_id, q.label, q.amount_minor, q.free_over_minor, q.postal_code, q.needs_pickup_point,
       q.pickup_points, q.pickup_point_id, q.window_start, q.window_end
@@ -356,102 +557,309 @@ export async function chosenDelivery(
   const points = (row.pickup_points ?? []) as QuotedPickupPoint[];
   const point = row.needs_pickup_point ? (points.find((p) => p.id === row.pickup_point_id) ?? null) : null;
   if (row.needs_pickup_point && !point) return null;
+  const delivery: CarrierDelivery = {
+    kind: "carrier",
+    carrier: row.carrier as CarrierId,
+    serviceId: String(row.service_id),
+    label: String(row.label),
+    postalCode: String(row.postal_code),
+    pickupPoint: point ? { id: point.id, name: point.name, street: point.street, postalCode: point.postalCode, city: point.city } : null,
+    window: row.window_start && row.window_end ? { start: new Date(String(row.window_start)).toISOString(), end: new Date(String(row.window_end)).toISOString() } : null,
+  };
   return {
     quoteId: String(row.id),
     rate: {
       amountMinor: shown(market, Number(row.amount_minor)),
       freeOverMinor: row.free_over_minor === null ? null : shown(market, Number(row.free_over_minor)),
     },
-    delivery: {
-      carrier: row.carrier as CarrierId,
-      serviceId: String(row.service_id),
-      label: String(row.label),
-      postalCode: String(row.postal_code),
-      pickupPoint: point ? { id: point.id, name: point.name, street: point.street, postalCode: point.postalCode, city: point.city } : null,
-      window: row.window_start && row.window_end ? { start: new Date(String(row.window_start)).toISOString(), end: new Date(String(row.window_end)).toISOString() } : null,
-    },
+    delivery,
   };
 }
 
+/** What the cart's delivery comes to, as the basket's shipping rate (in the currency shown), and what the order keeps of it. */
+export type ChosenDelivery = {
+  kind: "carrier" | "method" | "pickup" | "local";
+  /** The carrier quote's id (D135); null for the store's own kinds. */
+  quoteId: string | null;
+  /** The option's id as the page names it: a quote's id, `method:{id}`, `pickup:{id}`, `local:{id}`. */
+  optionId: string;
+  rate: ShippingRate;
+  delivery: AnyOrderDelivery;
+};
+
+export type DeliveryResolution = {
+  /** Everything the basket may choose (`deliveryOffer()`), for the page. */
+  offer: DeliveryOffer;
+  shipping: MarketShipping;
+  /** The delivery postal code the prices are for, and its zone (null: Rest of country). */
+  postalCode: string | null;
+  zone: { id: string; name: string } | null;
+  /** What the basket is charged (handed to `basketShipping()`); null when nothing ships it (`no_shipping`) or nothing is physical. */
+  rate: ShippingRate | null;
+  /** The cart's delivery when it is not the flat rate (a carrier's service, a method, pickup or local), else null. */
+  chosen: ChosenDelivery | null;
+  /** What the order keeps (`orders.delivery`): null only when nothing ships. */
+  delivery: AnyOrderDelivery | null;
+  /** `orders.delivery_method`. */
+  method: "ship" | "pickup" | "local";
+  pickupLocationId: string | null;
+  /** The note for the driver, with local delivery only. */
+  note: string | null;
+  /** The cart's choice no longer prices the basket (2.7): the default is charged instead. */
+  changed: boolean;
+  /** The market prices by postal code and none is given, and pickup is not chosen: the pay press waits (2.4 point 4). */
+  needsPostalCode: boolean;
+  /** The cheapest standard delivery offered (4.3): methods and the flat rate, never pickup or local delivery. */
+  standardShippingMinor: number | null;
+};
+
+const NOTHING: DeliveryOffer = { status: "none", ship: [], pickups: [], local: null, localBelowMinimum: null, default: null };
+
 /**
- * The options the page shows: the flat rate and the cart's quotes that are still good, each priced for this basket by
- * `priceFor` (the rate's price with free shipping taken off). The chosen one is marked; none chosen is the flat rate.
+ * The ONE reader of a cart's delivery (D135, D237 4.1): `cartSummary()` and, inside its transaction with its runner, `placeOrder()` both call it, so they
+ * charge the same. It reads the market's setup and the cart's lines and choice, prices the store's own methods for the basket on every read (never a
+ * stored price), and returns the choice while it still holds (a carrier quote that has not run out, a method that prices the basket in the code's zone,
+ * an active pickup option, the local area offered for the code), else the default (the cheapest method, else the flat rate) with `changed`.
+ * `basketValueMinor` is the value free shipping is judged on, as the caller works it out for `basketShipping()` (the lines' totals before discounts,
+ * gifts out); left out, it is read from the cart. A basket with a subscription gets the flat rate only (D25), and one with nothing physical nothing.
  */
-export async function deliveryOptionsFor(
-  shop: { storeId: string; market: Pick<Market, "code" | "conversion"> },
+export async function resolveDelivery(
+  runner: Runner,
+  storeId: string,
   cartId: string,
-  flat: { label: string; rate: { amountMinor: number; freeOverMinor: number | null } | null },
-  priceFor: (rate: { amountMinor: number; freeOverMinor: number | null }) => number,
-): Promise<DeliveryOptions> {
-  const { storeId, market } = shop;
-  const chosen = await chosenDelivery(db(), storeId, cartId, market);
-  const rows = await db().execute<Row>(sql`
-    select id, carrier, label, amount_minor, free_over_minor, postal_code, estimate, needs_pickup_point, pickup_points, pickup_point_id,
-      window_start, window_end
-    from commerce.delivery_quotes
-    where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid and expires_at > now() and country = ${market.code}
-    order by (window_start is not null), window_start, amount_minor, label
-  `);
-  const options: DeliveryOption[] = [];
-  if (flat.rate) {
-    options.push({
-      id: "flat",
-      carrier: "flat",
-      label: flat.label,
-      priceMinor: priceFor(flat.rate),
-      freeOverMinor: flat.rate.freeOverMinor,
-      estimate: null,
-      needsPickupPoint: false,
-      window: null,
-      pickupPoints: [],
-      pickupPointId: null,
-      selected: chosen === null,
-    });
+  market: Pick<Market, "code" | "conversion" | "locale" | "lang">,
+  { basketValueMinor }: { basketValueMinor?: number } = {},
+): Promise<DeliveryResolution | null> {
+  const cart = await cartDeliveryFacts(runner, storeId, cartId, market);
+  if (!cart) return null;
+  const shipping = await marketShipping(runner, storeId, market);
+  const physical = cart.lines.some((l) => l.physical);
+  const value = basketValueMinor ?? cart.valueMinor;
+  const quote = physical && !cart.subscription && cart.quoteId ? await chosenQuote(runner, storeId, cartId, market) : null;
+  const postalCode = cart.postalCode ?? quote?.delivery.postalCode ?? null;
+  const zone = zoneFor(shipping.zones, postalCode);
+  const [point] =
+    postalCode && shipping.areas.some((a) => a.kind === "radius")
+      ? await runner.execute<Row>(sql`select latitude, longitude from commerce.postal_points where country = ${market.code} and postal_code = ${postalCode}`)
+      : [];
+  const offer = physical
+    ? deliveryOffer({
+        physical,
+        subscription: cart.subscription,
+        view: market,
+        flat: shipping.flat,
+        methods: shipping.methods,
+        parts: partsOf(cart.lines, shipping.defaultWeightGrams),
+        basketValueMinor: value,
+        zoneId: zone?.id ?? null,
+        pickups: cart.subscription ? [] : shipping.pickups,
+        areas: cart.subscription ? [] : shipping.areas,
+        postalCode,
+        point: point ? { lat: Number(point.latitude), lon: Number(point.longitude) } : null,
+      })
+    : NOTHING;
+  const base = {
+    offer,
+    shipping,
+    postalCode,
+    zone: zone ? { id: zone.id, name: zone.name } : null,
+    standardShippingMinor: physical ? standardShippingMinor(offer) : null,
+  };
+  if (!physical) {
+    return { ...base, rate: null, chosen: null, delivery: null, method: "ship", pickupLocationId: null, note: null, changed: false, needsPostalCode: false };
   }
-  for (const row of rows) {
-    const rate = {
-      amountMinor: shown(market, Number(row.amount_minor)),
-      freeOverMinor: row.free_over_minor === null ? null : shown(market, Number(row.free_over_minor)),
-    };
-    options.push({
-      id: String(row.id),
-      carrier: row.carrier as CarrierId,
-      label: String(row.label),
-      priceMinor: priceFor(rate),
-      freeOverMinor: rate.freeOverMinor,
-      estimate: estimateDays(row.estimate),
-      window: row.window_start && row.window_end ? { start: new Date(String(row.window_start)).toISOString(), end: new Date(String(row.window_end)).toISOString() } : null,
-      needsPickupPoint: Boolean(row.needs_pickup_point),
-      pickupPoints: (row.pickup_points ?? []) as QuotedPickupPoint[],
-      pickupPointId: row.pickup_point_id ? String(row.pickup_point_id) : null,
-      selected: chosen?.quoteId === String(row.id),
-    });
+
+  // A carrier's service (D135) stands on its own quote; the store's own kinds are looked up in the offer.
+  let changed = false;
+  let picked: OfferedDelivery | null = null;
+  if (quote) {
+    const chosen: ChosenDelivery = { kind: "carrier", quoteId: quote.quoteId, optionId: quote.quoteId, rate: quote.rate, delivery: quote.delivery };
+    return { ...base, rate: quote.rate, chosen, delivery: quote.delivery, method: "ship", pickupLocationId: null, note: null, changed: false, needsPostalCode: false };
   }
-  const postal = rows[0] ? String(rows[0].postal_code) : (chosen?.delivery.postalCode ?? null);
-  return { postalCode: postal, options };
+  if (cart.quoteId) changed = true;
+  const choice: DeliveryChoice = cart.methodId
+    ? { kind: "method", id: cart.methodId }
+    : cart.pickupId
+      ? { kind: "pickup", id: cart.pickupId }
+      : cart.areaId
+        ? { kind: "local", id: cart.areaId }
+        : null;
+  if (cart.subscription) {
+    picked = offer.default;
+    changed = changed || choice !== null;
+  } else {
+    const found = chosenFrom(offer, choice);
+    picked = found.delivery;
+    changed = changed || found.changed;
+  }
+  const pickupChosen = picked?.kind === "pickup";
+  const needsPostalCode = priceNeedsPostalCode(shipping) && !postalCode && !pickupChosen && !cart.subscription;
+  if (!picked) {
+    return { ...base, rate: null, chosen: null, delivery: null, method: "ship", pickupLocationId: null, note: null, changed, needsPostalCode };
+  }
+  const snapshot = deliverySnapshot(picked, shipping, market, postalCode, zone);
+  const chosen: ChosenDelivery | null =
+    picked.kind === "flat" ? null : { kind: picked.kind, quoteId: null, optionId: `${picked.kind}:${picked.id}`, rate: picked.rate, delivery: snapshot };
+  return {
+    ...base,
+    rate: picked.rate,
+    chosen,
+    delivery: snapshot,
+    method: picked.kind === "pickup" ? "pickup" : picked.kind === "local" ? "local" : "ship",
+    pickupLocationId: picked.kind === "pickup" ? picked.locationId : null,
+    note: picked.kind === "local" ? cart.note : null,
+    changed,
+    needsPostalCode,
+  };
 }
 
-export type ChooseResult = { ok: true } | { ok: false; problem: "gone" | "pickup_point" };
+/** What the order keeps of an offered delivery (`orders.delivery`, read by `readDelivery()`), in the market's language. */
+function deliverySnapshot(
+  picked: OfferedDelivery,
+  shipping: MarketShipping,
+  market: Pick<Market, "lang" | "locale">,
+  postalCode: string | null,
+  zone: { id: string; name: string } | null,
+): AnyOrderDelivery {
+  switch (picked.kind) {
+    case "flat":
+      return { kind: "flat", label: t(market.lang).shipping, postalCode };
+    case "method":
+      return { kind: "method", methodId: picked.id, label: picked.label, zone: zone ? { id: zone.id, name: zone.name } : null, postalCode, estimate: picked.estimate };
+    case "pickup": {
+      const option = shipping.pickups.find((p) => p.id === picked.id)!;
+      return {
+        kind: "pickup",
+        label: option.place.name,
+        locationId: option.locationId,
+        ...option.place,
+        instructions: localized(option.instructionsT, market, option.instructions),
+        readyInHours: option.readyInHours,
+      };
+    }
+    case "local": {
+      const area = shipping.areas.find((a) => a.id === picked.id)!;
+      const name = localized(area.names, market, area.name);
+      return { kind: "local", label: name, areaId: area.id, name, postalCode: postalCode ?? "", info: localized(area.infoT, market, area.info) };
+    }
+  }
+}
 
 /**
- * The shopper's choice: a service from the last answer (with the pickup point it needs), or the flat rate. The order is
- * placed again afterwards (the caller), at the price this sets.
+ * The cart's delivery when it is not the market's flat rate (D135, D237): a carrier's service, one of the store's methods, a pickup place or a local area;
+ * null for the flat rate or nothing to ship. The short form of `resolveDelivery()`.
+ */
+export async function chosenDelivery(
+  runner: Runner,
+  storeId: string,
+  cartId: string,
+  market: Pick<Market, "code" | "conversion"> & Partial<Pick<Market, "locale" | "lang">>,
+  options: { basketValueMinor?: number } = {},
+): Promise<ChosenDelivery | null> {
+  const resolved = await resolveDelivery(runner, storeId, cartId, { locale: "en", lang: "en", ...market }, options);
+  return resolved?.chosen ?? null;
+}
+
+/** Whether the checkout shows a delivery choice in this country: a carrier's services, or the store's own methods, zones, pickup places or areas. */
+export async function deliveryChoiceOn(storeId: string, country: string): Promise<boolean> {
+  return hasChoice(await marketShipping(db(), storeId, { code: country, locale: "en", lang: "en" }));
+}
+
+/**
+ * The postal code the shopper typed for delivery prices (D237 2.4): cleaned by the country's rule and kept on the cart, so zones and local areas price
+ * the basket; null for a code the country does not write. A choice of local delivery stays only while its area still covers the new code
+ * (`resolveDelivery()` reports `changed` otherwise).
+ */
+export async function setDeliveryPostalCode(
+  shop: { storeId: string; market: Pick<Market, "code"> },
+  cartId: string,
+  typed: string,
+): Promise<{ ok: true; postalCode: string } | { ok: false; problem: "postal_code" | "gone" }> {
+  const postalCode = cleanPostalCode(shop.market.code, typed.slice(0, 20));
+  if (!postalCode) return { ok: false, problem: "postal_code" };
+  const done = await db().execute<Row>(sql`
+    update commerce.carts set delivery_postal_code = ${postalCode}, updated_at = now()
+    where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open' and market_code = ${shop.market.code}
+    returning id
+  `);
+  return done.length > 0 ? { ok: true, postalCode } : { ok: false, problem: "gone" };
+}
+
+/** The note for the driver (local delivery only): cleaned like a gift message (`cleanShopperText()`), at most `NOTE_MAX` characters and 8 lines. */
+export async function setDeliveryNote(
+  shop: { storeId: string },
+  cartId: string,
+  typed: unknown,
+): Promise<{ ok: true } | { ok: false; problem: "too_long" | "not_local" }> {
+  const cleaned = cleanShopperText(typed, { maxChars: NOTE_MAX, maxLines: 8 });
+  if (!cleaned.ok) return { ok: false, problem: "too_long" };
+  const done = await db().execute<Row>(sql`
+    update commerce.carts set delivery_note = ${cleaned.value}, updated_at = now()
+    where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open' and (local_area_id is not null or ${cleaned.value}::text is null)
+    returning id
+  `);
+  return done.length > 0 ? { ok: true } : { ok: false, problem: "not_local" };
+}
+
+export type ChooseResult = { ok: true } | { ok: false; problem: "gone" | "pickup_point" | "postal_code" | "note" };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * The shopper's choice (D135, D237): `flat` (or the default), a carrier's service from the last answer (its id, with the pickup point it needs),
+ * `method:{id}`, `pickup:{id}` or `local:{id}` (with the note for the driver). The cart keeps one choice (`carts_one_delivery`); a store's own option
+ * must be offered to the basket now (`resolveDelivery()`'s offer). The order is placed again afterwards (the caller), at the price this sets.
  */
 export async function chooseDelivery(
-  shop: { storeId: string; market: Pick<Market, "code"> },
+  shop: { storeId: string; market: Pick<Market, "code" | "conversion"> & Partial<Pick<Market, "locale" | "lang">> },
   cartId: string,
   optionId: string,
   pickupPointId?: string,
+  { note }: { note?: unknown } = {},
 ): Promise<ChooseResult> {
   const { storeId, market } = shop;
+  const clear = sql`delivery_quote_id = null, shipping_method_id = null, pickup_option_id = null, local_area_id = null, delivery_note = null`;
   if (optionId === "flat") {
     await db().execute(sql`
-      update commerce.carts set delivery_quote_id = null, updated_at = now()
+      update commerce.carts set ${clear}, updated_at = now()
       where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open'
     `);
     return { ok: true };
   }
-  if (!/^[0-9a-f-]{36}$/i.test(optionId)) return { ok: false, problem: "gone" };
+  const own = /^(method|pickup|local):(.+)$/.exec(optionId);
+  if (own) {
+    const [, kind, id] = own;
+    if (!UUID.test(id)) return { ok: false, problem: "gone" };
+    let cleanNote: string | null = null;
+    if (kind === "local") {
+      const cleaned = cleanShopperText(note, { maxChars: NOTE_MAX, maxLines: 8 });
+      if (!cleaned.ok) return { ok: false, problem: "note" };
+      cleanNote = cleaned.value;
+    }
+    return db().transaction(async (tx): Promise<ChooseResult> => {
+      const [cart] = await tx.execute<Row>(sql`
+        select id from commerce.carts where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open' and market_code = ${market.code} for update
+      `);
+      if (!cart) return { ok: false, problem: "gone" };
+      const resolved = await resolveDelivery(tx, storeId, cartId, { locale: "en", lang: "en", ...market });
+      if (!resolved) return { ok: false, problem: "gone" };
+      const pool = kind === "method" ? resolved.offer.ship : kind === "pickup" ? resolved.offer.pickups : resolved.offer.local ? [resolved.offer.local] : [];
+      if (!pool.some((d) => d.kind === kind && d.id === id)) {
+        return { ok: false, problem: kind === "local" && !resolved.postalCode ? "postal_code" : "gone" };
+      }
+      await tx.execute(sql`
+        update commerce.carts set delivery_quote_id = null,
+          shipping_method_id = ${kind === "method" ? id : null}::uuid,
+          pickup_option_id = ${kind === "pickup" ? id : null}::uuid,
+          local_area_id = ${kind === "local" ? id : null}::uuid,
+          delivery_note = ${cleanNote},
+          updated_at = now()
+        where store_id = ${storeId}::uuid and id = ${cartId}::uuid
+      `);
+      return { ok: true };
+    });
+  }
+  if (!UUID.test(optionId)) return { ok: false, problem: "gone" };
   return db().transaction(async (tx): Promise<ChooseResult> => {
     const [quote] = await tx.execute<Row>(sql`
       select id, needs_pickup_point, pickup_points from commerce.delivery_quotes
@@ -467,9 +875,225 @@ export async function chooseDelivery(
     }
     await tx.execute(sql`update commerce.delivery_quotes set pickup_point_id = ${point} where store_id = ${storeId}::uuid and id = ${optionId}::uuid`);
     const done = await tx.execute<Row>(sql`
-      update commerce.carts set delivery_quote_id = ${optionId}::uuid, updated_at = now()
+      update commerce.carts set delivery_quote_id = ${optionId}::uuid, shipping_method_id = null, pickup_option_id = null, local_area_id = null,
+        delivery_note = null, updated_at = now()
       where store_id = ${storeId}::uuid and id = ${cartId}::uuid and status = 'open' returning id
     `);
     return done.length > 0 ? { ok: true } : { ok: false, problem: "gone" };
   });
+}
+
+export type ReadyProblem = "postal_code" | "changed" | "no_shipping";
+
+/**
+ * Whether the pay press may go ahead (D237 2.4 point 4, 2.7), asked by the action the pay press calls before Stripe's `confirm`: refused with
+ * `postal_code` while the price depends on a postal code that is not given (and pickup is not chosen), `no_shipping` when nothing ships the basket and no
+ * pickup or local delivery is chosen, and `changed` ONCE when the cart's choice no longer prices the basket: the void choice is taken off the cart, so
+ * the order is placed again at the default and the next press goes ahead.
+ */
+export async function deliveryReady(
+  shop: { storeId: string; market: Pick<Market, "code" | "conversion"> & Partial<Pick<Market, "locale" | "lang">> },
+  cartId: string,
+): Promise<{ ok: true } | { ok: false; problem: ReadyProblem }> {
+  const resolved = await resolveDelivery(db(), shop.storeId, cartId, { locale: "en", lang: "en", ...shop.market });
+  if (!resolved || resolved.offer.status === "none") return { ok: true };
+  if (resolved.changed) {
+    await db().execute(sql`
+      update commerce.carts set delivery_quote_id = null, shipping_method_id = null, pickup_option_id = null, local_area_id = null, delivery_note = null, updated_at = now()
+      where store_id = ${shop.storeId}::uuid and id = ${cartId}::uuid and status = 'open'
+    `);
+    return { ok: false, problem: "changed" };
+  }
+  if (resolved.needsPostalCode) return { ok: false, problem: "postal_code" };
+  if (!resolved.rate) return { ok: false, problem: "no_shipping" };
+  return { ok: true };
+}
+
+/**
+ * The options the checkout page shows (D135, D237 2.4): the ways the basket ships (the store's methods that price it, cheapest first, else the flat rate
+ * as *Shipping*), the carrier's services asked for so far, the market's pickup places and the local area offered for the code, each priced for this basket
+ * by `priceFor` (the rate's price with free shipping taken off, `cartSummary().shippingAt`). The one the cart resolves to is marked.
+ */
+export async function deliveryOptionsFor(
+  shop: { storeId: string; market: Pick<Market, "code" | "conversion"> & Partial<Pick<Market, "locale" | "lang">> },
+  cartId: string,
+  flat: { label: string; rate: { amountMinor: number; freeOverMinor: number | null } | null },
+  priceFor: (rate: { amountMinor: number; freeOverMinor: number | null }) => number,
+): Promise<DeliveryOptions> {
+  const { storeId } = shop;
+  const market = { locale: "en", lang: "en", ...shop.market };
+  const resolved = await resolveDelivery(db(), storeId, cartId, market);
+  const selectedId = resolved?.chosen?.optionId ?? "flat";
+  const options: DeliveryOption[] = [];
+  const plain = (): Pick<DeliveryOption, "needsPickupPoint" | "window" | "pickupPoints" | "pickupPointId"> => ({ needsPickupPoint: false, window: null, pickupPoints: [], pickupPointId: null });
+  for (const d of resolved?.offer.ship ?? []) {
+    if (d.kind === "flat") {
+      // The flat rate as the caller shows it (`cartSummary().checkout.shipping`); a caller with none offers none.
+      const rate = flat.rate;
+      if (!rate) continue;
+      options.push({ id: "flat", kind: "flat", carrier: "flat", label: flat.label, priceMinor: priceFor(rate), freeOverMinor: rate.freeOverMinor, estimate: null, ...plain(), selected: selectedId === "flat" });
+    } else if (d.kind === "method") {
+      const id = `method:${d.id}`;
+      options.push({ id, kind: "method", carrier: "flat", label: d.label, priceMinor: priceFor(d.rate), freeOverMinor: d.rate.freeOverMinor, estimate: d.estimate, ...plain(), selected: selectedId === id });
+    }
+  }
+  // Without a basket to price (nothing physical), the flat rate as the page knew it.
+  if (!resolved && flat.rate) {
+    options.push({ id: "flat", kind: "flat", carrier: "flat", label: flat.label, priceMinor: priceFor(flat.rate), freeOverMinor: flat.rate.freeOverMinor, estimate: null, ...plain(), selected: true });
+  }
+  const rows = await db().execute<Row>(sql`
+    select id, carrier, label, amount_minor, free_over_minor, postal_code, estimate, needs_pickup_point, pickup_points, pickup_point_id,
+      window_start, window_end
+    from commerce.delivery_quotes
+    where store_id = ${storeId}::uuid and cart_id = ${cartId}::uuid and expires_at > now() and country = ${market.code}
+    order by (window_start is not null), window_start, amount_minor, label
+  `);
+  for (const row of rows) {
+    const rate = {
+      amountMinor: shown(market, Number(row.amount_minor)),
+      freeOverMinor: row.free_over_minor === null ? null : shown(market, Number(row.free_over_minor)),
+    };
+    options.push({
+      id: String(row.id),
+      kind: "carrier",
+      carrier: row.carrier as CarrierId,
+      label: String(row.label),
+      priceMinor: priceFor(rate),
+      freeOverMinor: rate.freeOverMinor,
+      estimate: estimateDays(row.estimate),
+      window: row.window_start && row.window_end ? { start: new Date(String(row.window_start)).toISOString(), end: new Date(String(row.window_end)).toISOString() } : null,
+      needsPickupPoint: Boolean(row.needs_pickup_point),
+      pickupPoints: (row.pickup_points ?? []) as QuotedPickupPoint[],
+      pickupPointId: row.pickup_point_id ? String(row.pickup_point_id) : null,
+      selected: resolved?.chosen?.quoteId === String(row.id),
+    });
+  }
+  const shipping = resolved?.shipping;
+  for (const d of resolved?.offer.pickups ?? []) {
+    if (d.kind !== "pickup") continue;
+    const option = shipping!.pickups.find((p) => p.id === d.id)!;
+    const id = `pickup:${d.id}`;
+    options.push({
+      id,
+      kind: "pickup",
+      carrier: "flat",
+      label: option.place.name,
+      priceMinor: d.priceMinor,
+      freeOverMinor: null,
+      estimate: null,
+      ...plain(),
+      selected: selectedId === id,
+      place: { ...option.place, readyInHours: option.readyInHours, instructions: localized(option.instructionsT, market, option.instructions) },
+    });
+  }
+  const local = resolved?.offer.local;
+  if (local && local.kind === "local") {
+    const area = shipping!.areas.find((a) => a.id === local.id)!;
+    const id = `local:${local.id}`;
+    options.push({
+      id,
+      kind: "local",
+      carrier: "flat",
+      label: localized(area.names, market, area.name),
+      priceMinor: priceFor(local.rate),
+      freeOverMinor: local.rate.freeOverMinor,
+      estimate: null,
+      ...plain(),
+      selected: selectedId === id,
+      info: localized(area.infoT, market, area.info),
+    });
+  }
+  const below = resolved?.offer.localBelowMinimum ?? null;
+  const postal = resolved?.postalCode ?? (rows[0] ? String(rows[0].postal_code) : null);
+  return {
+    postalCode: postal,
+    options,
+    needsPostalCode: resolved?.needsPostalCode ?? false,
+    changed: resolved?.changed ?? false,
+    noShipping: Boolean(resolved && resolved.offer.status === "no_shipping"),
+    note: resolved?.note ?? null,
+    localBelowMinimum: below
+      ? { label: localized((below.area as MarketShipping["areas"][number]).names, market, (below.area as MarketShipping["areas"][number]).name), minimumMinor: below.minimumMinor ?? 0 }
+      : null,
+  };
+}
+
+/**
+ * After Stripe collected the address (D237 2.7): when the order's delivery was priced for another postal code than the address's in a way that matters
+ * (another zone for a method, outside the local area, another code for a carrier's service; `postalMismatch()`), the order is flagged once
+ * (`orders.delivery_mismatch_at`) with the event `order.delivery_mismatch` holding the two postal codes only. The payment is never changed or refused.
+ * Never for a pickup order, the flat rate or a copied order.
+ */
+export async function flagDeliveryMismatch(storeId: string, orderId: string): Promise<{ priced: string | null; address: string } | null> {
+  const [order] = await db().execute<Row>(sql`
+    select o.delivery, o.delivery_method, o.market_code, o.shipping_address ->> 'postalCode' as address_code, o.delivery_mismatch_at,
+      o.copied_from is not null as copied
+    from commerce.orders o where o.store_id = ${storeId}::uuid and o.id = ${orderId}::uuid
+  `);
+  if (!order || order.copied || order.delivery_mismatch_at || order.delivery_method === "pickup") return null;
+  const delivery = readDelivery(order.delivery);
+  if (!delivery) return null;
+  const country = String(order.market_code).trim();
+  const zoneRows =
+    delivery.kind === "method" || delivery.kind === "flat"
+      ? await db().execute<Row>(sql`
+          select z.id, z.patterns, z.position,
+            exists (
+              select 1 from commerce.shipping_method_rates r
+              join commerce.shipping_methods m on m.store_id = r.store_id and m.id = r.method_id and m.active
+              where r.store_id = z.store_id and r.zone_id = z.id
+            ) as priced
+          from commerce.shipping_zones z where z.store_id = ${storeId}::uuid and z.market_code = ${country}
+        `)
+      : [];
+  const zones = zoneRows.map((z) => ({ id: String(z.id), patterns: (z.patterns ?? []) as string[], position: Number(z.position) }));
+  const pricedZones = new Set(zoneRows.filter((z) => z.priced === true).map((z) => String(z.id)));
+  let area: AreaTerms | null = null;
+  if (delivery.kind === "local") {
+    const [row] = await db().execute<Row>(sql`
+      select a.id, a.kind, a.patterns, a.radius_km, a.amount_minor, a.min_basket_minor, a.free_over_minor, a.position, l.latitude, l.longitude
+      from commerce.local_delivery_areas a left join commerce.store_locations l on l.store_id = a.store_id and l.id = a.location_id
+      where a.store_id = ${storeId}::uuid and a.id = ${delivery.areaId}::uuid
+    `);
+    area = row
+      ? {
+          id: String(row.id),
+          kind: row.kind === "radius" ? "radius" : "postal",
+          patterns: (row.patterns ?? []) as string[],
+          radiusKm: nullableNumber(row.radius_km),
+          origin: row.latitude === null || row.latitude === undefined ? null : { lat: Number(row.latitude), lon: Number(row.longitude) },
+          amountMinor: Number(row.amount_minor),
+          minBasketMinor: nullableNumber(row.min_basket_minor),
+          freeOverMinor: nullableNumber(row.free_over_minor),
+          position: Number(row.position),
+          active: true,
+        }
+      : null;
+  }
+  const addressCode = order.address_code ? String(order.address_code) : null;
+  const cleanAddress = addressCode ? cleanPostalCode(country, addressCode) : null;
+  const [point] =
+    area?.kind === "radius" && cleanAddress
+      ? await db().execute<Row>(sql`select latitude, longitude from commerce.postal_points where country = ${country} and postal_code = ${cleanAddress}`)
+      : [];
+  const found = postalMismatch(delivery, country, addressCode, {
+    zoneOf: (code) => zoneFor(zones, code)?.id ?? null,
+    pricedZoneOf: (code) => {
+      const zone = zoneFor(zones, code)?.id ?? null;
+      return zone && pricedZones.has(zone) ? zone : null;
+    },
+    areaCovers: (code) => (area ? areaCovers(area, code, point ? { lat: Number(point.latitude), lon: Number(point.longitude) } : null) : false),
+  });
+  if (!found) return null;
+  const marked = await db().execute<Row>(sql`
+    update commerce.orders set delivery_mismatch_at = now()
+    where store_id = ${storeId}::uuid and id = ${orderId}::uuid and delivery_mismatch_at is null
+    returning id
+  `);
+  if (marked.length === 0) return null;
+  await db().execute(sql`
+    insert into commerce.order_events (store_id, order_id, type, data, actor)
+    values (${storeId}::uuid, ${orderId}::uuid, 'order.delivery_mismatch', ${JSON.stringify(found)}::jsonb, 'system')
+  `);
+  return found;
 }

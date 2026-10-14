@@ -37,7 +37,7 @@ import { OFFERED, STORE_AUDIENCE, plansOffered } from "./product-conditions";
 import { ensureStorePaymentMethods, getCheckoutUi } from "./connect";
 import { evaluateCampaigns } from "./campaigns";
 import { memberDiscountFor } from "./customer-tiers";
-import { chosenDelivery } from "./delivery-options";
+import { resolveDelivery } from "./delivery-options";
 import { friendState, rememberAffiliate, welcomeFor } from "./affiliates";
 import { bonusProgram, creditState, debitFor, planFor } from "./bonus";
 import { findUsableDiscount } from "./discounts";
@@ -64,6 +64,8 @@ export type PlacedOrder = {
   }[];
   /** Something to ship: false for downloads only (D24). */
   ships: boolean;
+  /** How the goods reach the buyer (D237): no shipping address is asked for `pickup`, a phone number is for `local`. */
+  deliveryMethod?: "ship" | "pickup" | "local";
   /** The subscription this order starts (D25): how often it renews, and its shipping each time. */
   subscription: {
     id: string;
@@ -188,10 +190,13 @@ export async function placeOrder(
   {
     customerId = null,
     noBackorder = false,
+    flatRateOnly = false,
   }: {
     customerId?: string | null;
     /** Never sells past stock, whatever a variant's policy says: a weekly box is filled from free stock only (wave 3, D172). */
     noBackorder?: boolean;
+    /** Pays the market's flat rate, never one of the store's own methods (D237 1.4 decision 1, 2.8): a weekly box, as its estimate says. */
+    flatRateOnly?: boolean;
   } = {},
 ): Promise<PlaceResult> {
   const { storeId, market } = shop;
@@ -271,10 +276,6 @@ export async function placeOrder(
       where store_id = ${storeId}::uuid and market_code = ${market.code}
     `);
     const ships = physical.length > 0;
-    // The delivery the shopper chose at checkout (D135) is the shipping rate instead of the market's flat rate, as the
-    // cart page has it (`cartSummary()`); a subscription pays the flat rate on each delivery (D25).
-    const chosen = ships && !rhythm ? await chosenDelivery(tx, storeId, cartId, market) : null;
-    if (ships && !rate && !chosen) return { ok: false, problem: "no_shipping" };
     // Which VAT the order carries (D157) rests on facts read here, with the cart's stored check of its VAT number: VIES is
     // never asked while an order is placed. Each line takes its product's rate (D65); a fee without one, the standard rate.
     const taxFacts = await loadTaxFacts(tx, { storeId, market, cartId });
@@ -448,14 +449,20 @@ export async function placeOrder(
     const feeTotal = fees.reduce((sum, fee) => sum + fee.amount, 0);
     // Before any discount code: what the items and fees come to.
     const subtotal = priced.reduce((sum, p) => sum + p.unit * p.quantity, 0) + feeTotal;
-    const shippingRate = chosen
-      ? chosen.rate
-      : rate
+    // The basket's delivery (D135, D237): the one reader `cartSummary()` uses too, with the same basket value (the lines' totals before
+    // discounts, gifts out), so both charge the same. The store's own methods are priced for the basket here and now; a subscription pays the
+    // flat rate on each delivery (D25), and so does a weekly box (`flatRateOnly`, D237 2.8).
+    const basketValueMinor = priced.filter((p) => !p.gift).reduce((sum, p) => sum + p.renewUnit * p.quantity, 0);
+    const resolved = ships && !rhythm && !flatRateOnly ? await resolveDelivery(tx, storeId, cartId, market, { basketValueMinor }) : null;
+    const chosen = resolved?.chosen ?? null;
+    const flatRate = rate
       ? {
           amountMinor: shown(market, Number(rate.amount_minor)),
           freeOverMinor: rate.free_over_minor === null ? null : shown(market, Number(rate.free_over_minor)),
         }
       : null;
+    const shippingRate = resolved ? resolved.rate : flatRate;
+    if (ships && !shippingRate) return { ok: false, problem: "no_shipping" };
     // Free shipping counts the whole basket, downloads included; a
     // subscription pays shipping on each delivery (D25).
     const shippingWith = (offer: typeof shippingRate) =>
@@ -540,14 +547,16 @@ export async function placeOrder(
     // The cheapest standard delivery on offer, kept with the order (D153): a withdrawal of the whole order gives back no
     // more delivery than this (CRD Art. 13(1)), whatever a carrier's dearer service the shopper chose cost. It is the
     // market's flat rate, free over its limit judged on the basket before discounts, as shown in the order's currency.
-    const standardShipping = chosen
-      ? rate
-        ? shippingWith({
-            amountMinor: shown(market, Number(rate.amount_minor)),
-            freeOverMinor: rate.free_over_minor === null ? null : shown(market, Number(rate.free_over_minor)),
-          }).first
-        : null
-      : shipping;
+    // With the store's own methods (D237 4.3) it is the lowest of the methods offered to the basket and the flat rate; pickup and local
+    // delivery are not standard delivery.
+    const ownMethods = resolved?.offer.ship.some((d) => d.kind === "method") ?? false;
+    const standardShipping = ownMethods
+      ? resolved!.standardShippingMinor
+      : chosen
+        ? flatRate
+          ? shippingWith(flatRate).first
+          : null
+        : shipping;
     // Who pays for sending a withdrawn item back, as the store's setting stands now: the shopper is told of it before buying.
     const [returnRules] = await tx.execute<Row>(sql`select who_pays_return from commerce.return_settings where store_id = ${storeId}::uuid`);
     const returnCostPayer = returnRules?.who_pays_return === "store" ? "store" : "shopper";
@@ -643,7 +652,10 @@ export async function placeOrder(
       campaignLabel: campaignTotal > 0 ? campaignText : null,
       creditMinor: creditTotal,
       referralDiscountMinor: referralTotal,
-      delivery: chosen ? chosen.delivery : null,
+      delivery: resolved?.delivery ?? null,
+      deliveryMethod: resolved?.method ?? "ship",
+      pickupLocationId: resolved?.pickupLocationId ?? null,
+      deliveryNote: resolved?.note ?? null,
       standardShippingMinor: standardShipping,
       returnCostPayer,
       vatKind: taxOutcome.decision.kind,
@@ -815,6 +827,7 @@ export async function placeOrder(
           })),
         ],
         ships,
+        deliveryMethod: resolved?.method ?? "ship",
         subscription,
         shippingMinor: shipping,
         shippingDiscountMinor: shippingDiscount,
@@ -1069,8 +1082,22 @@ export async function getOpenCheckout(storeId: string, cartId: string): Promise<
                       then row(c.is_gift, c.gift_to, c.gift_from, c.gift_message)
                       else row(false, null::text, null::text, null::text) end
             from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
-         is distinct from row(o.is_gift, o.gift_to, o.gift_from, o.gift_message) as changed,
-      exists (select 1 from commerce.order_lines ol
+         is distinct from row(o.is_gift, o.gift_to, o.gift_from, o.gift_message)
+      -- So does the delivery (D237): another pickup place or local area, another delivery postal code or note than the order was placed with.
+      or (select row(case when c.pickup_option_id is not null
+                          then (select po.location_id from commerce.pickup_options po where po.store_id = c.store_id and po.id = c.pickup_option_id and po.active) end,
+                     c.local_area_id::text, c.delivery_note)
+            from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
+         is distinct from row(o.pickup_location_id, case when o.delivery_method = 'local' then o.delivery ->> 'areaId' end, o.delivery_note)
+      or (o.delivery ->> 'kind' in ('method', 'flat', 'local')
+          and (select c.delivery_postal_code from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
+              is distinct from (o.delivery ->> 'postalCode'))
+      or (o.delivery ->> 'kind' = 'method'
+          and (select c.shipping_method_id::text from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id) is not null
+          and (select c.shipping_method_id::text from commerce.carts c where c.store_id = o.store_id and c.id = o.cart_id)
+              is distinct from (o.delivery ->> 'methodId')) as changed,
+      -- Collected at the store's place (D237): nothing is shipped to an address.
+      o.delivery_method <> 'pickup' and exists (select 1 from commerce.order_lines ol
                where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'physical') as ships,
       exists (select 1 from commerce.order_lines ol
                where ol.store_id = o.store_id and ol.order_id = o.id and ol.delivery = 'digital' and ol.variant_id is not null) as digital,

@@ -85,7 +85,15 @@ export type StoreFigures = {
   orderChanges?: OrderChangeFigures;
   /** Support conversations waiting for a person (D216, step 14), only when some do and only for a member who may read the desk. A count only. */
   supportWaiting?: number;
+  /**
+   * Orders the store hands over itself (D237), only when some wait and only for a member who may read orders: paid orders to be collected at a pickup
+   * place (the Orders page's *To hand over*) and local deliveries not delivered yet (*Local deliveries*). They are not in `toSend`. Counts only.
+   */
+  handOver?: HandOverFigures;
 };
+
+/** Orders to hand over (D237): to be collected (and when the oldest was placed), and local deliveries not delivered yet. */
+export type HandOverFigures = { pickup: number; oldestPickupAt: string | null; local: number };
 
 /** Paid orders partly sent (D174): how many, and when the oldest one's first parcel left. */
 export type PartlySentFigures = { orders: number; oldestFirstParcelAt: string | null };
@@ -138,6 +146,23 @@ export function attentionFor(stores: StoreFigures[], now = Date.now()): Attentio
         href: `${base}/orders?show=to-send`,
         action: "Send",
         urgent: late >= LATE_TO_SEND_DAYS,
+      });
+    }
+    // Orders handed over by the store itself (D237): not sent, so not in "waiting to be sent" above.
+    const hand = s.handOver;
+    if (hand && hand.pickup > 0 && !hidden(s, "sales")) {
+      const age = hand.oldestPickupAt ? daysSince(hand.oldestPickupAt, now) : 0;
+      items.push({
+        text: `${s.name}: ${plural(hand.pickup, "order is", "orders are")} waiting to be collected${age >= 1 ? `, the oldest placed ${plural(age, "day", "days")} ago` : ""}.`,
+        href: `${base}/orders?show=to-hand-over`,
+        action: "Hand over",
+      });
+    }
+    if (hand && hand.local > 0 && !hidden(s, "sales")) {
+      items.push({
+        text: `${s.name}: ${plural(hand.local, "local delivery is", "local deliveries are")} not delivered yet.`,
+        href: `${base}/orders?show=local`,
+        action: "Deliver",
       });
     }
     // Withdrawals are a legal duty (D153): the deadline and the acknowledgement come before everything else of the store's own.

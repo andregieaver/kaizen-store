@@ -224,6 +224,19 @@ The definitions of **Edited order**, **Refunds** (without the refunds that settl
   `pickListData()`: the orders named, or everything to send (`ordersToSend()`, at most 100), by product or by order, with no prices, names or addresses.
   No tool changes an order, marks a part of one sent or records a payment for a change.
 
+### Orders handed over by the store (D237, `docs/wave-3-shipping-methods.md` 5.5)
+
+No new sales figure: shipping income is unchanged (a pickup or local delivery price is the order's `shipping_minor`, as any shipping), and a figure by
+delivery method is wave 8. Counts only, never a customer, for a member who may read orders (left out, never shown as 0), copied orders never:
+
+- **Waiting to be sent** (the control center, `toSend`; the store checkup's *to send* and *late*) counts parcels only: paid orders with a physical line and
+  `delivery_method = 'ship'`, the Orders page's *To send*.
+- **Waiting to be collected**: paid orders with `delivery_method = 'pickup'`, not archived (the Orders page's *To hand over*), with when the oldest was
+  placed. **Local deliveries not delivered**: `delivery_method = 'local'`, `paid` or `fulfilled` (taking it out fulfils it), `delivered_at` null, not
+  archived (*Local deliveries*). Both in `controlCenter()` (`handOver`), the store checkup and the AI manager's `pickup_orders` (by place or area, with
+  the order numbers, how many are marked ready and how many are out; at most 500 read, more said). `shipping_overview` repeats the Shipping pages and
+  works out nothing: amounts are each country's own, written by `formatMoney()`.
+
 ## Alerts, targets, forecast, diagnosis
 
 - **Alerts** (`alertsFor()`, computed on read, never stored): conversion drop, a day's revenue far under its weekday's

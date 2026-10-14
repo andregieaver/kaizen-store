@@ -97,8 +97,16 @@ function payCondition(filter: OrderListParams["pay"][number]): SQL {
 /** The fulfilment filters: copied history is never in one (`excludesCopied()` adds the guard). */
 function shipCondition(filter: OrderListParams["ship"][number]): SQL {
   switch (filter) {
+    // Parcels only (D237): an order collected at the store's place or taken out by its own driver is handed over, never sent.
     case "to_send":
-      return sql`(o.status = 'paid' and ${PHYSICAL_SQL})`;
+      return sql`(o.status = 'paid' and ${PHYSICAL_SQL} and o.delivery_method = 'ship')`;
+    // D237: paid pickup orders not collected yet (*To hand over*), and paid local deliveries not delivered yet (*Local deliveries*).
+    case "pickup":
+      return sql`(o.delivery_method = 'pickup' and o.status = 'paid')`;
+    case "local":
+      return sql`(o.delivery_method = 'local' and o.status in ('paid', 'fulfilled') and o.delivered_at is null)`;
+    case "delivery_mismatch":
+      return sql`(o.delivery_mismatch_at is not null)`;
     case "waiting":
       return sql`(o.status = 'paid' and ${PHYSICAL_SQL} and ${BACKORDERED})`;
     case "sent":

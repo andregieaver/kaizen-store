@@ -127,3 +127,23 @@ describe("categories and tags (wave 2, D168)", () => {
     expect(titleOnly.items.map((i) => i.key)).toEqual(["title"]);
   });
 });
+
+describe("shipping texts (D237)", () => {
+  it("lists a method's name, a pickup place's instructions and an area's name and information where the language has none", async () => {
+    const { shippingUnit } = await import("./store-translate");
+    expect(TRANSLATE_SCOPES).toContain("shipping");
+    expect(SCOPE_WORDS.shipping.name).toMatch(/Shipping/);
+    const method = shippingUnit("method", "m1", "Standard (NO)", [{ key: "name", label: "Name", max: 60, source: "Standard", target: null }], "missing");
+    expect(method).toMatchObject({ id: "shipmethod:m1", scope: "shipping", legal: false, items: [{ key: "name", runs: ["Standard"], max: 60, rich: false }] });
+    // Already translated: nothing with `missing`, again with `all`.
+    expect(shippingUnit("pickup", "p1", "Butikken", [{ key: "instructions", label: "Pickup instructions", max: 1000, source: "Ring på.", target: "Ring the bell." }], "missing")).toBeNull();
+    expect(shippingUnit("pickup", "p1", "Butikken", [{ key: "instructions", label: "Pickup instructions", max: 1000, source: "Ring på.", target: "Ring the bell." }], "all")?.id).toBe("pickupopt:p1");
+    // No words in the main language: nothing to translate from.
+    expect(shippingUnit("area", "a1", "Oslo", [{ key: "info", label: "Delivery information", max: 500, source: "  ", target: null }], "all")).toBeNull();
+    const area = shippingUnit("area", "a1", "Oslo", [
+      { key: "name", label: "Name", max: 60, source: "Oslo", target: "" },
+      { key: "info", label: "Delivery information", max: 500, source: "Kveld.", target: "Evening." },
+    ], "missing");
+    expect(area?.items.map((i) => i.key)).toEqual(["name"]);
+  });
+});

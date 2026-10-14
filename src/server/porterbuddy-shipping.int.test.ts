@@ -104,7 +104,7 @@ async function newCart(): Promise<string> {
 }
 
 /** A paid order whose shopper chose the delivery window with this id (the first Porterbuddy window when none is given). */
-async function paidOrder(address: Record<string, unknown> = { name: "Kari Nordmann", line1: "Høyenhallveien 25", postalCode: "0678", city: "Oslo", country: "NO", phone: "+47 65789832" }): Promise<string> {
+async function paidOrder(address: Record<string, unknown> = { name: "Kari Nordmann", line1: "Høyenhallveien 25", postalCode: "0678", city: "Oslo", country: "NO", phone: "+47 65789832" }, { plain = false } = {}): Promise<string> {
   const cartId = await newCart();
   expect(await quoteDelivery({ storeId, market: no }, cartId, "0678")).toEqual({ ok: true });
   const listed = await deliveryOptionsFor({ storeId, market: no }, cartId, flat, priceAs);
@@ -113,6 +113,7 @@ async function paidOrder(address: Record<string, unknown> = { name: "Kari Nordma
   const result = await placeOrder({ storeId, market: no }, cartId);
   if (!result.ok) throw new Error(result.problem);
   const { orderId, totalMinor } = result.order;
+  if (plain) await db().execute(sql`update commerce.orders set delivery = null where id = ${orderId}::uuid`);
   await db().execute(sql`insert into commerce.payments (store_id, order_id, provider, provider_reference, provider_account, amount_minor, currency, status) values (${storeId}::uuid, ${orderId}::uuid, 'stripe', ${`cs_${orderId}`}, ${`acct_${run}`}, ${totalMinor}, 'NOK', 'captured')`);
   await completeOrderPayment(orderId, `cs_${orderId}`);
   await db().execute(sql`update commerce.orders set email = 'kari@example.com', shipping_address = ${JSON.stringify(address)}::jsonb where id = ${orderId}::uuid`);
@@ -222,8 +223,8 @@ describe("shipping an order with Porterbuddy", () => {
   });
 
   it("refuses an order the customer did not choose Porterbuddy for, an incomplete address and a bad weight", async () => {
-    const plain = await paidOrder();
-    await db().execute(sql`update commerce.orders set delivery = null where id = ${plain}::uuid`);
+    // The order's delivery is frozen once it is paid (D237, orders_delivery_frozen), so the plain one is made so before it is paid.
+    const plain = await paidOrder(undefined, { plain: true });
     expect(await porterbuddyBook(accountId, storeId, plain, { parcel })).toEqual({ ok: false, problem: "The customer did not choose a Porterbuddy delivery." });
     const noStreetNumber = await paidOrder({ name: "Kari", line1: "Kirkeveien", postalCode: "0678", city: "Oslo", country: "NO", phone: "65789832" });
     expect(await porterbuddyBook(accountId, storeId, noStreetNumber, { parcel })).toMatchObject({ ok: false, problem: expect.stringMatching(/street name and number/) });

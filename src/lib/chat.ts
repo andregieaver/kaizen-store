@@ -118,7 +118,7 @@ export function storeTools(selling = true) {
     },
     {
       name: "store_info",
-      description: "The store's facts: its name, who runs it, contact details, countries, shipping costs to the visitor's country, its return policy, and its pages.",
+      description: "The store's facts: its name, who runs it, contact details, countries, shipping costs to the visitor's country, the places where an order can be collected there, its return policy, and its pages.",
       parameters: { type: "object", properties: {} },
     },
     {

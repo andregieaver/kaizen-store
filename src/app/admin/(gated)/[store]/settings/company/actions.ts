@@ -9,7 +9,7 @@ import { storeDetailsInput } from "@/lib/store-details";
 import { NO_ACCESS, checkOwnerRole, checkPermission } from "@/server/permissions";
 import { audienceInput, saveStoreAudience } from "@/server/b2b";
 import { catalogTag } from "@/server/catalog";
-import { deleteLocation, saveLocation } from "@/server/company";
+import { deleteLocation, placeDeleteBlockers, saveLocation } from "@/server/company";
 import { STORES_TAG } from "@/server/seo";
 import { saveStoreDetails } from "@/server/setup";
 import { storeTag } from "@/server/stores";
@@ -72,8 +72,12 @@ export async function savePlaceAction(
 export async function deletePlaceAction(storeSlug: string, placeId: string): Promise<{ ok: true } | { ok: false; problems: string[] }> {
   const member = await checkPermission(storeSlug, "settings:write");
   if (!member) return { ok: false, problems: [NO_ACCESS] };
-  if (!z.uuid().safeParse(placeId).success || !(await deleteLocation(member, placeId))) {
-    return { ok: false, problems: ["That place no longer exists."] };
+  if (!z.uuid().safeParse(placeId).success) return { ok: false, problems: ["That place no longer exists."] };
+  // Orders waiting to be collected there keep its id without a link (D237 2.2): it stays until they are collected or cancelled.
+  const waiting = await placeDeleteBlockers(member.store.id, placeId);
+  if (waiting > 0) {
+    return { ok: false, problems: [`${waiting} paid ${waiting === 1 ? "order waits" : "orders wait"} to be collected here. Mark ${waiting === 1 ? "it" : "them"} collected, or cancel ${waiting === 1 ? "it" : "them"}, before deleting the place.`] };
   }
+  if (!(await deleteLocation(member, placeId))) return { ok: false, problems: ["That place no longer exists."] };
   redirect(`/admin/${storeSlug}/settings/company`);
 }

@@ -94,6 +94,8 @@ const PAGES: readonly AdminPage[] = [
     tasks: [
       "Find an order (?q=)",
       "See what is waiting to be sent (?show=to-send)",
+      "See pickup orders to hand over (?show=to-hand-over)",
+      "See local deliveries (?show=local)",
       "See unpaid checkouts (?show=unpaid)",
       "See archived orders (?show=archived)",
       "Filter by payment, fulfilment, tag or a date range",
@@ -107,8 +109,8 @@ const PAGES: readonly AdminPage[] = [
     feature: "shop",
   }),
   store("order", "/orders/[orderId]", "Order", "Main", "Everything about one order: lines, payment, sending in parcels (choose the items and quantities of each parcel, with its own tracking, email and packing slip), refunds, cancelling, changing its items after purchase (or why it cannot be changed, and a change waiting for the customer's payment), contact, notes, history and emails.", {
-    tasks: ["Mark it sent with tracking", "Send part of it now and the rest later", "Email a parcel's tracking again", "Refund all or part and restock", "Cancel it", "Change its items", "Send a change's pay link again, or cancel the change", "Correct the address", "Add a note", "Resend the confirmation"],
-    keywords: ["refund", "tracking", "ship", "cancel order", "partial fulfilment", "partly sent", "split shipment", "parcel", "edit order", "change order"],
+    tasks: ["Mark it sent with tracking", "Send part of it now and the rest later", "Email a parcel's tracking again", "Refund all or part and restock", "Cancel it", "Change its items", "Send a change's pay link again, or cancel the change", "Correct the address", "Add a note", "Resend the confirmation", "Mark a pickup order ready for pickup", "Mark it collected", "Mark it out for local delivery"],
+    keywords: ["refund", "tracking", "ship", "cancel order", "partial fulfilment", "partly sent", "split shipment", "parcel", "edit order", "change order", "ready for pickup", "collected", "local delivery", "out for delivery"],
     feature: "shop",
   }),
   store("order.edit", "/orders/[orderId]/edit", "Edit order", "Main", "Changes a paid order that is not sent yet: lower a quantity, take an item off, add products (at the market's price or one you type) and change the shipping, with the reason. Items kept keep their price and discounts. The summary is worked out by the checkout's own rules: a lower total is refunded at once, a higher one is paid by the customer through a pay link (or recorded as paid outside Kaizen) before the order changes. The order keeps its number; an invoiced order gets a credit note and an additional invoice.", {
@@ -453,7 +455,41 @@ const PAGES: readonly AdminPage[] = [
   }),
   store("cart-reminder.new", "/cart-reminders/new", "New cart reminder", "Sales", "Adds a reminder step.", { feature: "shop" }),
   store("cart-reminder", "/cart-reminders/[stepId]", "Cart reminder", "Sales", "One reminder step: when it goes, its words and any coupon.", { feature: "shop" }),
-  store("shipping", "/settings/shipping", "Shipping", "Sales", "One shipping price per country, optionally free above a basket value.", { keywords: ["delivery price", "freight"], feature: "shop" }),
+  store("shipping", "/settings/shipping", "Shipping", "Sales", "What delivery costs in each country: the flat rate (the default, and what subscriptions, subscription boxes and draft orders pay), shipping methods with zones and profiles, the default weight for goods without one, pickup at your places, local delivery and carriers, with warnings when something cannot be served.", {
+    keywords: ["delivery price", "freight", "flat rate", "free shipping", "default weight", "frakt", "fraktpris"],
+    tasks: ["Set the shipping price for a country", "Set the default weight per unit"],
+    feature: "shop",
+  }),
+  store("shipping.methods", "/settings/shipping/methods", "Shipping methods", "Sales", "A country's named ways of shipping (Standard, Express …): add, open and reorder them. Shoppers see the methods that price their basket, cheapest first; with none, the flat rate is charged.", {
+    keywords: ["shipping method", "shipping rates", "express", "standard shipping", "fraktmetode"],
+    tasks: ["Add a shipping method", "Change the order of shipping methods"],
+    feature: "shop",
+  }),
+  store("shipping.method", "/settings/shipping/methods/[methodId]", "Shipping method", "Sales", "One method: its name, transit time, free-above value and its rates per zone and profile, flat, by weight or by basket value in tiers.", {
+    keywords: ["weight based shipping", "price based shipping", "rate table", "tiers", "vektbasert frakt"],
+    tasks: ["Charge shipping by weight", "Charge shipping by basket value", "Give a zone its own rate", "Make a method free above an amount"],
+    feature: "shop",
+  }),
+  store("shipping.zones", "/settings/shipping/zones", "Shipping zones", "Sales", "Groups of postal codes and prefixes inside a country with rates of their own; codes in no zone are Rest of country. Check which zone a postal code falls in.", {
+    keywords: ["shipping zone", "postal codes", "postcode", "remote areas", "postnummer", "soner"],
+    tasks: ["Add a shipping zone", "Check which zone a postal code is in"],
+    feature: "shop",
+  }),
+  store("shipping.profiles", "/settings/shipping/profiles", "Shipping profiles", "Sales", "Groups of products with rates of their own on each method (bulky, fragile); every other product is General. A basket with several profiles pays the sum.", {
+    keywords: ["shipping profile", "bulky goods", "shipping class", "fraktklasse"],
+    tasks: ["Put products in a shipping profile", "Give bulky goods their own shipping rates"],
+    feature: "shop",
+  }),
+  store("shipping.pickup", "/settings/shipping/pickup", "Pickup", "Sales", "Let customers collect at your stores and pickup points: the switch per place, a price (free by default), the usual time until ready and the instructions sent in the Ready for pickup email.", {
+    keywords: ["click and collect", "pickup in store", "local pickup", "hente i butikk", "klikk og hent"],
+    tasks: ["Let customers collect in your store", "Write pickup instructions"],
+    feature: "shop",
+  }),
+  store("shipping.local", "/settings/shipping/local", "Local delivery", "Sales", "Deliver yourself to customers nearby: areas by postal codes or a radius from a place, with a price, a minimum basket and a free-above value. Check which areas cover a postal code.", {
+    keywords: ["local delivery", "own delivery", "delivery radius", "hjemlevering", "lokal levering"],
+    tasks: ["Add a local delivery area", "Deliver within a radius of your shop"],
+    feature: "shop",
+  }),
   store("returns.settings", "/settings/returns", "Returns settings", "Sales", "The store's rules for returns: the return window (never under the legal 14 days), the transit allowance, who pays return shipping, when refunds are made, goods the law excludes, companies, the return address and the instructions customers get (with translations).", {
     needs: "owner",
     keywords: ["return window", "withdrawal", "return policy", "return address", "who pays return shipping", "refund when", "instructions", "angrerett"],

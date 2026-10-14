@@ -9,7 +9,7 @@ import type { OrderListParams } from "./order-list";
 
 export { BULK_MAX, BULK_PRINT_MAX };
 
-export const BULK_ACTIONS = ["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list"] as const;
+export const BULK_ACTIONS = ["add_tags", "remove_tags", "archive", "unarchive", "mark_sent", "print_slips", "print_pick_list", "ready_for_pickup"] as const;
 export type BulkAction = (typeof BULK_ACTIONS)[number];
 export const isBulkAction = (value: unknown): value is BulkAction => typeof value === "string" && (BULK_ACTIONS as readonly string[]).includes(value);
 
@@ -21,6 +21,7 @@ export const BULK_ACTION_LABELS: Record<BulkAction, string> = {
   mark_sent: "Mark as sent",
   print_slips: "Print packing slips",
   print_pick_list: "Print pick list",
+  ready_for_pickup: "Ready for pickup",
 };
 
 /** The permission each action needs: printing is a read, everything else a write. */
@@ -32,6 +33,7 @@ export const BULK_ACTION_PERMISSION: Record<BulkAction, "orders:read" | "orders:
   mark_sent: "orders:write",
   print_slips: "orders:read",
   print_pick_list: "orders:read",
+  ready_for_pickup: "orders:write",
 };
 
 /** The most orders one request of this action names. */
@@ -70,6 +72,11 @@ export const BULK_REASONS = [
   "store_closed",
   "failed",
   "edit_pending",
+  "pickup_order",
+  "not_pickup",
+  "already_ready",
+  "collected",
+  "cancelled",
 ] as const;
 export type BulkReason = (typeof BULK_REASONS)[number];
 
@@ -94,6 +101,11 @@ export const BULK_REASON_TEXT: Record<BulkReason, string> = {
   store_closed: "The store is not open.",
   failed: "It could not be done. Try it from the order.",
   edit_pending: "A change to it waits for the customer's payment: nothing is sent until it is paid, cancelled or expired.",
+  pickup_order: "It is collected at your place: mark it ready or collected instead.",
+  not_pickup: "It is not collected at your place.",
+  already_ready: "It was already marked ready.",
+  collected: "It was already collected.",
+  cancelled: "It is cancelled.",
 };
 
 /** Why a whole request is refused before anything runs. */
@@ -197,11 +209,14 @@ export type MarkSentFacts = {
   deliveryUnpaid: boolean;
   /** A change waits for the customer's payment (D174): nothing is sent meanwhile. */
   editPending?: boolean;
+  /** How the goods reach the buyer (D237): a pickup order is handed over, never sent as a parcel. */
+  deliveryMethod?: "ship" | "pickup" | "local";
 };
 
 /** Why *Mark as sent* cannot be done in bulk to this order, or null when it can (the first that holds). `store_closed` and `changed` are the server's. */
 export function markSentBlock(order: MarkSentFacts): BulkReason | null {
   if (order.copied) return "copied";
+  if (order.deliveryMethod === "pickup") return "pickup_order";
   if (order.status === "fulfilled") return "already_sent";
   if (order.status === "pending_payment" || (order.status === "cancelled" && !order.paid)) return "unpaid";
   if (order.status !== "paid" || !order.physical) return "nothing_to_send";

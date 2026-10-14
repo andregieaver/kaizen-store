@@ -12,7 +12,7 @@ import {
   type OrderListParams,
   readOrderListParams,
 } from "@/lib/order-list";
-import { payCellOf, shipCellOf, type OrderListItem, type OrderStatusValue } from "@/lib/order-list-row";
+import { noteStart, payCellOf, shipCellOf, type OrderListItem, type OrderStatusValue } from "@/lib/order-list-row";
 import { ORDERS_COUNT_CAP, ORDERS_PAGE_SIZE } from "@/lib/order-limits";
 import { searchWords } from "@/lib/order-search";
 import { minorUnitDigits } from "@/lib/money";
@@ -117,7 +117,10 @@ const selectRow = (context: Pick<OrderListContext, "totalFactors">) => sql`
   (case when o.status = 'paid' and o.copied_from is null then (select coalesce(sum(least(l.backorder_quantity, commerce.line_to_send(l.id))), 0)::int from commerce.order_lines l where l.store_id = o.store_id and l.order_id = o.id and l.backorder_quantity > 0) else 0 end) as owed,
   exists (select 1 from commerce.shipments sh where sh.store_id = o.store_id and sh.order_id = o.id and sh.undone_at is null) as has_parcel, o.edited_at is not null as edited,
   exists (select 1 from commerce.order_edits e where e.store_id = o.store_id and e.order_id = o.id and e.status = 'awaiting_payment') as edit_pending,
-  ${PHYSICAL_SQL} as physical, ${CAPTURED_SQL} as captured, ${REFUNDED_SQL} as refunded, o.balance_minor
+  ${PHYSICAL_SQL} as physical, ${CAPTURED_SQL} as captured, ${REFUNDED_SQL} as refunded, o.balance_minor,
+  o.delivery_method, o.delivery ->> 'label' as delivery_label, o.ready_for_pickup_at is not null as ready_for_pickup,
+  coalesce(nullif(o.shipping_address ->> 'postalCode', ''), o.delivery ->> 'postalCode') as delivery_postal, o.shipping_address ->> 'city' as delivery_city,
+  coalesce(nullif(o.shipping_address ->> 'phone', ''), nullif(o.billing_address ->> 'phone', '')) as delivery_phone, left(o.delivery_note, 81) as delivery_note
 `;
 
 function toItem(row: Row, tags: ReadonlyMap<string, { key: string; label: string }[]>): OrderListItem {
@@ -150,6 +153,16 @@ function toItem(row: Row, tags: ReadonlyMap<string, { key: string; label: string
     balanceMinor: Number(row.balance_minor ?? 0),
     edited: Boolean(row.edited),
     editPending: Boolean(row.edit_pending),
+    // How it reaches the buyer (D237); where a local delivery goes is the person's, so an erased order shows none of it (D162).
+    delivery: {
+      method: row.delivery_method === "pickup" ? "pickup" : row.delivery_method === "local" ? "local" : "ship",
+      label: row.delivery_label ? String(row.delivery_label) : null,
+      ready: Boolean(row.ready_for_pickup),
+      postalCode: erased || !row.delivery_postal ? null : String(row.delivery_postal),
+      city: erased || !row.delivery_city ? null : String(row.delivery_city),
+      phone: erased || !row.delivery_phone ? null : String(row.delivery_phone),
+      note: erased ? null : noteStart(row.delivery_note ? String(row.delivery_note) : null),
+    },
   };
 }
 

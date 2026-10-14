@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { checkoutSignInAction } from "@/app/s/[store]/[market]/account/actions";
 import { BackorderOrderLine } from "@/components/backorder-note";
+import { DeliveryBlock } from "@/components/delivery-block";
 import { GiftNote } from "@/components/gift-note";
 import { OrderDocuments as DocumentLinks } from "@/components/documents/order-documents";
 import { OrderVatNotes, OrderVatRelief, OrderVatRows } from "@/components/order-vat";
@@ -18,6 +19,7 @@ import { StaffDiscountRow } from "@/components/staff-discount-row";
 import { earnedText } from "@/lib/bonus-shopper";
 import { discountNote } from "@/lib/customer-tiers";
 import { pickupPointLine } from "@/lib/delivery-options";
+import { deliveryRowLabel } from "@/lib/delivery-words";
 import { formatWindow } from "@/lib/porterbuddy";
 import { bookingWhen, isRange } from "@/lib/booking-text";
 import { t, type Messages } from "@/lib/i18n";
@@ -231,7 +233,16 @@ function accountBlock({ store, market, order, sessionId, m, account }: OrderView
 }
 
 function parcelsBlock({ store, market, order, m, fulfilment }: OrderView) {
-  return <OrderShipments fulfilment={fulfilment} m={m} locale={market.locale} timeZone={store.timeZone} business={order.company !== null} />;
+  // The store's own delivery (D237): where to collect it and where it stands, or the local delivery and the buyer's note. A collected pickup order is
+  // one handover, not a parcel, so its parcels are not listed (the block says when it was collected).
+  return (
+    <>
+      <DeliveryBlock order={order} m={m} locale={market.locale} timeZone={store.timeZone} />
+      {order.deliveryMethod !== "pickup" && (
+        <OrderShipments fulfilment={fulfilment} m={m} locale={market.locale} timeZone={store.timeZone} business={order.company !== null} />
+      )}
+    </>
+  );
 }
 
 function bookingsBlock({ store, market, order, sessionId, m }: OrderView) {
@@ -287,7 +298,7 @@ function totalsList({ order, m, money, store, market }: OrderView) {
       <dl className="flex flex-col gap-1">
       {order.ships && (
         <div className="flex justify-between">
-          <dt>{order.delivery?.label ?? m.shipping}</dt>
+          <dt>{deliveryRowLabel(order.deliveryKept ?? order.delivery, m)}</dt>
           <dd>{order.shippingMinor === 0 ? m.freeShipping : money(order.shippingMinor)}</dd>
         </div>
       )}

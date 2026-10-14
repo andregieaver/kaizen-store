@@ -86,6 +86,9 @@ describe("reading the address", () => {
     expect(expandShow(parse("show=unpaid")).pay).toEqual(["unpaid"]);
     expect(expandShow(parse("show=archived")).archived).toBe("yes");
     expect(expandShow(parse("")).ship).toEqual([]);
+    // D237: the views for orders handed over at a place and taken out by the store's own driver.
+    expect(expandShow(parse("show=to-hand-over")).ship).toEqual(["pickup"]);
+    expect(expandShow(parse("show=local")).ship).toEqual(["local"]);
   });
 
   it("adds a built-in view to what is chosen and never removes a filter", () => {
@@ -150,7 +153,7 @@ describe("writing the address", () => {
     expect(roundTrip("cols=total,placed")).toBe("cols=placed%2Ctotal");
     expect(columnsOf(parse(""))).toEqual(DEFAULT_COLUMNS);
     expect(columnsOf(parse("cols=source,placed"))).toEqual(["placed", "source"]);
-    expect(ORDER_COLUMNS).toHaveLength(9);
+    expect(ORDER_COLUMNS).toHaveLength(10);
   });
 
   it("builds a link that keeps the state, changes some of it and starts from the first page", () => {
@@ -254,7 +257,7 @@ describe("what the parameters mean", () => {
   });
 
   it("lists the built-in views in the bar's order", () => {
-    expect(BUILT_IN_VIEWS.map((v) => v.show)).toEqual([null, "to-send", "waiting", "unpaid", "archived"]);
+    expect(BUILT_IN_VIEWS.map((v) => v.show)).toEqual([null, "to-send", "waiting", "to-hand-over", "local", "unpaid", "archived"]);
   });
 
   it("describes each active filter in words for the chips", () => {

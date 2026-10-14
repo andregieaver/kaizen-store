@@ -16,7 +16,7 @@ import { MAX_INSTRUCTIONS } from "./withdrawal";
  * needs human review. Pure and shared with the browser.
  */
 
-export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields", "returns", "terms"] as const;
+export const TRANSLATE_SCOPES = ["products", "menus", "pages", "fields", "returns", "terms", "shipping"] as const;
 export type TranslateScope = (typeof TRANSLATE_SCOPES)[number];
 
 export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> = {
@@ -26,6 +26,7 @@ export const SCOPE_WORDS: Record<TranslateScope, { name: string; one: string }> 
   fields: { name: "Custom fields", one: "Custom field" },
   returns: { name: "Return instructions", one: "Return instructions" },
   terms: { name: "Categories and tags", one: "Category or tag" },
+  shipping: { name: "Shipping, pickup and local delivery", one: "Shipping text" },
 };
 
 /** One thing to translate: a product, a menu link, a page or custom fields' words, with its texts. */
@@ -167,6 +168,28 @@ export function termUnit(id: string, name: string, kind: "category" | "tag", sou
   }));
   if (items.length === 0) return null;
   return { id: `term:${id}`, scope: "terms", title: name, kind: kind === "category" ? "Category" : "Tag", legal: false, items };
+}
+
+// ---------------------------------------------------------------------------
+// Shipping methods, pickup places and local delivery areas (D237)
+// ---------------------------------------------------------------------------
+
+/** One text of a shipping unit: its key, label and longest length, the main language's words and the language's own, if any. */
+export type ShippingText = { key: string; label: string; max: number; source: string; target: string | null };
+
+/**
+ * A shipping method's name, a pickup place's instructions or a local area's name and delivery information (D237): the texts with words in the main
+ * language, and with `missing` only where the language has none. Unit ids are `shipmethod:{id}`, `pickupopt:{id}` and `localarea:{id}`. Never legal (the
+ * owner's own words about their delivery), and like every suggestion here applied only after staff tick it.
+ */
+export function shippingUnit(kind: "method" | "pickup" | "area", id: string, title: string, texts: readonly ShippingText[], mode: "missing" | "all"): Unit | null {
+  const items = texts
+    .filter((t) => t.source.trim() !== "" && (mode === "all" || !t.target || t.target.trim() === ""))
+    .map((t) => ({ key: t.key, label: t.label, max: t.max, rich: false, runs: [t.source] }));
+  if (items.length === 0) return null;
+  const prefix = kind === "method" ? "shipmethod" : kind === "pickup" ? "pickupopt" : "localarea";
+  const words = kind === "method" ? "Shipping method" : kind === "pickup" ? "Pickup instructions" : "Local delivery area";
+  return { id: `${prefix}:${id}`, scope: "shipping", title, kind: words, legal: false, items };
 }
 
 // ---------------------------------------------------------------------------

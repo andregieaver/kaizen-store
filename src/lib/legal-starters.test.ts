@@ -98,6 +98,25 @@ const VARIANTS: Record<string, LegalFacts> = {
       shippingRates: [{ marketCode: "NO", currency: "NOK", rateMinor: 4900, freeAboveMinor: null }],
     }),
   ),
+  // D237: the store's own methods in Norway, two pickup places and every kind of local area.
+  ownShipping: assembleLegalFacts(
+    input({
+      methodMarkets: ["no"],
+      pickupPlaces: [
+        { name: "Butikken", town: "Oslo", marketCode: "NO", currency: "NOK", amountMinor: 0 },
+        { name: "Lageret", town: "Ski", marketCode: "NO", currency: "NOK", amountMinor: 2900 },
+        { name: " ", town: "", marketCode: "NO", currency: "NOK", amountMinor: 0 },
+      ],
+      localAreas: [
+        { name: "Sentrum", marketCode: "NO", currency: "NOK", amountMinor: 7900, freeAboveMinor: null, minBasketMinor: null },
+        { name: "Grünerløkka", marketCode: "NO", currency: "NOK", amountMinor: 7900, freeAboveMinor: 80000, minBasketMinor: null },
+        { name: "Majorstuen", marketCode: "NO", currency: "NOK", amountMinor: 0, freeAboveMinor: null, minBasketMinor: null },
+        { name: "Nydalen", marketCode: "NO", currency: "NOK", amountMinor: 7900, freeAboveMinor: null, minBasketMinor: 20000 },
+        { name: "Bjørvika", marketCode: "NO", currency: "NOK", amountMinor: 7900, freeAboveMinor: 80000, minBasketMinor: 20000 },
+        { name: "Tøyen", marketCode: "NO", currency: "NOK", amountMinor: 0, freeAboveMinor: null, minBasketMinor: 20000 },
+      ],
+    }),
+  ),
 };
 
 const META = /^(notice|notice\.language|ph\.|label\.|title\.|slug\.)/;
@@ -204,6 +223,28 @@ describe("what a starter holds", () => {
     expect(shipping("en").ul[1]).toBe("Sweden: free.");
     expect(shipping("nb").ul[1]).toBe("Sverige: gratis.");
     expect(shipping("en").ul[2]).toMatch(/Germany: .*9\.90/);
+  });
+
+  it("never states the fallback flat rate as the price where the store's own methods price a market, and names pickup and local delivery (D237, review)", () => {
+    const facts = VARIANTS.ownShipping;
+    expect(facts.shipping.map((s) => [s.code, s.ownMethods])).toEqual([["NO", true], ["SE", false], ["DE", false]]);
+    expect(facts.pickup.map((p) => p.place)).toEqual(["Butikken, Oslo", "Lageret, Ski"]);
+    for (const language of STARTER_LANGUAGES) {
+      for (const role of ["shipping_policy", "terms"] as const) {
+        const sections = legalStarterSections(role, language, facts);
+        const list = sections.find((s) => s.topic === (role === "terms" ? "vat_shipping_costs" : "rates"))!.blocks.find((b) => "ul" in b) as { ul: string[] };
+        // Norway: a placeholder the checker blocks publishing over, never the flat 59 kroner.
+        expect([language, role, list.ul[0]]).toEqual([language, role, expect.stringMatching(/\[\[/)]);
+        expect(list.ul[0]).not.toMatch(/59/);
+      }
+      const shipping = JSON.stringify(legalStarterSections("shipping_policy", language, facts));
+      for (const fact of ["Butikken, Oslo", "Lageret, Ski", "29,00", "Sentrum", "Tøyen", "200,00", "800,00"]) {
+        expect([language, fact, shipping.replace("29.00", "29,00").replace("200.00", "200,00").replace("800.00", "800,00").includes(fact)]).toEqual([language, fact, true]);
+      }
+      const tracking = legalStarterSections("shipping_policy", language, facts).find((s) => s.topic === "tracking")!;
+      expect(tracking.blocks).toHaveLength(2);
+      expect(legalStarterSections("shipping_policy", language, FULL).find((s) => s.topic === "tracking")!.blocks).toHaveLength(1);
+    }
   });
 
   it("says the store's carriers, its tools and the AI assistant only when it has them", () => {

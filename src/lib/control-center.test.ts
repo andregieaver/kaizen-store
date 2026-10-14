@@ -270,6 +270,27 @@ describe("the control center, parcels and order changes (D174)", () => {
   });
 });
 
+describe("the control center and orders handed over by the store (D237)", () => {
+  const texts = (figures: Partial<StoreFigures>, now?: number) => attentionFor([store(figures)], now).map((i) => `${i.text} -> ${i.href}`);
+  const now = Date.parse("2026-10-07T12:00:00Z");
+
+  it("says orders waiting to be collected and local deliveries apart from those to send, and opens their views", () => {
+    expect(texts({ toSend: 1, handOver: { pickup: 2, oldestPickupAt: "2026-10-04T10:00:00Z", local: 1 } }, now)).toEqual([
+      "Kaffe: 1 order is waiting to be sent. -> /admin/kaffe/orders?show=to-send",
+      "Kaffe: 2 orders are waiting to be collected, the oldest placed 3 days ago. -> /admin/kaffe/orders?show=to-hand-over",
+      "Kaffe: 1 local delivery is not delivered yet. -> /admin/kaffe/orders?show=local",
+    ]);
+    expect(texts({ handOver: { pickup: 1, oldestPickupAt: "2026-10-07T09:00:00Z", local: 0 } }, now)).toEqual(["Kaffe: 1 order is waiting to be collected. -> /admin/kaffe/orders?show=to-hand-over"]);
+    expect(texts({ handOver: { pickup: 0, oldestPickupAt: null, local: 3 } }, now)).toEqual(["Kaffe: 3 local deliveries are not delivered yet. -> /admin/kaffe/orders?show=local"]);
+  });
+
+  it("is not urgent, and shows nothing to a member who may not read orders (left out, never a 0)", () => {
+    const hand = { handOver: { pickup: 4, oldestPickupAt: "2026-09-01T00:00:00Z", local: 2 } };
+    expect(attentionFor([store(hand)], now).every((i) => !i.urgent)).toBe(true);
+    expect(texts({ ...hand, hides: ["sales"] }, now)).toEqual([]);
+  });
+});
+
 describe("support waiting (D216, step 14)", () => {
   it("says how many wait for a person, urgent, links to the inbox, and nothing when none or not given", () => {
     const items = attentionFor([store({ supportWaiting: 3 })]);

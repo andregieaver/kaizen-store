@@ -65,6 +65,9 @@ export const CHOOSING: Record<string, { template: string; prepare?: (args: unkno
   "ui:stay.nights": { template: plural("# night", "# nights") },
   "ui:stay.days": { template: plural("# day", "# days") },
   "ui:stay.hours": { template: plural("# hour", "# hours") },
+  // D237: how soon a pickup order is usually ready.
+  "ui:deliveryOptions.readyInHours": { template: plural("Usually ready in # hour.", "Usually ready in # hours.") },
+  "ui:deliveryOptions.readyInDays": { template: plural("Usually ready in # day.", "Usually ready in # days.") },
   "ui:stay.perBooking": { template: stay("per stay", "per rental") },
   "ui:stay.feeIncluded": { template: stay("Final cleaning included.", "Fee included.") },
   "ui:stay.perNight": { template: stay("per night", "per day") },
@@ -118,6 +121,8 @@ export const HAND_WRITTEN_ONLY: readonly string[] = [
   "email:shippedPart.",
   "ui:fulfilment.receipt",
   "ui:slip.moreFollows",
+  // Wave 3 shipping methods (D237, 8.1): the price sentences of CRD Art. 6(1)(e) and 8(2) at the cart and checkout.
+  "ui:deliveryOptions.priceInfo.",
 ];
 
 export const isHandWrittenOnly = (key: string): boolean => HAND_WRITTEN_ONLY.some((prefix) => key.startsWith(prefix));

@@ -121,6 +121,10 @@ export const SHIPMENT_PROBLEMS = {
   unpaid: "The order is not paid yet, so it is not sent.",
   edit_pending: "A change to this order waits for the customer's payment. Nothing is sent until it is paid, cancelled or expired.",
   delivery_box_whole: "A subscription box delivery is sent whole, not in parts.",
+  pickup_order: "This order is collected at your place: mark it Collected instead of sending a parcel.",
+  not_pickup: "Only an order to be collected is handed over at a pickup place.",
+  not_local: "Only an order for local delivery is taken out by your own driver.",
+  handover_whole: "A handover takes everything still to send, with no carrier or tracking.",
   changed: "The order changed while you were choosing (another parcel, an undone parcel, a withdrawal or units that will not be sent were recorded). Look again and send what is left.",
 } as const;
 export type ShipmentProblemCode = keyof typeof SHIPMENT_PROBLEMS;
