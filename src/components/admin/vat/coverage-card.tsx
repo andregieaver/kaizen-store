@@ -37,14 +37,14 @@ export function CoverageCard({ categories, countries }: { categories: VatCategor
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-line">
             {countries.map((country) => (
               <tr key={country.code}>
                 <th scope="row" className="py-2 pr-3 font-normal">
                   <Link href={`${PLATFORM_BASE}/vat/${country.code}`} className="underline">
                     {country.name}
                   </Link>
-                  {country.inUse && <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs text-muted">In use</span>}
+                  {country.inUse && <span className="ml-2 rounded-full border border-line px-2 py-0.5 text-xs text-muted">In use</span>}
                 </th>
                 {shown.map((category) => {
                   const cell = country.cells[category.code];

@@ -13,7 +13,7 @@ export default async function StoreEmailsPage({ params }: PageProps<"/admin/[sto
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-display text-ink">Emails to customers</h1>
-      <section className="rounded-card border border-border bg-background p-5">
+      <section className="rounded-card border border-line bg-card p-5">
         <EmailLog emails={emails} base={`/admin/${store.slug}/emails`} locale={store.markets[0]?.locale} />
       </section>
     </div>

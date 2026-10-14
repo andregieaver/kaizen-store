@@ -55,7 +55,7 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
     return (
       <div className="flex flex-col gap-6">
         {heading}
-        <p className="rounded-lg border border-border bg-surface p-4 text-sm">You can look at orders but not change them: that needs the right to change orders.</p>
+        <p className="rounded-lg border border-line bg-sunken p-4 text-sm">You can look at orders but not change them: that needs the right to change orders.</p>
       </div>
     );
   }
@@ -63,7 +63,7 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
     return (
       <div className="flex flex-col gap-6">
         {heading}
-        <p role="status" className="rounded-lg border border-border bg-surface p-4 text-sm">
+        <p role="status" className="rounded-lg border border-line bg-sunken p-4 text-sm">
           {editability.text}
         </p>
         <Link href={orderHref} className="text-sm underline underline-offset-2">

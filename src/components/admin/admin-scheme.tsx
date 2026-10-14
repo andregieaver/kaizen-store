@@ -50,9 +50,9 @@ export function SchemeField({ saved, save }: { saved: string; save: SaveAdminSch
         {offeredSchemes().map((scheme) => (
           <label
             key={scheme.id}
-            className="flex cursor-pointer flex-col gap-2 rounded-lg border border-border p-2 pb-3 text-sm has-checked:border-foreground has-checked:font-medium has-focus-visible:outline-2 has-focus-visible:outline-offset-2"
+            className="flex cursor-pointer flex-col gap-2 rounded-lg border border-line p-2 pb-3 text-sm has-checked:border-brand has-checked:font-medium has-focus-visible:outline-2 has-focus-visible:outline-offset-2"
           >
-            <span aria-hidden className="flex h-14 w-32 overflow-hidden rounded-md border border-border" style={{ background: scheme.swatch.canvas }}>
+            <span aria-hidden className="flex h-14 w-32 overflow-hidden rounded-md border border-line" style={{ background: scheme.swatch.canvas }}>
               <span className="h-full w-5" style={{ background: scheme.swatch.rail }} />
               <span className="m-2 flex flex-1 items-end justify-end rounded-sm bg-white/90">
                 <span className="m-1.5 h-2.5 w-8 rounded-full" style={{ background: scheme.swatch.brand }} />

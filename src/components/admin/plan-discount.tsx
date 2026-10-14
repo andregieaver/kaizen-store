@@ -24,14 +24,14 @@ export function PlanDiscount({
   canEdit: boolean;
 }) {
   return (
-    <section aria-labelledby="discount-heading" className="rounded-card border border-border bg-background p-5 text-sm">
+    <section aria-labelledby="discount-heading" className="rounded-card border border-line bg-card p-5 text-sm">
       <h2 id="discount-heading" className="mb-1 font-medium">
         Discount code
       </h2>
       {discount ? (
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <p>
-            <span className="rounded-full border border-border px-3 py-1 font-mono font-medium">{discount.code}</span>{" "}
+            <span className="rounded-full border border-line px-3 py-1 font-mono font-medium">{discount.code}</span>{" "}
             {platformDiscountSummary(discount, money)}
             {discount.appliedAt
               ? ` · applied ${discount.appliedAt.slice(0, 10)}`
@@ -57,7 +57,7 @@ export function PlanDiscount({
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
-              className="min-h-10 w-56 rounded-md border border-border bg-background px-3 font-mono font-normal uppercase"
+              className="min-h-10 w-56 rounded-md border border-line bg-card px-3 font-mono font-normal uppercase"
             />
           </label>
           <SubmitButton variant="secondary">Apply</SubmitButton>

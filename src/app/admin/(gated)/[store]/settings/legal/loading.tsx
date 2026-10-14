@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The legal pages while they are read. */
 export default function LegalLoading() {

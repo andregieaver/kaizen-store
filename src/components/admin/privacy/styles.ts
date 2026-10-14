@@ -1,14 +1,14 @@
 /** The privacy pages' shared classes and day formatting (admin tokens only, D149). */
-export const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal disabled:opacity-60";
+export const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal disabled:opacity-60";
 export const label = "flex flex-col gap-1 text-sm font-medium";
 export const hint = "font-normal text-muted";
-export const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+export const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 export const link = "underline";
 /** A button that is a plain form submit (a download is a POST the browser follows, so it cannot be an `ActionForm`). */
-export const buttonPrimary = "inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background";
-export const buttonSecondary = "inline-flex min-h-10 items-center rounded-md border border-border bg-background px-4 text-sm";
+export const buttonPrimary = "inline-flex min-h-10 items-center rounded-md bg-brand px-4 text-sm font-medium text-brand-ink";
+export const buttonSecondary = "inline-flex min-h-10 items-center rounded-md border border-line bg-card px-4 text-sm";
 /** Overdue text: red, and always with words beside it (never colour alone). */
-export const alertText = "text-red-700 dark:text-red-400";
+export const alertText = "text-danger-text";
 
 /** A day for people ("3 Oct 2026"), in the store's own time zone for an instant and as it is for a `yyyy-mm-dd` day. */
 export function dayText(value: Date | string | null | undefined, timeZone = "Europe/Oslo"): string {

@@ -27,7 +27,7 @@ export type OverviewProps = {
 
 const table = "w-full text-sm";
 const th = "px-4 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
-const card = "overflow-x-auto rounded-lg border border-border bg-background";
+const card = "overflow-x-auto rounded-lg border border-line bg-card";
 
 const hours = (minutes: number) => formatDuration(minutes);
 
@@ -71,7 +71,7 @@ function Figures({ f, locale, base, many }: { f: CurrencyFigures; locale: string
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-border bg-background p-4 text-sm text-muted">{children}</p>;
+  return <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">{children}</p>;
 }
 
 /** The Work page (docs/work.md 6.5): what is unbilled, drafted and owed, what needs you, and what is running. */
@@ -89,7 +89,7 @@ export function OverviewBody(props: OverviewProps) {
       </div>
 
       {props.missing.length > 0 && (
-        <section aria-labelledby="ready-heading" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <section aria-labelledby="ready-heading" className="rounded-lg border border-line bg-card p-4 text-sm">
           <h2 id="ready-heading" className="mb-1 font-medium">
             Before your first invoice
           </h2>
@@ -107,7 +107,7 @@ export function OverviewBody(props: OverviewProps) {
       {start ? (
         <section
           aria-labelledby="start-heading"
-          className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
+          className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
         >
           <h2 id="start-heading" className="font-medium">
             Add your first client
@@ -119,7 +119,7 @@ export function OverviewBody(props: OverviewProps) {
           <div>
             <Link
               href={`${base}/clients`}
-              className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+              className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
             >
               Add your first client
             </Link>
@@ -163,7 +163,7 @@ export function OverviewBody(props: OverviewProps) {
                       <th className={`${th} text-right`}>Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-line">
                     {overview.unbilledByClient.map((row) => (
                       <tr key={`${row.clientId}:${row.currency}`}>
                         <td className="px-4 py-2">
@@ -205,7 +205,7 @@ export function OverviewBody(props: OverviewProps) {
                       <th className={`${th} text-right`}>Still owed</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-line">
                     {overview.overdueInvoices.map((row) => (
                       <tr key={row.invoiceId}>
                         <td className="px-4 py-2">
@@ -235,7 +235,7 @@ export function OverviewBody(props: OverviewProps) {
             {overview.runningTimers.length === 0 ? (
               <Empty>No timer is running.</Empty>
             ) : (
-              <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+              <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
                 {overview.runningTimers.map((timer) => {
                   const assignment = props.assignmentNames[timer.assignmentId];
                   return (

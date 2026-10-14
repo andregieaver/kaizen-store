@@ -22,9 +22,9 @@ import {
 
 export const metadata: Metadata = { title: "Design profiles" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const field = "flex flex-col gap-1 text-sm font-medium";
-const tab = "flex min-h-10 items-center rounded-md border border-border px-3 text-sm hover:bg-surface aria-[current=page]:bg-surface aria-[current=page]:font-medium";
+const tab = "flex min-h-10 items-center rounded-md border border-edge px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium";
 const KIND_WORDS = { template: "the demo template", starter: "store template", store: "store" } as const;
 
 /**
@@ -63,7 +63,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
       </nav>
 
       {query.deleted && (
-        <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
           The design profile was deleted; its workspace is closed and kept.
           {typeof query.cleared === "string" && query.cleared && ` It was the recommended profile of ${query.cleared}, which recommend none now.`}
         </p>
@@ -88,7 +88,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
       )}
 
       {filter === "current" && (
-        <section aria-labelledby="new-design" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+        <section aria-labelledby="new-design" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
           <div>
             <h2 id="new-design" className="font-medium">
               New design profile
@@ -168,20 +168,20 @@ function DesignItem({
   archived: boolean;
 }) {
   const shown = shownDesignDetails(design);
-  const edit = "flex min-h-10 items-center gap-1.5 rounded-md border border-border px-3 text-sm hover:bg-surface";
+  const edit = "flex min-h-10 items-center gap-1.5 rounded-md border border-edge px-3 text-sm hover:bg-sunken";
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 md:flex-row md:items-start">
+    <li className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 md:flex-row md:items-start">
       {shown.pictureUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- a profile's picture from Kaizen's media library
-        <img src={shown.pictureUrl} alt="" className="aspect-video w-full rounded-md border border-border object-cover md:w-48" />
+        <img src={shown.pictureUrl} alt="" className="aspect-video w-full rounded-md border border-line object-cover md:w-48" />
       ) : (
-        <div aria-hidden="true" className="hidden aspect-video w-48 rounded-md border border-dashed border-border md:block" />
+        <div aria-hidden="true" className="hidden aspect-video w-48 rounded-md border border-dashed border-line md:block" />
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
         <span className="font-medium">
           {shown.title}
           <LifecycleBadge facts={facts} />
-          {!design.readable && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs font-normal">Cannot be read: publish it again</span>}
+          {!design.readable && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Cannot be read: publish it again</span>}
         </span>
         <span className="text-muted">
           {!archived && `position ${design.position} · `}

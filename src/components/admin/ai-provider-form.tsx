@@ -34,7 +34,7 @@ export type AiFormSettings = {
   enabled: boolean;
 };
 
-const field = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const field = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
  * Chooses an AI provider and its models (D73), for Kaizen or for one store:
@@ -493,7 +493,7 @@ function VisionField({
   // Empty checks the text model, which is what would be used.
   const checked = () => value.trim() || (document.getElementById(textId) as HTMLInputElement | null)?.value.trim() || "";
   return (
-    <div id="vision" className="flex scroll-mt-20 flex-col gap-2 rounded-lg border border-border p-4 text-sm">
+    <div id="vision" className="flex scroll-mt-20 flex-col gap-2 rounded-lg border border-line p-4 text-sm">
       <label htmlFor={id} className="font-medium">
         Model that sees pictures
       </label>
@@ -519,7 +519,7 @@ function VisionField({
               type="button"
               aria-pressed={value === s.model}
               onClick={() => change(s.model)}
-              className={`min-h-9 rounded-md border px-3 text-left ${value === s.model ? "border-foreground bg-surface" : "border-border hover:bg-surface"}`}
+              className={`min-h-9 rounded-md border px-3 text-left ${value === s.model ? "border-brand bg-sunken" : "border-edge hover:bg-sunken"}`}
             >
               <span className="font-mono text-xs">{s.model}</span>
               <span className="ml-2 text-muted">{s.note}</span>
@@ -533,12 +533,12 @@ function VisionField({
             type="button"
             disabled={pending}
             onClick={() => start(async () => setResult(await check(checked())))}
-            className="min-h-10 w-fit rounded-pill border border-border px-4 font-medium hover:bg-surface disabled:opacity-50"
+            className="min-h-10 w-fit rounded-pill border border-edge px-4 font-medium hover:bg-sunken disabled:opacity-50"
           >
             {pending ? "Looking …" : "Check that it sees pictures"}
           </button>
           <p className="text-muted">Sends one small picture to the model with the provider and key saved below, and asks what colours are in it. It costs almost nothing.</p>
-          <p role="status" className={result && !result.ok ? "text-red-700 dark:text-red-400" : ""}>
+          <p role="status" className={result && !result.ok ? "text-danger-text" : ""}>
             {result?.ok && `✓ ${result.model} sees pictures (answered in ${(result.ms / 1000).toFixed(1)} s).`}
             {result && !result.ok && `✗ ${result.message}`}
           </p>
@@ -566,13 +566,13 @@ export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }
         type="button"
         disabled={pending}
         onClick={() => start(async () => setResult(await action()))}
-        className="min-h-10 w-fit rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+        className="min-h-10 w-fit rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50"
       >
         {pending ? "Testing …" : "Test"}
       </button>
       <ul role="status" className="flex flex-col gap-1 text-sm">
         {lines.map((line) => (
-          <li key={line.message} className={line.ok ? "" : "text-red-700 dark:text-red-400"}>
+          <li key={line.message} className={line.ok ? "" : "text-danger-text"}>
             {line.ok ? "✓ " : "✗ "}
             {line.message}
           </li>
@@ -596,15 +596,15 @@ export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }
         type="button"
         disabled={pending}
         onClick={() => start(async () => setResult(await action()))}
-        className="min-h-10 w-fit rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+        className="min-h-10 w-fit rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50"
       >
         {pending ? "Checking … (up to a minute)" : "Check query understanding"}
       </button>
       <div role="status" className="text-sm">
-        {result && "error" in result && <p className="text-red-700 dark:text-red-400">✗ {result.error}</p>}
+        {result && "error" in result && <p className="text-danger-text">✗ {result.error}</p>}
         {result && !("error" in result) && (
           <>
-            <p className={result.ok ? "" : "text-red-700 dark:text-red-400"}>
+            <p className={result.ok ? "" : "text-danger-text"}>
               {result.ok ? "✓ Passes" : "✗ Does not pass"}: {result.model} understood {result.passed} of {result.total} searches (
               {Math.round((result.passed / result.total) * 100)} %) in {(result.ms / 1000).toFixed(1)} s.
             </p>
@@ -639,17 +639,17 @@ export function AiImageTestButton({ action }: { action: () => Promise<AiImageTes
         type="button"
         disabled={pending}
         onClick={() => start(async () => setResult(await action()))}
-        className="min-h-10 w-fit rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+        className="min-h-10 w-fit rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50"
       >
         {pending ? "Making a picture … (up to a minute)" : "Test the picture model"}
       </button>
       <div role="status" className="text-sm">
-        {result && !result.ok && <p className="text-red-700 dark:text-red-400">✗ {result.message}</p>}
+        {result && !result.ok && <p className="text-danger-text">✗ {result.message}</p>}
         {result?.ok && (
           <div className="flex flex-col gap-2">
             <p>✓ Made in {(result.ms / 1000).toFixed(1)} s. Not kept.</p>
             {/* eslint-disable-next-line @next/next/no-img-element -- a small test picture, never kept */}
-            <img src={result.dataUrl} alt="A test picture: a coffee cup on a table" width={256} height={256} className="rounded-md border border-border" />
+            <img src={result.dataUrl} alt="A test picture: a coffee cup on a table" width={256} height={256} className="rounded-md border border-line" />
           </div>
         )}
       </div>

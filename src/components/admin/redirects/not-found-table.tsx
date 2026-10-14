@@ -38,7 +38,7 @@ export function NotFoundTable({ rows, timeZone, actions, canWrite }: { rows: Mis
       <table className="w-full text-sm">
         <caption className="sr-only">Addresses that were asked for and not found, most asked first</caption>
         <thead>
-          <tr className="border-b border-border">
+          <tr className="border-b border-line">
             <th scope="col" className={th}>
               Address
             </th>
@@ -106,7 +106,7 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
     });
 
   return (
-    <tr className="border-b border-border last:border-0" aria-busy={pending}>
+    <tr className="border-b border-line last:border-0" aria-busy={pending}>
       <td className={td}>
         <code className="break-all text-xs">{row.path}</code>
       </td>
@@ -169,7 +169,7 @@ function MissingRowView({ row, timeZone, actions, canWrite }: { row: MissingRow;
             )}
             <FindingList findings={findings.filter((f) => f.severity === "error")} />
             {problems.length > 0 && (
-              <ul role="alert" className="list-disc pl-5 text-xs text-red-700 dark:text-red-400">
+              <ul role="alert" className="list-disc pl-5 text-xs text-danger-text">
                 {problems.map((p) => (
                   <li key={p}>{p}</li>
                 ))}

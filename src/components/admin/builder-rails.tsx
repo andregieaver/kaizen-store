@@ -103,7 +103,7 @@ export function FoldButton({
       title={text}
       aria-expanded
       aria-controls={controls}
-      className="flex size-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-foreground"
+      className="flex size-9 shrink-0 items-center justify-center rounded-md text-muted hover:bg-sunken hover:text-ink"
     >
       <Icon aria-hidden className="size-5" />
     </button>
@@ -131,7 +131,7 @@ export function Rail({
   const text = `Show ${label}`;
   return (
     <div
-      className={`rounded-lg border border-border bg-background lg:sticky lg:top-4 lg:flex lg:justify-center lg:py-1 ${className}`}
+      className={`rounded-lg border border-line bg-card lg:sticky lg:top-4 lg:flex lg:justify-center lg:py-1 ${className}`}
     >
       <button
         type="button"
@@ -140,7 +140,7 @@ export function Rail({
         title={text}
         aria-expanded={false}
         aria-controls={controls}
-        className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-surface lg:size-9 lg:min-h-0 lg:w-auto lg:justify-center lg:rounded-md lg:px-0"
+        className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium hover:bg-sunken lg:size-9 lg:min-h-0 lg:w-auto lg:justify-center lg:rounded-md lg:px-0"
       >
         <Icon aria-hidden className="size-5 shrink-0" />
         <span className="lg:hidden">{text}</span>
@@ -225,7 +225,7 @@ export function RailTabsHeader<K extends string>({
               if (event.key === "ArrowRight") select(index + 1);
               if (event.key === "ArrowLeft") select(index - 1);
             }}
-            className="min-h-9 border-b-2 border-transparent text-xs font-medium tracking-wide text-muted uppercase aria-selected:border-foreground aria-selected:text-foreground"
+            className="min-h-9 border-b-2 border-transparent text-xs font-medium tracking-wide text-muted uppercase aria-selected:border-brand aria-selected:text-ink"
           >
             {tab.label}
           </button>

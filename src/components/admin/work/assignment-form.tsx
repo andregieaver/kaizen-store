@@ -256,7 +256,7 @@ export function AssignmentForm({
         </Field>
       </div>
 
-      <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+      <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
         <legend className="px-1 text-sm font-medium">Estimate warnings</legend>
         <p className={hintText}>
           While a timer runs on something with an estimate, you are told as it runs out, if this page is open.

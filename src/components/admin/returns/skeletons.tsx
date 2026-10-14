@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The queue's shape while it is read: the heading, the four figures, the filter and the table, in the admin's placeholder style. */
 export function QueueSkeleton() {

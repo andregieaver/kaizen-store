@@ -39,7 +39,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         </p>
       </div>
       {designFailed && (
-        <p role="alert" className="max-w-3xl rounded-lg border border-border bg-background p-4 text-sm">
+        <p role="alert" className="max-w-3xl rounded-lg border border-line bg-card p-4 text-sm">
           The store is made, but the design profile you chose could not be applied: it has its store template&apos;s look. Apply the
           profile below, or choose another.
         </p>
@@ -65,7 +65,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
           installFont: installStoreFontAction.bind(null, store.slug),
         }}
       />
-      <section aria-labelledby="cart-heading" className="max-w-3xl rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="cart-heading" className="max-w-3xl rounded-card border border-line bg-card p-5">
         <h2 id="cart-heading" className="mb-1 font-medium">
           Cart
         </h2>

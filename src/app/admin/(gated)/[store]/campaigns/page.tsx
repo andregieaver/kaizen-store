@@ -46,19 +46,19 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
             can be for the whole store, some products, or a category or tag, and start and stop by themselves.
           </p>
         </div>
-        <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background">
+        <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
           New campaign
         </Link>
       </div>
       {campaigns.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No campaigns yet. Try 3 for 2 on a category, or a free product above a basket amount.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Campaign</th>
                 <th scope="col" className="px-4 py-2 font-medium">Gives</th>
                 <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">When</th>
@@ -74,7 +74,7 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
                 const status = campaignStatus(c);
                 const reach = c.productIds.length + c.termIds.length;
                 return (
-                  <tr key={c.id} className="border-b border-border last:border-0">
+                  <tr key={c.id} className="border-b border-line last:border-0">
                     <td className="px-4 py-2">
                       <Link href={`${base}/${c.id}`} className="font-medium underline-offset-2 hover:underline">
                         {c.name}
@@ -131,12 +131,12 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
                     <td className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">
                         <form action={setCampaignActiveAction.bind(null, store.slug, c.id, !c.active)}>
-                          <button type="submit" className="flex min-h-10 items-center rounded-md px-3 hover:bg-surface">
+                          <button type="submit" className="flex min-h-10 items-center rounded-md px-3 hover:bg-sunken">
                             {c.active ? "Switch off" : "Switch on"}
                             <span className="sr-only"> {c.name}</span>
                           </button>
                         </form>
-                        <Link href={`${base}/${c.id}`} className="flex min-h-10 items-center rounded-md px-3 hover:bg-surface">
+                        <Link href={`${base}/${c.id}`} className="flex min-h-10 items-center rounded-md px-3 hover:bg-sunken">
                           Edit<span className="sr-only"> {c.name}</span>
                         </Link>
                         <DeleteDiscountButton

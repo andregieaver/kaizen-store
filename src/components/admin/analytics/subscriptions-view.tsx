@@ -289,22 +289,22 @@ function BridgeTable({ report, money }: { report: SubscriptionsReport; money: (m
   const rows = bridgeRows(report);
   return (
     <>
-    <div className="relative overflow-x-auto rounded-lg border border-border bg-background">
+    <div className="relative overflow-x-auto rounded-lg border border-line bg-card">
       <table data-export-id="subscriptions.bridge" className="w-full min-w-[32rem] border-collapse text-sm">
         <caption className="sr-only">{`How monthly recurring revenue moved over ${periodText(report.period)}, one row for each step`}</caption>
         <thead>
           <tr>
-            <th scope="col" className="whitespace-nowrap border-b border-border px-3 py-2 text-left">
+            <th scope="col" className="whitespace-nowrap border-b border-line px-3 py-2 text-left">
               Step
             </th>
-            <th scope="col" className="whitespace-nowrap border-b border-border px-3 py-2 text-right">
+            <th scope="col" className="whitespace-nowrap border-b border-line px-3 py-2 text-right">
               Monthly amount
             </th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.key} data-step={row.key} className={`border-b border-border last:border-b-0 ${row.subtotal ? "bg-surface font-medium" : ""}`}>
+            <tr key={row.key} data-step={row.key} className={`border-b border-line last:border-b-0 ${row.subtotal ? "bg-sunken font-medium" : ""}`}>
               <th scope="row" className="px-3 py-2 text-left align-top font-[inherit]">
                 <span className="block">{row.label}</span>
                 <span className="mt-0.5 block max-w-md text-xs font-normal text-muted">{row.detail}</span>
@@ -353,7 +353,7 @@ export function bridgeBars(report: SubscriptionsReport, money: (minor: number | 
 function EmptyStore({ base }: { base: string }) {
   return (
     <AnalyticsSection id="empty" title="No subscriptions yet" description="Subscriptions are products a shopper buys again on a schedule.">
-      <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted">
+      <div className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
         <p className="mx-auto max-w-prose">
           This store has no subscriptions, so there is no recurring revenue to show. Once a shopper subscribes, this page shows monthly recurring revenue (MRR), how it moves, who cancels and which payments fail.
         </p>
@@ -418,7 +418,7 @@ export function SubscriptionsView(props: SubscriptionsViewProps) {
         <p className="max-w-prose text-sm">{growthLine(report, money)}</p>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <BridgeTable report={report} money={money} />
-          <div className="min-w-0 rounded-lg border border-border bg-background p-4">
+          <div className="min-w-0 rounded-lg border border-line bg-card p-4">
             <h3 className="mb-3 text-sm font-medium">MRR, start to end</h3>
             <HorizontalBars label="MRR at the start, what was added and lost, and MRR at the end" rows={bridgeBars(report, money)} exportId="subscriptions.mrr_bridge" />
           </div>

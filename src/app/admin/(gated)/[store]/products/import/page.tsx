@@ -91,7 +91,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
             <table className="w-full text-sm">
               <caption className="sr-only">Recent product imports of this store</caption>
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className={th}>
                     File
                   </th>
@@ -108,7 +108,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
               </thead>
               <tbody>
                 {jobs.map((job) => (
-                  <tr key={job.id} className="border-b border-border last:border-0">
+                  <tr key={job.id} className="border-b border-line last:border-0">
                     <td className={`${td} break-all`}>{job.inputName ?? KIND_TITLES.product_import}</td>
                     <td className={td}>{momentText(job.createdAt, store.timeZone)}</td>
                     <td className={td}>{STATUS_WORDS[job.status]}</td>

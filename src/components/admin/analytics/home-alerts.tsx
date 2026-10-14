@@ -39,5 +39,5 @@ export async function HomeAnalyticsAlerts({ store, base, now }: { store: Store; 
 
 /** What stands in for the alerts while they are read: a quiet block the size of one alert. */
 export function HomeAnalyticsAlertsFallback() {
-  return <div aria-hidden="true" className="h-16 animate-pulse rounded-lg bg-background" />;
+  return <div aria-hidden="true" className="h-16 animate-pulse rounded-lg bg-card" />;
 }

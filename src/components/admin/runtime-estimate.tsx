@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import { estimateRuntime } from "@/lib/experiment-results";
 import { MIN_DAYS } from "@/lib/experiments";
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
 
@@ -51,7 +51,7 @@ export function RuntimeEstimate({ share, versions, minDays = MIN_DAYS }: { share
         </label>
       </div>
       {estimate && (
-        <p role="status" className={`rounded-md border p-3 text-sm ${estimate.tooLong ? "border-amber-500" : "border-border"}`}>
+        <p role="status" className={`rounded-md border p-3 text-sm ${estimate.tooLong ? "border-warning-text" : "border-line"}`}>
           {estimate.sentence}
         </p>
       )}

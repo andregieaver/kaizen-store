@@ -13,7 +13,7 @@ import { savePlaceAction } from "../../actions";
 export const metadata: Metadata = { title: "Add a place" };
 
 const field = "flex flex-col gap-1 text-sm font-medium";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /** A new store or pickup point (D40). */
 export default async function NewPlacePage({ params, searchParams }: PageProps<"/admin/[store]/settings/company/places/new">) {
@@ -33,7 +33,7 @@ export default async function NewPlacePage({ params, searchParams }: PageProps<"
           {kind === "shop" ? "A place where shoppers can visit you." : "A place where shoppers can collect their orders."}
         </p>
       </div>
-      <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+      <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
         <input type="hidden" name="kind" value={kind} />
         <div className={field}>
           <label htmlFor="place-name">Name</label>
@@ -51,7 +51,7 @@ export default async function NewPlacePage({ params, searchParams }: PageProps<"
           </p>
         </div>
         <PlaceFields place={null} countries={countries} defaultCountry={store.details.country ?? "NO"} what={`the ${what}`} />
-        <div className="border-t border-border pt-4">
+        <div className="border-t border-line pt-4">
           <h2 className="mb-3 text-sm font-medium">Opening hours</h2>
           <HoursEditor name="hours" initial={null} optional />
         </div>

@@ -39,7 +39,7 @@ export function DuplicateButton({
         <span className="sr-only"> {title}</span>
       </button>
       {problem && (
-        <span role="alert" className="block text-red-700 dark:text-red-400">
+        <span role="alert" className="block text-danger-text">
           {problem}
         </span>
       )}

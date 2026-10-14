@@ -19,9 +19,9 @@ import type { AffiliateResult, AffiliateSettings } from "@/lib/affiliates";
 import { moneyIn } from "@/lib/bonus-admin";
 
 const control =
-  "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-red-700 dark:aria-invalid:border-red-400 disabled:opacity-60";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
-const errorText = "text-sm text-red-700 dark:text-red-400";
+  "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm aria-invalid:border-danger-text disabled:opacity-60";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
+const errorText = "text-sm text-danger-text";
 
 type Errors = Partial<Record<AffiliateField, string>>;
 
@@ -173,7 +173,7 @@ export function AffiliateSettingsView({
           </h2>
           <p className="text-sm text-muted">{AFFILIATE_EXPLANATION}</p>
           {!bonusOn && (
-            <p role="note" className="rounded-md border border-border bg-surface p-3 text-sm">
+            <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
               {AFFILIATE_NEEDS_BONUS}
             </p>
           )}
@@ -189,7 +189,7 @@ export function AffiliateSettingsView({
             />
             <span className="font-medium">The referral program is on</span>
           </label>
-          <div id="affiliate-enabled-notes" className="rounded-md bg-surface p-3 text-sm">
+          <div id="affiliate-enabled-notes" className="rounded-md bg-sunken p-3 text-sm">
             {values.enabled ? (
               <>
                 <p className="mb-1 font-medium">{savedOn ? "While it is on" : "When you turn it on"}</p>
@@ -398,7 +398,7 @@ export function AffiliateSettingsView({
           <button
             type="submit"
             disabled={pending}
-            className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+            className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
           >
             {pending ? "Saving …" : "Save"}
           </button>

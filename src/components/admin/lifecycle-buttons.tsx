@@ -6,7 +6,7 @@ type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
 /** The state of a store template or a design profile (D177), as a small badge. */
 export function LifecycleBadge({ facts }: { facts: LifecycleFacts }) {
-  return <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs font-normal">{LIFECYCLE_WORDS[lifecycleState(facts)]}</span>;
+  return <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">{LIFECYCLE_WORDS[lifecycleState(facts)]}</span>;
 }
 
 /**
@@ -59,7 +59,7 @@ export function LifecycleButtons({
         </ActionForm>
       )}
       {offered.includes("delete") && (
-        <details className="rounded-md border border-border px-3 py-2 text-sm">
+        <details className="rounded-md border border-line px-3 py-2 text-sm">
           <summary className="cursor-pointer">
             Delete…{named}
           </summary>

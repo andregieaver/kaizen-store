@@ -65,7 +65,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
         </p>
       </div>
 
-      <section aria-labelledby="plan-heading" className="rounded-card border border-border bg-background p-5 text-sm">
+      <section aria-labelledby="plan-heading" className="rounded-card border border-line bg-card p-5 text-sm">
         <h2 id="plan-heading" className="mb-3 font-medium">
           {onPlan && billing?.planName ? `Your plan: ${billing.planName}` : "No plan yet"}
         </h2>
@@ -115,7 +115,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
               {optedOut
                 ? "Kaizen sends you no reminders about plans you start paying for. "
                 : "If you go to pay and do not finish, Kaizen may email you a reminder. "}
-              <button type="submit" className="underline hover:text-foreground">
+              <button type="submit" className="underline hover:text-ink">
                 {optedOut ? "Send me reminders" : "Do not send me reminders"}
               </button>
             </form>
@@ -148,7 +148,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
       )}
 
       {onPlan && isOwner && (
-        <section aria-labelledby="manage-heading" className="rounded-card border border-border bg-background p-5">
+        <section aria-labelledby="manage-heading" className="rounded-card border border-line bg-card p-5">
           <h2 id="manage-heading" className="mb-1 font-medium">
             Invoices and payment
           </h2>
@@ -205,7 +205,7 @@ function PlanCard({
   const button = (price: typeof monthly, label: string) =>
     price &&
     (price.id === currentPriceId ? (
-      <p className="flex min-h-10 items-center justify-center rounded-md border border-foreground px-4 text-sm font-medium">
+      <p className="flex min-h-10 items-center justify-center rounded-md border border-brand px-4 text-sm font-medium">
         Current plan · {label}
       </p>
     ) : (
@@ -217,7 +217,7 @@ function PlanCard({
   return (
     <article
       aria-labelledby={`card-${plan.id}`}
-      className={`flex h-full flex-col gap-4 rounded-lg border bg-background p-5 ${isCurrent ? "border-foreground" : "border-border"}`}
+      className={`flex h-full flex-col gap-4 rounded-lg border bg-card p-5 ${isCurrent ? "border-brand" : "border-line"}`}
     >
       <div>
         <h3 id={`card-${plan.id}`} className="text-lg font-medium">
@@ -275,7 +275,7 @@ function WithCode({
         : "for as long as the plan runs";
   const price = (minor: number) => formatMoney(off(minor), currency, "nb-NO");
   return (
-    <p className="mt-2 rounded-md bg-surface px-2 py-1">
+    <p className="mt-2 rounded-md bg-sunken px-2 py-1">
       With <span className="font-mono font-medium">{discount.code}</span>:{" "}
       {[monthly !== undefined && `${price(monthly)} / month`, yearly !== undefined && `${price(yearly)} / year`]
         .filter(Boolean)

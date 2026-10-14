@@ -41,7 +41,7 @@ const tdRight = "px-2 py-2 text-right tabular-nums align-top";
 function Head({ first }: { first: string }) {
   return (
     <thead>
-      <tr className="border-b border-border">
+      <tr className="border-b border-line">
         <th scope="col" className={th}>
           {first}
         </th>
@@ -98,7 +98,7 @@ function ModelTable({ rows, first = "Provider and model" }: { rows: UsageRow[]; 
         <Head first={first} />
         <tbody>
           {groups.map((g) => (
-            <tr key={g.key} className="border-b border-border last:border-0">
+            <tr key={g.key} className="border-b border-line last:border-0">
               <th scope="row" className={`${td} text-left font-normal`}>
                 <span className="font-medium">{g.label}</span>
                 <span className="block text-xs text-muted">{g.sub}</span>
@@ -107,7 +107,7 @@ function ModelTable({ rows, first = "Provider and model" }: { rows: UsageRow[]; 
             </tr>
           ))}
           {groups.length > 1 && (
-            <tr className="border-t border-border font-medium">
+            <tr className="border-t border-line font-medium">
               <th scope="row" className={`${td} text-left`}>
                 All
               </th>
@@ -124,11 +124,11 @@ function ModelTable({ rows, first = "Provider and model" }: { rows: UsageRow[]; 
 function GroupList({ groups, empty }: { groups: UsageGroup[]; empty: string }) {
   if (groups.length === 0) return <p className="text-sm text-muted">{empty}</p>;
   return (
-    <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+    <ul className="flex flex-col divide-y divide-line rounded-lg border border-line">
       {groups.map((g) => (
         <li key={g.key}>
           <details className="group">
-            <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-4 gap-y-1 p-3 text-sm hover:bg-surface">
+            <summary className="flex cursor-pointer flex-wrap items-baseline gap-x-4 gap-y-1 p-3 text-sm hover:bg-sunken">
               <span className="min-w-0 flex-1">
                 <span className="font-medium">{g.label}</span>
                 {g.sub && <span className="ml-2 text-muted">{g.sub}</span>}
@@ -139,7 +139,7 @@ function GroupList({ groups, empty }: { groups: UsageGroup[]; empty: string }) {
                 {g.sums.failed > 0 ? ` · ${n(g.sums.failed)} failed` : ""}
               </span>
             </summary>
-            <div className="border-t border-border p-3">
+            <div className="border-t border-line p-3">
               <ModelTable rows={g.rows} />
             </div>
           </details>
@@ -151,7 +151,7 @@ function GroupList({ groups, empty }: { groups: UsageGroup[]; empty: string }) {
 
 function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="rounded-lg border border-border p-4">
+    <div className="rounded-lg border border-line p-4">
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{label}</p>
       <p className="mt-1 text-2xl font-medium tabular-nums">{value}</p>
       {note && <p className="mt-1 text-xs text-muted">{note}</p>}
@@ -169,7 +169,7 @@ function DailyBars({ days }: { days: DailyUsage[] }) {
           <div
             key={d.day}
             title={`${d.day}: ${n(d.tokens)} tokens, ${formatUsd(d.costMicros)}, ${n(d.requests)} requests`}
-            className="min-w-px flex-1 rounded-t-sm bg-foreground/70"
+            className="min-w-px flex-1 rounded-t-sm bg-inverse/70"
             style={{ height: `${Math.max(d.tokens > 0 ? 3 : 0, Math.round((d.tokens / most) * 100))}%` }}
           />
         ))}
@@ -191,7 +191,7 @@ export function PeriodLinks({ base, period, extra = "" }: { base: string; period
           key={p.id}
           href={`${base}?period=${p.id}${extra}`}
           aria-current={p.id === period ? "page" : undefined}
-          className={`rounded-md px-3 py-1.5 text-sm ${p.id === period ? "bg-surface font-medium" : "text-muted hover:bg-surface"}`}
+          className={`rounded-md px-3 py-1.5 text-sm ${p.id === period ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}
         >
           {p.label}
         </Link>
@@ -200,7 +200,7 @@ export function PeriodLinks({ base, period, extra = "" }: { base: string; period
   );
 }
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 function Section({ id, title, note, children }: { id: string; title: string; note?: string; children: ReactNode }) {
   return (

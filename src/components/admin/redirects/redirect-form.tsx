@@ -22,7 +22,7 @@ export type RedirectFormActions = {
   save: (input: { from: string; to: string }, id?: string) => Promise<FormSave>;
 };
 
-const SEVERITY_STYLE = { error: "text-red-700 dark:text-red-400", warning: "text-amber-700 dark:text-amber-400", info: "text-muted" } as const;
+const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text", info: "text-muted" } as const;
 
 /** The findings of one field, one sentence each, under it. The sentence names only addresses (`finding()` never quotes another cell). */
 export function FindingList({ findings, id }: { findings: readonly Finding[]; id?: string }) {
@@ -174,7 +174,7 @@ export function RedirectForm({
       <FindingList findings={shown.line} />
       <p className={hint}>{help ?? EXAMPLE}</p>
       {ask && (
-        <p role="note" className="rounded-md border border-border bg-background p-2 text-sm">
+        <p role="note" className="rounded-md border border-line bg-card p-2 text-sm">
           {ask}
         </p>
       )}
@@ -192,7 +192,7 @@ export function RedirectForm({
         {saved && <p>{saved.text}</p>}
         {saved && <FindingList findings={saved.findings} />}
         {problems.length > 0 && (
-          <ul className="list-disc pl-5 text-red-700 dark:text-red-400">
+          <ul className="list-disc pl-5 text-danger-text">
             {problems.map((p) => (
               <li key={p}>{p}</li>
             ))}

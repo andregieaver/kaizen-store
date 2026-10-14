@@ -55,7 +55,7 @@ export function ShipmentList({
     <ol className="mb-4 flex flex-col gap-3 text-sm" aria-label="Parcels">
       {shipments.map((s, index) =>
         s.undone ? (
-          <li key={s.id} className="rounded-md border border-dashed border-border p-3 text-muted" data-undone="">
+          <li key={s.id} className="rounded-md border border-dashed border-line p-3 text-muted" data-undone="">
             <p className="font-medium">
               <s>Parcel {index + 1}</s> <span className="font-normal">· {when(s.createdAt)} · not sent after all</span>
             </p>
@@ -78,7 +78,7 @@ export function ShipmentList({
             <p className="mt-1 text-xs">{undoneLine(s.undone, when)}</p>
           </li>
         ) : (
-          <li key={s.id} className="rounded-md border border-border p-3">
+          <li key={s.id} className="rounded-md border border-line p-3">
             <p className="font-medium">
               Parcel {index + 1} <span className="font-normal text-muted">· {when(s.createdAt)}</span>
             </p>

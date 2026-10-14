@@ -72,18 +72,18 @@ export function TypographyFields({
 }) {
   if (roles.length === 0) return null;
   return (
-    <fieldset className="flex flex-col gap-3 border-t border-border pt-4" data-typography-panel="">
+    <fieldset className="flex flex-col gap-3 border-t border-line pt-4" data-typography-panel="">
       <legend className="float-left mb-1 w-full font-medium">Typography</legend>
       {roles.length === 1 ? (
         <RoleFields part={part} def={roles[0]} onChange={onChange} install={install} familyDefault={familyDefault} />
       ) : (
         roles.map((def, index) => (
-          <details key={def.role} open={index === 0} className="group rounded-md border border-border">
+          <details key={def.role} open={index === 0} className="group rounded-md border border-line">
             <summary className="flex min-h-10 cursor-pointer items-center justify-between gap-2 px-3 text-sm font-medium">
               {def.label}
               <Changed part={part} role={def.role} />
             </summary>
-            <div className="border-t border-border p-3">
+            <div className="border-t border-line p-3">
               <RoleFields part={part} def={def} onChange={onChange} install={install} familyDefault={def.role === "text" ? familyDefault : "As the component's text"} />
             </div>
           </details>
@@ -96,12 +96,12 @@ export function TypographyFields({
 /** "Set" beside a kind of text with settings of its own at any size. */
 function Changed({ part, role }: { part: Part; role: TextRole }) {
   const set = Boolean(part.typography?.[role]) || Object.values(part.at ?? {}).some((own) => Boolean((own as { typography?: TypographyGroups } | undefined)?.typography?.[role]));
-  return set ? <span className="rounded bg-surface px-1.5 py-0.5 text-xs font-normal text-muted">Set</span> : null;
+  return set ? <span className="rounded bg-sunken px-1.5 py-0.5 text-xs font-normal text-muted">Set</span> : null;
 }
 
 function Section({ title, open = false, children }: { title: string; open?: boolean; children: ReactNode }) {
   return (
-    <details open={open} className="border-b border-border last:border-b-0">
+    <details open={open} className="border-b border-line last:border-b-0">
       <summary className="flex min-h-10 cursor-pointer items-center text-sm font-medium">{title}</summary>
       <div className="flex flex-col gap-4 pb-4">{children}</div>
     </details>
@@ -263,7 +263,7 @@ export function TypoMark({
       {size !== "xl" &&
         (source.own ? (
           <>
-            <span data-size-own="" className="rounded bg-surface px-1.5 py-0.5 text-foreground">
+            <span data-size-own="" className="rounded bg-sunken px-1.5 py-0.5 text-ink">
               {sizeNote(source, size)}
             </span>
             <button
@@ -271,7 +271,7 @@ export function TypoMark({
               onClick={() => onChange(clearTypographyAt(part, size, role, field))}
               aria-label={`Clear ${label.toLowerCase()} for ${SIZE_LABELS[size]}, to take it from the larger sizes again`}
               title="Clear: take it from the larger sizes"
-              className="flex size-6 items-center justify-center rounded text-muted hover:bg-surface hover:text-foreground"
+              className="flex size-6 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink"
             >
               <X aria-hidden className="size-3.5" />
             </button>
@@ -345,7 +345,7 @@ function MeasureField<U extends string>({
             if (Number.isFinite(n) && n >= min && n <= max) onChange({ value: n, unit });
           }}
           onBlur={() => setDraft(null)}
-          className={`${fieldClass} w-24 aria-invalid:border-red-700`}
+          className={`${fieldClass} w-24 aria-invalid:border-danger-text`}
         />
         <select
           aria-label={`${label}: unit`}
@@ -357,7 +357,7 @@ function MeasureField<U extends string>({
               onChange({ value: Math.min(high, Math.max(low, value.value)), unit: next });
             } else setDraft(null);
           }}
-          className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
+          className="min-h-10 rounded-md border border-line bg-card px-2 text-sm"
           disabled={!value}
         >
           {units.map((u) => (
@@ -398,7 +398,7 @@ function SelectField({
         </label>
         {mark}
       </div>
-      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-10 rounded-md border border-border bg-background px-2 text-sm">
+      <select id={id} value={value} onChange={(event) => onChange(event.target.value)} className="min-h-10 rounded-md border border-line bg-card px-2 text-sm">
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -443,7 +443,7 @@ function ButtonsField({
             aria-label={option.name}
             title={option.name}
             onClick={() => onChange(value === option.value ? "" : option.value)}
-            className="min-h-10 min-w-10 rounded-md border border-border px-3 text-sm aria-pressed:border-foreground aria-pressed:bg-surface aria-pressed:font-medium"
+            className="min-h-10 min-w-10 rounded-md border border-line px-3 text-sm aria-pressed:border-brand aria-pressed:bg-sunken aria-pressed:font-medium"
           >
             {option.label}
           </button>
@@ -472,7 +472,7 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
       {value && (
         <div className="flex flex-col gap-3 pl-6">
           <p className="text-xs text-muted">{hint}</p>
-          <div className="h-6 rounded border border-border" aria-hidden style={{ backgroundImage: `linear-gradient(${gradient.angle}deg, ${colours.join(", ")})` }} />
+          <div className="h-6 rounded border border-line" aria-hidden style={{ backgroundImage: `linear-gradient(${gradient.angle}deg, ${colours.join(", ")})` }} />
           <SavedGradients
             label={label}
             current={{ style: "shift", colors: colours, angle: gradient.angle }}
@@ -498,7 +498,7 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
                     onChange({ ...gradient, colors: colours.filter((_, i) => i !== index) });
                   }}
                   aria-label={`Remove colour ${index + 1}`}
-                  className="min-h-10 rounded-pill border border-border px-2 text-xs hover:bg-surface disabled:opacity-50"
+                  className="min-h-10 rounded-pill border border-edge px-2 text-xs hover:bg-sunken disabled:opacity-50"
                 >
                   Remove
                 </button>
@@ -513,7 +513,7 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
                 setRevision((n) => n + 1);
                 onChange({ ...gradient, colors: [...colours, colours[colours.length - 1]] });
               }}
-              className="min-h-9 rounded-pill border border-border px-3 text-xs hover:bg-surface disabled:opacity-50"
+              className="min-h-9 rounded-pill border border-edge px-3 text-xs hover:bg-sunken disabled:opacity-50"
             >
               Add a colour
             </button>
@@ -529,7 +529,7 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
                 value={gradient.angle}
                 aria-valuetext={`${gradient.angle} degrees`}
                 onChange={(event) => onChange({ ...gradient, angle: Number(event.target.value) })}
-                className="w-48 accent-foreground"
+                className="w-48 accent-brand"
               />
               <output className="w-12 tabular-nums">{gradient.angle}°</output>
             </span>

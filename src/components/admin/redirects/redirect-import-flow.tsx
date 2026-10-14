@@ -95,7 +95,7 @@ export function RedirectUpload({
       </div>
       <div role="status" aria-live="polite">
         {problems.length > 0 && (
-          <ul className="list-disc pl-5 text-sm text-red-700 dark:text-red-400">
+          <ul className="list-disc pl-5 text-sm text-danger-text">
             {problems.map((p) => (
               <li key={p}>{p}</li>
             ))}
@@ -149,7 +149,7 @@ export function RedirectImportOptions({ initial, check, checked }: { initial: Ex
         </button>
       </div>
       <div role="status" aria-live="polite">
-        {problem && <p className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-sm text-danger-text">{problem}</p>}
       </div>
     </form>
   );
@@ -186,7 +186,7 @@ export function RedirectImportApply({
         {counts.withErrors > 0 ? `, ${wholeNumber(counts.withErrors)} with errors` : ""}.
       </p>
       {confirming ? (
-        <div className="flex flex-col gap-3 rounded-md border border-border bg-background p-3" role="group" aria-label="Confirm the import">
+        <div className="flex flex-col gap-3 rounded-md border border-line bg-card p-3" role="group" aria-label="Confirm the import">
           <p className="text-sm">{importConfirmation(counts.toCreate, counts.toReplace)}</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" disabled={pending} onClick={() => go(apply)} className={primary}>
@@ -209,7 +209,7 @@ export function RedirectImportApply({
       )}
       {writes + counts.unchanged === 0 && <p className={hint}>No line of this file can be imported. Fix the problems below, or change the option and check again.</p>}
       <div role="status" aria-live="polite">
-        {problem && <p className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-sm text-danger-text">{problem}</p>}
       </div>
     </section>
   );

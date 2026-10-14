@@ -6,8 +6,8 @@ import { RefreshWhile } from "./refresh-while";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
 /** One small form with a hidden id: a button that acts on one domain. */
 function DomainButton({ action, id, label }: { action: Action; id: string; label: string }) {
@@ -67,7 +67,7 @@ export function DomainsPanel({
           )}
         </p>
         {deploying && (
-          <p role="status" className="rounded-md border border-border bg-surface p-3 text-sm">
+          <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
             Your domains changed. Kaizen is putting the change live, which takes a few minutes; this page updates by
             itself.
             <RefreshWhile seconds={20} />
@@ -114,12 +114,12 @@ export function DomainsPanel({
         )}
 
         {domains.length > 0 && (
-          <ul className="flex flex-col divide-y divide-border">
+          <ul className="flex flex-col divide-y divide-line">
             {domains.map((domain) => (
               <li key={domain.id} className="flex flex-col gap-3 py-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">{domain.hostname}</span>
-                  <span className="rounded-full border border-border px-2 py-0.5 text-xs">
+                  <span className="rounded-full border border-line px-2 py-0.5 text-xs">
                     {domain.isPrimary ? "Your address" : domain.status === "active" ? "Active: leads to your address" : "Waiting for DNS"}
                   </span>
                 </div>
@@ -138,7 +138,7 @@ export function DomainsPanel({
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm">
                         <thead>
-                          <tr className="border-b border-border text-muted">
+                          <tr className="border-b border-line text-muted">
                             <th className="py-2 pr-3 font-normal">Type</th>
                             <th className="py-2 pr-3 font-normal">Name</th>
                             <th className="py-2 pr-3 font-normal">Value</th>
@@ -147,7 +147,7 @@ export function DomainsPanel({
                         </thead>
                         <tbody>
                           {dnsRecords(domain.hostname, domain.token, domain.checks).map((record) => (
-                            <tr key={`${record.type}-${record.name}-${record.value}`} className="border-b border-border align-top">
+                            <tr key={`${record.type}-${record.name}-${record.value}`} className="border-b border-line align-top">
                               <td className="py-2 pr-3 font-mono">{record.type}</td>
                               <td className="py-2 pr-3 font-mono break-all">{record.name}</td>
                               <td className="py-2 pr-3 font-mono break-all">{record.value}</td>
@@ -159,7 +159,7 @@ export function DomainsPanel({
                         </tbody>
                       </table>
                     </div>
-                    {domain.checks.problem && <p className="text-sm text-red-700">{domain.checks.problem}</p>}
+                    {domain.checks.problem && <p className="text-sm text-danger-text">{domain.checks.problem}</p>}
                     <p className="text-xs text-muted">
                       {domain.checkedAt
                         ? `Last checked ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" }).format(new Date(domain.checkedAt))}. `

@@ -70,29 +70,29 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         </div>
         <div className="flex flex-wrap gap-3">
           {!LAYOUT_TYPES.includes(type) && (
-            <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-md border border-border px-5 font-medium">
+            <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-md border border-line px-5 font-medium">
               Categories and tags
             </Link>
           )}
           {type === "page" && (
-            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-md border border-border px-5 font-medium">
+            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-md border border-line px-5 font-medium">
               Create with AI
             </Link>
           )}
-          <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-foreground px-5 font-medium text-background">
+          <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-brand px-5 font-medium text-brand-ink">
             New {copy.one}
           </Link>
         </div>
       </div>
 
       {query.deleted && (
-        <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
           The {copy.one} was deleted.
         </p>
       )}
 
       {pages.length === 0 ? (
-        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
           No {copy.many} yet. Make the first one with New {copy.one}.
         </p>
       ) : type === "header" || type === "footer" ? (
@@ -238,7 +238,7 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
   const copy = PAGE_TYPE_COPY[type];
   return (
     <>
-      <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-foreground px-4 py-3 text-sm text-background">
+      <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand px-4 py-3 text-sm text-brand-ink">
         <span>
           Preview of the saved draft.{" "}
           {page.state === "draft"
@@ -256,7 +256,7 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
         <ScopedCss css={[(await getPlatformChrome()).customCss, page.draft.css]} root="[data-site-css]" />
         {type === "header" || type === "footer" ? (
           // As Kaizen's pages draw it (D80), with its logo, menus and details.
-          <div className="overflow-hidden rounded-lg border border-border">
+          <div className="overflow-hidden rounded-lg border border-line">
             {type === "header" ? (
               <KaizenSiteHeader chrome={await getPlatformChrome()} layout={{ id: page.id, content: page.draft }} />
             ) : (

@@ -45,14 +45,14 @@ export function PasswordField({
           aria-describedby={hint ? `${id}-hint` : undefined}
           spellCheck={false}
           autoCapitalize="none"
-          className="min-h-10 min-w-0 flex-1 rounded-md border border-border bg-background px-3 font-normal"
+          className="min-h-10 min-w-0 flex-1 rounded-md border border-line bg-card px-3 font-normal"
         />
         <button
           type="button"
           onClick={() => setShown((value) => !value)}
           aria-pressed={shown}
           aria-controls={id}
-          className="min-h-10 rounded-md border border-border bg-background px-3"
+          className="min-h-10 rounded-md border border-line bg-card px-3"
         >
           {shown ? "Hide" : "Show"}
         </button>

@@ -27,8 +27,8 @@ export type PeriodPickerProps = {
   explicitPeriod?: boolean;
 };
 
-const inputClass = "h-9 rounded-lg border border-border bg-background px-2 text-sm";
-const buttonClass = "h-9 rounded-lg border border-border px-3 text-sm font-medium";
+const inputClass = "h-9 rounded-lg border border-line bg-card px-2 text-sm";
+const buttonClass = "h-9 rounded-lg border border-line px-3 text-sm font-medium";
 
 function Hidden({ values }: { values: Readonly<Record<string, string>> }) {
   return (
@@ -58,7 +58,7 @@ export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {
               key={p.id}
               href={periodHref(basePath, { period: { preset: p.id, from, to }, compare: { mode: compare } }, explicitPeriod ? { ...preserve, period: p.id } : preserve)}
               aria-current={active ? "true" : undefined}
-              className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${active ? "border-foreground bg-surface font-medium" : "border-border"}`}
+              className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${active ? "border-brand bg-sunken font-medium" : "border-line"}`}
             >
               {p.label}
             </Link>
@@ -76,7 +76,7 @@ export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {
           To
           <input type="date" name="to" defaultValue={to} {...(max ? { max } : {})} required className={inputClass} />
         </label>
-        <button type="submit" className={`${buttonClass} ${preset === "custom" ? "border-foreground" : ""}`}>
+        <button type="submit" className={`${buttonClass} ${preset === "custom" ? "border-brand" : ""}`}>
           Apply range
         </button>
       </form>

@@ -20,8 +20,8 @@ export type CalendarActions = {
 };
 
 const field = "flex flex-col gap-1 text-sm font-medium";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
-const small = "min-h-10 rounded-md border border-border px-3 text-sm";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
+const small = "min-h-10 rounded-md border border-line px-3 text-sm";
 
 /**
  * A resource's blocked dates and calendar sync (D67): dates the store closes
@@ -56,7 +56,7 @@ export async function ResourceCalendar({
 
   return (
     <>
-      <section aria-labelledby="blocks-heading" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="blocks-heading" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <div>
           <h2 id="blocks-heading" className="font-medium">
             {staff ? "Time off" : "Blocked dates"}
@@ -70,14 +70,14 @@ export async function ResourceCalendar({
           </p>
         </div>
         {blocks.length > 0 && (
-          <ul className="divide-y divide-border rounded-md border border-border text-sm">
+          <ul className="divide-y divide-line rounded-md border border-line text-sm">
             {blocks.map((b) => (
               <li key={b.id} className="flex flex-wrap items-start justify-between gap-2 p-3">
                 <div>
                   <span className="font-medium tabular-nums">{span(b.startsAt, b.endsAt)}</span>
                   <span className="block text-muted">{[b.feed && `From ${b.feed}`, b.note].filter(Boolean).join(" · ")}</span>
                   {b.clashes > 0 && (
-                    <span role="alert" className="block text-red-700 dark:text-red-400">
+                    <span role="alert" className="block text-danger-text">
                       Overlaps {b.clashes === 1 ? "a booking" : `${b.clashes} bookings`} here: booked twice. Cancel one of them.
                     </span>
                   )}
@@ -117,7 +117,7 @@ export async function ResourceCalendar({
       </section>
 
       {!staff && (
-        <section aria-labelledby="sync-heading" className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+        <section aria-labelledby="sync-heading" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
           <div>
             <h2 id="sync-heading" className="font-medium">
               Calendar sync
@@ -159,7 +159,7 @@ export async function ResourceCalendar({
           <div className="flex flex-col gap-2 text-sm">
             <h3 className="font-medium">Other sites&apos; calendars</h3>
             {feeds.length > 0 && (
-              <ul className="divide-y divide-border rounded-md border border-border">
+              <ul className="divide-y divide-line rounded-md border border-line">
                 {feeds.map((f) => (
                   <li key={f.id} className="flex flex-wrap items-start justify-between gap-2 p-3">
                     <div className="min-w-0">
@@ -170,7 +170,7 @@ export async function ResourceCalendar({
                         {!f.error && f.syncedAt && ` · ${f.events === 1 ? "1 event" : `${f.events} events`}`}
                       </span>
                       {f.error && (
-                        <span role="alert" className="block text-red-700 dark:text-red-400">
+                        <span role="alert" className="block text-danger-text">
                           {f.error}
                         </span>
                       )}

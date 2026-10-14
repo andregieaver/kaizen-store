@@ -31,7 +31,7 @@ import {
 
 export const metadata: Metadata = { title: "Store template" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const field = "flex flex-col gap-1 text-sm font-medium";
 
 /**
@@ -74,7 +74,7 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
         </p>
       </div>
 
-      <section aria-labelledby="state" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="state" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <h2 id="state" className="font-medium">
           Publishing
         </h2>
@@ -114,7 +114,7 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
         </div>
       </section>
 
-      <section aria-labelledby="features" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="features" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <h2 id="features" className="font-medium">
           Features
         </h2>
@@ -143,7 +143,7 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
             ))}
           </fieldset>
           {warnings.length > 0 && (
-            <div className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm">
+            <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
               <p className="font-medium">If you switch off something that is on now:</p>
               <ul className="list-disc pl-5">
                 {warnings.map((warning) => (

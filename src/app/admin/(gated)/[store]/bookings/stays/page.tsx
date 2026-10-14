@@ -58,7 +58,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
   const longDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
   const when = new Intl.DateTimeFormat("en-GB", { timeZone: tz, day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   const href = (date: string) => `/admin/${store.slug}/bookings/stays?from=${date}`;
-  const chip = "rounded-full border border-border px-3 py-1 text-sm";
+  const chip = "rounded-full border border-line px-3 py-1 text-sm";
 
   return (
     <div className="flex flex-col gap-6">
@@ -83,7 +83,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
       </div>
 
       {units.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">
+        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
           No rooms or rental items yet.{" "}
           <Link href={`/admin/${store.slug}/bookings/units`} className="underline">
             Add them
@@ -91,19 +91,19 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
           , then choose them in a stay or a rental.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full min-w-[40rem] border-collapse text-sm">
             <caption className="sr-only">Nights and days taken</caption>
             <thead>
               <tr>
-                <th scope="col" className="border-b border-border p-2 text-left font-medium">
+                <th scope="col" className="border-b border-line p-2 text-left font-medium">
                   Room or item
                 </th>
                 {days.map((day) => (
                   <th
                     key={day}
                     scope="col"
-                    className={`border-b border-l border-border p-1 text-center text-xs font-normal tabular-nums ${day === today ? "font-medium" : ""}`}
+                    className={`border-b border-l border-line p-1 text-center text-xs font-normal tabular-nums ${day === today ? "font-medium" : ""}`}
                   >
                     {dayHead.format(noon(day))}
                   </th>
@@ -113,7 +113,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
             <tbody>
               {units.map((u) => (
                 <tr key={u.id}>
-                  <th scope="row" className="border-b border-border p-2 text-left font-normal">
+                  <th scope="row" className="border-b border-line p-2 text-left font-normal">
                     <Link href={`/admin/${store.slug}/bookings/units/${u.id}`} className="underline-offset-2 hover:underline">
                       {u.name}
                     </Link>
@@ -126,8 +126,8 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
                     return (
                       <td
                         key={day}
-                        className={`border-b border-l border-border p-1 text-center text-xs tabular-nums ${
-                          full ? "bg-foreground/80 text-background" : count > 0 ? "bg-surface" : closed ? "bg-surface text-muted" : ""
+                        className={`border-b border-l border-line p-1 text-center text-xs tabular-nums ${
+                          full ? "bg-inverse/80 text-inverse-ink" : count > 0 ? "bg-sunken" : closed ? "bg-sunken text-muted" : ""
                         }`}
                       >
                         {count > 0 ? (
@@ -148,9 +148,9 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
       )}
 
       {bookings.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">No bookings in these two weeks.</p>
+        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">No bookings in these two weeks.</p>
       ) : (
-        <ul className="flex max-w-3xl flex-col divide-y divide-border rounded-lg border border-border bg-background">
+        <ul className="flex max-w-3xl flex-col divide-y divide-line rounded-lg border border-line bg-card">
           {bookings.map((b) => (
             <li key={b.id} className="flex flex-wrap items-start justify-between gap-3 p-3 text-sm">
               <div>
@@ -164,7 +164,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
               </div>
               <div className="flex flex-col items-end gap-1 text-right">
                 {b.status === "held" ? (
-                  <span className="rounded bg-surface px-1.5 py-0.5 text-xs">Being paid for</span>
+                  <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">Being paid for</span>
                 ) : (
                   b.orderId && (
                     <Link href={`/admin/${store.slug}/orders/${b.orderId}`} className="underline">

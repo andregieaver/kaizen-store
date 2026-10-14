@@ -63,7 +63,7 @@ export function UnverifiedCard({ rows, categoryName, verify }: { rows: VatRateRo
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-line">
                 {rows.map((row) => (
                   <tr key={`${row.country}:${row.category}:${row.validFrom}`} className="align-top">
                     <td className="py-2 pr-3">
@@ -127,7 +127,7 @@ export function RateHistory({ rows, categoryName, verify }: { rows: VatRateRow[]
                 <th scope="col" className="py-2 font-medium">Verified</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-line">
               {rows.map((row) => (
                 <tr key={`${row.category}:${row.validFrom}`} className={`align-top ${row.state === "ended" ? "text-muted" : ""}`}>
                   <td className="py-2 pr-3">{categoryName(row.category)}</td>

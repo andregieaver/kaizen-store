@@ -41,16 +41,16 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href={`/admin/${slug}/staff/roles`} className="inline-flex min-h-10 items-center rounded-pill border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+          <Link href={`/admin/${slug}/staff/roles`} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
             Roles
           </Link>
-          <Link href={`/admin/${slug}/activity`} className="inline-flex min-h-10 items-center rounded-pill border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+          <Link href={`/admin/${slug}/activity`} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
             Activity log
           </Link>
         </div>
       </div>
 
-      <section aria-labelledby="members-heading" className="rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="members-heading" className="rounded-card border border-line bg-card p-5">
         <h2 id="members-heading" className="sr-only">
           Members
         </h2>

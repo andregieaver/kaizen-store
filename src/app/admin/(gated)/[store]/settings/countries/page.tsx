@@ -36,7 +36,7 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
         </p>
       </div>
 
-      <section aria-labelledby="home-heading" className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+      <section aria-labelledby="home-heading" className="flex flex-col gap-2 rounded-lg border border-line bg-sunken p-4">
         <h2 id="home-heading" className="text-base font-medium">Your own country</h2>
         {home ? (
           <p className="text-sm">

@@ -38,7 +38,7 @@ export function TagsCard({
   };
 
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-card border border-border bg-background p-5 text-sm">
+    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-card border border-line bg-card p-5 text-sm">
       <h2 id={`${id}-h`} className="font-medium">
         Tags
       </h2>
@@ -47,10 +47,10 @@ export function TagsCard({
       ) : (
         <ul className="flex flex-wrap gap-2">
           {tags.map((tag) => (
-            <li key={tag.key} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface py-0.5 pr-1 pl-3 text-xs">
+            <li key={tag.key} className="inline-flex items-center gap-1 rounded-full border border-line bg-sunken py-0.5 pr-1 pl-3 text-xs">
               {tag.label}
               {canWrite && (
-                <button type="button" disabled={working} onClick={() => apply({ remove: tag.label })} aria-label={`Remove the tag ${tag.label}`} className="inline-flex size-6 items-center justify-center rounded-full hover:bg-background">
+                <button type="button" disabled={working} onClick={() => apply({ remove: tag.label })} aria-label={`Remove the tag ${tag.label}`} className="inline-flex size-6 items-center justify-center rounded-full hover:bg-card">
                   <span aria-hidden="true">×</span>
                 </button>
               )}
@@ -94,7 +94,7 @@ export function TagsCard({
         </form>
       )}
       {message && (
-        <p role="status" aria-live="polite" className={message.ok ? "" : "text-red-700 dark:text-red-400"}>
+        <p role="status" aria-live="polite" className={message.ok ? "" : "text-danger-text"}>
           {message.text}
         </p>
       )}
@@ -140,7 +140,7 @@ export function ArchiveButton({
         </p>
       )}
       {message && (
-        <p role="status" aria-live="polite" className={`text-xs ${message.ok ? "" : "text-red-700 dark:text-red-400"}`}>
+        <p role="status" aria-live="polite" className={`text-xs ${message.ok ? "" : "text-danger-text "}`}>
           {message.text}
         </p>
       )}

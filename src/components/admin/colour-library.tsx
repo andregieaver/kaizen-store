@@ -98,7 +98,7 @@ function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; 
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        className="min-h-8 rounded-pill border border-border px-2 text-xs hover:bg-surface disabled:opacity-50"
+        className="min-h-8 rounded-pill border border-edge px-2 text-xs hover:bg-sunken disabled:opacity-50"
       >
         Save {what}…
       </button>
@@ -131,12 +131,12 @@ function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; 
             setOpen(false);
           }
         }}
-        className="min-h-8 w-32 rounded-md border border-border bg-background px-2 text-xs"
+        className="min-h-8 w-32 rounded-md border border-line bg-card px-2 text-xs"
       />
-      <button type="button" onClick={done} className="min-h-8 rounded-pill bg-foreground px-2 text-xs font-medium text-background">
+      <button type="button" onClick={done} className="min-h-8 rounded-pill bg-brand px-2 text-xs font-medium text-brand-ink">
         Save
       </button>
-      <button type="button" onClick={() => setOpen(false)} className="min-h-8 rounded-md border border-border px-2 text-xs">
+      <button type="button" onClick={() => setOpen(false)} className="min-h-8 rounded-md border border-line px-2 text-xs">
         Cancel
       </button>
     </span>
@@ -160,14 +160,14 @@ export function SavedColours({ label, value, onPick }: { label: string; value: s
                 aria-label={`${saved.name} (${saved.color})`}
                 aria-pressed={value?.toLowerCase() === saved.color}
                 title={`${saved.name} ${saved.color}`}
-                className="size-6 rounded border border-border shadow-sm aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-foreground"
+                className="size-6 rounded border border-line shadow-sm aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-ink"
                 style={{ backgroundColor: saved.color }}
               />
               <button
                 type="button"
                 onClick={() => lib.remove("colour", saved.id)}
                 aria-label={`Remove saved colour ${saved.name}`}
-                className="absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full bg-foreground text-background group-focus-within:flex group-hover:flex"
+                className="absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full bg-brand text-brand-ink group-focus-within:flex group-hover:flex"
               >
                 <X aria-hidden className="size-3" />
               </button>
@@ -177,7 +177,7 @@ export function SavedColours({ label, value, onPick }: { label: string; value: s
       )}
       <SaveAs what="colour" disabled={value === undefined || !HEX6.test(value)} onSave={(name) => value && lib.saveColour(name, value)} />
       {lib.problem && (
-        <span role="alert" className="text-xs text-red-700 dark:text-red-400">
+        <span role="alert" className="text-xs text-danger-text">
           {lib.problem}
         </span>
       )}
@@ -213,14 +213,14 @@ export function SavedGradients({
                 onClick={() => onPick(saved)}
                 aria-label={`Use the saved gradient ${saved.name}`}
                 title={saved.name}
-                className="h-7 w-14 rounded border border-border shadow-sm"
+                className="h-7 w-14 rounded border border-line shadow-sm"
                 style={swatch(saved)}
               />
               <button
                 type="button"
                 onClick={() => lib.remove("gradient", saved.id)}
                 aria-label={`Remove saved gradient ${saved.name}`}
-                className="absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full bg-foreground text-background group-focus-within:flex group-hover:flex"
+                className="absolute -top-1.5 -right-1.5 hidden size-4 items-center justify-center rounded-full bg-brand text-brand-ink group-focus-within:flex group-hover:flex"
               >
                 <X aria-hidden className="size-3" />
               </button>
@@ -230,7 +230,7 @@ export function SavedGradients({
       )}
       {current && <SaveAs what="gradient" onSave={(name) => lib.saveGradient(name, current)} />}
       {lib.problem && (
-        <span role="alert" className="text-xs text-red-700 dark:text-red-400">
+        <span role="alert" className="text-xs text-danger-text">
           {lib.problem}
         </span>
       )}

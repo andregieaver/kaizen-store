@@ -35,7 +35,7 @@ export default async function StoreFieldsPage({ params }: PageProps<"/admin/[sto
         </p>
       </div>
       {editor.groups.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No group of custom fields is on the store yet.{" "}
           <Link href={`${base}/new?entity=store`} className="underline">
             Make one

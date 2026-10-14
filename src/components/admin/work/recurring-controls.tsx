@@ -113,7 +113,7 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
       {open.length > 0 && (
         <ul className="flex flex-col gap-2" aria-label="Periods to invoice">
           {open.map((o) => (
-            <li key={o.period} className="flex flex-col gap-2 rounded-md border border-border p-3">
+            <li key={o.period} className="flex flex-col gap-2 rounded-md border border-line p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm">
                   <span className="font-medium">{formatDay(o.period, locale)}</span>{" "}
@@ -165,7 +165,7 @@ export function TemplateActions({ storeSlug, template, form, locale, open }: Tem
                 </div>
               </div>
               {confirming === o.period && (
-                <div className="flex flex-col gap-2 rounded-md bg-surface p-3">
+                <div className="flex flex-col gap-2 rounded-md bg-sunken p-3">
                   <p className="text-sm">
                     Issuing gives the invoice its number and makes it final. If something is missing, it stays a draft and you are told what.
                   </p>

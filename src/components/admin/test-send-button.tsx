@@ -12,11 +12,11 @@ export function TestSendButton({ action }: { action: () => Promise<{ ok: boolean
         type="button"
         disabled={pending}
         onClick={() => start(async () => setResult(await action()))}
-        className="min-h-10 w-fit rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+        className="min-h-10 w-fit rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50"
       >
         {pending ? "Sending …" : "Send a test"}
       </button>
-      <p role="status" className={`text-sm ${result && !result.ok ? "text-red-700 dark:text-red-400" : ""}`}>
+      <p role="status" className={`text-sm ${result && !result.ok ? "text-danger-text " : ""}`}>
         {result?.message}
       </p>
     </div>

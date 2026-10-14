@@ -206,7 +206,7 @@ export function TasksPanel({
             maxLength={200}
             placeholder="New task, then Enter"
             autoComplete="off"
-            className="min-h-10 rounded-md border border-border bg-background px-3 text-sm"
+            className="min-h-10 rounded-md border border-line bg-card px-3 text-sm"
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -221,7 +221,7 @@ export function TasksPanel({
             autoComplete="off"
             aria-invalid={addProblems.fields.estimate ? true : undefined}
             aria-describedby={addProblems.fields.estimate ? `${dndId}-estimate-error` : undefined}
-            className="min-h-10 w-28 rounded-md border border-border bg-background px-3 text-sm"
+            className="min-h-10 w-28 rounded-md border border-line bg-card px-3 text-sm"
           />
         </div>
         <button type="submit" className={primaryButton}>
@@ -238,13 +238,13 @@ export function TasksPanel({
       <Problems messages={listProblems} />
 
       {empty ? (
-        <p className="rounded-lg border border-border bg-background p-4 text-sm text-muted">
+        <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">
           No tasks yet. Tasks split the job into parts you can estimate, time and tick off. They are optional.
         </p>
       ) : (
         <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-            <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+            <ul className="divide-y divide-line rounded-lg border border-line bg-card">
               {ids.map((id, index) => {
                 const task = byId.get(id)!;
                 return (
@@ -394,7 +394,7 @@ function TaskRow({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform ? { ...transform, x: 0 } : null), transition }}
-      className={`flex flex-col gap-2 px-3 py-3 sm:px-4 ${isDragging ? "relative z-10 bg-surface shadow-md" : ""}`}
+      className={`flex flex-col gap-2 px-3 py-3 sm:px-4 ${isDragging ? "relative z-10 bg-sunken shadow-md" : ""}`}
     >
       <div className="flex items-center gap-2">
         <button
@@ -402,7 +402,7 @@ function TaskRow({
           {...attributes}
           {...listeners}
           aria-label={`Drag ${task.title} to reorder`}
-          className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted hover:bg-surface active:cursor-grabbing"
+          className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted hover:bg-sunken active:cursor-grabbing"
         >
           <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
             <circle cx="9" cy="6" r="1.5" />
@@ -441,7 +441,7 @@ function TaskRow({
           }}
           maxLength={200}
           aria-label={`Name of ${task.title}`}
-          className={`min-h-9 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-sm hover:border-border focus:border-border ${done ? "text-muted line-through" : ""}`}
+          className={`min-h-9 min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 text-sm hover:border-line focus:border-line ${done ? "text-muted line-through" : ""}`}
         />
       </div>
       <div className="flex flex-wrap items-center gap-2 pl-0 sm:pl-11">
@@ -461,7 +461,7 @@ function TaskRow({
             placeholder="None"
             autoComplete="off"
             aria-label={`Estimate for ${task.title}`}
-            className={`${smallControl} w-24 text-foreground`}
+            className={`${smallControl} w-24 text-ink`}
           />
         </label>
         <span className="text-xs tabular-nums">
@@ -489,7 +489,7 @@ function TaskRow({
               if (!window.confirm(`Delete the task ${task.title}? Time logged on it stays on the assignment.`)) return;
               run(() => deleteTaskAction(storeSlug, task.id));
             }}
-            className="min-h-9 px-2 text-sm text-red-700 underline disabled:opacity-50 dark:text-red-400"
+            className="min-h-9 px-2 text-sm text-danger-text underline disabled:opacity-50"
           >
             Delete<span className="sr-only"> {task.title}</span>
           </button>

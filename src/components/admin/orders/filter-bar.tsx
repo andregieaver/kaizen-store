@@ -111,9 +111,9 @@ export function FilterBar({
           )}
         </div>
 
-        <details className="rounded-lg border border-border bg-surface">
+        <details className="rounded-lg border border-line bg-sunken">
           <summary className="cursor-pointer px-4 py-2 text-sm font-medium">Filters, sorting and columns</summary>
-          <div className="flex flex-col gap-4 border-t border-border p-4">
+          <div className="flex flex-col gap-4 border-t border-line p-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Group legend="Payment" name="pay" values={PAY_FILTERS} labels={PAY_LABELS} checked={state.pay} />
               <Group legend="Fulfilment" name="ship" values={SHIP_FILTERS} labels={SHIP_LABELS} checked={state.ship} />
@@ -236,7 +236,7 @@ export function FilterBar({
         <ul aria-label="Filters that are on" className="flex flex-wrap gap-2">
           {chips.map((chip) => (
             <li key={chip.key}>
-              <Link href={clearHref(base, params, chip.key)} className="inline-flex min-h-8 items-center gap-1 rounded-full border border-border bg-surface px-3 text-xs hover:bg-background" aria-label={`Remove filter: ${chip.label}`}>
+              <Link href={clearHref(base, params, chip.key)} className="inline-flex min-h-8 items-center gap-1 rounded-full border border-line bg-sunken px-3 text-xs hover:bg-card" aria-label={`Remove filter: ${chip.label}`}>
                 {chip.label}
                 <span aria-hidden="true">×</span>
               </Link>

@@ -44,8 +44,8 @@ export function InvoiceTotalsView({
             net={money(group.netMinor)}
           />
         ))}
-        <dt className="border-t border-border pt-2 font-medium">{totalLabel}</dt>
-        <dd className="border-t border-border pt-2 text-right text-base font-medium tabular-nums">
+        <dt className="border-t border-line pt-2 font-medium">{totalLabel}</dt>
+        <dd className="border-t border-line pt-2 text-right text-base font-medium tabular-nums">
           {money(totals.totalMinor)}
         </dd>
       </dl>

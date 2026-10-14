@@ -32,12 +32,12 @@ export function ModalBar({ row, lang }: { row: PageRow; lang: string | undefined
   const m = t(lang ?? "en").modal;
   return (
     <>
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-amber-100 px-2 py-1 text-xs text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md bg-warning-soft px-2 py-1 text-xs text-warning-text">
         <span data-modal-badge>{modalSummary(modal)}</span>
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="ml-auto min-h-7 rounded border border-amber-700 px-2 font-medium hover:bg-amber-200 focus-visible:outline-2 dark:hover:bg-amber-900"
+          className="ml-auto min-h-7 rounded border border-warning-text px-2 font-medium hover:bg-warning-soft focus-visible:outline-2"
         >
           Preview
         </button>
@@ -107,14 +107,14 @@ function PreviewBlock({ block, lang }: { block: PageBlock; lang: string | undefi
     block.type === "menu" ||
     block.type === "search"
   ) {
-    return <p className="rounded-md bg-surface p-3 text-sm text-muted">Shown here on the site.</p>;
+    return <p className="rounded-md bg-sunken p-3 text-sm text-muted">Shown here on the site.</p>;
   }
   if (block.type === "customField" || block.type === "fieldLoop" || block.type === "storePart") {
-    return <p className="rounded-md bg-surface p-3 text-sm text-muted">Shown here on the site.</p>;
+    return <p className="rounded-md bg-sunken p-3 text-sm text-muted">Shown here on the site.</p>;
   }
   return blockHasContent(block) && blockOwnContent(block) ? (
     <PageBlockView block={block} />
   ) : (
-    <p className="rounded-md bg-surface p-3 text-sm text-muted">Nothing to show yet.</p>
+    <p className="rounded-md bg-sunken p-3 text-sm text-muted">Nothing to show yet.</p>
   );
 }

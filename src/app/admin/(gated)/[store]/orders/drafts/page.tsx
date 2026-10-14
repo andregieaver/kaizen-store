@@ -33,7 +33,7 @@ export default async function DraftsPage({ params, searchParams }: Props) {
           A draft is an order you make for a customer: products or custom items, your own prices, a discount and shipping. Send it and the customer gets a link to pay on Stripe&apos;s page, or record that they paid you outside Kaizen.
         </p>
       </div>
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-background" />}>
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-card" />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
     </div>

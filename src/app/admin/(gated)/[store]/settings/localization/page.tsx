@@ -15,7 +15,7 @@ import { fetchRatesAction, saveCurrenciesAction, saveLanguagesAction, saveStoreL
 
 export const metadata: Metadata = { title: "Languages and currencies" };
 
-const input = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 
 export default async function LocalizationPage({ params }: PageProps<"/admin/[store]/settings/localization">) {
   const current = await requirePermission((await params).store, "settings:read");
@@ -98,9 +98,9 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
           </>
         ) : (
         <ActionForm action={saveLanguagesAction.bind(null, store.slug)} className="flex flex-col gap-4">
-          <table className="w-full rounded-lg border border-border bg-background text-left text-sm">
+          <table className="w-full rounded-lg border border-line bg-card text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Language</th>
                 <th scope="col" className="px-4 py-2 font-medium">Offer</th>
                 <th scope="col" className="px-4 py-2 font-medium">Main</th>
@@ -111,7 +111,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
                 const current = localization.locales.find((locale) => locale.split("-")[0] === lang);
                 const required = ownLanguages.has(lang);
                 return (
-                  <tr key={lang} className="border-b border-border last:border-0">
+                  <tr key={lang} className="border-b border-line last:border-0">
                     <th scope="row" className="px-4 py-2 font-normal">
                       {languageName(current ?? locales[0])}
                       {locales.length > 1 && (
@@ -196,9 +196,9 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
         ) : (
         <>
         <ActionForm action={saveCurrenciesAction.bind(null, store.slug)} className="flex flex-col gap-4">
-          <table className="w-full rounded-lg border border-border bg-background text-left text-sm">
+          <table className="w-full rounded-lg border border-line bg-card text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Currency</th>
                 <th scope="col" className="px-4 py-2 font-medium">Offer</th>
                 <th scope="col" className="px-4 py-2 font-medium">Rate per 1 EUR</th>
@@ -213,7 +213,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
                 const step = set ? set.roundTo / 10 ** digits : 0;
                 const steps = ROUND_STEPS.includes(step as (typeof ROUND_STEPS)[number]) || step === 1 / 10 ** digits ? ROUND_STEPS : [...ROUND_STEPS, step].sort((a, b) => a - b);
                 return (
-                  <tr key={currency} className="border-b border-border last:border-0">
+                  <tr key={currency} className="border-b border-line last:border-0">
                     <th scope="row" className="px-4 py-2 font-normal">
                       {currencyName(currency, main ?? "en")}
                       {native && <span className="ml-2 text-xs text-muted">a country&apos;s currency</span>}

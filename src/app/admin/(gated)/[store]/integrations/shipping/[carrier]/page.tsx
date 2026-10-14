@@ -17,8 +17,8 @@ import { checkCarrierAction, removeCarrierAction, saveCarrierAction, saveCheckou
 
 export const metadata: Metadata = { title: "Shipping carrier" };
 
-const card = "rounded-lg border border-border bg-background p-5";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const card = "rounded-lg border border-line bg-card p-5";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
  * One shipping carrier (D133), prepared before its connection exists: what it will do for the store, how to get an
@@ -76,7 +76,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
       </div>
 
       {live ? (
-        <p role="status" className="rounded-md bg-surface px-4 py-3 text-sm">
+        <p role="status" className="rounded-md bg-sunken px-4 py-3 text-sm">
           The connection to {info.name} is ready. It can: {info.available.map((f) => CARRIER_FEATURE_LABELS[f].toLowerCase()).join("; ")}.
           {info.features.some((f) => !info.available.includes(f)) &&
             ` Still to come: ${info.features.filter((f) => !info.available.includes(f)).map((f) => CARRIER_FEATURE_LABELS[f].toLowerCase()).join("; ")}.`}
@@ -84,7 +84,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             ` In the test environment ${info.name} books test shipments: nothing is shipped and orders are not marked as sent.`}
         </p>
       ) : (
-        <p role="status" className="rounded-md bg-surface px-4 py-3 text-sm">
+        <p role="status" className="rounded-md bg-sunken px-4 py-3 text-sm">
           The connection to {info.name} is being built. You can save your agreement details now, so it switches on for your
           store the day it arrives. Until then nothing is sent to {info.name} and your checkout and orders work as before.
         </p>
@@ -203,7 +203,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
             .
           </p>
           {missingFlat.length > 0 && (
-            <p role="status" className="mb-4 rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+            <p role="status" className="mb-4 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
               No standard shipping price is set for {missingFlat.join(", ")}. Set one under Shipping: it is what the order starts with until the shopper chooses.
             </p>
           )}
@@ -230,7 +230,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
               )}
               {storePriced &&
                 pricedCountries.map((code) => (
-                  <fieldset key={code} className="flex flex-col gap-2 rounded-md border border-border p-3">
+                  <fieldset key={code} className="flex flex-col gap-2 rounded-md border border-line p-3">
                     <legend className="px-1 text-sm font-medium">
                       {store.markets.find((m) => m.code.toUpperCase() === code)?.name ?? code} ({currencyFor(code)})
                     </legend>

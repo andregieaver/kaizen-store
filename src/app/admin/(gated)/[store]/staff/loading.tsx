@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The team while it is read: the heading, the members and the forms. */
 export default function TeamLoading() {

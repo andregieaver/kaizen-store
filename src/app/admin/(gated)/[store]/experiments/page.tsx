@@ -11,12 +11,12 @@ export const metadata: Metadata = { title: "A/B tests" };
 const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
 
 const BADGE: Record<ExperimentStatus, string> = {
-  draft: "border border-border text-muted",
-  scheduled: "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200",
-  running: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
-  stopped: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  applied: "bg-foreground text-background",
-  discarded: "border border-border text-muted",
+  draft: "border border-line text-muted",
+  scheduled: "bg-insight-soft text-insight-text",
+  running: "bg-positive-soft text-positive-text",
+  stopped: "bg-warning-soft text-warning-text",
+  applied: "bg-brand text-brand-ink",
+  discarded: "border border-line text-muted",
 };
 
 /** The store's A/B tests (D148): what is running, what waits to be started and what has been decided. */
@@ -36,19 +36,19 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
             accepted statistics cookies take part; everyone else sees the page as it is.
           </p>
         </div>
-        <Link href={`${base}/new`} className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+        <Link href={`${base}/new`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           New test
         </Link>
       </div>
       {tests.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No tests yet. Pick a page, say what you want more of, and change one thing: a heading, a picture, a button.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border text-muted">
+              <tr className="border-b border-line text-muted">
                 <th scope="col" className="px-4 py-2 font-normal">Test</th>
                 <th scope="col" className="hidden px-4 py-2 font-normal sm:table-cell">Page</th>
                 <th scope="col" className="hidden px-4 py-2 font-normal md:table-cell">Goal</th>
@@ -59,7 +59,7 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
             </thead>
             <tbody>
               {tests.map((t) => (
-                <tr key={t.id} className="border-b border-border last:border-0">
+                <tr key={t.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-2">
                     <Link href={`${base}/${t.id}`} className="font-medium underline-offset-2 hover:underline">
                       {t.name}

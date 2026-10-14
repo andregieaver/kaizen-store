@@ -10,7 +10,7 @@ import { saveGroupAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customer groups" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
  * Discount groups (D108): a fixed percentage off for the customers in them,
@@ -37,14 +37,14 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
       </div>
 
       {groups.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No groups yet. Make one, for example Wholesale at 10 %.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Group</th>
                 <th scope="col" className="px-4 py-2 font-medium">Discount</th>
                 <th scope="col" className="px-4 py-2 font-medium">Customers</th>
@@ -54,7 +54,7 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
             </thead>
             <tbody>
               {groups.map((group) => (
-                <tr key={group.id} className="border-b border-border last:border-0">
+                <tr key={group.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-2">
                     <Link href={`${base}/customer-groups/${group.id}`} className="font-medium underline-offset-2 hover:underline">
                       {group.name}
@@ -72,7 +72,7 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
         </div>
       )}
 
-      <section aria-labelledby="new-group" className="flex max-w-xl flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="new-group" className="flex max-w-xl flex-col gap-3 rounded-card border border-line bg-card p-5">
         <h2 id="new-group" className="font-medium">
           New group
         </h2>

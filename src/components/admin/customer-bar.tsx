@@ -39,13 +39,13 @@ export function CustomerBar({ customer }: { customer: CustomerBarData }) {
   return (
     <section
       aria-label="Customer"
-      className="flex flex-wrap items-center gap-4 rounded-lg border border-border bg-background p-4"
+      className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-card p-4"
     >
-      <Avatar avatar={avatarFor(customer)} size={44} className="bg-foreground font-medium text-background" />
+      <Avatar avatar={avatarFor(customer)} size={44} className="bg-brand font-medium text-brand-ink" />
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">
           {customer.name || customer.email}
-          <span className="ml-2 rounded-full bg-surface px-2 py-0.5 text-xs font-normal text-muted">
+          <span className="ml-2 rounded-full bg-sunken px-2 py-0.5 text-xs font-normal text-muted">
             {customer.badge ?? accountLabel(customer.account)}
           </span>
         </p>
@@ -56,7 +56,7 @@ export function CustomerBar({ customer }: { customer: CustomerBarData }) {
       </div>
       <Link
         href={customer.href}
-        className="inline-flex min-h-10 items-center rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface"
+        className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
       >
         Customer details
       </Link>

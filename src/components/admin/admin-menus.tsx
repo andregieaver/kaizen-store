@@ -40,15 +40,15 @@ function useMenu() {
 
 export type SwitcherStore = { slug: string; name: string; role: "owner" | "admin"; suspended?: boolean };
 
-const item = "flex min-h-10 items-center gap-2 rounded-md px-3 text-sm hover:bg-surface aria-[current=page]:bg-surface aria-[current=page]:font-medium";
+const item = "flex min-h-10 items-center gap-2 rounded-md px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium";
 const heading = "px-3 pb-1 pt-1 text-xs font-medium tracking-wide text-muted uppercase";
 /** The links of a section sit a step in from its heading, with a rule down their side. */
-const indented = "ml-3 flex flex-col gap-0.5 border-l border-border pl-1";
+const indented = "ml-3 flex flex-col gap-0.5 border-l border-line pl-1";
 
 /** A section of the level switcher: a divider above (but the first), a heading, and its links. */
 function Section({ id, title, first, children }: { id: string; title: string; first?: boolean; children: ReactNode }) {
   return (
-    <div role="group" aria-labelledby={id} className={first ? "" : "mt-1 border-t border-border pt-2"}>
+    <div role="group" aria-labelledby={id} className={first ? "" : "mt-1 border-t border-line pt-2"}>
       <p id={id} className={heading}>
         {title}
       </p>
@@ -60,7 +60,7 @@ function Section({ id, title, first, children }: { id: string; title: string; fi
 /** Marks the place you are in, beside the link's text. */
 function Here({ on }: { on: boolean }) {
   return on ? (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="ml-auto size-4 shrink-0 text-foreground" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="ml-auto size-4 shrink-0 text-ink" fill="none" stroke="currentColor" strokeWidth="2.5">
       <path d="M5 12l5 5 9-10" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   ) : null;
@@ -107,7 +107,7 @@ export function AdminSwitcher({
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex min-h-10 max-w-full items-center gap-2 rounded-md px-2 hover:bg-surface"
+        className="flex min-h-10 max-w-full items-center gap-2 rounded-md px-2 hover:bg-sunken"
       >
         <span className="hidden font-medium sm:inline">Kaizen</span>
         <span aria-hidden="true" className="hidden text-muted sm:inline">
@@ -117,7 +117,7 @@ export function AdminSwitcher({
         <Chevron />
       </button>
       {open && (
-        <div role="menu" aria-label="Go to" className="absolute left-0 top-full z-50 mt-1 flex max-h-[80dvh] w-72 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto rounded-lg border border-border bg-background p-2 shadow-xl">
+        <div role="menu" aria-label="Go to" className="absolute left-0 top-full z-50 mt-1 flex max-h-[80dvh] w-72 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto rounded-lg border border-line bg-card p-2 shadow-xl">
           {owner && (
             <Link role="menuitem" href="/admin" aria-current={level === "control" ? "page" : undefined} className={`${item} font-medium`}>
               Control center
@@ -132,7 +132,7 @@ export function AdminSwitcher({
                 return (
                   <Link key={s.slug} role="menuitem" href={`/admin/${s.slug}`} aria-current={here ? "page" : undefined} className={item}>
                     <span className="truncate">{s.name}</span>
-                    {s.suspended && <span className="rounded bg-surface px-1.5 py-0.5 text-xs text-muted">Suspended</span>}
+                    {s.suspended && <span className="rounded bg-sunken px-1.5 py-0.5 text-xs text-muted">Suspended</span>}
                     {s.role === "admin" && <span className="ml-auto text-xs text-muted">Staff</span>}
                     {here && !(s.role === "admin") && <Here on />}
                   </Link>
@@ -149,7 +149,7 @@ export function AdminSwitcher({
             <Section id="switch-kaizen" title="Kaizen" first={!owner && shown.length === 0}>
               <Link role="menuitem" href="/admin/platform" aria-current={level === "platform" ? "page" : undefined} className={item}>
                 Platform
-                {platform.waiting > 0 && <span className="ml-auto rounded-full bg-foreground px-1.5 py-0.5 text-xs leading-none text-background">{platform.waiting} waiting</span>}
+                {platform.waiting > 0 && <span className="ml-auto rounded-full bg-brand px-1.5 py-0.5 text-xs leading-none text-brand-ink">{platform.waiting} waiting</span>}
                 {platform.waiting === 0 && <Here on={level === "platform"} />}
               </Link>
             </Section>
@@ -187,12 +187,12 @@ export function AccountMenu({ avatar, name, email, children }: { avatar: ReactNo
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Account menu, ${email}`}
-        className="flex size-10 items-center justify-center rounded-full hover:bg-surface"
+        className="flex size-10 items-center justify-center rounded-full hover:bg-sunken"
       >
         {avatar}
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-1 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-lg border border-border bg-background p-2 shadow-xl">
+        <div role="menu" className="absolute right-0 top-full z-50 mt-1 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-lg border border-line bg-card p-2 shadow-xl">
           <div className="px-3 py-2">
             {name && <p className="truncate text-sm font-medium">{name}</p>}
             <p className="truncate text-sm text-muted">{email}</p>

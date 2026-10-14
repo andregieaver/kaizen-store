@@ -18,7 +18,7 @@ import { editorTerms, roleOptions } from "./data";
 
 export const metadata: Metadata = { title: "Custom fields" };
 
-const small = "flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-surface disabled:opacity-40";
+const small = "flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-sunken disabled:opacity-40";
 
 /** A store's groups of custom fields (D118): what each is on, whether it is on, and their order in the editors. */
 export default async function FieldsPage({ params }: PageProps<"/admin/[store]/fields">) {
@@ -55,15 +55,15 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
         importGroups={importFieldGroupsAction.bind(null, store.slug)}
       />
       {groups.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No groups yet. Start from a preset such as Specifications or Size guide, or make your own.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">Groups of custom fields, in the order editors show them</caption>
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">
                   Group
                 </th>
@@ -83,7 +83,7 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
             </thead>
             <tbody>
               {groups.map((group, index) => (
-                <tr key={group.id} className="border-b border-border align-top last:border-0">
+                <tr key={group.id} className="border-b border-line align-top last:border-0">
                   <td className="px-4 py-2">
                     <Link href={`${base}/${group.id}`} className="font-medium underline-offset-2 hover:underline">
                       {group.name}

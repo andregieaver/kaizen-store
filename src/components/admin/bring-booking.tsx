@@ -10,7 +10,7 @@ import { parcelLinesFromChoice } from "@/lib/parcel-form";
 import type { BringOptions } from "@/server/bring-shipping";
 
 const label = "flex flex-col gap-1 text-sm font-medium";
-const input = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const input = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 const nok = (minor: number, currency: string) =>
   new Intl.NumberFormat("nb-NO", { style: "currency", currency, minimumFractionDigits: 2 }).format(minor / 100);
@@ -85,7 +85,7 @@ export function BringBooking({
   return (
     <div className="flex flex-col gap-3">
       {test && (
-        <p role="status" className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <p role="status" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
           Test environment: Bring books a test shipment. Nothing is shipped and the order is not marked as sent.
         </p>
       )}
@@ -112,7 +112,7 @@ export function BringBooking({
       )}
       {estimatedGrams === 0 && <p className="text-sm text-muted">No weight is set on these products, so enter the parcel&apos;s weight.</p>}
       <div>
-        <button type="button" onClick={load} disabled={busy || !weight.trim()} className="min-h-10 rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50">
+        <button type="button" onClick={load} disabled={busy || !weight.trim()} className="min-h-10 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50">
           {busy && !options ? "Asking Bring …" : options ? "Update services" : "Show Bring's services"}
         </button>
       </div>
@@ -164,19 +164,19 @@ export function BringBooking({
             type="button"
             onClick={book}
             disabled={busy || !service || (chosen?.needsPickupPoint && !point) || lines === "invalid"}
-            className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+            className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
           >
             {busy ? "Booking …" : test ? "Make a test booking" : "Book and mark as sent"}
           </button>
         </div>
       )}
       {problem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}
       {result && (
-        <p role={result.ok ? "status" : "alert"} className={`text-sm ${result.ok ? "" : "text-red-700 dark:text-red-400"}`}>
+        <p role={result.ok ? "status" : "alert"} className={`text-sm ${result.ok ? "" : "text-danger-text "}`}>
           {result.message}
         </p>
       )}

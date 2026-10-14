@@ -20,8 +20,8 @@ import { CurrencyNote, StoreFilter } from "./owner-common";
 import { control, primaryButton, secondaryButton } from "./work-parts";
 
 const chip = (current: boolean) =>
-  `inline-flex min-h-9 items-center rounded-full border border-border px-3 text-sm ${
-    current ? "bg-foreground text-background" : "bg-background"
+  `inline-flex min-h-9 items-center rounded-full border border-edge px-3 text-sm ${
+    current ? "bg-brand text-brand-ink" : "bg-card"
   }`;
 const th = "px-3 py-2 text-right text-xs font-medium tracking-wide text-muted uppercase";
 const td = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
@@ -67,7 +67,7 @@ export function OwnerReportView({
       </div>
 
       {params.problem && (
-        <p role="alert" className="rounded-lg border border-border bg-background p-4 text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="rounded-lg border border-line bg-card p-4 text-sm text-danger-text">
           {params.problem} Showing this month instead.
         </p>
       )}
@@ -127,11 +127,11 @@ export function OwnerReportView({
       {(many || manyCurrencies) && <CurrencyNote />}
 
       {report.rows.length === 0 ? (
-        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
           Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-sm">
             <caption className="sr-only">
               Work report from {report.from} to {report.to}, by {report.by}
@@ -157,7 +157,7 @@ export function OwnerReportView({
               {report.rows.map((row) => {
                 const cells = reportCells(row, row.currency, WORK_LOCALE);
                 return (
-                  <tr key={`${row.storeId}:${row.key}`} className="border-t border-border">
+                  <tr key={`${row.storeId}:${row.key}`} className="border-t border-line">
                     <th scope="row" className="px-3 py-2 text-left font-normal">
                       {report.by === "assignment" && <span className="block text-xs text-muted">{row.clientName}</span>}
                       <span className="[overflow-wrap:anywhere]">{rowLabel(row, report.by)}</span>
@@ -188,7 +188,7 @@ export function OwnerReportView({
               {report.totals.map((total) => {
                 const cells = reportCells(total, total.currency, WORK_LOCALE);
                 return (
-                  <tr key={total.currency} className="border-t-2 border-border font-medium">
+                  <tr key={total.currency} className="border-t-2 border-line font-medium">
                     <th scope="row" className="px-3 py-2 text-left" colSpan={stores.length > 1 ? 2 : 1}>
                       Total{manyCurrencies ? ` (${total.currency})` : ""}
                     </th>

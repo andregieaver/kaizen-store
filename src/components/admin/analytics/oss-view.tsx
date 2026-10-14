@@ -76,7 +76,7 @@ const MODE_TEXT: Record<ReturnMode, string> = {
 
 const REGISTRATION_WORD = { union: "the Union scheme", non_union: "the non-Union scheme", ioss: "the import scheme (IOSS)", none: "no registration" } as const;
 
-const field = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const field = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
 export function OssView({ base, locale, scheme, mode, view, periods, canExport, isOwner, drift, lastExportedAt, exportProblem, actions }: OssViewProps) {
   const { data } = view;
@@ -124,7 +124,7 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
           {mode === "books" ? <input type="hidden" name="mode" value="books" /> : null}
           <label className="flex flex-col gap-0.5 text-xs text-muted">
             {scheme === "oss" ? "Quarter" : "Month"}
-            <select name={scheme === "oss" ? "quarter" : "month"} defaultValue={data.period.key} className="h-9 rounded-lg border border-border bg-background px-2 text-sm">
+            <select name={scheme === "oss" ? "quarter" : "month"} defaultValue={data.period.key} className="h-9 rounded-lg border border-line bg-card px-2 text-sm">
               {periods.map((p) => (
                 <option key={p.key} value={p.key}>
                   {p.label}
@@ -132,7 +132,7 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
               ))}
             </select>
           </label>
-          <button type="submit" className="h-9 rounded-lg border border-border px-3 text-sm font-medium">
+          <button type="submit" className="h-9 rounded-lg border border-line px-3 text-sm font-medium">
             Show
           </button>
         </form>
@@ -142,7 +142,7 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
               key={m}
               href={href(m)}
               aria-current={m === mode ? "true" : undefined}
-              className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${m === mode ? "border-foreground bg-surface font-medium" : "border-border"}`}
+              className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${m === mode ? "border-brand bg-sunken font-medium" : "border-line"}`}
             >
               {m === "filing" ? "Filing" : "Books"}
             </Link>
@@ -219,7 +219,7 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
               <KpiCard label="Total due, Part 5" value={data.part5Eur === null ? null : eurText(data.part5Eur)} emphasis state={data.part5Eur === null ? "missing" : "ok"} missing={{ text: "A euro rate is missing." }} help="The sum of the positive balances. A negative balance is not counted." />
             </div>
             {parts.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border px-4 py-6 text-sm text-muted">{`Nothing in Part 2 for ${label}.`}</div>
+              <div className="rounded-lg border border-dashed border-line px-4 py-6 text-sm text-muted">{`Nothing in Part 2 for ${label}.`}</div>
             ) : (
               parts.map((p) => (
                 <ChartCard key={p} title={PART_LABEL[p]}>

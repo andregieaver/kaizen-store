@@ -21,7 +21,7 @@ export default function AdminError({ error, reset }: { error: Error & { digest?:
         <button
           type="button"
           onClick={reset}
-          className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+          className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
           Try again
         </button>

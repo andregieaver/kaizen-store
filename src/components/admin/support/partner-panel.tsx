@@ -91,10 +91,10 @@ export function PartnerPanel({
     <div className="flex flex-col gap-3 p-4 text-sm" aria-busy={busy || working || undefined}>
       <p className="text-xs font-medium">AI partner — only your team sees this</p>
       {!conversation.signedIn && conversation.store && (
-        <p className="rounded-md border border-dashed border-border p-2 text-xs">Not signed in: what the customer says about an order is not proven.</p>
+        <p className="rounded-md border border-dashed border-line p-2 text-xs">Not signed in: what the customer says about an order is not proven.</p>
       )}
       {conversation.brief && (
-        <section className="rounded-md border border-dashed border-border p-2">
+        <section className="rounded-md border border-dashed border-line p-2">
           <p className="text-xs text-muted">So far</p>
           <p>{conversation.brief.text}</p>
         </section>
@@ -129,10 +129,10 @@ export function PartnerPanel({
             rows={2}
             maxLength={PARTNER_QUESTION_MAX}
             placeholder="Has this customer ordered before?"
-            className="rounded-md border border-dashed border-border bg-background px-2 py-1.5"
+            className="rounded-md border border-dashed border-line bg-card px-2 py-1.5"
           />
         </label>
-        <button type="submit" disabled={busy || !question.trim() || conversation.status !== "open"} className="self-end rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50">
+        <button type="submit" disabled={busy || !question.trim() || conversation.status !== "open"} className="self-end rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken disabled:opacity-50">
           Ask
         </button>
       </form>
@@ -146,7 +146,7 @@ export function PartnerPanel({
         {cards.map((card) => {
           const data = (card.data ?? {}) as PartnerData;
           return (
-            <li key={card.seq} className="flex flex-col gap-2 rounded-md border border-dashed border-border p-2" data-author="partner">
+            <li key={card.seq} className="flex flex-col gap-2 rounded-md border border-dashed border-line p-2" data-author="partner">
               {data.question && <p className="text-xs text-muted">You asked: {data.question}</p>}
               {data.answer && <p>{data.answer}</p>}
               {data.facts && data.facts.length > 0 && (
@@ -167,9 +167,9 @@ export function PartnerPanel({
               {data.draft && (
                 <div className="flex flex-col gap-1">
                   <p className="text-xs text-muted">A reply you could send</p>
-                  <p className="whitespace-pre-line rounded bg-surface p-2">{data.draft}</p>
+                  <p className="whitespace-pre-line rounded bg-sunken p-2">{data.draft}</p>
                   {mine && (
-                    <button type="button" onClick={() => onUse(data.draft!)} className="self-start rounded-md border border-border px-2 py-1 text-xs hover:bg-surface">
+                    <button type="button" onClick={() => onUse(data.draft!)} className="self-start rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken">
                       Use
                     </button>
                   )}

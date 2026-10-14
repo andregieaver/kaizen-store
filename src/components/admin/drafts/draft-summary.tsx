@@ -31,7 +31,7 @@ export function DraftSummaryPanel({
   const blocking = problems.filter((p) => p.blocking);
   const notes = problems.filter((p) => !p.blocking);
   return (
-    <section aria-labelledby="draft-summary" className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 text-sm" aria-busy={state === "working"}>
+    <section aria-labelledby="draft-summary" className="flex flex-col gap-3 rounded-lg border border-line bg-sunken p-4 text-sm" aria-busy={state === "working"}>
       <div className="flex items-baseline justify-between gap-2">
         <h2 id="draft-summary" className="font-medium">
           Summary
@@ -42,7 +42,7 @@ export function DraftSummaryPanel({
       </div>
 
       {blocking.length > 0 && (
-        <ul role="alert" className="flex flex-col gap-1 rounded-md border border-border bg-background p-3 text-red-700 dark:text-red-400">
+        <ul role="alert" className="flex flex-col gap-1 rounded-md border border-line bg-card p-3 text-danger-text">
           {blocking.map((p, i) => (
             <li key={`${p.code}-${p.key ?? i}`}>{p.text}</li>
           ))}
@@ -60,7 +60,7 @@ export function DraftSummaryPanel({
         <p className="text-muted">Add a line to see the totals.</p>
       ) : (
         <>
-          <ul className="flex flex-col divide-y divide-border">
+          <ul className="flex flex-col divide-y divide-line">
             {summary.lines.map((line) => {
               const per = line.measure ? unitPrice(line.unitPriceMinor, { amount: line.measure.amount, unit: line.measure.unit }, line.measure.base) : null;
               return (
@@ -86,7 +86,7 @@ export function DraftSummaryPanel({
               );
             })}
           </ul>
-          <dl className="flex flex-col gap-1 border-t border-border pt-2">
+          <dl className="flex flex-col gap-1 border-t border-line pt-2">
             <div className="flex justify-between">
               <dt>Subtotal</dt>
               <dd className="tabular-nums">{money(summary.subtotalMinor)}</dd>
@@ -103,7 +103,7 @@ export function DraftSummaryPanel({
               <dt>Shipping</dt>
               <dd className="tabular-nums">{summary.shippingMinor === 0 ? "Free" : money(summary.shippingMinor)}</dd>
             </div>
-            <div className="flex justify-between border-t border-border pt-1 text-base font-medium">
+            <div className="flex justify-between border-t border-line pt-1 text-base font-medium">
               <dt>Total</dt>
               <dd className="tabular-nums">{money(summary.totalMinor)}</dd>
             </div>

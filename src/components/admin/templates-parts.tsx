@@ -9,7 +9,7 @@ import { forLabel } from "./templates-helpers";
 /** Marks a template Kaizen published. */
 export function KaizenBadge() {
   return (
-    <span className="shrink-0 rounded-full border border-border bg-surface px-1.5 py-px text-[11px] font-medium leading-4 text-foreground">
+    <span className="shrink-0 rounded-full border border-line bg-sunken px-1.5 py-px text-[11px] font-medium leading-4 text-ink">
       Kaizen
     </span>
   );
@@ -29,7 +29,7 @@ export function Publisher({ item }: { item: Pick<TemplateItem, "publisher" | "fr
 export function Problems({ problems }: { problems: readonly string[] | undefined }) {
   if (!problems || problems.length === 0) return null;
   return (
-    <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+    <p role="alert" className="text-xs text-danger-text">
       {problems.join(" ")}
     </p>
   );
@@ -38,7 +38,7 @@ export function Problems({ problems }: { problems: readonly string[] | undefined
 /** A list that has nothing to show, and what to do about it. */
 export function EmptyState({ title, hint, children }: { title: string; hint: string; children?: ReactNode }) {
   return (
-    <div className="flex flex-col items-start gap-2 rounded-md border border-dashed border-border p-3 text-sm">
+    <div className="flex flex-col items-start gap-2 rounded-md border border-dashed border-line p-3 text-sm">
       <p className="font-medium">{title}</p>
       <p className="text-xs text-muted">{hint}</p>
       {children}
@@ -56,7 +56,7 @@ export function PageTypeBadge({ item, warn = false }: { item: Pick<TemplateItem,
   return (
     <span
       className={`shrink-0 rounded-full border px-1.5 py-px text-[11px] leading-4 ${
-        warn ? "border-amber-700 text-amber-800 dark:border-amber-400 dark:text-amber-300" : "border-border text-muted"
+        warn ? "border-warning-text text-warning-text" : "border-line text-muted"
       }`}
     >
       {label}
@@ -64,7 +64,7 @@ export function PageTypeBadge({ item, warn = false }: { item: Pick<TemplateItem,
   );
 }
 
-const cardButton = "min-h-9 shrink-0 rounded-md border border-border px-3 text-xs font-medium hover:bg-surface disabled:opacity-50";
+const cardButton = "min-h-9 shrink-0 rounded-md border border-edge px-3 text-xs font-medium hover:bg-sunken disabled:opacity-50";
 
 /**
  * A template card's buttons: Preview (D127) and Use, with the reason Use is off in words under them, joined to the

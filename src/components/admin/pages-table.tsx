@@ -46,10 +46,10 @@ export function PagesTable({
   duplicate?: (id: string) => Promise<DuplicateResult>;
 }) {
   return (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border text-muted">
+              <tr className="border-b border-line text-muted">
                 <th scope="col" className="px-4 py-2 font-normal">
                   Page
                 </th>
@@ -69,14 +69,14 @@ export function PagesTable({
             </thead>
             <tbody>
               {pages.map((page) => (
-                <tr key={page.id} className="border-b border-border last:border-0">
+                <tr key={page.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
                       {page.thumbnail ? (
                         // eslint-disable-next-line @next/next/no-img-element -- a small admin thumbnail
                         <img src={page.thumbnail} alt="" className="size-10 shrink-0 rounded object-cover" />
                       ) : (
-                        <span aria-hidden className="size-10 shrink-0 rounded bg-surface" />
+                        <span aria-hidden className="size-10 shrink-0 rounded bg-sunken" />
                       )}
                       <span className="min-w-0">
                         <Link href={`${adminBase}/${page.id}`} className="font-medium underline">

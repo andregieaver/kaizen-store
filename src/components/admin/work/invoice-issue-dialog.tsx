@@ -156,7 +156,7 @@ function IssueForm(props: IssueDialogProps) {
       {earlierNeeded && (
         <div
           role="alert"
-          className="flex flex-col gap-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+          className="flex flex-col gap-2 rounded-md border border-warning-line bg-warning-soft p-3 text-sm text-warning-text"
         >
           <p>{earlierNeeded}</p>
           <label className="flex items-start gap-2">
@@ -197,7 +197,7 @@ function IssueForm(props: IssueDialogProps) {
         </Field>
       )}
 
-      <div className="flex flex-col gap-2 rounded-md bg-surface p-3 text-sm">
+      <div className="flex flex-col gap-2 rounded-md bg-sunken p-3 text-sm">
         <p>
           The total with VAT is <strong className="tabular-nums">{formatMoney(totalMinor, currency, locale)}</strong>.
         </p>

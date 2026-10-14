@@ -28,7 +28,7 @@ export function EmailLog({
   const when = (iso: string) =>
     new Date(iso).toLocaleString(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
   return (
-    <ul className="flex flex-col divide-y divide-border text-sm">
+    <ul className="flex flex-col divide-y divide-line text-sm">
       {emails.map((email) => (
         <li key={email.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
           <span className="min-w-0">
@@ -42,7 +42,7 @@ export function EmailLog({
           </span>
           <span className="text-xs text-muted">
             <time dateTime={email.createdAt}>{when(email.createdAt)}</time> ·{" "}
-            <span className={["failed", "bounced", "complained"].includes(email.status) ? "text-red-700 dark:text-red-400" : undefined}>
+            <span className={["failed", "bounced", "complained"].includes(email.status) ? "text-danger-text" : undefined}>
               {STATUS[email.status]}
             </span>
           </span>
@@ -64,14 +64,14 @@ export function EmailView({ email }: { email: EmailLogRow & { html: string } }) 
         <dt className="text-muted">Status</dt>
         <dd>
           {STATUS[email.status]}
-          {email.error && <span className="block text-red-700 dark:text-red-400">{email.error}</span>}
+          {email.error && <span className="block text-danger-text">{email.error}</span>}
         </dd>
       </dl>
       <iframe
         title={`Email: ${email.subject}`}
         srcDoc={email.html}
         sandbox=""
-        className="h-[70vh] w-full rounded-lg border border-border bg-white"
+        className="h-[70vh] w-full rounded-lg border border-line bg-white"
       />
     </div>
   );

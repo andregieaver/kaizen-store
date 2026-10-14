@@ -23,10 +23,10 @@ export type DiscountDraft = {
   active: boolean;
 };
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 /**
  * A store's discount code (D31): what it gives, on what, when and how
@@ -91,7 +91,7 @@ export function DiscountEditor({
       className="flex flex-col gap-6"
     >
       {problems.length > 0 && (
-        <div role="alert" className="rounded-lg border border-red-700 p-4 text-sm">
+        <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
           <p className="font-medium">Nothing was saved yet. Please fix:</p>
           <ul className="mt-2 list-disc pl-5">
             {problems.map((problem) => (
@@ -216,10 +216,10 @@ export function DiscountEditor({
           </label>
         </fieldset>
         {d.productIds !== null && (
-          <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-border p-2 sm:grid-cols-2">
+          <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
             {products.map((product) => (
               <li key={product.id}>
-                <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-surface">
+                <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
                   <input
                     type="checkbox"
                     checked={d.productIds!.includes(product.id)}
@@ -308,7 +308,7 @@ export function DiscountEditor({
         <button
           type="submit"
           disabled={saving}
-          className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50"
+          className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
         >
           {saving ? "Saving …" : "Save code"}
         </button>

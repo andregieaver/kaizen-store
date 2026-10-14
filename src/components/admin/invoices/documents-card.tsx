@@ -35,7 +35,7 @@ export function DocumentsCard({
   // An unpaid order has nothing to say yet.
   if (!invoice && creditNotes.length === 0 && documents.eligibility === "not_paid") return null;
   return (
-    <section aria-labelledby="documents" className="rounded-card border border-border bg-background p-5">
+    <section aria-labelledby="documents" className="rounded-card border border-line bg-card p-5">
       <h2 id="documents" className="mb-2 font-medium">
         Invoice and credit notes
       </h2>
@@ -88,7 +88,7 @@ function DocumentRow({
   locale: string;
 }) {
   return (
-    <li className="flex flex-col gap-2 border-b border-border pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
+    <li className="flex flex-col gap-2 border-b border-line pb-3 last:border-0 last:pb-0 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <p className="font-medium">
           {label} {link.documentNumber}

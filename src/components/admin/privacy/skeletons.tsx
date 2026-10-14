@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 function Frame({ label, children }: { label: string; children: React.ReactNode }) {
   return (

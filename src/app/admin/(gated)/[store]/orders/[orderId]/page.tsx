@@ -103,7 +103,7 @@ const EVENT_LABELS: Record<string, string> = {
   ...FULFILMENT_EVENT_LABELS,
 };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 /**
  * Everything about one order and everything staff do with it (D27): what
@@ -267,7 +267,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             {memberCan(member, "owner") && (
               <Link
                 href={`/admin/${store.slug}/orders/export?numbers=${encodeURIComponent(order.number)}`}
-                className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm"
+                className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm"
               >
                 Export this order
               </Link>
@@ -276,7 +276,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               <Link
                 href={`/admin/${store.slug}/orders/${order.id}/packing-slip`}
                 target="_blank"
-                className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm"
+                className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm"
               >
                 {order.gift ? "Print gift slip" : "Packing slip"}
               </Link>
@@ -288,7 +288,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
       <OrderPrivacyBanner privacy={privacy} />
       {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
       {owedUnits > 0 && (
-        <p role="status" className="rounded-md border border-border bg-surface p-3 text-sm">
+        <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
           <span className="font-medium">Waiting for stock.</span> {owedUnits} {owedUnits === 1 ? "unit" : "units"} on this order {owedUnits === 1 ? "was" : "were"} sold on backorder and {owedUnits === 1 ? "has" : "have"} not been received yet. The customer was told when to expect
           them; send the order when the stock is in. Receive stock on the{" "}
           <Link href={`/admin/${store.slug}/inventory`} className="underline underline-offset-2">
@@ -298,7 +298,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
         </p>
       )}
       {events.some((e) => e.type === "stock.short") && (
-        <p role="alert" className="rounded-md border border-red-700 bg-background p-3 text-sm dark:border-red-400">
+        <p role="alert" className="rounded-md border border-danger-text bg-card p-3 text-sm">
           Some items were paid for after their stock ran out. Contact the customer before sending.
         </p>
       )}
@@ -310,7 +310,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             <div className="overflow-x-auto">
               <table className="w-full min-w-[28rem] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b border-line">
                     <th scope="col" className="py-2 font-medium">Product</th>
                     <th scope="col" className="py-2 font-medium">SKU</th>
                     <th scope="col" className="py-2 text-right font-medium">Qty</th>
@@ -319,7 +319,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 </thead>
                 <tbody>
                   {order.lines.map((line) => (
-                    <tr key={line.id} className="border-b border-border">
+                    <tr key={line.id} className="border-b border-line">
                       <td className="py-2">
                         {line.title}
                         {line.delivery === "digital" && line.variantId && <span className="block text-xs text-muted">Digital download</span>}
@@ -418,13 +418,13 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               )}
               {order.refundedMinor > 0 && (
                 <>
-                  <div className="flex justify-between border-t border-border pt-1"><dt>Refunded</dt><dd>−{money(order.refundedMinor)}</dd></div>
+                  <div className="flex justify-between border-t border-line pt-1"><dt>Refunded</dt><dd>−{money(order.refundedMinor)}</dd></div>
                   <div className="flex justify-between font-medium"><dt>Kept</dt><dd>{money(order.paidMinor - order.refundedMinor)}</dd></div>
                 </>
               )}
             </dl>
             {order.paidOutside && (
-              <p className="mt-3 rounded-md border border-border bg-surface p-3 text-sm">
+              <p className="mt-3 rounded-md border border-line bg-sunken p-3 text-sm">
                 Paid outside Kaizen by {MANUAL_METHOD_LABELS[order.paidOutside.method].toLowerCase()}, recorded {when(order.paidOutside.recordedAt)}. Kaizen did not take the money and took no sale fee on it. The invoice says it was
                 paid outside the online checkout.
               </p>
@@ -490,7 +490,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                     customer&apos;s card{weekly.cardLabel ? ` (${weekly.cardLabel})` : ""} first; if the card is refused, it is not marked sent and
                     the customer is emailed a link to pay.
                   </p>
-                  {weekly.lastFailure && <p role="alert" className="text-red-700 dark:text-red-400">Last try: {weekly.lastFailure}</p>}
+                  {weekly.lastFailure && <p role="alert" className="text-danger-text">Last try: {weekly.lastFailure}</p>}
                 </div>
               )}
               <ShipmentList
@@ -509,7 +509,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 }
               />
               {bring?.complete && order.status !== "pending_payment" && !order.copied && bookable && (
-                <details open={sentParcels === 0} className="mb-4 rounded-md border border-border p-4">
+                <details open={sentParcels === 0} className="mb-4 rounded-md border border-line p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Posten / Bring</summary>
                   <div className="mt-3">
                     <BringBooking
@@ -525,7 +525,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 </details>
               )}
               {porterbuddy?.complete && order.delivery?.carrier === "porterbuddy" && order.delivery.window && order.status !== "pending_payment" && !order.copied && bookable && (
-                <details open={sentParcels === 0} className="mb-4 rounded-md border border-border p-4">
+                <details open={sentParcels === 0} className="mb-4 rounded-md border border-line p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Porterbuddy</summary>
                   <div className="mt-3">
                     <ChosenDeliveryBooking
@@ -541,7 +541,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 </details>
               )}
               {helthjem?.complete && order.delivery?.carrier === "helthjem" && order.status !== "pending_payment" && !order.copied && bookable && (
-                <details open={sentParcels === 0} className="mb-4 rounded-md border border-border p-4">
+                <details open={sentParcels === 0} className="mb-4 rounded-md border border-line p-4">
                   <summary className="cursor-pointer text-sm font-medium">Book with Helthjem</summary>
                   <div className="mt-3">
                     <ChosenDeliveryBooking
@@ -591,7 +591,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                   : "Refunds go back to the customer's card or payment method through Stripe; Kaizen's fee on the refunded amount is returned to you."}
               </p>
               {awaitingEdit && (
-                <p role="note" className="mb-3 rounded-md border border-border bg-surface p-3 text-sm">
+                <p role="note" className="mb-3 rounded-md border border-line bg-sunken p-3 text-sm">
                   A change to this order waits for the customer&apos;s payment: cancel the change, or wait for it, before refunding.
                 </p>
               )}
@@ -608,7 +608,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                 unitsToSend={order.status === "paid" ? fulfilment.unitsToSend : 0}
               />
               {order.refunds.length > 0 && (
-                <ul className="mt-4 flex flex-col gap-1 border-t border-border pt-3 text-sm">
+                <ul className="mt-4 flex flex-col gap-1 border-t border-line pt-3 text-sm">
                   {order.refunds.map((r) => (
                     <li key={r.id}>
                       {when(r.createdAt)}: {money(r.amountMinor)} · {r.reason}
@@ -716,7 +716,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
                     {order.delivery.pickupPoint && <span className="block">Pickup at {pickupPointLine(order.delivery.pickupPoint)}</span>}
                     {order.delivery.window && <span className="block">Delivery window {formatWindow(order.delivery.window, "en-GB", store.timeZone)}</span>}
                     {address.postalCode && order.delivery.postalCode && address.postalCode.replace(/\s/g, "") !== order.delivery.postalCode && (
-                      <span role="note" className="mt-1 block rounded-md bg-amber-100 px-3 py-2 text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                      <span role="note" className="mt-1 block rounded-md bg-warning-soft px-3 py-2 text-warning-text">
                         The price was quoted for postal code {order.delivery.postalCode}, but the delivery address has {address.postalCode}. Check the price and the service before booking.
                       </span>
                     )}

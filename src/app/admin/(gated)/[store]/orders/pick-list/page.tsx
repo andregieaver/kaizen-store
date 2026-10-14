@@ -39,7 +39,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
     return (
       <div className="flex flex-col gap-3">
         <h1 className="text-display text-ink">Pick list</h1>
-        <p role="alert" className="rounded-lg border border-border bg-surface p-4 text-sm">
+        <p role="alert" className="rounded-lg border border-line bg-sunken p-4 text-sm">
           {parsed.problem === "none" ? "Tick the orders to pick on the orders page, then choose Print pick list." : `A pick list takes at most ${PICK_LIST_MAX} orders. Tick fewer.`}
         </p>
         {back}
@@ -51,7 +51,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
     return (
       <div className="flex flex-col gap-3">
         <h1 className="text-display text-ink">Pick list</h1>
-        <p role="alert" className="rounded-lg border border-border bg-surface p-4 text-sm">
+        <p role="alert" className="rounded-lg border border-line bg-sunken p-4 text-sm">
           {data.problem === "too_many" ? `A pick list takes at most ${PICK_LIST_MAX} orders. Tick fewer.` : "Tick the orders to pick on the orders page."}
         </p>
         {back}
@@ -62,7 +62,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
     const next = new URLSearchParams({ ids: parsed.ids.join(","), by: change.by ?? parsed.by, sort: change.sort ?? parsed.sort });
     return `/admin/${store.slug}/orders/pick-list?${next.toString()}`;
   };
-  const choice = (active: boolean) => `rounded-md border px-3 py-1.5 text-sm ${active ? "border-foreground bg-foreground text-background" : "border-border bg-background"}`;
+  const choice = (active: boolean) => `rounded-md border px-3 py-1.5 text-sm ${active ? "border-brand bg-brand text-brand-ink" : "border-line bg-card"}`;
   return (
     <PrintArea className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 print:hidden">

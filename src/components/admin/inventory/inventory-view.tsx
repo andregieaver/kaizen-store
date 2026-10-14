@@ -101,7 +101,7 @@ export function InventoryView({
       )}
 
       {page.rows.length === 0 ? (
-        <p className="rounded-lg border border-border bg-surface p-6 text-center text-sm">
+        <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">
           {filtered ? (
             "No variant matches this filter."
           ) : (

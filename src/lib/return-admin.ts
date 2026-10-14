@@ -195,8 +195,8 @@ export function dueMark(due: RefundDue, timeZone: string): { text: string; tone:
 
 /** A mark's colours, in the admin's own tokens plus the two alert colours it already uses. */
 export const TONE_CLASS: Record<DueTone, string> = {
-  urgent: "text-red-700 dark:text-red-400",
-  warn: "text-amber-800 dark:text-amber-300",
+  urgent: "text-danger-text",
+  warn: "text-warning-text",
   calm: "text-muted",
 };
 

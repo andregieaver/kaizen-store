@@ -9,9 +9,9 @@ import type { PartInfo } from "@/lib/experiment-parts";
 
 import { RuntimeEstimate } from "./runtime-estimate";
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 const hint = "text-xs font-normal text-muted";
 
 export type TestablePage = { id: string; slug: string; title: string; kind: TargetKind; role?: string | null; partOnly?: boolean; buttons: { id: string; label: string }[]; forms?: { id: string; label: string }[] };
@@ -88,7 +88,7 @@ export function ExperimentForm({
 
   if (pages.length === 0) {
     return (
-      <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
+      <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
         There is no page to test yet. A page can be tested when it is published and is not a page with a place of
         its own, and is not in a running test already. The cart, the checkout and the other working pages are tested by a part of them: open one in the page
         builder and use “A/B test this” on a row around the shop&apos;s own component.
@@ -133,7 +133,7 @@ export function ExperimentForm({
         <fieldset className="flex flex-col gap-2">
           <legend className="sr-only">What the test should improve</legend>
           {GOALS.map((g) => (
-            <label key={g} className="flex items-start gap-3 rounded-md border border-border p-3 text-sm has-[:checked]:border-foreground">
+            <label key={g} className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-brand">
               <input type="radio" name="goal" checked={goal === g} onChange={() => {
                   setGoal(g);
                   // A button chosen for one goal is not a form for another.
@@ -197,7 +197,7 @@ export function ExperimentForm({
             maxLength={500}
             rows={2}
             placeholder="A shorter heading and a bigger button will make more people add to the cart."
-            className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-normal"
+            className="w-full rounded-md border border-line bg-card px-3 py-2 text-sm font-normal"
           />
           <span className={hint}>Writing it down first keeps you honest about what you were testing.</span>
         </label>
@@ -244,14 +244,14 @@ export function ExperimentForm({
       </section>
 
       {problems.length > 0 && (
-        <ul role="alert" className="list-disc rounded-lg border border-red-700 p-4 pl-8 text-sm text-red-800 dark:text-red-300">
+        <ul role="alert" className="list-disc rounded-lg border border-danger-text p-4 pl-8 text-sm text-danger-text">
           {problems.map((p) => (
             <li key={p}>{p}</li>
           ))}
         </ul>
       )}
       <div className="flex gap-3">
-        <button type="submit" disabled={pending} className="min-h-11 rounded-pill bg-foreground px-5 text-sm font-medium text-background disabled:opacity-50">
+        <button type="submit" disabled={pending} className="min-h-11 rounded-pill bg-brand px-5 text-sm font-medium text-brand-ink disabled:opacity-50">
           {pending ? "Making the test …" : "Make the test"}
         </button>
         <span className="self-center text-xs text-muted">Nothing is shown to visitors until you start it.</span>

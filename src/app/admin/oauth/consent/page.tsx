@@ -59,7 +59,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
         </p>
         <form action={decideConsentAction}>
           <input type="hidden" name="authorization_id" value={id} />
-          <button type="submit" name="decision" value="deny" className={`${button} border border-border`}>
+          <button type="submit" name="decision" value="deny" className={`${button} border border-line`}>
             Go back
           </button>
         </form>
@@ -94,10 +94,10 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
       </p>
       <form action={decideConsentAction} className="flex gap-3">
         <input type="hidden" name="authorization_id" value={id} />
-        <button type="submit" name="decision" value="approve" className={`${button} bg-foreground text-background`}>
+        <button type="submit" name="decision" value="approve" className={`${button} bg-brand text-brand-ink`}>
           Allow
         </button>
-        <button type="submit" name="decision" value="deny" className={`${button} border border-border`}>
+        <button type="submit" name="decision" value="deny" className={`${button} border border-line`}>
           Cancel
         </button>
       </form>

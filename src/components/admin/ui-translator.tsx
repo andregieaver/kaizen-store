@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 
 import type { ChunkResult } from "@/server/ui-text";
 
-const button = "min-h-10 rounded-md border border-border bg-background px-4 text-sm disabled:opacity-40";
-const primary = "min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40";
+const button = "min-h-10 rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40";
+const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
 
 type Plan = { ok: true; keys: string[] } | { ok: false; problem: string };
 
@@ -61,7 +61,7 @@ export function UiTranslator({
     });
 
   return (
-    <div className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+    <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
       <h2 className="font-medium">Translate with AI</h2>
       <p className="text-sm text-muted">
         Kaizen&apos;s AI translates the storefront&apos;s and the emails&apos; text from English. Every text is checked for its placeholders
@@ -80,7 +80,7 @@ export function UiTranslator({
       </div>
       <div role="status" aria-live="polite" className="flex flex-col gap-1 text-sm">
         {progress && <p>{progress}</p>}
-        {problem && <p className="text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-danger-text">{problem}</p>}
         {summary && <p>{summary}</p>}
         {left.length > 0 && (
           <ul className="list-disc pl-5 text-xs text-muted">

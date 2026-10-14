@@ -19,7 +19,7 @@ export type TermFieldsSetup = {
   startFile: Parameters<typeof fieldFileUploader>[0];
 };
 
-const button = "min-h-10 rounded-md border border-border px-3 text-sm disabled:opacity-50";
+const button = "min-h-10 rounded-md border border-line px-3 text-sm disabled:opacity-50";
 
 /**
  * The button and dialog for the custom fields of one category or tag: the
@@ -87,7 +87,7 @@ export function TermFieldsButton({
               type="button"
               onClick={save}
               disabled={busy || !loaded || loaded.groups.length === 0}
-              className={`${button} bg-foreground font-medium text-background`}
+              className={`${button} bg-brand font-medium text-brand-ink`}
             >
               {busy ? "Saving …" : "Save fields"}
             </button>
@@ -100,7 +100,7 @@ export function TermFieldsButton({
         }
       >
         {problems.length > 0 && (
-          <p role="alert" className="mb-3 text-sm text-red-700 dark:text-red-400">
+          <p role="alert" className="mb-3 text-sm text-danger-text">
             {problems.join(" ")}
           </p>
         )}

@@ -175,12 +175,12 @@ export function ConversationActions({
     });
   }
 
-  const button = "rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface disabled:opacity-50";
+  const button = "rounded-md border border-edge px-3 py-1.5 text-sm hover:bg-sunken disabled:opacity-50";
   return (
-    <div className="flex flex-col gap-2 border-t border-border p-3" aria-busy={busy || undefined}>
+    <div className="flex flex-col gap-2 border-t border-line p-3" aria-busy={busy || undefined}>
       <div className="flex flex-wrap items-center gap-2">
         {acts.claim && (
-          <button type="button" disabled={busy} onClick={() => void run({ kind: "claim" })} className="rounded-pill bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
+          <button type="button" disabled={busy} onClick={() => void run({ kind: "claim" })} className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50">
             Take over
           </button>
         )}
@@ -191,7 +191,7 @@ export function ConversationActions({
         )}
         {acts.transfer && (
           <span className="flex items-center gap-1">
-            <select value={target} onChange={(event) => setTarget(event.target.value)} aria-label="Transfer to" className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+            <select value={target} onChange={(event) => setTarget(event.target.value)} aria-label="Transfer to" className="rounded-md border border-line bg-card px-2 py-1.5 text-sm">
               <option value="">Back to the queue</option>
               {conversation.agents.map((agent) => (
                 <option key={agent.id} value={agent.id}>
@@ -250,10 +250,10 @@ export function ConversationActions({
         >
           {acts.reply && (
             <div role="radiogroup" aria-label="Write" className="flex gap-1 text-sm">
-              <button type="button" role="radio" aria-checked={!asNote} onClick={() => setAsNote(false)} className={`rounded-md px-2 py-1 ${!asNote ? "bg-surface font-medium" : ""}`}>
+              <button type="button" role="radio" aria-checked={!asNote} onClick={() => setAsNote(false)} className={`rounded-md px-2 py-1 ${!asNote ? "bg-sunken font-medium" : ""}`}>
                 Reply
               </button>
-              <button type="button" role="radio" aria-checked={asNote} onClick={() => setAsNote(true)} className={`rounded-md px-2 py-1 ${asNote ? "bg-surface font-medium" : ""}`}>
+              <button type="button" role="radio" aria-checked={asNote} onClick={() => setAsNote(true)} className={`rounded-md px-2 py-1 ${asNote ? "bg-sunken font-medium" : ""}`}>
                 Internal note
               </button>
             </div>
@@ -301,10 +301,10 @@ export function ConversationActions({
             aria-controls={picking ? "saved-replies" : undefined}
             aria-activedescendant={picking ? `saved-reply-${matches[Math.min(active, matches.length - 1)].id}` : undefined}
             placeholder={writingNote ? "An internal note: only your team sees it" : "Write to the customer, or / for a saved reply"}
-            className={`w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm ${writingNote ? "border-dashed" : ""}`}
+            className={`w-full resize-y rounded-md border border-line bg-card px-3 py-2 text-sm ${writingNote ? "border-dashed" : ""}`}
           />
           {picking && (
-            <ul id="saved-replies" role="listbox" aria-label="Saved replies" className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-border bg-background text-sm">
+            <ul id="saved-replies" role="listbox" aria-label="Saved replies" className="flex max-h-60 flex-col overflow-y-auto rounded-md border border-line bg-card text-sm">
               {matches.map((reply, index) => (
                 <li
                   key={reply.id}
@@ -316,7 +316,7 @@ export function ConversationActions({
                     event.preventDefault();
                     pick(reply);
                   }}
-                  className={`flex cursor-pointer flex-col px-3 py-1.5 ${index === active ? "bg-surface" : ""}`}
+                  className={`flex cursor-pointer flex-col px-3 py-1.5 ${index === active ? "bg-sunken" : ""}`}
                 >
                   <span>
                     <span className="font-mono text-xs text-muted">/{reply.shortcut}</span> {reply.title}
@@ -340,12 +340,12 @@ export function ConversationActions({
             <span className="flex items-center gap-3 text-xs text-muted">
               Ctrl or ⌘ and Enter sends
               {canTranslate && !translated && (
-                <button type="button" disabled={busy || !draft.trim()} onClick={() => void translateDraft()} className="rounded-md border border-border px-2 py-1 text-foreground hover:bg-surface disabled:opacity-50">
+                <button type="button" disabled={busy || !draft.trim()} onClick={() => void translateDraft()} className="rounded-md border border-edge px-2 py-1 text-ink hover:bg-sunken disabled:opacity-50">
                   Translate to {languageName(conversation.locale)}
                 </button>
               )}
             </span>
-            <button type="submit" disabled={busy || !draft.trim()} className="rounded-pill bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
+            <button type="submit" disabled={busy || !draft.trim()} className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50">
               {writingNote ? "Add note" : "Send"}
             </button>
           </div>
@@ -369,10 +369,10 @@ function SummaryEditor({
 }) {
   const current = conversation.summary;
   const topics = topicsFor(conversation.store === null);
-  const field = "w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm";
+  const field = "w-full rounded-md border border-line bg-card px-2 py-1.5 text-sm";
   return (
     <form
-      className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm"
+      className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm"
       onSubmit={(event) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
@@ -417,10 +417,10 @@ function SummaryEditor({
         <input name="followUp" maxLength={FOLLOW_UP_MAX} defaultValue={current?.followUp ?? ""} className={field} />
       </label>
       <div className="flex gap-2">
-        <button type="submit" disabled={busy} className="rounded-pill bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
+        <button type="submit" disabled={busy} className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50">
           Save summary
         </button>
-        <button type="button" onClick={onCancel} className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface">
+        <button type="button" onClick={onCancel} className="rounded-md border border-edge px-3 py-1.5 text-sm hover:bg-sunken">
           Cancel
         </button>
       </div>

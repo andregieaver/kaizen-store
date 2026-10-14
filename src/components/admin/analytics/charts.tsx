@@ -59,7 +59,7 @@ const show = (format: Format, value: number | null | undefined) => (finite(value
 /** What a chart says when there is nothing to draw: a quiet box, with the chart's name for a screen reader. */
 function EmptyChart({ label, text, height = 96 }: { label: string; text: string; height?: number }) {
   return (
-    <div role="img" aria-label={`${label}: ${text}`} style={{ minHeight: height }} className="flex items-center justify-center rounded-lg border border-dashed border-border px-4 text-center text-sm text-muted">
+    <div role="img" aria-label={`${label}: ${text}`} style={{ minHeight: height }} className="flex items-center justify-center rounded-lg border border-dashed border-line px-4 text-center text-sm text-muted">
       {text}
     </div>
   );
@@ -70,8 +70,8 @@ function DataBehind({ caption, head, rows, exportId, leftOut }: { caption: strin
   return (
     <>
     <details className="mt-2 text-xs">
-      <summary className="inline-block cursor-pointer text-muted hover:text-foreground">Data table</summary>
-      <div className="relative mt-1 max-h-72 overflow-auto rounded-lg border border-border">
+      <summary className="inline-block cursor-pointer text-muted hover:text-ink">Data table</summary>
+      <div className="relative mt-1 max-h-72 overflow-auto rounded-lg border border-line">
         <table className="w-full border-collapse">
           <caption className="sr-only">{caption}</caption>
           <thead>
@@ -85,7 +85,7 @@ function DataBehind({ caption, head, rows, exportId, leftOut }: { caption: strin
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={i} className="border-t border-border">
+              <tr key={i} className="border-t border-line">
                 {r.map((c, j) => (
                   <td key={j} className={`px-2 py-1 ${j === 0 ? "text-left" : "text-right tabular-nums"}`}>
                     {c}
@@ -695,7 +695,7 @@ export function CohortTable({
   if (rows.length === 0 || columns.length === 0) return <EmptyChart label={label} text={emptyText} />;
   return (
     <>
-    <div className="relative overflow-x-auto rounded-lg border border-border">
+    <div className="relative overflow-x-auto rounded-lg border border-line">
       <table className="w-full border-collapse text-xs">
         <caption className="sr-only">{label}</caption>
         <thead>
@@ -715,7 +715,7 @@ export function CohortTable({
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={`${r.label}-${i}`} className="border-t border-border">
+            <tr key={`${r.label}-${i}`} className="border-t border-line">
               <th scope="row" className="whitespace-nowrap px-2 py-1 text-left font-medium">
                 {r.label}
               </th>
@@ -783,7 +783,7 @@ export function Meter({
       </div>
       <div role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={target} aria-valuenow={Math.min(Math.max(got, 0), target)} aria-valuetext={text} className="relative h-2.5 rounded-full bg-(--chart-seq-0)">
         <div className="h-full rounded-full" style={{ width: `${fill}%`, background: PACE_COLOR[pace] }} />
-        {tick !== null ? <div aria-hidden="true" className="absolute -top-1 h-[18px] w-0.5 rounded bg-foreground" style={{ left: `calc(${tick}% - 1px)` }} /> : null}
+        {tick !== null ? <div aria-hidden="true" className="absolute -top-1 h-[18px] w-0.5 rounded bg-brand" style={{ left: `calc(${tick}% - 1px)` }} /> : null}
       </div>
       {tick !== null && finite(expected) ? <p className="mt-1.5 text-xs text-muted">{`${expectedLabel}: ${format(expected)}`}</p> : null}
     </div>

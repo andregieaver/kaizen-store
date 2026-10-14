@@ -41,7 +41,7 @@ export default async function MediaPage({ params, searchParams }: PageProps<"/ad
         </p>
       </div>
       {/* The search in the address is read per request. */}
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-background" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
         <Library storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
     </div>

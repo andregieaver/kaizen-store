@@ -15,7 +15,7 @@ export default async function DesignCssPage({ params }: PageProps<"/admin/platfo
   return (
     <DesignShell design={page.design} facts={page.facts} tab="css">
       {page.problem !== null ? (
-        <p role="alert" className="rounded-lg border border-border bg-background p-4 text-sm">{page.problem}</p>
+        <p role="alert" className="rounded-lg border border-line bg-card p-4 text-sm">{page.problem}</p>
       ) : (
         <ActionForm action={saveWorkspaceCssFormAction.bind(null, page.workspace.presetId)} className="flex flex-col gap-3">
           <label htmlFor="profile-css" className="flex flex-col gap-1 text-sm font-medium">
@@ -35,7 +35,7 @@ export default async function DesignCssPage({ params }: PageProps<"/admin/platfo
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
-            className="w-full rounded-md border border-border bg-surface p-3 font-mono text-[13px] leading-relaxed"
+            className="w-full rounded-md border border-line bg-sunken p-3 font-mono text-[13px] leading-relaxed"
           />
           <div>
             <SubmitButton>Save</SubmitButton>

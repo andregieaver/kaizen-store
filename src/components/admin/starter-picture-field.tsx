@@ -19,17 +19,17 @@ export function StarterPictureField({ initial, upload }: { initial: string | nul
           value={url}
           onChange={(event) => setUrl(event.target.value)}
           maxLength={2000}
-          className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
+          className="min-h-10 rounded-md border border-line bg-card px-3 font-normal"
         />
       </label>
       {url && (
         // eslint-disable-next-line @next/next/no-img-element -- the picture as the cards show it
-        <img src={url} alt="" className="aspect-video w-60 rounded-md border border-border object-cover" />
+        <img src={url} alt="" className="aspect-video w-60 rounded-md border border-line object-cover" />
       )}
       <div className="flex flex-wrap items-center gap-3">
         <ImageUploadButton upload={upload} label={url ? "Upload another picture" : "Upload a picture"} onUploaded={(image) => setUrl(image.url)} />
         {url && (
-          <button type="button" onClick={() => setUrl("")} className="min-h-10 rounded-md border border-border px-3">
+          <button type="button" onClick={() => setUrl("")} className="min-h-10 rounded-md border border-line px-3">
             Remove the picture
           </button>
         )}

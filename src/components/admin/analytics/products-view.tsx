@@ -296,8 +296,8 @@ export function ProductsView({
           title="No product sales in this period"
           description="Products show up here once they are sold and paid for."
         >
-          <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center text-sm text-muted">
-            <p className="font-medium text-foreground">Nothing to show yet.</p>
+          <div className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
+            <p className="font-medium text-ink">Nothing to show yet.</p>
             <p className="mx-auto mt-1 max-w-prose">
               When orders are paid, this page shows what each product brought
               in, what is left after what it cost, how many are refunded and how

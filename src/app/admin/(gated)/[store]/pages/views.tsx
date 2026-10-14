@@ -80,30 +80,30 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         </div>
         <div className="flex flex-wrap gap-2">
           {!LAYOUT_TYPES.includes(type) && (
-            <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium">
+            <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium">
               Categories and tags
             </Link>
           )}
           {type === "page" && (
-            <Link href={`${base}/ai`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium">
+            <Link href={`${base}/ai`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium">
               Create with AI
             </Link>
           )}
           <Link
             href={`${base}/new`}
-            className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+            className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
           >
             New {copy.one}
           </Link>
         </div>
       </div>
       {query.deleted && (
-        <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
           The {copy.one} was deleted.
         </p>
       )}
       {pages.length === 0 ? (
-        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
           No {copy.many} yet. Make the first one with New {copy.one}.
         </p>
       ) : type === "product_layout" ? (
@@ -270,7 +270,7 @@ export async function StoreEditPageView({ type, params, searchParams }: { type: 
     <>
       <h1 className="sr-only">Edit {page.draft.title || `Untitled ${PAGE_TYPE_COPY[type].one}`}</h1>
       {test && (
-        <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-foreground px-4 py-3 text-sm text-background">
+        <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand px-4 py-3 text-sm text-brand-ink">
           <span>
             Testing: <strong>Version {test.key.toUpperCase()}</strong> against the original, in &ldquo;{test.name}&rdquo;.{" "}
             {test.part ? `Change ${test.part} only: the rest of the page has to stay as it is.` : "Change what you want to try, and publish it."}
@@ -333,7 +333,7 @@ export async function StorePreviewPageView({
   const drawnAs: PageType = type === "variant" ? ((await testOfVersionPage(store.id, page.id))?.targetType ?? "page") : type;
   return (
     <div className="flex flex-col gap-6">
-      <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-foreground px-4 py-3 text-sm text-background">
+      <p role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand px-4 py-3 text-sm text-brand-ink">
         <span>
           Preview of the saved draft.{" "}
           {page.state === "draft"
@@ -375,7 +375,7 @@ function FrontPageForm({
   return (
     <ActionForm
       action={setFrontPageAction.bind(null, storeSlug)}
-      className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
+      className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
     >
       <h2 className="font-medium">Front page</h2>
       <p className="max-w-2xl text-sm text-muted">
@@ -385,7 +385,7 @@ function FrontPageForm({
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           Your store opens with
-          <select name="frontPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal">
+          <select name="frontPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
             <option value="">All products</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
@@ -420,7 +420,7 @@ function ProductsPageForm({
   return (
     <ActionForm
       action={setProductsPageAction.bind(null, storeSlug)}
-      className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
+      className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
     >
       <h2 className="font-medium">All products page</h2>
       <p className="max-w-2xl text-sm text-muted">
@@ -430,7 +430,7 @@ function ProductsPageForm({
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           All products shows
-          <select name="productsPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal">
+          <select name="productsPage" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
             <option value="">The standard list</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
@@ -468,13 +468,13 @@ function PageRoleForm({
   const copy = ROLE_COPY[role];
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
   return (
-    <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby={`role-${role}`}>
+    <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby={`role-${role}`}>
       <h4 id={`role-${role}`} className="font-medium">{copy.name}</h4>
       <p className="max-w-2xl text-sm text-muted">{copy.hint}</p>
       <ActionForm action={setPageRoleAction.bind(null, storeSlug, role)} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           {copy.name} shows
-          <select name="page" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal">
+          <select name="page" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
             <option value="">{copy.standard}</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>
@@ -524,10 +524,10 @@ function ProductLayoutsTable({
     );
   };
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-background">
+    <div className="overflow-x-auto rounded-lg border border-line bg-card">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-border">
+          <tr className="border-b border-line">
             <th scope="col" className="px-4 py-2 font-medium">
               Layout
             </th>
@@ -541,7 +541,7 @@ function ProductLayoutsTable({
         </thead>
         <tbody>
           {layouts.map((layout) => (
-            <tr key={layout.id} className="border-b border-border last:border-0">
+            <tr key={layout.id} className="border-b border-line last:border-0">
               <td className="px-4 py-2">
                 <Link href={`${adminBase}/${layout.id}`} className="font-medium underline">
                   {layout.title || "Untitled"}

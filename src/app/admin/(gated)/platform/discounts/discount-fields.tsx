@@ -1,7 +1,7 @@
 import type { PlatformDiscount } from "@/lib/discounts";
 import { formatPriceInput } from "@/lib/product-input";
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
 /** What deleting a code asks first. */

@@ -16,7 +16,7 @@ export const MODE_CHOICES: { mode: SupportMode; title: string; description: stri
   { mode: "people", title: "Your team only", description: "Your people answer every conversation. The AI never writes to your customers." },
 ];
 
-const field = "rounded-md border border-border bg-background px-2 py-1.5 text-sm";
+const field = "rounded-md border border-line bg-card px-2 py-1.5 text-sm";
 
 /**
  * A desk's support settings (D216, `docs/support.md` 2.10, step 5): who answers first, email follow-up, opening hours, when quiet
@@ -51,7 +51,7 @@ export function SupportSettingsForm({
         <h2 className="text-lg font-medium">Who answers your customers</h2>
         <div role="radiogroup" aria-label="Who answers your customers" className="flex flex-col gap-2">
           {MODE_CHOICES.map((choice) => (
-            <label key={choice.mode} className="flex gap-3 rounded-lg border border-border bg-surface p-3">
+            <label key={choice.mode} className="flex gap-3 rounded-lg border border-line bg-sunken p-3">
               <input type="radio" name="mode" value={choice.mode} checked={mode === choice.mode} onChange={() => setMode(choice.mode)} className="mt-1 size-4" />
               <span className="flex flex-col gap-1">
                 <span className="font-medium">{choice.title}</span>
@@ -61,7 +61,7 @@ export function SupportSettingsForm({
           ))}
         </div>
         {mode === "ai_first" && !settings.aiReady && (
-          <p role="note" className="rounded-md border border-border p-3 text-sm">
+          <p role="note" className="rounded-md border border-line p-3 text-sm">
             No AI is connected: your customers will reach your team only, until you connect one in the{" "}
             <Link href={aiSettingsHref} className="underline">
               AI settings

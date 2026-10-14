@@ -19,7 +19,7 @@ export function DataPageHead({ backHref, backLabel, title, intro }: { backHref: 
 /** A plain notice on a data page (a limit, a warning about personal data): a titled card, never a fixed colour. */
 export function Notice({ title, children, tone = "plain" }: { title?: string; children: ReactNode; tone?: "plain" | "warning" }) {
   return (
-    <aside className={`${card} flex flex-col gap-1 ${tone === "warning" ? "border-foreground" : ""}`} role={tone === "warning" ? "note" : undefined}>
+    <aside className={`${card} flex flex-col gap-1 ${tone === "warning" ? "border-brand" : ""}`} role={tone === "warning" ? "note" : undefined}>
       {title && <h2 className="text-sm font-medium">{title}</h2>}
       <div className="text-sm">{children}</div>
     </aside>
@@ -30,21 +30,21 @@ export function Notice({ title, children, tone = "plain" }: { title?: string; ch
 export function ProblemAlert({ text }: { text: string | null }) {
   if (!text) return null;
   return (
-    <p role="alert" className="rounded-lg border border-border bg-surface p-3 text-sm text-red-700 dark:text-red-400">
+    <p role="alert" className="rounded-lg border border-line bg-sunken p-3 text-sm text-danger-text">
       {text}
     </p>
   );
 }
 
 export function SkeletonBlock({ height = "h-40" }: { height?: string }) {
-  return <div className={`${height} animate-pulse rounded-lg bg-background`} />;
+  return <div className={`${height} animate-pulse rounded-lg bg-card`} />;
 }
 
 /** The loading state of every data page: a heading's worth and two blocks. */
 export function DataSkeleton() {
   return (
     <div className="flex flex-col gap-4" aria-busy="true">
-      <div className="h-8 w-64 animate-pulse rounded-lg bg-background" />
+      <div className="h-8 w-64 animate-pulse rounded-lg bg-card" />
       <SkeletonBlock height="h-16" />
       <SkeletonBlock />
       <p className={`${hint} sr-only`}>Loading</p>

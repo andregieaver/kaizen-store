@@ -258,19 +258,19 @@ export function Inbox({
 
   const showing = open !== null;
   return (
-    <div className="flex h-[calc(100dvh-10rem)] min-h-[28rem] flex-col overflow-hidden rounded-lg border border-border bg-background">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
+    <div className="flex h-[calc(100dvh-10rem)] min-h-[28rem] flex-col overflow-hidden rounded-lg border border-line bg-card">
+      <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2">
         <h1 className="text-lg font-medium">Inbox</h1>
         <p className="text-sm text-muted" role="status">
           {waiting === 1 ? "1 waiting" : `${waiting} waiting`}
         </p>
         <span className="flex-1" />
         {alerts ? (
-          <button type="button" onClick={() => setAlerts(false)} className="rounded-md border border-border px-2 py-1 text-sm hover:bg-surface" aria-pressed>
+          <button type="button" onClick={() => setAlerts(false)} className="rounded-md border border-edge px-2 py-1 text-sm hover:bg-sunken" aria-pressed>
             Alerts on
           </button>
         ) : (
-          <button type="button" onClick={() => void turnOnAlerts()} className="rounded-md border border-border px-2 py-1 text-sm hover:bg-surface" aria-pressed={false}>
+          <button type="button" onClick={() => void turnOnAlerts()} className="rounded-md border border-edge px-2 py-1 text-sm hover:bg-sunken" aria-pressed={false}>
             Turn on alerts
           </button>
         )}
@@ -283,7 +283,7 @@ export function Inbox({
         {context.presence !== null && context.actions.presence && (
           <label className="flex items-center gap-2 text-sm">
             <span>You are</span>
-            <select value={presence ?? "away"} onChange={(event) => void changePresence(event.target.value as "online" | "away")} className="rounded-md border border-border bg-background px-2 py-1">
+            <select value={presence ?? "away"} onChange={(event) => void changePresence(event.target.value as "online" | "away")} className="rounded-md border border-line bg-card px-2 py-1">
               <option value="online">Online</option>
               <option value="away">Away</option>
             </select>
@@ -291,8 +291,8 @@ export function Inbox({
         )}
       </div>
       <div className="grid min-h-0 flex-1 lg:grid-cols-[22rem_1fr_18rem]">
-        <section className={`${showing ? "hidden lg:flex" : "flex"} min-h-0 flex-col border-border lg:border-r`} aria-label="Conversations">
-          <div className="flex flex-col gap-2 border-b border-border p-3">
+        <section className={`${showing ? "hidden lg:flex" : "flex"} min-h-0 flex-col border-line lg:border-r`} aria-label="Conversations">
+          <div className="flex flex-col gap-2 border-b border-line p-3">
             <div role="tablist" aria-label="Which conversations" className="flex flex-wrap gap-1">
               {(Object.keys(TAB_WORDS) as InboxTab[]).map((key) => (
                 <button
@@ -301,7 +301,7 @@ export function Inbox({
                   role="tab"
                   aria-selected={tab === key}
                   onClick={() => setTab(key)}
-                  className={`rounded-md px-2 py-1 text-sm ${tab === key ? "bg-foreground text-background" : "hover:bg-surface"}`}
+                  className={`rounded-md px-2 py-1 text-sm ${tab === key ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}
                 >
                   {TAB_WORDS[key]}
                   {key === "waiting" && waiting > 0 ? ` (${waiting})` : ""}
@@ -314,9 +314,9 @@ export function Inbox({
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search by name, email or summary"
               aria-label="Search conversations"
-              className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+              className="rounded-md border border-line bg-card px-2 py-1 text-sm"
             />
-            <select value={tone} onChange={(event) => setTone(event.target.value)} aria-label="Tone" className="rounded-md border border-border bg-background px-2 py-1 text-sm">
+            <select value={tone} onChange={(event) => setTone(event.target.value)} aria-label="Tone" className="rounded-md border border-line bg-card px-2 py-1 text-sm">
               <option value="">Any tone</option>
               {TONE_BANDS.map((band) => (
                 <option key={band} value={band}>
@@ -325,7 +325,7 @@ export function Inbox({
               ))}
             </select>
             {tab === "ended" && (
-              <select value={topic} onChange={(event) => setTopic(event.target.value)} aria-label="Topic" className="rounded-md border border-border bg-background px-2 py-1 text-sm">
+              <select value={topic} onChange={(event) => setTopic(event.target.value)} aria-label="Topic" className="rounded-md border border-line bg-card px-2 py-1 text-sm">
                 <option value="">Any topic</option>
                 {topicsFor(context.level === "platform").map((t) => (
                   <option key={t} value={t}>
@@ -335,7 +335,7 @@ export function Inbox({
               </select>
             )}
             {context.stores.length > 1 && (
-              <select value={store} onChange={(event) => setStore(event.target.value)} aria-label="Store" className="rounded-md border border-border bg-background px-2 py-1 text-sm">
+              <select value={store} onChange={(event) => setStore(event.target.value)} aria-label="Store" className="rounded-md border border-line bg-card px-2 py-1 text-sm">
                 <option value="">All stores</option>
                 {context.stores.map((s) => (
                   <option key={s.slug} value={s.slug}>
@@ -351,7 +351,7 @@ export function Inbox({
         </section>
         <section className={`${showing ? "flex" : "hidden lg:flex"} min-h-0 flex-col`} aria-label="Conversation">
           {showing && (
-            <button type="button" onClick={() => openConversation(null)} className="border-b border-border px-4 py-2 text-left text-sm lg:hidden">
+            <button type="button" onClick={() => openConversation(null)} className="border-b border-line px-4 py-2 text-left text-sm lg:hidden">
               ← Conversations
             </button>
           )}
@@ -379,10 +379,10 @@ export function Inbox({
             <p className="p-6 text-sm text-muted">{gone ? "This conversation is no longer here." : showing ? "Opening…" : "Choose a conversation to read it as it happens."}</p>
           )}
         </section>
-        <aside className="hidden min-h-0 flex-col border-l border-border lg:flex" aria-label="Partner and context">
+        <aside className="hidden min-h-0 flex-col border-l border-line lg:flex" aria-label="Partner and context">
           {conversation && (
             <>
-              <div role="tablist" aria-label="Beside the conversation" className="flex gap-1 border-b border-border p-2">
+              <div role="tablist" aria-label="Beside the conversation" className="flex gap-1 border-b border-line p-2">
                 {(["partner", "context"] as const).map((key) => {
                   const shown = side ?? (conversation.partner.available ? "partner" : "context");
                   return (
@@ -392,7 +392,7 @@ export function Inbox({
                       role="tab"
                       aria-selected={shown === key}
                       onClick={() => setSide(key)}
-                      className={`rounded-md px-2 py-1 text-sm ${shown === key ? "bg-foreground text-background" : "hover:bg-surface"}`}
+                      className={`rounded-md px-2 py-1 text-sm ${shown === key ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}
                     >
                       {key === "partner" ? "Partner" : "Context"}
                     </button>

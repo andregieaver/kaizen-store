@@ -9,7 +9,7 @@ export function WorkComingSoon({ storeSlug, title }: { storeSlug: string; title:
   return (
     <div className="flex max-w-3xl flex-col gap-3">
       <h1 className="text-display text-ink">{title}</h1>
-      <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
+      <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
         Coming in the next step.{" "}
         <Link href={workBase(storeSlug)} className="underline">
           Back to Work

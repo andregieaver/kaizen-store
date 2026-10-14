@@ -13,7 +13,7 @@ import { checkStoreVisionAction, evalStoreAiAction, removeStoreAiAction, saveSto
 
 export const metadata: Metadata = { title: "AI" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 function describe(settings: AiSettings): string {
   const models = [settings.embeddingModel && `search by meaning with ${settings.embeddingModel}`, settings.textModel && `text with ${settings.textModel}`]
@@ -89,14 +89,14 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
           <h2 id="test" className="mb-1 font-medium">Test</h2>
           <p className="mb-3 text-sm text-muted">Tries your saved models now, even while off.</p>
           <AiTestButton action={testStoreAiAction.bind(null, store.slug)} />
-          <div className="mt-4 border-t border-border pt-4">
+          <div className="mt-4 border-t border-line pt-4">
             <p className="mb-2 text-sm text-muted">
               Searches such as &ldquo;lampe under 500 kr&rdquo; are read by the text model as filters. This runs the eval: {EVAL_CASES.length} searches in
               Norwegian, Swedish, Danish and English, with the filters a good answer gives; a model passes at {Math.round(PASS_RATE * 100)} %.
             </p>
             <AiEvalButton action={evalStoreAiAction.bind(null, store.slug)} />
           </div>
-          <div className="mt-4 border-t border-border pt-4">
+          <div className="mt-4 border-t border-line pt-4">
             <p className="mb-2 text-sm text-muted">Makes one small picture with the saved picture model, to see it works and how it looks. It costs one picture.</p>
             <AiImageTestButton action={testStoreImageAction.bind(null, store.slug)} />
           </div>

@@ -30,7 +30,7 @@ export function DesignProfilePanel({
   closedNote?: string;
 }) {
   return (
-    <section aria-labelledby="design-profiles-heading" className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+    <section aria-labelledby="design-profiles-heading" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
       <div>
         <h2 id="design-profiles-heading" className="font-medium">
           Design profiles
@@ -43,7 +43,7 @@ export function DesignProfilePanel({
       </div>
       {!canChange && closedNote && <p className="text-sm">{closedNote}</p>}
       {latest && (
-        <div className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm">
+        <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
           <p>
             Applied last: <strong>{latest.presetTitle}</strong> on {latest.appliedAt.slice(0, 10)}.
             {latest.savedTheme && <> The theme from before is the saved theme “{latest.savedTheme}”.</>}
@@ -60,15 +60,15 @@ export function DesignProfilePanel({
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {designs.map((design) => (
-            <li key={design.id} className="flex flex-col overflow-hidden rounded-lg border border-border">
+            <li key={design.id} className="flex flex-col overflow-hidden rounded-lg border border-line">
               <div className="flex flex-1 flex-col gap-2 p-3 text-sm">
                 {design.pictureUrl && (
                   // eslint-disable-next-line @next/next/no-img-element -- a profile's picture from Kaizen's media library
-                  <img src={design.pictureUrl} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-border object-cover" />
+                  <img src={design.pictureUrl} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover" />
                 )}
                 <h3 className="font-medium">
                   {design.title}
-                  {design.published === false && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs font-normal">Not published</span>}
+                  {design.published === false && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Not published</span>}
                 </h3>
                 {design.summary && <p>{design.summary}</p>}
                 {canChange && apply && (

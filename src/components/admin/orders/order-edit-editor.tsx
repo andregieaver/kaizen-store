@@ -155,7 +155,7 @@ export function OrderEditEditor({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="flex min-w-0 flex-col gap-6">
-        <section aria-labelledby={`${id}-lines`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 text-sm">
+        <section aria-labelledby={`${id}-lines`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
           <h2 id={`${id}-lines`} className="font-medium">
             Items on order #{number}
           </h2>
@@ -163,7 +163,7 @@ export function OrderEditEditor({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[30rem] text-left">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="py-2 font-medium">Item</th>
                   <th scope="col" className="py-2 text-right font-medium">Sold</th>
                   <th scope="col" className="py-2 text-right font-medium">Line total</th>
@@ -172,7 +172,7 @@ export function OrderEditEditor({
               </thead>
               <tbody>
                 {lines.map((line) => (
-                  <tr key={line.lineId} className={`border-b border-border ${line.editable ? "" : "text-muted"}`}>
+                  <tr key={line.lineId} className={`border-b border-line ${line.editable ? "" : "text-muted"}`}>
                     <td className="py-2">
                       {line.title}
                       {line.sku && <span className="block font-mono text-xs text-muted">{line.sku}</span>}
@@ -215,7 +215,7 @@ export function OrderEditEditor({
           </div>
         </section>
 
-        <section aria-labelledby={`${id}-add`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 text-sm">
+        <section aria-labelledby={`${id}-add`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
           <h2 id={`${id}-add`} className="font-medium">
             Add a product
           </h2>
@@ -224,11 +224,11 @@ export function OrderEditEditor({
           </label>
           <input id={`${id}-search`} value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" className={field} />
           {shownChoices && (
-            <ul className="flex flex-col divide-y divide-border rounded-md border border-border" aria-label="Products found">
+            <ul className="flex flex-col divide-y divide-line rounded-md border border-line" aria-label="Products found">
               {shownChoices.length === 0 && <li className="p-2 text-muted">No product for sale in this order&apos;s market matches.</li>}
               {shownChoices.map((c) => (
                 <li key={c.variantId}>
-                  <button type="button" onClick={() => addVariant(c)} className="flex w-full items-center justify-between gap-3 p-2 text-left hover:bg-surface">
+                  <button type="button" onClick={() => addVariant(c)} className="flex w-full items-center justify-between gap-3 p-2 text-left hover:bg-sunken">
                     <span>
                       {c.productTitle}
                       {c.options && <span className="text-muted"> ({c.options})</span>}
@@ -245,7 +245,7 @@ export function OrderEditEditor({
           {form.added.length > 0 && (
             <ul className="flex flex-col gap-3" aria-label="Products added">
               {form.added.map((a, index) => (
-                <li key={`${a.variantId}-${index}`} className="flex flex-col gap-2 rounded-md border border-border p-3">
+                <li key={`${a.variantId}-${index}`} className="flex flex-col gap-2 rounded-md border border-line p-3">
                   <p>
                     {a.title}
                     {a.options && <span className="text-muted"> ({a.options})</span>} <span className="font-mono text-xs text-muted">{a.sku}</span>
@@ -286,7 +286,7 @@ export function OrderEditEditor({
           <p className={hint}>A price you type is the price charged, never shown as a &ldquo;was&rdquo; price. At most {EDIT_ADDED_LINES_MAX} products in one change.</p>
         </section>
 
-        <section aria-labelledby={`${id}-ship`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 text-sm">
+        <section aria-labelledby={`${id}-ship`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
           <h2 id={`${id}-ship`} className="font-medium">
             Shipping
           </h2>
@@ -321,7 +321,7 @@ export function OrderEditEditor({
           </fieldset>
         </section>
 
-        <section aria-labelledby={`${id}-how`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 text-sm">
+        <section aria-labelledby={`${id}-how`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
           <h2 id={`${id}-how`} className="font-medium">
             Reason and stock
           </h2>
@@ -379,7 +379,7 @@ export function OrderEditEditor({
         {link ? (
           <LinkNotice link={link} onClose={() => router.push(orderHref)} />
         ) : (
-          <section aria-labelledby={`${id}-save`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 text-sm">
+          <section aria-labelledby={`${id}-save`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
             <h2 id={`${id}-save`} className="font-medium">
               {summary?.money === "charge" ? "Ask the customer to pay" : "Save the change"}
             </h2>

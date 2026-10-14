@@ -39,9 +39,9 @@ export const STORE_COPY: NavigationCopy = {
   view: "View the store",
 };
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 /**
  * A site's logos and icon, and which of its menus (D85) the standard header
@@ -174,13 +174,13 @@ export function NavigationEditor({
         />
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
           <button
             type="button"
             onClick={submit}
             disabled={saving}
-            className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50"
+            className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
           >
             {saving ? "Saving …" : "Save"}
           </button>
@@ -197,7 +197,7 @@ export function NavigationEditor({
         </div>
       </div>
       {result && !result.ok && (
-        <div role="alert" className="rounded-lg border border-red-700 p-4 text-sm">
+        <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
           <p className="font-medium">Nothing was saved yet. Please fix:</p>
           <ul className="mt-2 list-disc pl-5">
             {result.problems.map((problem) => (
@@ -262,22 +262,22 @@ function FaviconField({
       </div>
       <div className="flex flex-wrap items-center gap-4">
         {/* As in a browser tab, at the sizes it is shown. */}
-        <div className="flex min-w-56 items-center gap-2 rounded-t-lg border border-b-0 border-border bg-surface px-3 py-2 text-sm">
+        <div className="flex min-w-56 items-center gap-2 rounded-t-lg border border-b-0 border-line bg-sunken px-3 py-2 text-sm">
           {favicon ? (
             // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded icon
             <img src={favicon.smallUrl} alt="" width={16} height={16} className="size-4" />
           ) : (
-            <span aria-hidden className="size-4 rounded-sm bg-border" />
+            <span aria-hidden className="size-4 rounded-sm bg-line" />
           )}
           <span className="truncate text-muted">Your site</span>
         </div>
         {favicon && (
           // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded icon
-          <img src={favicon.url} alt="Your icon" width={64} height={64} className="size-16 rounded-xl border border-border" />
+          <img src={favicon.url} alt="Your icon" width={64} height={64} className="size-16 rounded-xl border border-line" />
         )}
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {upload ? (
-            <label className="cursor-pointer rounded-md border border-border px-3 py-2 focus-within:outline-2">
+            <label className="cursor-pointer rounded-md border border-line px-3 py-2 focus-within:outline-2">
               {busy ? "Uploading …" : favicon ? "Replace icon" : "Upload icon"}
               <input
                 type="file"
@@ -301,7 +301,7 @@ function FaviconField({
         </div>
       </div>
       {problem && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}
@@ -365,8 +365,8 @@ function LogoField({
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <div
-          className={`flex h-20 min-w-40 items-center justify-center rounded-md border border-dashed border-border px-4 ${
-            dark ? "bg-neutral-900 text-neutral-300" : "bg-surface text-muted"
+          className={`flex h-20 min-w-40 items-center justify-center rounded-md border border-dashed border-edge px-4 ${
+            dark ? "bg-neutral-soft text-neutral-text" : "bg-sunken text-muted"
           }`}
         >
           {logo ? (
@@ -378,7 +378,7 @@ function LogoField({
         </div>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {upload ? (
-            <label className="cursor-pointer rounded-md border border-border px-3 py-2 focus-within:outline-2">
+            <label className="cursor-pointer rounded-md border border-line px-3 py-2 focus-within:outline-2">
               {busy ? "Uploading …" : logo ? `Replace ${title.toLowerCase()}` : `Upload ${title.toLowerCase()}`}
               <input
                 type="file"
@@ -402,7 +402,7 @@ function LogoField({
         </div>
       </div>
       {problem && (
-        <p role="alert" className="text-sm text-red-700">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}

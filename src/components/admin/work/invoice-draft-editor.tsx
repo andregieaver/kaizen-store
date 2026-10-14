@@ -655,7 +655,7 @@ export function DraftEditor(props: DraftEditorProps) {
           focusKey={focusKey}
           onFocused={clearFocus}
         />
-        <div className="mt-6 border-t border-border pt-4">
+        <div className="mt-6 border-t border-line pt-4">
           {live ? (
             <InvoiceTotalsView
               totals={live.totals}
@@ -665,7 +665,7 @@ export function DraftEditor(props: DraftEditorProps) {
               live={ticking}
             />
           ) : (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+            <p role="alert" className="text-sm text-danger-text">
               These amounts are too large to add up. Check the quantities and prices.
             </p>
           )}

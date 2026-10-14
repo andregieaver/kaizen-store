@@ -7,7 +7,7 @@ import type { BrregLookup as Lookup, BrregSearch as Search } from "@/server/brre
 
 import { BrregLookup, RegisterNote } from "./brreg-lookup";
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
  * The fields a company is made and edited with. With `lookup` and `search` (the store's actions for asking

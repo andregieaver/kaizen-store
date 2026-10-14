@@ -194,7 +194,7 @@ function DetailLines({ details, onChange }: { details: CustomGridItem["details"]
           <div className="min-w-40 flex-[2]">
             <TextField label={`Words ${index + 1}`} value={line.text} max={CUSTOM_DETAIL_TEXT_MAX} placeholder="2 to 4 people" onChange={(text) => set(index, { text })} />
           </div>
-          <button type="button" onClick={() => onChange(details.filter((_, i) => i !== index))} aria-label={`Remove detail line ${index + 1}`} className={`${smallButton} text-red-700 dark:text-red-400`}>
+          <button type="button" onClick={() => onChange(details.filter((_, i) => i !== index))} aria-label={`Remove detail line ${index + 1}`} className={`${smallButton} text-danger-text `}>
             Remove
           </button>
         </div>
@@ -351,7 +351,7 @@ export function CopyCurrentItems({
     }
   };
   return (
-    <div className="flex flex-col gap-2 border-t border-border pt-4">
+    <div className="flex flex-col gap-2 border-t border-line pt-4">
       <p className="text-sm font-medium">Start from what it shows now</p>
       <p className="text-xs text-muted">
         Turns the items below into custom items you can edit (a snapshot with titles, texts, pictures and links). Prices are left

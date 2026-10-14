@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** A return's page while it is read: the header, the steps and the cards of the main column and the sidebar. */
 export default function ReturnLoading() {

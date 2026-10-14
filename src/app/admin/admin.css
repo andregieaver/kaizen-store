@@ -86,7 +86,7 @@ html[data-admin] :is(table, [data-tabular]):not(:is([data-theme-canvas], [data-t
 /* ------------------------------------------------------- header and navigation */
 
 /* The header: a card-coloured bar over the canvas with a hairline under it, no line of colour and no shadow. */
-html[data-admin] header.border-b.bg-background {
+html[data-admin] header.border-b:is(.bg-background, .bg-card) {
   background: var(--background);
   border-bottom-color: var(--line);
   box-shadow: var(--shadow-header);
@@ -128,14 +128,14 @@ html[data-admin] header nav a:not([aria-current="page"]):hover {
  * Cards (a card-coloured box with a border): flat on the canvas, told apart by colour (docs/admin-style.md 1.2). Their border is the
  * scheme's hairline until the Card component lands, because boxes nested in a card still rely on it to be seen.
  */
-html[data-admin] :is(.rounded-lg, .rounded-xl, .rounded-card).border.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+html[data-admin] :is(.rounded-lg, .rounded-xl, .rounded-card).border:is(.bg-background, .bg-card):not(:is([data-theme-canvas], [data-theme-preview]) *) {
   box-shadow: var(--shadow-sm);
   transition:
     border-color 0.18s var(--ease),
     background-color 0.18s var(--ease);
 }
 /* ... and one that is a link answers the pointer with a firmer edge; cards do not move. */
-html[data-admin] a:is(.rounded-lg, .rounded-xl, .rounded-card).border.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *):hover {
+html[data-admin] a:is(.rounded-lg, .rounded-xl, .rounded-card).border:is(.bg-background, .bg-card):not(:is([data-theme-canvas], [data-theme-preview]) *):hover {
   border-color: var(--edge);
 }
 
@@ -233,7 +233,8 @@ html[data-admin] .bg-foreground.text-background:not(:is([data-theme-canvas], [da
   background-color: var(--brand);
   color: var(--brand-ink);
 }
-html[data-admin] :is(button, a, summary).bg-foreground.text-background:not(:disabled, [aria-disabled="true"], :is([data-theme-canvas], [data-theme-preview]) *):hover {
+/* Pages name the main action `bg-brand text-brand-ink` (D223); `bg-foreground text-background` is the older spelling. */
+html[data-admin] :is(button, a, summary):is(.bg-foreground.text-background, .bg-brand.text-brand-ink):not(:disabled, [aria-disabled="true"], :is([data-theme-canvas], [data-theme-preview]) *):hover {
   background-color: var(--brand-hover);
   transform: translateY(-1px);
 }
@@ -252,7 +253,7 @@ html[data-admin] .border-foreground:not(:is([data-theme-canvas], [data-theme-pre
 html[data-admin] :is(button, a).border.border-border:not(:is([data-theme-canvas], [data-theme-preview]) *) {
   border-color: var(--edge);
 }
-html[data-admin] :is(button, a).border.border-border:not(:disabled, [aria-disabled="true"], :is([data-theme-canvas], [data-theme-preview]) *):hover {
+html[data-admin] :is(button, a).border:is(.border-border, .border-edge):not(:disabled, [aria-disabled="true"], :is([data-theme-canvas], [data-theme-preview]) *):hover {
   border-color: color-mix(in srgb, var(--edge), var(--ink) 25%);
   background-color: var(--sunken);
 }
@@ -308,7 +309,7 @@ html[data-admin] form[aria-busy="true"] :is(button[type="submit"], button:not([t
 }
 
 /* A placeholder while something loads: a soft light sweeps across it instead of a blink. */
-html[data-admin] .animate-pulse.rounded-lg.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+html[data-admin] .animate-pulse.rounded-lg:is(.bg-background, .bg-card):not(:is([data-theme-canvas], [data-theme-preview]) *) {
   border: 1px solid var(--border);
   background-image: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--brand-solid) 9%, transparent) 50%, transparent 70%);
   background-size: 220% 100%;

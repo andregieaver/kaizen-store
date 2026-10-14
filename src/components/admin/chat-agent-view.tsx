@@ -12,8 +12,8 @@ import { ChatAgentForm, type SaveChatAgent } from "./chat-agent-form";
 import { DeleteDiscountButton } from "./delete-discount-button";
 import type { Upload } from "./image-upload";
 
-const card = "rounded-lg border border-border bg-background p-5";
-const field = "min-h-10 w-full rounded-md border border-border bg-background px-3 py-2";
+const card = "rounded-lg border border-line bg-card p-5";
+const field = "min-h-10 w-full rounded-md border border-line bg-card px-3 py-2";
 
 /**
  * The chat agent's admin (D81), for a store (its id) or Kaizen (null): the
@@ -110,7 +110,7 @@ export async function ChatAgentView({
         </p>
 
         {documents.length > 0 && (
-          <ul className="mb-5 divide-y divide-border rounded-md border border-border">
+          <ul className="mb-5 divide-y divide-line rounded-md border border-line">
             {documents.map((document) => (
               <li key={document.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">

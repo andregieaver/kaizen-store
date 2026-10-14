@@ -48,7 +48,7 @@ export function AssignmentSummaryCard({
         estimatedMinutes={s.estimatedMinutes}
         alertMinutes={assignment.estimateAlertMinutes}
       />
-      <dl className="grid gap-x-6 gap-y-2 border-t border-border pt-4 text-sm sm:grid-cols-[11rem_1fr]">
+      <dl className="grid gap-x-6 gap-y-2 border-t border-line pt-4 text-sm sm:grid-cols-[11rem_1fr]">
         <Row label="Client">
           <Link href={`${base}/clients/${assignment.clientId}`} className="underline">
             {assignment.clientName}

@@ -41,7 +41,7 @@ export function AdminAccountMenu({ account, role }: { account: Account; role?: s
       <MenuRow label="Colours">
         <AdminColorSwitch save={colorModeAction} />
       </MenuRow>
-      <div className="mt-1 border-t border-border px-3 pt-2 pb-1 text-sm">
+      <div className="mt-1 border-t border-line px-3 pt-2 pb-1 text-sm">
         <SignOutForm action={signOut} />
       </div>
     </AccountMenu>

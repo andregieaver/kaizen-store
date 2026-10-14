@@ -11,7 +11,7 @@ import { closeStoreAction, reopenStoreAction, signInAgainAction } from "./action
 
 export const metadata: Metadata = { title: "Close store" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const day = (date: Date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
 /** Closing the store, or what a store that is closed or suspended can still do (D171). Owners only. */
@@ -82,7 +82,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       </div>
 
       {blockers.length > 0 && (
-        <section aria-labelledby="blockers" className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4">
+        <section aria-labelledby="blockers" className="flex flex-col gap-2 rounded-lg border border-line bg-sunken p-4">
           <h2 id="blockers" className="font-medium">
             Before you can close it
           </h2>
@@ -106,7 +106,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       </section>
 
       {blockers.length === 0 && !fresh && (
-        <section aria-labelledby="signin" className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+        <section aria-labelledby="signin" className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4">
           <h2 id="signin" className="font-medium">
             Sign in again first
           </h2>
@@ -118,7 +118,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       )}
 
       {blockers.length === 0 && fresh && (
-        <ActionForm action={closeStoreAction.bind(null, store.slug)} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4" successMessage="The store is closed.">
+        <ActionForm action={closeStoreAction.bind(null, store.slug)} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4" successMessage="The store is closed.">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Type the store&apos;s address, <span className="font-mono">{store.slug}</span>, to confirm
             <input name="address" required autoComplete="off" spellCheck={false} className={control} />

@@ -13,7 +13,7 @@ import { saveBookingSettingsAction, switchFeatureAction } from "./actions";
 
 export const metadata: Metadata = { title: "Features" };
 
-const control = "min-h-11 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-11 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
  * The store's features (D178, docs/store-features.md): the online shop's master switch and the features in their groups. Every member who
@@ -40,7 +40,7 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
         onSwitch={switchFeatureAction.bind(null, store.slug)}
       />
 
-      <section aria-labelledby="times-heading" className="rounded-lg border border-border bg-surface p-4">
+      <section aria-labelledby="times-heading" className="rounded-lg border border-line bg-sunken p-4">
         <h2 id="times-heading" className="mb-1 font-medium">
           Time zone and reminders
         </h2>

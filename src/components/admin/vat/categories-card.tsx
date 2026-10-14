@@ -31,13 +31,13 @@ export function CategoriesCard({
           deleted: a product keeps the one it has, and a switched-off category cannot be chosen again.
         </p>
       </div>
-      <ul className="flex flex-col divide-y divide-border text-sm">
+      <ul className="flex flex-col divide-y divide-line text-sm">
         {categories.map((category) => (
           <li key={category.code} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-2 first:pt-0">
             <span className="min-w-0 flex-1">
               <span className="font-medium">{category.nameEn}</span> <span className="font-mono text-xs text-muted">{category.code}</span>
-              {category.builtIn && <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs text-muted">Built in</span>}
-              {!category.active && <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs text-muted">Off</span>}
+              {category.builtIn && <span className="ml-2 rounded-full border border-line px-2 py-0.5 text-xs text-muted">Built in</span>}
+              {!category.active && <span className="ml-2 rounded-full border border-line px-2 py-0.5 text-xs text-muted">Off</span>}
               {category.description && <span className="block text-muted">{category.description}</span>}
             </span>
             {!category.builtIn && (
@@ -48,7 +48,7 @@ export function CategoriesCard({
           </li>
         ))}
       </ul>
-      <ActionForm action={addAction} successMessage="The category is added." className="flex flex-col gap-4 border-t border-border pt-4">
+      <ActionForm action={addAction} successMessage="The category is added." className="flex flex-col gap-4 border-t border-line pt-4">
         <h3 className="text-sm font-medium">Add a category</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={label}>

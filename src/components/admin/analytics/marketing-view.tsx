@@ -376,7 +376,7 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
       description="Where visitors came from and what each channel earned. Revenue is sales without VAT, before refunds; fees and shipping are the estimates from your analytics settings."
     >
       {table === null ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+        <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
           <p>{`No channel figures for this period. ${countingReason(report)}`}</p>
           <p className="mt-1">
             <Link href={`${base}/analytics/settings`} className="font-medium text-(--brand-text) underline-offset-2 hover:underline">
@@ -433,7 +433,7 @@ function ChannelsSection({ base, currency, locale, report }: Pick<MarketingViewP
               ) : null}
             </div>
           ) : null}
-          <details className="rounded-lg border border-border bg-background px-4 py-3">
+          <details className="rounded-lg border border-line bg-card px-4 py-3">
             <summary className="cursor-pointer text-sm font-medium">What the columns mean</summary>
             <div className="mt-3">
               <Glossary />

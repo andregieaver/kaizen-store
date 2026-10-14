@@ -49,7 +49,7 @@ export function PickListView({ list }: { list: PickList }) {
           </thead>
           <tbody>
             {list.products.map((row) => (
-              <tr key={row.variantId ?? `${row.sku}-${row.title}`} className="border-b border-neutral-300">
+              <tr key={row.variantId ?? `${row.sku}-${row.title}`} className="border-b border-neutral-line">
                 <td className="py-2 pr-2">
                   <span aria-hidden="true" className="inline-block size-4 border border-black" />
                 </td>
@@ -71,7 +71,7 @@ export function PickListView({ list }: { list: PickList }) {
               <table className="w-full text-left text-sm">
                 <tbody>
                   {order.lines.map((line) => (
-                    <tr key={line.lineId} className="border-b border-neutral-300">
+                    <tr key={line.lineId} className="border-b border-neutral-line">
                       <td className="w-8 py-1.5 pr-2">
                         <span aria-hidden="true" className="inline-block size-4 border border-black" />
                       </td>

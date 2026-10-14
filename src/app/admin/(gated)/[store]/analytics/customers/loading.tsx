@@ -1,6 +1,6 @@
 /** What the Customers page shows while its figures are read: the shape of the page in the admin's placeholder style. */
 export default function AnalyticsCustomersLoading() {
-  const block = "animate-pulse rounded-lg bg-background";
+  const block = "animate-pulse rounded-lg bg-card";
   return (
     <div className="flex flex-col gap-8" role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">Loading the customer figures…</span>

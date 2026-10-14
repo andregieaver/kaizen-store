@@ -42,7 +42,7 @@ export function FieldTypePicker({
                     <button
                       type="button"
                       onClick={() => onPick(type)}
-                      className="flex h-full w-full flex-col items-start gap-0.5 rounded-md border border-border p-3 text-left hover:border-foreground hover:bg-surface"
+                      className="flex h-full w-full flex-col items-start gap-0.5 rounded-md border border-edge p-3 text-left hover:border-brand hover:bg-sunken"
                     >
                       <span className="text-sm font-medium">{FIELD_TYPES[type].label}</span>
                       <span className={hint}>{FIELD_TYPES[type].hint}</span>

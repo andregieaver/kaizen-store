@@ -256,10 +256,10 @@ const noteShown = (line: FinanceLine) => line.note !== null && (line.estimated |
 function BridgeTable({ current, comparison, money }: { current: FinancePeriodData; comparison: FinanceViewProps["comparison"]; money: (minor: number) => string }) {
   const prior = comparison && !hasNoSales(comparison.data) ? comparison.data : null;
   const versus = comparison ? (comparison.mode === "year" ? "Same period last year" : "Previous period") : null;
-  const th = "whitespace-nowrap border-b border-border px-3 py-2 align-bottom";
+  const th = "whitespace-nowrap border-b border-line px-3 py-2 align-bottom";
   return (
     <>
-    <div className="relative overflow-x-auto rounded-lg border border-border bg-background">
+    <div className="relative overflow-x-auto rounded-lg border border-line bg-card">
       <table data-export-id="finance.bridge" className="w-full min-w-[40rem] border-collapse text-sm">
         <caption className="sr-only">From gross sales to operating profit, one line for each step, in {current.label}</caption>
         <thead>
@@ -292,7 +292,7 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
             const before = prior ? lineOf(prior.statement, line.key) : undefined;
             const beforeAmount = prior ? (before ? before.amountMinor : line.key === "rounding" ? 0 : null) : null;
             return (
-              <tr key={line.key} data-line={line.key} className={`border-b border-border last:border-b-0 ${line.subtotal ? "bg-surface font-medium" : ""}`}>
+              <tr key={line.key} data-line={line.key} className={`border-b border-line last:border-b-0 ${line.subtotal ? "bg-sunken font-medium" : ""}`}>
                 <th scope="row" className="min-w-[10rem] px-3 py-2 text-left align-top font-[inherit]">
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span {...(line.note && !noteShown(line) ? { title: line.note } : {})}>{plainLabel(line.label)}</span>
@@ -546,7 +546,7 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
       {coverageNote}
 
       <AnalyticsSection id="finance-left" title="How much of what we sell is left?" description={`${current.label}, in ${currency} without VAT.`}>
-        <div className="space-y-1 rounded-lg border border-border bg-surface p-4 text-sm">
+        <div className="space-y-1 rounded-lg border border-line bg-sunken p-4 text-sm">
           {profitLines(current, money).map((line, i) => (
             <p key={i} className={i === 0 ? "text-base font-medium" : "text-muted"}>
               {line}
@@ -597,7 +597,7 @@ export function FinanceView({ base, currency, locale, isOwner, current, comparis
       ) : null}
 
       <AnalyticsSection id="finance-method" title="How these are worked out">
-        <details className="rounded-lg border border-border bg-background p-4 text-sm">
+        <details className="rounded-lg border border-line bg-card p-4 text-sm">
           <summary className="cursor-pointer font-medium">What each line means</summary>
           <dl className="mt-3 space-y-2">
             {FINANCE_DEFINITIONS.map((d) => (

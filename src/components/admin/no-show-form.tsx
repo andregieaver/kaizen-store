@@ -20,7 +20,7 @@ export function NoShowForm({ storeSlug, bookingId, feeLabel }: { storeSlug: stri
         const charge = (event.currentTarget.elements.namedItem("charge") as HTMLInputElement | null)?.checked;
         if (charge && feeLabel && !window.confirm(`Charge ${feeLabel} to the customer's card?`)) event.preventDefault();
       }}
-      className="mt-2 flex max-w-xs flex-col gap-2 rounded-md border border-border p-3 text-left"
+      className="mt-2 flex max-w-xs flex-col gap-2 rounded-md border border-line p-3 text-left"
     >
       <p className="text-muted">The customer did not come.</p>
       {feeLabel && (
@@ -29,11 +29,11 @@ export function NoShowForm({ storeSlug, bookingId, feeLabel }: { storeSlug: stri
           Charge the no-show fee, {feeLabel}, to the saved card
         </label>
       )}
-      <button type="submit" disabled={pending} className="min-h-10 rounded-md border border-border px-3 font-medium disabled:opacity-50">
+      <button type="submit" disabled={pending} className="min-h-10 rounded-md border border-line px-3 font-medium disabled:opacity-50">
         {pending ? "Saving …" : "Mark as no-show"}
       </button>
       {state.message && (
-        <p role="status" className={state.ok ? "" : "text-red-700 dark:text-red-400"}>
+        <p role="status" className={state.ok ? "" : "text-danger-text"}>
           {state.message}
         </p>
       )}

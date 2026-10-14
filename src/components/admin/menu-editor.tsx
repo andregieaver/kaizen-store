@@ -62,9 +62,9 @@ export type MenuEditorCopy = {
 /** How far one level sits in from the one above it, in pixels, and how far to drag for one. */
 const INDENT = 32;
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const field = "flex flex-col gap-1 text-sm font-medium";
-const small = "min-h-9 rounded-md border border-border px-3 text-sm disabled:opacity-40";
+const small = "min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40";
 
 let counter = 0;
 const keyed = (item: AnyMenuEntry): Item => ({ ...item, key: `item-${++counter}` });
@@ -179,7 +179,7 @@ export function MenuEditor({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-background p-4 text-sm">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card p-4 text-sm">
         {menus.length > 0 && (
           <>
             <label className="flex flex-wrap items-center gap-2">
@@ -211,8 +211,8 @@ export function MenuEditor({
       <div className="grid items-start gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <AddItems kinds={kinds} targets={targets} copy={copy} locale={main.locale} full={items.length >= MENU_MAX_ITEMS} onAdd={add} />
 
-        <section aria-labelledby="menu-structure-heading" className="flex min-w-0 flex-col rounded-lg border border-border bg-background">
-          <div className="flex flex-wrap items-end gap-3 border-b border-border p-4">
+        <section aria-labelledby="menu-structure-heading" className="flex min-w-0 flex-col rounded-lg border border-line bg-card">
+          <div className="flex flex-wrap items-end gap-3 border-b border-line p-4">
             <h2 id="menu-structure-heading" className="sr-only">
               Menu structure
             </h2>
@@ -234,7 +234,7 @@ export function MenuEditor({
               type="button"
               onClick={submit}
               disabled={saving}
-              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+              className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
               {saving ? "Saving …" : menu.id ? "Save menu" : "Create menu"}
             </button>
@@ -270,12 +270,12 @@ export function MenuEditor({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 border-t border-border p-4">
+          <div className="flex flex-wrap items-center gap-3 border-t border-line p-4">
             <button
               type="button"
               onClick={submit}
               disabled={saving}
-              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+              className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
               {saving ? "Saving …" : menu.id ? "Save menu" : "Create menu"}
             </button>
@@ -297,7 +297,7 @@ export function MenuEditor({
                         }
                       })
                     }
-                    className="min-h-9 rounded-md bg-red-700 px-3 font-medium text-white"
+                    className="min-h-9 rounded-md bg-danger-soft px-3 font-medium text-danger-text"
                   >
                     Delete menu
                   </button>
@@ -306,13 +306,13 @@ export function MenuEditor({
                   </button>
                 </span>
               ) : (
-                <button type="button" onClick={() => setConfirming(true)} className="ml-auto text-sm text-red-700 underline">
+                <button type="button" onClick={() => setConfirming(true)} className="ml-auto text-sm text-danger-text underline">
                   Delete menu
                 </button>
               ))}
           </div>
           {result && !result.ok && (
-            <div role="alert" className="mx-4 mb-4 rounded-lg border border-red-700 p-4 text-sm">
+            <div role="alert" className="mx-4 mb-4 rounded-lg border border-danger-text p-4 text-sm">
               <p className="font-medium">Nothing was saved yet. Please fix:</p>
               <ul className="mt-2 list-disc pl-5">
                 {result.problems.map((problem) => (
@@ -322,7 +322,7 @@ export function MenuEditor({
             </div>
           )}
           {menu.id && (
-            <div className="border-t border-border p-4 text-sm">
+            <div className="border-t border-line p-4 text-sm">
               <h3 className="font-medium">Where it shows</h3>
               {uses.length === 0 ? (
                 <p className="text-muted">
@@ -372,8 +372,8 @@ function AddItems({
   const targetKinds = kinds.filter((k): k is KindOption & { kind: TargetKind } => k.kind in TARGET_NOUNS);
   const own = kinds.filter((k) => !(k.kind in TARGET_NOUNS) && k.kind !== "url");
   return (
-    <aside aria-labelledby="add-items-heading" className="flex flex-col rounded-lg border border-border bg-background">
-      <h2 id="add-items-heading" className="border-b border-border p-4 font-medium">
+    <aside aria-labelledby="add-items-heading" className="flex flex-col rounded-lg border border-line bg-card">
+      <h2 id="add-items-heading" className="border-b border-line p-4 font-medium">
         Add menu items
       </h2>
       {full && <p className="p-4 text-sm text-muted">The menu has as many links as it can take ({MENU_MAX_ITEMS}).</p>}
@@ -425,7 +425,7 @@ function AddSection({
   );
   const all = shown.length > 0 && shown.every((o) => chosen.has(o.value));
   return (
-    <details open={open} className="group border-b border-border last:border-b-0">
+    <details open={open} className="group border-b border-line last:border-b-0">
       <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 font-medium">
         {title}
         <span aria-hidden className="transition-transform group-open:rotate-180 motion-reduce:transition-none">
@@ -447,7 +447,7 @@ function AddSection({
                 className={input}
               />
             )}
-            <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2" aria-label={title}>
+            <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-md border border-line p-2" aria-label={title}>
               {shown.map((option) => (
                 <li key={option.value}>
                   <label className="flex min-h-9 items-center gap-2 text-sm">
@@ -761,7 +761,7 @@ function MenuItemRow({
       <div
         // The whole bar drags with the pointer, as in WordPress; from the keyboard, its handle does.
         onPointerDown={listeners?.onPointerDown as PointerEventHandler<HTMLDivElement> | undefined}
-        className={`flex min-h-12 cursor-grab touch-none items-center gap-2 select-none rounded-md border border-border bg-surface px-2 active:cursor-grabbing ${isDragging ? "shadow-lg" : ""}`}
+        className={`flex min-h-12 cursor-grab touch-none items-center gap-2 select-none rounded-md border border-line bg-sunken px-2 active:cursor-grabbing ${isDragging ? "shadow-lg" : ""}`}
       >
         <button
           type="button"
@@ -769,7 +769,7 @@ function MenuItemRow({
           onKeyDown={listeners?.onKeyDown as KeyboardEventHandler<HTMLButtonElement> | undefined}
           aria-label={`Move ${name}`}
           aria-roledescription="sortable link"
-          className="flex size-9 shrink-0 cursor-grab items-center justify-center rounded text-muted hover:bg-background"
+          className="flex size-9 shrink-0 cursor-grab items-center justify-center rounded text-muted hover:bg-card"
         >
           <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
             <circle cx="9" cy="6" r="1.5" />
@@ -783,7 +783,7 @@ function MenuItemRow({
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
         {carried > 0 && <span className="text-xs text-muted">+{carried} under it</span>}
         {depth > 0 && <span className="hidden text-xs text-muted sm:inline">sub item</span>}
-        {item.mega && depth === 0 && <span className="rounded-full bg-foreground px-2 py-0.5 text-xs text-background">Mega menu</span>}
+        {item.mega && depth === 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs text-brand-ink">Mega menu</span>}
         <span className="shrink-0 text-xs text-muted">{kindName(item.link, kinds)}</span>
         <button
           type="button"
@@ -791,7 +791,7 @@ function MenuItemRow({
           aria-expanded={expanded}
           aria-controls={`${id}-panel`}
           aria-label={`Edit ${name}`}
-          className="flex size-9 shrink-0 items-center justify-center rounded hover:bg-background"
+          className="flex size-9 shrink-0 items-center justify-center rounded hover:bg-card"
         >
           <span aria-hidden className={`transition-transform motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}>
             ▾
@@ -799,7 +799,7 @@ function MenuItemRow({
         </button>
       </div>
       {expanded && (
-        <div id={`${id}-panel`} className="flex flex-col gap-4 rounded-b-md border border-t-0 border-border bg-background p-4">
+        <div id={`${id}-panel`} className="flex flex-col gap-4 rounded-b-md border border-t-0 border-line bg-card p-4">
           {item.link.kind === "url" && (
             <label className={field}>
               Web address
@@ -836,7 +836,7 @@ function MenuItemRow({
             Open the link in a new tab
           </label>
           {item.depth === 0 && (
-            <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+            <div className="flex flex-col gap-3 rounded-md border border-line p-3">
               <label className="flex items-start gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -887,7 +887,7 @@ function MenuItemRow({
               <div className="flex flex-wrap items-center gap-3">
                 {item.image && (
                   // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded picture
-                  <img src={item.image.url} alt="" className="aspect-[4/3] w-32 rounded-md bg-surface object-cover" />
+                  <img src={item.image.url} alt="" className="aspect-[4/3] w-32 rounded-md bg-sunken object-cover" />
                 )}
                 <ImageUploadButton
                   upload={upload}
@@ -916,8 +916,8 @@ function MenuItemRow({
               {original?.note && ` (${original.note})`}
             </p>
           )}
-          <div className="flex items-center gap-3 border-t border-border pt-3 text-sm">
-            <button type="button" onClick={onRemove} className="text-red-700 underline">
+          <div className="flex items-center gap-3 border-t border-line pt-3 text-sm">
+            <button type="button" onClick={onRemove} className="text-danger-text underline">
               Remove
             </button>
             <span aria-hidden className="text-muted">

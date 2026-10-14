@@ -206,7 +206,7 @@ function NewInvoiceForm({
       {draftId && (
         <div
           role="status"
-          className="flex flex-col gap-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+          className="flex flex-col gap-2 rounded-md border border-warning-line bg-warning-soft p-3 text-sm text-warning-text"
         >
           <p>This assignment already has a draft invoice. Finish or delete it before starting another.</p>
           <Link href={`${base}/invoices/${draftId}`} className="self-start underline">

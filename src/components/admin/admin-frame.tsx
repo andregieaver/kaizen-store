@@ -72,7 +72,7 @@ export function AdminFrame({
       type="button"
       data-open-menu
       aria-haspopup="dialog"
-      className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-surface lg:hidden"
+      className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-sunken lg:hidden"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
@@ -98,12 +98,12 @@ export function AdminFrame({
           areas={areas}
           fallback={groups}
           label="All pages"
-          footer={menuFooter && <div className="flex flex-col gap-4 border-t border-border px-3 pt-6 text-sm">{menuFooter}</div>}
+          footer={menuFooter && <div className="flex flex-col gap-4 border-t border-line px-3 pt-6 text-sm">{menuFooter}</div>}
         />
       ) : (
         <>
           <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: "Sections", items: tabs }] : []), ...groups]} label="All pages" />
-          {menuFooter && <div className="flex flex-col gap-4 border-t border-border px-3 pt-6 text-sm">{menuFooter}</div>}
+          {menuFooter && <div className="flex flex-col gap-4 border-t border-line px-3 pt-6 text-sm">{menuFooter}</div>}
         </>
       )}
     </MobileMenu>
@@ -139,7 +139,7 @@ export function AdminFrame({
     <>
       {before}
       <HidingHeader>
-        <header className="border-b border-border bg-background">
+        <header className="border-b border-line bg-card">
           <div className={`mx-auto flex h-14 items-center gap-2 px-4 ${bar}`}>
             {/* The slide-out menu (below) opens on any `data-open-menu` button. */}
             {menuButton}

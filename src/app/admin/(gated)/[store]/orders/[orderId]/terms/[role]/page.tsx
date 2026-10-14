@@ -42,7 +42,7 @@ export default async function OrderTermsAsShownPage({ params }: PageProps<"/admi
           mode was {snapshot.mode === "checkbox" ? "a tick box" : "a link"}. This is the plain text of the kept copy, not today&apos;s page.
         </p>
       </div>
-      <div className="flex flex-col gap-3 rounded-card border border-border bg-background p-5 text-sm">
+      <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-5 text-sm">
         {paragraphs.length === 0 ? <p className="text-muted">The kept copy has no text.</p> : paragraphs.map((text, index) => <p key={index} className="break-words whitespace-pre-line">{text}</p>)}
       </div>
     </div>

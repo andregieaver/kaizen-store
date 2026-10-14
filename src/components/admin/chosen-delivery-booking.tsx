@@ -9,7 +9,7 @@ import { parcelLinesFromChoice } from "@/lib/parcel-form";
 
 export type BookState = { ok: boolean; message: string };
 
-const input = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const input = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
  * Books the delivery the customer chose at checkout with its carrier (Porterbuddy D137, Helthjem D138): the parcel's weight,
@@ -52,7 +52,7 @@ export function ChosenDeliveryBooking({
   return (
     <div className="flex flex-col gap-3">
       {test && (
-        <p role="status" className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <p role="status" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
           Test environment: {carrierName} delivers nothing and the order is not marked as sent.
         </p>
       )}
@@ -72,12 +72,12 @@ export function ChosenDeliveryBooking({
         </label>
       )}
       <div>
-        <button type="button" onClick={submit} disabled={busy || !weight.trim() || lines === "invalid"} className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">
+        <button type="button" onClick={submit} disabled={busy || !weight.trim() || lines === "invalid"} className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50">
           {busy ? "Booking …" : test ? "Make a test booking" : "Book and mark as sent"}
         </button>
       </div>
       {result && (
-        <p role={result.ok ? "status" : "alert"} className={`text-sm ${result.ok ? "" : "text-red-700 dark:text-red-400"}`}>
+        <p role={result.ok ? "status" : "alert"} className={`text-sm ${result.ok ? "" : "text-danger-text "}`}>
           {result.message}
         </p>
       )}

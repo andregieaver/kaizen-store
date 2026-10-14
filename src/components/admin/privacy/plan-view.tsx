@@ -55,7 +55,7 @@ export function ErasurePlanView({ plan, locale = "en-GB" }: { plan: ErasurePlan;
               </thead>
               <tbody>
                 {plan.rows.map((row) => (
-                  <tr key={`${row.table}:${row.action}`} className="border-t border-border align-top">
+                  <tr key={`${row.table}:${row.action}`} className="border-t border-line align-top">
                     <th scope="row" className="py-2 pr-3 font-medium">
                       {row.label}
                     </th>

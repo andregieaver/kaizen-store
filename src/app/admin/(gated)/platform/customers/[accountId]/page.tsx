@@ -20,7 +20,7 @@ import { resetTwoStepAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customer" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 /**
  * One of Kaizen's customers (D35): their stores, each store's plan (the
@@ -75,7 +75,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
           ["On a plan", String(customer.onPlan)],
           ["Plan reminders", customer.planRemindersOptedOut ? "Said no" : "Allowed"],
         ].map(([label, value]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-lg border border-border bg-background p-4">
+          <div key={label} className="flex flex-col gap-1 rounded-lg border border-line bg-card p-4">
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
           </div>
@@ -116,7 +116,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="py-2 pr-4 font-medium">Store</th>
                   <th scope="col" className="py-2 pr-4 font-medium">Role</th>
                   <th scope="col" className="py-2 pr-4 font-medium">Plan</th>
@@ -125,7 +125,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
               </thead>
               <tbody>
                 {customer.stores.map((s) => (
-                  <tr key={s.slug} className="border-b border-border last:border-0">
+                  <tr key={s.slug} className="border-b border-line last:border-0">
                     <td className="py-2 pr-4">
                       <Link href={`/admin/platform/stores/${s.slug}`} className="font-medium underline">
                         {s.name}
@@ -181,7 +181,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
       {customer.unpaidPlans.length > 0 && (
         <section aria-labelledby="unpaid" className={card}>
           <h2 id="unpaid" className="mb-3 font-medium">Went to pay for a plan</h2>
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-line text-sm">
             {customer.unpaidPlans.map((u) => (
               <li key={`${u.storeSlug}-${u.capturedAt}`} className="flex flex-wrap justify-between gap-2 py-2">
                 <span>
@@ -204,7 +204,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
         {kaizenEmails.length === 0 ? (
           <p className="text-sm text-muted">No emails yet.</p>
         ) : (
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-line text-sm">
             {kaizenEmails.map((email) => (
               <li key={email.id} className="flex flex-wrap justify-between gap-2 py-2">
                 <Link href={`/admin/platform/emails/${email.id}`} className="underline">

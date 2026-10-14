@@ -82,17 +82,17 @@ export function CssPanel({
       onKeyDown={(event) => {
         if (event.key === "Escape") onClose();
       }}
-      className="fixed inset-y-0 right-0 z-30 flex w-full max-w-md flex-col border-l border-border bg-background shadow-2xl"
+      className="fixed inset-y-0 right-0 z-30 flex w-full max-w-md flex-col border-l border-line bg-card shadow-2xl"
     >
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+      <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
         <h2 id={`${id}-title`} className="font-medium">
           Custom CSS
         </h2>
-        <button type="button" onClick={onClose} className="min-h-9 rounded-md px-3 text-sm hover:bg-surface" aria-label="Close custom CSS">
+        <button type="button" onClick={onClose} className="min-h-9 rounded-md px-3 text-sm hover:bg-sunken" aria-label="Close custom CSS">
           Close
         </button>
       </div>
-      <div role="tablist" aria-label="Where the CSS applies" className="flex gap-1 border-b border-border px-3">
+      <div role="tablist" aria-label="Where the CSS applies" className="flex gap-1 border-b border-line px-3">
         {(Object.keys(tabs) as (keyof typeof tabs)[]).map((key) => (
           <button
             key={key}
@@ -104,7 +104,7 @@ export function CssPanel({
             tabIndex={tab === key ? 0 : -1}
             onClick={() => setTab(key)}
             onKeyDown={onTabKey}
-            className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm aria-selected:border-foreground aria-selected:font-medium"
+            className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm aria-selected:border-brand aria-selected:font-medium"
           >
             {tabs[key]}
             {key === "site" && siteChanged && <span className="text-muted"> •</span>}
@@ -135,11 +135,11 @@ export function CssPanel({
           placeholder={tab === "page" ? ".hero h1 {\n  letter-spacing: -0.02em;\n}" : "h2 {\n  text-wrap: balance;\n}"}
           aria-describedby={`${id}-help`}
           aria-invalid={problem ? true : undefined}
-          className="min-h-0 w-full flex-1 resize-none rounded-md border border-border bg-surface p-3 font-mono text-[13px] leading-relaxed"
+          className="min-h-0 w-full flex-1 resize-none rounded-md border border-line bg-sunken p-3 font-mono text-[13px] leading-relaxed"
         />
         <div id={`${id}-help`} className="flex flex-col gap-1 text-xs">
           {problem ? (
-            <p role="alert" className="text-red-700 dark:text-red-400">
+            <p role="alert" className="text-danger-text">
               {problem}{" "}
               {tab === "page" ? `Until it is fixed, the canvas leaves it out and the ${noun} cannot be saved.` : "Until it is fixed, it cannot be saved."}
             </p>
@@ -156,11 +156,11 @@ export function CssPanel({
               type="button"
               onClick={save}
               disabled={saving || !siteChanged || problem !== null}
-              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+              className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
             >
               {saving ? "Saving …" : "Save global CSS"}
             </button>
-            <p role="status" aria-live="polite" className={`text-sm ${status && !status.ok ? "text-red-700 dark:text-red-400" : ""}`}>
+            <p role="status" aria-live="polite" className={`text-sm ${status && !status.ok ? "text-danger-text " : ""}`}>
               {status?.text ?? (siteChanged ? "Not saved yet." : "")}
             </p>
           </div>

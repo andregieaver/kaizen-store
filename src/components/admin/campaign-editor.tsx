@@ -32,10 +32,10 @@ export type CampaignDraft = {
   active: boolean;
 };
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 const KINDS: { value: CampaignKind; title: string; text: string }[] = [
   { value: "percent", title: "A percentage off", text: "For example 20 % off the chosen products, without a code." },
@@ -128,7 +128,7 @@ export function CampaignEditor({
       className="flex flex-col gap-6"
     >
       {problems.length > 0 && (
-        <div role="alert" className="rounded-lg border border-red-700 p-4 text-sm">
+        <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
           <p className="font-medium">Nothing was saved yet. Please fix:</p>
           <ul className="mt-2 list-disc pl-5">
             {problems.map((problem) => (
@@ -160,7 +160,7 @@ export function CampaignEditor({
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-medium">What it gives</legend>
           {KINDS.map((kind) => (
-            <label key={kind.value} className="flex items-start gap-3 rounded-md border border-border p-3 text-sm has-[:checked]:border-foreground">
+            <label key={kind.value} className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-brand">
               <input type="radio" name="kind" checked={d.kind === kind.value} onChange={() => set("kind", kind.value)} className="mt-0.5 size-4" />
               <span>
                 <span className="font-medium">{kind.title}</span>
@@ -268,10 +268,10 @@ export function CampaignEditor({
             {categories.length + tags.length > 0 && (
               <fieldset className="flex flex-col gap-2">
                 <legend className="text-sm font-medium">Categories and tags</legend>
-                <ul className="grid max-h-56 gap-1 overflow-y-auto rounded-md border border-border p-2 sm:grid-cols-2">
+                <ul className="grid max-h-56 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
                   {[...categories, ...tags].map((term) => (
                     <li key={term.id}>
-                      <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-surface">
+                      <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
                         <input type="checkbox" checked={d.termIds.includes(term.id)} onChange={(event) => toggle("termIds", term.id, event.target.checked)} className="size-4" />
                         {term.kind === "tag" ? `#${term.name}` : path(term)}
                       </label>
@@ -283,10 +283,10 @@ export function CampaignEditor({
             )}
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm font-medium">Products</legend>
-              <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-border p-2 sm:grid-cols-2">
+              <ul className="grid max-h-72 gap-1 overflow-y-auto rounded-md border border-line p-2 sm:grid-cols-2">
                 {products.map((product) => (
                   <li key={product.id}>
-                    <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-surface">
+                    <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
                       <input type="checkbox" checked={d.productIds.includes(product.id)} onChange={(event) => toggle("productIds", product.id, event.target.checked)} className="size-4" />
                       {product.title}
                     </label>
@@ -351,10 +351,10 @@ export function CampaignEditor({
             </label>
           </fieldset>
           {d.markets.length > 0 && (
-            <ul className="grid gap-1 rounded-md border border-border p-2 sm:grid-cols-3">
+            <ul className="grid gap-1 rounded-md border border-line p-2 sm:grid-cols-3">
               {markets.map((market) => (
                 <li key={market.code}>
-                  <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-surface">
+                  <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
                     <input type="checkbox" checked={d.markets.includes(market.code)} onChange={(event) => toggle("markets", market.code, event.target.checked)} className="size-4" />
                     {market.name}
                   </label>
@@ -386,10 +386,10 @@ export function CampaignEditor({
               </label>
             </fieldset>
             {d.tierIds.length > 0 && (
-              <ul className="grid gap-1 rounded-md border border-border p-2 sm:grid-cols-2">
+              <ul className="grid gap-1 rounded-md border border-line p-2 sm:grid-cols-2">
                 {tiers.map((tier) => (
                   <li key={tier.id}>
-                    <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-surface">
+                    <label className="flex min-h-10 items-center gap-3 rounded px-2 text-sm hover:bg-sunken">
                       <input type="checkbox" checked={d.tierIds.includes(tier.id)} onChange={(event) => toggle("tierIds", tier.id, event.target.checked)} className="size-4" />
                       {tier.name}
                       {!tier.active && <span className={hint}> (switched off)</span>}
@@ -406,7 +406,7 @@ export function CampaignEditor({
       </section>
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving} className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50">
+        <button type="submit" disabled={saving} className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50">
           {saving ? "Saving …" : "Save campaign"}
         </button>
         <a href={back} className="text-sm underline">

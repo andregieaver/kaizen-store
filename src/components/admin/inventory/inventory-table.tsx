@@ -38,7 +38,7 @@ type LocationView = { id: string; name: string; active: boolean };
 
 const keyOf = (variantId: string, locationId: string) => `${variantId}:${locationId}`;
 const optionsText = (options: Record<string, string>) => Object.values(options).join(" / ");
-const cellInput = "min-h-9 w-24 rounded-md border border-border bg-background px-2 text-sm";
+const cellInput = "min-h-9 w-24 rounded-md border border-line bg-card px-2 text-sm";
 
 /**
  * The Inventory list (wave 3, D172, `docs/wave-3-inventory.md` 2.2): one row for each variant with its on hand, committed, available and owed figures, its
@@ -214,7 +214,7 @@ export function InventoryTable({
         <table className="w-full text-sm">
           <caption className="sr-only">One row for each variant: on hand, held by checkouts in progress, available and owed, with its policy at zero stock and its low-stock level.</caption>
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-b border-line">
               {canWrite && (
                 <th scope="col" className={th}>
                   <span className="sr-only">Choose</span>
@@ -271,7 +271,7 @@ export function InventoryTable({
               const name = `${row.title}${optionsText(row.options) ? `, ${optionsText(row.options)}` : ""}`;
               return (
                 <Fragment key={row.variantId}>
-                  <tr className="border-b border-border last:border-0">
+                  <tr className="border-b border-line last:border-0">
                     {canWrite && (
                       <td className={td}>
                         <input type="checkbox" checked={selected.has(row.variantId)} onChange={() => toggle(row.variantId)} aria-label={`Choose ${name}`} className="size-4" />
@@ -296,7 +296,7 @@ export function InventoryTable({
                               onChange={(e) => type(own, { set: e.target.value })}
                               aria-label={`Set on hand to, ${name}`}
                               placeholder={String(row.onHand)}
-                              className={`${cellInput} ${changed && typedHere.set !== "" ? "border-foreground" : ""}`}
+                              className={`${cellInput} ${changed && typedHere.set !== "" ? "border-brand" : ""}`}
                             />
                           ) : (
                             <span className={hint}>See locations</span>
@@ -310,7 +310,7 @@ export function InventoryTable({
                               onChange={(e) => type(own, { by: e.target.value })}
                               aria-label={`Adjust on hand by, ${name}`}
                               placeholder="+5 or -2"
-                              className={`${cellInput} ${changed && typedHere.by !== "" ? "border-foreground" : ""}`}
+                              className={`${cellInput} ${changed && typedHere.by !== "" ? "border-brand" : ""}`}
                             />
                           ) : (
                             <span className={hint}>-</span>
@@ -329,7 +329,7 @@ export function InventoryTable({
                           <span className={hint}>-</span>
                         ) : (
                           states.map((s) => (
-                            <span key={s} title={STATE_HELP[s]} className={`rounded-full border border-border px-2 py-0.5 text-xs ${s === "negative" || s === "out" ? "font-medium" : ""}`}>
+                            <span key={s} title={STATE_HELP[s]} className={`rounded-full border border-line px-2 py-0.5 text-xs ${s === "negative" || s === "out" ? "font-medium" : ""}`}>
                               {STATE_WORDS[s]}
                             </span>
                           ))
@@ -343,7 +343,7 @@ export function InventoryTable({
                     </td>
                   </tr>
                   {showLocations && row.locations.length > 0 && (
-                    <tr className="border-b border-border last:border-0">
+                    <tr className="border-b border-line last:border-0">
                       <td colSpan={columns} className="px-3 pb-3 pt-0">
                         <details>
                           <summary className="cursor-pointer text-xs text-muted">
@@ -353,7 +353,7 @@ export function InventoryTable({
                             <table className="w-full text-xs">
                               <caption className="sr-only">Figures of {name} at each stock location</caption>
                               <thead>
-                                <tr className="border-b border-border">
+                                <tr className="border-b border-line">
                                   <th scope="col" className="py-1 pr-3 text-left font-medium">
                                     Location
                                   </th>
@@ -383,7 +383,7 @@ export function InventoryTable({
                                   const key = keyOf(row.variantId, l.locationId);
                                   const t = typed[key] ?? EMPTY_CELL;
                                   return (
-                                    <tr key={l.locationId} className="border-b border-border last:border-0">
+                                    <tr key={l.locationId} className="border-b border-line last:border-0">
                                       <th scope="row" className="py-1 pr-3 text-left font-normal">
                                         {l.name}
                                         {!l.active && <span className="text-muted"> (inactive)</span>}
@@ -444,7 +444,7 @@ export function InventoryTable({
             <table className="w-full text-sm">
               <caption className="sr-only">Changes that would be saved, before and after</caption>
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className={th}>
                     Variant
                   </th>
@@ -464,7 +464,7 @@ export function InventoryTable({
               </thead>
               <tbody>
                 {review.map((r) => (
-                  <tr key={r.key} className="border-b border-border last:border-0">
+                  <tr key={r.key} className="border-b border-line last:border-0">
                     <td className={td}>
                       <span className="font-medium">{r.title}</span>
                       {r.options && <span className={`${hint} block`}>{r.options}</span>}
@@ -474,14 +474,14 @@ export function InventoryTable({
                     <td className={`${td} text-right tabular-nums`}>{figureText(r.was)}</td>
                     <td className={`${td} text-right tabular-nums`}>{r.next === null ? "-" : figureText(r.next)}</td>
                     <td className={`${td} text-right tabular-nums`}>
-                      {r.delta === null ? <span className="text-red-700 dark:text-red-400">{r.problem}</span> : deltaText(r.delta)}
+                      {r.delta === null ? <span className="text-danger-text">{r.problem}</span> : deltaText(r.delta)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {problems.length > 0 && <p className="text-sm text-red-700 dark:text-red-400">{problems.length === 1 ? "One row cannot be saved and is left out." : `${problems.length} rows cannot be saved and are left out.`}</p>}
+          {problems.length > 0 && <p className="text-sm text-danger-text">{problems.length === 1 ? "One row cannot be saved and is left out." : `${problems.length} rows cannot be saved and are left out.`}</p>}
           <div className="grid gap-3 sm:grid-cols-[14rem_1fr]">
             <div className="flex flex-col gap-1">
               <label htmlFor="adjust-reason" className="text-sm font-medium">
@@ -516,7 +516,7 @@ export function InventoryTable({
       )}
 
       <div role="status" aria-live="polite">
-        {problem && <p className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-sm text-danger-text">{problem}</p>}
       </div>
 
       {saved && (
@@ -529,7 +529,7 @@ export function InventoryTable({
                 .map((r) => {
                   const cell = cells.find((c) => c.key === keyOf(r.variantId, r.locationId));
                   return (
-                    <li key={keyOf(r.variantId, r.locationId)} className="rounded-md border border-border bg-background px-3 py-2">
+                    <li key={keyOf(r.variantId, r.locationId)} className="rounded-md border border-line bg-card px-3 py-2">
                       <span className="font-medium">{cell ? `${cell.title}${cell.options ? `, ${cell.options}` : ""}` : "A variant"}</span>
                       {cell ? <span className="text-muted">, {cell.location}</span> : null}: {OUTCOME_WORDS[r.outcome].toLowerCase()}. {r.problem}
                     </li>

@@ -24,7 +24,7 @@ export default async function PlatformFontsPage() {
           under Fonts in its admin.
         </p>
       </div>
-      <section className="rounded-card border border-border bg-background p-5">
+      <section className="rounded-card border border-line bg-card p-5">
         <SiteFontsForm fonts={chrome.fonts} action={savePlatformFontsAction} install={installPlatformFontAction} />
       </section>
     </>

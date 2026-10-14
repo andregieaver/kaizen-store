@@ -23,7 +23,7 @@ export function FeatureQuestion({
 }) {
   return (
     <ActionForm action={action} className="flex flex-col gap-5">
-      {note && <p className="rounded-md border border-border p-3 text-sm">{note}</p>}
+      {note && <p className="rounded-md border border-line p-3 text-sm">{note}</p>}
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-medium">I will sell</legend>
         {SELL_ANSWERS.map((answer) => (
@@ -49,7 +49,7 @@ export function FeatureQuestion({
         ))}
       </fieldset>
       {warnings.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm">
+        <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
           <p className="font-medium">If you leave out something that is on now:</p>
           <ul className="list-disc pl-5">
             {warnings.map((warning) => (

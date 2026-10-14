@@ -34,7 +34,7 @@ export function SectionHub({
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {list.items.map((item) => (
               <li key={item.path}>
-                <Link href={`${base}${item.path}`} className="flex h-full flex-col gap-1 rounded-lg border border-border bg-background p-4 hover:bg-surface">
+                <Link href={`${base}${item.path}`} className="flex h-full flex-col gap-1 rounded-lg border border-edge bg-card p-4 hover:bg-sunken">
                   <span className="font-medium">{item.label}</span>
                   <span className="text-sm text-muted">{item.description}</span>
                 </Link>

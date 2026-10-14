@@ -37,22 +37,22 @@ export default async function ReferralsPage() {
       </div>
 
       {!overview.enabled && !overview.code ? (
-        <p className="rounded-lg border border-border bg-background p-4 text-sm">The referral program is not running right now. Check back later.</p>
+        <p className="rounded-lg border border-line bg-card p-4 text-sm">The referral program is not running right now. Check back later.</p>
       ) : !overview.code ? (
-        <p className="rounded-lg border border-border bg-background p-4 text-sm">Referrals are for store owners. You get a link once you own a store.</p>
+        <p className="rounded-lg border border-line bg-card p-4 text-sm">Referrals are for store owners. You get a link once you own a store.</p>
       ) : (
         <>
           {overview.blocked && (
-            <p role="alert" className="rounded-lg border border-red-600 p-4 text-sm">
+            <p role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
               Your referrals are paused. Nothing more is earned and your credit is not used on invoices. Contact Kaizen if you think this is a mistake.
             </p>
           )}
           {!overview.enabled && (
-            <p className="rounded-lg border border-border bg-background p-4 text-sm">
+            <p className="rounded-lg border border-line bg-card p-4 text-sm">
               The referral program is paused: stores that open now do not earn you anything. Credit you have can still be used.
             </p>
           )}
-          <section aria-labelledby="link-heading" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+          <section aria-labelledby="link-heading" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
             <h2 id="link-heading" className="sr-only">
               Your link
             </h2>
@@ -92,14 +92,14 @@ export default async function ReferralsPage() {
 
           <Section id="stores-heading" title="Stores you referred">
             {overview.stores.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+              <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
                 No store has opened through your link yet.
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border bg-background">
+              <div className="overflow-x-auto rounded-lg border border-line bg-card">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-border">
+                    <tr className="border-b border-line">
                       <th scope="col" className="px-4 py-2 font-medium">Store</th>
                       <th scope="col" className="px-4 py-2 font-medium">Opened</th>
                       <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Earns you credit until</th>
@@ -108,7 +108,7 @@ export default async function ReferralsPage() {
                   </thead>
                   <tbody>
                     {overview.stores.map((store) => (
-                      <tr key={`${store.storeName}-${store.since}`} className="border-b border-border last:border-0">
+                      <tr key={`${store.storeName}-${store.since}`} className="border-b border-line last:border-0">
                         <td className="px-4 py-2">
                           {store.storeName}
                           {store.status === "void" && <span className="block text-muted">Not counted</span>}
@@ -128,14 +128,14 @@ export default async function ReferralsPage() {
 
           <Section id="history-heading" title="History">
             {overview.entries.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+              <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
                 Nothing yet. Credit shows here when a store you referred pays Kaizen.
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border bg-background">
+              <div className="overflow-x-auto rounded-lg border border-line bg-card">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-border">
+                    <tr className="border-b border-line">
                       <th scope="col" className="px-4 py-2 font-medium">Date</th>
                       <th scope="col" className="px-4 py-2 font-medium">What</th>
                       <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Detail</th>
@@ -144,7 +144,7 @@ export default async function ReferralsPage() {
                   </thead>
                   <tbody>
                     {overview.entries.map((entry) => (
-                      <tr key={entry.id} className="border-b border-border last:border-0">
+                      <tr key={entry.id} className="border-b border-line last:border-0">
                         <td className="whitespace-nowrap px-4 py-2">{date(entry.createdAt)}</td>
                         <td className="px-4 py-2">{REFERRAL_KIND_LABELS[entry.kind]}</td>
                         <td className="hidden px-4 py-2 text-muted sm:table-cell">{entry.note}</td>

@@ -30,14 +30,14 @@ export default async function EditProductPage({ params }: PageProps<"/admin/[sto
   return (
     <div className="flex flex-col gap-6">
       {archived && (
-        <p role="status" className="rounded-md border border-border bg-background p-3 text-sm">
+        <p role="status" className="rounded-md border border-line bg-card p-3 text-sm">
           This product is archived: shoppers cannot see it.
         </p>
       )}
       <ProductEditor {...editorProps(store, context)} productId={productId} initial={initial} fields={fields} />
       <form
         action={archiveProductAction.bind(null, store.slug, productId, !archived)}
-        className="border-t border-border pt-4"
+        className="border-t border-line pt-4"
       >
         <button type="submit" className="text-sm underline">
           {archived ? "Restore this product (as a draft)" : "Archive this product"}

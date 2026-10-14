@@ -72,14 +72,14 @@ export function InvoiceLinesEditor(props: LinesEditorProps) {
   return (
     <div className="flex flex-col gap-3">
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line p-4 text-sm text-muted">
           No lines yet. Add a line, or add the time you have logged and not yet billed.
         </p>
       ) : (
         <div>
           <div
             aria-hidden
-            className="hidden gap-2 border-b border-border px-2 pb-2 text-xs font-medium tracking-wide text-muted uppercase md:grid md:grid-cols-[minmax(11rem,1fr)_9rem_6.5rem_4.5rem_10rem_6rem_6rem_2.25rem]"
+            className="hidden gap-2 border-b border-line px-2 pb-2 text-xs font-medium tracking-wide text-muted uppercase md:grid md:grid-cols-[minmax(11rem,1fr)_9rem_6.5rem_4.5rem_10rem_6rem_6rem_2.25rem]"
           >
             <span>Description</span>
             <span>Hours or units</span>
@@ -190,7 +190,7 @@ function LineItem({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex flex-col gap-3 rounded-lg border border-border bg-background p-3 md:rounded-none md:border-0 md:border-b md:px-2 md:py-3 ${
+      className={`flex flex-col gap-3 rounded-lg border border-line bg-card p-3 md:rounded-none md:border-0 md:border-b md:px-2 md:py-3 ${
         isDragging ? "relative z-10 shadow-lg" : ""
       }`}
     >
@@ -203,7 +203,7 @@ function LineItem({
             <button
               type="button"
               aria-label={`Drag line ${number} to reorder`}
-              className="mt-0.5 flex min-h-9 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-border text-muted active:cursor-grabbing"
+              className="mt-0.5 flex min-h-9 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-md border border-line text-muted active:cursor-grabbing"
               {...attributes}
               {...listeners}
             >
@@ -325,7 +325,7 @@ function LineItem({
           onClick={onRemove}
           aria-label={`Remove line ${number}`}
           title="Remove line"
-          className="flex size-9 items-center justify-center justify-self-end rounded-md border border-border text-muted hover:text-red-700 md:justify-self-auto dark:hover:text-red-400"
+          className="flex size-9 items-center justify-center justify-self-end rounded-md border border-line text-muted hover:text-danger-text md:justify-self-auto"
         >
           <Trash2 aria-hidden className="size-4" />
         </button>
@@ -347,7 +347,7 @@ function LineItem({
             {time.map((entry) => (
               <li
                 key={entry.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-surface px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-sunken px-3 py-2"
               >
                 <span>
                   {formatDay(entry.workDate, locale)}, {formatDuration(entry.minutes)}, {entry.person}

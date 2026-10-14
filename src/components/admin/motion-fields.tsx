@@ -109,7 +109,7 @@ export function MotionFields({
           onChange={(effect) => onChange(setEnterEffect(motion, effect, part))}
         />
         {enter && (
-          <div className="flex flex-col gap-4 rounded-md border border-border p-4">
+          <div className="flex flex-col gap-4 rounded-md border border-line p-4">
             <Choices
               legend="Plays"
               options={[
@@ -236,7 +236,7 @@ export function AnimationFields({
   const id = useId();
   const enter = motion?.enter;
   return (
-    <fieldset className="flex flex-col gap-3 border-t border-border pt-4" data-animation-fields="">
+    <fieldset className="flex flex-col gap-3 border-t border-line pt-4" data-animation-fields="">
       <legend className="float-left mb-1 w-full font-medium">Animation</legend>
       {enter ? (
         <div className="flex flex-wrap gap-4">
@@ -316,7 +316,7 @@ function SecondsField({
             if (Number.isFinite(ms) && ms >= min && ms <= max) onChange(ms);
           }}
           onBlur={() => setDraft(null)}
-          className="min-h-10 w-24 rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-red-700"
+          className="min-h-10 w-24 rounded-md border border-line bg-card px-3 text-sm aria-invalid:border-danger-text"
         />
         <span className="text-sm text-muted">s</span>
       </span>
@@ -338,7 +338,7 @@ const STAGGER_LABELS: Record<StaggerKind, string> = {
 function Section({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   const id = useId();
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-3 border-t border-border pt-4">
+    <section aria-labelledby={id} className="flex flex-col gap-3 border-t border-line pt-4">
       <div className="flex flex-col gap-0.5">
         <h3 id={id} className="text-sm font-medium">
           {title}
@@ -376,7 +376,7 @@ export function Setting<T extends string>({
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value as T)}
-        className="min-h-10 rounded-md border border-border bg-background px-3 text-sm"
+        className="min-h-10 rounded-md border border-line bg-card px-3 text-sm"
       >
         {(Object.keys(options) as T[]).map((key) => (
           <option key={key} value={key}>
@@ -524,7 +524,7 @@ export function EffectPicker<Id extends string>({
         ))}
       </div>
       {!fits && value !== null && (
-        <p role="status" className="text-xs text-red-700">
+        <p role="status" className="text-xs text-danger-text">
           The chosen effect is not one this part can have. Choose another, or None.
         </p>
       )}
@@ -571,11 +571,11 @@ function EffectCard<Id extends string>({
       onClick={onPick}
       onPointerEnter={id !== null && kind === "enter" ? play : undefined}
       onFocus={id !== null && kind === "enter" ? play : undefined}
-      className="flex min-h-14 items-start gap-3 rounded-md border border-border p-2 text-left text-sm hover:bg-surface focus-visible:outline-2 aria-checked:border-foreground aria-checked:bg-surface"
+      className="flex min-h-14 items-start gap-3 rounded-md border border-edge p-2 text-left text-sm hover:bg-sunken focus-visible:outline-2 aria-checked:border-brand aria-checked:bg-sunken"
     >
       <span
         aria-hidden
-        className="mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded bg-surface"
+        className="mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded bg-sunken"
       >
         {id !== null && kind === "enter" ? (
           <EnterSwatch effect={id as unknown as EnterEffect} target={target} run={reduced ? 0 : run} group={group} />
@@ -615,7 +615,7 @@ function EnterSwatch({
           preview: true,
         })
       : null;
-  return <span key={run} {...fx?.attrs} style={fx?.style} className="size-6 rounded-sm bg-foreground/70" />;
+  return <span key={run} {...fx?.attrs} style={fx?.style} className="size-6 rounded-sm bg-inverse/70" />;
 }
 
 const GLYPHS: Record<string, ReactNode> = {
@@ -722,14 +722,14 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
   const nothing = !motion;
   return (
     // Where there is room it stays in view under the tabs, so a change can be watched while its settings are worked at.
-    <div className="z-[5] flex flex-col gap-2 rounded-md border border-border bg-surface p-3 sm:sticky sm:top-7">
+    <div className="z-[5] flex flex-col gap-2 rounded-md border border-line bg-sunken p-3 sm:sticky sm:top-7">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-medium">Preview</h3>
         <button
           type="button"
           onClick={() => setReplay((n) => n + 1)}
           disabled={!motion?.enter || reduced}
-          className="min-h-9 rounded-md border border-border bg-background px-3 text-sm disabled:opacity-40"
+          className="min-h-9 rounded-md border border-line bg-card px-3 text-sm disabled:opacity-40"
         >
           Replay
         </button>
@@ -741,7 +741,7 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
       )}
       <div ref={boxRef} className={`grid grid-cols-1 items-start gap-3 ${motion?.scroll ? "sm:grid-cols-2" : ""}`}>
         <div className="flex flex-col gap-1">
-          <div className="overflow-hidden rounded-md bg-background p-4">
+          <div className="overflow-hidden rounded-md bg-card p-4">
             <div key={liveKey} aria-hidden {...liveFx?.attrs} style={liveFx?.style}>
               <Sample part={part} childFx={childFx} />
             </div>
@@ -760,7 +760,7 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
               tabIndex={0}
               role="region"
               aria-label="Scroll this box to see the scroll effect"
-              className="h-32 overflow-y-auto rounded-md bg-background focus-visible:outline-2"
+              className="h-32 overflow-y-auto rounded-md bg-card focus-visible:outline-2"
             >
               <div className="h-32" aria-hidden />
               <div className="px-4">
@@ -780,7 +780,7 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
 
 /** What the preview draws: a stand-in for the kind of part, so a row's columns and a column's components can be seen. */
 function Sample({ part, childFx }: { part: MotionPart; childFx: (index: number) => FxProps | null }) {
-  const bar = "h-2 rounded bg-foreground/25";
+  const bar = "h-2 rounded bg-inverse/25";
   // What a stagger plays in turn carries the attributes the parent's entrance gives its children.
   const child = (index: number) => {
     const fx = childFx(index);
@@ -816,7 +816,7 @@ function Sample({ part, childFx }: { part: MotionPart; childFx: (index: number) 
     return <div className="h-24 w-40 rounded bg-accent/25" />;
   }
   if (part.blockType === "button" || part.blockType === "dualButton") {
-    return <div className="inline-block rounded bg-foreground px-4 py-2 text-sm text-background">Button</div>;
+    return <div className="inline-block rounded bg-brand px-4 py-2 text-sm text-brand-ink">Button</div>;
   }
   return (
     <div className="flex max-w-xs flex-col gap-2 rounded bg-accent/15 p-3">

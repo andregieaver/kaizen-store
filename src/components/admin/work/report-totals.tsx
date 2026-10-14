@@ -36,7 +36,7 @@ export function ReportTotalsView({ report, locale }: { report: PeriodReport; loc
   return (
     <section aria-label="Totals" className="flex flex-col gap-3">
       <p className="text-sm text-muted">
-        <span className="font-medium text-foreground">{formatDuration(report.totalMinutes)}</span> logged,{" "}
+        <span className="font-medium text-ink">{formatDuration(report.totalMinutes)}</span> logged,{" "}
         {formatDuration(report.totalBillableMinutes)} of it billable.
       </p>
       {report.totals.map((total) => (

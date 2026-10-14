@@ -31,7 +31,7 @@ import {
 
 export const metadata: Metadata = { title: "Your account" };
 
-const smallButton = "min-h-10 rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface";
+const smallButton = "min-h-10 rounded-md border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken";
 
 export default async function AccountPage({ searchParams }: PageProps<"/admin/account">) {
   const account = await requireAccount();
@@ -238,7 +238,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
           </h2>
           <ul className="flex flex-col gap-2">
             {grants.map((grant) => (
-              <li key={grant.client.id} className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+              <li key={grant.client.id} className="flex items-center justify-between gap-3 rounded-md border border-line p-3 text-sm">
                 <span>
                   {grant.client.name || "An app"}
                   <span className="block text-xs text-muted">Since {new Date(grant.granted_at).toLocaleDateString("en-GB", { dateStyle: "medium" })}</span>

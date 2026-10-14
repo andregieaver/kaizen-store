@@ -24,9 +24,9 @@ export function ReferralLink({ link, code }: { link: string; code: string }) {
           readOnly
           value={link}
           onFocus={(event) => event.currentTarget.select()}
-          className="min-h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-3 font-mono text-sm"
+          className="min-h-11 min-w-0 flex-1 rounded-md border border-line bg-card px-3 font-mono text-sm"
         />
-        <button type="button" onClick={copy} className="min-h-11 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+        <button type="button" onClick={copy} className="min-h-11 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           {copied ? "Copied" : "Copy link"}
         </button>
       </div>

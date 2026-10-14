@@ -180,7 +180,7 @@ describe("the Waiting tab", () => {
   it("flags a reverse-charge invoice past its deadline in alert colours, with the day it was due", () => {
     const { html, text } = tab({ waiting: [waiting({ vatKind: "reverse_charge", overdue: true, deadline: "2026-10-15", reason: "tax_profile_missing", fixAt: "/settings/tax" })] });
     expect(text).toContain("Past the deadline: a reverse-charge invoice is due by 15 Oct 2026.");
-    expect(html).toContain("text-red-700");
+    expect(html).toContain("text-danger-text");
     expect(text).toContain("Reverse charge");
   });
 

@@ -43,7 +43,7 @@ export default async function RolesPage({ params }: PageProps<"/admin/[store]/st
           const who = holders.get(role.id) ?? [];
           const template = role.template ? ROLE_TEMPLATES[role.template] : null;
           return (
-            <li key={role.id} className="rounded-card border border-border bg-background p-5">
+            <li key={role.id} className="rounded-card border border-line bg-card p-5">
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium">{role.name}</span>
@@ -69,7 +69,7 @@ export default async function RolesPage({ params }: PageProps<"/admin/[store]/st
         })}
       </ul>
 
-      <section aria-labelledby="new-role-heading" className="rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="new-role-heading" className="rounded-card border border-line bg-card p-5">
         <h2 id="new-role-heading" className="mb-3 font-medium">
           Make a role
         </h2>

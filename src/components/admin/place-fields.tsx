@@ -2,7 +2,7 @@ import type { StoreLocation } from "@/server/company";
 import type { Country } from "@/server/stores";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const optional = <span className="font-normal text-muted">(optional)</span>;
 
 /** A place's address, phone and directions (D40), for the office, a shop or a pickup point. */

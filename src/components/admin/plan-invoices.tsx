@@ -25,7 +25,7 @@ export function InvoiceList({
   if (invoices === null) return <p className="text-sm text-muted">Invoices cannot be read from Stripe right now.</p>;
   if (invoices.length === 0) return <p className="text-sm text-muted">No invoices yet.</p>;
   return (
-    <ul className="divide-y divide-border text-sm">
+    <ul className="divide-y divide-line text-sm">
       {invoices.map((invoice) => (
         <li key={invoice.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
           <span>

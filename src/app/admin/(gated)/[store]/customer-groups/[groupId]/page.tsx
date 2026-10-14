@@ -13,8 +13,8 @@ import { addToGroupAction, deleteGroupAction, removeFromGroupAction, saveGroupAc
 
 export const metadata: Metadata = { title: "Customer group" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
-const card = "flex flex-col gap-3 rounded-lg border border-border bg-background p-5";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
+const card = "flex flex-col gap-3 rounded-lg border border-line bg-card p-5";
 
 export default async function CustomerGroupPage({ params }: PageProps<"/admin/[store]/customer-groups/[groupId]">) {
   const { store: slug, groupId } = await params;
@@ -77,7 +77,7 @@ export default async function CustomerGroupPage({ params }: PageProps<"/admin/[s
         {members.length === 0 ? (
           <p className="text-sm text-muted">No one yet.</p>
         ) : (
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-line text-sm">
             {members.map((member) => (
               <li key={member.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
                 <span className="min-w-0">
@@ -97,7 +97,7 @@ export default async function CustomerGroupPage({ params }: PageProps<"/admin/[s
             ))}
           </ul>
         )}
-        <ActionForm action={addToGroupAction.bind(null, store.slug, group.id)} className="flex flex-col gap-2 border-t border-border pt-3">
+        <ActionForm action={addToGroupAction.bind(null, store.slug, group.id)} className="flex flex-col gap-2 border-t border-line pt-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Add a customer by email
             <span className="flex flex-wrap gap-2">

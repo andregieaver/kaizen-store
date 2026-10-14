@@ -51,7 +51,7 @@ export function SetupFrame({
                 <span
                   aria-hidden="true"
                   className={`h-1.5 rounded-full ${
-                    s.id === step ? "bg-foreground" : done(s.id) ? "bg-foreground/50" : "bg-border"
+                    s.id === step ? "bg-brand" : done(s.id) ? "bg-brand/50" : "bg-line"
                   }`}
                 />
                 <span>
@@ -66,7 +66,7 @@ export function SetupFrame({
         </ol>
       </nav>
 
-      <section aria-labelledby="step-title" className="rounded-card border border-border bg-background p-6">
+      <section aria-labelledby="step-title" className="rounded-card border border-line bg-card p-6">
         <h1 id="step-title" className="mb-2 text-2xl font-medium">
           {title}
         </h1>

@@ -96,7 +96,7 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
                 }
               }}
               aria-describedby={hintId}
-              className="min-h-10 w-20 rounded-md border border-border bg-background px-3 text-sm tabular-nums"
+              className="min-h-10 w-20 rounded-md border border-line bg-card px-3 text-sm tabular-nums"
             />
             <span className="text-muted">pixels</span>
           </label>
@@ -104,7 +104,7 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
             type="button"
             onClick={() => write(undefined)}
             disabled={maxWidth === undefined}
-            className="min-h-10 rounded-pill border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
+            className="min-h-10 rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-50"
           >
             Own size
           </button>

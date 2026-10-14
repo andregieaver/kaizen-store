@@ -34,9 +34,9 @@ const GREETING =
   "Hi! Tell me about the page you want: what it is for, who it is for, and anything it must say. You can type or talk, in any language. I will ask a few questions, plan the page with you, then write it, make its pictures and save it as a draft.";
 
 const button = "inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium disabled:opacity-50";
-const primary = `${button} bg-foreground text-background`;
-const secondary = `${button} border border-border hover:bg-surface`;
-const card = "rounded-lg border border-border bg-background p-4";
+const primary = `${button} bg-brand text-brand-ink`;
+const secondary = `${button} border border-edge hover:bg-sunken`;
+const card = "rounded-lg border border-line bg-card p-4";
 
 /** The browser's recording formats, best first. */
 function recorderType(): string | undefined {
@@ -271,8 +271,8 @@ export function PageStudio({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <section aria-labelledby={`${inputId}-talk`} className="flex min-h-[32rem] flex-col rounded-lg border border-border bg-background">
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+      <section aria-labelledby={`${inputId}-talk`} className="flex min-h-[32rem] flex-col rounded-lg border border-line bg-card">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
           <h2 id={`${inputId}-talk`} className="font-medium">
             Talk to the AI
           </h2>
@@ -295,17 +295,17 @@ export function PageStudio({
             <li
               key={index}
               className={`max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-line ${
-                message.role === "user" ? "self-end bg-foreground text-background" : "self-start bg-surface"
+                message.role === "user" ? "self-end bg-brand text-brand-ink" : "self-start bg-sunken"
               }`}
             >
               <span className="sr-only">{message.role === "user" ? "You: " : "AI: "}</span>
               {message.content}
             </li>
           ))}
-          {pending && <li className="self-start rounded-lg bg-surface px-3 py-2 text-sm text-muted">Thinking …</li>}
+          {pending && <li className="self-start rounded-lg bg-sunken px-3 py-2 text-sm text-muted">Thinking …</li>}
         </ol>
         <form
-          className="flex flex-col gap-2 border-t border-border p-3"
+          className="flex flex-col gap-2 border-t border-line p-3"
           onSubmit={(event) => {
             event.preventDefault();
             send(draft);
@@ -328,7 +328,7 @@ export function PageStudio({
                 send(draft);
               }
             }}
-            className="w-full resize-y rounded-md border border-border bg-background px-3 py-2 text-sm"
+            className="w-full resize-y rounded-md border border-line bg-card px-3 py-2 text-sm"
           />
           <div className="flex flex-wrap items-center justify-between gap-2">
             {abilities.hear && actions.hear ? (
@@ -337,7 +337,7 @@ export function PageStudio({
                 onClick={() => void talk()}
                 disabled={(busy && !recording) || phase === "building" || phase === "built"}
                 aria-pressed={recording}
-                className={`${secondary} gap-2 ${recording ? "border-red-600 text-red-700 dark:text-red-400" : ""}`}
+                className={`${secondary} gap-2 ${recording ? "border-danger-text text-danger-text " : ""}`}
               >
                 <svg aria-hidden viewBox="0 0 24 24" className="size-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                   <rect x="9" y="3" width="6" height="11" rx="3" />
@@ -360,7 +360,7 @@ export function PageStudio({
           The page
         </h2>
         {problem && (
-          <p role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+          <p role="alert" className="rounded-md border border-danger-line bg-danger-soft p-3 text-sm text-danger-text">
             {problem}
           </p>
         )}
@@ -399,7 +399,7 @@ export function PageStudio({
             </div>
             <ol className="flex flex-col gap-3">
               {plan.sections.map((section, index) => (
-                <li key={index} className="rounded-md border border-border p-3 text-sm">
+                <li key={index} className="rounded-md border border-line p-3 text-sm">
                   <p className="font-medium">
                     {index + 1}. {section.name}{" "}
                     <span className="font-normal text-muted">
@@ -434,7 +434,7 @@ export function PageStudio({
         )}
 
         {notes.length > 0 && (
-          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+          <div className="rounded-md border border-warning-line bg-warning-soft p-3 text-sm text-warning-text">
             <p className="font-medium">Good to know</p>
             <ul className="mt-1 list-disc pl-5">
               {notes.map((note) => (
@@ -453,7 +453,7 @@ export function PageStudio({
               <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {pictures.map((picture) => (
                   <li key={picture.job.key} className="flex flex-col gap-1 text-xs">
-                    <div className="flex aspect-[3/2] items-center justify-center overflow-hidden rounded-md border border-border bg-surface">
+                    <div className="flex aspect-[3/2] items-center justify-center overflow-hidden rounded-md border border-line bg-sunken">
                       {picture.url ? (
                         // eslint-disable-next-line @next/next/no-img-element -- the picture just made, from the media library
                         <img src={picture.url} alt={picture.job.alt} className="size-full object-cover" />
@@ -461,7 +461,7 @@ export function PageStudio({
                         <span className="text-muted">{picture.status === "making" ? "Making …" : picture.status === "failed" ? "Not made" : "Waiting"}</span>
                       )}
                     </div>
-                    <span className={picture.status === "failed" ? "text-red-700 dark:text-red-400" : "text-muted"}>
+                    <span className={picture.status === "failed" ? "text-danger-text" : "text-muted"}>
                       {picture.status === "failed" ? picture.problem : picture.job.alt}
                     </span>
                   </li>

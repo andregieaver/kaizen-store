@@ -44,7 +44,7 @@ function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActio
         />
       ) : null}
       {store.workOn && (
-        <div className="mt-4 flex flex-col gap-2 border-t border-border pt-4 text-sm">
+        <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4 text-sm">
           {ready === null ? null : ready.length === 0 ? (
             <p className="text-muted">This store can issue invoices: its business details are complete.</p>
           ) : (

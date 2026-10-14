@@ -37,7 +37,7 @@ export function ReadinessList({
             return (
               <li
                 key={`${problem.code}:${problem.message}`}
-                className="flex flex-col gap-1 rounded-md border border-border p-3 text-sm"
+                className="flex flex-col gap-1 rounded-md border border-line p-3 text-sm"
               >
                 <span className="flex flex-wrap items-center gap-2">
                   <Badge tone={problem.severity === "error" ? "bad" : "warn"}>

@@ -18,7 +18,7 @@ export const CASH_WARNING = `Cash taken when goods are handed over is a cash sal
 export function ActionMessage({ result }: { result: DraftActionResponse | null }) {
   if (!result) return null;
   return (
-    <div role={result.ok ? "status" : "alert"} aria-live="polite" className={`flex flex-col gap-1 text-sm ${result.ok ? "" : "text-red-700 dark:text-red-400"}`}>
+    <div role={result.ok ? "status" : "alert"} aria-live="polite" className={`flex flex-col gap-1 text-sm ${result.ok ? "" : "text-danger-text "}`}>
       <p>{result.message}</p>
       {result.problems && result.problems.length > 0 && (
         <ul className="list-disc pl-5">
@@ -39,7 +39,7 @@ export function LinkNotice({ link, onClose }: { link: string; onClose: () => voi
   const id = useId();
   const [copied, setCopied] = useState(false);
   return (
-    <section aria-labelledby={id} className="flex flex-col gap-2 rounded-lg border border-foreground bg-surface p-4 text-sm">
+    <section aria-labelledby={id} className="flex flex-col gap-2 rounded-lg border border-brand bg-sunken p-4 text-sm">
       <h2 id={id} className="font-medium">
         The pay link
       </h2>
@@ -104,7 +104,7 @@ export function SendBox({
       onResult(answer);
     });
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 text-sm">
+    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
       <h2 id={`${id}-h`} className="font-medium">
         Send it
       </h2>
@@ -157,14 +157,14 @@ export function PaidOutsideBox({
   const [working, startTransition] = useTransition();
   if (!allowed) {
     return (
-      <section className="rounded-lg border border-border bg-background p-4 text-sm">
+      <section className="rounded-lg border border-line bg-card p-4 text-sm">
         <h2 className="mb-1 font-medium">Paid outside Kaizen</h2>
         <p className="text-muted">Only the owner can record a payment taken outside Kaizen, unless the owner allows staff to (Settings, Orders).</p>
       </section>
     );
   }
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 text-sm">
+    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
       <h2 id={`${id}-h`} className="font-medium">
         Mark as paid outside Kaizen
       </h2>
@@ -182,7 +182,7 @@ export function PaidOutsideBox({
         ))}
       </fieldset>
       {method === "cash" && (
-        <p role="note" className="rounded-md border border-border bg-surface p-3">
+        <p role="note" className="rounded-md border border-line bg-sunken p-3">
           {CASH_WARNING}
         </p>
       )}

@@ -41,7 +41,7 @@ export function AnalyticsSection({
 /** A card around one chart or table, with a small title and an optional line under it. */
 export function ChartCard({ title, description, action, children }: { title: string; description?: ReactNode; action?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="min-w-0 rounded-lg border border-border bg-background p-4">
+    <div className="min-w-0 rounded-lg border border-line bg-card p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
           <h3 className="text-sm font-medium">{title}</h3>
@@ -67,7 +67,7 @@ export function Note({ tone = "info", title, children }: { tone?: NoteTone; titl
     <div
       role="note"
       data-tone={tone}
-      className={`flex gap-2.5 rounded-lg border px-3 py-2 text-sm ${tone === "warning" ? "border-(--chart-warn) bg-surface" : "border-border bg-surface"}`}
+      className={`flex gap-2.5 rounded-lg border px-3 py-2 text-sm ${tone === "warning" ? "border-(--chart-warn) bg-sunken" : "border-line bg-sunken"}`}
     >
       <span
         aria-hidden="true"

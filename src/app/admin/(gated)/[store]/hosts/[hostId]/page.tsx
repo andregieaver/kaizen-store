@@ -67,7 +67,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
         {listings.length === 0 ? (
           <p className="text-sm text-muted">None yet. Choose this host in a stay or rental.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {listings.map((l) => (
               <li key={l.id} className="flex justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/products/${l.id}`} className="underline-offset-2 hover:underline">
@@ -103,7 +103,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
           </p>
         )}
         {earnings.length > 0 && (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {earnings.map((e) => (
               <li key={e.paymentId} className="flex flex-wrap justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/orders/${e.orderId}`} className="underline-offset-2 hover:underline">
@@ -136,16 +136,16 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
             {tax.tin.slice(-4)} ({tax.tinCountry})
           </p>
         ) : (
-          <p className="text-red-700 dark:text-red-400">Not given yet. The host gives them in their area.</p>
+          <p className="text-danger-text">Not given yet. The host gives them in their area.</p>
         )}
-        {missing.length > 0 && <p className="text-red-700 dark:text-red-400">No address yet for: {missing.join(", ")}.</p>}
+        {missing.length > 0 && <p className="text-danger-text">No address yet for: {missing.join(", ")}.</p>}
         <Link href={`/admin/${store.slug}/hosts/dac7`} className="underline">
           Yearly tax report
         </Link>
       </section>
       {owner && (
         <form action={setHostDisabledAction.bind(null, store.slug, host.id, !host.disabled)}>
-          <button type="submit" className="min-h-10 rounded-md border border-border px-3 text-sm">
+          <button type="submit" className="min-h-10 rounded-md border border-line px-3 text-sm">
             {host.disabled ? "Give access back" : "Take away access"}
           </button>
           <span className="ml-2 text-sm text-muted">

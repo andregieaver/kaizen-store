@@ -125,7 +125,7 @@ export function VideoUploadButton({
   if (!startVideo) return <p className="text-sm text-muted">Uploads are not set up on this server.</p>;
   return (
     <div className="flex flex-col gap-2">
-      <label className="w-fit cursor-pointer rounded-md border border-border px-3 py-2 text-sm focus-within:outline-2">
+      <label className="w-fit cursor-pointer rounded-md border border-line px-3 py-2 text-sm focus-within:outline-2">
         {busy ?? label}
         <input
           type="file"
@@ -145,7 +145,7 @@ export function VideoUploadButton({
         </p>
       )}
       {problem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}

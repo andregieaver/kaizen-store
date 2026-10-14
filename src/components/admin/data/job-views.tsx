@@ -37,14 +37,14 @@ export function JobProgressView({ job }: { job: JobView }) {
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={percent}
-          className="h-2 overflow-hidden rounded-full bg-background"
+          className="h-2 overflow-hidden rounded-full bg-card"
         >
-          <div className="h-full rounded-full bg-foreground transition-[width]" style={{ width: `${Math.max(percent, working ? 3 : 0)}%` }} />
+          <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${Math.max(percent, working ? 3 : 0)}%` }} />
         </div>
       )}
       {working && <p className={hint}>You can leave this page. The work goes on, and the job is here when you come back.</p>}
       {job.status === "failed" && job.problem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {job.problem}
         </p>
       )}
@@ -90,7 +90,7 @@ export function ExportFiles({ job, action, timeZone, now }: { job: ExportJobRow;
       </div>
       <ul className="flex flex-col gap-2">
         {job.files.map((file) => (
-          <li key={file.index} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-3 py-2 text-sm">
+          <li key={file.index} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line bg-card px-3 py-2 text-sm">
             <span>
               <span className="font-medium">{file.name}</span>
               <span className={`${hint} block`}>
@@ -117,7 +117,7 @@ export function ExportJobList({ jobs, pageHref, timeZone, now }: { jobs: ExportJ
         <table className="w-full text-sm">
           <caption className="sr-only">Recent exports of this store, newest first</caption>
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-b border-line">
               <th scope="col" className={th}>
                 Started
               </th>
@@ -134,7 +134,7 @@ export function ExportJobList({ jobs, pageHref, timeZone, now }: { jobs: ExportJ
           </thead>
           <tbody>
             {jobs.map((job) => (
-              <tr key={job.id} className="border-b border-border last:border-0">
+              <tr key={job.id} className="border-b border-line last:border-0">
                 <td className={td}>{momentText(job.createdAt, timeZone)}</td>
                 <td className={td}>
                   {STATUS_WORDS[job.status]}

@@ -4,10 +4,10 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { toolCategories, type TrackingSettings } from "@/lib/cookie-consent";
 import { CODE_MAX_LENGTH, CODE_PLACE_LABELS, CODE_PLACES, codeCategories, type CustomCode } from "@/lib/custom-code";
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 font-mono text-sm";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 font-mono text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 const CATEGORY_NAMES = { preferences: "preferences", statistics: "statistics", marketing: "marketing" } as const;
 
@@ -109,7 +109,7 @@ export function CustomCodeForm({
         </p>
       </div>
       {!live && (
-        <p role="status" className="rounded-md border border-border bg-surface p-3 text-sm">
+        <p role="status" className="rounded-md border border-line bg-sunken p-3 text-sm">
           Your store is still at Kaizen&apos;s own address. The code is saved now and added once stores move to addresses
           of their own.
         </p>
@@ -182,7 +182,7 @@ export function ConsentLog({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border text-muted">
+              <tr className="border-b border-line text-muted">
                 <th scope="col" className="py-2 pr-4 font-normal">When</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Visitor</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Asked about</th>
@@ -193,7 +193,7 @@ export function ConsentLog({
               {consents.map((consent) => {
                 const allowed = Object.entries(consent.choices).filter(([, on]) => on).map(([c]) => c);
                 return (
-                  <tr key={consent.id} className="border-b border-border last:border-0">
+                  <tr key={consent.id} className="border-b border-line last:border-0">
                     <td className="py-2 pr-4 whitespace-nowrap">{date.format(new Date(consent.createdAt))}</td>
                     <td className="py-2 pr-4 font-mono text-xs">{consent.visitor.slice(0, 8)}</td>
                     <td className="py-2 pr-4">{consent.version.replaceAll("+", ", ") || "nothing"}</td>

@@ -60,7 +60,7 @@ export function RedirectApplied({ counts, jobId, written }: { counts: { created:
   );
 }
 
-const SEVERITY_STYLE = { error: "text-red-700 dark:text-red-400", warning: "text-amber-700 dark:text-amber-400", info: "text-muted" } as const;
+const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text", info: "text-muted" } as const;
 
 /**
  * Every line's findings of an import (2.2.4 step 3): the rows of the file, the address the line goes from, what happened or would happen, and each finding
@@ -101,19 +101,19 @@ export function RedirectFindings({
       </div>
       <nav aria-label="Filter by severity" className="flex flex-wrap gap-2 text-sm">
         {SEVERITY_FILTERS.map((s) => (
-          <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-surface aria-[current=page]:font-medium">
+          <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-sunken aria-[current=page]:font-medium">
             {s === "all" ? "All lines" : `${SEVERITY_WORDS[s]}s`}
           </Link>
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-lg border border-border bg-surface p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No line has a finding of this kind."}</p>
+        <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No line has a finding of this kind."}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">
             <caption className="sr-only">Lines of the file with what was found, {wholeNumber(total)} in all</caption>
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className={th}>
                   Rows
                 </th>
@@ -130,7 +130,7 @@ export function RedirectFindings({
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.seq} className="border-b border-border last:border-0">
+                <tr key={item.seq} className="border-b border-line last:border-0">
                   <td className={`${td} whitespace-nowrap`}>{rowsPhrase(item.rows)}</td>
                   <td className={`${td} break-all`}>{item.ref ? <code className="text-xs">{item.ref}</code> : <span className={hint}>The file as a whole</span>}</td>
                   <td className={td}>{item.ref ? lineResultWords(item.outcome, item.will) : ""}</td>

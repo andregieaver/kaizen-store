@@ -6,7 +6,7 @@ import type { AuditArea } from "@/lib/audit";
 import { avatarFor } from "@/server/avatars";
 import type { ActivityEntry } from "@/server/activity";
 
-const field = "min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal";
+const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 
 /** The filters as the page holds them (`?person=&area=&action=&from=&to=`). */
 export type ActivityValues = { person: string; area: string; action: string; from: string; to: string };
@@ -81,17 +81,17 @@ export function ActivityFilters({
           <input type="date" name="to" defaultValue={values.to} className={field} />
         </label>
         <div className="flex gap-2">
-          <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+          <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
             Filter
           </button>
-          <Link href={action} className="inline-flex min-h-10 items-center rounded-pill border border-border bg-background px-4 text-sm hover:bg-surface">
+          <Link href={action} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm hover:bg-sunken">
             Clear
           </Link>
         </div>
       </form>
       <p className="text-xs text-muted">Days are in {zoneName}. Entries are kept for 24 months.</p>
       {exportAction && (
-        <form method="get" action={exportAction} className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-background p-4">
+        <form method="get" action={exportAction} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card p-4">
           <input type="hidden" name="person" value={values.person} />
           <input type="hidden" name="area" value={values.area} />
           <input type="hidden" name="action" value={values.action} />
@@ -104,7 +104,7 @@ export function ActivityFilters({
             Last day
             <input type="date" name="to" required defaultValue={values.to} className={field} />
           </label>
-          <button type="submit" className="min-h-10 rounded-pill border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+          <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
             Download CSV
           </button>
           <p className="basis-full text-xs text-muted">Owners only. Up to 50,000 entries; choose a shorter period for more. Respects the filters above.</p>
@@ -133,10 +133,10 @@ export function ActivityList({
   older?: string | null;
   empty?: string;
 }) {
-  if (entries.length === 0) return <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">{empty}</p>;
+  if (entries.length === 0) return <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">{empty}</p>;
   return (
     <div className="flex flex-col gap-4">
-      <ol className="divide-y divide-border rounded-lg border border-border bg-background">
+      <ol className="divide-y divide-line rounded-lg border border-line bg-card">
         {entries.map((entry) => {
           const lines = entry.changes ? Object.entries(entry.changes).map(([key, change]) => changeLine(key, change)) : [];
           return (
@@ -167,7 +167,7 @@ export function ActivityList({
       </ol>
       {older && (
         <p>
-          <Link href={older} className="inline-flex min-h-10 items-center rounded-pill border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+          <Link href={older} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
             Older entries
           </Link>
         </p>

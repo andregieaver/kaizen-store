@@ -68,7 +68,7 @@ export function SendParcelForm({
           <table className="w-full min-w-[34rem] text-left text-sm">
             <caption className="sr-only">The items to send</caption>
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="py-2 font-medium">Item</th>
                 <th scope="col" className="py-2 text-right font-medium">Ordered</th>
                 <th scope="col" className="py-2 text-right font-medium">Sent</th>
@@ -79,7 +79,7 @@ export function SendParcelForm({
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.lineId} className={`border-b border-border ${row.toSend === 0 ? "text-muted" : ""}`}>
+                <tr key={row.lineId} className={`border-b border-line ${row.toSend === 0 ? "text-muted" : ""}`}>
                   <td className="py-2">
                     {row.title}
                     {row.sku && <span className="block font-mono text-xs text-muted">{row.sku}</span>}
@@ -163,7 +163,7 @@ export function SendParcelForm({
         <button type="submit" disabled={pending || left === 0} className={primary}>
           {pending ? "Saving …" : submitLabel}
         </button>
-        <p role="status" aria-live="polite" className={`text-sm empty:hidden ${state.ok ? "" : "text-red-700 dark:text-red-400"}`}>
+        <p role="status" aria-live="polite" className={`text-sm empty:hidden ${state.ok ? "" : "text-danger-text "}`}>
           {state.message}
         </p>
       </div>

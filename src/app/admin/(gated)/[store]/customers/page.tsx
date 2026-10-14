@@ -36,7 +36,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
         </div>
         {/* The customer file (D165) holds personal data, so only the owner is offered it. */}
         {memberCan(member, "owner") && (
-          <Link href={`${base}/export`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium">
+          <Link href={`${base}/export`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium">
             Export
           </Link>
         )}
@@ -51,9 +51,9 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
           type="search"
           defaultValue={q}
           placeholder="Search by name or email"
-          className="min-h-10 w-full max-w-sm rounded-md border border-border bg-background px-3 text-sm"
+          className="min-h-10 w-full max-w-sm rounded-md border border-line bg-card px-3 text-sm"
         />
-        <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+        <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           Search
         </button>
         {q && (
@@ -64,14 +64,14 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
       </form>
 
       {customers.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           {q ? "No customer matches the search." : "No customers yet. They show here once someone signs up or buys."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Customer</th>
                 <th scope="col" className="px-4 py-2 font-medium">Orders</th>
                 <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">Spent</th>
@@ -81,7 +81,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
             </thead>
             <tbody>
               {customers.map((c) => (
-                <tr key={c.key} className="border-b border-border last:border-0">
+                <tr key={c.key} className="border-b border-line last:border-0">
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
                       <Avatar avatar={avatarFor(c)} size={32} />

@@ -51,7 +51,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           ["Put in the cart", String(figures.toCart), "from a list"],
           ["Bought", String(figures.bought), [conversion !== null && `${conversion} %`, moneyByCurrency(figures.boughtMinor, locale)].filter(Boolean).join(" · ") || null],
         ].map(([label, value, note]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-lg border border-border bg-background p-4">
+          <div key={label} className="flex flex-col gap-1 rounded-lg border border-line bg-card p-4">
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
             {note && <span className="text-xs text-muted">{note}</span>}
@@ -71,9 +71,9 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
               type="search"
               defaultValue={q}
               placeholder="Search by list, customer or product"
-              className="min-h-10 w-full max-w-sm rounded-md border border-border bg-background px-3 text-sm"
+              className="min-h-10 w-full max-w-sm rounded-md border border-line bg-card px-3 text-sm"
             />
-            <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+            <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
               Search
             </button>
             {(q || customerId) && (
@@ -92,14 +92,14 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           )}
 
           {lists.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+            <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
               {q || customerId ? "No list matches." : "No wishlists yet. They show here once a shopper taps a heart."}
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border bg-background">
+            <div className="overflow-x-auto rounded-lg border border-line bg-card">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b border-line">
                     <th scope="col" className="px-4 py-2 font-medium">List</th>
                     <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Shopper</th>
                     <th scope="col" className="px-4 py-2 text-right font-medium">Items</th>
@@ -110,7 +110,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
                 </thead>
                 <tbody>
                   {lists.map((list) => (
-                    <tr key={list.id} className="border-b border-border last:border-0">
+                    <tr key={list.id} className="border-b border-line last:border-0">
                       <td className="px-4 py-2">
                         <Link href={`${base}/wishlists/${list.id}`} className="font-medium underline-offset-2 hover:underline">
                           {list.name}
@@ -140,7 +140,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           )}
         </div>
 
-        <section aria-labelledby="most-wished" className="h-fit rounded-card border border-border bg-background p-5">
+        <section aria-labelledby="most-wished" className="h-fit rounded-card border border-line bg-card p-5">
           <h2 id="most-wished" className="mb-3 font-medium">Most wished for</h2>
           {top.length === 0 ? (
             <p className="text-sm text-muted">Nothing saved yet.</p>

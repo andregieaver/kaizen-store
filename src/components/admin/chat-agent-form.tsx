@@ -10,7 +10,7 @@ import { ImageUploadButton, type Upload } from "./image-upload";
 
 export type SaveChatAgent = (json: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
 
-const field = "min-h-10 w-full rounded-md border border-border bg-background px-3 py-2";
+const field = "min-h-10 w-full rounded-md border border-line bg-card px-3 py-2";
 
 /**
  * A site's chat agent (D81): whether it is on, who it is (a name, an
@@ -60,9 +60,9 @@ export function ChatAgentForm({
         <div className="flex flex-col items-center gap-2">
           {value.avatar ? (
             // eslint-disable-next-line @next/next/no-img-element -- the uploaded picture as the site shows it
-            <img src={value.avatar.url} alt="" width={96} height={96} className="size-24 rounded-full border border-border object-cover" />
+            <img src={value.avatar.url} alt="" width={96} height={96} className="size-24 rounded-full border border-line object-cover" />
           ) : (
-            <span aria-hidden className="flex size-24 items-center justify-center rounded-full border border-dashed border-border text-sm text-muted">
+            <span aria-hidden className="flex size-24 items-center justify-center rounded-full border border-dashed border-line text-sm text-muted">
               No picture
             </span>
           )}
@@ -150,13 +150,13 @@ export function ChatAgentForm({
       </label>
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={pending} className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40">
+        <button type="submit" disabled={pending} className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40">
           {pending ? "Saving …" : "Save"}
         </button>
         <div role="status" aria-live="polite" className="text-sm">
           {outcome?.ok && <p>{outcome.messages[0]}</p>}
           {outcome && !outcome.ok && (
-            <ul className="list-disc pl-5 text-red-700 dark:text-red-400">
+            <ul className="list-disc pl-5 text-danger-text">
               {outcome.messages.map((message) => (
                 <li key={message}>{message}</li>
               ))}

@@ -7,7 +7,7 @@ import type { GiftFields } from "@/lib/gift";
  */
 export function GiftCard({ gift, slipHref }: { gift: GiftFields; slipHref: string | null }) {
   return (
-    <section aria-labelledby="gift" className="rounded-card border border-border bg-background p-5 text-sm">
+    <section aria-labelledby="gift" className="rounded-card border border-line bg-card p-5 text-sm">
       <h2 id="gift" className="mb-2 font-medium">
         Gift
       </h2>
@@ -22,13 +22,13 @@ export function GiftCard({ gift, slipHref }: { gift: GiftFields; slipHref: strin
         </div>
       </dl>
       {gift.message ? (
-        <blockquote className="mt-3 border-l-2 border-border pl-3 whitespace-pre-wrap break-words">{gift.message}</blockquote>
+        <blockquote className="mt-3 border-l-2 border-line pl-3 whitespace-pre-wrap break-words">{gift.message}</blockquote>
       ) : (
         <p className="mt-3 text-muted">No message.</p>
       )}
       <p className="mt-3 text-xs text-muted">The buyer wrote this at checkout. It is printed on the packing slip, which has no prices. It is not sent to the recipient.</p>
       {slipHref && (
-        <a href={slipHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center rounded-md border border-border px-4">
+        <a href={slipHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center rounded-md border border-line px-4">
           Print gift slip
         </a>
       )}

@@ -66,7 +66,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         />
       )}
 
-      <section aria-labelledby="tax-heading" className="flex flex-col gap-1 rounded-card border border-border bg-background p-5 text-sm">
+      <section aria-labelledby="tax-heading" className="flex flex-col gap-1 rounded-card border border-line bg-card p-5 text-sm">
         <h2 id="tax-heading" className="font-medium">
           Tax details
         </h2>
@@ -90,7 +90,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         {bookings.length === 0 ? (
           <p className="text-sm text-muted">None yet.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {bookings.map((b) => (
               <li key={b.id} className="flex flex-wrap justify-between gap-2 p-3">
                 <span>
@@ -119,7 +119,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         {resources.length === 0 ? (
           <p className="text-sm text-muted">The store has not given you any yet.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {resources.map((r) => (
               <li key={r.id} className="flex justify-between gap-3 p-3">
                 <span>{r.name}</span>
@@ -139,7 +139,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         {listings.length === 0 ? (
           <p className="text-sm text-muted">The store has not listed anything for you yet.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {listings.map((l) => (
               <li key={l.id} className="flex justify-between gap-3 p-3">
                 <span>{l.title}</span>

@@ -283,14 +283,14 @@ describe("the running timer bar", () => {
     expect(ok).toContain("text-muted");
     const near = at(5);
     expect(near).toContain("5m left");
-    expect(near).toContain("text-amber-800");
+    expect(near).toContain("text-warning-text");
     // 12 minutes ran after the estimate was read: 0 left is used up, -3 is over.
     expect(at(0)).toContain("Used up");
     const over = at(-3);
     expect(over).toContain("3m over");
-    expect(over).toContain("text-red-700");
+    expect(over).toContain("text-danger-text");
     // Warnings off do not hide that it is over.
-    expect(at(-3, null)).toContain("text-red-700");
+    expect(at(-3, null)).toContain("text-danger-text");
   });
 
   it("shows a clock that is still starting, and what went wrong with a press", () => {
@@ -681,7 +681,7 @@ describe("the assignment page's parts", () => {
     expect(out).toContain("5h");
     expect(out).toContain("of <span");
     expect(out).toContain("50 %");
-    expect(out).toContain("bg-emerald-600");
+    expect(out).toContain("bg-positive-solid");
     expect(out).toContain("Hourly, ");
     expect(out).toContain("4h 30m, ");
     expect(out).toContain("10 minutes before, with a message");
@@ -696,7 +696,7 @@ describe("the assignment page's parts", () => {
         locale: "en",
       }),
     );
-    expect(near).toContain("bg-amber-500");
+    expect(near).toContain("bg-warning-solid");
     expect(near).toContain("Nearly used up");
     const over = html(
       createElement(AssignmentSummaryCard, {
@@ -705,7 +705,7 @@ describe("the assignment page's parts", () => {
         locale: "en",
       }),
     );
-    expect(over).toContain("bg-red-600");
+    expect(over).toContain("bg-danger-solid");
     expect(over).toContain("Over the estimate");
     expect(over).toContain("1h over");
     expect(over).toContain('style="width:100%"');
@@ -812,10 +812,10 @@ describe("the tasks panel", () => {
   it("marks the stages of a task's estimate in words as well as colour", () => {
     const near = panel([task({ loggedMinutes: 115 })]);
     expect(near).toContain("5m left");
-    expect(near).toContain("text-amber-800");
+    expect(near).toContain("text-warning-text");
     const over = panel([task({ loggedMinutes: 150 })]);
     expect(over).toContain("30m over");
-    expect(over).toContain("text-red-700");
+    expect(over).toContain("text-danger-text");
   });
 
   it("moves the estimate with a timer running on the task, and offers Stop there", () => {

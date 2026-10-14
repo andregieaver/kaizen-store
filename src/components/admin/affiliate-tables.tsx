@@ -32,7 +32,7 @@ export function ReferrersTable({
       <table className="w-full min-w-[40rem] text-left text-sm">
         <caption className="sr-only">Customers with a referral link</caption>
         <thead>
-          <tr className="border-b border-border">
+          <tr className="border-b border-line">
             <th scope="col" className="py-2 pr-4 font-medium">Customer</th>
             <th scope="col" className="py-2 pr-4 font-medium">Code</th>
             <th scope="col" className="py-2 pr-4 text-right font-medium">Friends</th>
@@ -42,7 +42,7 @@ export function ReferrersTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.customerId} className="border-b border-border align-top last:border-0">
+            <tr key={row.customerId} className="border-b border-line align-top last:border-0">
               <td className="py-2 pr-4">
                 <Link href={`/admin/${storeSlug}/customers/${row.customerId}`} className="underline">
                   {personLabel(row.name, row.email)}
@@ -88,7 +88,7 @@ export function AttributionsTable({
       <table className="w-full min-w-[48rem] text-left text-sm">
         <caption className="sr-only">Orders that came through a referral link</caption>
         <thead>
-          <tr className="border-b border-border">
+          <tr className="border-b border-line">
             <th scope="col" className="py-2 pr-4 font-medium">Date</th>
             <th scope="col" className="py-2 pr-4 font-medium">Order</th>
             <th scope="col" className="py-2 pr-4 font-medium">Referrer</th>
@@ -100,7 +100,7 @@ export function AttributionsTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id} className="border-b border-border align-top last:border-0">
+            <tr key={row.id} className="border-b border-line align-top last:border-0">
               <td className="py-2 pr-4 whitespace-nowrap">
                 <time dateTime={row.at}>{new Date(row.at).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" })}</time>
               </td>

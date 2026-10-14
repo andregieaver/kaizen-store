@@ -16,8 +16,8 @@ export type SettingsFormProps = {
   canEdit: boolean;
 };
 
-const card = "rounded-lg border border-border bg-background p-5";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal disabled:opacity-60";
+const card = "rounded-lg border border-line bg-card p-5";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal disabled:opacity-60";
 const label = "flex max-w-md flex-col gap-1 text-sm font-medium";
 const hint = "font-normal text-muted";
 
@@ -285,7 +285,7 @@ export function SeriesForm({
             </label>
           </div>
           <p className={`text-sm ${hint}`}>
-            The next one will be <span className="font-medium text-foreground">{nextDocumentNumber}</span>. Set the
+            The next one will be <span className="font-medium text-ink">{nextDocumentNumber}</span>. Set the
             number here before your first one if you continue numbers from another system.
           </p>
           {canEdit && (

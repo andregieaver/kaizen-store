@@ -24,7 +24,7 @@ export function EmailAgainButton({ send }: { send: () => Promise<OrderActionStat
         {working ? "Sending …" : "Email again"}
       </button>
       {result?.message && (
-        <span role="status" aria-live="polite" className={`text-xs ${result.ok ? "text-muted" : "text-red-700 dark:text-red-400"}`}>
+        <span role="status" aria-live="polite" className={`text-xs ${result.ok ? "text-muted" : "text-danger-text "}`}>
           {result.message}
         </span>
       )}
@@ -40,7 +40,7 @@ export function UndoParcel({ undo, warnings, index }: { undo: (state: FormState,
   return (
     <details className="w-full text-sm">
       <summary className="cursor-pointer underline underline-offset-2">Undo &ldquo;sent&rdquo;</summary>
-      <ActionForm action={undo} replaceOnSuccess className="mt-2 flex flex-col gap-2 rounded-md border border-border bg-surface p-3">
+      <ActionForm action={undo} replaceOnSuccess className="mt-2 flex flex-col gap-2 rounded-md border border-line bg-sunken p-3">
         <p className="font-medium">Undo &ldquo;sent&rdquo; for parcel {index}?</p>
         <ul className="list-disc pl-5 text-muted">
           {warnings.map((w) => (
@@ -51,7 +51,7 @@ export function UndoParcel({ undo, warnings, index }: { undo: (state: FormState,
           <span>
             Reason <span className="font-normal text-muted">(optional, for the history)</span>
           </span>
-          <input name="reason" maxLength={200} autoComplete="off" className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal" />
+          <input name="reason" maxLength={200} autoComplete="off" className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal" />
         </label>
         <div>
           <SubmitButton>Undo &ldquo;sent&rdquo;</SubmitButton>

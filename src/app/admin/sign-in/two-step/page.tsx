@@ -70,7 +70,7 @@ async function Challenge({ searchParams }: { searchParams: PageProps<"/admin/sig
             autoComplete="one-time-code"
             pattern="[0-9 ]*"
             maxLength={7}
-            className="min-h-10 rounded-md border border-border bg-background px-3 text-lg font-normal tracking-widest tabular-nums"
+            className="min-h-10 rounded-md border border-line bg-card px-3 text-lg font-normal tracking-widest tabular-nums"
           />
         </label>
         <SubmitButton>Continue</SubmitButton>

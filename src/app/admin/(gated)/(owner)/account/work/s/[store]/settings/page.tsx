@@ -14,7 +14,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 
 export const metadata: Metadata = { title: "Work settings" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 /**
  * Work's settings (D122, docs/work.md 5.2): who is selling and how to pay,
@@ -63,7 +63,7 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
             {readiness.problems.map((problem) => (
               <li key={problem.code} className="flex flex-wrap items-baseline gap-x-2">
                 <span
-                  className={`rounded-full px-2 py-0.5 text-xs ${problem.severity === "error" ? "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200" : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"}`}
+                  className={`rounded-full px-2 py-0.5 text-xs ${problem.severity === "error" ? "bg-danger-soft text-danger-text " : "bg-warning-soft text-warning-text "}`}
                 >
                   {problem.severity === "error" ? "Needed" : "Check"}
                 </span>

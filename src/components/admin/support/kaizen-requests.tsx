@@ -141,7 +141,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
             setState(null);
             setProblem(null);
           }}
-          className="rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background"
+          className="rounded-lg bg-brand px-3 py-2 text-sm font-medium text-brand-ink"
         >
           New request
         </button>
@@ -155,7 +155,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
                   type="button"
                   onClick={() => setOpen(row.id)}
                   aria-current={row.id === open ? "true" : undefined}
-                  className={`flex w-full flex-col items-start gap-0.5 rounded-lg border border-border px-3 py-2 text-left text-sm ${row.id === open ? "bg-surface" : "hover:bg-surface"}`}
+                  className={`flex w-full flex-col items-start gap-0.5 rounded-lg border border-edge px-3 py-2 text-left text-sm ${row.id === open ? "bg-sunken" : "hover:bg-sunken"}`}
                 >
                   <span className="line-clamp-1 font-medium">{row.title ?? row.lastMessage ?? "Request"}</span>
                   <span className="text-xs text-muted">
@@ -169,8 +169,8 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
         )}
       </aside>
 
-      <section aria-label="Conversation with Kaizen" className="flex min-h-[28rem] flex-col rounded-lg border border-border bg-surface">
-        <header className="flex items-center justify-between gap-2 border-b border-border px-4 py-3 text-sm">
+      <section aria-label="Conversation with Kaizen" className="flex min-h-[28rem] flex-col rounded-lg border border-line bg-sunken">
+        <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 text-sm">
           <span className="font-medium">{person ? person.name : open ? "Kaizen support" : "A new request"}</span>
           {open && state?.status === "open" && (
             <button type="button" onClick={() => void end()} className="text-muted underline">
@@ -194,7 +194,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
             return (
               <li key={message.seq} className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
                 <span className="text-xs text-muted">{name}</span>
-                <p className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-line ${mine ? "bg-foreground text-background" : "border border-border bg-background"}`}>{message.body}</p>
+                <p className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-line ${mine ? "bg-brand text-brand-ink" : "border border-line bg-card"}`}>{message.body}</p>
                 {message.author === "agent" && message.data?.translated && <span className="text-xs text-muted">Translated by AI</span>}
                 {message.data?.chips && message.data.chips.length > 0 && (
                   <ul className="flex flex-wrap gap-2">
@@ -202,7 +202,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
                       .filter((chip) => /^\/admin(?:\/|$)/.test(chip.href))
                       .map((chip) => (
                         <li key={chip.href}>
-                          <Link href={chip.href} className="rounded-lg border border-border px-3 py-1 text-sm hover:bg-background">
+                          <Link href={chip.href} className="rounded-lg border border-line px-3 py-1 text-sm hover:bg-card">
                             {chip.label} →
                           </Link>
                         </li>
@@ -221,7 +221,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
           {busy && <li className="text-sm text-muted">Writing …</li>}
         </ol>
         <form
-          className="flex flex-col gap-2 border-t border-border p-3"
+          className="flex flex-col gap-2 border-t border-line p-3"
           onSubmit={(event) => {
             event.preventDefault();
             void send();
@@ -230,7 +230,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
           {!open && stores.length > 0 && (
             <label className="flex flex-wrap items-center gap-2 text-sm">
               About
-              <select value={about} onChange={(event) => setAbout(event.target.value)} className="rounded-lg border border-border bg-background px-2 py-1">
+              <select value={about} onChange={(event) => setAbout(event.target.value)} className="rounded-lg border border-line bg-card px-2 py-1">
                 <option value="">My account, no store</option>
                 {stores.map((store) => (
                   <option key={store.slug} value={store.slug}>
@@ -253,10 +253,10 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
             maxLength={1000}
             rows={3}
             placeholder="Your message to Kaizen"
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            className="rounded-lg border border-line bg-card px-3 py-2 text-sm"
           />
           {problem && <p role="alert" className="text-sm">{problem}</p>}
-          <button type="submit" disabled={busy || !draft.trim()} className="self-end rounded-lg bg-foreground px-3 py-1.5 text-sm font-medium text-background disabled:opacity-50">
+          <button type="submit" disabled={busy || !draft.trim()} className="self-end rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-brand-ink disabled:opacity-50">
             Send
           </button>
         </form>

@@ -32,11 +32,11 @@ export function ConversationView({
 }) {
   return (
     <article className="flex min-h-0 flex-1 flex-col" aria-label={`Conversation with ${conversation.who}`}>
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-border px-4 py-3">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3">
         <h2 className="min-w-0 flex-1 truncate text-base font-medium">{conversation.who}</h2>
-        <span className="rounded-full border border-border px-2 py-0.5 text-xs">{handlerWords({ ...conversation, queuedAt: null }, now)}</span>
+        <span className="rounded-full border border-line px-2 py-0.5 text-xs">{handlerWords({ ...conversation, queuedAt: null }, now)}</span>
         <ToneDot score={conversation.tone} />
-        {conversation.toneAlertAt && conversation.status === "open" && <span className="rounded-full border border-border px-2 py-0.5 text-xs font-medium">Tone alert</span>}
+        {conversation.toneAlertAt && conversation.status === "open" && <span className="rounded-full border border-line px-2 py-0.5 text-xs font-medium">Tone alert</span>}
         {conversation.handoffReason && conversation.handler !== "ai" && (
           <p className="w-full text-xs text-muted">{HANDOFF_WORDS[conversation.handoffReason] ?? null}</p>
         )}
@@ -72,7 +72,7 @@ function MessageItem({ message, toneMeasured, translate }: { message: StaffMessa
       </span>
       <p
         className={`max-w-[85%] rounded-2xl px-3 py-2 whitespace-pre-line ${
-          staffOnly ? "border border-dashed border-border bg-background" : customer ? "bg-surface" : "bg-foreground text-background"
+          staffOnly ? "border border-dashed border-line bg-card" : customer ? "bg-sunken" : "bg-brand text-brand-ink"
         }`}
       >
         {message.body}
@@ -99,7 +99,7 @@ export function SummaryPanel({ conversation }: { conversation: StaffConversation
   if (conversation.status === "open") {
     if (!conversation.brief) return null;
     return (
-      <section className="border-b border-border px-4 py-3 text-sm" aria-label="Brief">
+      <section className="border-b border-line px-4 py-3 text-sm" aria-label="Brief">
         <p className="text-xs text-muted">So far · Written by AI</p>
         <p>{conversation.brief.text}</p>
       </section>
@@ -108,16 +108,16 @@ export function SummaryPanel({ conversation }: { conversation: StaffConversation
   const summary = conversation.summary;
   const lasted = conversation.endedAt ? durationWords(conversation.startedAt, conversation.endedAt) : null;
   return (
-    <section className="flex flex-col gap-1 border-b border-border px-4 py-3 text-sm" aria-label="Summary">
+    <section className="flex flex-col gap-1 border-b border-line px-4 py-3 text-sm" aria-label="Summary">
       {summary ? (
         <>
           <p className="text-xs text-muted">{summary.edited ? "Summary · Edited by staff" : "Summary · Written by AI"}</p>
           <p className="font-medium">{summary.title}</p>
           <p>{summary.text}</p>
           <p className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border border-border px-2 py-0.5 font-medium">{OUTCOME_WORDS[summary.outcome] ?? summary.outcome}</span>
+            <span className="rounded-full border border-line px-2 py-0.5 font-medium">{OUTCOME_WORDS[summary.outcome] ?? summary.outcome}</span>
             {summary.topics.map((topic) => (
-              <span key={topic} className="rounded-full border border-border px-2 py-0.5 text-muted">
+              <span key={topic} className="rounded-full border border-line px-2 py-0.5 text-muted">
                 {topicWords(topic)}
               </span>
             ))}

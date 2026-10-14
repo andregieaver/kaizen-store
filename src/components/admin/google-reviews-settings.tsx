@@ -15,9 +15,9 @@ export type GoogleReviewsActions = {
   remove: () => Promise<Result>;
 };
 
-const card = "rounded-lg border border-border bg-background p-5";
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
-const button = "inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50";
+const card = "rounded-lg border border-line bg-card p-5";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
+const button = "inline-flex min-h-10 items-center rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
 
 /**
  * Google reviews for testimonials (D91): the owner's Google Maps Platform
@@ -55,14 +55,14 @@ export function GoogleReviewsSettings({
   return (
     <div className="flex flex-col gap-6">
       {problems.length > 0 && (
-        <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+        <div role="alert" className="rounded-md border border-danger-line bg-danger-soft p-3 text-sm text-danger-text">
           {problems.map((problem) => (
             <p key={problem}>{problem}</p>
           ))}
         </div>
       )}
       {saved && (
-        <p role="status" className="text-sm text-green-800 dark:text-green-300">
+        <p role="status" className="text-sm text-positive-text">
           {saved}
         </p>
       )}
@@ -100,7 +100,7 @@ export function GoogleReviewsSettings({
         <p className="mb-4 text-sm text-muted">
           {place ? (
             <>
-              Showing reviews of <strong className="text-foreground">{place.name}</strong>
+              Showing reviews of <strong className="text-ink">{place.name}</strong>
               {place.address && <>, {place.address}</>}.
             </>
           ) : (
@@ -126,7 +126,7 @@ export function GoogleReviewsSettings({
           <ul className="mt-4 flex flex-col gap-2">
             {found.length === 0 && <li className="text-sm text-muted">Google found nothing by that name.</li>}
             {found.map((option) => (
-              <li key={option.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+              <li key={option.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line p-3">
                 <span className="text-sm">
                   <span className="font-medium">{option.name}</span>
                   <span className="block text-muted">{option.address}</span>
@@ -135,7 +135,7 @@ export function GoogleReviewsSettings({
                   type="button"
                   disabled={pending || option.id === place?.id}
                   onClick={() => run(() => actions.choose(option.id), `Showing reviews of ${option.name}.`, () => setFound(null))}
-                  className="inline-flex min-h-9 items-center rounded-pill border border-border px-3 text-sm font-medium hover:bg-surface disabled:opacity-50"
+                  className="inline-flex min-h-9 items-center rounded-pill border border-edge px-3 text-sm font-medium hover:bg-sunken disabled:opacity-50"
                 >
                   {option.id === place?.id ? "Chosen" : "Choose"}
                 </button>

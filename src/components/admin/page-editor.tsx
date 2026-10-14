@@ -70,10 +70,10 @@ import { ColorField, newId, PageBuilder } from "./page-builder";
 import { PageIssuesPanel, PublishWithIssuesDialog } from "./page-issues-panel";
 import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./save-template-dialog";
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
-const small = "min-h-9 rounded-md border border-border px-3 text-sm disabled:opacity-40";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
+const small = "min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40";
 const hint = "text-xs font-normal text-muted";
 
 const STATE_TEXT: Record<PageState, string> = {
@@ -561,14 +561,14 @@ export function PageEditor({
               />
               )}
               {moving && !translating && !layout && (
-                <p className="rounded-md bg-surface p-3 text-sm">
+                <p className="rounded-md bg-sunken p-3 text-sm">
                   When you publish, <strong>{siteBase}/{liveSlug}</strong> will lead to <strong>{siteBase}/{content.slug}</strong> for good
                   (a permanent redirect), so links and search results keep working.
                 </p>
               )}
             </section>
             {!translating && context.type === "footer" && (
-              <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4">
+              <section className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4">
                 <h2 className="font-medium">Reveal on scroll</h2>
                 <label className="flex items-start gap-2 text-sm">
                   <input
@@ -741,7 +741,7 @@ export function PageEditor({
       />
 
       {problems.length > 0 && (
-        <div role="alert" className="rounded-lg border border-red-700 p-4 text-sm">
+        <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
           <p className="font-medium">Nothing was saved yet. Please fix:</p>
           <ul className="mt-2 list-disc pl-5">
             {problems.map((problem) => (
@@ -789,7 +789,7 @@ export function PageEditor({
         />
       )}
 
-      <div data-editor-bar="" className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur">
+      <div data-editor-bar="" className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 backdrop-blur">
         <div className="flex flex-wrap items-center gap-2 px-4 py-3">
           {context.draftOnly ? (
             // A design profile's workspace (D177): every save is the profile's draft, published with the profile from its own page.
@@ -797,7 +797,7 @@ export function PageEditor({
               type="button"
               onClick={() => submit(false)}
               disabled={busy}
-              className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50"
+              className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
             >
               {busy ? "Saving …" : "Save"}
             </button>
@@ -807,7 +807,7 @@ export function PageEditor({
                 type="button"
                 onClick={() => submit(false)}
                 disabled={busy}
-                className="min-h-11 rounded-md border border-border px-4 font-medium disabled:opacity-50"
+                className="min-h-11 rounded-md border border-line px-4 font-medium disabled:opacity-50"
               >
                 Save draft
               </button>
@@ -815,7 +815,7 @@ export function PageEditor({
                 type="button"
                 onClick={requestPublish}
                 disabled={busy}
-                className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50"
+                className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
               >
                 {busy ? "Saving …" : saved?.published ? "Publish changes" : "Publish"}
               </button>
@@ -836,7 +836,7 @@ export function PageEditor({
               onClick={() => setCoolOpen(true)}
               aria-label={MAKE_COOL_LABEL}
               title={MAKE_COOL_LABEL}
-              className="flex size-11 items-center justify-center rounded-md border border-border hover:bg-surface"
+              className="flex size-11 items-center justify-center rounded-md border border-edge hover:bg-sunken"
             >
               <WandSparkles aria-hidden className="size-5" />
             </button>
@@ -852,11 +852,11 @@ export function PageEditor({
             onClick={() => setCssOpen((open) => !open)}
             aria-expanded={cssOpen}
             aria-controls="css-panel"
-            className="flex min-h-11 items-center gap-2 rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface"
+            className="flex min-h-11 items-center gap-2 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
           >
             <span aria-hidden className="font-mono">{"{ }"}</span>
             Custom CSS
-            {(content.css || siteCss.trim()) && <span className="size-2 rounded-full bg-violet-600" title="Has custom CSS" />}
+            {(content.css || siteCss.trim()) && <span className="size-2 rounded-full bg-insight-solid" title="Has custom CSS" />}
           </button>
           {context.draftOnly ? (
             <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
@@ -906,7 +906,7 @@ export function PageEditor({
                     type="button"
                     onClick={remove}
                     disabled={busy}
-                    className="min-h-9 rounded-md bg-red-700 px-3 text-white disabled:opacity-50"
+                    className="min-h-9 rounded-md bg-danger-soft px-3 text-danger-text disabled:opacity-50"
                   >
                     Delete {noun}
                   </button>
@@ -915,7 +915,7 @@ export function PageEditor({
                   </button>
                 </span>
               ) : (
-                <button type="button" onClick={() => setConfirmDelete(true)} className="text-red-700 underline dark:text-red-400">
+                <button type="button" onClick={() => setConfirmDelete(true)} className="text-danger-text underline">
                   Delete
                 </button>
               ))}
@@ -970,7 +970,7 @@ function SlugField({
             id={parentId}
             value={parent}
             onChange={(event) => onChange(joinPagePath(event.target.value, pageSegment(slug)))}
-            className="min-h-10 rounded-md border border-border bg-transparent px-2 text-sm"
+            className="min-h-10 rounded-md border border-line bg-transparent px-2 text-sm"
           >
             <option value="">None (top level)</option>
             {!known && <option value={parent}>/{parent}</option>}
@@ -986,7 +986,7 @@ function SlugField({
         Address
       </label>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center rounded-md border border-border focus-within:outline-2">
+        <div className="flex min-w-0 flex-1 items-center rounded-md border border-line focus-within:outline-2">
           <span aria-hidden className="shrink-0 pl-3 text-sm text-muted">
             /{parent ? `${parent}/` : ""}
           </span>
@@ -1007,10 +1007,10 @@ function SlugField({
           </button>
         )}
       </div>
-      <span id={`${id}-hint`} className={problem ? "text-xs text-red-700 dark:text-red-400" : hint}>
+      <span id={`${id}-hint`} className={problem ? "text-xs text-danger-text" : hint}>
         {problem ?? (
           <>
-            <span className="block break-all text-foreground">
+            <span className="block break-all text-ink">
               {origin.replace(/^https?:\/\//, "")}
               {siteBase}/{slug}
             </span>
@@ -1043,7 +1043,7 @@ function Switch({
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
         aria-describedby={`${id}-help`}
-        className="mt-0.5 size-5 shrink-0 accent-foreground"
+        className="mt-0.5 size-5 shrink-0 accent-brand"
       />
       <div className="flex flex-col gap-0.5">
         <label htmlFor={id} className="text-sm font-medium">
@@ -1105,15 +1105,15 @@ function ThumbnailField({
       </div>
       {value ? (
         // eslint-disable-next-line @next/next/no-img-element -- admin preview of the uploaded picture
-        <img src={value.url} alt="" className="aspect-[1200/630] w-full rounded-md border border-border object-cover" />
+        <img src={value.url} alt="" className="aspect-[1200/630] w-full rounded-md border border-line object-cover" />
       ) : (
-        <div className="flex aspect-[1200/630] w-full items-center justify-center rounded-md border border-dashed border-border bg-surface text-sm text-muted">
+        <div className="flex aspect-[1200/630] w-full items-center justify-center rounded-md border border-dashed border-line bg-sunken text-sm text-muted">
           No picture
         </div>
       )}
       <div className="flex flex-wrap items-center gap-2 text-sm">
         {upload ? (
-          <label className="cursor-pointer rounded-md border border-border px-3 py-2 focus-within:outline-2">
+          <label className="cursor-pointer rounded-md border border-line px-3 py-2 focus-within:outline-2">
             {busy ? "Uploading …" : value ? "Replace picture" : "Upload picture"}
             <input
               type="file"
@@ -1151,7 +1151,7 @@ function ThumbnailField({
         </label>
       )}
       {problem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}
@@ -1186,7 +1186,7 @@ function LanguageField({
           return (
             <label
               key={language.locale}
-              className="relative flex cursor-pointer flex-col rounded-pill border border-border px-3 py-1.5 text-sm has-checked:border-foreground has-checked:bg-foreground has-checked:text-background has-focus-visible:outline-2"
+              className="relative flex cursor-pointer flex-col rounded-pill border border-edge px-3 py-1.5 text-sm has-checked:border-brand has-checked:bg-inverse has-checked:text-inverse-ink has-focus-visible:outline-2"
             >
               <input
                 type="radio"
@@ -1299,7 +1299,7 @@ function TranslateWithAi({
       </button>
       <div role="status" aria-live="polite" className="flex flex-col gap-1 text-xs">
         {result?.lines.map((line, index) => (
-          <p key={index} className={result.ok ? "text-muted" : "text-red-700 dark:text-red-400"}>
+          <p key={index} className={result.ok ? "text-muted" : "text-danger-text"}>
             {line}
           </p>
         ))}
@@ -1349,7 +1349,7 @@ function HeaderOverlayFields({
         : { where: next as HeaderOverlay["where"], categories: value?.categories ?? [], tags: value?.tags ?? [], textColor: value?.textColor },
     );
   return (
-    <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4">
+    <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4">
       <h2 id={`${id}-heading`} className="font-medium">
         Over the page
       </h2>

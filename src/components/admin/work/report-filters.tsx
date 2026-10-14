@@ -14,8 +14,8 @@ import {
 import { control, primaryButton } from "./work-parts";
 
 const chip = (current: boolean) =>
-  `inline-flex min-h-9 items-center rounded-full border border-border px-3 text-sm ${
-    current ? "bg-foreground text-background" : "bg-background"
+  `inline-flex min-h-9 items-center rounded-full border border-edge px-3 text-sm ${
+    current ? "bg-brand text-brand-ink" : "bg-card"
   }`;
 
 /**

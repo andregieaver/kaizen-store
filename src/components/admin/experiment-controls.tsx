@@ -25,9 +25,9 @@ import { RuntimeEstimate } from "./runtime-estimate";
 
 type Outcome = { ok: true } | { ok: false; problems: string[] };
 
-const button = "min-h-10 rounded-md border border-border px-4 text-sm font-medium disabled:opacity-50";
-const primary = "min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50";
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const button = "min-h-10 rounded-md border border-line px-4 text-sm font-medium disabled:opacity-50";
+const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
 const DEVICE_WORDS: Record<Device, string> = { mobile: "Phones", tablet: "Tablets", desktop: "Computers" };
@@ -53,7 +53,7 @@ function useRun() {
 function Problems({ problems }: { problems: string[] }) {
   if (problems.length === 0) return null;
   return (
-    <ul role="alert" className="list-disc rounded-lg border border-red-700 p-4 pl-8 text-sm text-red-800 dark:text-red-300">
+    <ul role="alert" className="list-disc rounded-lg border border-danger-text p-4 pl-8 text-sm text-danger-text">
       {problems.map((p) => (
         <li key={p}>{p}</li>
       ))}
@@ -94,7 +94,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
 
   return (
     <div className="flex flex-col gap-6">
-      <section aria-labelledby="ab-versions" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="ab-versions" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="ab-versions" className="text-lg font-medium">1. Change a version</h2>
           {test.variants.length < MAX_VARIANTS && (
@@ -116,7 +116,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
         </p>
         <ul className="flex flex-col gap-2">
           {test.variants.map((v) => (
-            <li key={v.key} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm">
+            <li key={v.key} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line p-3 text-sm">
               <span>
                 <span className="font-medium">{v.name}</span>
                 <span className="block text-xs text-muted">
@@ -124,17 +124,17 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
                   {v.key !== "a" && (v.changed ? " · changed" : " · not changed yet")}
                 </span>
                 {v.scope === "outside" && (
-                  <span role="alert" className="block text-xs text-red-800 dark:text-red-300">
+                  <span role="alert" className="block text-xs text-danger-text">
                     Changes more than {test.part?.label}: put everything else back as it was.
                   </span>
                 )}
                 {v.scope === "missing" && (
-                  <span role="alert" className="block text-xs text-red-800 dark:text-red-300">
+                  <span role="alert" className="block text-xs text-danger-text">
                     No longer has {test.part?.label}.
                   </span>
                 )}
                 {v.scope === "modal" && (
-                  <span role="alert" className="block text-xs text-red-800 dark:text-red-300">
+                  <span role="alert" className="block text-xs text-danger-text">
                     Changes the address name of {test.part?.label}, or whether it is a modal: keep both.
                   </span>
                 )}
@@ -156,7 +156,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
                   </Link>
                 )}
                 {v.key !== "a" && test.variants.length > 2 && (
-                  <button type="button" disabled={pending} onClick={() => run(() => removeVariantAction(store, test.id, v.key))} className="text-red-700 underline dark:text-red-400">
+                  <button type="button" disabled={pending} onClick={() => run(() => removeVariantAction(store, test.id, v.key))} className="text-danger-text underline">
                     Remove
                   </button>
                 )}
@@ -166,7 +166,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
         </ul>
       </section>
 
-      <section aria-labelledby="ab-settings" className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="ab-settings" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
         <h2 id="ab-settings" className="text-lg font-medium">2. Check the settings</h2>
         <label className={label}>
           Name
@@ -174,7 +174,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
         </label>
         <label className={label}>
           What do you think will happen?
-          <textarea value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} maxLength={500} rows={2} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-normal" />
+          <textarea value={hypothesis} onChange={(e) => setHypothesis(e.target.value)} maxLength={500} rows={2} className="w-full rounded-md border border-line bg-card px-3 py-2 text-sm font-normal" />
         </label>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={label}>
@@ -226,14 +226,14 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
       </section>
 
       <Problems problems={problems} />
-      <section aria-labelledby="ab-start" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="ab-start" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <h2 id="ab-start" className="text-lg font-medium">3. Start the test</h2>
         <p className="text-sm text-muted">
           Visitors who have accepted statistics cookies will be shown the versions from the next page view. The test runs for at least {test.minDays} days and
           you can stop it at any time. The page itself does not change until you choose a winner.
         </p>
         {test.scheduleProblem && (
-          <p role="alert" className="rounded-md border border-amber-500 p-3 text-sm">
+          <p role="alert" className="rounded-md border border-warning-text p-3 text-sm">
             {test.scheduleProblem}
           </p>
         )}
@@ -243,7 +243,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
           </button>
           <label className="flex flex-col gap-1 text-sm font-medium">
             Or start it at
-            <input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal" />
+            <input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal" />
           </label>
           <button
             type="button"
@@ -258,7 +258,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
           {confirmDelete ? (
             <span className="flex items-center gap-2 text-sm">
               Delete this draft and its versions?
-              <button type="button" disabled={pending} onClick={() => run(() => deleteDraftAction(store, test.id), () => router.push(base))} className="min-h-10 rounded-md bg-red-700 px-4 text-white disabled:opacity-50">
+              <button type="button" disabled={pending} onClick={() => run(() => deleteDraftAction(store, test.id), () => router.push(base))} className="min-h-10 rounded-md bg-danger-soft px-4 text-danger-text disabled:opacity-50">
                 Delete
               </button>
               <button type="button" onClick={() => setConfirmDelete(false)} className="underline">
@@ -266,7 +266,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
               </button>
             </span>
           ) : (
-            <button type="button" onClick={() => setConfirmDelete(true)} className="text-sm text-red-700 underline dark:text-red-400">
+            <button type="button" onClick={() => setConfirmDelete(true)} className="text-sm text-danger-text underline">
               Delete the draft
             </button>
           )}
@@ -287,7 +287,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
     <div className="flex flex-col gap-4">
       <Problems problems={problems} />
       {test.status === "scheduled" && test.scheduledStart && (
-        <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby="ab-scheduled">
+        <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby="ab-scheduled">
           <h2 id="ab-scheduled" className="text-lg font-medium">
             Starts {new Date(test.scheduledStart).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
           </h2>
@@ -306,7 +306,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
         </section>
       )}
       {test.status === "running" && (
-        <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby="ab-stop">
+        <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby="ab-stop">
           <h2 id="ab-stop" className="text-lg font-medium">Running</h2>
           <p className="text-sm text-muted">
             Stopping ends the test for everyone: they see your page as it is again, and what was counted is kept. Only stop when you want to decide.
@@ -315,7 +315,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
           {confirm === "stop" ? (
             <div className="flex flex-wrap items-center gap-3 text-sm">
               Stop the test now?
-              <button type="button" disabled={pending} onClick={() => run(() => stopExperimentAction(store, test.id), () => setConfirm(null))} className="min-h-10 rounded-md bg-red-700 px-4 text-white disabled:opacity-50">
+              <button type="button" disabled={pending} onClick={() => run(() => stopExperimentAction(store, test.id), () => setConfirm(null))} className="min-h-10 rounded-md bg-danger-soft px-4 text-danger-text disabled:opacity-50">
                 Stop the test
               </button>
               <button type="button" onClick={() => setConfirm(null)} className="underline">
@@ -332,7 +332,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
         </section>
       )}
       {test.status === "stopped" && (
-        <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby="ab-decide">
+        <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby="ab-decide">
           <h2 id="ab-decide" className="text-lg font-medium">Decide</h2>
           <p className="text-sm text-muted">
             The test is stopped and visitors see your page as it was. Choose a version to make it your page, or keep the original.{" "}
@@ -349,7 +349,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
                 confirm === `apply-${v.key}` ? (
                   <span key={v.key} className="flex flex-wrap items-center gap-2 text-sm">
                     {test.part ? `Replace ${test.part.label} with the one in ${v.name}?` : `Replace the page with ${v.name}?`}
-                    <button type="button" disabled={pending} onClick={() => run(() => applyVariantAction(store, test.id, v.key), () => setConfirm(null))} className="min-h-10 rounded-pill bg-foreground px-4 text-background disabled:opacity-50">
+                    <button type="button" disabled={pending} onClick={() => run(() => applyVariantAction(store, test.id, v.key), () => setConfirm(null))} className="min-h-10 rounded-pill bg-brand px-4 text-brand-ink disabled:opacity-50">
                       Yes, use {v.name}
                     </button>
                     <button type="button" onClick={() => setConfirm(null)} className="underline">
@@ -369,7 +369,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
         </section>
       )}
       {(test.status === "applied" || test.status === "discarded") && (
-        <p className="rounded-lg border border-border bg-background p-4 text-sm">
+        <p className="rounded-lg border border-line bg-card p-4 text-sm">
           {test.status === "applied"
             ? `${test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "A version"} is now your page.`
             : "The original was kept."}{" "}

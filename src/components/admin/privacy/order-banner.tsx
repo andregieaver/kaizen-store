@@ -12,14 +12,14 @@ export function OrderPrivacyBanner({ privacy }: { privacy: OrderPrivacy | null }
   if (!privacy) return null;
   if (privacy.anonymisedOn) {
     return (
-      <p role="status" className="rounded-md border border-border bg-background p-3 text-sm">
+      <p role="status" className="rounded-md border border-line bg-card p-3 text-sm">
         {STAFF_TEXT.anonymisedBanner(dayText(privacy.anonymisedOn))}
       </p>
     );
   }
   if (privacy.restrictedOn) {
     return (
-      <p role="status" className="rounded-md border border-border bg-background p-3 text-sm">
+      <p role="status" className="rounded-md border border-line bg-card p-3 text-sm">
         {STAFF_TEXT.restrictedBanner(dayText(privacy.restrictedOn), privacy.keptUntil ? dayText(privacy.keptUntil) : "the end of the period")}
       </p>
     );

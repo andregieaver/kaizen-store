@@ -44,7 +44,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
         </p>
       </div>
       {problem && (
-        <p role="alert" className="rounded-lg border border-border bg-background p-3 text-sm">
+        <p role="alert" className="rounded-lg border border-line bg-card p-3 text-sm">
           {problem}
         </p>
       )}

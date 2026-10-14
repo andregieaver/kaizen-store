@@ -104,9 +104,9 @@ export function AiManagerLauncher({
             buttonRef.current?.focus();
           }
         }}
-        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-border bg-background shadow-2xl sm:w-[28rem]"
+        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-line bg-card shadow-2xl sm:w-[28rem]"
       >
-        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2 border-b border-line px-4 py-3">
           <Spark className="size-5" />
           <h2 className="font-medium">AI manager</h2>
           <span className="truncate text-sm text-muted">{siteName}</span>
@@ -116,7 +116,7 @@ export function AiManagerLauncher({
               toggle(false);
               buttonRef.current?.focus();
             }}
-            className="ml-auto flex size-9 items-center justify-center rounded-md hover:bg-surface"
+            className="ml-auto flex size-9 items-center justify-center rounded-md hover:bg-sunken"
             aria-label="Close the AI manager"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -156,11 +156,11 @@ export function AiManagerLauncher({
         aria-expanded={open && !onItsPage}
         aria-keyshortcuts="Meta+K Control+K"
         title="AI manager (⌘K / Ctrl+K)"
-        className="inline-flex min-h-9 items-center gap-2 rounded-full bg-foreground px-3 text-sm font-medium text-background hover:opacity-90"
+        className="inline-flex min-h-9 items-center gap-2 rounded-full bg-brand px-3 text-sm font-medium text-brand-ink hover:opacity-90"
       >
         <Spark className="size-4" />
         <span className="sr-only sm:not-sr-only">AI manager</span>
-        <kbd className="hidden rounded border border-background/30 px-1 font-sans text-xs opacity-80 md:inline">⌘K</kbd>
+        <kbd className="hidden rounded border border-card/30 px-1 font-sans text-xs opacity-80 md:inline">⌘K</kbd>
       </button>
       {!onItsPage && (
         <button
@@ -173,7 +173,7 @@ export function AiManagerLauncher({
           }}
           title="Talk to the AI manager (voice mode)"
           aria-label="Talk to the AI manager"
-          className="inline-flex size-9 items-center justify-center rounded-full border border-border hover:bg-surface"
+          className="inline-flex size-9 items-center justify-center rounded-full border border-edge hover:bg-sunken"
         >
           <MicIcon className="size-4" />
         </button>

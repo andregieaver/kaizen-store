@@ -8,7 +8,7 @@ import type { Queue, ReturnCounts } from "@/server/returns";
 
 import { DueMark, KindBadge, StatusBadge } from "./ui";
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 
 /**
  * The returns queue (D153): what is open, oldest first, with what is overdue, what waits for an answer and what
@@ -86,7 +86,7 @@ export function ReturnsQueueView({
           <input type="checkbox" name="overdue" value="1" defaultChecked={filter.overdue} className="size-4" />
           Past the refund deadline
         </label>
-        <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+        <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           Filter
         </button>
         {filtered && (
@@ -97,16 +97,16 @@ export function ReturnsQueueView({
       </form>
 
       {queue.rows.length === 0 ? (
-        <p className="rounded-card border border-border bg-background p-8 text-center text-sm">
+        <p className="rounded-card border border-line bg-card p-8 text-center text-sm">
           {filtered
             ? "No returns match. Change the filter or clear it."
             : "No returns are open. Withdrawals and return requests appear here as customers make them: they use the Withdraw from the contract link in the order emails and the store's withdrawal page."}
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[44rem] rounded-lg border border-border bg-background text-left text-sm">
+          <table className="w-full min-w-[44rem] rounded-lg border border-line bg-card text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Return</th>
                 <th scope="col" className="px-4 py-2 font-medium">Customer</th>
                 <th scope="col" className="px-4 py-2 text-right font-medium">Units</th>
@@ -117,14 +117,14 @@ export function ReturnsQueueView({
             </thead>
             <tbody>
               {queue.rows.map((row) => (
-                <tr key={row.id} className="border-b border-border last:border-0 align-top">
+                <tr key={row.id} className="border-b border-line last:border-0 align-top">
                   <td className="px-4 py-2">
                     <Link href={`${base}/${row.id}`} className="font-medium underline-offset-2 hover:underline">
                       {row.number}
                     </Link>
                     <span className="mt-1 flex flex-wrap items-center gap-1.5">
                       <KindBadge kind={row.kind} />
-                      {row.acknowledgementPending && <span className="text-xs font-medium text-red-700 dark:text-red-400">Acknowledgement not sent</span>}
+                      {row.acknowledgementPending && <span className="text-xs font-medium text-danger-text">Acknowledgement not sent</span>}
                     </span>
                   </td>
                   <td className="px-4 py-2">

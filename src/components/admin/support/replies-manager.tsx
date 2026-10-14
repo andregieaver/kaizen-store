@@ -14,9 +14,9 @@ type Save = (state: FormState, form: FormData) => Promise<FormState>;
 export function RepliesManager({ replies, languages, save, remove }: { replies: SavedReply[]; languages: { code: string; name: string }[]; save: Save | null; remove: Save | null }) {
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-lg border border-border bg-surface p-4 text-sm">
+      <section className="rounded-lg border border-line bg-sunken p-4 text-sm">
         <p>
-          Type <kbd className="rounded border border-border px-1 font-mono">/</kbd> at the start of a line in the inbox&apos;s composer to pick a reply by its
+          Type <kbd className="rounded border border-line px-1 font-mono">/</kbd> at the start of a line in the inbox&apos;s composer to pick a reply by its
           shortcut or title. These are filled in for the conversation:
         </p>
         <ul className="mt-2 flex flex-col gap-1">
@@ -45,7 +45,7 @@ export function RepliesManager({ replies, languages, save, remove }: { replies: 
         ) : (
           <ul className="flex flex-col gap-3">
             {replies.map((reply) => (
-              <li key={reply.id} className="rounded-lg border border-border p-4">
+              <li key={reply.id} className="rounded-lg border border-line p-4">
                 {save ? (
                   <details>
                     <summary className="cursor-pointer">
@@ -92,7 +92,7 @@ function ReplyForm({ languages, save, reply }: { languages: { code: string; name
   const [touched, setTouched] = useState(Boolean(reply));
   const [body, setBody] = useState(reply?.body ?? "");
   const unknown = unknownPlaceholders(body);
-  const field = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
+  const field = "w-full rounded-md border border-line bg-card px-3 py-2 text-sm";
   const id = reply?.id ?? "new";
   return (
     <ActionForm action={save} className="flex flex-col gap-3" successMessage={reply ? "Saved." : "Added."}>

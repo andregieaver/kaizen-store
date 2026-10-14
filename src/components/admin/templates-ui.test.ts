@@ -330,7 +330,7 @@ describe("the builder's sidebars", () => {
     expect(store).toContain('aria-label="Sharing of Hero"');
     expect(store).toContain('aria-label="Sharing of Contact"');
     // The badge is only on the shared one.
-    expect(store.match(/rounded-full border border-border px-1\.5/g)).toHaveLength(1);
+    expect(store.match(/rounded-full border border-line px-1\.5/g)).toHaveLength(1);
     const kaizen = builder(null, parts);
     expect(kaizen).not.toContain("Sharing of");
     expect(kaizen).not.toContain("Shared with");

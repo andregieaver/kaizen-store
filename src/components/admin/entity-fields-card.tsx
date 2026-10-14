@@ -83,7 +83,7 @@ export function EntityFieldsCard({
         idPrefix={idPrefix}
       />
       {problems.length > 0 && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problems.join(" ")}
         </p>
       )}
@@ -92,7 +92,7 @@ export function EntityFieldsCard({
           type="button"
           onClick={submit}
           disabled={busy}
-          className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+          className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
         >
           {busy ? "Saving …" : "Save fields"}
         </button>

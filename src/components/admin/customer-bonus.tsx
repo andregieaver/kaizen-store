@@ -42,12 +42,12 @@ export function CustomerBonus({
   const waiting = entries.filter((entry) => isUsableNow(entry, now) === false);
 
   return (
-    <section aria-labelledby="bonus" className="rounded-card border border-border bg-background p-5">
+    <section aria-labelledby="bonus" className="rounded-card border border-line bg-card p-5">
       <h2 id="bonus" className="mb-3 font-medium">
         Bonus credits
       </h2>
       {!enabled && (
-        <p className="mb-3 rounded-md bg-surface p-3 text-sm">
+        <p className="mb-3 rounded-md bg-sunken p-3 text-sm">
           The bonus program is off, so this customer earns and uses no credits now. Their balance is kept.{" "}
           <Link href={`${adminBase}/bonus`} className="underline">
             Bonus credits
@@ -92,7 +92,7 @@ export function CustomerBonus({
           <table className="w-full min-w-[26rem] text-left text-sm">
             <caption className="sr-only">Every change to this customer&apos;s credits</caption>
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="py-2 pr-4 font-medium">
                   Date
                 </th>
@@ -112,7 +112,7 @@ export function CustomerBonus({
                 const orderId = entry.orderNumber ? orderIds[entry.orderNumber] : undefined;
                 const usable = isUsableNow(entry, now);
                 return (
-                  <tr key={entry.id} className="border-b border-border last:border-0 align-top">
+                  <tr key={entry.id} className="border-b border-line last:border-0 align-top">
                     <td className="py-2 pr-4 whitespace-nowrap">
                       <time dateTime={entry.at}>{date(entry.at)}</time>
                     </td>

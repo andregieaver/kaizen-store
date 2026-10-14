@@ -41,8 +41,8 @@ const AT_ONCE = 3;
 /** Files deleted in one request: the server's limit (`MEDIA_DELETE_MAX`), so a larger choice is asked for in turns. */
 const BULK_AT_ONCE = 100;
 
-const input = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
-const button = "min-h-10 rounded-md border border-border px-4 text-sm font-medium disabled:opacity-50";
+const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
+const button = "min-h-10 rounded-md border border-line px-4 text-sm font-medium disabled:opacity-50";
 
 /** Whether a file has an alt text in any language. */
 const hasAlt = (item: MediaItem) => item.alt !== "" || Object.keys(item.altTranslations).length > 0;
@@ -157,7 +157,7 @@ export function MediaLibrary({
       <form
         role="search"
         action={basePath}
-        className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-background p-4"
+        className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card p-4"
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -205,7 +205,7 @@ export function MediaLibrary({
             ))}
           </select>
         </label>
-        <button type="submit" className={`${button} bg-foreground text-background`}>
+        <button type="submit" className={`${button} bg-brand text-brand-ink`}>
           Search
         </button>
         {(query.q || query.kind !== "all") && (
@@ -240,14 +240,14 @@ export function MediaLibrary({
               {choosing ? "Cancel choosing" : "Choose files"}
             </button>
           )}
-        <nav aria-label="Show files as" className="flex overflow-hidden rounded-md border border-border text-sm">
+        <nav aria-label="Show files as" className="flex overflow-hidden rounded-md border border-line text-sm">
           {(["grid", "list"] as const).map((view) => (
             <Link
               key={view}
               href={address({ view })}
               scroll={false}
               aria-current={query.view === view ? "true" : undefined}
-              className={`min-h-9 content-center px-3 ${query.view === view ? "bg-foreground text-background" : "hover:bg-surface"}`}
+              className={`min-h-9 content-center px-3 ${query.view === view ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}
             >
               {view === "grid" ? "Grid" : "List"}
             </Link>
@@ -257,7 +257,7 @@ export function MediaLibrary({
       </div>
 
       {choosing && (
-        <div role="region" aria-label="Delete several files" className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface p-3 text-sm shadow-sm">
+        <div role="region" aria-label="Delete several files" className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-sunken p-3 text-sm shadow-sm">
           <p role="status" className="mr-auto font-medium">
             {chosen.size === 0 ? "Choose files to delete together." : `${chosen.size} ${chosen.size === 1 ? "file" : "files"} chosen.`}
           </p>
@@ -270,7 +270,7 @@ export function MediaLibrary({
           <button type="button" disabled={chosen.size === 0} onClick={() => setChosen(new Set())} className={`${button} min-h-9`}>
             Clear
           </button>
-          <button type="button" disabled={chosen.size === 0} onClick={() => setBulkOpen(true)} className={`${button} min-h-9 border-red-700 bg-red-700 text-white`}>
+          <button type="button" disabled={chosen.size === 0} onClick={() => setBulkOpen(true)} className={`${button} min-h-9 border-danger-text bg-danger-soft text-danger-text`}>
             Delete {chosen.size > 0 ? chosen.size : ""}…
           </button>
         </div>
@@ -286,12 +286,12 @@ export function MediaLibrary({
                 type="button"
                 onClick={() => (choosing ? pick(item.id) : setOpenId(item.id))}
                 aria-pressed={choosing ? chosen.has(item.id) : undefined}
-                className={`relative flex w-full flex-col overflow-hidden rounded-lg border bg-background text-left hover:border-foreground/40 focus-visible:outline-2 ${choosing && chosen.has(item.id) ? "border-foreground ring-2 ring-foreground" : "border-border"}`}
+                className={`relative flex w-full flex-col overflow-hidden rounded-lg border bg-card text-left hover:border-brand/40 focus-visible:outline-2 ${choosing && chosen.has(item.id) ? "border-brand ring-2 ring-ink" : "border-line"}`}
                 aria-label={`${item.fileName}, ${describeType(item.contentType)}, ${formatBytes(item.sizeBytes)}${item.uses.length === 0 ? ", not in use" : `, used in ${item.uses.length} ${item.uses.length === 1 ? "place" : "places"}`}${item.kind === "image" && !hasAlt(item) ? ", no alt text" : ""}`}
               >
                 <Preview item={item} small />
                 {choosing && (
-                  <span aria-hidden="true" className={`absolute left-2 top-2 flex size-6 items-center justify-center rounded-md border-2 text-sm font-medium ${chosen.has(item.id) ? "border-foreground bg-foreground text-background" : "border-foreground/60 bg-background"}`}>
+                  <span aria-hidden="true" className={`absolute left-2 top-2 flex size-6 items-center justify-center rounded-md border-2 text-sm font-medium ${chosen.has(item.id) ? "border-brand bg-brand text-brand-ink" : "border-brand/60 bg-card"}`}>
                     {chosen.has(item.id) ? "✓" : ""}
                   </span>
                 )}
@@ -302,11 +302,11 @@ export function MediaLibrary({
                   </span>
                   <span className="text-muted">{dimensions(item) ?? " "}</span>
                   <span className="mt-1 flex flex-wrap gap-1">
-                    <span className={`w-fit rounded-full px-2 py-0.5 ${item.uses.length > 0 ? "bg-foreground text-background" : "bg-surface text-muted"}`}>
+                    <span className={`w-fit rounded-full px-2 py-0.5 ${item.uses.length > 0 ? "bg-brand text-brand-ink" : "bg-sunken text-muted"}`}>
                       {item.uses.length > 0 ? `In use (${item.uses.length})` : "Not in use"}
                     </span>
                     {item.kind === "image" && !hasAlt(item) && (
-                      <span className="w-fit rounded-full border border-amber-700 px-2 py-0.5 text-amber-800 dark:text-amber-300">No alt text</span>
+                      <span className="w-fit rounded-full border border-warning-text px-2 py-0.5 text-warning-text">No alt text</span>
                     )}
                   </span>
                 </span>
@@ -361,10 +361,10 @@ export function MediaLibrary({
 function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpen: (id: string) => void; chosen: ReadonlySet<string> | null; onPick: (id: string) => void }) {
   const cell = "px-3 py-2 align-middle";
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-background">
+    <div className="overflow-x-auto rounded-lg border border-line bg-card">
       <table className="w-full min-w-[40rem] text-left text-sm">
         <caption className="sr-only">Files</caption>
-        <thead className="border-b border-border text-xs text-muted">
+        <thead className="border-b border-line text-xs text-muted">
           <tr>
             {chosen && (
               <th scope="col" className={`${cell} w-10`}>
@@ -385,7 +385,7 @@ function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpe
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={item.id} className="border-b border-border last:border-0 hover:bg-surface/60">
+            <tr key={item.id} className="border-b border-edge last:border-0 hover:bg-sunken/60">
               {chosen && (
                 <td className={cell}>
                   <input type="checkbox" checked={chosen.has(item.id)} onChange={() => onPick(item.id)} aria-label={`Choose ${item.fileName}`} className="size-5" />
@@ -410,7 +410,7 @@ function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpe
                 ) : hasAlt(item) ? (
                   <span className="line-clamp-2 text-muted">{item.alt || Object.values(item.altTranslations)[0]}</span>
                 ) : (
-                  <span className="rounded-full border border-amber-700 px-2 py-0.5 text-xs text-amber-800 dark:text-amber-300">No alt text</span>
+                  <span className="rounded-full border border-warning-text px-2 py-0.5 text-xs text-warning-text">No alt text</span>
                 )}
               </td>
               <td className={`${cell} whitespace-nowrap text-muted`}>{item.uses.length > 0 ? `${item.uses.length} ${item.uses.length === 1 ? "place" : "places"}` : "Not in use"}</td>
@@ -436,7 +436,7 @@ function Preview({ item, small = false }: { item: MediaItem; small?: boolean }) 
         muted
         playsInline
         preload="metadata"
-        className={small ? "aspect-square w-full bg-surface object-cover" : "max-h-[60dvh] w-full rounded-md bg-black"}
+        className={small ? "aspect-square w-full bg-sunken object-cover" : "max-h-[60dvh] w-full rounded-md bg-black"}
       />
     );
   }
@@ -446,7 +446,7 @@ function Preview({ item, small = false }: { item: MediaItem; small?: boolean }) 
       src={small ? (item.thumbnailUrl ?? item.url) : item.url}
       alt={item.alt}
       loading={small ? "lazy" : undefined}
-      className={small ? "aspect-square w-full bg-surface object-cover" : "mx-auto max-h-[60dvh] w-auto max-w-full rounded-md bg-surface object-contain"}
+      className={small ? "aspect-square w-full bg-sunken object-cover" : "mx-auto max-h-[60dvh] w-auto max-w-full rounded-md bg-sunken object-contain"}
     />
   );
 }
@@ -494,7 +494,7 @@ function Details({
         wide
         footer={
           <>
-            <button type="button" onClick={() => setConfirming(true)} className={`${button} mr-auto border-red-700 text-red-700`}>
+            <button type="button" onClick={() => setConfirming(true)} className={`${button} mr-auto border-danger-text text-danger-text`}>
               Delete
             </button>
             <button
@@ -509,7 +509,7 @@ function Details({
             <a href={downloadHref(item)} download={item.fileName} className={`${button} content-center`}>
               Download
             </a>
-            <button type="button" onClick={onClose} className={`${button} bg-foreground text-background`}>
+            <button type="button" onClick={onClose} className={`${button} bg-brand text-brand-ink`}>
               Done
             </button>
           </>
@@ -557,7 +557,7 @@ function Details({
                   } else setProblem(outcome.problem);
                 })
               }
-              className={`${button} border-red-700 bg-red-700 text-white`}
+              className={`${button} border-danger-text bg-danger-soft text-danger-text`}
             >
               {pending ? "Deleting …" : "Delete for good"}
             </button>
@@ -579,7 +579,7 @@ function Details({
           )}
           <p className="text-muted">Deleting cannot be undone.</p>
           {problem && (
-            <p role="alert" className="text-red-700">
+            <p role="alert" className="text-danger-text">
               {problem}
             </p>
           )}
@@ -633,7 +633,7 @@ function CompressOne({ item, compress, onCompressed }: { item: MediaItem; compre
         !state.said && <p className="text-sm text-muted">{plan.why}</p>
       )}
       {state.said && (
-        <p role={state.failed ? "alert" : "status"} className={`text-sm ${state.failed ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+        <p role={state.failed ? "alert" : "status"} className={`text-sm ${state.failed ? "text-danger-text " : "text-muted"}`}>
           {state.said}
         </p>
       )}
@@ -677,7 +677,7 @@ function CompressAll({ waiting, compress, onChanged }: { waiting: number; compre
 
   if (waiting === 0 && !progress) return null;
   return (
-    <section aria-label="Compress files" className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+    <section aria-label="Compress files" className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4">
       <p className="text-sm">
         <span className="font-medium">Compress files.</span>{" "}
         {waiting === 0
@@ -685,7 +685,7 @@ function CompressAll({ waiting, compress, onChanged }: { waiting: number; compre
           : `${waiting === 1 ? "1 file was" : `${waiting} files were`} uploaded before files were compressed. Compress makes each as small as it can be while it still looks the same, in this browser, and moves every place that uses it to the smaller file.`}
       </p>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" disabled={running || waiting === 0} onClick={() => void run()} className={`${button} bg-foreground text-background`}>
+        <button type="button" disabled={running || waiting === 0} onClick={() => void run()} className={`${button} bg-brand text-brand-ink`}>
           {running ? "Compressing …" : waiting === 1 ? "Compress 1 file" : `Compress ${waiting} files`}
         </button>
         {running && (
@@ -749,7 +749,7 @@ function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: M
           <button type="button" disabled={running} onClick={onClose} className={button}>
             Keep them
           </button>
-          <button type="button" disabled={running} onClick={() => void run()} className={`${button} border-red-700 bg-red-700 text-white`}>
+          <button type="button" disabled={running} onClick={() => void run()} className={`${button} border-danger-text bg-danger-soft text-danger-text`}>
             {running ? `Deleting … ${done} of ${files.length}` : "Delete for good"}
           </button>
         </>
@@ -762,7 +762,7 @@ function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: M
         </p>
         {used.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <p className="font-medium text-red-700">
+            <p className="font-medium text-danger-text">
               {used.length} of them {used.length === 1 ? "is" : "are"} used on the site. A picture there shows nothing until you choose another.
             </p>
             <ul className="max-h-40 list-disc overflow-y-auto pl-5 text-muted">
@@ -780,7 +780,7 @@ function BulkDelete({ files, chosenCount, actions, onClose, onDone }: { files: M
         )}
         <p className="text-muted">Deleting cannot be undone.</p>
         {problem && (
-          <p role="alert" className="text-red-700">
+          <p role="alert" className="text-danger-text">
             {problem}
           </p>
         )}
@@ -869,7 +869,7 @@ function AltTextForm({
           Alt text
         </h3>
         {source && (
-          <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted">{source === "ai" ? "Written by AI" : "Written by staff"}</span>
+          <span className="rounded-full bg-sunken px-2 py-0.5 text-xs text-muted">{source === "ai" ? "Written by AI" : "Written by staff"}</span>
         )}
       </div>
       <p className="text-xs text-muted">
@@ -892,7 +892,7 @@ function AltTextForm({
               setTexts((all) => ({ ...all, [language.locale]: event.target.value }));
               setStatus(null);
             }}
-            className="rounded-md border border-border bg-background px-3 py-2 text-sm font-normal"
+            className="rounded-md border border-line bg-card px-3 py-2 text-sm font-normal"
           />
         </label>
       ))}
@@ -923,7 +923,7 @@ function AltTextForm({
             {writing ? "Writing …" : "Write with AI"}
           </button>
         )}
-        <p role="status" aria-live="polite" className={`text-sm ${status?.problem ? "text-red-700" : ""}`}>
+        <p role="status" aria-live="polite" className={`text-sm ${status?.problem ? "text-danger-text" : ""}`}>
           {status?.text}
         </p>
       </div>
@@ -980,7 +980,7 @@ function AltTexts({
   };
 
   return (
-    <section aria-label="Alt texts" className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4">
+    <section aria-label="Alt texts" className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4">
       <p className="text-sm">
         <span className="font-medium">Alt texts.</span>{" "}
         {missing === 0
@@ -996,7 +996,7 @@ function AltTexts({
             type="button"
             disabled={running || (missing === 0 && !rewrite)}
             onClick={() => void run()}
-            className={`${button} bg-foreground text-background`}
+            className={`${button} bg-brand text-brand-ink`}
           >
             {running ? "Writing alt texts …" : rewrite ? "Write alt texts with AI" : "Write missing alt texts with AI"}
           </button>
@@ -1017,7 +1017,7 @@ function AltTexts({
           {running
             ? `Writing: ${progress.written} done${progress.remaining > 0 ? `, ${progress.remaining} to go` : ""}.`
             : `${progress.written === 1 ? "1 alt text" : `${progress.written} alt texts`} written${progress.failed > 0 ? `, ${progress.failed} could not be` : ""}.`}
-          {progress.problem && <span className="block text-red-700">{progress.problem}</span>}
+          {progress.problem && <span className="block text-danger-text">{progress.problem}</span>}
         </p>
       )}
     </section>
@@ -1037,7 +1037,7 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
   const [over, setOver] = useState(false);
   const busy = jobs.some((job) => job.state === "waiting" || job.state === "uploading");
 
-  if (!upload) return <p className="rounded-lg border border-border p-4 text-sm text-muted">Uploads are not set up on this server.</p>;
+  if (!upload) return <p className="rounded-lg border border-line p-4 text-sm text-muted">Uploads are not set up on this server.</p>;
 
   const set = (key: string, patch: Partial<Job>) => setJobs((all) => all.map((job) => (job.key === key ? { ...job, ...patch } : job)));
 
@@ -1088,7 +1088,7 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
         setOver(false);
         void add([...event.dataTransfer.files]);
       }}
-      className={`flex flex-col gap-3 rounded-lg border-2 border-dashed p-6 text-center ${over ? "border-foreground bg-surface" : "border-border bg-background"}`}
+      className={`flex flex-col gap-3 rounded-lg border-2 border-dashed p-6 text-center ${over ? "border-brand bg-sunken" : "border-line bg-card"}`}
     >
       <p className="font-medium">Drop pictures and videos here</p>
       <p className="text-sm text-muted">
@@ -1096,7 +1096,7 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
         at most 1080p). Each is compressed in your browser until it is as small as it can be while it still looks the same. As many
         as you like at once.
       </p>
-      <label htmlFor={inputId} className={`${button} mx-auto w-fit cursor-pointer content-center bg-foreground text-background`}>
+      <label htmlFor={inputId} className={`${button} mx-auto w-fit cursor-pointer content-center bg-brand text-brand-ink`}>
         {busy ? "Uploading …" : "Choose files"}
       </label>
       <input
@@ -1119,7 +1119,7 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
             {jobs.map((job) => (
               <li key={job.key} className="flex items-center justify-between gap-3">
                 <span className="truncate">{job.name}</span>
-                <span className={job.state === "failed" ? "text-red-700" : "text-muted"}>
+                <span className={job.state === "failed" ? "text-danger-text" : "text-muted"}>
                   {job.state === "waiting"
                     ? "Waiting"
                     : job.state === "uploading"

@@ -24,7 +24,7 @@ import {
  * to shoppers: the editor sends the content and the server and the database hold the rules.
  */
 
-const fieldBase = "min-h-9 rounded-md border border-border bg-background px-2 text-sm";
+const fieldBase = "min-h-9 rounded-md border border-line bg-card px-2 text-sm";
 const field = `${fieldBase} w-full`;
 
 /** What the preview needs of the store and the product (the variant's own prices come from the variant). */
@@ -41,7 +41,7 @@ export function ContentPreviewList({ previews, id }: { previews: ContentPreview[
   return (
     <ul id={id} aria-live="polite" className="flex flex-col gap-0.5 text-xs">
       {previews.map((line, i) => (
-        <li key={`${line.market}-${i}`} className={line.shown ? "text-foreground" : "text-muted"}>
+        <li key={`${line.market}-${i}`} className={line.shown ? "text-ink" : "text-muted"}>
           {line.text}
         </li>
       ))}
@@ -84,7 +84,7 @@ export function ContentFields({
   });
 
   return (
-    <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3 sm:col-span-3 lg:col-span-5">
+    <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3 sm:col-span-3 lg:col-span-5">
       <legend className="px-1 text-xs font-medium">Content, for the price per kg or litre</legend>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="flex flex-col gap-1 text-xs font-medium">
@@ -159,14 +159,14 @@ export function ContentFields({
             set({ amount: total });
             setPack("");
           }}
-          className="min-h-9 rounded-md border border-border px-3"
+          className="min-h-9 rounded-md border border-line px-3"
         >
           Multiply the content
         </button>
         <span className="text-muted">For several items in one pack: the content is the pack&apos;s total (6 × 33 cl is 198 cl).</span>
       </div>
       {packProblem && (
-        <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+        <p role="alert" className="text-xs text-danger-text">
           {packProblem}
         </p>
       )}
@@ -205,7 +205,7 @@ export function SoldByMeasureField({ checked, onChange, state }: { checked: bool
       {why && !checked && <p className="text-muted">{why}</p>}
       {state.nudge && <p className="text-muted">{state.nudge}</p>}
       {state.problems.length > 0 && (
-        <div role="alert" className="text-red-700 dark:text-red-400">
+        <div role="alert" className="text-danger-text">
           <p className="font-medium">This product cannot be saved yet:</p>
           <ProblemList problems={state.problems} />
         </div>

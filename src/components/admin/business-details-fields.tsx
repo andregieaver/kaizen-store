@@ -1,7 +1,7 @@
 import type { Country, StoreDetails } from "@/server/stores";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
  * The business that sells (D40): the store's name, the legal business, its

@@ -33,7 +33,7 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
             name="email"
             required
             autoComplete="username"
-            className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
+            className="min-h-10 rounded-md border border-line bg-card px-3 font-normal"
           />
         </label>
         <PasswordField
@@ -49,9 +49,9 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
           Sign in
         </SubmitButton>
         <div className="flex items-center gap-3 text-sm text-muted" aria-hidden>
-          <span className="h-px flex-1 bg-border" />
+          <span className="h-px flex-1 bg-line" />
           or
-          <span className="h-px flex-1 bg-border" />
+          <span className="h-px flex-1 bg-line" />
         </div>
         <SubmitButton name="method" value="link" variant="secondary" skipValidation>
           Email me a sign-in link instead
@@ -116,7 +116,7 @@ async function KaizenLifeButton({ searchParams }: { searchParams: PageProps<"/ad
   return (
     <form action={signInWithKaizenLife} className="flex flex-col gap-2">
       {typeof next === "string" && <input type="hidden" name="next" value={safeNext(next)} />}
-      <button type="submit" className="min-h-10 rounded-pill border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+      <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
         Sign in with Kaizen Life
       </button>
       <p className="text-xs text-muted">For store owners with a Kaizen Life account.</p>

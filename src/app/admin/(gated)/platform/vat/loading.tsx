@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The VAT pages while they are read: the heading and the cards. */
 export default function PlatformVatLoading() {

@@ -31,33 +31,33 @@ export default async function ProductsPage({ params, searchParams }: Props) {
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/admin/${store.slug}/products/export`}
-            className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium"
+            className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium"
           >
             Export
           </Link>
           {canWrite && (
             <Link
               href={`/admin/${store.slug}/products/import`}
-              className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium"
+              className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium"
             >
               Import
             </Link>
           )}
           <Link
             href={`/admin/${store.slug}/products/categories`}
-            className="inline-flex min-h-10 items-center rounded-md border border-border px-4 text-sm font-medium"
+            className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium"
           >
             Categories and tags
           </Link>
           <Link
             href={`/admin/${store.slug}/products/new`}
-            className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+            className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
           >
             Add product
           </Link>
         </div>
       </div>
-      <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-background" />}>
+      <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-card" />}>
         <ProductList storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
     </div>
@@ -105,7 +105,7 @@ async function ProductList({
     <>
       {!needsFilter && <NeedsContentNotice count={needing.length} href={needsHref} />}
       {openImport && (
-        <p className="rounded-lg border border-border bg-surface p-3 text-sm">
+        <p className="rounded-lg border border-line bg-sunken p-3 text-sm">
           A product import is open ({openImport.inputName ?? "a file"}).{" "}
           <Link href={`${base}/import/${openImport.id}`} className="underline underline-offset-2">
             Continue it
@@ -117,14 +117,14 @@ async function ProductList({
         <Link
           href={base}
           aria-current={archived || needsFilter ? undefined : "page"}
-          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-medium"
+          className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
         >
           Current
         </Link>
         <Link
           href={`${base}?show=archived`}
           aria-current={archived ? "page" : undefined}
-          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-medium"
+          className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
         >
           Archived
         </Link>
@@ -132,7 +132,7 @@ async function ProductList({
           <Link
             href={needsHref}
             aria-current={needsFilter ? "page" : undefined}
-            className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-medium"
+            className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
           >
             Needs content
           </Link>
@@ -141,7 +141,7 @@ async function ProductList({
       {needsFilter ? (
         <NeedsContentList products={needing} base={base} />
       ) : products.length === 0 ? (
-        <div className="rounded-card border border-border bg-background p-8 text-center">
+        <div className="rounded-card border border-line bg-card p-8 text-center">
           <p className="mb-3">{archived ? "No archived products." : "No products yet."}</p>
           {!archived && (
             <Link href={`${base}/new`} className="underline">

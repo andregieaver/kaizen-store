@@ -26,7 +26,7 @@ const STATUS: Record<AbandonedPlanRow["status"], string> = {
   expired: "No more reminders",
 };
 
-const tile = "flex flex-col gap-1 rounded-lg border border-border bg-background p-4";
+const tile = "flex flex-col gap-1 rounded-lg border border-line bg-card p-4";
 
 /**
  * Kaizen's reminders to store owners who went to pay for a plan and did
@@ -56,7 +56,7 @@ export default async function PlanRemindersPage() {
         </p>
       </div>
 
-      <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-card border border-line bg-card p-5">
         <div className="flex max-w-2xl flex-col gap-2 text-sm">
           <h2 id="switch-heading" className="text-base font-medium">
             {settings.enabled ? (active > 0 ? "Reminders are on" : "On, but every reminder is switched off") : "Reminders are off"}
@@ -72,8 +72,8 @@ export default async function PlanRemindersPage() {
             type="submit"
             className={
               settings.enabled
-                ? "min-h-10 rounded-md border border-border px-4 text-sm"
-                : "min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background"
+                ? "min-h-10 rounded-md border border-line px-4 text-sm"
+                : "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink"
             }
           >
             {settings.enabled ? "Turn off" : "Turn on"}
@@ -106,19 +106,19 @@ export default async function PlanRemindersPage() {
           <h2 id="steps-heading" className="font-medium">
             Reminders
           </h2>
-          <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background">
+          <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
             New reminder
           </Link>
         </div>
         {settings.steps.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+          <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
             No reminders yet. Turn reminders on to start with three, or make one.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-background">
+          <div className="overflow-x-auto rounded-lg border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="px-4 py-2 font-medium">Sent after</th>
                   <th scope="col" className="px-4 py-2 font-medium">Subject</th>
                   <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Code</th>
@@ -130,7 +130,7 @@ export default async function PlanRemindersPage() {
               </thead>
               <tbody>
                 {settings.steps.map((step) => (
-                  <tr key={step.id} className="border-b border-border last:border-0">
+                  <tr key={step.id} className="border-b border-line last:border-0">
                     <td className="whitespace-nowrap px-4 py-2">{describeDelay(step.delayMinutes)}</td>
                     <td className="px-4 py-2">{step.content.en?.subject ?? Object.values(step.content)[0]?.subject}</td>
                     <td className="hidden px-4 py-2 font-mono sm:table-cell">{codeOf(step.discountCodeId) ?? "—"}</td>
@@ -153,14 +153,14 @@ export default async function PlanRemindersPage() {
           Latest
         </h2>
         {checkouts.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+          <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
             Nothing yet. Owners show here once they go to pay for a plan.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-background">
+          <div className="overflow-x-auto rounded-lg border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="px-4 py-2 font-medium">Store</th>
                   <th scope="col" className="px-4 py-2 font-medium">Plan</th>
                   <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">Went to pay</th>
@@ -170,7 +170,7 @@ export default async function PlanRemindersPage() {
               </thead>
               <tbody>
                 {checkouts.map((row) => (
-                  <tr key={row.id} className="border-b border-border last:border-0">
+                  <tr key={row.id} className="border-b border-line last:border-0">
                     <td className="px-4 py-2">
                       <Link href={`/admin/platform/stores`} className="underline">
                         {row.storeName}

@@ -83,7 +83,7 @@ export function OrderReturnsCard({
     <Card id="returns" title="Returns and withdrawals">
       <p className="mb-3 text-sm text-muted">{windowSentence(overview, locale)}</p>
       {overview.heldBack.length > 0 && (
-        <p role="note" className="mb-3 rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <p role="note" className="mb-3 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
           Withdrawn before sending: {overview.heldBack.map((line) => `${line.quantity} × ${line.title}`).join(", ")}. Leave {overview.heldBack.length === 1 ? "it" : "them"} out of
           the parcel; the refund is due without waiting for any goods.
         </p>

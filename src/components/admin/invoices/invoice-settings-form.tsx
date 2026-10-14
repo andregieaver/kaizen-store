@@ -7,10 +7,10 @@ import type { InvoiceReadiness, InvoiceSettings, SeriesState } from "@/server/in
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "font-normal text-muted";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 const SERIES_TITLES: Record<SeriesName, string> = { invoice: "Invoice numbers", credit_note: "Credit note numbers" };
 
@@ -39,10 +39,10 @@ export function InvoiceReadinessList({ base, readiness }: { base: string; readin
             Orders paid while something is missing wait for their invoice; the payment is never held back. They are issued, with that day as the issue date,
             within five minutes of the cause being put right.
           </p>
-          <ul className="divide-y divide-border rounded-lg border border-border text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line text-sm">
             {items.map((item) => (
               <li key={item.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
-                <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-amber-500" />
+                <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-warning-solid" />
                 <span className="min-w-0 flex-1">{item.text}</span>
                 {item.href && (
                   <Link href={item.href} className="shrink-0 underline">
@@ -110,7 +110,7 @@ export function InvoiceSettingsForm({
           </span>
         </label>
         {readiness.stripeInvoicesIgnored && (
-          <p role="note" className="rounded-md border border-border bg-surface p-3 text-sm">
+          <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
             Stripe&apos;s own invoice for orders is switched on under{" "}
             <Link href={paymentsHref} className="underline">
               Payments
@@ -184,7 +184,7 @@ export function SeriesForm({ state, action }: { state: SeriesState; action: Acti
             </label>
           </div>
           <p className="text-sm text-muted">
-            The first {state.series === "invoice" ? "invoice" : "credit note"} will be <span className="font-medium text-foreground">{state.nextDocumentNumber}</span>. You can
+            The first {state.series === "invoice" ? "invoice" : "credit note"} will be <span className="font-medium text-ink">{state.nextDocumentNumber}</span>. You can
             change this until it is issued; to continue numbers from another system, set the number after the last one you used there.
           </p>
           <div>

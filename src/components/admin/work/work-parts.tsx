@@ -9,19 +9,19 @@ import { useId, type ReactNode } from "react";
  * for its control, so only client components draw it.
  */
 
-export const card = "rounded-lg border border-border bg-background p-5";
+export const card = "rounded-lg border border-line bg-card p-5";
 export const control =
-  "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal disabled:opacity-60";
+  "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal disabled:opacity-60";
 export const smallControl =
-  "min-h-9 rounded-md border border-border bg-background px-2 text-sm font-normal disabled:opacity-60";
+  "min-h-9 rounded-md border border-line bg-card px-2 text-sm font-normal disabled:opacity-60";
 export const primaryButton =
-  "inline-flex min-h-10 items-center justify-center rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40";
+  "inline-flex min-h-10 items-center justify-center rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
 export const secondaryButton =
-  "inline-flex min-h-10 items-center justify-center rounded-md border border-border bg-background px-4 text-sm disabled:opacity-40";
+  "inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40";
 export const smallButton =
-  "inline-flex min-h-9 items-center justify-center rounded-md border border-border bg-background px-3 text-sm disabled:opacity-40";
-export const dangerLink = "text-sm text-red-700 underline disabled:opacity-50 dark:text-red-400";
-export const errorText = "text-sm text-red-700 dark:text-red-400";
+  "inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-card px-3 text-sm disabled:opacity-40";
+export const dangerLink = "text-sm text-danger-text underline disabled:opacity-50";
+export const errorText = "text-sm text-danger-text";
 export const hintText = "text-xs font-normal text-muted";
 
 /** What a control needs to be tied to its label, its hint and its message. */
@@ -90,10 +90,10 @@ export function Problems({ messages }: { messages: string[] }) {
 }
 
 const BADGE = {
-  neutral: "bg-surface text-foreground",
-  good: "bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200",
-  warn: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  bad: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200",
+  neutral: "bg-sunken text-ink",
+  good: "bg-positive-soft text-positive-text",
+  warn: "bg-warning-soft text-warning-text",
+  bad: "bg-danger-soft text-danger-text",
 } as const;
 
 export function Badge({ tone = "neutral", children }: { tone?: keyof typeof BADGE; children: ReactNode }) {

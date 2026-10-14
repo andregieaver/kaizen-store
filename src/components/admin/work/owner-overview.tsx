@@ -15,10 +15,10 @@ import { NewInStoreButton } from "./owner-parts";
 
 const table = "w-full text-sm";
 const th = "px-4 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
-const card = "overflow-x-auto rounded-lg border border-border bg-background";
+const card = "overflow-x-auto rounded-lg border border-line bg-card";
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-border bg-background p-4 text-sm text-muted">{children}</p>;
+  return <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">{children}</p>;
 }
 
 function Figures({ f, many }: { f: CurrencyFigures; many: boolean }) {
@@ -91,7 +91,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
       </div>
 
       {view.missing.length > 0 && (
-        <section aria-labelledby="ready-heading" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <section aria-labelledby="ready-heading" className="rounded-lg border border-line bg-card p-4 text-sm">
           <h2 id="ready-heading" className="mb-2 font-medium">
             Before the first invoice
           </h2>
@@ -116,7 +116,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
       {noClients ? (
         <section
           aria-labelledby="start-heading"
-          className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
+          className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
         >
           <h2 id="start-heading" className="font-medium">
             Add your first client
@@ -174,7 +174,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-line">
                     {combined.perStore.map((row) => (
                       <tr key={row.store.id} className="align-top">
                         <th scope="row" className="px-4 py-2 text-left font-normal">
@@ -254,7 +254,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-line">
                     {combined.unbilledByClient.map((row) => (
                       <tr key={`${row.storeSlug}:${row.clientId}:${row.currency}`}>
                         <td className="px-4 py-2">
@@ -307,7 +307,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-line">
                     {combined.overdueInvoices.map((row) => (
                       <tr key={`${row.storeSlug}:${row.invoiceId}`}>
                         <td className="px-4 py-2">
@@ -340,7 +340,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
             {combined.runningTimers.length === 0 ? (
               <Empty>No timer is running.</Empty>
             ) : (
-              <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+              <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
                 {combined.runningTimers.map((timer) => {
                   const assignment = view.assignmentNames[timer.assignmentId];
                   return (

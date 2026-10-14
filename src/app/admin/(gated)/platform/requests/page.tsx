@@ -16,7 +16,7 @@ import { decideAction } from "../actions";
 
 export const metadata: Metadata = { title: "Access requests" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /** Platform admins approve beta requests here; approval creates the store. */
 export default async function PlatformPage() {
@@ -53,7 +53,7 @@ export default async function PlatformPage() {
           <h2 id="decided-heading" className="mb-3 font-medium">
             Recently decided
           </h2>
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {decided.map((request) => (
               <li key={request.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
                 <span>
@@ -94,7 +94,7 @@ async function PendingRequest({ request, starters, designs }: { request: AccessR
   return (
     <article
       aria-labelledby={`request-${request.id}`}
-      className="flex flex-col gap-4 rounded-card border border-border bg-background p-5"
+      className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
     >
       <div>
         <h3 id={`request-${request.id}`} className="font-medium">

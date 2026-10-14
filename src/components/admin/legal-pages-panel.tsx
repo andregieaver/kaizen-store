@@ -8,7 +8,7 @@ import type { LegalOverview } from "@/server/legal-starters";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
-const field = "min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal";
+const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 
 /** The notice every starter carries, in the owner's words: written by hand, not checked by a lawyer, never advice. */
 export const LEGAL_STARTER_NOTICE =
@@ -38,12 +38,12 @@ export function LegalPagesPanel({
 
   return (
     <div className="flex flex-col gap-8">
-      <p role="note" className="rounded-lg border border-border bg-background p-4 text-sm">
+      <p role="note" className="rounded-lg border border-line bg-card p-4 text-sm">
         <strong className="font-medium">Draft texts need a person&apos;s review.</strong> {LEGAL_STARTER_NOTICE}
       </p>
 
       {overview.missing.length > 0 && (
-        <section aria-labelledby="missing-heading" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <section aria-labelledby="missing-heading" className="rounded-lg border border-line bg-card p-4 text-sm">
           <h2 id="missing-heading" className="mb-1 font-medium">
             Details the starters need and the store has not given
           </h2>
@@ -63,7 +63,7 @@ export function LegalPagesPanel({
 
       <ul className="flex flex-col gap-4">
         {overview.roles.map((entry) => (
-          <li key={entry.role} className="rounded-card border border-border bg-background p-5">
+          <li key={entry.role} className="rounded-card border border-line bg-card p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="font-medium">{entry.name}</h2>
               <span className="text-sm text-muted">{entry.page ? `Chosen: ${entry.page.title}` : "No page chosen"}</span>
@@ -125,14 +125,14 @@ export function LegalPagesPanel({
       </ul>
 
       {!overview.shopOn ? (
-        <section aria-labelledby="checkout-heading" className="rounded-card border border-border bg-background p-5">
+        <section aria-labelledby="checkout-heading" className="rounded-card border border-line bg-card p-5">
           <h2 id="checkout-heading" className="mb-1 font-medium">
             At checkout
           </h2>
           <FeatureOffNote storeSlug={storeSlug} feature="shop" owner what="What checkout says about the terms" />
         </section>
       ) : (
-      <section aria-labelledby="checkout-heading" className="rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="checkout-heading" className="rounded-card border border-line bg-card p-5">
         <h2 id="checkout-heading" className="mb-1 font-medium">
           At checkout
         </h2>

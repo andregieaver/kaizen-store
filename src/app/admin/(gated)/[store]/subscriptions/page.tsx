@@ -20,7 +20,7 @@ export default async function SubscriptionsPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-display text-ink">Subscriptions</h1>
-      <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-background" />}>
+      <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-card" />}>
         <SubscriptionList storeSlug={store.slug} />
       </Suspense>
     </div>
@@ -36,16 +36,16 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
 
   if (subscriptions.length === 0) {
     return (
-      <p className="rounded-card border border-border bg-background p-8 text-center text-sm">
+      <p className="rounded-card border border-line bg-card p-8 text-center text-sm">
         No subscriptions yet. Offer one under a product&apos;s Subscriptions section; each shopper who
         subscribes appears here.
       </p>
     );
   }
   return (
-    <table className="w-full rounded-lg border border-border bg-background text-left text-sm">
+    <table className="w-full rounded-lg border border-line bg-card text-left text-sm">
       <thead>
-        <tr className="border-b border-border">
+        <tr className="border-b border-line">
           <th scope="col" className="px-4 py-2 font-medium">Subscription</th>
           <th scope="col" className="px-4 py-2 font-medium">Customer</th>
           <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Next renewal</th>
@@ -55,7 +55,7 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
       </thead>
       <tbody>
         {subscriptions.map((s) => (
-          <tr key={s.id} className="border-b border-border last:border-0">
+          <tr key={s.id} className="border-b border-line last:border-0">
             <td className="px-4 py-2">
               <Link href={`${base}/${s.id}`} className="font-medium underline-offset-2 hover:underline">
                 #{s.number}

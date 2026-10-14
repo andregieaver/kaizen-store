@@ -84,7 +84,7 @@ export function linkFromInput(value: string): string {
 }
 
 const tool =
-  "flex min-h-9 min-w-9 items-center justify-center rounded px-2 text-sm hover:bg-surface aria-pressed:bg-foreground aria-pressed:text-background disabled:opacity-40";
+  "flex min-h-9 min-w-9 items-center justify-center rounded px-2 text-sm hover:bg-sunken aria-pressed:bg-inverse aria-pressed:text-inverse-ink disabled:opacity-40";
 
 export function RichTextEditor({
   value,
@@ -113,8 +113,8 @@ export function RichTextEditor({
   });
 
   return (
-    <div className="rounded-md border border-border bg-background focus-within:border-foreground">
-      {editor ? <RichTextToolbar editor={editor} label={label} /> : <div className="h-11 border-b border-border" />}
+    <div className="rounded-md border border-line bg-card focus-within:border-brand">
+      {editor ? <RichTextToolbar editor={editor} label={label} /> : <div className="h-11 border-b border-line" />}
       <EditorContent editor={editor} />
     </div>
   );
@@ -173,7 +173,7 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
   );
 
   return (
-    <div className="sticky top-0 z-10 rounded-t-md border-b border-border bg-background">
+    <div className="sticky top-0 z-10 rounded-t-md border-b border-line bg-card">
       <div role="toolbar" aria-label={`Formatting for ${label}`} className="flex flex-wrap items-center gap-0.5 p-1">
         <label className="sr-only" htmlFor={`${editor.instanceId}-style`}>
           Text style
@@ -186,14 +186,14 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
             if (style === "p") chain().setParagraph().run();
             else chain().setHeading({ level: Number(style.slice(1)) as 2 | 3 | 4 }).run();
           }}
-          className="min-h-9 rounded border border-border bg-background px-2 text-sm"
+          className="min-h-9 rounded border border-line bg-card px-2 text-sm"
         >
           <option value="p">Paragraph</option>
           <option value="h2">Heading</option>
           <option value="h3">Subheading</option>
           <option value="h4">Small heading</option>
         </select>
-        <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+        <span aria-hidden className="mx-1 h-6 w-px bg-line" />
         {button("Bold", state.bold, () => chain().toggleBold().run(), <strong>B</strong>)}
         {button("Italic", state.italic, () => chain().toggleItalic().run(), <em className="font-serif">I</em>)}
         {button("Underline", state.underline, () => chain().toggleUnderline().run(), <u>U</u>)}
@@ -204,20 +204,20 @@ export function RichTextToolbar({ editor, label }: { editor: Editor; label: stri
           () => setColouring((open) => !open),
           <span aria-hidden className="flex flex-col items-center leading-none">
             A
-            <span className="mt-0.5 h-1 w-4 rounded-sm border border-border" style={state.color ? { backgroundColor: colourCss(state.color, state.opacity) } : undefined} />
+            <span className="mt-0.5 h-1 w-4 rounded-sm border border-line" style={state.color ? { backgroundColor: colourCss(state.color, state.opacity) } : undefined} />
           </span>,
         )}
-        <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+        <span aria-hidden className="mx-1 h-6 w-px bg-line" />
         {button("Bulleted list", state.bulletList, () => chain().toggleBulletList().run(), <ListIcon />)}
         {button("Numbered list", state.orderedList, () => chain().toggleOrderedList().run(), <NumberedIcon />)}
         {button("Quote", state.blockquote, () => chain().toggleBlockquote().run(), <QuoteIcon />)}
         {button("Line", undefined, () => chain().setHorizontalRule().run(), <span aria-hidden>―</span>)}
-        <span aria-hidden className="mx-1 h-6 w-px bg-border" />
+        <span aria-hidden className="mx-1 h-6 w-px bg-line" />
         {button("Undo", undefined, () => chain().undo().run(), <span aria-hidden>↶</span>, !state.canUndo)}
         {button("Redo", undefined, () => chain().redo().run(), <span aria-hidden>↷</span>, !state.canRedo)}
       </div>
       {colouring && (
-        <div className="flex flex-wrap items-end gap-3 border-t border-border p-2">
+        <div className="flex flex-wrap items-end gap-3 border-t border-line p-2">
           <ColorField
             label="Text colour"
             value={state.color}
@@ -286,7 +286,7 @@ function LinkForm({
     onApply(href);
   };
   return (
-    <div className="flex flex-col gap-2 border-t border-border p-2">
+    <div className="flex flex-col gap-2 border-t border-line p-2">
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor={id} className="text-sm font-medium">
           Link to
@@ -313,13 +313,13 @@ function LinkForm({
           inputMode="url"
           aria-invalid={problem ? true : undefined}
           aria-describedby={problem ? `${id}-problem` : undefined}
-          className="min-h-9 min-w-0 flex-1 rounded border border-border bg-background px-2 text-sm"
+          className="min-h-9 min-w-0 flex-1 rounded border border-line bg-card px-2 text-sm"
         />
-        <button type="button" onClick={apply} className="min-h-9 rounded bg-foreground px-3 text-sm text-background">
+        <button type="button" onClick={apply} className="min-h-9 rounded bg-brand px-3 text-sm text-brand-ink">
           {active ? "Update" : "Add link"}
         </button>
         {active && (
-          <button type="button" onClick={onRemove} className="min-h-9 rounded border border-border px-3 text-sm">
+          <button type="button" onClick={onRemove} className="min-h-9 rounded border border-line px-3 text-sm">
             Remove link
           </button>
         )}
@@ -328,7 +328,7 @@ function LinkForm({
         </button>
       </div>
       {problem && (
-        <p id={`${id}-problem`} role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p id={`${id}-problem`} role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}

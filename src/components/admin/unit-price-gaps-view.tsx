@@ -25,7 +25,7 @@ export const needsReasonWords = (reason: NeedsContent["reason"]): string =>
 export function NeedsContentNotice({ count, href }: { count: number; href: string }) {
   if (count === 0) return null;
   return (
-    <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-border bg-surface px-4 py-3 text-sm">
+    <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-sunken px-4 py-3 text-sm">
       <span>{needsContentNotice(count)}</span>
       <Link href={href} className="font-medium underline">
         Show them
@@ -38,7 +38,7 @@ export function NeedsContentNotice({ count, href }: { count: number; href: strin
 export function NeedsContentList({ products, base }: { products: NeedsContent[]; base: string }) {
   if (products.length === 0) {
     return (
-      <div className="rounded-card border border-border bg-background p-8 text-center">
+      <div className="rounded-card border border-line bg-card p-8 text-center">
         <p>No product needs content for the unit price.</p>
       </div>
     );
@@ -49,10 +49,10 @@ export function NeedsContentList({ products, base }: { products: NeedsContent[];
         These products are on sale without a price per kg or litre. They stay on sale and the shop shows no unit price for them, until
         you give each shipped variant its content in the product&apos;s editor; saving one before then is refused.
       </p>
-      <table className="w-full overflow-hidden rounded-lg border border-border bg-background text-left text-sm">
+      <table className="w-full overflow-hidden rounded-lg border border-line bg-card text-left text-sm">
         <caption className="sr-only">Products that need content for the unit price</caption>
         <thead>
-          <tr className="border-b border-border">
+          <tr className="border-b border-line">
             <th scope="col" className="px-4 py-2 font-medium">
               Product
             </th>
@@ -66,7 +66,7 @@ export function NeedsContentList({ products, base }: { products: NeedsContent[];
         </thead>
         <tbody>
           {products.map((product) => (
-            <tr key={product.productId} className="border-b border-border last:border-0">
+            <tr key={product.productId} className="border-b border-line last:border-0">
               <td className="px-4 py-2">
                 <Link href={`${base}/${product.productId}`} className="font-medium hover:underline">
                   {product.title}

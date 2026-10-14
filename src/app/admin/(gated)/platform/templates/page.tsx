@@ -42,13 +42,13 @@ export default async function PlatformTemplatesPage() {
         {templates.map((template) => (
           <li
             key={template.id}
-            className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 sm:flex-row sm:items-start sm:justify-between"
+            className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 sm:flex-row sm:items-start sm:justify-between"
           >
             <div className="flex min-w-0 flex-col gap-1 text-sm">
               <span className="font-medium">
                 {template.name}
                 {template.hidden && (
-                  <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs font-normal">Hidden</span>
+                  <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Hidden</span>
                 )}
               </span>
               <span className="text-muted">

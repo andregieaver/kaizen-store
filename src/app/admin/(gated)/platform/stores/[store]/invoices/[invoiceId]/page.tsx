@@ -14,7 +14,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Invoice" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 /**
  * One of Kaizen's invoices to a store for its plan (D35), as Stripe has it:
@@ -76,7 +76,7 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
           <table className="w-full text-left text-sm">
             <tbody>
               {invoice.lines.map((line, i) => (
-                <tr key={i} className="border-b border-border">
+                <tr key={i} className="border-b border-line">
                   <td className="py-2 pr-4">{line.description}</td>
                   <td className="py-2 text-right whitespace-nowrap">{money(line.amountMinor)}</td>
                 </tr>

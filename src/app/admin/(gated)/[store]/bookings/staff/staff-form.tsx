@@ -4,7 +4,7 @@ import type { FormState } from "@/components/admin/action-form";
 import type { BookingResource } from "@/server/bookings";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /** A member of staff who takes appointments (D65): who they are, how many at once, and their hours. */
 export function StaffForm({
@@ -15,7 +15,7 @@ export function StaffForm({
   action: (state: FormState, formData: FormData) => Promise<FormState>;
 }) {
   return (
-    <ActionForm action={action} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+    <ActionForm action={action} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
       <label className={field}>
         Name
         <input name="name" required maxLength={120} defaultValue={staff?.name ?? ""} className={control} />
@@ -35,7 +35,7 @@ export function StaffForm({
         <input type="checkbox" name="active" defaultChecked={staff?.active ?? true} className="size-4" />
         Takes bookings
       </label>
-      <div className="border-t border-border pt-4">
+      <div className="border-t border-line pt-4">
         <h2 className="mb-1 text-sm font-medium">Working hours</h2>
         <p className="mb-3 text-sm text-muted">Appointments are offered only inside these, in the store&apos;s time zone.</p>
         <HoursEditor name="hours" initial={staff?.hours ?? null} />

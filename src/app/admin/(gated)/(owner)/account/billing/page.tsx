@@ -48,7 +48,7 @@ export default async function OwnerBillingPage() {
         <p className="text-sm text-muted">The plan of each store you own, what it costs and when it renews. Change a plan in the store&apos;s own billing.</p>
       </div>
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-border p-4 text-sm">You do not own a store yet, so there are no plans to show.</p>
+        <p className="rounded-lg border border-line p-4 text-sm">You do not own a store yet, so there are no plans to show.</p>
       ) : (
         <>
           <StatGrid>
@@ -58,14 +58,14 @@ export default async function OwnerBillingPage() {
             <Stat label="Stores without a plan" value={rows.filter((r) => !r.status || ["canceled", "incomplete", "incomplete_expired"].includes(r.status)).length} />
           </StatGrid>
           <Section id="plans-heading" title="Your stores' plans">
-            <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+            <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
               {rows.map((row) => (
                 <li key={row.slug} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
                   <span className="min-w-40 flex-1">
                     <span className="block font-medium">{row.name}</span>
                     <span className="block text-muted">{row.planName ?? "No plan"}{row.price ? ` · ${per(row.price)}` : ""}</span>
                   </span>
-                  <span className={row.status && ["past_due", "unpaid"].includes(row.status) ? "font-medium text-red-700 dark:text-red-400" : "text-muted"}>{row.status ? (STATUS[row.status] ?? row.status) : "No plan"}</span>
+                  <span className={row.status && ["past_due", "unpaid"].includes(row.status) ? "font-medium text-danger-text" : "text-muted"}>{row.status ? (STATUS[row.status] ?? row.status) : "No plan"}</span>
                   <span className="text-muted">
                     {row.currentPeriodEnd ? `${row.cancelAtPeriodEnd ? "Ends" : "Renews"} ${row.currentPeriodEnd.slice(0, 10)}` : ""}
                   </span>

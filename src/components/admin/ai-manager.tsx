@@ -25,9 +25,9 @@ export type AiManagerActions = {
 };
 
 const button = "inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium disabled:opacity-50";
-const primary = `${button} bg-foreground text-background`;
-const secondary = `${button} border border-border hover:bg-surface`;
-const chip = "rounded-full border border-border px-3 py-1.5 text-left text-sm hover:bg-surface";
+const primary = `${button} bg-brand text-brand-ink`;
+const secondary = `${button} border border-edge hover:bg-sunken`;
+const chip = "rounded-full border border-edge px-3 py-1.5 text-left text-sm hover:bg-sunken";
 
 const STARTERS: Record<"store" | "platform", string[]> = {
   store: ["How is the store doing this week?", "What needs my attention?", "What should I do next to get ready?", "How do I run a sale?"],
@@ -331,7 +331,7 @@ export function AiManagerChat({
 
   if (!abilities.text) {
     return (
-      <p className="m-4 rounded-lg border border-border p-4 text-sm">
+      <p className="m-4 rounded-lg border border-line p-4 text-sm">
         The AI manager uses {area === "store" ? "the store's" : "Kaizen's"} AI and needs a text model.{" "}
         <Link href={settingsHref} className="underline" onClick={onNavigate}>
           Set one up under AI
@@ -365,7 +365,7 @@ export function AiManagerChat({
     <ul className="flex flex-col gap-1">
       {list.length === 0 && <li className="px-2 py-2 text-sm text-muted">No conversations yet.</li>}
       {list.map((c) => (
-        <li key={c.id} className={`flex items-center gap-1 rounded-md ${c.id === conversationId ? "bg-surface" : ""}`}>
+        <li key={c.id} className={`flex items-center gap-1 rounded-md ${c.id === conversationId ? "bg-sunken" : ""}`}>
           <button
             type="button"
             onClick={() => void open(c.id)}
@@ -374,7 +374,7 @@ export function AiManagerChat({
           >
             {c.title || "Conversation"}
           </button>
-          <button type="button" onClick={() => void removeConversation(c.id)} className="px-2 text-sm text-muted hover:text-foreground" aria-label={`Delete "${c.title}"`}>
+          <button type="button" onClick={() => void removeConversation(c.id)} className="px-2 text-sm text-muted hover:text-ink" aria-label={`Delete "${c.title}"`}>
             ×
           </button>
         </li>
@@ -385,14 +385,14 @@ export function AiManagerChat({
   const conversationView = (
     <section aria-label="Conversation with the AI manager" className={`flex min-h-0 flex-col ${panel ? "flex-1" : "min-h-[60dvh] gap-4"}`}>
       {panel && (
-        <div className="flex items-center gap-2 border-b border-border px-4 py-2 text-sm">
-          <button type="button" className="rounded px-2 py-1 hover:bg-surface" onClick={startNew}>
+        <div className="flex items-center gap-2 border-b border-line px-4 py-2 text-sm">
+          <button type="button" className="rounded px-2 py-1 hover:bg-sunken" onClick={startNew}>
             New
           </button>
-          <button type="button" className="rounded px-2 py-1 hover:bg-surface" aria-expanded={showList} onClick={() => setShowList((v) => !v)}>
+          <button type="button" className="rounded px-2 py-1 hover:bg-sunken" aria-expanded={showList} onClick={() => setShowList((v) => !v)}>
             Earlier
           </button>
-          <Link href={conversationId ? `${base}?c=${conversationId}` : base} className="ml-auto rounded px-2 py-1 text-muted hover:bg-surface" onClick={onNavigate}>
+          <Link href={conversationId ? `${base}?c=${conversationId}` : base} className="ml-auto rounded px-2 py-1 text-muted hover:bg-sunken" onClick={onNavigate}>
             Full page
           </Link>
         </div>
@@ -404,7 +404,7 @@ export function AiManagerChat({
       ) : (
         <div ref={scrollRef} className={`flex flex-1 flex-col gap-3 ${panel ? "overflow-y-auto p-4" : ""}`} aria-live="polite">
           {thread.length === 0 && !busy && (
-            <div className="flex flex-col gap-3 rounded-lg border border-border p-4">
+            <div className="flex flex-col gap-3 rounded-lg border border-line p-4">
               <p className="text-sm">
                 {area === "store"
                   ? `I know every part of ${siteName}'s admin, can look at orders, products, customers and sales, and can take you to the right page. Changes that email customers, change the site or cost money wait for your yes.`
@@ -444,12 +444,12 @@ export function AiManagerChat({
             </p>
           )}
           {problem && (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+            <p role="alert" className="text-sm text-danger-text">
               {problem}
             </p>
           )}
           {live.error && !live.active && (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+            <p role="alert" className="text-sm text-danger-text">
               {live.error}
             </p>
           )}
@@ -470,7 +470,7 @@ export function AiManagerChat({
           event.preventDefault();
           void send(draft);
         }}
-        className={`flex flex-col gap-2 border-t border-border bg-background ${panel ? "p-3" : "sticky bottom-0 pt-3"}`}
+        className={`flex flex-col gap-2 border-t border-line bg-card ${panel ? "p-3" : "sticky bottom-0 pt-3"}`}
       >
         {live.active && (
           <CallBar state={live.state} working={live.working} muted={live.muted} onMute={live.toggleMute} onEnd={live.stop} />
@@ -495,7 +495,7 @@ export function AiManagerChat({
               void send(draft);
             }
           }}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          className="w-full rounded-md border border-line bg-card px-3 py-2 text-sm"
         />
         <div className="flex flex-wrap items-center gap-2">
           {busy ? (
@@ -588,27 +588,27 @@ function VoiceBar({
   const words = muted && (status === "listening" || status === "hearing") ? { label: "Muted", hint: "Unmute to talk." } : VOICE_WORDS[status];
   const busy = status === "thinking" || status === "starting";
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border p-2" aria-label="Voice mode">
+    <div className="flex items-center gap-3 rounded-lg border border-line p-2" aria-label="Voice mode">
       <span aria-hidden="true" className="relative flex size-11 shrink-0 items-center justify-center">
         <span
-          className="absolute inset-0 rounded-full bg-foreground/15 transition-transform duration-75"
+          className="absolute inset-0 rounded-full bg-inverse/15 transition-transform duration-75"
           style={{ transform: `scale(${status === "speaking" ? 1.15 : 0.8 + level * 0.9})` }}
         />
-        <span className={`size-6 rounded-full bg-foreground ${busy || status === "speaking" ? "animate-pulse" : ""} ${muted ? "opacity-30" : ""}`} />
+        <span className={`size-6 rounded-full bg-brand ${busy || status === "speaking" ? "animate-pulse" : ""} ${muted ? "opacity-30" : ""}`} />
       </span>
       <div className="min-w-0 flex-1" role="status" aria-live="polite">
         <p className="text-sm font-medium">{words.label} …</p>
         <p className="truncate text-xs text-muted">{words.hint}</p>
       </div>
       {status === "speaking" && (
-        <button type="button" onClick={onInterrupt} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface">
+        <button type="button" onClick={onInterrupt} className="rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken">
           Interrupt
         </button>
       )}
-      <button type="button" onClick={onMute} aria-pressed={muted} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface">
+      <button type="button" onClick={onMute} aria-pressed={muted} className="rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken">
         {muted ? "Unmute" : "Mute"}
       </button>
-      <button type="button" onClick={onEnd} className="rounded-pill bg-foreground px-2 py-1 text-xs text-background" title="End voice mode (Esc)">
+      <button type="button" onClick={onEnd} className="rounded-pill bg-brand px-2 py-1 text-xs text-brand-ink" title="End voice mode (Esc)">
         End
       </button>
     </div>
@@ -619,19 +619,19 @@ function VoiceBar({
 function CallBar({ state, working, muted, onMute, onEnd }: { state: LiveState; working: boolean; muted: boolean; onMute: () => void; onEnd: () => void }) {
   const on = state === "live";
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border p-2" aria-label="Voice call">
+    <div className="flex items-center gap-3 rounded-lg border border-line p-2" aria-label="Voice call">
       <span aria-hidden="true" className="relative flex size-11 shrink-0 items-center justify-center">
-        <span className={`absolute inset-0 rounded-full bg-foreground/15 ${on && !muted ? "animate-ping [animation-duration:2s]" : ""}`} />
-        <span className={`size-6 rounded-full bg-foreground ${working || !on ? "animate-pulse" : ""} ${muted ? "opacity-30" : ""}`} />
+        <span className={`absolute inset-0 rounded-full bg-inverse/15 ${on && !muted ? "animate-ping [animation-duration:2s]" : ""}`} />
+        <span className={`size-6 rounded-full bg-brand ${working || !on ? "animate-pulse" : ""} ${muted ? "opacity-30" : ""}`} />
       </span>
       <div className="min-w-0 flex-1" role="status" aria-live="polite">
         <p className="text-sm font-medium">{!on ? "Connecting …" : muted ? "Muted" : working ? "Looking into it …" : "On a call: just talk"}</p>
         <p className="truncate text-xs text-muted">{on ? "It hears you while it speaks; talk over it any time." : "Allow the microphone if the browser asks."}</p>
       </div>
-      <button type="button" onClick={onMute} aria-pressed={muted} disabled={!on} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50">
+      <button type="button" onClick={onMute} aria-pressed={muted} disabled={!on} className="rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken disabled:opacity-50">
         {muted ? "Unmute" : "Mute"}
       </button>
-      <button type="button" onClick={onEnd} className="rounded-pill bg-foreground px-2 py-1 text-xs text-background" title="End the call (Esc)">
+      <button type="button" onClick={onEnd} className="rounded-pill bg-brand px-2 py-1 text-xs text-brand-ink" title="End the call (Esc)">
         End
       </button>
     </div>
@@ -643,7 +643,7 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
   const rateable = !mine && onRate && !message.id.startsWith("local-") && message.id !== "streaming";
   return (
     <div className={`flex flex-col gap-1 ${mine ? "items-end" : "items-start"}`}>
-      <p className={`max-w-[46rem] whitespace-pre-wrap wrap-anywhere rounded-lg px-3 py-2 text-sm ${mine ? "bg-foreground text-background" : "bg-surface"}`}>
+      <p className={`max-w-[46rem] whitespace-pre-wrap wrap-anywhere rounded-lg px-3 py-2 text-sm ${mine ? "bg-brand text-brand-ink" : "bg-sunken"}`}>
         {mine ? message.content : <Linked text={message.content} onOpen={onOpen} />}
       </p>
       {(message.tools.length > 0 || rateable) && (
@@ -662,7 +662,7 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
                 aria-label="Good answer"
                 title="Good answer"
                 onClick={() => onRate(message, 1)}
-                className={`rounded px-1.5 py-0.5 hover:bg-surface ${message.feedback === 1 ? "bg-surface text-foreground" : ""}`}
+                className={`rounded px-1.5 py-0.5 hover:bg-sunken ${message.feedback === 1 ? "bg-sunken text-ink" : ""}`}
               >
                 👍
               </button>
@@ -672,7 +672,7 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
                 aria-label="Not helpful"
                 title="Not helpful"
                 onClick={() => onRate(message, -1)}
-                className={`rounded px-1.5 py-0.5 hover:bg-surface ${message.feedback === -1 ? "bg-surface text-foreground" : ""}`}
+                className={`rounded px-1.5 py-0.5 hover:bg-sunken ${message.feedback === -1 ? "bg-sunken text-ink" : ""}`}
               >
                 👎
               </button>
@@ -686,7 +686,7 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
 
 function ApprovalCard({ approval, onDecide }: { approval: Approval; onDecide: (approval: Approval, approve: boolean) => void }) {
   return (
-    <div className="flex max-w-[46rem] flex-col gap-2 rounded-lg border border-border p-3" role="group" aria-label="Waiting for your approval">
+    <div className="flex max-w-[46rem] flex-col gap-2 rounded-lg border border-line p-3" role="group" aria-label="Waiting for your approval">
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{GATE_WORDS[approval.category]}</p>
       <p className="text-sm whitespace-pre-wrap wrap-anywhere">{approval.summary}</p>
       {approval.status === "pending" ? (

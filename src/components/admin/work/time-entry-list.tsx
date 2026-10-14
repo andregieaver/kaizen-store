@@ -156,10 +156,10 @@ export function TimeEntryList({
 }) {
   const base = workBase(storeSlug);
   if (entries.length === 0) {
-    return <p className="rounded-lg border border-border bg-background p-4 text-sm text-muted">{empty}</p>;
+    return <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">{empty}</p>;
   }
   return (
-    <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+    <ul className="divide-y divide-line rounded-lg border border-line bg-card">
       {entries.map((entry) => (
         <EntryRow
           key={entry.id}

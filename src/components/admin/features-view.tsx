@@ -38,7 +38,7 @@ export function FeaturesView({ base, owner, shop, groups, count, onSwitch }: Fea
         {!owner && <p className="text-sm">Only an owner can switch features on or off.</p>}
       </div>
 
-      <section aria-labelledby="feature-group-shop" className="rounded-lg border border-border bg-surface">
+      <section aria-labelledby="feature-group-shop" className="rounded-lg border border-line bg-sunken">
         <h2 id="feature-group-shop" className="sr-only">
           Online shop
         </h2>
@@ -48,11 +48,11 @@ export function FeaturesView({ base, owner, shop, groups, count, onSwitch }: Fea
       </section>
 
       {groups.map((group) => (
-        <section key={group.id} aria-labelledby={`feature-group-${group.id}`} className="rounded-lg border border-border bg-surface">
+        <section key={group.id} aria-labelledby={`feature-group-${group.id}`} className="rounded-lg border border-line bg-sunken">
           <h2 id={`feature-group-${group.id}`} className="px-4 pt-4 font-medium">
             {group.label}
           </h2>
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-line">
             {group.rows.map((row) => (
               <FeatureItem key={row.id} row={row} base={base} owner={owner} onSwitch={onSwitch} />
             ))}
@@ -105,7 +105,7 @@ function FeatureItem({ row, base, owner, master = false, onSwitch }: ItemProps) 
             <span id={`feature-${row.id}-label`} className={master ? "text-lg font-medium" : "font-medium"}>
               {row.label}
             </span>
-            {row.inUse && !master && <span className="rounded border border-border px-1.5 py-0.5 text-xs text-muted">In use</span>}
+            {row.inUse && !master && <span className="rounded border border-line px-1.5 py-0.5 text-xs text-muted">In use</span>}
           </div>
           <p className="text-sm text-muted">{row.words}</p>
           {row.missing.length > 0 && (
@@ -132,10 +132,10 @@ function FeatureItem({ row, base, owner, master = false, onSwitch }: ItemProps) 
         >
           <span
             aria-hidden="true"
-            className={`relative inline-flex h-7 w-12 items-center rounded-full border border-border transition-colors ${row.kept ? "bg-foreground" : "bg-background"}`}
+            className={`relative inline-flex h-7 w-12 items-center rounded-full border border-line transition-colors ${row.kept ? "bg-brand" : "bg-card"}`}
           >
             <span
-              className={`absolute size-5 rounded-full shadow-sm transition-transform ${row.kept ? "translate-x-6 bg-background" : "translate-x-1 bg-muted"}`}
+              className={`absolute size-5 rounded-full shadow-sm transition-transform ${row.kept ? "translate-x-6 bg-card" : "translate-x-1 bg-muted"}`}
             />
           </span>
         </button>
@@ -186,7 +186,7 @@ type PanelProps = {
 export function OffPanel({ id, row, base, blockers, warnings, pending, problems, onConfirm, onCancel }: PanelProps) {
   const blocked = blockers.length > 0;
   return (
-    <div id={id} role="region" aria-label={`Switch off ${row.label}`} className="flex flex-col gap-3 rounded-md border border-border bg-background p-4 text-sm">
+    <div id={id} role="region" aria-label={`Switch off ${row.label}`} className="flex flex-col gap-3 rounded-md border border-line bg-card p-4 text-sm">
       <p className="font-medium">Switch off {row.label.toLowerCase()}?</p>
       <p>{row.offWords}</p>
       {blocked ? (
@@ -226,12 +226,12 @@ export function OffPanel({ id, row, base, blockers, warnings, pending, problems,
             disabled={pending}
             aria-busy={pending || undefined}
             onClick={onConfirm}
-            className="min-h-11 rounded-pill bg-foreground px-4 font-medium text-background disabled:opacity-60"
+            className="min-h-11 rounded-pill bg-brand px-4 font-medium text-brand-ink disabled:opacity-60"
           >
             Switch off
           </button>
         )}
-        <button type="button" onClick={onCancel} className="min-h-11 rounded-md border border-border px-4 font-medium">
+        <button type="button" onClick={onCancel} className="min-h-11 rounded-md border border-line px-4 font-medium">
           {blocked ? "Close" : "Keep it on"}
         </button>
       </div>

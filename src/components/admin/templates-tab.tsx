@@ -57,14 +57,14 @@ export function TemplatesTab({
         Templates you have switched on. Press Preview to see one first, or Use to add a copy to the page: it is yours to
         change, and later edits by whoever shared it never reach it.
       </p>
-      <div role="group" aria-label="Templates from" className="grid grid-cols-2 gap-1 rounded-md bg-surface p-1">
+      <div role="group" aria-label="Templates from" className="grid grid-cols-2 gap-1 rounded-md bg-sunken p-1">
         {TEMPLATE_SOURCES.map((each) => (
           <button
             key={each}
             type="button"
             aria-pressed={source === each}
             onClick={() => onSource(each)}
-            className="min-h-9 rounded px-2 text-xs font-medium text-muted aria-pressed:bg-background aria-pressed:text-foreground aria-pressed:shadow-sm"
+            className="min-h-9 rounded px-2 text-xs font-medium text-muted aria-pressed:bg-card aria-pressed:text-ink aria-pressed:shadow-sm"
           >
             {TEMPLATE_SOURCE_LABELS[each]}
           </button>
@@ -72,12 +72,12 @@ export function TemplatesTab({
       </div>
 
       {list.status === "error" ? (
-        <div role="alert" className="flex flex-col items-start gap-2 text-sm text-red-700 dark:text-red-400">
+        <div role="alert" className="flex flex-col items-start gap-2 text-sm text-danger-text">
           <p>{list.problem}</p>
           <button
             type="button"
             onClick={() => load(source, true)}
-            className="min-h-9 rounded-md border border-border px-3 text-xs text-foreground"
+            className="min-h-9 rounded-md border border-line px-3 text-xs text-ink"
           >
             Try again
           </button>
@@ -98,7 +98,7 @@ export function TemplatesTab({
             <h3 className={groupHeading}>{group.label}</h3>
             <ul className="flex flex-col gap-1">
               {group.items.map((item) => (
-                <li key={item.id} className="flex flex-col gap-1 rounded-md border border-border p-2">
+                <li key={item.id} className="flex flex-col gap-1 rounded-md border border-line p-2">
                   <div className="flex min-w-0 flex-col">
                     <span className="truncate text-sm" title={item.name}>
                       {item.name}
@@ -130,7 +130,7 @@ export function TemplatesTab({
       <button
         type="button"
         onClick={onBrowse}
-        className="min-h-10 rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface"
+        className="min-h-10 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken"
       >
         Browse templates
       </button>

@@ -93,7 +93,7 @@ export function ImportUpload({
       </div>
       <div role="status" aria-live="polite">
         {problems.length > 0 && (
-          <ul className="list-disc pl-5 text-sm text-red-700 dark:text-red-400">
+          <ul className="list-disc pl-5 text-sm text-danger-text">
             {problems.map((p) => (
               <li key={p}>{p}</li>
             ))}
@@ -191,7 +191,7 @@ export function ImportOptionsForm({ choices, check, checked }: { choices: Option
         </div>
       </div>
       {shopify && (
-        <fieldset className="flex flex-col gap-3 rounded-md border border-border bg-background p-3">
+        <fieldset className="flex flex-col gap-3 rounded-md border border-line bg-card p-3">
           <legend className={`${label} px-1`}>This is a Shopify file</legend>
           <div className="flex flex-col gap-1">
             <span className={label}>Do the prices in the file include VAT?</span>
@@ -227,7 +227,7 @@ export function ImportOptionsForm({ choices, check, checked }: { choices: Option
         {needsBasis && <span className={hint}>Say whether the prices include VAT first.</span>}
       </div>
       <div role="status" aria-live="polite">
-        {problem && <p className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-sm text-danger-text">{problem}</p>}
       </div>
     </form>
   );
@@ -264,7 +264,7 @@ export function ImportApply({
         {counts.withProblems > 0 ? `, ${wholeNumber(counts.withProblems)} with problems` : ""}.
       </p>
       {confirming ? (
-        <div className="flex flex-col gap-3 rounded-md border border-border bg-background p-3" role="group" aria-label="Confirm the import">
+        <div className="flex flex-col gap-3 rounded-md border border-line bg-card p-3" role="group" aria-label="Confirm the import">
           <p className="text-sm">
             This will create {wholeNumber(counts.toCreate)} and update {wholeNumber(counts.toUpdate)} products. {IMPORT_CONFIRMATION}
           </p>
@@ -289,7 +289,7 @@ export function ImportApply({
       )}
       {writes === 0 && counts.unchanged === 0 && <p className={hint}>No product in this file can be imported. Fix the problems below, or change the options and check again.</p>}
       <div role="status" aria-live="polite">
-        {problem && <p className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-sm text-danger-text">{problem}</p>}
       </div>
     </section>
   );
@@ -316,7 +316,7 @@ export function CancelJobButton({ cancel, label: text = "Cancel" }: { cancel: ()
       >
         {pending ? "Stopping …" : text}
       </button>
-      {problem && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+      {problem && <p role="alert" className="text-sm text-danger-text">{problem}</p>}
     </div>
   );
 }

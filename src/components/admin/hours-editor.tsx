@@ -13,8 +13,8 @@ import {
   type WeekHours,
 } from "@/lib/opening-hours";
 
-const control = "min-h-10 rounded-md border border-border bg-background px-2 text-sm";
-const small = "min-h-10 rounded-md border border-border px-3 text-sm hover:bg-surface";
+const control = "min-h-10 rounded-md border border-line bg-card px-2 text-sm";
+const small = "min-h-10 rounded-md border border-edge px-3 text-sm hover:bg-sunken";
 const OPEN: NonNullable<DayHours> = { open: "09:00", close: "17:00" };
 
 /**
@@ -110,7 +110,7 @@ function ExceptionEditor({
 }) {
   const what = exception.kind === "season" ? "season" : "date";
   return (
-    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+    <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
       <legend className="px-1 text-xs font-medium tracking-wide text-muted uppercase">
         {exception.kind === "season" ? "Season" : "Single date"}
       </legend>
@@ -232,7 +232,7 @@ function DayRow({
             onChange={(e) => onChange({ ...hours, close: e.target.value })}
             className={control}
           />
-          {backwards && <span className="text-xs text-red-700 dark:text-red-400">Closes before it opens</span>}
+          {backwards && <span className="text-xs text-danger-text">Closes before it opens</span>}
         </div>
       ) : (
         <span className="text-sm text-muted">Closed</span>

@@ -231,7 +231,7 @@ export function RecurringForm({
         </Field>
       </div>
 
-      <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+      <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
         <legend className="px-1 text-sm font-medium">Schedule</legend>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Every" error={err("interval")}>
@@ -292,7 +292,7 @@ export function RecurringForm({
         </Field>
       </fieldset>
 
-      <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
+      <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3">
         <legend className="px-1 text-sm font-medium">Sending</legend>
         {canAutoIssue ? (
           <label className="flex items-start gap-2 text-sm">

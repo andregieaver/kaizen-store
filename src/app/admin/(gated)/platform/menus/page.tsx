@@ -34,7 +34,7 @@ export default async function PlatformMenusPage({ searchParams }: PageProps<"/ad
         </p>
       </div>
       {/* The menu chosen in the address is read per request. */}
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-background" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
         <Menus searchParams={searchParams} />
       </Suspense>
     </>

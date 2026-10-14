@@ -11,7 +11,7 @@ import { hostSaveTaxDetailsAction } from "../actions";
 export const metadata: Metadata = { title: "Tax details" };
 
 const field = "flex flex-col gap-1 text-sm font-medium";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const hint = "font-normal text-muted";
 
 /**

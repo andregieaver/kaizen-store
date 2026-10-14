@@ -55,7 +55,7 @@ async function Recovery({ searchParams }: { searchParams: PageProps<"/admin/sign
               autoCapitalize="characters"
               spellCheck={false}
               maxLength={16}
-              className="min-h-10 rounded-md border border-border bg-background px-3 font-mono text-lg font-normal tracking-wider uppercase"
+              className="min-h-10 rounded-md border border-line bg-card px-3 font-mono text-lg font-normal tracking-wider uppercase"
             />
           </label>
           <SubmitButton>Use this code</SubmitButton>

@@ -78,7 +78,7 @@ export function AiWriter({
   const empty = draft ? Object.values(draft.written).some((text) => !text?.trim()) : true;
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-dashed border-border p-3">
+    <div className="flex flex-col gap-3 rounded-md border border-dashed border-line p-3">
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">Write with AI</span>
         {actions.map((action) => (
@@ -87,7 +87,7 @@ export function AiWriter({
             type="button"
             disabled={pending || !canWrite(action.kind, action.facts)}
             onClick={() => ask(action.kind, action.facts)}
-            className="min-h-9 rounded-pill border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
+            className="min-h-9 rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-50"
           >
             {action.label}
           </button>
@@ -99,7 +99,7 @@ export function AiWriter({
         )}
       </div>
       {problem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}
@@ -117,10 +117,10 @@ export function AiWriter({
                 rows={field === "description" ? 6 : 2}
                 lang={language}
                 aria-invalid={Boolean(findings[field])}
-                className="min-h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-normal"
+                className="min-h-10 w-full rounded-md border border-line bg-card px-3 py-2 text-sm font-normal"
               />
               {findings[field] && (
-                <ul className="flex flex-col gap-0.5 font-normal text-red-700 dark:text-red-400">
+                <ul className="flex flex-col gap-0.5 font-normal text-danger-text">
                   {findings[field].map((finding) => (
                     <li key={`${finding.index}-${finding.phrase}`}>
                       {CLAIM_LABELS[finding.kind]}: &ldquo;{finding.phrase}&rdquo;
@@ -148,7 +148,7 @@ export function AiWriter({
             >
               Use this
             </button>
-            <button type="button" onClick={() => setDraft(null)} className="min-h-10 rounded-pill border border-border px-4 text-sm hover:bg-surface">
+            <button type="button" onClick={() => setDraft(null)} className="min-h-10 rounded-pill border border-edge px-4 text-sm hover:bg-sunken">
               Discard
             </button>
           </div>

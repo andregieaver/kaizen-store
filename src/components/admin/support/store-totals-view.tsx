@@ -64,7 +64,7 @@ export function StoreTotalsView({ stores, cut = false, periodLabel }: { stores: 
           </thead>
           <tbody>
             {stores.map(({ store, mode, waiting: now, report }) => (
-              <tr key={store.id} className="border-t border-border">
+              <tr key={store.id} className="border-t border-line">
                 <th scope="row" className="py-2 pr-3 text-left font-normal">
                   <Link href={`/admin/platform/stores/${store.slug}`} className="underline">
                     {store.name}

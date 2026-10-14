@@ -59,7 +59,7 @@ function valueSize(value: string | null, emphasis: boolean): string {
 export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, deltaLastYear, good = "neutral", series, hint, href, emphasis = false, help }: KpiCardProps) {
   // A card is its own container, so its figure is sized by the room the card has, not by the screen: a narrow card in a row of four
   // keeps the figure whole at a smaller size instead of breaking it in the middle.
-  const box = `@container flex h-full min-w-0 flex-col justify-between gap-2 rounded-lg border border-border ${emphasis ? "bg-surface" : "bg-background"} p-4`;
+  const box = `@container flex h-full min-w-0 flex-col justify-between gap-2 rounded-lg border border-line ${emphasis ? "bg-sunken" : "bg-card"} p-4`;
   const title = help ? { title: help } : {};
 
   if (state === "missing") {

@@ -15,8 +15,8 @@ import { uploadImageAction } from "../../products/actions";
 
 export const metadata: Metadata = { title: "SEO & Reach" };
 
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-sm font-normal text-muted";
 
@@ -103,7 +103,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
             <p className={hint}>Empty fields use the store&apos;s name and a line Kaizen writes.</p>
           </div>
           {store.markets.map((market) => (
-            <fieldset key={market.code} className="flex min-w-0 flex-col gap-2 border-t border-border pt-4 first-of-type:border-0 first-of-type:pt-0">
+            <fieldset key={market.code} className="flex min-w-0 flex-col gap-2 border-t border-line pt-4 first-of-type:border-0 first-of-type:pt-0">
               <legend className="text-sm font-medium">
                 {market.name} <span className="font-normal text-muted">({languageNames[market.locale]})</span>
               </legend>

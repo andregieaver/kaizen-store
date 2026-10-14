@@ -16,7 +16,7 @@ import { deletePlaceAction, savePlaceAction } from "../../actions";
 export const metadata: Metadata = { title: "Place" };
 
 const field = "flex flex-col gap-1 text-sm font-medium";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /** A store or pickup point (D40): its address, directions and opening hours. */
 export default async function PlacePage({ params }: PageProps<"/admin/[store]/settings/company/places/[placeId]">) {
@@ -38,7 +38,7 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
       </div>
       <ActionForm
         action={savePlaceAction.bind(null, store.slug, place.id)}
-        className="flex flex-col gap-4 rounded-card border border-border bg-background p-5"
+        className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
       >
         <input type="hidden" name="kind" value={place.kind} />
         <label className={field}>
@@ -46,7 +46,7 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
           <input name="name" required maxLength={80} defaultValue={place.name} className={control} />
         </label>
         <PlaceFields place={place} countries={countries} defaultCountry={store.details.country ?? "NO"} what={`the ${what}`} />
-        <div className="border-t border-border pt-4">
+        <div className="border-t border-line pt-4">
           <h2 className="mb-3 text-sm font-medium">Opening hours</h2>
           <HoursEditor name="hours" initial={place.hours} optional />
         </div>

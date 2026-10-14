@@ -88,8 +88,8 @@ export function InvoicesListView({
               key={show}
               href={link({ show })}
               aria-current={current ? "page" : undefined}
-              className={`inline-flex min-h-9 items-center gap-2 rounded-full border border-border px-3 text-sm ${
-                current ? "bg-foreground text-background" : "bg-background"
+              className={`inline-flex min-h-9 items-center gap-2 rounded-full border border-edge px-3 text-sm ${
+                current ? "bg-brand text-brand-ink" : "bg-card"
               }`}
             >
               {SHOW_LABELS[show]}
@@ -151,7 +151,7 @@ export function InvoicesListView({
       </form>
 
       {list.rows.length === 0 ? (
-        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
           {empty
             ? "No invoices yet. Start one with New invoice, or from a client's unbilled time."
             : "No invoice matches. Try another tab or clear the filters."}
@@ -163,7 +163,7 @@ export function InvoicesListView({
               <InvoiceCard key={row.id} row={row} base={base} locale={locale} today={list.today} />
             ))}
           </ul>
-          <div className="hidden overflow-x-auto rounded-lg border border-border bg-background md:block">
+          <div className="hidden overflow-x-auto rounded-lg border border-line bg-card md:block">
             <table className="w-full text-sm">
               <caption className="sr-only">Invoices</caption>
               <thead>
@@ -195,7 +195,7 @@ export function InvoicesListView({
                 {list.rows.map((row) => {
                   const money = (minor: number) => formatMoney(minor, row.currency, locale);
                   return (
-                    <tr key={row.id} className="border-t border-border align-top">
+                    <tr key={row.id} className="border-t border-line align-top">
                       <td className="px-3 py-3 font-medium">
                         <Link href={`${base}/${row.id}`} className="underline">
                           {row.documentNumber ?? "Draft"}
@@ -264,7 +264,7 @@ function InvoiceCard({
 }) {
   const money = (minor: number) => formatMoney(minor, row.currency, locale);
   return (
-    <li className="rounded-lg border border-border bg-background p-3 text-sm">
+    <li className="rounded-lg border border-line bg-card p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
         <Link href={`${base}/${row.id}`} className="font-medium underline">
           {row.documentNumber ?? "Draft"}

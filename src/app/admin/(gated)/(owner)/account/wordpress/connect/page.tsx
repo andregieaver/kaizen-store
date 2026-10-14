@@ -29,7 +29,7 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
     return (
       <div className="flex max-w-xl flex-col gap-3">
         <h1 className="text-display text-ink">Connect a WordPress site</h1>
-        <p role="alert" className="rounded-lg border border-red-600 p-4 text-sm">
+        <p role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
           This request cannot be used: {read.reason} Start again from the plugin&apos;s settings in WordPress.
         </p>
       </div>
@@ -42,10 +42,10 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
     <div className="flex max-w-xl flex-col gap-5">
       <h1 className="text-display text-ink">Connect {host} to your stores?</h1>
       <p className="text-sm text-muted">
-        The Kaizen plugin on <strong className="text-foreground">{request.name}</strong> ({request.site}) asks to read the products of your stores, so
+        The Kaizen plugin on <strong className="text-ink">{request.name}</strong> ({request.site}) asks to read the products of your stores, so
         it can show them on its pages. Only approve a site you run.
       </p>
-      <section aria-labelledby="reads-heading" className="flex flex-col gap-2 rounded-lg border border-border bg-background p-4 text-sm">
+      <section aria-labelledby="reads-heading" className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4 text-sm">
         <h2 id="reads-heading" className="font-medium">
           What it can read
         </h2>

@@ -68,11 +68,11 @@ export default async function SubscriptionPage({
 
       <div className="grid gap-6 md:grid-cols-[1fr_18rem]">
         <div className="flex flex-col gap-6">
-          <section aria-labelledby="items" className="rounded-card border border-border bg-background p-5">
+          <section aria-labelledby="items" className="rounded-card border border-line bg-card p-5">
             <h2 id="items" className="mb-3 font-medium">Each renewal</h2>
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="py-2 font-medium">Product</th>
                   <th scope="col" className="py-2 font-medium">SKU</th>
                   <th scope="col" className="py-2 text-right font-medium">Qty</th>
@@ -81,7 +81,7 @@ export default async function SubscriptionPage({
               </thead>
               <tbody>
                 {subscription.lines.map((line) => (
-                  <tr key={line.id} className="border-b border-border">
+                  <tr key={line.id} className="border-b border-line">
                     <td className="py-2">
                       {line.title}
                       {line.delivery === "digital" && <span className="block text-xs text-muted">Digital download</span>}
@@ -106,7 +106,7 @@ export default async function SubscriptionPage({
           </section>
 
           {choices && (
-            <section aria-labelledby="change" className="rounded-card border border-border bg-background p-5 text-sm">
+            <section aria-labelledby="change" className="rounded-card border border-line bg-card p-5 text-sm">
               <h2 id="change" className="mb-1 font-medium">Change the next deliveries</h2>
               <p className="mb-3 text-muted">
                 A swapped item takes today&apos;s price with the purchase option&apos;s discount. Nothing is charged now; the
@@ -139,7 +139,7 @@ export default async function SubscriptionPage({
             </section>
           )}
 
-          <section aria-labelledby="orders" className="rounded-card border border-border bg-background p-5 text-sm">
+          <section aria-labelledby="orders" className="rounded-card border border-line bg-card p-5 text-sm">
             <h2 id="orders" className="mb-2 font-medium">Orders</h2>
             <ul className="flex flex-col gap-1">
               {subscription.orders.map((order) => (
@@ -158,7 +158,7 @@ export default async function SubscriptionPage({
         </div>
 
         <div className="flex flex-col gap-6">
-          <section aria-labelledby="customer" className="rounded-card border border-border bg-background p-5 text-sm">
+          <section aria-labelledby="customer" className="rounded-card border border-line bg-card p-5 text-sm">
             <h2 id="customer" className="mb-2 font-medium">
               {customer ? (
                 <Link href={`/admin/${store.slug}/customers/${customer.key}`} className="underline">
@@ -174,7 +174,7 @@ export default async function SubscriptionPage({
               <p className="text-muted">Not known until payment.</p>
             )}
           </section>
-          <section aria-labelledby="renewal" className="rounded-card border border-border bg-background p-5 text-sm">
+          <section aria-labelledby="renewal" className="rounded-card border border-line bg-card p-5 text-sm">
             <h2 id="renewal" className="mb-2 font-medium">Renewal</h2>
             <ul className="mb-3 flex flex-col gap-1">
               <li>

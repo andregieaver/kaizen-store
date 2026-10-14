@@ -2,8 +2,8 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { AUTO_ARCHIVE_MAX_DAYS, AUTO_ARCHIVE_MIN_DAYS, DRAFT_VALID_DAYS_MAX, DRAFT_VALID_DAYS_MIN, GIFT_MESSAGE_MAX, GIFT_NAME_MAX } from "@/lib/order-limits";
 import type { OrderSettings } from "@/server/order-settings";
 
-const input = "min-h-10 w-28 rounded-md border border-border bg-background px-3 text-sm disabled:opacity-60";
-const card = "flex flex-col gap-3 rounded-lg border border-border bg-background p-5";
+const input = "min-h-10 w-28 rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
+const card = "flex flex-col gap-3 rounded-lg border border-line bg-card p-5";
 const hint = "text-sm text-muted";
 
 /**

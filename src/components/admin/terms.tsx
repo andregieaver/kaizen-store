@@ -44,13 +44,13 @@ export type TermActions = {
   remove: (id: string) => Promise<TermsResult>;
 };
 
-const input = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
-const button = "min-h-10 rounded-md border border-border px-3 text-sm disabled:opacity-50";
+const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
+const button = "min-h-10 rounded-md border border-line px-3 text-sm disabled:opacity-50";
 
 function Problems({ problems }: { problems: string[] }) {
   if (problems.length === 0) return null;
   return (
-    <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+    <p role="alert" className="text-sm text-danger-text">
       {problems.join(" ")}
     </p>
   );
@@ -97,7 +97,7 @@ export function TermPicker({
                     <label
                       className={
                         kind === "tag"
-                          ? "flex min-h-9 cursor-pointer items-center gap-2 rounded-full border border-border px-3 text-sm has-checked:border-foreground has-checked:bg-surface"
+                          ? "flex min-h-9 cursor-pointer items-center gap-2 rounded-full border border-line px-3 text-sm has-checked:border-brand has-checked:bg-sunken"
                           : "flex min-h-8 items-center gap-2 text-sm"
                       }
                     >
@@ -236,7 +236,7 @@ export function TermsManager({
       {(["category", "tag"] as const).map((kind) => {
         const list = kind === "category" ? tree : tags.map((t) => ({ ...t, depth: 0 }));
         return (
-          <section key={kind} aria-labelledby={`${kind}-heading`} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+          <section key={kind} aria-labelledby={`${kind}-heading`} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
             <div className="flex flex-col gap-1">
               <h2 id={`${kind}-heading`} className="font-medium">
                 {TERM_LABELS[kind].many}
@@ -251,7 +251,7 @@ export function TermsManager({
             {list.length === 0 ? (
               <p className="text-sm text-muted">No {TERM_LABELS[kind].many.toLowerCase()} yet.</p>
             ) : (
-              <ul className="flex flex-col divide-y divide-border border-y border-border">
+              <ul className="flex flex-col divide-y divide-line border-y border-line">
                 {list.map((term) => (
                   <TermRow key={term.id} term={term} terms={terms} actions={actions} onTerms={setTerms} fields={fields} unitPrice={kind === "category" ? unitPrice : undefined} seo={seo} />
                 ))}
@@ -350,7 +350,7 @@ function NewTerm({
             <ParentSelect id={`${id}-parent`} terms={terms} value={parentId} onChange={setParentId} exclude={new Set()} />
           </div>
         )}
-        <button type="submit" disabled={busy || !name.trim()} className={`${button} bg-foreground font-medium text-background`}>
+        <button type="submit" disabled={busy || !name.trim()} className={`${button} bg-brand font-medium text-brand-ink`}>
           {busy ? "Adding …" : `Add ${one}`}
         </button>
       </div>
@@ -464,7 +464,7 @@ function TermRow({
           )}
           {seo && <p className="text-xs text-muted">If you change the address, the old address redirects to the new one.</p>}
           <div className="flex gap-2">
-            <button type="submit" disabled={busy} className={`${button} bg-foreground font-medium text-background`}>
+            <button type="submit" disabled={busy} className={`${button} bg-brand font-medium text-brand-ink`}>
               Save
             </button>
             <button
@@ -510,7 +510,7 @@ function TermRow({
                 type="button"
                 disabled={busy}
                 onClick={() => run(() => actions.remove(term.id), () => setConfirming(false))}
-                className={`${button} border-red-700 bg-red-700 font-medium text-white`}
+                className={`${button} border-danger-text bg-danger-soft font-medium text-danger-text`}
               >
                 Delete
               </button>

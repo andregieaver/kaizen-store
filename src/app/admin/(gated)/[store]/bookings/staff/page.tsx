@@ -24,30 +24,30 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/bo
           <h1 className="text-display text-ink">Staff and hours</h1>
           <p className="text-sm text-muted">Who takes appointments, and when. Choose who does each appointment in the product.</p>
         </div>
-        <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background">
+        <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
           Add staff
         </Link>
       </div>
       {staff.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">
+        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
           No one yet. Add the people who take appointments, with their working hours.
         </p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+        <ul className="divide-y divide-line rounded-lg border border-line bg-card">
           {staff.map((s) => (
             <li key={s.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
               <div className="min-w-0">
                 <Link href={`${base}/${s.id}`} className="font-medium underline-offset-2 hover:underline">
                   {s.name}
                 </Link>
-                {!s.active && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs">Not taking bookings</span>}
+                {!s.active && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs">Not taking bookings</span>}
                 <span className="block text-muted">{weekSummary(s.hours.week) || "No working hours"}</span>
                 <span className="block text-xs text-muted">
                   {s.services === 1 ? "1 appointment" : `${s.services} appointments`} · {s.upcoming} booked ahead
                   {s.capacity > 1 && ` · ${s.capacity} at once`}
                 </span>
               </div>
-              <Link href={`${base}/${s.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-surface">
+              <Link href={`${base}/${s.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-sunken">
                 Edit <span className="sr-only">{s.name}</span>
               </Link>
             </li>

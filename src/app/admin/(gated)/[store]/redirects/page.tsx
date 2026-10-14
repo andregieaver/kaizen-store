@@ -115,7 +115,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           )}
         </form>
         {list.rows.length === 0 ? (
-          <p className="rounded-lg border border-border bg-surface p-6 text-center text-sm">{emptyListWords(q, filter)}</p>
+          <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">{emptyListWords(q, filter)}</p>
         ) : (
           <RedirectTable rows={list.rows} timeZone={store.timeZone} actions={actions} canWrite={canWrite} />
         )}

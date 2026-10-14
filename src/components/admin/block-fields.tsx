@@ -295,8 +295,8 @@ export function editorFor(block: PageBlock): BlockEditor<PageBlock> | undefined 
 // Shared fields
 // ---------------------------------------------------------------------------
 
-export const fieldClass = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
-export const smallButton = "min-h-9 rounded-md border border-border px-3 text-sm disabled:opacity-40";
+export const fieldClass = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
+export const smallButton = "min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40";
 
 /** A labelled line of text. */
 export function TextField({
@@ -434,7 +434,7 @@ export function Choices<T extends string>({
           <label
             key={option.value}
             // `relative` keeps the hidden radio inside its button, not at the dialog's edge, where it would make the dialog scroll.
-            className="relative flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm has-checked:border-foreground has-checked:bg-surface has-checked:font-medium has-focus-visible:outline-2 has-disabled:cursor-default"
+            className="relative flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-line px-3 text-sm has-checked:border-brand has-checked:bg-sunken has-checked:font-medium has-focus-visible:outline-2 has-disabled:cursor-default"
           >
             <input
               type="radio"
@@ -624,9 +624,9 @@ export function LinkFields({
           aria-invalid={Boolean(problem && address)}
           aria-describedby={`${id}-hint`}
           onChange={(event) => onChange({ href: event.target.value })}
-          className={`${fieldClass} aria-invalid:border-red-700`}
+          className={`${fieldClass} aria-invalid:border-danger-text`}
         />
-        <span id={`${id}-hint`} className={`text-xs ${problem && address ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+        <span id={`${id}-hint`} className={`text-xs ${problem && address ? "text-danger-text " : "text-muted"}`}>
           {problem ?? "A page on this site, another site, an email or a phone number."}
         </span>
       </div>
@@ -704,7 +704,7 @@ export function ItemsEditor<T extends { id: string }>({
                     type="button"
                     aria-expanded={expanded}
                     onClick={() => setOpen(expanded ? null : item.id)}
-                    className="min-h-9 flex-1 truncate rounded px-2 text-left text-sm font-medium hover:bg-surface"
+                    className="min-h-9 flex-1 truncate rounded px-2 text-left text-sm font-medium hover:bg-sunken"
                   >
                     <span aria-hidden className="mr-2 inline-block w-3 text-muted">
                       {expanded ? "▾" : "▸"}
@@ -744,7 +744,7 @@ export function ItemsEditor<T extends { id: string }>({
                     type="button"
                     onClick={() => onChange(items.filter((i) => i.id !== item.id))}
                     aria-label={`Remove ${name}`}
-                    className={`${smallButton} text-red-700 dark:text-red-400`}
+                    className={`${smallButton} text-danger-text `}
                   >
                     Remove
                   </button>
@@ -781,7 +781,7 @@ function SortableItem({ id, name, body, children }: { id: string; name: string; 
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`rounded-md border border-border bg-background ${isDragging ? "relative z-10 shadow-lg" : ""}`}
+      className={`rounded-md border border-line bg-card ${isDragging ? "relative z-10 shadow-lg" : ""}`}
     >
       <div className="flex items-center gap-1 p-1">
         <button
@@ -789,13 +789,13 @@ function SortableItem({ id, name, body, children }: { id: string; name: string; 
           {...attributes}
           {...listeners}
           aria-label={`Drag ${name} to move it`}
-          className="min-h-9 cursor-grab touch-none rounded px-1.5 text-muted hover:bg-surface active:cursor-grabbing"
+          className="min-h-9 cursor-grab touch-none rounded px-1.5 text-muted hover:bg-sunken active:cursor-grabbing"
         >
           <span aria-hidden>⠿</span>
         </button>
         {children}
       </div>
-      {body && <div className="flex flex-col gap-4 border-t border-border p-3">{body}</div>}
+      {body && <div className="flex flex-col gap-4 border-t border-line p-3">{body}</div>}
     </li>
   );
 }
@@ -832,7 +832,7 @@ function SeparatorFields({ block, onChange }: BlockEditorProps<SeparatorBlock>) 
 /** A dual button's two buttons (D91): each one's text, address and new tab. */
 function DualButtonFields({ block, onChange }: BlockEditorProps<DualButtonBlock>) {
   const side = (which: "first" | "second", title: string, placeholder: string) => (
-    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+    <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
       <legend className="px-1 text-sm font-medium">{title}</legend>
       <LinkFields
         label={block[which].label}
@@ -858,7 +858,7 @@ function DualButtonStyleFields({ block, onChange }: BlockEditorProps<DualButtonB
     const variant = side.variant ?? fallback;
     const set = (patch: Partial<DualButtonSide>) => onChange({ [which]: { ...side, ...patch } });
     return (
-      <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+      <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
         <legend className="px-1 text-sm font-medium">{title}</legend>
         <Choices legend="Style" options={optionsOf(BUTTON_VARIANTS)} value={variant} onChange={(v) => set({ variant: v })} />
         <OptionalColor
@@ -1055,15 +1055,15 @@ function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]
     next.splice(to, 0, taken);
     onChange(next);
   };
-  const small = "min-h-9 rounded-md border border-border px-2 text-xs disabled:opacity-40";
+  const small = "min-h-9 rounded-md border border-line px-2 text-xs disabled:opacity-40";
   return (
-    <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3" data-answer-parts="">
+    <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3" data-answer-parts="">
       <legend className="px-1 text-sm font-medium">Components under the answer</legend>
       {blocks.length === 0 && <p className="text-xs text-muted">None yet. Add a button, a picture, a table or more under the answer&apos;s text.</p>}
       {blocks.length > 0 && (
         <ol className="flex flex-col gap-1">
           {blocks.map((child, index) => (
-            <li key={child.id} className="flex flex-wrap items-center gap-1 rounded-md bg-surface px-2 py-1">
+            <li key={child.id} className="flex flex-wrap items-center gap-1 rounded-md bg-sunken px-2 py-1">
               <span className="mr-auto min-w-0 truncate text-sm">{answerPartName(child)}</span>
               {editPart && (
                 <button type="button" className={small} onClick={() => editPart(child.id)}>
@@ -1086,7 +1086,7 @@ function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]
       <div className="flex flex-wrap items-end gap-2">
         <label htmlFor={`${id}-kind`} className="flex flex-col gap-1 text-xs font-medium">
           Component
-          <select id={`${id}-kind`} value={kind} onChange={(event) => setKind(event.target.value as FaqChildType)} className="min-h-9 rounded-md border border-border bg-background px-2 text-sm font-normal">
+          <select id={`${id}-kind`} value={kind} onChange={(event) => setKind(event.target.value as FaqChildType)} className="min-h-9 rounded-md border border-line bg-card px-2 text-sm font-normal">
             {FAQ_CHILD_TYPES.map((type) => (
               <option key={type} value={type}>
                 {ANSWER_PART_NAMES[type]}
@@ -1103,7 +1103,7 @@ function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]
             // Its settings open at once, so it can be filled in.
             if (editPart) window.setTimeout(() => editPart(child.id), 0);
           }}
-          className="min-h-9 rounded-md border border-border px-3 text-sm disabled:opacity-40"
+          className="min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40"
         >
           Add
         </button>
@@ -1183,7 +1183,7 @@ function VideoFields({ block, onChange, context }: BlockEditorProps<VideoBlock>)
         <p className="text-sm font-medium">Picture before it plays</p>
         {block.poster && (
           // eslint-disable-next-line @next/next/no-img-element -- the site's own picture, shown as it is
-          <img src={block.poster.url} alt="" className="h-24 w-fit rounded-md border border-border object-cover" />
+          <img src={block.poster.url} alt="" className="h-24 w-fit rounded-md border border-line object-cover" />
         )}
         <div className="flex flex-wrap items-center gap-3">
           <ImageUploadButton upload={context.upload} label={block.poster ? "Choose another picture" : "Choose a picture"} onUploaded={(poster) => onChange({ poster })} />
@@ -1446,7 +1446,7 @@ export function CarouselFields({ value, onChange }: { value: CarouselSettings | 
                 if (typed !== null) set({ autoplay: { seconds: normalizeSeconds(typed === "" ? seconds : Number(typed)) } });
                 setTyped(null);
               }}
-              className="min-h-10 w-20 rounded-md border border-border bg-background px-2 text-sm"
+              className="min-h-10 w-20 rounded-md border border-line bg-card px-2 text-sm"
             />
             <span className="text-muted">
               ({AUTOPLAY_SECONDS.min} to {AUTOPLAY_SECONDS.max})
@@ -1534,7 +1534,7 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
                       id={`${sourceId}-${item.id}`}
                       value={source}
                       onChange={(event) => change({ source: event.target.value === "upload" ? undefined : (event.target.value as VideoSource) })}
-                      className="min-h-10 rounded-md border border-border bg-background px-3"
+                      className="min-h-10 rounded-md border border-line bg-card px-3"
                     >
                       {(Object.keys(VIDEO_SOURCES) as VideoSource[]).map((key) => (
                         <option key={key} value={key}>
@@ -1584,7 +1584,7 @@ function GalleryFields({ block, onChange, context }: BlockEditorProps<GalleryBlo
                 <div className="flex flex-wrap items-center gap-3">
                   {item.picture && (
                     // eslint-disable-next-line @next/next/no-img-element -- the owner's own picture, shown small
-                    <img src={item.picture.url} alt="" className="h-16 w-24 rounded border border-border object-cover" />
+                    <img src={item.picture.url} alt="" className="h-16 w-24 rounded border border-line object-cover" />
                   )}
                   <ImageUploadButton
                     upload={context.upload}
@@ -1653,7 +1653,7 @@ function GalleryStyleFields({ block, onChange }: BlockEditorProps<GalleryBlock>)
         onChange={(on) => onChange({ lightbox: on ? undefined : false })}
       />
       <Check label="Show the captions" hint="Under the tiles; the lightbox shows them still." checked={block.showCaptions !== false} onChange={(on) => onChange({ showCaptions: on ? undefined : false })} />
-      <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+      <fieldset className="flex flex-col gap-3 border-t border-line pt-4">
         <legend className="float-left mb-1 w-full font-medium">Zoom on hover</legend>
         <NumberField
           label="How much a picture grows"
@@ -1731,7 +1731,7 @@ function BrandsFields({ block, onChange, context }: BlockEditorProps<BrandsBlock
               <div className="flex flex-wrap items-center gap-3">
                 {item.picture && (
                   // eslint-disable-next-line @next/next/no-img-element -- the owner's own logo, shown as it is
-                  <img src={item.picture.url} alt="" className="h-12 max-w-32 rounded border border-border bg-background object-contain p-1" />
+                  <img src={item.picture.url} alt="" className="h-12 max-w-32 rounded border border-line bg-card object-contain p-1" />
                 )}
                 <ImageUploadButton upload={context.upload} label={item.picture ? "Choose another" : "Upload a logo"} onUploaded={(picture) => change({ picture })} />
                 {item.picture && (
@@ -1952,7 +1952,7 @@ function IconPicker({ value, onChange }: { value: IconName; onChange: (icon: Ico
             title={ICONS[icon]}
             onClick={() => onChange(icon)}
             className={`flex size-10 items-center justify-center rounded-md border ${
-              icon === value ? "border-foreground bg-foreground text-background" : "border-border hover:bg-surface"
+              icon === value ? "border-brand bg-brand text-brand-ink" : "border-edge hover:bg-sunken"
             }`}
           >
             <ListIcon name={icon} className="size-5" />
@@ -2000,7 +2000,7 @@ function IconListFields({ block, onChange }: BlockEditorProps<IconListBlock>) {
   );
 }
 
-const ICON_BUTTON = "inline-flex size-7 shrink-0 items-center justify-center rounded border border-border text-xs hover:bg-background disabled:opacity-40";
+const ICON_BUTTON = "inline-flex size-7 shrink-0 items-center justify-center rounded border border-line text-xs hover:bg-card disabled:opacity-40";
 
 /**
  * A table's cells (D194) as a grid of fields: every column has its own add and remove buttons above it and every row at its end,
@@ -2042,7 +2042,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
           maxLength={200}
           placeholder="Section title (optional)"
           aria-label={`Section title above row ${r + 1}`}
-          className="h-8 w-full rounded border border-dashed border-border bg-surface px-2 font-medium"
+          className="h-8 w-full rounded border border-dashed border-line bg-sunken px-2 font-medium"
           onChange={(event) => setTable(setSection(table, r, event.target.value))}
         />
       </td>
@@ -2064,7 +2064,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                       value={text}
                       maxLength={TABLE_CELL_MAX}
                       aria-label={block.header && r === 0 ? `Heading of column ${c + 1}` : `Row ${r + 1}, column ${c + 1}`}
-                      className={`h-8 w-32 rounded border border-border bg-background px-2 ${block.header && r === 0 ? "font-medium" : ""}`}
+                      className={`h-8 w-32 rounded border border-line bg-card px-2 ${block.header && r === 0 ? "font-medium" : ""}`}
                       onFocus={(event) => (lastCell.current = { r, c, input: event.currentTarget })}
                       onChange={(event) => set(setCell(rows, r, c, event.target.value))}
                     />
@@ -2092,7 +2092,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
     <>
       <Check label="First row is a header" hint="Column names: read out by screen readers, and shown beside each value on a phone." checked={Boolean(block.header)} onChange={(header) => onChange({ header: header || undefined })} />
       <TextField label="Title (optional)" value={block.caption ?? ""} max={200} placeholder="Sizes and prices" onChange={(caption) => onChange({ caption: caption || undefined })} />
-      <div className="overflow-x-auto rounded border border-border p-2">
+      <div className="overflow-x-auto rounded border border-line p-2">
         <table className="border-separate border-spacing-1 text-sm">
           <thead>
             <tr>
@@ -2143,10 +2143,10 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
         </table>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="min-h-9 rounded border border-border px-3 text-sm hover:bg-background disabled:opacity-40" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => setTable(addRowTo(table))}>
+        <button type="button" className="min-h-9 rounded border border-line px-3 text-sm hover:bg-card disabled:opacity-40" disabled={rows.length >= TABLE_ROWS_MAX} onClick={() => setTable(addRowTo(table))}>
           Add row
         </button>
-        <button type="button" className="min-h-9 rounded border border-border px-3 text-sm hover:bg-background disabled:opacity-40" disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows))}>
+        <button type="button" className="min-h-9 rounded border border-line px-3 text-sm hover:bg-card disabled:opacity-40" disabled={columns >= TABLE_COLUMNS_MAX} onClick={() => set(addColumn(rows))}>
           Add column
         </button>
       </div>
@@ -2169,11 +2169,11 @@ function TableIconPalette({ onPick }: { onPick: (name: IconName) => void }) {
       <div className="flex flex-wrap items-center gap-1">
         {TABLE_ICONS.map((name) => (
           // The press keeps the focus in the cell, so the icon goes where the cursor is.
-          <button key={name} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onPick(name)} aria-label={`Put ${ICONS[name]} in the cell`} title={ICONS[name]} className="flex size-9 items-center justify-center rounded border border-border hover:bg-background">
+          <button key={name} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => onPick(name)} aria-label={`Put ${ICONS[name]} in the cell`} title={ICONS[name]} className="flex size-9 items-center justify-center rounded border border-line hover:bg-card">
             <ListIcon name={name} className="size-5" />
           </button>
         ))}
-        <select aria-label="More icons" value="" onChange={(event) => event.target.value && onPick(event.target.value as IconName)} className="h-9 rounded border border-border bg-background px-2 text-sm">
+        <select aria-label="More icons" value="" onChange={(event) => event.target.value && onPick(event.target.value as IconName)} className="h-9 rounded border border-line bg-card px-2 text-sm">
           <option value="">More…</option>
           {(Object.keys(ICONS) as IconName[]).map((name) => (
             <option key={name} value={name}>
@@ -2195,7 +2195,7 @@ function SortableRows({ id, label, children }: { id: string; label: string; chil
     </button>
   );
   return (
-    <tbody ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? "relative z-10 bg-background shadow-lg" : undefined}>
+    <tbody ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={isDragging ? "relative z-10 bg-card shadow-lg" : undefined}>
       {children(handle)}
     </tbody>
   );
@@ -2606,7 +2606,7 @@ export function FieldsSettingsFields({
     return (
       <div className="flex flex-col gap-5">
         {sourceSelect}
-        <p className="rounded-md bg-surface p-3 text-sm text-muted">
+        <p className="rounded-md bg-sunken p-3 text-sm text-muted">
           There are no custom fields for {words} yet. Make a group under Custom fields in the store&apos;s menu, then choose it here.
         </p>
       </div>
@@ -2710,7 +2710,7 @@ export function BindFields({
     ...(fallback && { fallback: true }),
   });
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+    <div className="flex flex-col gap-3 rounded-md border border-line p-3">
       {!storeOnly && storeHasGroups && (
         <div className="flex flex-col gap-1">
           <label htmlFor={sourceId} className="text-sm font-medium">
@@ -2773,7 +2773,7 @@ export function BindBadge({ bind }: { bind: FieldBinding }) {
   const groups = useContext(FieldGroupsContext);
   const def = (groups ?? []).flatMap((group) => group.fields).find((f) => f.id === bind.fieldId);
   return (
-    <p className="mb-1 w-fit rounded border border-dashed border-border px-1.5 py-0.5 text-[11px] text-muted">
+    <p className="mb-1 w-fit rounded border border-dashed border-line px-1.5 py-0.5 text-[11px] text-muted">
       {`From field: ${def?.label ?? "one that is gone"}${bind.fallback ? " (own content if empty)" : ""}`}
     </p>
   );
@@ -2816,7 +2816,7 @@ export function LoopSettingsFields({
 
   if (repeaters.length === 0) {
     return (
-      <p className="rounded-md bg-surface p-3 text-sm text-muted">
+      <p className="rounded-md bg-sunken p-3 text-sm text-muted">
         There is no repeater among the custom fields for {words} yet. Add a field of the kind Repeater to a group under Custom fields in the store&apos;s menu, then choose it here.
       </p>
     );
@@ -2865,7 +2865,7 @@ export function LoopSettingsFields({
         />
       )}
       {chosen && (
-        <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+        <div className="flex flex-col gap-3 rounded-md border border-line p-3">
           <p className="text-sm font-medium">What each row shows</p>
           {LOOP_SLOT_KEYS.map((slot) => (
             <SlotPicker
@@ -2958,7 +2958,7 @@ export function TileFieldsPicker({
     onChange(next.length > 0 ? next : undefined);
   };
   return (
-    <fieldset className="flex flex-col gap-2 border-t border-border pt-4">
+    <fieldset className="flex flex-col gap-2 border-t border-line pt-4">
       <legend className="float-left mb-2 w-full text-sm font-medium">
         Show fields on tiles <span className="font-normal text-muted">(up to {TILE_FIELDS_MAX})</span>
       </legend>
@@ -3016,12 +3016,12 @@ export function LoopStandIn({ value, entities }: { value: LoopConfig; entities: 
             {[0, 1, 2].slice(0, layout === "list" ? 2 : Math.min(columns, 3)).map((n) => (
               <span
                 key={n}
-                className={`flex gap-2 rounded-lg border border-border p-2 ${layout === "list" ? "flex-row items-center" : "flex-col"}`}
+                className={`flex gap-2 rounded-lg border border-line p-2 ${layout === "list" ? "flex-row items-center" : "flex-col"}`}
               >
-                {slots.image && <span className={layout === "list" ? "size-10 shrink-0 rounded bg-foreground/10" : "aspect-video rounded bg-foreground/10"} />}
+                {slots.image && <span className={layout === "list" ? "size-10 shrink-0 rounded bg-inverse/10" : "aspect-video rounded bg-inverse/10"} />}
                 <span className="flex flex-1 flex-col gap-1">
-                  <span className="h-2.5 w-2/3 rounded bg-foreground/20" />
-                  {slots.text && <span className="h-2 w-full rounded bg-foreground/10" />}
+                  <span className="h-2.5 w-2/3 rounded bg-inverse/20" />
+                  {slots.text && <span className="h-2 w-full rounded bg-inverse/10" />}
                 </span>
               </span>
             ))}
@@ -3062,14 +3062,14 @@ export function FieldsStandIn({
   const names = single ? (field ? [field] : []) : shownGroups.flatMap(publicFields);
   const label = (name: string, n: number) =>
     display === "cards" ? (
-      <span key={n} className="flex flex-col gap-1 rounded-lg border border-border p-2">
+      <span key={n} className="flex flex-col gap-1 rounded-lg border border-line p-2">
         {value.showLabel !== false && <span className="text-[10px] font-medium tracking-wide text-muted uppercase">{name}</span>}
-        <span className="h-2.5 w-2/3 rounded bg-foreground/10" />
+        <span className="h-2.5 w-2/3 rounded bg-inverse/10" />
       </span>
     ) : (
-      <span key={n} className="flex items-center gap-3 border-b border-border py-1.5 last:border-b-0">
+      <span key={n} className="flex items-center gap-3 border-b border-line py-1.5 last:border-b-0">
         {value.showLabel !== false && <span className="w-1/3 truncate text-muted">{display === "list" ? `${name}:` : name}</span>}
-        <span className="h-2.5 flex-1 rounded bg-foreground/10" />
+        <span className="h-2.5 flex-1 rounded bg-inverse/10" />
       </span>
     );
 

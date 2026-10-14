@@ -119,22 +119,22 @@ function Form({
         maxLength={SAVED_NAME_MAX}
         required
         autoFocus
-        className="min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+        className="min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm"
       />
       {canShare && <SharingChoice value={shared} onChange={setShared} />}
       {problems.length > 0 && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problems.join(" ")}
         </p>
       )}
       <div className="flex flex-wrap justify-end gap-2">
-        <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-border px-4 text-sm">
+        <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-line px-4 text-sm">
           Cancel
         </button>
         <button
           type="submit"
           disabled={busy}
-          className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+          className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
         >
           {busy ? "Saving …" : "Save template"}
         </button>

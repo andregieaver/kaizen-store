@@ -16,7 +16,7 @@ import { addRuleAction, removeRuleAction, saveRecommendSettingsAction } from "./
 
 export const metadata: Metadata = { title: "Recommendations" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const KIND_WORDS: Record<RuleKind, string> = { goes_with: "goes with", never_with: "is never shown with", hide: "is never recommended" };
 
 /**
@@ -61,7 +61,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         </p>
       </div>
 
-      <section aria-labelledby="settings" className="flex max-w-2xl flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="settings" className="flex max-w-2xl flex-col gap-3 rounded-card border border-line bg-card p-5">
         <h2 id="settings" className="font-medium">Settings</h2>
         <ActionForm action={saveRecommendSettingsAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm font-medium">
@@ -110,9 +110,9 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           and a hidden product is never recommended anywhere. Margins are not part of the catalogue, so the ceiling above is the upsell rule.
         </p>
         {rules.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border bg-background p-6 text-center text-sm text-muted">No rules yet.</p>
+          <p className="rounded-lg border border-dashed border-line bg-card p-6 text-center text-sm text-muted">No rules yet.</p>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card">
             {rules.map((rule) => (
               <li key={rule.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm">
                 <span>
@@ -127,7 +127,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
             ))}
           </ul>
         )}
-        <ActionForm action={addRuleAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3 rounded-lg border border-border bg-background p-4">
+        <ActionForm action={addRuleAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card p-4">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Product
             <select name="productId" required className={control} defaultValue="">
@@ -166,14 +166,14 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         </p>
         {replay ? (
           replay.evaluated === 0 ? (
-            <p className="rounded-lg border border-dashed border-border bg-background p-6 text-center text-sm text-muted">
+            <p className="rounded-lg border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
               No order to check yet: the store needs paid orders of two goods or more that are still on sale ({replay.considered} found, {replay.skipped.notOnSaleNow} of them for products not on sale now).
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-border bg-background">
+            <div className="overflow-x-auto rounded-lg border border-line bg-card">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b border-line">
                     <th scope="col" className="px-4 py-2 font-medium">Shown to everyone</th>
                     <th scope="col" className="px-4 py-2 font-medium">Product first</th>
                     <th scope="col" className="px-4 py-2 font-medium">Within the first 4</th>
@@ -183,7 +183,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
                 </thead>
                 <tbody>
                   {([["The engine", replay.engine], ["Best sellers alone", replay.bestSellers]] as const).map(([name, r]) => (
-                    <tr key={name} className="border-b border-border last:border-0">
+                    <tr key={name} className="border-b border-line last:border-0">
                       <td className="px-4 py-2 font-medium">{name}</td>
                       <td className="px-4 py-2 tabular-nums">{r.hit[1]} %</td>
                       <td className="px-4 py-2 tabular-nums">{r.hit[4]} %</td>
@@ -193,7 +193,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
                   ))}
                 </tbody>
               </table>
-              <p className="border-t border-border px-4 py-2 text-xs text-muted">
+              <p className="border-t border-line px-4 py-2 text-xs text-muted">
                 {replay.evaluated} orders checked ({replay.skipped.notOnSaleNow} left out because the product held back is not on sale now).
                 {replay.liftAt4 !== null && <> The engine finds it among the first 4 {replay.liftAt4} times as often as best sellers.</>}
                 {replay.evaluated < 30 && " Few orders: take it as a hint."}
@@ -212,7 +212,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           <h2 id="results" className="font-medium">What shoppers did</h2>
           <nav aria-label="Period" className="flex gap-2 text-sm">
             {REPORT_PERIODS.map((d) => (
-              <Link key={d} href={`${base}/recommendations?days=${d}`} aria-current={d === days ? "page" : undefined} className={`rounded-button border border-border px-3 py-1 ${d === days ? "bg-surface font-medium" : ""}`}>
+              <Link key={d} href={`${base}/recommendations?days=${d}`} aria-current={d === days ? "page" : undefined} className={`rounded-button border border-line px-3 py-1 ${d === days ? "bg-sunken font-medium" : ""}`}>
                 {d} days
               </Link>
             ))}
@@ -222,10 +222,10 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           Visitors are browser tabs that were shown a recommendation (a random id kept in the tab, never joined to a person). Revenue is what the
           recommended products&apos; lines came to, with VAT and after discounts, in orders of a cart they were added to from a recommendation, placed within 14 days; per currency, never added across them.
         </p>
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Ranking</th>
                 <th scope="col" className="px-4 py-2 font-medium">Visitors</th>
                 <th scope="col" className="px-4 py-2 font-medium">Shown</th>
@@ -242,7 +242,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
                 const ctr = percentOf(arm.clicks, arm.impressions);
                 const addRate = percentOf(arm.adds, arm.clicks);
                 return (
-                  <tr key={arm.arm} className="border-b border-border align-top last:border-0">
+                  <tr key={arm.arm} className="border-b border-line align-top last:border-0">
                     <td className="px-4 py-2 font-medium">{arm.arm === "ai" ? "With the AI" : "Plain ranking"}</td>
                     <td className="px-4 py-2 tabular-nums">{arm.visitors}</td>
                     <td className="px-4 py-2 tabular-nums">{arm.impressions}</td>
@@ -262,7 +262,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
             </tbody>
           </table>
         </div>
-        <p className="rounded-lg border border-border bg-background p-4 text-sm" role="status">
+        <p className="rounded-lg border border-line bg-card p-4 text-sm" role="status">
           <strong className="font-medium">The AI&apos;s order against the plain one: </strong>
           {report.comparison.words}
           {report.comparison.clicked.p !== null && (
@@ -274,10 +274,10 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           )}
         </p>
         {report.placements.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-border bg-background">
+          <div className="overflow-x-auto rounded-lg border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="px-4 py-2 font-medium">Where</th>
                   <th scope="col" className="px-4 py-2 font-medium">Shown</th>
                   <th scope="col" className="px-4 py-2 font-medium">Clicked</th>
@@ -286,7 +286,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
               </thead>
               <tbody>
                 {report.placements.map((p) => (
-                  <tr key={p.placement} className="border-b border-border last:border-0">
+                  <tr key={p.placement} className="border-b border-line last:border-0">
                     <td className="px-4 py-2">{{ product: "Product pages", listing: "All products page", article: "Articles", page: "Other pages", other: "Working pages" }[p.placement]}</td>
                     <td className="px-4 py-2 tabular-nums">{p.impressions}</td>
                     <td className="px-4 py-2 tabular-nums">{p.clicks}</td>
@@ -298,10 +298,10 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           </div>
         )}
         {report.topProducts.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-border bg-background">
+          <div className="overflow-x-auto rounded-lg border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="px-4 py-2 font-medium">Most clicked products</th>
                   <th scope="col" className="px-4 py-2 font-medium">Shown</th>
                   <th scope="col" className="px-4 py-2 font-medium">Clicked</th>
@@ -310,7 +310,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
               </thead>
               <tbody>
                 {report.topProducts.map((p) => (
-                  <tr key={p.productId} className="border-b border-border last:border-0">
+                  <tr key={p.productId} className="border-b border-line last:border-0">
                     <td className="px-4 py-2">{p.title}</td>
                     <td className="px-4 py-2 tabular-nums">{p.impressions}</td>
                     <td className="px-4 py-2 tabular-nums">{p.clicks}</td>

@@ -96,7 +96,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
               }}
             />
           )}
-          <Link href={storeHref(store.slug, storeBase(store.slug))} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-border px-3 hover:bg-surface">
+          <Link href={storeHref(store.slug, storeBase(store.slug))} className="flex min-h-10 items-center gap-1.5 rounded-pill border border-edge px-3 hover:bg-sunken">
             <span className="hidden sm:inline">View store</span>
             <span className="sr-only sm:hidden">View store</span>
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
@@ -123,7 +123,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       fullWidth={FULL_WIDTH}
     >
       {store.starter && (
-        <div role="status" className="mb-4 rounded-lg border border-border bg-surface p-4 text-sm">
+        <div role="status" className="mb-4 rounded-lg border border-line bg-sunken p-4 text-sm">
           <p className="font-medium">This store is a store template.</p>
           <p className="text-muted">
             New stores made from it start with its products, services, staff, pages, menus, settings and page drafts, as they were when it was
@@ -141,7 +141,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         </div>
       )}
       {!open && (
-        <div role="status" className="mb-4 rounded-lg border border-border bg-surface p-4 text-sm">
+        <div role="status" className="mb-4 rounded-lg border border-line bg-sunken p-4 text-sm">
           <p className="font-medium">{store.status === "suspended" ? "This store is suspended." : "This store is closed."}</p>
           <p className="text-muted">
             {store.status === "suspended"

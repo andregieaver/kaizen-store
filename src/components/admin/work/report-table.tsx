@@ -40,7 +40,7 @@ function Cells({ cells }: { cells: ReturnType<typeof reportCells> }) {
 
 function RowView({ row, by, locale, showCurrency }: { row: ReportRow; by: ReportGroupBy; locale: string; showCurrency: boolean }) {
   return (
-    <tr className="border-t border-border">
+    <tr className="border-t border-line">
       <th scope="row" className="px-3 py-2 text-left font-normal">
         {by === "assignment" && <span className="block text-xs text-muted">{row.clientName}</span>}
         <span className="[overflow-wrap:anywhere]">{rowLabel(row, by)}</span>
@@ -53,7 +53,7 @@ function RowView({ row, by, locale, showCurrency }: { row: ReportRow; by: Report
 
 function TotalView({ total, locale, many }: { total: ReportTotals; locale: string; many: boolean }) {
   return (
-    <tr className="border-t-2 border-border font-medium">
+    <tr className="border-t-2 border-line font-medium">
       <th scope="row" className="px-3 py-2 text-left">
         Total{many ? ` (${total.currency})` : ""}
       </th>
@@ -71,7 +71,7 @@ export function ReportTable({ report, locale }: { report: PeriodReport; locale: 
   const currencies = new Set(report.rows.map((r) => r.currency));
   const many = report.totals.length > 1 || currencies.size > 1;
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-background">
+    <div className="overflow-x-auto rounded-lg border border-line bg-card">
       <table className="w-full text-sm">
         <caption className="sr-only">
           Work report from {report.from} to {report.to}, by {report.by}

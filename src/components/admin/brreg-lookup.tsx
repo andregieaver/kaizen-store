@@ -130,7 +130,7 @@ export function BrregLookup({
   const busy = status.kind === "busy";
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="rounded-lg border border-line bg-sunken p-4">
       <label htmlFor={`${id}-input`} className="mb-1 block text-sm font-medium">
         Fill in from the company register
       </label>
@@ -172,14 +172,14 @@ export function BrregLookup({
           <>
             <ul
               aria-label="Companies found"
-              className="flex flex-col divide-y divide-border rounded-md border border-border bg-background"
+              className="flex flex-col divide-y divide-line rounded-md border border-line bg-card"
             >
               {status.hits.map((hit) => (
                 <li key={hit.organisationNumber}>
                   <button
                     type="button"
                     onClick={() => choose(hit)}
-                    className="flex w-full flex-wrap items-baseline justify-between gap-x-3 px-3 py-2 text-left hover:bg-surface"
+                    className="flex w-full flex-wrap items-baseline justify-between gap-x-3 px-3 py-2 text-left hover:bg-sunken"
                   >
                     <span className="font-medium">{readableName(hit.legalName)}</span>
                     <span className="text-xs text-muted">
@@ -209,7 +209,7 @@ export function BrregLookup({
  */
 export function RegisterNote({ company, fills }: { company: BrregCompany; fills: "client" | "company" }) {
   return (
-    <div role="status" className="rounded-md border border-border px-3 py-2 text-sm">
+    <div role="status" className="rounded-md border border-line px-3 py-2 text-sm">
       <p>
         Filled in from the register: {company.legalName}, {formatOrganisationNumber(company.organisationNumber)}
         {company.organisationFormName ? ` (${company.organisationFormName})` : ""}. Check the details below before you
@@ -222,7 +222,7 @@ export function RegisterNote({ company, fills }: { company: BrregCompany; fills:
         <p className={hintText}>The register has no address for this company: fill it in yourself.</p>
       )}
       {company.warnings.map((warning) => (
-        <p key={warning} className="font-medium text-red-700 dark:text-red-400">
+        <p key={warning} className="font-medium text-danger-text">
           {warning}
         </p>
       ))}

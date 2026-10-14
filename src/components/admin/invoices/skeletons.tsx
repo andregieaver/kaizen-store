@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The invoices page's shape while it is read: the heading, the four figures, the tabs, the filter and the table. */
 export function InvoicesSkeleton() {

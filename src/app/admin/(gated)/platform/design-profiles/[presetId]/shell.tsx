@@ -62,13 +62,13 @@ export function DesignShell({
           }}
         />
       </div>
-      <nav aria-label="Edit the design profile" className="-mb-2 flex flex-wrap gap-1 border-b border-border">
+      <nav aria-label="Edit the design profile" className="-mb-2 flex flex-wrap gap-1 border-b border-line">
         {DESIGN_TABS.map((item) => (
           <Link
             key={item.key}
             href={designTabHref(design.id, item.key)}
             aria-current={item.key === tab ? "page" : undefined}
-            className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm hover:text-foreground aria-[current=page]:border-foreground aria-[current=page]:font-medium"
+            className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm hover:text-ink aria-[current=page]:border-brand aria-[current=page]:font-medium"
           >
             {item.label}
           </Link>

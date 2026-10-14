@@ -56,7 +56,7 @@ export function RequestsView({
       </div>
 
       {overdue > 0 && (
-        <p role="alert" className="rounded-md border border-red-700 bg-background p-3 text-sm dark:border-red-400">
+        <p role="alert" className="rounded-md border border-danger-text bg-card p-3 text-sm">
           <span className={`font-medium ${alertText}`}>
             {overdue === 1 ? "1 request is" : `${overdue} requests are`} past its day.
           </span>{" "}
@@ -70,7 +70,7 @@ export function RequestsView({
             key={key}
             href={key === "open" ? `${base}/privacy` : `${base}/privacy?status=${key}`}
             aria-current={filter === key ? "page" : undefined}
-            className={`rounded-md border px-3 py-1.5 ${filter === key ? "border-foreground font-medium" : "border-border"}`}
+            className={`rounded-md border px-3 py-1.5 ${filter === key ? "border-brand font-medium" : "border-line"}`}
           >
             {FILTER_LABELS[key]}
           </Link>
@@ -98,7 +98,7 @@ export function RequestsView({
               </thead>
               <tbody>
                 {shown.map((r) => (
-                  <tr key={r.id} className="border-t border-border align-top">
+                  <tr key={r.id} className="border-t border-line align-top">
                     <td className="py-2 pr-3">
                       <Link href={`${base}/privacy/${r.id}`} className="font-medium underline">
                         {PRIVACY_KIND_LABELS[r.kind]}

@@ -101,7 +101,7 @@ describe("a variant's content in the product editor", () => {
 
   it("holds the preview's words in the admin's tokens, never a fixed colour", () => {
     const html = renderFields(variant({ measure: { amount: "250", unit: "g", base: null } }));
-    expect(html).toContain("border-border");
+    expect(html).toContain("border-line");
     expect(html).not.toMatch(/#[0-9a-f]{3,6}\b/i);
   });
 

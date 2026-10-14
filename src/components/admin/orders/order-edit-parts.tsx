@@ -15,7 +15,7 @@ export type OutsideInput = { method: ManualPaymentMethod; receivedOn?: string; r
 export function EditOutcome({ result }: { result: EditActionResponse | null }) {
   if (!result) return null;
   return (
-    <div role={result.ok ? "status" : "alert"} aria-live="polite" className={`flex flex-col gap-1 text-sm ${result.ok ? "" : "text-red-700 dark:text-red-400"}`}>
+    <div role={result.ok ? "status" : "alert"} aria-live="polite" className={`flex flex-col gap-1 text-sm ${result.ok ? "" : "text-danger-text "}`}>
       <p>{result.message}</p>
       {result.problems && result.problems.length > 0 && (
         <ul className="list-disc pl-5">
@@ -42,7 +42,7 @@ export function OutsidePaymentForm({ allowed, disabled, amountText, record }: { 
     return <p className={hint}>Only the owner can record a payment taken outside Kaizen, unless the owner allows staff to (Settings, Orders).</p>;
   }
   return (
-    <details className="rounded-md border border-border p-3">
+    <details className="rounded-md border border-line p-3">
       <summary className="cursor-pointer font-medium">Record as paid outside Kaizen</summary>
       <div className="mt-3 flex flex-col gap-3">
         <p className={hint}>
@@ -59,7 +59,7 @@ export function OutsidePaymentForm({ allowed, disabled, amountText, record }: { 
           ))}
         </fieldset>
         {method === "cash" && (
-          <p role="note" className="rounded-md border border-border bg-surface p-3">
+          <p role="note" className="rounded-md border border-line bg-sunken p-3">
             {CASH_WARNING}
           </p>
         )}

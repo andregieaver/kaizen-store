@@ -41,9 +41,9 @@ import {
   type WizardState,
 } from "@/lib/store-copy-wizard";
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
-const errorText = "text-sm text-red-700 dark:text-red-400";
-const button = "min-h-10 rounded-md border border-border bg-background px-3 text-sm disabled:opacity-40";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
+const errorText = "text-sm text-danger-text";
+const button = "min-h-10 rounded-md border border-line bg-card px-3 text-sm disabled:opacity-40";
 
 /** Where a problem sends the person: the field that has to change. */
 const fieldId = (problem: WizardProblem): string => {
@@ -96,7 +96,7 @@ const ChecklistRow = memo(function ChecklistRow({
 }) {
   return (
     <li>
-      <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-1.5 hover:bg-foreground/5">
+      <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-1.5 hover:bg-inverse/5">
         <input
           type="checkbox"
           checked={checked}
@@ -108,13 +108,13 @@ const ChecklistRow = memo(function ChecklistRow({
             // eslint-disable-next-line @next/next/no-img-element -- a small admin thumbnail
             <img src={row.image} alt="" loading="lazy" className="size-10 shrink-0 rounded object-cover" />
           ) : (
-            <span aria-hidden className="size-10 shrink-0 rounded bg-foreground/10" />
+            <span aria-hidden className="size-10 shrink-0 rounded bg-inverse/10" />
           ))}
         <span className="flex min-w-0 flex-1 flex-col text-sm">
           <span className="truncate font-medium">{row.title}</span>
           <span className="truncate text-muted">{row.secondary}</span>
         </span>
-        <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-muted">{row.badge}</span>
+        <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-xs text-muted">{row.badge}</span>
       </label>
     </li>
   );
@@ -148,7 +148,7 @@ function Checklist({
   const visible = shown.slice(0, limit);
   const thumbnails = kind === "products";
   return (
-    <div className="mt-3 flex flex-col gap-2 rounded-md border border-border p-3">
+    <div className="mt-3 flex flex-col gap-2 rounded-md border border-line p-3">
       <label className="flex flex-col gap-1 text-sm font-medium">
         Search {words.many}
         <input
@@ -199,9 +199,9 @@ function Checklist({
         <div
           role="group"
           aria-label={`${words.title} to copy`}
-          className="max-h-80 overflow-y-auto rounded-md border border-border"
+          className="max-h-80 overflow-y-auto rounded-md border border-line"
         >
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-line">
             {visible.map((row) => (
               <ChecklistRow
                 key={row.id}
@@ -213,7 +213,7 @@ function Checklist({
             ))}
           </ul>
           {shown.length > visible.length && (
-            <div className="border-t border-border p-2">
+            <div className="border-t border-line p-2">
               <button type="button" className={button} onClick={() => setLimit((n) => n + LIST_STEP)}>
                 Show {Math.min(LIST_STEP, shown.length - visible.length).toLocaleString("en")} more (
                 {(shown.length - visible.length).toLocaleString("en")} left)
@@ -253,7 +253,7 @@ function KindChoice({
   const mode = state.options[kind].mode;
   const errorId = `copy-${kind}-error`;
   return (
-    <fieldset className="flex min-w-0 flex-col gap-2 rounded-card border border-border bg-background p-5">
+    <fieldset className="flex min-w-0 flex-col gap-2 rounded-card border border-line bg-card p-5">
       <legend className="px-1 text-base font-medium">{words.title}</legend>
       <p className="text-sm text-muted">{hint}</p>
       {rows.length === 0 ? (
@@ -300,7 +300,7 @@ function KindChoice({
 /** A collapsed list of what is or is not copied. */
 function Details({ summary, children }: { summary: string; children: ReactNode }) {
   return (
-    <details className="rounded-lg border border-border bg-background p-4 text-sm">
+    <details className="rounded-lg border border-line bg-card p-4 text-sm">
       <summary className="cursor-pointer font-medium">{summary}</summary>
       <div className="mt-3 flex flex-col gap-2">{children}</div>
     </details>
@@ -381,7 +381,7 @@ export function StoreCopyWizard({
           ref={alertRef}
           role="alert"
           tabIndex={-1}
-          className="rounded-lg border border-red-700 p-4 text-sm text-red-700 dark:border-red-400 dark:text-red-400"
+          className="rounded-lg border border-danger-text p-4 text-sm text-danger-text"
         >
           <p className="font-medium">
             {messages.length > 0 ? "The copy was not started." : "Some choices need another look."}
@@ -394,7 +394,7 @@ export function StoreCopyWizard({
         </div>
       )}
 
-      <fieldset className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <fieldset className="flex min-w-0 flex-col gap-3 rounded-card border border-line bg-card p-5">
         <legend className="px-1 text-base font-medium">The new store</legend>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Store name
@@ -467,7 +467,7 @@ export function StoreCopyWizard({
         />
       ))}
 
-      <fieldset className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <fieldset className="flex min-w-0 flex-col gap-3 rounded-card border border-line bg-card p-5">
         <legend className="px-1 text-base font-medium">People and orders</legend>
         <div className="flex flex-col gap-1">
           <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
@@ -510,7 +510,7 @@ export function StoreCopyWizard({
           </p>
         </div>
         {needsDataConfirmation(options) && (
-          <div className="flex flex-col gap-1 rounded-md border border-border p-3">
+          <div className="flex flex-col gap-1 rounded-md border border-line p-3">
             <label className="flex min-h-10 items-start gap-2 text-sm font-medium">
               <input
                 id="copy-confirm"
@@ -559,7 +559,7 @@ export function StoreCopyWizard({
         </ul>
       </Details>
 
-      <section aria-label="Summary" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-label="Summary" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <p id={hintId} className="text-sm">
           {sentence}
         </p>
@@ -573,7 +573,7 @@ export function StoreCopyWizard({
             type="submit"
             aria-disabled={blocked || busy}
             aria-describedby={blocked ? `${hintId} ${reasonId}` : hintId}
-            className={`min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background ${blocked || busy ? "opacity-40" : ""}`}
+            className={`min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink ${blocked || busy ? "opacity-40" : ""}`}
           >
             {busy ? "Starting the copy …" : "Start copy"}
           </button>

@@ -29,7 +29,7 @@ export function OrderEditSummary({
   const problems = [...formProblems.map((text, i) => ({ code: "form", key: String(i), text })), ...(summary?.problems ?? [])].filter((p) => p.code !== "no_change");
   const unchanged = summary?.problems.some((p) => p.code === "no_change") ?? true;
   return (
-    <section aria-labelledby="edit-summary" aria-busy={state === "working"} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 text-sm">
+    <section aria-labelledby="edit-summary" aria-busy={state === "working"} className="flex flex-col gap-3 rounded-lg border border-line bg-sunken p-4 text-sm">
       <div className="flex items-baseline justify-between gap-2">
         <h2 id="edit-summary" className="font-medium">
           Summary
@@ -39,7 +39,7 @@ export function OrderEditSummary({
         </span>
       </div>
       {problems.length > 0 && (
-        <ul role="alert" className="flex flex-col gap-1 rounded-md border border-border bg-background p-3 text-red-700 dark:text-red-400">
+        <ul role="alert" className="flex flex-col gap-1 rounded-md border border-line bg-card p-3 text-danger-text">
           {problems.map((p, i) => (
             <li key={`${p.code}-${p.key ?? i}`}>{p.text}</li>
           ))}
@@ -51,7 +51,7 @@ export function OrderEditSummary({
         <>
           {unchanged && summary.takenOff.length === 0 && summary.added.length === 0 && summary.differenceMinor === 0 && <p className="text-muted">Nothing is changed yet.</p>}
           {summary.takenOff.length + summary.added.length > 0 && (
-            <ul className="flex flex-col divide-y divide-border" aria-label="What changes">
+            <ul className="flex flex-col divide-y divide-line" aria-label="What changes">
               {[...summary.takenOff, ...summary.added].map((line) => (
                 <li key={line.n} className="flex items-start justify-between gap-3 py-2">
                   <div className="min-w-0">
@@ -81,7 +81,7 @@ export function OrderEditSummary({
           <table className="w-full text-left">
             <caption className="sr-only">The order before and after the change</caption>
             <thead>
-              <tr className="border-b border-border text-xs text-muted">
+              <tr className="border-b border-line text-xs text-muted">
                 <th scope="col" className="py-1 font-normal" />
                 <th scope="col" className="py-1 text-right font-normal">
                   Before
@@ -108,7 +108,7 @@ export function OrderEditSummary({
                   <td className="py-1 text-right tabular-nums">{key === "discountMinor" && summary.after![key] > 0 ? `−${money(summary.after![key])}` : money(summary.after![key])}</td>
                 </tr>
               ))}
-              <tr className="border-t border-border font-medium">
+              <tr className="border-t border-line font-medium">
                 <th scope="row" className="py-1">
                   Total
                 </th>
@@ -133,7 +133,7 @@ export function OrderEditSummary({
               )}
             </ul>
           )}
-          <div className="flex flex-col gap-1 rounded-md border border-border bg-background p-3">
+          <div className="flex flex-col gap-1 rounded-md border border-line bg-card p-3">
             <p className="flex justify-between gap-3 font-medium">
               <span>Difference</span>
               <span className="tabular-nums">

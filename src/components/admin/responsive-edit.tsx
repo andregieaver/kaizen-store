@@ -62,12 +62,12 @@ export function SizeSwitch({ label }: { label: string }) {
         aria-label={`${label}: edited at ${SIZE_LABELS[size]}. Choose a screen size`}
         title="Edit at a screen size"
         onClick={() => setOpen((o) => !o)}
-        className="flex size-7 items-center justify-center rounded text-muted hover:bg-surface hover:text-foreground aria-expanded:bg-surface aria-expanded:text-foreground"
+        className="flex size-7 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink aria-expanded:bg-sunken aria-expanded:text-ink"
       >
         <DeviceIcon size={size} />
       </button>
       {open && (
-        <span id={id} role="group" aria-label="Screen sizes" className="inline-flex items-center gap-0.5 rounded border border-border bg-background p-0.5">
+        <span id={id} role="group" aria-label="Screen sizes" className="inline-flex items-center gap-0.5 rounded border border-line bg-card p-0.5">
           {SIZES.map((s) => (
             <button
               key={s}
@@ -79,7 +79,7 @@ export function SizeSwitch({ label }: { label: string }) {
                 choose(s);
                 setOpen(false);
               }}
-              className="flex size-7 items-center justify-center rounded text-muted hover:bg-surface hover:text-foreground aria-pressed:bg-foreground aria-pressed:text-background"
+              className="flex size-7 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink aria-pressed:bg-inverse aria-pressed:text-inverse-ink"
             >
               <DeviceIcon size={s} />
             </button>
@@ -125,7 +125,7 @@ export function SizeMark({
       {size !== "xl" &&
         (source.own ? (
           <>
-            <span data-size-own="" className="rounded bg-surface px-1.5 py-0.5 text-foreground">
+            <span data-size-own="" className="rounded bg-sunken px-1.5 py-0.5 text-ink">
               {sizeNote(source, size)}
             </span>
             <button
@@ -133,7 +133,7 @@ export function SizeMark({
               onClick={() => onPatch(clearAt(part, size, field))}
               aria-label={`Clear ${label.toLowerCase()} for ${SIZE_LABELS[size]}, to take it from the larger sizes again`}
               title="Clear: take it from the larger sizes"
-              className="flex size-6 items-center justify-center rounded text-muted hover:bg-surface hover:text-foreground"
+              className="flex size-6 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink"
             >
               <X aria-hidden className="size-3.5" />
             </button>
@@ -181,7 +181,7 @@ export function VisibilityFields({
   const hidden = new Set(part.visibility?.hideAt ?? []);
   const hint = useId();
   return (
-    <fieldset className="flex flex-col gap-3 border-t border-border pt-4">
+    <fieldset className="flex flex-col gap-3 border-t border-line pt-4">
       <legend className="float-left mb-1 w-full font-medium">Visibility</legend>
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium" id={`${hint}-label`}>
@@ -198,7 +198,7 @@ export function VisibilityFields({
                 disabled={Boolean(locked)}
                 onClick={() => onChange(visibilityPatch(part, size, !shown))}
                 title={`${SIZE_LABELS[size]}: ${shown ? "shown" : "hidden"}`}
-                className="flex min-h-10 items-center gap-2 rounded-pill border border-border px-3 text-sm text-muted aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background disabled:opacity-50"
+                className="flex min-h-10 items-center gap-2 rounded-pill border border-edge px-3 text-sm text-muted aria-pressed:border-brand aria-pressed:bg-inverse aria-pressed:text-inverse-ink disabled:opacity-50"
               >
                 <DeviceIcon size={size} />
                 <span>{SIZE_LABELS[size]}</span>
@@ -233,7 +233,7 @@ export function HiddenBadge({ hideAt }: { hideAt: Size[] | undefined }) {
     <span
       data-builder-hidden=""
       title={`Hidden on the site at: ${names}`}
-      className="pointer-events-none absolute top-1 right-1 z-20 hidden items-center gap-1 rounded border border-border bg-surface px-1.5 py-0.5 text-[11px] text-muted shadow-sm"
+      className="pointer-events-none absolute top-1 right-1 z-20 hidden items-center gap-1 rounded border border-line bg-sunken px-1.5 py-0.5 text-[11px] text-muted shadow-sm"
     >
       <Eye aria-hidden className="size-3.5" />
       <span>Hidden</span>
@@ -301,7 +301,7 @@ export function typingIn(target: EventTarget | null): boolean {
 export const isResponsiveShortcut = (event: { key: string; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }) =>
   (event.ctrlKey || event.metaKey) && event.shiftKey && !event.altKey && event.key.toLowerCase() === "r";
 
-const barField = "min-h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground";
+const barField = "min-h-9 rounded-md border border-line bg-card px-2 text-sm text-ink";
 
 /** A number typed and kept on leaving the field or Enter (kept within its range by the caller). */
 function PixelsField({ label, value, onCommit, min, max }: { label: string; value: number; onCommit: (value: number) => void; min: number; max: number }) {
@@ -361,7 +361,7 @@ export function ResponsiveBar({
       role="toolbar"
       aria-label="Responsive editing"
       data-responsive-bar=""
-      className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-background px-3 py-2 shadow-sm"
+      className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-card px-3 py-2 shadow-sm"
     >
       <label className="flex items-center gap-2 text-sm font-medium">
         <DeviceIcon size={view.size} />
@@ -403,7 +403,7 @@ export function ResponsiveBar({
         type="button"
         onClick={onExit}
         aria-keyshortcuts="Control+Shift+R Meta+Shift+R"
-        className="ml-auto min-h-9 rounded-pill border border-border px-3 text-sm font-medium hover:bg-surface"
+        className="ml-auto min-h-9 rounded-pill border border-edge px-3 text-sm font-medium hover:bg-sunken"
       >
         Exit
       </button>
@@ -420,7 +420,7 @@ export function ResponsiveToggle({ on, onToggle }: { on: boolean; onToggle: () =
       onClick={onToggle}
       aria-keyshortcuts="Control+Shift+R Meta+Shift+R"
       title="Responsive editing (Ctrl or ⌘ + Shift + R)"
-      className="flex min-h-9 items-center gap-2 rounded-md border border-border px-3 text-sm aria-pressed:border-foreground aria-pressed:bg-surface aria-pressed:font-medium"
+      className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-sm aria-pressed:border-brand aria-pressed:bg-sunken aria-pressed:font-medium"
     >
       <span aria-hidden className="flex items-center gap-0.5">
         <Monitor className="size-4" strokeWidth={1.75} />
@@ -440,7 +440,7 @@ export function HiddenPartsToggle({ hide, onChange }: { hide: boolean; onChange:
       aria-checked={hide}
       onClick={() => onChange(!hide)}
       title="Parts hidden at the size shown, never shown, or shown only to some visitors (by sign-in or conditions)"
-      className="flex min-h-9 items-center gap-2 rounded-md border border-border px-3 text-sm aria-checked:border-foreground aria-checked:bg-surface aria-checked:font-medium"
+      className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-sm aria-checked:border-brand aria-checked:bg-sunken aria-checked:font-medium"
     >
       <Eye aria-hidden className="size-4" strokeWidth={1.75} />
       {hide ? "Hidden parts left out" : "Hidden parts shown faded"}

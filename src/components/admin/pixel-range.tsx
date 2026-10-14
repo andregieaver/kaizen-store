@@ -51,14 +51,14 @@ export function PixelRange({
         onChange={(event) => onChange(Number(event.target.value))}
         onFocus={() => setShown(true)}
         onBlur={() => setShown(false)}
-        className="w-full accent-foreground disabled:opacity-50"
+        className="w-full accent-brand disabled:opacity-50"
       />
       <output
         aria-hidden
         data-pixel-tooltip=""
         // The bubble follows the thumb, which keeps half its own width from each end of the track.
         style={{ left: `calc(${share * 100}% + ${(0.5 - share) * 16}px)` }}
-        className={`pointer-events-none absolute -top-6 z-20 -translate-x-1/2 rounded bg-foreground px-1.5 py-0.5 text-xs whitespace-nowrap text-background tabular-nums shadow transition-opacity ${
+        className={`pointer-events-none absolute -top-6 z-20 -translate-x-1/2 rounded bg-inverse px-1.5 py-0.5 text-xs whitespace-nowrap text-inverse-ink tabular-nums shadow transition-opacity ${
           shown && !disabled ? "opacity-100" : "opacity-0"
         }`}
       >

@@ -41,7 +41,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       </div>
 
       {trouble && status === "running" && (
-        <p className="rounded-lg border border-border bg-background p-3 text-sm">
+        <p className="rounded-lg border border-line bg-card p-3 text-sm">
           The latest news could not be fetched. The copy carries on in the background, and this page keeps trying.
         </p>
       )}
@@ -49,9 +49,9 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       {status === "failed" && (
         <div
           role="alert"
-          className="flex flex-col gap-2 rounded-lg border border-red-700 p-4 text-sm dark:border-red-400"
+          className="flex flex-col gap-2 rounded-lg border border-danger-text p-4 text-sm"
         >
-          <p className="font-medium text-red-700 dark:text-red-400">
+          <p className="font-medium text-danger-text">
             {progress.problem ?? "Something went wrong while copying."}
           </p>
           <p>
@@ -67,7 +67,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       {status === "done" && (
         <section
           aria-labelledby="copy-next"
-          className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
+          className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
         >
           <h2 id="copy-next" className="font-medium">
             What next
@@ -78,14 +78,14 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
           <div className="flex flex-wrap gap-2">
             <Link
               href={copiedStoreAdminPath(progress.newSlug)}
-              className={`${linkButton} bg-foreground text-background`}
+              className={`${linkButton} bg-brand text-brand-ink`}
             >
               Open {progress.newName}
             </Link>
-            <Link href={copiedStoreSetupPath(progress.newSlug)} className={`${linkButton} border border-border`}>
+            <Link href={copiedStoreSetupPath(progress.newSlug)} className={`${linkButton} border border-line`}>
               Continue setup
             </Link>
-            <Link href="/admin/stores" className={`${linkButton} border border-border`}>
+            <Link href="/admin/stores" className={`${linkButton} border border-line`}>
               All stores
             </Link>
           </div>
@@ -96,7 +96,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
         <h2 id="copy-steps" className="font-medium">
           Steps
         </h2>
-        <ol className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+        <ol className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
           {steps.map((step) => (
             <li
               key={step.phase}
@@ -118,7 +118,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
           <h2 id="copy-counts" className="font-medium">
             What is copied
           </h2>
-          <ul className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 text-sm">
+          <ul className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
             {rows.map((row) => (
               <li key={row.key} className="flex flex-col gap-1">
                 <span className="flex justify-between gap-3">
@@ -138,7 +138,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       )}
 
       {progress.mediaLeftOut > 0 && (
-        <p className="rounded-lg border border-border bg-background p-3 text-sm">
+        <p className="rounded-lg border border-line bg-card p-3 text-sm">
           {leftOutText(progress.mediaLeftOut)}
         </p>
       )}

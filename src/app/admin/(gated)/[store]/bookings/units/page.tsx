@@ -15,26 +15,26 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
   const { store } = current;
   const all = await listResources(store.id, ["unit", "item"]);
   const base = `/admin/${store.slug}/bookings/units`;
-  const button = "min-h-10 rounded-md border border-border px-4 py-2 text-sm font-medium";
+  const button = "min-h-10 rounded-md border border-line px-4 py-2 text-sm font-medium";
 
   const list = (items: BookingResource[], empty: string) =>
     items.length === 0 ? (
-      <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">{empty}</p>
+      <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">{empty}</p>
     ) : (
-      <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+      <ul className="divide-y divide-line rounded-lg border border-line bg-card">
         {items.map((u) => (
           <li key={u.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
             <div className="min-w-0">
               <Link href={`${base}/${u.id}`} className="font-medium underline-offset-2 hover:underline">
                 {u.name}
               </Link>
-              {!u.active && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs">Not taking bookings</span>}
+              {!u.active && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs">Not taking bookings</span>}
               <span className="block text-xs text-muted">
                 {u.services === 1 ? "In 1 product" : `In ${u.services} products`} · {u.upcoming} booked ahead
                 {u.capacity > 1 && ` · ${u.capacity} at once`}
               </span>
             </div>
-            <Link href={`${base}/${u.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-surface">
+            <Link href={`${base}/${u.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-sunken">
               Edit <span className="sr-only">{u.name}</span>
             </Link>
           </li>

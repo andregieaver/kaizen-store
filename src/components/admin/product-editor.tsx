@@ -69,10 +69,10 @@ import { SoldByMeasureField, ContentFields, type ContentContext } from "@/compon
 import { VatCategoryField } from "@/components/admin/vat-category-field";
 import { contentState, withoutContentWhereNotGoods } from "@/lib/unit-price-editor";
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "font-normal text-muted";
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 const CREATED_KEY = "kaizen:product-created";
 
 const noSubscription = () => () => {};
@@ -233,7 +233,7 @@ export function ProductEditor(props: Props) {
       className="flex flex-col gap-6"
       aria-busy={saving}
     >
-      <div className="sticky top-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-surface/95 px-4 py-3 backdrop-blur">
+      <div className="sticky top-0 z-10 -mx-4 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-sunken/95 px-4 py-3 backdrop-blur">
         <div className="flex items-center gap-3">
           <Link href={`/admin/${storeSlug}/products`} className="text-sm underline">
             Products
@@ -255,7 +255,7 @@ export function ProductEditor(props: Props) {
           <button
             type="submit"
             disabled={saving}
-            className="min-h-10 rounded-pill bg-foreground px-5 text-sm font-medium text-background disabled:opacity-50"
+            className="min-h-10 rounded-pill bg-brand px-5 text-sm font-medium text-brand-ink disabled:opacity-50"
           >
             {saving ? "Saving …" : "Save"}
           </button>
@@ -264,7 +264,7 @@ export function ProductEditor(props: Props) {
 
       <div role="status" aria-live="polite">
         {(result.status === "saved" || justCreated) && !dirty && (
-          <p className="rounded-md border border-border bg-background p-3 text-sm">
+          <p className="rounded-md border border-line bg-card p-3 text-sm">
             Saved.{" "}
             {product.status === "active" && props.storefrontPath ? (
               <Link href={`${props.storefrontPath}/p/${product.handle}`} className="underline" target="_blank">
@@ -289,7 +289,7 @@ export function ProductEditor(props: Props) {
           ref={summaryRef}
           tabIndex={-1}
           role="alert"
-          className="rounded-md border border-red-700 bg-background p-4 text-sm dark:border-red-400"
+          className="rounded-md border border-danger-text bg-card p-4 text-sm"
         >
           <p className="mb-2 font-medium">Nothing was saved yet. Please fix:</p>
           <ul className="list-disc pl-5">
@@ -373,7 +373,7 @@ export function ProductEditor(props: Props) {
           {product.variants.map((variant) => {
             const key = variantKey(variant);
             return (
-              <details key={key} className="rounded-lg border border-border bg-background" open={product.variants.length === 1}>
+              <details key={key} className="rounded-lg border border-line bg-card" open={product.variants.length === 1}>
                 <summary className="cursor-pointer px-5 py-3 text-sm font-medium">
                   {variant.sku} <span className="font-normal text-muted">{variantLabel(variant.options)}</span>
                 </summary>
@@ -462,7 +462,7 @@ export function ProductEditor(props: Props) {
         <button
           type="submit"
           disabled={saving}
-          className="min-h-10 rounded-pill bg-foreground px-5 text-sm font-medium text-background disabled:opacity-50"
+          className="min-h-10 rounded-pill bg-brand px-5 text-sm font-medium text-brand-ink disabled:opacity-50"
         >
           {saving ? "Saving …" : "Save"}
         </button>
@@ -552,7 +552,7 @@ function TextSection({
                 aria-selected={l === locale}
                 aria-controls={`${tabsId}-panel`}
                 onClick={() => setLocale(l)}
-                className="min-h-9 rounded-md border border-border px-3 text-sm aria-selected:border-foreground aria-selected:font-medium"
+                className="min-h-9 rounded-md border border-line px-3 text-sm aria-selected:border-brand aria-selected:font-medium"
               >
                 {languageNames[l] ?? l}
                 {!filled && <span className="text-muted"> (empty)</span>}
@@ -653,7 +653,7 @@ function TextSection({
             description.
           </span>
         </label>
-        <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
           <h3 className="text-sm font-medium">In search results and shares</h3>
           <p className="text-sm text-muted">
             Optional. Empty fields use the title and the start of the description.
@@ -742,7 +742,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
               <img
                 src={media.thumbnailUrl ?? media.url}
                 alt=""
-                className="aspect-square w-full rounded-md border border-border bg-surface object-cover"
+                className="aspect-square w-full rounded-md border border-line bg-sunken object-cover"
               />
               <label className="flex flex-col gap-1 text-xs font-medium">
                 Describe the picture
@@ -792,7 +792,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
       )}
       {product.media.length < MAX_MEDIA &&
         (uploads ? (
-          <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-dashed border-foreground px-4 text-sm font-medium focus-within:outline-2">
+          <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-dashed border-brand px-4 text-sm font-medium focus-within:outline-2">
             {busy > 0 ? `Uploading ${busy} …` : "Add pictures"}
             <input
               type="file"
@@ -828,14 +828,14 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
                 update((p) => ({ ...p, media: [...p.media, { url: link, thumbnailUrl: null, alt: "" }] }));
                 setLink("");
               }}
-              className="min-h-10 rounded-md border border-border px-4 text-sm"
+              className="min-h-10 rounded-md border border-line px-4 text-sm"
             >
               Add picture
             </button>
           </div>
         ))}
       {problem && (
-        <p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="mt-2 text-sm text-danger-text">
           {problem}
         </p>
       )}
@@ -962,7 +962,7 @@ function VariantsSection({
           ).map(([value, name, note]) => (
             <label
               key={value}
-              className="flex min-h-10 min-w-48 flex-1 cursor-pointer items-start gap-2 rounded-md border border-border p-3 has-checked:border-foreground sm:flex-none"
+              className="flex min-h-10 min-w-48 flex-1 cursor-pointer items-start gap-2 rounded-md border border-line p-3 has-checked:border-brand sm:flex-none"
             >
               <input
                 type="radio"
@@ -1016,7 +1016,7 @@ function VariantsSection({
       </label>
 
       {optionsOn && (
-        <fieldset className="mb-5 flex flex-col gap-3 rounded-md border border-border p-4">
+        <fieldset className="mb-5 flex flex-col gap-3 rounded-md border border-line p-4">
           <legend className="px-1 text-sm font-medium">Options</legend>
           {drafts.map((draft, index) => {
             const option = product.options[index] ?? { name: "", values: [] };
@@ -1084,7 +1084,7 @@ function VariantsSection({
             Variants with SKU, {allDigital ? "" : "stock and "}price per country
           </caption>
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-b border-line">
               <th scope="col" className="py-2 pr-3 font-medium">
                 Variant
               </th>
@@ -1204,13 +1204,13 @@ function VariantRow({
   stockHref: string | null;
   onChange: (change: Partial<VariantInput>) => void;
 }) {
-  const cell = "min-h-9 w-full rounded-md border border-border bg-background px-2 text-sm";
+  const cell = "min-h-9 w-full rounded-md border border-line bg-card px-2 text-sm";
   // Nothing to weigh or send through customs for a download or an appointment.
   const digital = variant.delivery !== "physical";
   const columns = 3 + Number(showDelivery) + Number(showPeriod) + Number(showStock) + markets.length;
   return (
     <>
-      <tr className="border-b border-border align-top">
+      <tr className="border-b border-line align-top">
         <th scope="row" className="py-2 pr-3 font-normal">
           <span className="flex items-center gap-2">
             <VariantPicture
@@ -1307,7 +1307,7 @@ function VariantRow({
           />
         </td>
       </tr>
-      <tr className="border-b border-border">
+      <tr className="border-b border-line">
         <td colSpan={columns} className="pb-3">
           {!digital && (
             <details className="mb-2">
@@ -1494,7 +1494,7 @@ function BackorderAll({ product, update }: SectionProps) {
             if (all && n >= BACKORDER_DAYS_MIN && n <= BACKORDER_DAYS_MAX) set(true, n);
           }}
           aria-label="Days until a backordered variant is expected to ship"
-          className="min-h-9 w-20 rounded-md border border-border bg-background px-2 text-sm"
+          className="min-h-9 w-20 rounded-md border border-line bg-card px-2 text-sm"
         />
         days
       </label>
@@ -1554,7 +1554,7 @@ function VariantPicture({
     onChange(next);
     setOpen(false);
   };
-  const thumb = "size-10 shrink-0 rounded-md border border-border object-cover";
+  const thumb = "size-10 shrink-0 rounded-md border border-line object-cover";
 
   return (
     <div ref={ref} className="relative">
@@ -1577,7 +1577,7 @@ function VariantPicture({
       {at && (
         <div
           style={{ top: at.top, left: at.left }}
-          className="fixed z-50 flex w-64 flex-col gap-2 rounded-lg border border-border bg-background p-3 shadow-lg"
+          className="fixed z-50 flex w-64 flex-col gap-2 rounded-lg border border-line bg-card p-3 shadow-lg"
         >
           <p className="text-xs font-medium">Picture for {name}</p>
           {pictures.length > 0 ? (
@@ -1589,7 +1589,7 @@ function VariantPicture({
                     onClick={() => choose({ url: picture.url, thumbnailUrl: picture.thumbnailUrl })}
                     aria-label={`Picture ${index + 1}`}
                     aria-pressed={image?.url === picture.url}
-                    className="block rounded-md aria-pressed:ring-2 aria-pressed:ring-foreground"
+                    className="block rounded-md aria-pressed:ring-2 aria-pressed:ring-ink"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element -- the product's own picture */}
                     <img src={picture.thumbnailUrl ?? picture.url} alt="" className="aspect-square w-full rounded-md object-cover" />
@@ -1628,7 +1628,7 @@ function VariantPicture({
             </button>
           )}
           {problem && (
-            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+            <p role="alert" className="text-xs text-danger-text">
               {problem}
             </p>
           )}
@@ -1696,7 +1696,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
       </p>
 
       {product.files.length > 0 && (
-        <ul className="mb-4 flex flex-col divide-y divide-border rounded-md border border-border">
+        <ul className="mb-4 flex flex-col divide-y divide-line rounded-md border border-line">
           {product.files.map((file, index) => (
             <li key={file.path} className="grid gap-3 p-3 sm:grid-cols-[1fr_auto] sm:items-end">
               <div className="grid gap-3 sm:grid-cols-2">
@@ -1745,7 +1745,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
 
       {uploads ? (
         product.files.length < MAX_FILES && (
-          <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-dashed border-foreground px-4 text-sm font-medium focus-within:outline-2">
+          <label className="inline-flex min-h-10 cursor-pointer items-center rounded-md border border-dashed border-brand px-4 text-sm font-medium focus-within:outline-2">
             {busy.length > 0 ? `Uploading ${busy.length} …` : "Add files"}
             <input
               type="file"
@@ -1763,7 +1763,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
         <p className="text-sm text-muted">File uploads are not set up on this server, so files cannot be added.</p>
       )}
       {problem && (
-        <p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="mt-2 text-sm text-danger-text">
           {problem}
         </p>
       )}
@@ -1773,7 +1773,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
         </p>
       )}
 
-      <div className="mt-5 grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
+      <div className="mt-5 grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
         <label className={label}>
           <span>
             Downloads per file <span className={hint}>(empty for no limit)</span>
@@ -1858,7 +1858,7 @@ function SubscriptionSection({
       </p>
 
       {product.plans.length > 0 && (
-        <ul className="mb-4 flex flex-col divide-y divide-border rounded-md border border-border">
+        <ul className="mb-4 flex flex-col divide-y divide-line rounded-md border border-line">
           {product.plans.map((plan, index) => {
             const [one, many] = INTERVAL_NAMES[plan.interval];
             return (
@@ -2003,7 +2003,7 @@ function SubscriptionSection({
           <button
             type="button"
             onClick={addPlan}
-            className="min-h-10 rounded-md border border-dashed border-foreground px-4 text-sm font-medium"
+            className="min-h-10 rounded-md border border-dashed border-brand px-4 text-sm font-medium"
           >
             {product.plans.length === 0 ? "Offer a subscription" : "Add another purchase option"}
           </button>
@@ -2110,7 +2110,7 @@ function KindSection({ product, update, offered }: SectionProps & { offered: Rec
           ).filter(([value]) => offered[value]).map(([value, name, note]) => (
             <label
               key={value}
-              className="flex min-h-10 min-w-48 flex-1 cursor-pointer items-start gap-2 rounded-md border border-border p-3 has-checked:border-foreground sm:flex-none"
+              className="flex min-h-10 min-w-48 flex-1 cursor-pointer items-start gap-2 rounded-md border border-line p-3 has-checked:border-brand sm:flex-none"
             >
               <input
                 type="radio"
@@ -2439,7 +2439,7 @@ const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 function DayOfYear({ value, onChange, name }: { value: string; onChange: (value: string) => void; name: string }) {
   const [month, day] = value.split("-").map(Number);
   const set = (m: number, d: number) => onChange(`${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
-  const cell = "min-h-9 rounded-md border border-border bg-background px-2 text-sm";
+  const cell = "min-h-9 rounded-md border border-line bg-card px-2 text-sm";
   return (
     <span className="flex gap-1">
       <input
@@ -2486,7 +2486,7 @@ function PricingFields({
   const languageName = (locale: string) => new Intl.DisplayNames(["en"], { type: "language" }).of(locale.slice(0, 2)) ?? locale;
   const setSeason = (index: number, change: Partial<SeasonInput>) =>
     set({ seasons: a.seasons.map((season, i) => (i === index ? { ...season, ...change } : season)) });
-  const small = "min-h-9 rounded-md border border-border bg-background px-2 text-sm";
+  const small = "min-h-9 rounded-md border border-line bg-card px-2 text-sm";
   return (
     <>
       <fieldset className="mt-6 flex flex-col gap-2 text-sm">
@@ -2521,7 +2521,7 @@ function PricingFields({
         {a.seasons.map((season, index) => {
           const allYear = season.fromDay === null;
           return (
-            <div key={index} className="flex flex-col gap-2 rounded-md border border-border p-3">
+            <div key={index} className="flex flex-col gap-2 rounded-md border border-line p-3">
               <div className="flex flex-wrap items-end gap-3">
                 <label className={label}>
                   Name
@@ -2624,7 +2624,7 @@ function PricingFields({
                   ],
                 })
               }
-              className="min-h-10 rounded-md border border-border px-3"
+              className="min-h-10 rounded-md border border-line px-3"
             >
               Add a season
             </button>
@@ -2798,7 +2798,7 @@ function OperatorPicker({
         <option value="new">Add a new company …</option>
       </select>
       {fresh && (
-        <div className="flex flex-col gap-3 rounded-md border border-border p-3">
+        <div className="flex flex-col gap-3 rounded-md border border-line p-3">
           <label className={label}>
             Company name
             <input value={fresh.name} onChange={(e) => setNew({ name: e.target.value })} className={input} />

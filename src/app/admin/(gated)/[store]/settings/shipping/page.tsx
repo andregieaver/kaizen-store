@@ -10,7 +10,7 @@ import { saveShippingAction } from "../../../actions";
 
 export const metadata: Metadata = { title: "Shipping" };
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 
 export default async function ShippingPage({ params }: PageProps<"/admin/[store]/settings/shipping">) {
   const gated = await requirePermission((await params).store, "settings:read");
@@ -31,9 +31,9 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
         </p>
       </div>
       <ActionForm action={saveShippingAction.bind(null, store.slug)} className="flex flex-col gap-4">
-        <table className="w-full max-w-2xl rounded-lg border border-border bg-background text-left text-sm">
+        <table className="w-full max-w-2xl rounded-lg border border-line bg-card text-left text-sm">
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-b border-line">
               <th scope="col" className="px-4 py-2 font-medium">Country</th>
               <th scope="col" className="px-4 py-2 font-medium">Shipping price</th>
               <th scope="col" className="px-4 py-2 font-medium">Free from basket value</th>
@@ -43,7 +43,7 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
             {settings.map((rate) => {
               const market = store.markets.find((m) => m.code === rate.marketCode)!;
               return (
-                <tr key={rate.marketCode} className="border-b border-border last:border-0">
+                <tr key={rate.marketCode} className="border-b border-line last:border-0">
                   <th scope="row" className="px-4 py-2 font-normal">
                     {market.name} <span className="text-muted">({rate.currency})</span>
                   </th>

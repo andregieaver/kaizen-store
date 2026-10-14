@@ -23,10 +23,10 @@ export default async function PlatformStoresPage() {
           cancel its plan, or give it its own fee.
         </p>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-border bg-background">
+      <div className="overflow-x-auto rounded-lg border border-line bg-card">
         <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-border text-muted">
+            <tr className="border-b border-line text-muted">
               <th scope="col" className="px-4 py-2 font-normal">Store</th>
               <th scope="col" className="px-4 py-2 font-normal">Owner</th>
               <th scope="col" className="px-4 py-2 font-normal">Plan</th>
@@ -37,14 +37,14 @@ export default async function PlatformStoresPage() {
           </thead>
           <tbody>
             {stores.map((store) => (
-              <tr key={store.storeId} className="border-b border-border last:border-0">
+              <tr key={store.storeId} className="border-b border-line last:border-0">
                 <td className="px-4 py-2">
                   <Link href={`/admin/platform/stores/${store.slug}`} className="font-medium underline">
                     {store.name}
                   </Link>
                   <span className="block text-muted">
                     {store.slug}
-                    {store.storeStatus !== "active" && <strong className="ml-2 font-medium text-foreground">{store.storeStatus === "closed" ? "Closed" : "Suspended"}</strong>}
+                    {store.storeStatus !== "active" && <strong className="ml-2 font-medium text-ink">{store.storeStatus === "closed" ? "Closed" : "Suspended"}</strong>}
                   </span>
                 </td>
                 <td className="px-4 py-2">

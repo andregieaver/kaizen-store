@@ -42,12 +42,12 @@ export function TimerBar() {
       {timer && (
         <section
           aria-label="Running timer"
-          className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-border bg-background px-4 py-2 text-sm"
+          className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-card px-4 py-2 text-sm"
         >
           <span className="inline-flex items-center gap-2">
             <span
               aria-hidden="true"
-              className="size-2 animate-pulse rounded-full bg-emerald-600 motion-reduce:animate-none"
+              className="size-2 animate-pulse rounded-full bg-positive-solid motion-reduce:animate-none"
             />
             <span
               role="timer"
@@ -89,7 +89,7 @@ export function TimerBar() {
       {error && (
         <div
           role="alert"
-          className={`mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-background px-4 py-2 ${errorText}`}
+          className={`mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-line bg-card px-4 py-2 ${errorText}`}
         >
           <span className="min-w-0 flex-1">{error}</span>
           <button type="button" onClick={api.dismissError} className="text-sm underline">

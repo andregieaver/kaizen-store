@@ -32,7 +32,7 @@ export default async function WordpressPage() {
         </p>
       </div>
 
-      <section aria-labelledby="plugin-heading" className="flex max-w-3xl flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="plugin-heading" className="flex max-w-3xl flex-col gap-3 rounded-card border border-line bg-card p-5">
         <h2 id="plugin-heading" className="font-medium">
           The plugin
         </h2>
@@ -53,11 +53,11 @@ export default async function WordpressPage() {
           Connected sites
         </h2>
         {sites.length === 0 ? (
-          <p className="rounded-lg border border-border bg-background p-4 text-sm text-muted">No site is connected.</p>
+          <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">No site is connected.</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {sites.map((site) => (
-              <li key={site.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-4">
+              <li key={site.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card p-4">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{site.siteName}</p>
                   <p className="truncate text-sm text-muted">{site.siteUrl}</p>

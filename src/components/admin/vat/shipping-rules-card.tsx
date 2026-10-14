@@ -49,7 +49,7 @@ export function ShippingRulesCard({
                 <th scope="col" className="py-2 font-medium">Source</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-line">
               {shown.map((rule) => (
                 <tr key={rule.country} className="align-top">
                   <td className="py-2 pr-3">{rule.name}</td>
@@ -69,7 +69,7 @@ export function ShippingRulesCard({
           </table>
         </div>
       )}
-      <ActionForm action={action} successMessage="The rule is saved." className="flex flex-col gap-4 border-t border-border pt-4">
+      <ActionForm action={action} successMessage="The rule is saved." className="flex flex-col gap-4 border-t border-line pt-4">
         <h3 className="text-sm font-medium">Set a rule</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           {country ? (

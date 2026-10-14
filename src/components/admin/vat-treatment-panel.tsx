@@ -82,7 +82,7 @@ export function VatTreatmentPanel({
   const nameDiffers =
     vies.registeredName !== null && typedCompany !== null && vies.registeredName.trim().toLowerCase() !== typedCompany.trim().toLowerCase();
   return (
-    <section aria-labelledby="vat-treatment" className="rounded-card border border-border bg-background p-5">
+    <section aria-labelledby="vat-treatment" className="rounded-card border border-line bg-card p-5">
       <h2 id="vat-treatment" className="mb-1 font-medium">
         VAT treatment
       </h2>

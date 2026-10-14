@@ -6,7 +6,7 @@ import { SectionSkeleton } from "@/components/admin/analytics/overview-sections"
  * placeholders the page then shows for them (`SectionSkeleton`), so nothing moves when the page takes over.
  */
 export default function AnalyticsOverviewLoading() {
-  const block = "animate-pulse rounded-lg bg-background";
+  const block = "animate-pulse rounded-lg bg-card";
   return (
     <div className="flex flex-col gap-8" role="status" aria-live="polite" aria-busy="true">
       <span className="sr-only">Loading the overview…</span>

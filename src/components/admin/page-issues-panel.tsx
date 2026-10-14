@@ -45,7 +45,7 @@ export function PageIssuesPanel({ issues, onShow = showOnCanvas }: { issues: rea
           </h4>
           <ul className="flex flex-col gap-1">
             {group.issues.map((issue, index) => (
-              <li key={`${issue.blockId ?? issue.rowId ?? "page"}-${index}`} className="flex flex-col gap-1 rounded-md border border-border bg-background p-2 text-sm">
+              <li key={`${issue.blockId ?? issue.rowId ?? "page"}-${index}`} className="flex flex-col gap-1 rounded-md border border-line bg-card p-2 text-sm">
                 <span>
                   <span className="font-medium">{issue.where}.</span> {issue.message}
                 </span>
@@ -54,7 +54,7 @@ export function PageIssuesPanel({ issues, onShow = showOnCanvas }: { issues: rea
                     type="button"
                     onClick={() => onShow(issue)}
                     aria-label={`Show the ${issue.where.toLowerCase()} on the page: ${group.title.toLowerCase()}`}
-                    className="min-h-9 w-fit rounded-pill border border-border px-3 text-xs font-medium hover:bg-surface"
+                    className="min-h-9 w-fit rounded-pill border border-edge px-3 text-xs font-medium hover:bg-sunken"
                   >
                     Show it
                   </button>
@@ -98,7 +98,7 @@ export function PublishWithIssuesDialog({
         event.preventDefault();
         onFixFirst();
       }}
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-card border border-border bg-background p-5 text-foreground backdrop:bg-black/40"
+      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-card border border-line bg-card p-5 text-ink backdrop:bg-black/40"
     >
       <h2 id="publish-issues-title" className="mb-2 text-lg font-medium">
         This page has {issues.length === 1 ? "a problem" : `${issues.length} problems`} to look at
@@ -112,10 +112,10 @@ export function PublishWithIssuesDialog({
         ))}
       </ul>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onFixFirst} className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+        <button type="button" onClick={onFixFirst} className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           Fix first
         </button>
-        <button type="button" onClick={onPublishAnyway} disabled={busy} className="min-h-10 rounded-md border border-border bg-background px-4 text-sm font-medium disabled:opacity-50">
+        <button type="button" onClick={onPublishAnyway} disabled={busy} className="min-h-10 rounded-md border border-line bg-card px-4 text-sm font-medium disabled:opacity-50">
           Publish anyway
         </button>
       </div>

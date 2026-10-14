@@ -10,14 +10,14 @@ export function BonusOverviewCard({ overview, locale }: { overview: BonusOvervie
   return (
     <section
       aria-labelledby="bonus-overview-heading"
-      className="flex flex-col gap-4 rounded-card border border-border bg-background p-5"
+      className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
     >
       <h2 id="bonus-overview-heading" className="font-medium">
         Credits at a glance
       </h2>
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         {rows.map((row) => (
-          <div key={row.label} className="flex flex-col gap-0.5 rounded-md border border-border p-3">
+          <div key={row.label} className="flex flex-col gap-0.5 rounded-md border border-line p-3">
             <dt className="text-sm text-muted">{row.label}</dt>
             <dd className="text-xl font-medium">{row.value}</dd>
             {row.hint && <dd className="text-xs text-muted">{row.hint}</dd>}

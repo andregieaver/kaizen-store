@@ -36,7 +36,7 @@ export function CountriesForm({
         <ul className="grid gap-2 sm:grid-cols-2">
           {countries.map((country) => (
             <li key={country.code}>
-              <label className="flex min-h-10 items-center gap-3 rounded-md border border-border px-3 text-sm has-[:checked]:border-foreground">
+              <label className="flex min-h-10 items-center gap-3 rounded-md border border-line px-3 text-sm has-[:checked]:border-brand">
                 <input type={several ? "checkbox" : "radio"} name="country" value={country.code} defaultChecked={on.has(country.code)} className="size-4" />
                 <span className="flex-1">{country.name}</span>
                 <span className="text-muted">{country.currency}</span>

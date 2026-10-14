@@ -47,7 +47,7 @@ export default async function DraftPage({ params }: Props) {
   if (!z.uuid().safeParse(draftId).success) notFound();
   return (
     <div className="flex flex-col gap-6">
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-background" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
         <Body storeSlug={store.slug} draftId={draftId} />
       </Suspense>
     </div>

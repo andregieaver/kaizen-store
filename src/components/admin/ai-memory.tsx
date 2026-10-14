@@ -79,17 +79,17 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
         Learn from my conversations
       </label>
       {problem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}
       {memories.length === 0 ? (
-        <p className="rounded-lg border border-border p-4 text-sm">Nothing yet. Tell it about your business, or say &ldquo;remember that …&rdquo;.</p>
+        <p className="rounded-lg border border-line p-4 text-sm">Nothing yet. Tell it about your business, or say &ldquo;remember that …&rdquo;.</p>
       ) : (
         groups.map((group) => (
           <div key={group.kind} className="flex flex-col gap-2">
             <h3 className="text-sm font-medium">{KIND_WORDS[group.kind]}</h3>
-            <ul className="flex flex-col divide-y divide-border rounded-lg border border-border">
+            <ul className="flex flex-col divide-y divide-line rounded-lg border border-line">
               {group.items.map((memory) => (
                 <li key={memory.id} className="flex flex-col gap-2 p-3">
                   {editing === memory.id ? (
@@ -109,13 +109,13 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
                         maxLength={500}
                         rows={2}
                         onChange={(event) => setText(event.target.value)}
-                        className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        className="w-full rounded-md border border-line bg-card px-3 py-2 text-sm"
                       />
                       <div className="flex gap-2">
-                        <button type="submit" className="rounded-pill bg-foreground px-3 py-1.5 text-sm text-background">
+                        <button type="submit" className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink">
                           Save
                         </button>
-                        <button type="button" className="rounded-md border border-border px-3 py-1.5 text-sm" onClick={() => setEditing(null)}>
+                        <button type="button" className="rounded-md border border-line px-3 py-1.5 text-sm" onClick={() => setEditing(null)}>
                           Cancel
                         </button>
                       </div>
@@ -149,7 +149,7 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
         ))
       )}
       {memories.length > 0 && (
-        <button type="button" className="self-start text-sm text-red-700 underline dark:text-red-400" onClick={() => void removeAll()}>
+        <button type="button" className="self-start text-sm text-danger-text underline" onClick={() => void removeAll()}>
           Forget everything
         </button>
       )}

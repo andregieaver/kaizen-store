@@ -38,7 +38,7 @@ export function sectionOf(rest: string): string {
 }
 
 const linkClass =
-  "flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm text-muted hover:text-foreground aria-[current=page]:border-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground";
+  "flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm text-muted hover:text-ink aria-[current=page]:border-brand aria-[current=page]:font-medium aria-[current=page]:text-ink";
 
 export function WorkNav({ stores }: { stores: WorkNavStore[] }) {
   const pathname = usePathname();
@@ -67,7 +67,7 @@ export function WorkNav({ stores }: { stores: WorkNavStore[] }) {
               <select
                 value={inStore.slug}
                 onChange={(event) => router.push(`${workBase(event.target.value)}${current}`)}
-                className="min-h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground"
+                className="min-h-9 rounded-md border border-line bg-card px-2 text-sm text-ink"
               >
                 {choices.map((item) => (
                   <option key={item.slug} value={item.slug}>
@@ -81,7 +81,7 @@ export function WorkNav({ stores }: { stores: WorkNavStore[] }) {
       )}
       <nav
         aria-label={inStore ? `${store?.name ?? inStore.slug} Work sections` : "Work sections"}
-        className="overflow-x-auto border-b border-border [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="overflow-x-auto border-b border-line [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <ul className="-mb-px flex min-w-max gap-1">
           {WORK_SECTIONS.map((section) => (

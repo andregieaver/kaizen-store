@@ -138,7 +138,7 @@ export function ReturnDetailView({
       </div>
 
       {request && confirmedAt && request.acknowledgement === "not_sent" && (
-        <section role="alert" aria-labelledby="ack-problem" className="flex flex-col gap-3 rounded-lg border border-red-700 bg-background p-5 dark:border-red-400">
+        <section role="alert" aria-labelledby="ack-problem" className="flex flex-col gap-3 rounded-lg border border-danger-text bg-card p-5">
           <h2 id="ack-problem" className="font-medium">
             The acknowledgement was not sent
           </h2>
@@ -151,7 +151,7 @@ export function ReturnDetailView({
       )}
 
       {detail.order.subscription && (
-        <p role="note" className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <p role="note" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
           This order is part of a subscription. The withdrawal is recorded here, but it does not end the subscription: end that separately on its{" "}
           <Link href={`${base}/subscriptions`} className="underline">
             page
@@ -192,7 +192,7 @@ export function ReturnDetailView({
                         {request.acknowledgementReference && <span className="block font-mono text-xs text-muted">Reference {request.acknowledgementReference}</span>}
                       </>
                     ) : (
-                      <span className="font-medium text-red-700 dark:text-red-400">Not sent</span>
+                      <span className="font-medium text-danger-text">Not sent</span>
                     )}
                   </Fact>
                   {confirmedAt && <Fact label="Goods to be sent back by">{formatStoreDay(sendBackDay(confirmedAt, timeZone), locale)} (14 days from the declaration)</Fact>}
@@ -223,7 +223,7 @@ export function ReturnDetailView({
             <div className="overflow-x-auto">
               <table className="w-full min-w-[34rem] text-left text-sm">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b border-line">
                     <th scope="col" className="py-2 pr-3 font-medium">Product</th>
                     <th scope="col" className="py-2 pr-3 text-right font-medium">Returned</th>
                     <th scope="col" className="py-2 pr-3 font-medium">Condition</th>
@@ -237,7 +237,7 @@ export function ReturnDetailView({
                     const declined = line.decision === "decline";
                     const canDecline = !ended && !refunded && !declined && (detail.kind === "return" || line.withdrawalExclusion !== "none");
                     return (
-                      <tr key={line.lineId} className="border-b border-border align-top last:border-0">
+                      <tr key={line.lineId} className="border-b border-line align-top last:border-0">
                         <td className="py-2 pr-3">
                           {line.title}
                           <span className="block font-mono text-xs text-muted">{line.sku}</span>
@@ -286,7 +286,7 @@ export function ReturnDetailView({
               <div className="flex flex-col gap-5">
                 <ApproveForm action={actions.approve} defaults={instructionsDefaults} />
                 {can("decline") && (
-                  <details className="border-t border-border pt-4">
+                  <details className="border-t border-line pt-4">
                     <summary className="cursor-pointer text-sm underline">Decline instead</summary>
                     <div className="mt-3">
                       <DeclineForm action={actions.decline} />
@@ -326,7 +326,7 @@ export function ReturnDetailView({
                   </div>
                 )}
                 {can("mark_received") && (
-                  <div className={can("mark_in_transit") ? "border-t border-border pt-4" : ""}>
+                  <div className={can("mark_in_transit") ? "border-t border-line pt-4" : ""}>
                     <h3 className="mb-2 text-sm font-medium">The goods have arrived</h3>
                     <DayStepForm action={actions.markReceived} button="Mark as received" help="the day they arrived; today if left empty" today={today} successMessage="Marked as received. The customer has been told." />
                   </div>

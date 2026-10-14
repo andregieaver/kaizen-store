@@ -13,7 +13,7 @@ import { getStoreWishlist, listCartAdds } from "@/server/wishlist-admin";
 
 export const metadata: Metadata = { title: "Wishlist" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 /**
  * One shopper's list (D36): whose it is, what is in it now, and what went
@@ -58,7 +58,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
       {customer ? (
         <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />
       ) : (
-        <section aria-label="Shopper" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <section aria-label="Shopper" className="rounded-lg border border-line bg-card p-4 text-sm">
           <p className="font-medium">A guest, not signed in</p>
           <p className="text-muted">
             The list is kept in the shopper&apos;s browser and joins their account if they sign in. Who they are shows below
@@ -72,14 +72,14 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
         {list.items.length === 0 ? (
           <p className="text-sm text-muted">The list is empty.</p>
         ) : (
-          <ul className="divide-y divide-border text-sm">
+          <ul className="divide-y divide-line text-sm">
             {list.items.map((item) => (
               <li key={item.id} className="flex items-center gap-3 py-3">
                 {item.image ? (
                   // eslint-disable-next-line @next/next/no-img-element -- product thumbnails are already small
-                  <img src={item.image} alt="" width={48} height={48} loading="lazy" className="size-12 shrink-0 rounded border border-border object-cover" />
+                  <img src={item.image} alt="" width={48} height={48} loading="lazy" className="size-12 shrink-0 rounded border border-line object-cover" />
                 ) : (
-                  <span aria-hidden="true" className="size-12 shrink-0 rounded bg-surface" />
+                  <span aria-hidden="true" className="size-12 shrink-0 rounded bg-sunken" />
                 )}
                 <span className="min-w-0 flex-1">
                   <Link href={`${base}/products/${item.productId}`} className="font-medium underline-offset-2 hover:underline">

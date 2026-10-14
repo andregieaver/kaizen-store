@@ -77,11 +77,11 @@ export function TemplatePreviewDialog({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
-      className="m-auto max-h-[94dvh] w-[calc(100%-1rem)] max-w-5xl rounded-lg border border-border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/50"
+      className="m-auto max-h-[94dvh] w-[calc(100%-1rem)] max-w-5xl rounded-lg border border-line bg-card p-0 text-ink shadow-2xl backdrop:bg-black/50"
     >
       {item && (
         <div className="flex max-h-[calc(94dvh-2px)] flex-col">
-          <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-3">
+          <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-3">
             <div className="flex min-w-0 flex-col gap-1">
               <h2 id={titleId} className="truncate font-medium">
                 Preview: {item.name}
@@ -99,7 +99,7 @@ export function TemplatePreviewDialog({
               type="button"
               onClick={onClose}
               aria-label="Close preview"
-              className="flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-surface"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full hover:bg-sunken"
             >
               <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -113,7 +113,7 @@ export function TemplatePreviewDialog({
             {href && <PreviewFrame key={item.id} title={`Preview of ${item.name}`} href={href} device={device} />}
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-5 py-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-3">
             <div className="mr-auto flex min-w-0 flex-col gap-1">
               <Problems problems={problems} />
               {reason && (
@@ -122,7 +122,7 @@ export function TemplatePreviewDialog({
                 </p>
               )}
             </div>
-            <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-border px-4 text-sm">
+            <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-line px-4 text-sm">
               Close
             </button>
             <button
@@ -130,7 +130,7 @@ export function TemplatePreviewDialog({
               onClick={onToggleActive}
               disabled={switching}
               aria-pressed={item.active}
-              className="min-h-10 rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+              className="min-h-10 rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken disabled:opacity-50"
             >
               {item.active ? "Deactivate for this store" : "Activate for this store"}
             </button>
@@ -140,7 +140,7 @@ export function TemplatePreviewDialog({
               disabled={usingAny || reason !== null}
               aria-describedby={reason ? reasonId : undefined}
               title={reason ?? undefined}
-              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+              className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
               {using ? "Adding …" : "Use"}
             </button>
@@ -174,7 +174,7 @@ function DeviceSwitch({ device, onDevice }: { device: PreviewDevice; onDevice: (
     select(to);
   };
   return (
-    <div role="radiogroup" aria-label="Preview width" className="flex w-fit gap-1 rounded-md bg-surface p-1">
+    <div role="radiogroup" aria-label="Preview width" className="flex w-fit gap-1 rounded-md bg-sunken p-1">
       {PREVIEW_DEVICES.map((each, index) => (
         <button
           key={each.key}
@@ -185,7 +185,7 @@ function DeviceSwitch({ device, onDevice }: { device: PreviewDevice; onDevice: (
           tabIndex={device === each.key ? 0 : -1}
           onClick={() => onDevice(each.key)}
           onKeyDown={(event) => onKeyDown(event, index)}
-          className="min-h-9 rounded px-3 text-xs font-medium text-muted aria-checked:bg-background aria-checked:text-foreground aria-checked:shadow-sm"
+          className="min-h-9 rounded px-3 text-xs font-medium text-muted aria-checked:bg-card aria-checked:text-ink aria-checked:shadow-sm"
         >
           {each.label}
           {each.width && <span className="sr-only">, {each.width} pixels wide</span>}
@@ -209,7 +209,7 @@ function PreviewFrame({ title, href, device }: { title: string; href: string; de
   }, [status, attempt]);
 
   return (
-    <div className="relative flex h-[min(60dvh,44rem)] min-h-64 justify-center overflow-auto rounded-md border border-border bg-surface">
+    <div className="relative flex h-[min(60dvh,44rem)] min-h-64 justify-center overflow-auto rounded-md border border-line bg-sunken">
       {status !== "failed" && (
         <iframe
           key={attempt}
@@ -236,7 +236,7 @@ function PreviewFrame({ title, href, device }: { title: string; href: string; de
               setAttempt((n) => n + 1);
               setStatus("loading");
             }}
-            className="min-h-9 rounded-md border border-border bg-background px-3 text-xs"
+            className="min-h-9 rounded-md border border-line bg-card px-3 text-xs"
           >
             Try again
           </button>

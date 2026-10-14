@@ -1,9 +1,9 @@
 /**
  * What the VAT, OSS and IOSS page shows while its figures are read (D161): the shape of the page in the admin's placeholder style
- * (`animate-pulse rounded-lg bg-background`, which sweeps), with the statement that these are not a tax return already in words, so it is
+ * (`animate-pulse rounded-lg bg-card`, which sweeps), with the statement that these are not a tax return already in words, so it is
  * never missing while the numbers load.
  */
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 export function TaxSkeleton() {
   return (
@@ -15,7 +15,7 @@ export function TaxSkeleton() {
         <div className={`${block} h-9 w-full max-w-3xl`} />
       </div>
       <div className={`${block} h-9 w-full max-w-md`} />
-      <div className="rounded-lg border border-border bg-surface px-3 py-2 text-sm text-muted">Your own figures, for you and your accountant. Not a tax return.</div>
+      <div className="rounded-lg border border-line bg-sunken px-3 py-2 text-sm text-muted">Your own figures, for you and your accountant. Not a tax return.</div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className={`${block} h-28`} />

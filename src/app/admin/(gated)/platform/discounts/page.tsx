@@ -42,10 +42,10 @@ export default async function PlatformDiscountsPage() {
       </div>
 
       {discounts.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Code</th>
                 <th scope="col" className="px-4 py-2 font-medium">Gives</th>
                 <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">Limits</th>
@@ -57,14 +57,14 @@ export default async function PlatformDiscountsPage() {
             </thead>
             <tbody>
               {discounts.map((d) => (
-                <tr key={d.id} className="border-b border-border last:border-0">
+                <tr key={d.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-2">
                     <span className="font-mono font-medium">{d.code}</span>
                     <span className="block text-xs text-muted">
                       {d.active ? "On" : "Off"}
                       {d.syncedModes.length > 0 ? ` · in Stripe (${d.syncedModes.join(", ")})` : " · not in Stripe yet"}
                     </span>
-                    {d.syncError && <span className="block text-xs text-red-700">{d.syncError}</span>}
+                    {d.syncError && <span className="block text-xs text-danger-text">{d.syncError}</span>}
                   </td>
                   <td className="px-4 py-2">{platformDiscountSummary(d, money)}</td>
                   <td className="hidden px-4 py-2 md:table-cell">
@@ -80,7 +80,7 @@ export default async function PlatformDiscountsPage() {
                       </ActionForm>
                       <Link
                         href={`/admin/platform/discounts/${d.id}`}
-                        className="flex min-h-10 items-center rounded-md px-3 hover:bg-surface"
+                        className="flex min-h-10 items-center rounded-md px-3 hover:bg-sunken"
                       >
                         Edit<span className="sr-only"> {d.code}</span>
                       </Link>
@@ -99,7 +99,7 @@ export default async function PlatformDiscountsPage() {
         </div>
       )}
 
-      <section aria-labelledby="new-heading" className="rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="new-heading" className="rounded-card border border-line bg-card p-5">
         <h2 id="new-heading" className="mb-4 font-medium">
           New code
         </h2>

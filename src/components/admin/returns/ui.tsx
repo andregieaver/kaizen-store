@@ -6,19 +6,19 @@ import type { RefundDue } from "@/lib/withdrawal";
 
 /** The small pieces the returns screens share: badges, the refund mark and a card. */
 
-export const CARD = "rounded-lg border border-border bg-background p-5";
+export const CARD = "rounded-lg border border-line bg-card p-5";
 
 const BADGE = "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium";
 
 const STATUS_TONE: Record<ReturnStatus, string> = {
-  requested: "border-amber-700 text-amber-800 dark:border-amber-400 dark:text-amber-300",
-  approved: "border-border bg-surface",
-  in_transit: "border-border bg-surface",
-  received: "border-border bg-surface",
-  inspected: "border-border bg-surface",
-  closed: "border-border text-muted",
-  declined: "border-border text-muted",
-  cancelled: "border-border text-muted",
+  requested: "border-warning-text text-warning-text",
+  approved: "border-line bg-sunken",
+  in_transit: "border-line bg-sunken",
+  received: "border-line bg-sunken",
+  inspected: "border-line bg-sunken",
+  closed: "border-line text-muted",
+  declined: "border-line text-muted",
+  cancelled: "border-line text-muted",
 };
 
 export function StatusBadge({ status }: { status: ReturnStatus }) {
@@ -26,7 +26,7 @@ export function StatusBadge({ status }: { status: ReturnStatus }) {
 }
 
 export function KindBadge({ kind }: { kind: ReturnKind }) {
-  return <span className={`${BADGE} border-border text-muted`}>{KIND_LABELS[kind]}</span>;
+  return <span className={`${BADGE} border-line text-muted`}>{KIND_LABELS[kind]}</span>;
 }
 
 /** What to do about the refund and by when; nothing at all when there is nothing to say. */

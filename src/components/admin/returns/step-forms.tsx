@@ -19,7 +19,7 @@ export type StepAction = (state: FormState, form: FormData) => Promise<FormState
 
 export type PreviewAction = (shipping: string) => Promise<{ ok: true; preview: RefundPreviewData } | { ok: false; problem: string }>;
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "font-normal text-muted";
 
@@ -182,7 +182,7 @@ export function InspectForm({ action, lines, currency, changing }: { action: Ste
       </p>
       <ul className="flex flex-col gap-4">
         {lines.map((line) => (
-          <li key={line.lineId} className="flex flex-col gap-3 rounded-md border border-border p-3">
+          <li key={line.lineId} className="flex flex-col gap-3 rounded-md border border-line p-3">
             <p className="text-sm font-medium">
               {line.title} <span className="font-normal text-muted">× {line.quantity} · {line.sku}</span>
             </p>
@@ -246,7 +246,7 @@ export function RefundWorking({ preview, currency, locale }: { preview: RefundPr
         <caption className="sr-only">How the refund is worked out</caption>
         <tbody>
           {preview.working.map((row) => (
-            <tr key={row.key} className="border-b border-border">
+            <tr key={row.key} className="border-b border-line">
               <th scope="row" className="py-1.5 pr-3 font-normal">
                 {WORKING_LABELS[row.key]}
               </th>
@@ -261,7 +261,7 @@ export function RefundWorking({ preview, currency, locale }: { preview: RefundPr
           </tr>
         </tbody>
       </table>
-      {preview.cappedBy && <p className="text-sm text-amber-800 dark:text-amber-300">{CAPPED_WORDS[preview.cappedBy]}</p>}
+      {preview.cappedBy && <p className="text-sm text-warning-text">{CAPPED_WORDS[preview.cappedBy]}</p>}
     </div>
   );
 }
@@ -313,7 +313,7 @@ export function RefundPanel({
     <div className="flex flex-col gap-4">
       <RefundWorking preview={preview} currency={currency} locale={locale} />
       {!preview.canRefund && (
-        <p role="note" className="rounded-md bg-amber-100 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+        <p role="note" className="rounded-md bg-warning-soft px-3 py-2 text-sm text-warning-text">
           This order was not paid through Kaizen&apos;s Stripe, or there is nothing left to refund through it. Refund the customer where they paid;
           pressing the button records the refund as made outside, and puts goods back in stock.
         </p>
@@ -329,13 +329,13 @@ export function RefundPanel({
             <p className="text-sm text-muted">You pay for return shipping, so nothing is taken off for it.</p>
           )}
           {whoPays === "shopper" && (
-            <button type="button" onClick={again} disabled={working} className="min-h-10 rounded-md border border-border bg-background px-4 text-sm disabled:opacity-40">
+            <button type="button" onClick={again} disabled={working} className="min-h-10 rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40">
               {working ? "Working …" : "Work it out again"}
             </button>
           )}
         </div>
         {problem && (
-          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+          <p role="alert" className="text-sm text-danger-text">
             {problem}
           </p>
         )}
@@ -361,7 +361,7 @@ export function RefundPanel({
             <legend className="mb-1 text-sm font-medium">Put back in stock</legend>
             {lines.map((line) => (
               <label key={line.lineId} className="flex flex-wrap items-center gap-2 text-sm">
-                <input name={`restock:${line.lineId}`} type="number" min={0} max={line.quantity} defaultValue={line.restock} className="min-h-10 w-20 rounded-md border border-border bg-background px-3" />
+                <input name={`restock:${line.lineId}`} type="number" min={0} max={line.quantity} defaultValue={line.restock} className="min-h-10 w-20 rounded-md border border-line bg-card px-3" />
                 <span>
                   of {line.quantity} × {line.title}
                 </span>
@@ -494,7 +494,7 @@ export function RegisterWithdrawalForm({ action, lines, today }: { action: StepA
               max={line.remaining}
               defaultValue={Math.max(1, line.maxQuantity || line.remaining)}
               aria-label={`Number of ${line.title}`}
-              className="min-h-10 w-20 rounded-md border border-border bg-background px-3"
+              className="min-h-10 w-20 rounded-md border border-line bg-card px-3"
             />
             <span>
               of {line.remaining} × {line.title}

@@ -40,28 +40,28 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
         </p>
       )}
       {hosts.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">No hosts yet.</p>
+        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">No hosts yet.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+        <ul className="divide-y divide-line rounded-lg border border-line bg-card">
           {hosts.map((h) => (
             <li key={h.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
               <div className="min-w-0">
                 <Link href={`${base}/${h.id}`} className="font-medium underline-offset-2 hover:underline">
                   {h.name}
                 </Link>
-                {h.disabled && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs">No access</span>}
+                {h.disabled && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs">No access</span>}
                 <span className="block text-muted">{h.email}</span>
                 <span className="block text-xs text-muted">
                   {h.commissionBps / 100} % commission · {h.listings === 1 ? "1 listing" : `${h.listings} listings`} ·{" "}
                   {h.vatRegistered ? "VAT registered" : "No VAT"} · {h.signedInBefore ? "Has signed in" : "Not signed in yet"}
                 </span>
                 {(!taxes.get(h.id)?.details || (taxes.get(h.id)?.missingAddresses.length ?? 0) > 0) && (
-                  <span className="block text-xs text-red-700 dark:text-red-400">
+                  <span className="block text-xs text-danger-text">
                     {taxes.get(h.id)?.details ? "Addresses missing for the tax report" : "Tax details missing for the tax report"}
                   </span>
                 )}
               </div>
-              <Link href={`${base}/${h.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-surface">
+              <Link href={`${base}/${h.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-sunken">
                 Edit <span className="sr-only">{h.name}</span>
               </Link>
             </li>

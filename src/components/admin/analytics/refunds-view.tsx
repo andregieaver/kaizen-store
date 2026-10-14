@@ -145,7 +145,7 @@ export function RefundsView(props: RefundsViewProps) {
       ) : null}
 
       {none ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+        <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
           No refund was made from Kaizen in this period, so there are no reasons, products or markets to show.
         </div>
       ) : (

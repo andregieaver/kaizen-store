@@ -17,7 +17,7 @@ const HANDOFF_WHY_WORDS: Record<HandoffWhy, string> = { ...(HANDOFF_WORDS as Rec
 
 function Figure({ label, value, sub, help }: { label: string; value: ReactNode; sub?: ReactNode; help?: string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
+    <div className="flex flex-col gap-1 rounded-lg border border-line bg-sunken p-4">
       <dt className="text-sm text-muted">{label}</dt>
       <dd className="text-2xl font-medium tabular-nums">{value}</dd>
       {sub && <dd className="text-xs text-muted">{sub}</dd>}
@@ -49,7 +49,7 @@ function CountTable({ caption, rows, total }: { caption: string; rows: { label: 
       </thead>
       <tbody>
         {rows.map((row) => (
-          <tr key={row.label} className="border-t border-border">
+          <tr key={row.label} className="border-t border-line">
             <th scope="row" className="py-1.5 text-left font-normal">
               {row.label}
             </th>
@@ -73,7 +73,7 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
       <p className="text-sm text-muted">
         Conversations that started in the period ({periodLabel}). Rates and medians are shown from {MIN_SUPPORT_SAMPLE} conversations. For the desk, never per person.
       </p>
-      {cut && <p className="rounded-lg border border-border p-3 text-sm">This period has more conversations than one report reads: the figures are from the first 50 000.</p>}
+      {cut && <p className="rounded-lg border border-line p-3 text-sm">This period has more conversations than one report reads: the figures are from the first 50 000.</p>}
 
       <section aria-labelledby="support-volume" className="flex flex-col gap-3">
         <h2 id="support-volume" className="text-lg font-medium">

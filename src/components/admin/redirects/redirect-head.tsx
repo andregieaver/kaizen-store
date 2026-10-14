@@ -21,13 +21,13 @@ export function RedirectsHead({ slug, active, title, intro, back }: { slug: stri
         <h1 className="text-display text-ink">{title}</h1>
         <p className="max-w-3xl text-sm text-muted">{intro}</p>
       </div>
-      <nav aria-label="Redirects" className="flex flex-wrap gap-1 border-b border-border text-sm">
+      <nav aria-label="Redirects" className="flex flex-wrap gap-1 border-b border-line text-sm">
         {REDIRECT_TABS.map((tab) => (
           <Link
             key={tab.id}
             href={paths[tab.id]}
             aria-current={active === tab.id ? "page" : undefined}
-            className="-mb-px border-b-2 border-transparent px-3 py-2 text-muted hover:text-foreground aria-[current=page]:border-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+            className="-mb-px border-b-2 border-transparent px-3 py-2 text-muted hover:text-ink aria-[current=page]:border-brand aria-[current=page]:font-medium aria-[current=page]:text-ink"
           >
             {tab.label}
           </Link>

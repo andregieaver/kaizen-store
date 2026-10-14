@@ -11,7 +11,7 @@ import { setAiPriceAction } from "./actions";
 
 export const metadata: Metadata = { title: "AI prices" };
 
-const input = "min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 const used = (n: number, one: string, many = one) => `${n.toLocaleString("en-GB")} ${n === 1 ? one : many}`;
 const usedWords = (m: { tokens: number; images: number; audioSeconds: number; characters: number }) =>
   [
@@ -54,12 +54,12 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
       </div>
 
       {unpriced.length > 0 && (
-        <section aria-labelledby="unpriced" className="rounded-card border border-border bg-background p-5">
+        <section aria-labelledby="unpriced" className="rounded-card border border-line bg-card p-5">
           <h2 id="unpriced" className="font-medium">
             Used without a price
           </h2>
           <p className="mb-3 mt-1 text-sm text-muted">These models were used in the last 90 days with no price for what they did, so the usage pages cannot say what they cost.</p>
-          <ul className="flex flex-col divide-y divide-border text-sm">
+          <ul className="flex flex-col divide-y divide-line text-sm">
             {unpriced.map((m) => (
               <li key={`${m.provider}/${m.model}`} className="flex flex-wrap items-baseline gap-x-4 gap-y-1 py-2">
                 <span className="min-w-0 flex-1">
@@ -75,7 +75,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
         </section>
       )}
 
-      <section aria-labelledby="set-price" className="rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="set-price" className="rounded-card border border-line bg-card p-5">
         <h2 id="set-price" className="font-medium">
           Set a price
         </h2>
@@ -122,7 +122,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
         </p>
       </section>
 
-      <section aria-labelledby="prices" className="rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="prices" className="rounded-card border border-line bg-card p-5">
         <h2 id="prices" className="font-medium">
           Prices
         </h2>
@@ -132,7 +132,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[56rem] text-left text-sm">
               <thead>
-                <tr className="border-b border-border text-muted">
+                <tr className="border-b border-line text-muted">
                   <th scope="col" className="px-2 py-2 font-normal">Provider and model</th>
                   <th scope="col" className="px-2 py-2 text-right font-normal">Input per million</th>
                   <th scope="col" className="px-2 py-2 text-right font-normal">Output per million</th>
@@ -146,7 +146,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
               <tbody>
                 {[...models.values()].flatMap((lines) =>
                   lines.map((line) => (
-                    <tr key={line.id} className={`border-b border-border last:border-0 ${line.current ? "" : "text-muted"}`}>
+                    <tr key={line.id} className={`border-b border-line last:border-0 ${line.current ? "" : "text-muted"}`}>
                       <th scope="row" className="px-2 py-2 text-left font-normal">
                         <span className={line.current ? "font-medium" : ""}>{line.model}</span>
                         <span className="block text-xs text-muted">{line.provider}{line.current ? "" : " · earlier price"}</span>

@@ -96,7 +96,7 @@ export function StockUpload({
       </div>
       <div role="status" aria-live="polite">
         {problems.length > 0 && (
-          <ul className="list-disc pl-5 text-sm text-red-700 dark:text-red-400">
+          <ul className="list-disc pl-5 text-sm text-danger-text">
             {problems.map((p) => (
               <li key={p}>{p}</li>
             ))}
@@ -134,7 +134,7 @@ export function StockCheck({ check, checked }: { check: () => Promise<Step>; che
         </button>
       </div>
       <div role="status" aria-live="polite">
-        {problem && <p className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-sm text-danger-text">{problem}</p>}
       </div>
     </div>
   );
@@ -170,7 +170,7 @@ export function StockImportApply({
         {counts.withProblems > 0 ? `, ${wholeNumber(counts.withProblems)} with problems` : ""}.
       </p>
       {confirming ? (
-        <div className="flex flex-col gap-3 rounded-md border border-border bg-background p-3" role="group" aria-label="Confirm the import">
+        <div className="flex flex-col gap-3 rounded-md border border-line bg-card p-3" role="group" aria-label="Confirm the import">
           <p className="text-sm">
             This will change the stock of {wholeNumber(counts.toUpdate)} {counts.toUpdate === 1 ? "variant at a location" : "variants at locations"}. Each change is kept in the history with the reason of its row (a count, unless the file says otherwise). A row whose
             stock has changed since the file was made is left alone when the file says what it was made from, and each row is checked again as it is written. Nothing is deleted.
@@ -196,7 +196,7 @@ export function StockImportApply({
       )}
       {counts.toUpdate + counts.unchanged === 0 && <p className={hint}>No row of this file can be imported. Fix the problems below and upload the file again.</p>}
       <div role="status" aria-live="polite">
-        {problem && <p className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-sm text-danger-text">{problem}</p>}
       </div>
     </section>
   );

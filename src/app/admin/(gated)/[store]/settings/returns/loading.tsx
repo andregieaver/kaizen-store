@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The return rules while they are read: the heading and the five cards of the form. */
 export default function ReturnSettingsLoading() {

@@ -19,7 +19,7 @@ export const metadata: Metadata = { title: "Translate a language" };
 const FILTERS = { all: "All", open: "To read", missing: "Missing", stale: "Out of date" } as const;
 type Filter = keyof typeof FILTERS;
 
-const area = "w-full rounded-md border border-border bg-background px-2 py-1 text-sm";
+const area = "w-full rounded-md border border-line bg-card px-2 py-1 text-sm";
 
 /**
  * One language's interface text (D111): translate it with AI, then read it,
@@ -101,7 +101,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
             const g = groups.get(name)!;
             return (
               <Link key={name} href={href(name, filter)} aria-current={name === current ? "page" : undefined}
-                className="flex items-center justify-between rounded-pill px-3 py-1.5 hover:bg-surface aria-[current=page]:bg-foreground aria-[current=page]:text-background">
+                className="flex items-center justify-between rounded-pill px-3 py-1.5 hover:bg-sunken aria-[current=page]:bg-inverse aria-[current=page]:text-inverse-ink">
                 <span>{name}</span>
                 <span className="text-xs opacity-80">{g.open > 0 ? `${g.open} of ${g.total}` : "✓"}</span>
               </Link>
@@ -115,7 +115,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
             <div role="group" aria-label="Show" className="flex gap-1 text-sm">
               {(Object.keys(FILTERS) as Filter[]).map((f) => (
                 <Link key={f} href={href(current, f)} aria-current={f === filter ? "true" : undefined}
-                  className="rounded-pill border border-border px-3 py-1 aria-[current=true]:bg-foreground aria-[current=true]:text-background">
+                  className="rounded-pill border border-edge px-3 py-1 aria-[current=true]:bg-inverse aria-[current=true]:text-inverse-ink">
                   {FILTERS[f]}
                 </Link>
               ))}
@@ -130,7 +130,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
                   const row = rows.get(entry.key);
                   const state = stateOf(entry.key, entry.source);
                   return (
-                    <li key={entry.key} className="grid gap-2 rounded-md border border-border bg-background p-3 md:grid-cols-2">
+                    <li key={entry.key} className="grid gap-2 rounded-md border border-line bg-card p-3 md:grid-cols-2">
                       <div className="flex flex-col gap-1 text-sm">
                         <span className="text-xs text-muted">{entry.key.replace(/^(ui|email):/, "")}{state === "stale" && " · English has changed"}</span>
                         <span className="whitespace-pre-wrap">{entry.source}</span>

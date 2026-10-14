@@ -41,19 +41,19 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
           <h1 className="text-display text-ink">Coupons</h1>
           <p className="text-sm text-muted">Codes shoppers type in the cart or at checkout for money off or free shipping.</p>
         </div>
-        <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background">
+        <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
           New coupon
         </Link>
       </div>
       {discounts.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No codes yet. Make one for a campaign, a newsletter or a loyal customer.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Code</th>
                 <th scope="col" className="px-4 py-2 font-medium">Gives</th>
                 <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Used</th>
@@ -65,7 +65,7 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
             </thead>
             <tbody>
               {discounts.map((d) => (
-                <tr key={d.id} className="border-b border-border last:border-0">
+                <tr key={d.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-2">
                     <Link href={`${base}/${d.id}`} className="font-mono font-medium underline-offset-2 hover:underline">
                       {d.code}
@@ -91,7 +91,7 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
                   <td className="px-4 py-2">{STATUS[discountStatus(d, d.used)]}</td>
                   <td className="px-4 py-2">
                     <div className="flex items-center justify-end gap-1">
-                      <Link href={`${base}/${d.id}`} className="flex min-h-10 items-center rounded-md px-3 hover:bg-surface">
+                      <Link href={`${base}/${d.id}`} className="flex min-h-10 items-center rounded-md px-3 hover:bg-sunken">
                         Edit<span className="sr-only"> {d.code}</span>
                       </Link>
                       <DeleteDiscountButton

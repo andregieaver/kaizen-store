@@ -26,16 +26,16 @@ import { reportMarkdown, type ReplicaReport } from "@/lib/replicate-report";
  */
 
 const button = "inline-flex min-h-10 items-center justify-center rounded-md px-4 text-sm font-medium disabled:opacity-50";
-const primary = `${button} bg-foreground text-background`;
-const secondary = `${button} border border-border hover:bg-surface`;
-const card = "rounded-lg border border-border bg-background p-4";
-const field = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
+const primary = `${button} bg-brand text-brand-ink`;
+const secondary = `${button} border border-edge hover:bg-sunken`;
+const card = "rounded-lg border border-line bg-card p-4";
+const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 
 const LEVEL_STYLE: Record<LogLevel, string> = {
   info: "text-muted",
-  ok: "text-foreground",
-  warn: "text-amber-700 dark:text-amber-300",
-  error: "text-red-700",
+  ok: "text-ink",
+  warn: "text-warning-text",
+  error: "text-danger-text",
 };
 const LEVEL_MARK: Record<LogLevel, string> = { info: "·", ok: "✓", warn: "!", error: "✕" };
 
@@ -223,7 +223,7 @@ export function ReplicatePanel({
       )}
 
       {problem && (
-        <p role="alert" className="rounded-md border border-red-700/40 bg-red-700/5 p-3 text-sm text-red-700">
+        <p role="alert" className="rounded-md border border-danger-text/40 bg-danger-solid/5 p-3 text-sm text-danger-text">
           {problem}
         </p>
       )}
@@ -268,7 +268,7 @@ function Progress({ job, elapsed, onAbort }: { job: ReplicaJob; elapsed: number;
           </p>
         </div>
         {!done && (
-          <button type="button" onClick={onAbort} disabled={job.abortRequested} className={`${secondary} border-red-700/50 text-red-700`}>
+          <button type="button" onClick={onAbort} disabled={job.abortRequested} className={`${secondary} border-danger-text/50 text-danger-text`}>
             {job.abortRequested ? "Stopping…" : "Abort"}
           </button>
         )}
@@ -279,10 +279,10 @@ function Progress({ job, elapsed, onAbort }: { job: ReplicaJob; elapsed: number;
         aria-valuemax={100}
         aria-valuenow={job.progress}
         aria-label="Progress of the copy"
-        className="h-2.5 overflow-hidden rounded-full bg-surface"
+        className="h-2.5 overflow-hidden rounded-full bg-sunken"
       >
         <div
-          className={`h-full rounded-full transition-[width] duration-500 ${job.status === "failed" ? "bg-red-700" : job.status === "aborted" ? "bg-amber-600" : "bg-foreground"}`}
+          className={`h-full rounded-full transition-[width] duration-500 ${job.status === "failed" ? "bg-danger-solid" : job.status === "aborted" ? "bg-warning-solid" : "bg-brand"}`}
           style={{ width: `${job.progress}%` }}
         />
       </div>
@@ -300,11 +300,11 @@ function Stepper({ job }: { job: ReplicaJob }) {
       {PHASES.filter((phase) => phase !== "done").map((phase, index) => {
         const state = states[phase];
         return (
-          <li key={phase} className={`flex items-center gap-1.5 ${state === "waiting" ? "text-muted" : state === "stopped" ? "text-amber-700" : ""}`} aria-current={state === "active" ? "step" : undefined}>
+          <li key={phase} className={`flex items-center gap-1.5 ${state === "waiting" ? "text-muted" : state === "stopped" ? "text-warning-text" : ""}`} aria-current={state === "active" ? "step" : undefined}>
             <span
               aria-hidden
               className={`grid size-5 place-items-center rounded-full border text-[11px] ${
-                state === "done" ? "border-foreground bg-foreground text-background" : state === "active" ? "border-foreground" : "border-border"
+                state === "done" ? "border-brand bg-brand text-brand-ink" : state === "active" ? "border-brand" : "border-line"
               }`}
             >
               {state === "done" ? "✓" : index + 1}
@@ -323,7 +323,7 @@ function ScoreChips({ passes, view }: { passes: ReplicaPass[]; view: "desktop" |
   return (
     <ul className="flex flex-wrap gap-1.5 text-xs" aria-label="Match with the original after each pass">
       {values.map((value) => (
-        <li key={value.iteration} className="rounded-full border border-border px-2 py-0.5">
+        <li key={value.iteration} className="rounded-full border border-line px-2 py-0.5">
           {value.iteration === 0 ? "First copy" : `Pass ${value.iteration}`}: <strong>{value.match === null ? "–" : `${value.match}%`}</strong>
         </li>
       ))}
@@ -354,9 +354,9 @@ function Preview({ job, view, setView }: { job: ReplicaJob; view: "desktop" | "m
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-medium">Live preview</h3>
-        <div role="group" aria-label="Width" className="inline-flex overflow-hidden rounded-md border border-border text-sm">
+        <div role="group" aria-label="Width" className="inline-flex overflow-hidden rounded-md border border-line text-sm">
           {(["desktop", "mobile"] as const).map((name) => (
-            <button key={name} type="button" onClick={() => setView(name)} aria-pressed={view === name} className={`px-3 py-1.5 ${view === name ? "bg-foreground text-background" : "hover:bg-surface"}`}>
+            <button key={name} type="button" onClick={() => setView(name)} aria-pressed={view === name} className={`px-3 py-1.5 ${view === name ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}>
               {name === "desktop" ? "Computer" : "Phone"}
             </button>
           ))}
@@ -366,7 +366,7 @@ function Preview({ job, view, setView }: { job: ReplicaJob; view: "desktop" | "m
       <div className={`flex gap-3 ${view === "mobile" ? "justify-center" : ""}`}>
         <figure className={`flex flex-col gap-1 ${shown}`}>
           <figcaption className="text-xs font-medium text-muted">Original</figcaption>
-          <div ref={left} onScroll={() => follow(left.current, right.current)} className="h-[520px] overflow-auto rounded-md border border-border bg-surface">
+          <div ref={left} onScroll={() => follow(left.current, right.current)} className="h-[520px] overflow-auto rounded-md border border-line bg-sunken">
             {/* eslint-disable-next-line @next/next/no-img-element -- a photograph of another site's page, drawn at its own size */}
             {original ? <img src={original} alt="The original page" className="block w-full" /> : <Empty text="Not looked at yet" />}
           </div>
@@ -376,7 +376,7 @@ function Preview({ job, view, setView }: { job: ReplicaJob; view: "desktop" | "m
             Copy{job.previews.copy.iteration !== null ? (job.previews.copy.iteration === 0 ? " — first build" : ` — after pass ${job.previews.copy.iteration}`) : ""}
             {score ? ` · ${score.match}% match` : ""}
           </figcaption>
-          <div ref={right} onScroll={() => follow(right.current, left.current)} className="h-[520px] overflow-auto rounded-md border border-border bg-surface">
+          <div ref={right} onScroll={() => follow(right.current, left.current)} className="h-[520px] overflow-auto rounded-md border border-line bg-sunken">
             {/* eslint-disable-next-line @next/next/no-img-element -- a photograph of the draft, drawn at its own size */}
             {copy ? <img src={copy} alt="The copy as it is now" className="block w-full" /> : <Empty text={finished(job.status) ? "No copy was made" : "The copy appears here once it is built"} />}
           </div>
@@ -392,9 +392,9 @@ function Empty({ text }: { text: string }) {
 
 function Summary({ job, pagesHref }: { job: ReplicaJob; pagesHref: string }) {
   const summary = job.summary!;
-  const tone = summary.outcome === "done" ? "border-border" : "border-amber-600/50";
+  const tone = summary.outcome === "done" ? "border-line" : "border-warning-text/50";
   return (
-    <div className={`flex flex-col gap-3 rounded-lg border ${tone} bg-surface p-4`} aria-labelledby={`${job.id}-summary`}>
+    <div className={`flex flex-col gap-3 rounded-lg border ${tone} bg-sunken p-4`} aria-labelledby={`${job.id}-summary`}>
       <h3 id={`${job.id}-summary`} className="text-base font-medium">
         {summary.outcome === "done" ? "Summary" : summary.outcome === "aborted" ? "Summary of what was done before it was stopped" : "The copy could not be finished"}
       </h3>
@@ -415,7 +415,7 @@ function Summary({ job, pagesHref }: { job: ReplicaJob; pagesHref: string }) {
           <ul className="mt-1 flex flex-col gap-1 text-sm">
             {summary.wentWell.map((line) => (
               <li key={line} className="flex gap-2">
-                <span aria-hidden className="text-green-700">
+                <span aria-hidden className="text-positive-text">
                   ✓
                 </span>
                 <span>{line}</span>
@@ -430,7 +430,7 @@ function Summary({ job, pagesHref }: { job: ReplicaJob; pagesHref: string }) {
           <ul className="mt-1 flex flex-col gap-1 text-sm">
             {summary.problems.map((line) => (
               <li key={line} className="flex gap-2">
-                <span aria-hidden className="text-amber-700">
+                <span aria-hidden className="text-warning-text">
                   !
                 </span>
                 <span>{line}</span>
@@ -482,9 +482,9 @@ function ReportCard({ report }: { report: ReplicaReport }) {
     link.click();
     URL.revokeObjectURL(url);
   };
-  const tone = { high: "text-red-700", medium: "text-amber-700 dark:text-amber-300", low: "text-muted" } as const;
+  const tone = { high: "text-danger-text", medium: "text-warning-text", low: "text-muted" } as const;
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border bg-background p-3">
+    <div className="flex flex-col gap-2 rounded-md border border-line bg-card p-3">
       <h4 className="text-sm font-medium">Report for improving the replicator</h4>
       <p className="text-xs text-muted">
         Every gap the copy has, with what was counted in the original, the change that would close it and the files to start in. Copy it and use it as the brief for a change to the replicator or the page builder.
@@ -532,7 +532,7 @@ function Log({ log }: { log: ReplicaLogEntry[] }) {
   }, [log.length]);
   if (log.length === 0) return null;
   return (
-    <details open className="rounded-md border border-border">
+    <details open className="rounded-md border border-line">
       <summary className="cursor-pointer px-3 py-2 text-sm font-medium">What the AI is doing</summary>
       <div
         ref={box}
@@ -540,7 +540,7 @@ function Log({ log }: { log: ReplicaLogEntry[] }) {
           const el = e.currentTarget;
           pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
         }}
-        className="max-h-64 overflow-auto border-t border-border px-3 py-2 font-mono text-xs"
+        className="max-h-64 overflow-auto border-t border-line px-3 py-2 font-mono text-xs"
       >
         {log.map((entry, index) => (
           <p key={`${entry.at}-${index}`} className={`flex gap-2 py-0.5 ${LEVEL_STYLE[entry.level]}`}>

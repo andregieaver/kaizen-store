@@ -23,7 +23,7 @@ export function WishlistTabs({ storeSlug, current }: { storeSlug: string; curren
           key={tab.key}
           href={tab.href}
           aria-current={tab.key === current ? "page" : undefined}
-          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-medium"
+          className="rounded px-2 py-1 aria-[current=page]:bg-card aria-[current=page]:font-medium"
         >
           {tab.label}
         </Link>
@@ -33,12 +33,12 @@ export function WishlistTabs({ storeSlug, current }: { storeSlug: string; curren
 }
 
 const STATUS_TONE: Record<CartAddStatus, string> = {
-  bought: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
-  awaiting_payment: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  cancelled: "bg-surface text-muted",
-  in_cart: "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200",
-  removed: "bg-surface text-muted",
-  left: "bg-surface text-muted",
+  bought: "bg-positive-soft text-positive-text",
+  awaiting_payment: "bg-warning-soft text-warning-text",
+  cancelled: "bg-sunken text-muted",
+  in_cart: "bg-insight-soft text-insight-text",
+  removed: "bg-sunken text-muted",
+  left: "bg-sunken text-muted",
 };
 
 export function CartAddStatusBadge({ status }: { status: CartAddStatus }) {
@@ -73,7 +73,7 @@ export function CartAddTable({
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-border">
+          <tr className="border-b border-line">
             <th scope="col" className="py-2 pr-4 font-medium">Item</th>
             {showList && <th scope="col" className="hidden py-2 pr-4 font-medium md:table-cell">From list</th>}
             {showCustomer && <th scope="col" className="hidden py-2 pr-4 font-medium sm:table-cell">Shopper</th>}
@@ -90,7 +90,7 @@ export function CartAddTable({
                   ? formatMoney(row.unitPriceMinor * row.quantity, row.currency, locale)
                   : "–";
             return (
-              <tr key={row.id} className="border-b border-border align-top last:border-0">
+              <tr key={row.id} className="border-b border-line align-top last:border-0">
                 <td className="py-2 pr-4">
                   {row.productId ? (
                     <Link href={`${base}/products/${row.productId}`} className="font-medium underline-offset-2 hover:underline">

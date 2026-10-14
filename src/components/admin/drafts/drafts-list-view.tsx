@@ -53,12 +53,12 @@ export function DraftsListView({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <nav aria-label="Draft status" className="flex flex-wrap gap-1 border-b border-border pb-2 text-sm">
-          <Link href={href({ status: null })} aria-current={status === null ? "page" : undefined} className="rounded-md px-3 py-1.5 text-muted hover:text-foreground aria-[current=page]:bg-background aria-[current=page]:font-medium aria-[current=page]:text-foreground">
+        <nav aria-label="Draft status" className="flex flex-wrap gap-1 border-b border-line pb-2 text-sm">
+          <Link href={href({ status: null })} aria-current={status === null ? "page" : undefined} className="rounded-md px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
             All
           </Link>
           {DRAFT_STATUSES.map((s) => (
-            <Link key={s} href={href({ status: s })} aria-current={status === s ? "page" : undefined} className="rounded-md px-3 py-1.5 text-muted hover:text-foreground aria-[current=page]:bg-background aria-[current=page]:font-medium aria-[current=page]:text-foreground">
+            <Link key={s} href={href({ status: s })} aria-current={status === s ? "page" : undefined} className="rounded-md px-3 py-1.5 text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink">
               {DRAFT_STATUS_LABELS[s]}
             </Link>
           ))}
@@ -74,7 +74,7 @@ export function DraftsListView({
       </p>
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-surface p-8 text-sm">
+        <div className="flex flex-col items-start gap-3 rounded-lg border border-line bg-sunken p-8 text-sm">
           <p>{status ? `No ${DRAFT_STATUS_LABELS[status].toLowerCase()} drafts.` : "No draft orders yet. A draft is an order you make for a customer, who pays it through a link."}</p>
           {status ? (
             <Link href={base} className={secondary}>
@@ -92,7 +92,7 @@ export function DraftsListView({
         <div className={tableShell}>
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className={th}>
                   Draft
                 </th>
@@ -114,7 +114,7 @@ export function DraftsListView({
               {rows.map((row) => {
                 const note = statusNote(row, when);
                 return (
-                  <tr key={row.id} className="border-b border-border last:border-0">
+                  <tr key={row.id} className="border-b border-line last:border-0">
                     <td className={td}>
                       <Link href={`${base}/${row.id}`} className="font-medium underline-offset-2 hover:underline">
                         {row.number}

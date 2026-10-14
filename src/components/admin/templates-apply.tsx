@@ -125,7 +125,7 @@ function Choice({
         {options.map((option) => (
           <label
             key={option.value}
-            className="flex cursor-pointer items-start gap-2 rounded-md border border-border p-2 text-sm has-checked:border-foreground has-checked:bg-surface has-focus-visible:outline-2"
+            className="flex cursor-pointer items-start gap-2 rounded-md border border-line p-2 text-sm has-checked:border-brand has-checked:bg-sunken has-focus-visible:outline-2"
           >
             <input
               type="radio"
@@ -136,7 +136,7 @@ function Choice({
                 setMode(option.value);
                 setProblem(null);
               }}
-              className="mt-1 size-4 shrink-0 accent-foreground"
+              className="mt-1 size-4 shrink-0 accent-brand"
             />
             <span className="flex flex-col">
               <span className="font-medium">{option.label}</span>
@@ -147,25 +147,25 @@ function Choice({
       </fieldset>
 
       {warning && (
-        <p role="note" className="rounded-md border border-amber-700 p-3 text-sm dark:border-amber-400">
+        <p role="note" className="rounded-md border border-warning-text p-3 text-sm">
           {warning}
         </p>
       )}
       {css && <p className="text-xs text-muted">{css}</p>}
       {(room ?? problem) && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {room ?? problem}
         </p>
       )}
 
       <div className="flex flex-wrap justify-end gap-2">
-        <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-border px-4 text-sm">
+        <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-line px-4 text-sm">
           Cancel
         </button>
         <button
           type="submit"
           disabled={room !== null}
-          className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+          className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
         >
           {mode === "replace" ? (replacing ? `Replace ${count(rows.length, "row")}` : "Use layout") : "Add rows"}
         </button>

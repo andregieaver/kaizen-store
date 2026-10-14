@@ -135,7 +135,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
             <button type="button" onClick={clear} className="text-sm underline underline-offset-2">
               Clear
             </button>
-            <span className="mx-1 hidden h-5 w-px bg-border sm:block" aria-hidden="true" />
+            <span className="mx-1 hidden h-5 w-px bg-line sm:block" aria-hidden="true" />
             {actions.map((a) => (
               <button key={a} type="button" disabled={pending || phase.kind === "running"} onClick={() => {
                   setPhase({ kind: "form", action: a });
@@ -167,7 +167,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
             />
           )}
           {phase.kind === "review" && (
-            <div role="group" aria-label="Confirm" className="flex flex-col gap-3 rounded-md border border-border bg-background p-3">
+            <div role="group" aria-label="Confirm" className="flex flex-col gap-3 rounded-md border border-line bg-card p-3">
               <p className="text-sm font-medium">
                 {ACTION_WORDS[phase.action]}: this will change {phase.preview.counts.changed} of {phase.preview.counts.products} products
                 {phase.preview.counts.unchanged > 0 ? `, leave ${phase.preview.counts.unchanged} as they are` : ""}
@@ -209,16 +209,16 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
           )}
           {phase.kind === "done" && <BulkResult summary={phase.summary} undo={bulk.undo} onReload={clear} />}
           {problem && (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+            <p role="alert" className="text-sm text-danger-text">
               {problem}
             </p>
           )}
         </div>
       )}
-      <table className="w-full overflow-hidden rounded-lg border border-border bg-background text-left text-sm">
+      <table className="w-full overflow-hidden rounded-lg border border-line bg-card text-left text-sm">
         <caption className="sr-only">{archived ? "Archived products" : "Products"}</caption>
         <thead>
-          <tr className="border-b border-border">
+          <tr className="border-b border-line">
             {bulk && (
               <th scope="col" className="w-10 px-4 py-2">
                 <input type="checkbox" aria-label={allShown ? "Clear the choice" : "Choose all products shown"} checked={allShown} onChange={selectShown} />
@@ -240,7 +240,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
         </thead>
         <tbody>
           {rows.map((product) => (
-            <tr key={product.id} className="border-b border-border last:border-0">
+            <tr key={product.id} className="border-b border-line last:border-0">
               {bulk && (
                 <td className="px-4 py-2">
                   <input type="checkbox" aria-label={`Choose ${product.title}`} checked={selected.has(product.id)} onChange={() => toggle(product.id)} />
@@ -250,9 +250,9 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
                 <Link href={`${base}/${product.id}`} className="flex items-center gap-3 font-medium hover:underline">
                   {product.image ? (
                     // eslint-disable-next-line @next/next/no-img-element -- small admin thumbnail
-                    <img src={product.image} alt="" width={40} height={40} loading="lazy" className="size-10 rounded border border-border object-cover" />
+                    <img src={product.image} alt="" width={40} height={40} loading="lazy" className="size-10 rounded border border-line object-cover" />
                   ) : (
-                    <span aria-hidden="true" className="size-10 rounded border border-dashed border-border" />
+                    <span aria-hidden="true" className="size-10 rounded border border-dashed border-line" />
                   )}
                   <span>
                     {product.title}
@@ -324,7 +324,7 @@ function ActionPanel({
   const toggleIn = (list: string[], value: string) => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
   return (
     <form
-      className="flex flex-col gap-3 rounded-md border border-border bg-background p-3"
+      className="flex flex-col gap-3 rounded-md border border-line bg-card p-3"
       onSubmit={(e) => {
         e.preventDefault();
         onReview();

@@ -11,7 +11,7 @@ export function WorkOff({ title }: { storeSlug?: string; title: string }) {
   return (
     <div className="flex max-w-3xl flex-col gap-3">
       <h1 className="text-display text-ink">{title}</h1>
-      <p className="rounded-card border border-border bg-background p-5 text-sm">
+      <p className="rounded-card border border-line bg-card p-5 text-sm">
         Work is off for this store, so this page is hidden from the menu.{" "}
         <Link href={`${WORK_ROOT}/settings`} className="underline">
           Switch it on in Work settings

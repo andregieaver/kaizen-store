@@ -76,7 +76,7 @@ export function SavedLayoutDialog({
             <button
               type="button"
               onClick={() => setConfirmDelete(false)}
-              className="min-h-10 rounded-md border border-border px-4 text-sm"
+              className="min-h-10 rounded-md border border-line px-4 text-sm"
             >
               Keep it
             </button>
@@ -84,7 +84,7 @@ export function SavedLayoutDialog({
               type="button"
               onClick={remove}
               disabled={busy}
-              className="min-h-10 rounded-md bg-red-700 px-4 text-sm font-medium text-white disabled:opacity-50"
+              className="min-h-10 rounded-md bg-danger-soft px-4 text-sm font-medium text-danger-text disabled:opacity-50"
             >
               Delete
             </button>
@@ -94,7 +94,7 @@ export function SavedLayoutDialog({
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
-              className="mr-auto min-h-10 px-2 text-sm text-red-700 underline dark:text-red-400"
+              className="mr-auto min-h-10 px-2 text-sm text-danger-text underline"
             >
               Delete
             </button>
@@ -102,7 +102,7 @@ export function SavedLayoutDialog({
               type="button"
               onClick={onUse}
               disabled={!fits}
-              className="min-h-10 rounded-md border border-border px-4 text-sm disabled:opacity-40"
+              className="min-h-10 rounded-md border border-line px-4 text-sm disabled:opacity-40"
             >
               Use on this page
             </button>
@@ -110,7 +110,7 @@ export function SavedLayoutDialog({
               type="button"
               onClick={save}
               disabled={busy || name.trim() === part.name}
-              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+              className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
               {busy ? "Saving …" : "Save name"}
             </button>
@@ -131,7 +131,7 @@ export function SavedLayoutDialog({
               setName(event.target.value);
               setProblems([]);
             }}
-            className="min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+            className="min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm"
           />
         </div>
         <p className="text-sm text-muted">
@@ -145,7 +145,7 @@ export function SavedLayoutDialog({
           </p>
         )}
         {problems.length > 0 && (
-          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+          <p role="alert" className="text-sm text-danger-text">
             {problems.join(" ")}
           </p>
         )}

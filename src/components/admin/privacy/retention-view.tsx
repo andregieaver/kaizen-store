@@ -50,7 +50,7 @@ const countryText = (country: string | null) => (country ? country : "Every othe
 
 function RuleRow({ rule, verify }: { rule: StoredRule; verify: (id: string) => Action }) {
   return (
-    <tr className="border-t border-border align-top">
+    <tr className="border-t border-line align-top">
       <td className="py-2 pr-3">{countryText(rule.country)}</td>
       <td className="py-2 pr-3 whitespace-nowrap">
         {describePeriod(rule)}
@@ -188,7 +188,7 @@ export function RetentionView({
               ["keep", "Kept"],
             ] as const
           ).map(([key, text]) => (
-            <div key={key} className="rounded-lg border border-border p-3">
+            <div key={key} className="rounded-lg border border-line p-3">
               <dt className="text-muted">{text}</dt>
               <dd className="text-xl font-medium">{actions(key)}</dd>
             </div>
@@ -218,7 +218,7 @@ export function RetentionView({
                 {overview.lastRuns.map((run) => {
                   const removed = Object.entries(run.counts).filter(([k]) => k !== "orders").reduce((sum, [, n]) => sum + n, 0);
                   return (
-                    <tr key={run.at} className="border-t border-border">
+                    <tr key={run.at} className="border-t border-line">
                       <td className="py-2 pr-3 whitespace-nowrap">{dayText(run.at.slice(0, 10))}</td>
                       <td className="py-2 pr-3 text-right">{run.counts.orders ?? 0}</td>
                       <td className="py-2 pr-3 text-right">{removed}</td>

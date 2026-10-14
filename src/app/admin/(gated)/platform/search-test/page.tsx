@@ -10,7 +10,7 @@ import { startSearchTestAction, stopSearchTestAction } from "./actions";
 
 export const metadata: Metadata = { title: "Search test" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 const percent = (value: number, digits = 1) => `${(value * 100).toFixed(digits)} %`;
 const points = (value: number) => `${value >= 0 ? "+" : ""}${(value * 100).toFixed(1)} points`;
 const date = (iso: string) => new Date(iso).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Oslo" });
@@ -75,7 +75,7 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
                 step={1}
                 defaultValue={50}
                 required
-                className="min-h-10 w-32 rounded-md border border-border bg-background px-3"
+                className="min-h-10 w-32 rounded-md border border-line bg-card px-3"
               />
               <span className="font-normal text-muted">
                 Half and half finds a difference soonest. A smaller share costs fewer shoppers the better search, if hybrid
@@ -115,7 +115,7 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
 function Results({ results }: { results: ExperimentResults }) {
   const { arms, srmP } = results;
   const row = (name: string, comparison: Comparison, betterIs: string) => (
-    <tr key={name} className="border-t border-border align-top">
+    <tr key={name} className="border-t border-line align-top">
       <th scope="row" className="py-2 pr-4 text-left font-medium">
         {name}
         <span className="block text-xs font-normal text-muted">{betterIs}</span>
@@ -145,7 +145,7 @@ function Results({ results }: { results: ExperimentResults }) {
       <p className="mb-3 text-sm text-muted">
         {arms.keyword.searches} searches with keyword search, {arms.hybrid.searches} with hybrid.{" "}
         {srmP < 0.001 ? (
-          <strong className="text-red-700 dark:text-red-400">
+          <strong className="text-danger-text">
             The split does not match the share asked for (p = {srmP.toExponential(1)}): something is dropping or double-counting
             searches, and the results cannot be trusted until it is found.
           </strong>
@@ -188,7 +188,7 @@ function Results({ results }: { results: ExperimentResults }) {
             </thead>
             <tbody>
               {results.weeks.map((week) => (
-                <tr key={week.week} className="border-t border-border tabular-nums">
+                <tr key={week.week} className="border-t border-line tabular-nums">
                   <td className="py-1 pr-4">{week.week}</td>
                   <td className="py-1 pr-4">
                     {week.arms.keyword.searches} / {week.arms.hybrid.searches}

@@ -126,7 +126,7 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
       />
 
       {memberCan(viewer, "owner") && (
-        <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-border pt-4">
+        <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-line pt-4">
           <h2 id="delete-heading" className="text-sm font-medium">
             Delete this client
           </h2>

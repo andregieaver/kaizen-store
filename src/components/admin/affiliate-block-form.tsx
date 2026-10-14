@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import { BLOCK_NOTE_MAX, BLOCK_NOTE_MIN } from "@/lib/affiliate-admin";
 import type { AffiliateResult } from "@/lib/affiliates";
 
-const control = "min-h-9 w-full rounded-md border border-border bg-background px-3 text-sm";
+const control = "min-h-9 w-full rounded-md border border-line bg-card px-3 text-sm";
 
 /**
  * Blocks a referrer, with a reason the audit log keeps, or lets them earn again (D131). A block stops new rewards and
@@ -53,11 +53,11 @@ export function AffiliateBlockForm({
           type="button"
           disabled={pending}
           onClick={() => run(false)}
-          className="min-h-9 rounded-md border border-border px-3 text-sm disabled:opacity-40"
+          className="min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40"
         >
           {pending ? "Saving …" : `Unblock ${who}`}
         </button>
-        {problem && <p className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-sm text-danger-text">{problem}</p>}
         <span role="status" aria-live="polite" className="text-sm text-muted">
           {done}
         </span>
@@ -68,7 +68,7 @@ export function AffiliateBlockForm({
   return (
     <div className="flex flex-col items-start gap-2">
       {!open ? (
-        <button type="button" onClick={() => setOpen(true)} className="min-h-9 rounded-md border border-border px-3 text-sm">
+        <button type="button" onClick={() => setOpen(true)} className="min-h-9 rounded-md border border-line px-3 text-sm">
           Block {who}
         </button>
       ) : (
@@ -93,15 +93,15 @@ export function AffiliateBlockForm({
             <button
               type="submit"
               disabled={pending}
-              className="min-h-9 rounded-pill bg-foreground px-3 text-sm font-medium text-background disabled:opacity-40"
+              className="min-h-9 rounded-pill bg-brand px-3 text-sm font-medium text-brand-ink disabled:opacity-40"
             >
               {pending ? "Saving …" : "Block"}
             </button>
-            <button type="button" onClick={() => setOpen(false)} className="min-h-9 rounded-md border border-border px-3 text-sm">
+            <button type="button" onClick={() => setOpen(false)} className="min-h-9 rounded-md border border-line px-3 text-sm">
               Cancel
             </button>
           </div>
-          {problem && <p className="text-sm text-red-700 dark:text-red-400">{problem}</p>}
+          {problem && <p className="text-sm text-danger-text">{problem}</p>}
         </form>
       )}
       <span role="status" aria-live="polite" className="text-sm text-muted">

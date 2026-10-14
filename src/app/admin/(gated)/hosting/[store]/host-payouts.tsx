@@ -38,7 +38,7 @@ export function HostPayouts({
   const publishableKey = platformPublishableKey(mode);
   const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
   return (
-    <section aria-labelledby="payouts-heading" className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+    <section aria-labelledby="payouts-heading" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
       <div>
         <h2 id="payouts-heading" className="font-medium">
           {mode === "live" ? "Getting paid" : "Getting paid (test mode)"}
@@ -93,7 +93,7 @@ export function HostPayouts({
                   <th className="py-1 text-right font-normal">You get</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-line">
                 {earnings.map((e) => (
                   <tr key={e.paymentId}>
                     <td className="py-1 pr-3">{e.number}</td>

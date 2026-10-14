@@ -243,7 +243,7 @@ function CountingState({ base, traffic }: { base: string; traffic: TrafficReport
 
 function NeedsCounting({ traffic, base, what }: { traffic: TrafficReport; base: string; what: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+    <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
       <p>{`${what} ${countingReason(traffic)}`}</p>
       {!traffic.counting ? (
         <p className="mt-1">
@@ -298,7 +298,7 @@ function FunnelSection({ base, traffic, orders }: { base: string; traffic: Traff
       {known ? (
         <>
           <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <div className="min-w-0 rounded-lg border border-border bg-background p-4">
+            <div className="min-w-0 rounded-lg border border-line bg-card p-4">
               <Funnel
                 label="Visits, product views, carts, checkouts and purchases"
                 stages={traffic.funnel.stages.map((s) => ({
@@ -547,7 +547,7 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
         </Note>
       ) : null}
       {none ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+        <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
           {search.period.days === 0 ? "There are no searches to show for this period." : "No one used the store's search in this period."}
         </div>
       ) : (
@@ -558,7 +558,7 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
               Each of these is a shopper telling you what they could not find. If you sell it, add the words they used to the product. If you do not, it may be a product worth adding.
             </p>
             {search.zeroTerms.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border px-4 py-4 text-sm text-muted">Every search in this period showed at least one product. Nothing is being missed.</div>
+              <div className="rounded-lg border border-dashed border-line px-4 py-4 text-sm text-muted">Every search in this period showed at least one product. Nothing is being missed.</div>
             ) : (
               <>
                 <DataTable caption="Searches that found nothing, with how many times and when last" columns={zeroColumns} rows={search.zeroTerms} rowKey={(r) => r.term} exportId="traffic.zero_terms" />
@@ -618,12 +618,12 @@ function WhenSection({ time, timeZone, money }: { time: TimeReport; timeZone: st
         </ul>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="min-w-0 rounded-lg border border-border bg-background p-4">
+        <div className="min-w-0 rounded-lg border border-line bg-card p-4">
           <h3 className="mb-3 text-sm font-medium">Orders by weekday and time of day</h3>
           <Heatmap label="Paid orders by weekday and two-hour band" columns={[...WEEKDAY_LABELS]} rows={rows} format={formatCount} emptyText="No paid orders in this period yet." exportId="traffic.heatmap" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
         </div>
         {orders > 0 ? (
-          <div className="min-w-0 rounded-lg border border-border bg-background p-4">
+          <div className="min-w-0 rounded-lg border border-line bg-card p-4">
             <h3 className="mb-3 text-sm font-medium">Orders by weekday</h3>
             <HorizontalBars label="Paid orders for each weekday" rows={weekdays} exportId="traffic.weekdays" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
           </div>
@@ -654,7 +654,7 @@ export function TrafficView(props: TrafficViewProps) {
 
   return (
     <>
-      <nav aria-label="Questions this page answers" className="max-w-3xl rounded-lg border border-border bg-surface px-4 py-3 text-sm">
+      <nav aria-label="Questions this page answers" className="max-w-3xl rounded-lg border border-line bg-sunken px-4 py-3 text-sm">
         <p className="font-medium">This page answers three things</p>
         <ol aria-label="The three questions" className="mt-1 list-decimal space-y-0.5 pl-5">
           {QUESTIONS.map((q) => (

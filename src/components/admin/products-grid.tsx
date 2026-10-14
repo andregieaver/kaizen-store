@@ -65,7 +65,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
       setResult({ summary: got.summary, conflicts: got.conflicts, invalid: got.invalid });
     });
 
-  const cellClass = (changed: boolean) => `${field} w-full min-w-24 ${changed ? "border-foreground" : ""}`;
+  const cellClass = (changed: boolean) => `${field} w-full min-w-24 ${changed ? "border-brand" : ""}`;
 
   return (
     <div className="flex flex-col gap-4" aria-busy={pending}>
@@ -73,7 +73,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
         <table className="w-full text-sm">
           <caption className="sr-only">One row for each variant of the chosen products. Edit a cell, then review the changes.</caption>
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-b border-line">
               <th scope="col" className={th}>
                 Product
               </th>
@@ -101,7 +101,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
               const now = edited[row.variantId];
               const was = row.cells;
               return (
-                <tr key={row.variantId} className="border-b border-border last:border-0">
+                <tr key={row.variantId} className="border-b border-line last:border-0">
                   <td className={td}>
                     <span className="font-medium">{row.title}</span>
                     {!row.active && <span className={`${hint} block`}>Switched off</span>}
@@ -143,7 +143,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
           Discard my edits
         </button>
         {problem && (
-          <span role="alert" className="text-sm text-red-700 dark:text-red-400">
+          <span role="alert" className="text-sm text-danger-text">
             {problem}
           </span>
         )}
@@ -159,7 +159,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
               <table className="w-full text-sm">
                 <caption className="sr-only">Every changed cell, before and after</caption>
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b border-line">
                     <th scope="col" className={th}>
                       Product
                     </th>
@@ -176,7 +176,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
                 </thead>
                 <tbody>
                   {preview.changes.map((c, i) => (
-                    <tr key={`${c.variantId}-${c.field}-${i}`} className="border-b border-border last:border-0">
+                    <tr key={`${c.variantId}-${c.field}-${i}`} className="border-b border-line last:border-0">
                       <td className={td}>
                         {c.title}
                         {c.sku ? <span className={`${hint} block`}>{c.sku}</span> : null}
@@ -192,7 +192,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
           )}
           {preview.invalid.length > 0 && (
             <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-medium text-red-700 dark:text-red-400">Cannot be changed</h3>
+              <h3 className="text-sm font-medium text-danger-text">Cannot be changed</h3>
               <ul className="text-sm">
                 {preview.invalid.map((c, i) => (
                   <li key={`${c.variantId}-${c.field}-${i}`}>

@@ -15,7 +15,7 @@ export default async function DesignThemePage({ params }: PageProps<"/admin/plat
   return (
     <DesignShell design={page.design} facts={page.facts} tab="theme">
       {page.problem !== null ? (
-        <p role="alert" className="rounded-lg border border-border bg-background p-4 text-sm">{page.problem}</p>
+        <p role="alert" className="rounded-lg border border-line bg-card p-4 text-sm">{page.problem}</p>
       ) : (
         <>
           <p className="max-w-3xl text-sm text-muted">

@@ -33,7 +33,7 @@ export function TaxViewTabs({ current, hrefs }: { current: TaxViewId; hrefs: Rec
           key={id}
           href={hrefs[id]}
           aria-current={id === current ? "page" : undefined}
-          className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${id === current ? "border-foreground bg-surface font-medium" : "border-border"}`}
+          className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${id === current ? "border-brand bg-sunken font-medium" : "border-line"}`}
         >
           {TAX_VIEW_LABEL[id]}
         </Link>
@@ -58,7 +58,7 @@ export function ExportButton({ base, kind, fields, children, disabled = false, p
       <button
         type="submit"
         disabled={disabled}
-        className={primary ? "min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40" : "min-h-10 rounded-md border border-border bg-background px-4 text-sm disabled:opacity-40"}
+        className={primary ? "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40" : "min-h-10 rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40"}
       >
         {children}
       </button>

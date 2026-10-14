@@ -25,7 +25,7 @@ import { CheckAgainForm, RetryPdfForm } from "./waiting-actions";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 const th = "px-4 py-2 font-medium";
 const td = "px-4 py-2";
 
@@ -89,7 +89,7 @@ export function InvoicesView({
       </div>
 
       {!invoicingOn && (
-        <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
           Invoicing is switched off for this store, so new orders get no invoice.{" "}
           {canSettings ? (
             <Link href={`${base}/settings/invoices`} className="underline">
@@ -102,7 +102,7 @@ export function InvoicesView({
       )}
 
       {exportProblem && (
-        <p role="alert" className="rounded-lg border border-red-700 p-4 text-sm text-red-700 dark:border-red-400 dark:text-red-400">
+        <p role="alert" className="rounded-lg border border-danger-text p-4 text-sm text-danger-text">
           {exportProblem}
         </p>
       )}
@@ -114,7 +114,7 @@ export function InvoicesView({
         <Stat label="PDF not made" value={counts.pdfFailing} sub={counts.pdfFailing > 0 ? "Try again on the Waiting tab" : undefined} href={counts.pdfFailing > 0 ? invoicesHref(here, { tab: "waiting" }) : undefined} />
       </StatGrid>
 
-      <nav aria-label="Documents" className="flex flex-wrap gap-1 border-b border-border">
+      <nav aria-label="Documents" className="flex flex-wrap gap-1 border-b border-line">
         {INVOICE_TABS.map((tab) => (
           <TabLink key={tab} here={here} tab={tab} current={query.tab} badge={tab === "waiting" && waitingTotal > 0 ? waitingTotal : null} />
         ))}
@@ -144,10 +144,10 @@ function TabLink({ here, tab, current, badge }: { here: string; tab: InvoiceTab;
     <Link
       href={invoicesHref(here, { tab })}
       aria-current={active ? "page" : undefined}
-      className={`-mb-px flex min-h-10 items-center gap-2 border-b-2 px-3 text-sm ${active ? "border-foreground font-medium" : "border-transparent text-muted hover:text-foreground"}`}
+      className={`-mb-px flex min-h-10 items-center gap-2 border-b-2 px-3 text-sm ${active ? "border-brand font-medium" : "border-transparent text-muted hover:text-ink"}`}
     >
       {TAB_LABELS[tab]}
-      {badge !== null && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">{badge}</span>}
+      {badge !== null && <span className="rounded-full bg-warning-soft px-2 py-0.5 text-xs font-medium text-warning-text">{badge}</span>}
     </Link>
   );
 }
@@ -192,7 +192,7 @@ function ListTab({
           Search
           <input name="q" type="search" defaultValue={query.q} placeholder={credit ? "Credit note, invoice, order or email" : "Invoice, order or email"} maxLength={100} className={`${control} w-full`} />
         </label>
-        <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+        <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           Filter
         </button>
         {!query.all && (
@@ -211,7 +211,7 @@ function ListTab({
       </p>
 
       {documents.rows.length === 0 ? (
-        <p className="rounded-card border border-border bg-background p-8 text-center text-sm">
+        <p className="rounded-card border border-line bg-card p-8 text-center text-sm">
           {filtered
             ? `No ${noun} match. Change the period or the search.`
             : credit
@@ -220,9 +220,9 @@ function ListTab({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[56rem] rounded-lg border border-border bg-background text-left text-sm">
+          <table className="w-full min-w-[56rem] rounded-lg border border-line bg-card text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className={th}>{credit ? "Credit note" : "Invoice"}</th>
                 <th scope="col" className={th}>Date</th>
                 <th scope="col" className={th}>Order</th>
@@ -265,7 +265,7 @@ function ListTab({
       )}
 
       {canWrite ? (
-        <section aria-labelledby="export" className="rounded-card border border-border bg-background p-5">
+        <section aria-labelledby="export" className="rounded-card border border-line bg-card p-5">
           <h2 id="export" className="font-medium">
             CSV for your accountant
           </h2>
@@ -284,7 +284,7 @@ function ListTab({
               To
               <input type="date" name="to" required defaultValue={to} className={control} />
             </label>
-            <button type="submit" className="min-h-10 rounded-md border border-border bg-background px-4 text-sm">
+            <button type="submit" className="min-h-10 rounded-md border border-line bg-card px-4 text-sm">
               Download CSV
             </button>
           </form>
@@ -298,7 +298,7 @@ function ListTab({
 
 function Row({ base, orders, row, credit, money }: { base: string; orders: string; row: DocumentListRow; credit: boolean; money: (minor: number, currency: string) => string }) {
   return (
-    <tr className="border-b border-border align-top last:border-0">
+    <tr className="border-b border-line align-top last:border-0">
       <td className={td}>
         <span className="font-medium">{row.documentNumber}</span>
         <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
@@ -372,16 +372,16 @@ function WaitingTab({
   const nothing = waiting.length === 0 && waitingNotes.length === 0 && failing.length === 0;
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <p className="max-w-3xl text-sm text-muted">
           A paid order waits for its invoice when something the invoice must state is missing, for example the business details or the VAT registration. The
           payment is never held back. Once the cause is put right the invoice is made within five minutes, dated that day, and still says the payment day as
-          the date of supply. <strong className="font-medium text-foreground">Check again</strong> does it now.
+          the date of supply. <strong className="font-medium text-ink">Check again</strong> does it now.
         </p>
         {canWrite ? <CheckAgainForm action={actions.checkAgain} /> : <p className="text-sm text-muted">Members who may change orders can press Check again.</p>}
       </div>
 
-      {nothing && <p className="rounded-card border border-border bg-background p-8 text-center text-sm">Nothing is waiting. Every paid order has its invoice and every refund its credit note.</p>}
+      {nothing && <p className="rounded-card border border-line bg-card p-8 text-center text-sm">Nothing is waiting. Every paid order has its invoice and every refund its credit note.</p>}
 
       {waiting.length > 0 && (
         <section aria-labelledby="waiting-invoices" className="flex flex-col gap-2">
@@ -389,9 +389,9 @@ function WaitingTab({
             Orders waiting for an invoice
           </h2>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[44rem] rounded-lg border border-border bg-background text-left text-sm">
+            <table className="w-full min-w-[44rem] rounded-lg border border-line bg-card text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className={th}>Order</th>
                   <th scope="col" className={th}>Paid</th>
                   <th scope="col" className={`${th} text-right`}>Total</th>
@@ -400,7 +400,7 @@ function WaitingTab({
               </thead>
               <tbody>
                 {waiting.map((w) => (
-                  <tr key={w.orderId} className="border-b border-border align-top last:border-0">
+                  <tr key={w.orderId} className="border-b border-line align-top last:border-0">
                     <td className={td}>
                       <Link href={`${orders}/${w.orderId}`} className="font-medium underline-offset-2 hover:underline">
                         #{w.orderNumber}
@@ -415,7 +415,7 @@ function WaitingTab({
                       <span className="block font-medium">{WAITING_TITLES[w.reason]}</span>
                       <span className="block text-muted">{w.words}</span>
                       {w.overdue && w.deadline && (
-                        <span className="mt-1 block font-medium text-red-700 dark:text-red-400">
+                        <span className="mt-1 block font-medium text-danger-text">
                           Past the deadline: a reverse-charge invoice is due by {dayLabel(w.deadline)}. Today is {dayLabel(today)}.
                         </span>
                       )}
@@ -443,9 +443,9 @@ function WaitingTab({
             refund larger than what was left on the invoice, such as a fee charged after the sale, is credited in part; the rest is not an invoiced amount.
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] rounded-lg border border-border bg-background text-left text-sm">
+            <table className="w-full min-w-[36rem] rounded-lg border border-line bg-card text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className={th}>Order</th>
                   <th scope="col" className={th}>State</th>
                   <th scope="col" className={`${th} text-right`}>Amount</th>
@@ -453,7 +453,7 @@ function WaitingTab({
               </thead>
               <tbody>
                 {waitingNotes.map((n) => (
-                  <tr key={`${n.refundId ?? n.returnId}-${n.state}`} className="border-b border-border last:border-0">
+                  <tr key={`${n.refundId ?? n.returnId}-${n.state}`} className="border-b border-line last:border-0">
                     <td className={td}>
                       <Link href={`${orders}/${n.orderId}`} className="font-medium underline-offset-2 hover:underline">
                         #{n.orderNumber}
@@ -482,9 +482,9 @@ function WaitingTab({
             the browser can save a PDF from them.
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] rounded-lg border border-border bg-background text-left text-sm">
+            <table className="w-full min-w-[36rem] rounded-lg border border-line bg-card text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className={th}>Document</th>
                   <th scope="col" className={th}>Order</th>
                   <th scope="col" className={th}>Tries</th>
@@ -493,7 +493,7 @@ function WaitingTab({
               </thead>
               <tbody>
                 {failing.map((f) => (
-                  <tr key={`${f.type}-${f.id}`} className="border-b border-border align-top last:border-0">
+                  <tr key={`${f.type}-${f.id}`} className="border-b border-line align-top last:border-0">
                     <td className={td}>
                       <span className="font-medium">{f.documentNumber}</span>
                       <Link href={documentPrintHref(base, f.type, f.id)} className="block text-xs underline" prefetch={false}>

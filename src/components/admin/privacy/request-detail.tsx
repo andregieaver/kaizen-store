@@ -72,13 +72,13 @@ export function RequestDetail({
       </div>
 
       {problem && (
-        <p role="alert" className="rounded-md border border-red-700 bg-background p-3 text-sm dark:border-red-400">
+        <p role="alert" className="rounded-md border border-danger-text bg-card p-3 text-sm">
           {problem}
         </p>
       )}
 
       {open && request.overdue && (
-        <p role="alert" className="rounded-md border border-red-700 bg-background p-3 text-sm dark:border-red-400">
+        <p role="alert" className="rounded-md border border-danger-text bg-card p-3 text-sm">
           <span className={`font-medium ${alertText}`}>This request is {clockWords(request.daysLeft, true)}.</span> The law asks for an answer within one month of receiving it.
         </p>
       )}
@@ -178,19 +178,19 @@ export function RequestDetail({
             Other ways to deal with it
           </h2>
           <div className="flex flex-col gap-4">
-            <details className="rounded-md border border-border p-3">
+            <details className="rounded-md border border-line p-3">
               <summary className="cursor-pointer text-sm font-medium">Extend the answer</summary>
               <div className="mt-3">
                 <ExtendForm action={actions.extend} />
               </div>
             </details>
-            <details className="rounded-md border border-border p-3">
+            <details className="rounded-md border border-line p-3">
               <summary className="cursor-pointer text-sm font-medium">Refuse the request</summary>
               <div className="mt-3">
                 <RefuseForm action={actions.refuse} />
               </div>
             </details>
-            <details className="rounded-md border border-border p-3">
+            <details className="rounded-md border border-line p-3">
               <summary className="cursor-pointer text-sm font-medium">Waiting for identity</summary>
               <div className="mt-3 flex flex-col gap-3 text-sm">
                 <p className="text-muted">{STAFF_TEXT.identityNote}</p>
@@ -199,7 +199,7 @@ export function RequestDetail({
                 </StepForm>
               </div>
             </details>
-            <details className="rounded-md border border-border p-3">
+            <details className="rounded-md border border-line p-3">
               <summary className="cursor-pointer text-sm font-medium">Logged by mistake</summary>
               <div className="mt-3 flex flex-col gap-3 text-sm">
                 <p className="text-muted">The request stays in the log as cancelled; a request is never deleted.</p>

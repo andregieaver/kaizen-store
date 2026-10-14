@@ -7,8 +7,8 @@ import { RefreshWhile } from "./refresh-while";
 
 type Action = (state: FormState, form: FormData) => Promise<FormState>;
 
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
 const KINDS = { cookie: "Cookie", localStorage: "Local storage", sessionStorage: "Session storage" } as const;
@@ -38,7 +38,7 @@ function Description({ item }: { item: ReviewedItem }) {
       </>
     );
   }
-  return <span className="font-medium text-red-700 dark:text-red-400">Not described yet</span>;
+  return <span className="font-medium text-danger-text">Not described yet</span>;
 }
 
 /** The owner's description of an item Kaizen does not know, or a change to it. */
@@ -142,7 +142,7 @@ export function CookieScanPanel({
         ) : (
           !active && <p>Not scanned yet.</p>
         )}
-        {latest?.status === "failed" && <p className="text-red-700 dark:text-red-400">The last scan failed: {latest.error}</p>}
+        {latest?.status === "failed" && <p className="text-danger-text">The last scan failed: {latest.error}</p>}
       </div>
 
       {!active && (
@@ -154,7 +154,7 @@ export function CookieScanPanel({
       )}
 
       {early.length > 0 && (
-        <p className="rounded-md border border-red-700 p-3 text-sm text-red-700 dark:border-red-400 dark:text-red-400">
+        <p className="rounded-md border border-danger-text p-3 text-sm text-danger-text">
           {early.length === 1 ? "One optional item was" : `${early.length} optional items were`} set before the visitor
           chose, which the law does not allow: {early.map((item) => item.name).join(", ")}. Optional cookies must wait for
           consent.
@@ -175,7 +175,7 @@ export function CookieScanPanel({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border text-muted">
+              <tr className="border-b border-line text-muted">
                 <th scope="col" className="py-2 pr-4 font-normal">Item</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Found</th>
                 <th scope="col" className="py-2 pr-4 font-normal">Lasts</th>
@@ -184,7 +184,7 @@ export function CookieScanPanel({
             </thead>
             <tbody>
               {findings.map((item) => (
-                <tr key={`${item.kind}|${item.domain}|${item.name}`} className="border-b border-border align-top last:border-0">
+                <tr key={`${item.kind}|${item.domain}|${item.name}`} className="border-b border-line align-top last:border-0">
                   <td className="py-2 pr-4">
                     <span className="font-mono text-xs break-all">{item.name}</span>
                     <span className="block text-xs text-muted">
@@ -192,7 +192,7 @@ export function CookieScanPanel({
                       {item.thirdParty ? " (another service)" : ""}
                     </span>
                   </td>
-                  <td className={`py-2 pr-4 ${item.problem === "early" ? "font-medium text-red-700 dark:text-red-400" : ""}`}>
+                  <td className={`py-2 pr-4 ${item.problem === "early" ? "font-medium text-danger-text " : ""}`}>
                     {item.beforeConsent ? "Before a choice" : "Once allowed"}
                     <span className="block text-xs font-normal text-muted">{item.page}</span>
                   </td>

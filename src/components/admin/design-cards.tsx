@@ -10,7 +10,7 @@ export function DesignPreviewLink({ href, title, className }: { href: string; ti
       target="_blank"
       rel="noopener"
       data-design-preview=""
-      className={className ?? "flex min-h-10 items-center gap-1.5 border-t border-border px-3 text-sm underline-offset-2 hover:underline"}
+      className={className ?? "flex min-h-10 items-center gap-1.5 border-t border-line px-3 text-sm underline-offset-2 hover:underline"}
     >
       Preview
       <span className="sr-only">
@@ -58,12 +58,12 @@ export function DesignCards({
           return (
             <li
               key={card.id || "keep"}
-              className="flex flex-col overflow-hidden rounded-lg border border-border bg-background has-[:checked]:border-foreground has-[:checked]:ring-1 has-[:checked]:ring-foreground"
+              className="flex flex-col overflow-hidden rounded-lg border border-line bg-card has-[:checked]:border-brand has-[:checked]:ring-1 has-[:checked]:ring-ink"
             >
               <label htmlFor={inputId} className="flex flex-1 cursor-pointer flex-col gap-2 p-3 text-sm">
                 {card.pictureUrl && (
                   // eslint-disable-next-line @next/next/no-img-element -- a profile's picture from Kaizen's media library
-                  <img src={card.pictureUrl} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-border object-cover" />
+                  <img src={card.pictureUrl} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover" />
                 )}
                 <span className="flex items-start gap-2">
                   <input id={inputId} type="radio" name={name} value={card.id} defaultChecked={card.id === chosen} className="mt-1" />

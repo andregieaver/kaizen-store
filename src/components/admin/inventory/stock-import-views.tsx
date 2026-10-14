@@ -81,7 +81,7 @@ const DONE_WORDS: Record<string, string> = { updated: "Changed", unchanged: "Unc
 export const stockResultWords = (item: Pick<StockItem, "outcome" | "will">): string =>
   item.outcome === "checked" ? (item.will ? (WILL_WORDS[item.will] ?? "Checked") : "Checked") : (DONE_WORDS[item.outcome] ?? item.outcome);
 
-const SEVERITY_STYLE = { error: "text-red-700 dark:text-red-400", warning: "text-amber-700 dark:text-amber-400", info: "text-muted" } as const;
+const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text", info: "text-muted" } as const;
 
 /**
  * Every row's result of a stock import: the rows of the file, the SKU and location, the figure now and after, what happens, and each finding with its
@@ -122,19 +122,19 @@ export function StockFindings({
       </div>
       <nav aria-label="Filter by severity" className="flex flex-wrap gap-2 text-sm">
         {SEVERITY_FILTERS.map((s) => (
-          <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-surface aria-[current=page]:font-medium">
+          <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-sunken aria-[current=page]:font-medium">
             {s === "all" ? "All rows" : `${SEVERITY_WORDS[s]}s`}
           </Link>
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-lg border border-border bg-surface p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No row has a finding of this kind."}</p>
+        <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No row has a finding of this kind."}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">
             <caption className="sr-only">Rows of the file with what was found, {wholeNumber(total)} in all</caption>
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className={th}>
                   Rows
                 </th>
@@ -163,7 +163,7 @@ export function StockFindings({
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.seq} className="border-b border-border last:border-0">
+                <tr key={item.seq} className="border-b border-line last:border-0">
                   <td className={`${td} whitespace-nowrap`}>{rowsPhrase(item.rows)}</td>
                   <td className={`${td} break-all font-mono text-xs`}>{item.ref ?? <span className={hint}>The file as a whole</span>}</td>
                   <td className={td}>{item.location ?? ""}</td>

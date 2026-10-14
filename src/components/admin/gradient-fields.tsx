@@ -180,7 +180,7 @@ export function GradientFields({
             value={opacity}
             aria-valuetext={`${opacity}%`}
             onChange={(event) => setOpacity(Number(event.target.value))}
-            className="w-48 accent-foreground"
+            className="w-48 accent-brand"
           />
           <output htmlFor={opacityId} className="w-12 text-sm tabular-nums">
             {opacity}%
@@ -211,7 +211,7 @@ export function GradientFields({
                 value={value.overlay.opacity}
                 aria-valuetext={`${value.overlay.opacity}%`}
                 onChange={(event) => onChange({ ...value, overlay: { color: value.overlay?.color ?? "#000000", opacity: Number(event.target.value) } })}
-                className="w-48 accent-foreground"
+                className="w-48 accent-brand"
               />
               <output htmlFor={`${opacityId}-overlay`} className="w-12 text-sm tabular-nums">
                 {value.overlay.opacity}%
@@ -235,7 +235,7 @@ export function BackgroundMotionFields({
   onChange: (motion: BackgroundMotion | undefined) => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 border-t border-border pt-4">
+    <div className="flex flex-col gap-3 border-t border-line pt-4">
       <h4 className="text-sm font-medium">Background motion</h4>
       <EffectPicker
         legend="Background effect"

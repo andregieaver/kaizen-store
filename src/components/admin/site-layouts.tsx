@@ -34,7 +34,7 @@ export function SiteLayoutChoice({
   const choices = layouts.filter((layout) => layout.state !== "draft" || layout.id === current);
   const unpublished = layouts.find((layout) => layout.id === current)?.state === "draft";
   return (
-    <ActionForm action={action} className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+    <ActionForm action={action} className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
       <h2 className="font-medium">The {type} in use</h2>
       <p className="max-w-2xl text-sm text-muted">
         {siteName} shows this {type} on every page. Publish a {type} to choose it; the standard one looks as it always has.
@@ -42,7 +42,7 @@ export function SiteLayoutChoice({
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           {siteName} shows
-          <select name="layout" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal">
+          <select name="layout" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
             <option value="">The standard {type}</option>
             {choices.map((layout) => (
               <option key={layout.id} value={layout.id}>
@@ -63,10 +63,10 @@ export function SiteLayoutChoice({
 export function SiteLayoutsTable({ layouts, adminBase, current }: { layouts: PageSummary[]; adminBase: string; current: string | null }) {
   const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-background">
+    <div className="overflow-x-auto rounded-lg border border-line bg-card">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="border-b border-border">
+          <tr className="border-b border-line">
             <th scope="col" className="px-4 py-2 font-medium">
               Name
             </th>
@@ -80,7 +80,7 @@ export function SiteLayoutsTable({ layouts, adminBase, current }: { layouts: Pag
         </thead>
         <tbody>
           {layouts.map((layout) => (
-            <tr key={layout.id} className="border-b border-border last:border-0">
+            <tr key={layout.id} className="border-b border-line last:border-0">
               <td className="px-4 py-2">
                 <Link href={`${adminBase}/${layout.id}`} className="font-medium underline">
                   {layout.title || "Untitled"}

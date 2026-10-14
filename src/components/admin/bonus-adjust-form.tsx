@@ -6,8 +6,8 @@ import { ADJUST_NOTE_MAX, adjustmentQuestion, moneyIn, readAdjustment } from "@/
 import type { BonusResult } from "@/lib/bonus";
 
 const control =
-  "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-red-700 dark:aria-invalid:border-red-400";
-const errorText = "text-sm text-red-700 dark:text-red-400";
+  "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm aria-invalid:border-danger-text";
+const errorText = "text-sm text-danger-text";
 
 /**
  * Adds credits to a customer, or takes some away, with a reason that stays in their history (D130). Two steps: what
@@ -79,7 +79,7 @@ export function BonusAdjustForm({
   return (
     <div className="flex flex-col gap-3">
       {confirming ? (
-        <div className="flex flex-col gap-3 rounded-md border border-border p-3 text-sm" aria-busy={pending}>
+        <div className="flex flex-col gap-3 rounded-md border border-line p-3 text-sm" aria-busy={pending}>
           <p ref={question} tabIndex={-1} className="font-medium outline-none">
             {adjustmentQuestion(confirming.amountMinor, who, money)}
           </p>
@@ -91,7 +91,7 @@ export function BonusAdjustForm({
               type="button"
               onClick={confirm}
               disabled={pending}
-              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+              className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
             >
               {pending ? "Working …" : confirming.amountMinor > 0 ? "Yes, add the credits" : "Yes, take the credits"}
             </button>
@@ -99,7 +99,7 @@ export function BonusAdjustForm({
               type="button"
               onClick={() => setConfirming(null)}
               disabled={pending}
-              className="min-h-10 rounded-md border border-border px-4 text-sm disabled:opacity-40"
+              className="min-h-10 rounded-md border border-line px-4 text-sm disabled:opacity-40"
             >
               Back
             </button>
@@ -166,7 +166,7 @@ export function BonusAdjustForm({
             </p>
           </div>
           <div>
-            <button type="submit" className="min-h-10 rounded-md border border-border bg-background px-4 text-sm">
+            <button type="submit" className="min-h-10 rounded-md border border-line bg-card px-4 text-sm">
               Review
             </button>
           </div>

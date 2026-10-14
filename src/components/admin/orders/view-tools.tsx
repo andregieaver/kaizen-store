@@ -32,10 +32,10 @@ export function ViewTools({ views, query, actions }: { views: ViewTool[]; query:
 
   return (
     <div className="flex flex-col gap-3">
-      <details className="rounded-lg border border-border bg-surface">
+      <details className="rounded-lg border border-line bg-sunken">
         <summary className="cursor-pointer px-4 py-2 text-sm font-medium">Save this list as a view</summary>
         <form
-          className="flex flex-col gap-3 border-t border-border p-4"
+          className="flex flex-col gap-3 border-t border-line p-4"
           onSubmit={(event) => {
             event.preventDefault();
             setMessage(null);
@@ -84,9 +84,9 @@ export function ViewTools({ views, query, actions }: { views: ViewTool[]; query:
       </details>
 
       {views.length > 0 && (
-        <details className="rounded-lg border border-border bg-surface">
+        <details className="rounded-lg border border-line bg-sunken">
           <summary className="cursor-pointer px-4 py-2 text-sm font-medium">Manage saved views</summary>
-          <ul className="flex flex-col divide-y divide-border border-t border-border">
+          <ul className="flex flex-col divide-y divide-line border-t border-line">
             {views.map((view, index) => (
               <ManageRow
                 key={view.id}
@@ -122,7 +122,7 @@ export function ViewTools({ views, query, actions }: { views: ViewTool[]; query:
       )}
 
       {message && (
-        <p role="status" aria-live="polite" className={`text-sm ${message.ok ? "" : "text-red-700 dark:text-red-400"}`}>
+        <p role="status" aria-live="polite" className={`text-sm ${message.ok ? "" : "text-danger-text "}`}>
           {message.text}
         </p>
       )}

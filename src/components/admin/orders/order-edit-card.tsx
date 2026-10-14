@@ -62,13 +62,13 @@ export function OrderEditCard({
   const awaiting = edits.find((e) => e.status === "awaiting_payment") ?? null;
   const owed = edits.filter((e) => (e.refundOwedMinor ?? 0) > 0);
   return (
-    <section aria-labelledby="order-changes" className="rounded-card border border-border bg-background p-5 text-sm">
+    <section aria-labelledby="order-changes" className="rounded-card border border-line bg-card p-5 text-sm">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h2 id="order-changes" className="font-medium">
           Change the items
         </h2>
         {canWrite && !blockText && (
-          <Link href={editHref} className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 font-medium text-background">
+          <Link href={editHref} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 font-medium text-brand-ink">
             Edit items
           </Link>
         )}
@@ -83,13 +83,13 @@ export function OrderEditCard({
         </p>
       )}
       {owed.map((e) => (
-        <p key={`owed-${e.id}`} role="alert" className="mt-4 rounded-md border border-foreground bg-surface p-4">
+        <p key={`owed-${e.id}`} role="alert" className="mt-4 rounded-md border border-brand bg-sunken p-4">
           <span className="font-medium">The refund of change {e.label} failed.</span> {money(e.refundOwedMinor ?? 0)} has not reached the customer, although the order already shows the
           lower total. Refund it again from this page (Refund), or pay it back another way and record it.
         </p>
       ))}
       {awaiting && (
-        <div role="status" className="mt-4 flex flex-col gap-3 rounded-md border border-foreground bg-surface p-4">
+        <div role="status" className="mt-4 flex flex-col gap-3 rounded-md border border-brand bg-sunken p-4">
           <p>
             <span className="font-medium">Change {awaiting.label} is waiting for the customer&apos;s payment</span> of {money(awaiting.differenceMinor)}
             {awaiting.expiresAt && <> until {when(awaiting.expiresAt)}</>}. The order stays as it is until it is paid; nothing is sent, refunded or cancelled meanwhile. If it is not paid, the
@@ -99,7 +99,7 @@ export function OrderEditCard({
         </div>
       )}
       {edits.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-1 border-t border-border pt-3" aria-label="Changes to this order">
+        <ul className="mt-4 flex flex-col gap-1 border-t border-line pt-3" aria-label="Changes to this order">
           {edits.map((e) => (
             <li key={e.id}>
               <span className="font-medium">{e.label}</span> · {ORDER_EDIT_STATUS_LABELS[e.status]} · {when(e.appliedAt ?? e.endedAt ?? e.createdAt)} ·{" "}

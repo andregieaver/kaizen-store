@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The order editor while the order is read: its heading, the lines and the summary. */
 export default function OrderEditLoading() {

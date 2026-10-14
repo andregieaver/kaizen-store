@@ -25,7 +25,7 @@ export function DeleteDiscountButton({
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   return (
-    <div className={compact ? "inline-flex flex-col items-end" : "flex flex-col gap-1 border-t border-border pt-4"}>
+    <div className={compact ? "inline-flex flex-col items-end" : "flex flex-col gap-1 border-t border-line pt-4"}>
       <button
         type="button"
         disabled={pending}
@@ -43,8 +43,8 @@ export function DeleteDiscountButton({
         }}
         className={
           compact
-            ? "min-h-10 rounded-md px-3 text-sm text-red-700 hover:bg-surface disabled:opacity-50"
-            : "w-fit text-sm text-red-700 underline disabled:opacity-50"
+            ? "min-h-10 rounded-md px-3 text-sm text-danger-text hover:bg-sunken disabled:opacity-50"
+            : "w-fit text-sm text-danger-text underline disabled:opacity-50"
         }
       >
         {pending ? "Deleting …" : compact ? (

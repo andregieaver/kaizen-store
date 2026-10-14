@@ -81,8 +81,8 @@ export function OwnerInvoicesView({
               key={show}
               href={link({ show })}
               aria-current={current ? "page" : undefined}
-              className={`inline-flex min-h-9 items-center gap-2 rounded-full border border-border px-3 text-sm ${
-                current ? "bg-foreground text-background" : "bg-background"
+              className={`inline-flex min-h-9 items-center gap-2 rounded-full border border-edge px-3 text-sm ${
+                current ? "bg-brand text-brand-ink" : "bg-card"
               }`}
             >
               {SHOW_LABELS[show]}
@@ -131,7 +131,7 @@ export function OwnerInvoicesView({
         <section aria-label="Totals of these invoices" className="flex flex-col gap-2">
           <ul className="flex flex-wrap gap-3">
             {list.totals.map((total) => (
-              <li key={total.currency} className="rounded-lg border border-border bg-background px-4 py-3 text-sm">
+              <li key={total.currency} className="rounded-lg border border-line bg-card px-4 py-3 text-sm">
                 <span className="block text-xs text-muted">
                   {total.currency}, {total.count} {total.count === 1 ? "invoice" : "invoices"}
                 </span>
@@ -151,7 +151,7 @@ export function OwnerInvoicesView({
       )}
 
       {list.rows.length === 0 ? (
-        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
           {empty
             ? "No invoices yet. Start one with New invoice, or from a client's unbilled time."
             : "No invoice matches. Try another tab or clear the filters."}
@@ -163,7 +163,7 @@ export function OwnerInvoicesView({
               <InvoiceCard key={`${row.storeId}:${row.id}`} row={row} many={many} />
             ))}
           </ul>
-          <div className="hidden overflow-x-auto rounded-lg border border-border bg-background md:block">
+          <div className="hidden overflow-x-auto rounded-lg border border-line bg-card md:block">
             <table className="w-full text-sm">
               <caption className="sr-only">Invoices</caption>
               <thead>
@@ -200,7 +200,7 @@ export function OwnerInvoicesView({
                 {list.rows.map((row) => {
                   const money = (minor: number) => formatMoney(minor, row.currency, WORK_LOCALE);
                   return (
-                    <tr key={`${row.storeId}:${row.id}`} className="border-t border-border align-top">
+                    <tr key={`${row.storeId}:${row.id}`} className="border-t border-line align-top">
                       <td className="px-3 py-3 font-medium">
                         <Link href={`${workBase(row.storeSlug)}/invoices/${row.id}`} className="underline">
                           {row.documentNumber ?? "Draft"}
@@ -266,7 +266,7 @@ export function OwnerInvoicesView({
 function InvoiceCard({ row, many }: { row: OwnerInvoiceRow; many: boolean }) {
   const money = (minor: number) => formatMoney(minor, row.currency, WORK_LOCALE);
   return (
-    <li className="rounded-lg border border-border bg-background p-3 text-sm">
+    <li className="rounded-lg border border-line bg-card p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
         <Link href={`${workBase(row.storeSlug)}/invoices/${row.id}`} className="font-medium underline">
           {row.documentNumber ?? "Draft"}

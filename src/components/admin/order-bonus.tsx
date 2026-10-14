@@ -62,7 +62,7 @@ export function BonusRefundNote({
   const notes = refundNotes(bonus, moneyIn(currency, locale), refund);
   if (notes.length === 0) return null;
   return (
-    <div className="mb-3 rounded-md bg-surface p-3 text-sm">
+    <div className="mb-3 rounded-md bg-sunken p-3 text-sm">
       <p className="mb-1 font-medium">Bonus credits</p>
       {notes.map((note) => (
         <p key={note} className="mb-1 last:mb-0">

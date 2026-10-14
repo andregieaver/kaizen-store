@@ -35,12 +35,12 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
       </div>
 
       {companies.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">No companies yet.</p>
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">No companies yet.</p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Company</th>
                 <th scope="col" className="px-4 py-2 font-medium">Group</th>
                 <th scope="col" className="px-4 py-2 font-medium">Employees get</th>
@@ -53,7 +53,7 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
               {companies.map((company) => {
                 const percent = employeePercent({ ...company });
                 return (
-                  <tr key={company.id} className="border-b border-border last:border-0">
+                  <tr key={company.id} className="border-b border-line last:border-0">
                     <td className="px-4 py-2">
                       <Link href={`${base}/companies/${company.id}`} className="font-medium underline-offset-2 hover:underline">
                         {company.name}
@@ -74,7 +74,7 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
         </div>
       )}
 
-      <section aria-labelledby="new-company" className="flex max-w-xl flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="new-company" className="flex max-w-xl flex-col gap-3 rounded-card border border-line bg-card p-5">
         <h2 id="new-company" className="font-medium">
           New company
         </h2>

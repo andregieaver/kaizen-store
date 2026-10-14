@@ -554,8 +554,17 @@ bordered secondary buttons to pills (106). The overview parts (`Stat`, `Attentio
 title, so the platform's overview, the control center, a store's Home and the Work and invoice overviews follow; the store's Home
 and the control center are on `PageHeader`, `Card` and `List`. Where a store's own look or a printed document is drawn (the builder's
 stand-ins, the theme editor's preview, previews of a store's pages, packing slips, the print routes) nothing changed.
-`admin-type.scan.test.ts` keeps it so. Next: the remaining pages to `PageHeader`, `Card`, `Chip` and `ListRow` by section, and
-the old token names out (`bg-background`, `bg-surface`, `border-border`) as each section moves.
+`admin-type.scan.test.ts` keeps it so.
+Step 8, colours (D224): a second codemod wrote every page in the roles. The older names became roles (`bg-background` `bg-card`,
+`bg-surface` `bg-sunken`, `border-border` `border-line`, or `border-edge` on a button, `divide-border` `divide-line`,
+`text-foreground` `text-ink`, the main action `bg-brand text-brand-ink`, `bg-foreground` alone `bg-brand`, behind a variant or with
+an opacity `bg-inverse`, `border-foreground` `border-brand`, `accent-foreground` `accent-brand`), and fixed palette colours became
+signals (red `danger`, amber `warning`, green `positive`, blue `insight`, grey `neutral`; text `-text`, a pale fill `-soft`, a
+strong fill `-solid`, a border `-line` or `-text`; their `dark:` twins removed, as the roles carry dark). A solid red button with
+white words is the danger button (`bg-danger-soft text-danger-text`). `admin.css` matches both spellings while the old one is still
+used where a store's look is drawn. The scan test now refuses an older name or a fixed colour in the admin, apart from colours that
+are someone else's on purpose (the builder's resize handles, carriers' marks, the search engine's preview). Next: pages to
+`PageHeader`, `Card`, `Chip` and `ListRow` section by section, where the structure, not only the colour, should change.
 
 ---
 

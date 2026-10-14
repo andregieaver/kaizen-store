@@ -7,9 +7,9 @@ import { SCOPE_WORDS, TRANSLATE_SCOPES, unitItems, type Accepted, type Translate
 import type { PageLanguage } from "@/lib/page-translation";
 import type { ApplyResult } from "@/server/store-translate";
 
-const box = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
-const button = "min-h-10 rounded-md border border-border bg-background px-4 text-sm disabled:opacity-40";
-const primary = "min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40";
+const box = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
+const button = "min-h-10 rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40";
+const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
 
 type Actions = {
   worklist: (input: unknown) => Promise<{ ok: true; units: Unit[]; total: number } | { ok: false; problem: string }>;
@@ -152,7 +152,7 @@ export function StoreTranslator({
               reset();
             }}
             disabled={busy}
-            className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal"
+            className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal"
           >
             {others.map((language) => (
               <option key={language.locale} value={language.locale}>{language.name}</option>
@@ -228,7 +228,7 @@ export function StoreTranslator({
                   {group.hint && <p className="text-xs text-muted">{group.hint}</p>}
                   <ul className="flex flex-col gap-3">
                     {group.units.map((unit) => (
-                      <li key={unit.id} className="flex flex-col gap-2 rounded-md border border-border p-3">
+                      <li key={unit.id} className="flex flex-col gap-2 rounded-md border border-line p-3">
                         <label className="flex items-start gap-2 text-sm font-medium">
                           <input
                             type="checkbox"
@@ -260,7 +260,7 @@ export function StoreTranslator({
                                         onChange={(event) => setEdited((e) => ({ ...e, [key]: event.target.value }))}
                                         rows={Math.min(8, Math.max(1, Math.ceil(value.length / 50)))}
                                         aria-label={`${item.label} in ${target.name}`}
-                                        className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
+                                        className="w-full rounded-md border border-line bg-card px-2 py-1 text-sm"
                                       />
                                     ) : (
                                       <span className="whitespace-pre-wrap">{value.join("")}</span>
@@ -302,7 +302,7 @@ export function StoreTranslator({
 
       <div role="status" aria-live="polite" className="flex flex-col gap-1 text-sm">
         {progress && <p>{progress}</p>}
-        {problem && <p className="text-red-700 dark:text-red-400">{problem}</p>}
+        {problem && <p className="text-danger-text">{problem}</p>}
         {notes.map((line, index) => (
           <p key={index}>{line}</p>
         ))}

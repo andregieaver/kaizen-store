@@ -82,18 +82,18 @@ export function MotionPreviewToggle({
         aria-checked={on}
         onClick={() => onChange(!on)}
         aria-describedby={help}
-        className="flex min-h-9 items-center gap-2 rounded-md border border-border px-3 text-sm aria-checked:border-foreground aria-checked:bg-surface aria-checked:font-medium"
+        className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-sm aria-checked:border-brand aria-checked:bg-sunken aria-checked:font-medium"
       >
         <span
           aria-hidden
-          className={`flex h-4 w-7 items-center rounded-full p-0.5 ${on ? "justify-end bg-foreground" : "justify-start bg-border"}`}
+          className={`flex h-4 w-7 items-center rounded-full p-0.5 ${on ? "justify-end bg-brand" : "justify-start bg-line"}`}
         >
-          <span className="size-3 rounded-full bg-background" />
+          <span className="size-3 rounded-full bg-card" />
         </span>
         Preview motion
       </button>
       {on && (
-        <button type="button" onClick={onReplay} className="min-h-9 rounded-md border border-border px-3 text-sm">
+        <button type="button" onClick={onReplay} className="min-h-9 rounded-md border border-line px-3 text-sm">
           Replay
         </button>
       )}

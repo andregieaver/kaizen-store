@@ -108,7 +108,7 @@ export function OwnerClientsList({
             : "You have no clients yet. Add one, then log the hours you work for them."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-sm">
             <caption className="sr-only">{SHOW_LABELS[show]}</caption>
             <thead>
@@ -132,7 +132,7 @@ export function OwnerClientsList({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-line">
               {clients.map((client) => (
                 <tr key={`${client.storeId}:${client.id}`}>
                   <th scope="row" className="min-w-48 px-4 py-3 text-left font-normal">

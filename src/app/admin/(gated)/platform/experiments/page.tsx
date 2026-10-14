@@ -13,12 +13,12 @@ export const metadata: Metadata = { title: "A/B tests" };
 const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
 
 const BADGE: Record<ExperimentStatus, string> = {
-  draft: "border border-border text-muted",
-  scheduled: "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-200",
-  running: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200",
-  stopped: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200",
-  applied: "bg-foreground text-background",
-  discarded: "border border-border text-muted",
+  draft: "border border-line text-muted",
+  scheduled: "bg-insight-soft text-insight-text",
+  running: "bg-positive-soft text-positive-text",
+  stopped: "bg-warning-soft text-warning-text",
+  applied: "bg-brand text-brand-ink",
+  discarded: "border border-line text-muted",
 };
 
 const KIND_WORDS: Record<string, string> = { page: "Page", layout: "Product layout", header: "Header", footer: "Footer" };
@@ -52,7 +52,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           ["Stopped", overview.stopped, "waiting for a decision"],
           ["Need a look", overview.needAttention, "see the notes below"],
         ].map(([label, value, note]) => (
-          <div key={label} className="rounded-lg border border-border bg-background p-4">
+          <div key={label} className="rounded-lg border border-line bg-card p-4">
             <dt className="text-sm text-muted">{label}</dt>
             <dd className="text-2xl font-medium">{value}</dd>
             <dd className="text-xs text-muted">{note}</dd>
@@ -70,14 +70,14 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
       </div>
 
       {tests.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           {everything ? "No store has made a test yet." : "No test is running, scheduled or waiting for a decision."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border text-muted">
+              <tr className="border-b border-line text-muted">
                 <th scope="col" className="px-4 py-2 font-normal">Store</th>
                 <th scope="col" className="px-4 py-2 font-normal">Test</th>
                 <th scope="col" className="hidden px-4 py-2 font-normal md:table-cell">Goal</th>
@@ -88,7 +88,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
             </thead>
             <tbody>
               {tests.map((t) => (
-                <tr key={t.id} className="border-b border-border align-top last:border-0">
+                <tr key={t.id} className="border-b border-line align-top last:border-0">
                   <td className="px-4 py-2">
                     <Link href={`/admin/platform/stores/${t.store.slug}`} className="font-medium underline-offset-2 hover:underline">
                       {t.store.name}
@@ -102,7 +102,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                     </span>
                     {t.headline && <span className="mt-1 block text-xs">{t.headline}</span>}
                     {t.flags.length > 0 && (
-                      <ul className="mt-1 list-disc pl-4 text-xs text-red-700 dark:text-red-300">
+                      <ul className="mt-1 list-disc pl-4 text-xs text-danger-text">
                         {t.flags.map((f) => (
                           <li key={f.kind}>{f.words}</li>
                         ))}
@@ -145,11 +145,11 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           </p>
         </div>
         {own.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border bg-background p-6 text-center text-sm text-muted">
+          <p className="rounded-lg border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
             No search test is running, and no store has recommendations with a held-out ranking and tabs to count.
           </p>
         ) : (
-          <ul className="flex flex-col divide-y divide-border rounded-lg border border-border bg-background">
+          <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-card">
             {own.map((t) => (
               <li key={t.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -171,7 +171,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
                 <span>{t.headline}</span>
                 <span className="text-xs text-muted">{t.detail}</span>
                 {t.flags.length > 0 && (
-                  <ul className="list-disc pl-4 text-xs text-red-700 dark:text-red-300">
+                  <ul className="list-disc pl-4 text-xs text-danger-text">
                     {t.flags.map((f) => (
                       <li key={f.kind}>{f.words}</li>
                     ))}

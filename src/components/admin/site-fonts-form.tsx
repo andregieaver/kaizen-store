@@ -35,7 +35,7 @@ export function SiteFontsForm({
       </div>
 
       <FontLinks families={[heading, body]} />
-      <figure className="flex flex-col gap-2 rounded-lg border border-border p-5">
+      <figure className="flex flex-col gap-2 rounded-lg border border-line p-5">
         <figcaption className="text-xs text-muted">Sample</figcaption>
         <div className={body ? fontClass(body) : undefined}>
           <p className={`text-2xl font-medium ${heading ? fontClass(heading) : ""}`}>Handmade cups for slow mornings</p>

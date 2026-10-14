@@ -13,10 +13,10 @@ import {
 } from "@/app/admin/(gated)/[store]/orders/actions";
 
 const initial: OrderActionState = { ok: false, message: null };
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
-const primary = "min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50";
-const secondary = "min-h-10 rounded-md border border-border px-4 text-sm disabled:opacity-50";
+const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
+const secondary = "min-h-10 rounded-md border border-line px-4 text-sm disabled:opacity-50";
 
 type Ids = { storeSlug: string; orderId: string };
 
@@ -25,7 +25,7 @@ function Result({ state }: { state: OrderActionState }) {
     <p
       role="status"
       aria-live="polite"
-      className={`text-sm empty:hidden ${state.ok ? "" : "text-red-700 dark:text-red-400"}`}
+      className={`text-sm empty:hidden ${state.ok ? "" : "text-danger-text "}`}
     >
       {state.message}
     </p>
@@ -78,7 +78,7 @@ export function RefundForm({
   return (
     <form action={action} className="flex flex-col gap-3">
       {outside && (
-        <p role="note" className="rounded-md border border-border bg-surface p-3 text-sm">
+        <p role="note" className="rounded-md border border-line bg-sunken p-3 text-sm">
           {outside.allowed
             ? "This was paid outside Kaizen: pay the customer back yourself, then record it here. Kaizen cannot see whether you paid the customer back, and sends no money. The refund gets a credit note, as any refund does."
             : "This was paid outside Kaizen. Only the owner can record a refund of it, unless the owner has allowed staff to (Settings, Orders)."}
@@ -123,7 +123,7 @@ export function RefundForm({
                       name={`restockAt:${line.id}`}
                       defaultValue=""
                       aria-label={`Put ${line.title} back at`}
-                      className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
+                      className="min-h-10 rounded-md border border-line bg-card px-2 text-sm"
                     >
                       <option value="">Where it was taken from</option>
                       {locations.map((l) => (
@@ -141,7 +141,7 @@ export function RefundForm({
                     max={line.left}
                     defaultValue={0}
                     aria-label={`Units of ${line.title} to put back in stock`}
-                    className="min-h-10 w-20 shrink-0 rounded-md border border-border bg-background px-3 text-sm"
+                    className="min-h-10 w-20 shrink-0 rounded-md border border-line bg-card px-3 text-sm"
                   />
                 </span>
               </div>

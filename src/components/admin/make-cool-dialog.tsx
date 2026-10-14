@@ -17,8 +17,8 @@ export type MakeCoolPhase = { name: "idle" } | { name: "running" } | { name: "er
 const IDLE: MakeCoolPhase = { name: "idle" };
 const FAILED = "Something went wrong while looking at your page. Try again.";
 
-const secondary = "min-h-10 rounded-md border border-border px-4 text-sm hover:bg-surface disabled:opacity-50";
-const primary = "min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50";
+const secondary = "min-h-10 rounded-md border border-edge px-4 text-sm hover:bg-sunken disabled:opacity-50";
+const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
 
 /** What the dialog says in each phase. While it works it says so in words, with a bar that only pulses where motion is welcome. */
 export function MakeCoolBody({ phase }: { phase: MakeCoolPhase }) {
@@ -33,15 +33,15 @@ export function MakeCoolBody({ phase }: { phase: MakeCoolPhase }) {
     return (
       <div ref={panel} tabIndex={-1} aria-busy="true" role="status" className="flex flex-col gap-3 outline-none">
         <p className="text-sm">Looking at your page…</p>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface" aria-hidden>
-          <div className="h-full w-1/3 rounded-full bg-foreground/60 motion-safe:animate-pulse" />
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-sunken" aria-hidden>
+          <div className="h-full w-1/3 rounded-full bg-inverse/60 motion-safe:animate-pulse" />
         </div>
       </div>
     );
   }
   if (phase.name === "error") {
     return (
-      <div ref={panel} tabIndex={-1} role="alert" className="rounded-md border border-red-700 p-3 text-sm outline-none">
+      <div ref={panel} tabIndex={-1} role="alert" className="rounded-md border border-danger-text p-3 text-sm outline-none">
         {phase.problem}
       </div>
     );

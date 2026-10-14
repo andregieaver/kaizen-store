@@ -27,7 +27,7 @@ const WILL_WORDS: Record<string, string> = {
 export const outcomeWords = (item: Pick<FindingItem, "outcome" | "will">): string =>
   item.outcome === "checked" ? (item.will ? (WILL_WORDS[item.will] ?? "Checked") : "Checked") : (OUTCOME_WORDS[item.outcome] ?? item.outcome);
 
-const SEVERITY_STYLE = { error: "text-red-700 dark:text-red-400", warning: "text-amber-700 dark:text-amber-400", info: "text-muted" } as const;
+const SEVERITY_STYLE = { error: "text-danger-text", warning: "text-warning-text", info: "text-muted" } as const;
 
 /**
  * Every row's findings of an import (2.2.3): the rows of the file, the product's handle, how serious, the stable code, the column and a plain sentence.
@@ -68,19 +68,19 @@ export function FindingsTable({
       </div>
       <nav aria-label="Filter by severity" className="flex flex-wrap gap-2 text-sm">
         {SEVERITY_FILTERS.map((s) => (
-          <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-surface aria-[current=page]:font-medium">
+          <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-sunken aria-[current=page]:font-medium">
             {s === "all" ? "All products" : `${SEVERITY_WORDS[s]}s`}
           </Link>
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-lg border border-border bg-surface p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No product has a finding of this kind."}</p>
+        <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No product has a finding of this kind."}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">
             <caption className="sr-only">Products of the file with what was found, {wholeNumber(total)} in all</caption>
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className={th}>
                   Rows
                 </th>
@@ -97,7 +97,7 @@ export function FindingsTable({
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.seq} className="border-b border-border last:border-0">
+                <tr key={item.seq} className="border-b border-line last:border-0">
                   <td className={`${td} whitespace-nowrap`}>{rowsPhrase(item.rows)}</td>
                   <td className={`${td} break-all font-medium`}>{item.ref ?? ""}</td>
                   <td className={td}>{outcomeWords(item)}</td>

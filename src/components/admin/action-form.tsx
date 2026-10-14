@@ -42,7 +42,7 @@ export function ActionForm({
   const [state, formAction, pending] = useActionState(action, idle);
   if (replaceOnSuccess && state.status === "ok") {
     return (
-      <p role="status" className="rounded-lg border border-border bg-background p-4">
+      <p role="status" className="rounded-lg border border-line bg-card p-4">
         {state.messages[0] ?? successMessage}
       </p>
     );
@@ -59,7 +59,7 @@ export function ActionForm({
       <div role="status" aria-live="polite" className="text-sm">
         {state.status === "ok" && <p>{state.messages[0] ?? successMessage}</p>}
         {state.status === "error" && (
-          <ul className="list-disc pl-5 text-red-700 dark:text-red-400">
+          <ul className="list-disc pl-5 text-danger-text">
             {state.messages.map((message) => (
               <li key={message}>{message}</li>
             ))}
@@ -98,8 +98,8 @@ export function SubmitButton({
       disabled={disabled || pending}
       className={
         variant === "primary"
-          ? "min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
-          : "min-h-10 rounded-md border border-border bg-background px-4 text-sm disabled:opacity-40"
+          ? "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
+          : "min-h-10 rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40"
       }
     >
       {pending ? "Working …" : children}

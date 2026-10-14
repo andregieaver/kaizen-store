@@ -46,7 +46,7 @@ export function RecoveryCodesView({
     setNote("Downloaded. Keep the file apart from the device with your authenticator app.");
   };
 
-  const button = "min-h-10 rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface";
+  const button = "min-h-10 rounded-md border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken";
   return (
     <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-4">
       <style>{`@media print { body * { visibility: hidden; } [data-print-area], [data-print-area] * { visibility: visible; } [data-print-area] { position: absolute; left: 0; top: 0; } }`}</style>
@@ -56,10 +56,10 @@ export function RecoveryCodesView({
         </h2>
         <p className="text-sm text-muted">
           If you lose your phone, one of these signs you in once and takes your two-step sign-in away, so you can set it up again. Each code works once.
-          <strong className="font-medium text-foreground"> This is the only time they are shown.</strong>
+          <strong className="font-medium text-ink"> This is the only time they are shown.</strong>
         </p>
       </div>
-      <div data-print-area="" className="rounded-lg border border-border bg-background p-4">
+      <div data-print-area="" className="rounded-lg border border-line bg-card p-4">
         <p className="mb-3 text-sm">Kaizen Store recovery codes for {account}. Made {madeOn}.</p>
         <ol className="grid grid-cols-1 gap-x-8 gap-y-2 font-mono text-base sm:grid-cols-2">
           {codes.map((code) => (
@@ -92,7 +92,7 @@ export function RecoveryCodesView({
           type="button"
           onClick={onContinue}
           disabled={!saved}
-          className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+          className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
         >
           {continueLabel}
         </button>

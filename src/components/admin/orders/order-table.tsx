@@ -34,7 +34,7 @@ export type OrderTableProps = {
 
 type Pending = "add_tags" | "remove_tags" | "archive" | "unarchive" | "mark_sent";
 
-const badge = "ml-2 inline-block rounded-full border border-border px-2 py-0.5 align-middle text-xs font-normal text-muted";
+const badge = "ml-2 inline-block rounded-full border border-line px-2 py-0.5 align-middle text-xs font-normal text-muted";
 
 /**
  * The Orders page's table with its selection and bulk bar (wave 3, D173, `docs/wave-3-orders.md` 2.2.3 and 2.2.5). A tick box on every row (staff who may only read see none), *Select all
@@ -113,13 +113,13 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
     <div className="flex flex-col gap-3">
       {result && <ResultPanel result={result} onClose={() => setResult(null)} />}
       {problem && (
-        <p role="alert" className="rounded-lg border border-border bg-surface p-3 text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="rounded-lg border border-line bg-sunken p-3 text-sm text-danger-text">
           {problem}
         </p>
       )}
 
       {canWrite && selectedCount > 0 && (
-        <section aria-label="Bulk actions" className="flex flex-col gap-3 rounded-lg border border-foreground bg-surface p-3" aria-busy={working}>
+        <section aria-label="Bulk actions" className="flex flex-col gap-3 rounded-lg border border-brand bg-sunken p-3" aria-busy={working}>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <strong>
               {selectedCount.toLocaleString("en")} {selectedCount === 1 ? "order" : "orders"} selected
@@ -154,7 +154,7 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
             <button type="button" disabled={working} onClick={() => run("remove_tags")} className={secondary}>
               Remove tags
             </button>
-            <span className="mx-1 hidden h-6 w-px bg-border sm:block" aria-hidden="true" />
+            <span className="mx-1 hidden h-6 w-px bg-line sm:block" aria-hidden="true" />
             <button type="button" disabled={working} onClick={() => run("archive")} className={secondary}>
               Archive
             </button>
@@ -180,7 +180,7 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
             )}
           </div>
           {confirming === "mark_sent" && (
-            <div role="group" aria-label="Confirm mark as sent" className="flex flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm">
+            <div role="group" aria-label="Confirm mark as sent" className="flex flex-col gap-2 rounded-md border border-line bg-card p-3 text-sm">
               <p>
                 Mark {selectedCount.toLocaleString("en")} {selectedCount === 1 ? "order" : "orders"} as sent, without a tracking number. A partly sent order sends what is left as one parcel. Orders that are not paid, have nothing to ship, are copied history, wait for stock,
                 have a change waiting for the customer&apos;s payment or were already sent are skipped and listed afterwards.
@@ -209,7 +209,7 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
       )}
 
       {canWrite && banner.kind === "offer" && (
-        <p className="rounded-lg border border-border bg-surface p-3 text-sm" role="status">
+        <p className="rounded-lg border border-line bg-sunken p-3 text-sm" role="status">
           All {rows.length} orders on this page are selected.{" "}
           <button type="button" onClick={() => setAllMatching(true)} className="underline underline-offset-2">
             Select all {banner.matching.toLocaleString("en")} matching
@@ -217,12 +217,12 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
         </p>
       )}
       {canWrite && banner.kind === "too_many" && (
-        <p className="rounded-lg border border-border bg-surface p-3 text-sm" role="status">
+        <p className="rounded-lg border border-line bg-sunken p-3 text-sm" role="status">
           All {rows.length} orders on this page are selected. More than {BULK_MAX} orders match, which is more than one batch takes: narrow the list to act on all of them.
         </p>
       )}
       {canWrite && banner.kind === "all_matching" && (
-        <p className="rounded-lg border border-border bg-surface p-3 text-sm" role="status">
+        <p className="rounded-lg border border-line bg-sunken p-3 text-sm" role="status">
           All {banner.matching.toLocaleString("en")} matching orders are selected.{" "}
           <button type="button" onClick={clear} className="underline underline-offset-2">
             Clear selection
@@ -233,7 +233,7 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
       <div className={tableShell}>
         <table className="w-full min-w-[40rem] text-left text-sm">
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-b border-line">
               {canWrite && (
                 <th scope="col" className={`${th} w-10`}>
                   <input id={headerId} type="checkbox" checked={allTicked} onChange={toggleAll} aria-label="Select all orders on this page" className="size-4" />
@@ -304,7 +304,7 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
   const col = (c: OrderColumn) => columns.includes(c);
   const base = `/admin/${slug}`;
   return (
-    <tr className="border-b border-border last:border-0">
+    <tr className="border-b border-line last:border-0">
       {canWrite && (
         <td className={td}>
           <input type="checkbox" checked={ticked} onChange={onToggle} aria-label={`Select order ${row.number}`} className="size-4" />
@@ -365,7 +365,7 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
           ) : (
             <ul className="flex flex-wrap gap-1">
               {row.tags.map((tag) => (
-                <li key={tag.key} className="rounded-full border border-border px-2 py-0.5 text-xs">
+                <li key={tag.key} className="rounded-full border border-line px-2 py-0.5 text-xs">
                   {tag.label}
                 </li>
               ))}
@@ -383,7 +383,7 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
 export function ResultPanel({ result, onClose }: { result: BulkResult; onClose?: () => void }) {
   const groups = groupRefusals(result.refused);
   return (
-    <section aria-label="Result of the bulk action" role="status" className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-4 text-sm">
+    <section aria-label="Result of the bulk action" role="status" className="flex flex-col gap-2 rounded-lg border border-line bg-sunken p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium">{bulkSummary(result)}</p>
         {onClose && (

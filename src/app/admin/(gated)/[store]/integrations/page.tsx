@@ -26,16 +26,16 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
         {INTEGRATIONS.map((info) => {
           const status = connected.find((c) => c.provider === info.id);
           const badge = info.comingSoon
-            ? { text: "Coming soon", tone: "bg-surface text-muted" }
+            ? { text: "Coming soon", tone: "bg-sunken text-muted" }
             : !status
               ? null
               : status.enabled
                 ? status.recentFailures > 0
-                  ? { text: "On · some failed", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" }
-                  : { text: "On", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" }
-                : { text: "Off", tone: "bg-surface text-muted" };
+                  ? { text: "On · some failed", tone: "bg-warning-soft text-warning-text" }
+                  : { text: "On", tone: "bg-positive-soft text-positive-text" }
+                : { text: "Off", tone: "bg-sunken text-muted" };
           return (
-            <li key={info.id} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+            <li key={info.id} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
               <div className="flex items-start gap-3">
                 <IntegrationMark id={info.id} />
                 <div className="min-w-0 flex-1">
@@ -53,7 +53,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                   <Link
                     href={`${base}/${info.id}`}
                     className={`inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium ${
-                      status ? "border border-border hover:bg-surface" : "bg-foreground text-background"
+                      status ? "border border-edge hover:bg-sunken" : "bg-brand text-brand-ink"
                     }`}
                   >
                     {status ? "Manage" : "Set up"} <span className="sr-only">&nbsp;{info.name}</span>
@@ -78,16 +78,16 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
           {CARRIERS.map((info) => {
             const saved = carriers.find((c) => c.carrier === info.id);
             const badge = !saved
-              ? { text: info.available.length > 0 ? "Available" : "Preparing", tone: "bg-surface text-muted" }
+              ? { text: info.available.length > 0 ? "Available" : "Preparing", tone: "bg-sunken text-muted" }
               : saved.complete
                 ? info.available.length > 0
                   ? saved.check?.ok
-                    ? { text: "Connected", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" }
-                    : { text: saved.check ? "Not accepted" : "Check connection", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" }
-                  : { text: "Details saved", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" }
-                : { text: "Needs details", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" };
+                    ? { text: "Connected", tone: "bg-positive-soft text-positive-text" }
+                    : { text: saved.check ? "Not accepted" : "Check connection", tone: "bg-warning-soft text-warning-text" }
+                  : { text: "Details saved", tone: "bg-positive-soft text-positive-text" }
+                : { text: "Needs details", tone: "bg-warning-soft text-warning-text" };
             return (
-              <li key={info.id} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+              <li key={info.id} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
                 <div className="flex items-start gap-3">
                   <IntegrationMark id={info.id} />
                   <div className="min-w-0 flex-1">
@@ -102,7 +102,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                   <Link
                     href={`${base}/shipping/${info.id}`}
                     className={`inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium ${
-                      saved ? "border border-border hover:bg-surface" : "bg-foreground text-background"
+                      saved ? "border border-edge hover:bg-sunken" : "bg-brand text-brand-ink"
                     }`}
                   >
                     {saved ? "Manage" : info.available.length > 0 ? "Connect" : "Get ready"} <span className="sr-only">&nbsp;{info.name}</span>
@@ -113,14 +113,14 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
           })}
         </ul>
       </section>
-      <section aria-labelledby="google-reviews" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="google-reviews" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <div>
           <h2 id="google-reviews" className="font-medium">
             Google reviews
           </h2>
           <p className="text-sm text-muted">Show your rating and reviews on Google in Testimonials components on your pages.</p>
         </div>
-        <Link href={`${base}/google-reviews`} className="inline-flex min-h-10 w-fit items-center rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface">
+        <Link href={`${base}/google-reviews`} className="inline-flex min-h-10 w-fit items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
           Set up Google reviews
         </Link>
       </section>

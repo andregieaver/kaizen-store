@@ -216,7 +216,7 @@ function PlacedPanel({
         if (event.key === "Escape" && !event.defaultPrevented && !(event.target as HTMLElement).closest("dialog")) onClose();
       }}
       style={{ left: rect.x, top: rect.y, width: rect.w, ...(rect.h !== null && { height: rect.h }), maxHeight: rect.h === null ? "90dvh" : undefined }}
-      className="fixed z-50 flex max-w-[100vw] flex-col rounded-lg border border-border bg-background text-foreground shadow-2xl outline-none"
+      className="fixed z-50 flex max-w-[100vw] flex-col rounded-lg border border-line bg-card text-ink shadow-2xl outline-none"
     >
       <div
         data-edge="move"
@@ -224,7 +224,7 @@ function PlacedPanel({
         onPointerMove={move}
         onPointerUp={end}
         onPointerCancel={end}
-        className="flex cursor-move touch-none items-center justify-between gap-4 rounded-t-lg border-b border-border px-5 py-3 select-none"
+        className="flex cursor-move touch-none items-center justify-between gap-4 rounded-t-lg border-b border-line px-5 py-3 select-none"
       >
         <h2 id={titleId} className="font-medium">
           {title}
@@ -236,7 +236,7 @@ function PlacedPanel({
             title="Focus this and press the arrow keys to move the panel; Shift and the arrow keys resize it"
             onPointerDown={(event) => event.stopPropagation()}
             onKeyDown={keys}
-            className="flex size-9 items-center justify-center rounded-full hover:bg-surface"
+            className="flex size-9 items-center justify-center rounded-full hover:bg-sunken"
           >
             <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3" />
@@ -247,7 +247,7 @@ function PlacedPanel({
             onPointerDown={(event) => event.stopPropagation()}
             onClick={onClose}
             aria-label="Close"
-            className="flex size-9 items-center justify-center rounded-full hover:bg-surface"
+            className="flex size-9 items-center justify-center rounded-full hover:bg-sunken"
           >
             <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -256,7 +256,7 @@ function PlacedPanel({
         </div>
       </div>
       <div data-panel-body="" className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
-      {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-3">{footer}</div>}
+      {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
       {EDGES.map((edge) => (
         <div
           key={edge}

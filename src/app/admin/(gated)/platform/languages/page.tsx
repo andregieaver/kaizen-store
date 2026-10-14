@@ -13,7 +13,7 @@ import { addLanguageAction, saveLocalesAction, setEnabledAction } from "./action
 
 export const metadata: Metadata = { title: "Languages" };
 
-const input = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 
 /**
  * The languages stores can offer (D111): chosen here from the world's, each
@@ -42,7 +42,7 @@ export default async function LanguagesPage() {
         </p>
       </div>
 
-      <section aria-labelledby="add-heading" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="add-heading" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <h2 id="add-heading" className="font-medium">Add a language</h2>
         <ActionForm action={addLanguageAction} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -65,11 +65,11 @@ export default async function LanguagesPage() {
             const c = coverage[language.lang];
             const builtIn = isBuiltIn(language.lang);
             return (
-              <li key={language.lang} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 sm:flex-row sm:items-start sm:justify-between">
+              <li key={language.lang} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex flex-col gap-1 text-sm">
                   <span className="font-medium">
                     {language.name} <span className="font-normal text-muted">· {nativeName(language.lang)} · {language.lang}</span>
-                    {language.direction === "rtl" && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs">right to left</span>}
+                    {language.direction === "rtl" && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs">right to left</span>}
                   </span>
                   <span className="text-muted">
                     {builtIn
@@ -83,14 +83,14 @@ export default async function LanguagesPage() {
                   <ActionForm action={saveLocalesAction.bind(null, language.lang)} className="mt-1 flex flex-wrap items-center gap-2">
                     <label className="flex items-center gap-2 text-xs text-muted">
                       Locales, the main one first
-                      <input name="locales" defaultValue={language.locales.join(", ")} className={`${input} min-h-8 w-56 text-foreground`} />
+                      <input name="locales" defaultValue={language.locales.join(", ")} className={`${input} min-h-8 w-56 text-ink`} />
                     </label>
                     <SubmitButton variant="secondary">Save</SubmitButton>
                   </ActionForm>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {!builtIn && (
-                    <Link href={`/admin/platform/languages/${language.lang}`} className="flex min-h-10 items-center rounded-md border border-border px-4 text-sm">
+                    <Link href={`/admin/platform/languages/${language.lang}`} className="flex min-h-10 items-center rounded-md border border-line px-4 text-sm">
                       Translate and review
                     </Link>
                   )}

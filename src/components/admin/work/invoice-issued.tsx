@@ -161,7 +161,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
           {invoice.sentTo && <Fact label="Emailed to" value={invoice.sentTo} />}
         </dl>
         {invoice.notes && <p className="mt-4 text-sm whitespace-pre-wrap">{invoice.notes}</p>}
-        <div className="mt-5 grid gap-4 border-t border-border pt-4 text-sm sm:grid-cols-2">
+        <div className="mt-5 grid gap-4 border-t border-line pt-4 text-sm sm:grid-cols-2">
           <Party
             title="From"
             lines={[
@@ -195,7 +195,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
         </h2>
         <ol className="flex flex-col gap-3 md:hidden" aria-label="Invoice lines">
           {lines.map((line) => (
-            <li key={line.id} className="rounded-md border border-border p-3 text-sm">
+            <li key={line.id} className="rounded-md border border-line p-3 text-sm">
               <p className="font-medium">{line.description}</p>
               <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
                 <dt className="text-muted">Quantity</dt>
@@ -251,7 +251,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
             </thead>
             <tbody>
               {lines.map((line) => (
-                <tr key={line.id} className="border-t border-border align-top">
+                <tr key={line.id} className="border-t border-line align-top">
                   <td className="px-3 py-2">
                     {line.description}
                     {line.creditedQuantityHundredths > 0 && (
@@ -273,7 +273,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
             </tbody>
           </table>
         </div>
-        <div className="mt-6 border-t border-border pt-4">
+        <div className="mt-6 border-t border-line pt-4">
           <InvoiceTotalsView totals={totals} currency={invoice.currency} locale={locale} />
           {notes.length > 0 && (
             <ul className="mt-3 list-disc pl-5 text-xs text-muted">
@@ -292,7 +292,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
         {detail.payments.length === 0 ? (
           <p className="text-sm text-muted">No payment has been recorded.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-border">
+          <ul className="flex flex-col divide-y divide-line">
             {detail.payments.map((payment) => {
               const amount = formatMoney(Math.abs(payment.amountMinor), payment.currency, locale);
               const label = `the ${amount} payment of ${formatDay(payment.receivedOn, locale)}`;
@@ -332,7 +332,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
         {detail.creditNotes.length === 0 ? (
           <p className="text-sm text-muted">This invoice has not been credited.</p>
         ) : (
-          <ul className="flex flex-col divide-y divide-border">
+          <ul className="flex flex-col divide-y divide-line">
             {detail.creditNotes.map((note) => (
               <li key={note.id} className="flex flex-col gap-1 py-3 text-sm">
                 <span className="flex flex-wrap items-center justify-between gap-2">
@@ -413,7 +413,7 @@ function Amount({
     <div>
       <dt className="text-muted">{label}</dt>
       <dd className={`text-lg tabular-nums ${strong ? "font-medium" : ""}`}>{value}</dd>
-      {note && <dd className="text-xs text-red-700 dark:text-red-400">{note}</dd>}
+      {note && <dd className="text-xs text-danger-text">{note}</dd>}
     </div>
   );
 }

@@ -42,7 +42,7 @@ export function ParcelChoice({ rows, typed, onChange }: { rows: ParcelRow[]; typ
         ))}
       </ul>
       {chosen === "invalid" ? (
-        <p role="alert" className="text-red-700 dark:text-red-400">
+        <p role="alert" className="text-danger-text">
           A number is not a whole number from 0 to what is left of its item.
         </p>
       ) : chosen === null ? (

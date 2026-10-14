@@ -35,7 +35,7 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
           coupon in Stripe for codes used from now on; plans that already have it keep what they got.
         </p>
       </div>
-      <section aria-label="Code" className="rounded-card border border-border bg-background p-5">
+      <section aria-label="Code" className="rounded-card border border-line bg-card p-5">
         <ActionForm action={updatePlatformDiscountAction.bind(null, discount.id)} className="flex flex-col gap-4">
           <PlatformDiscountFields discount={discount} currencies={currencies} />
           <SubmitButton>Save</SubmitButton>

@@ -90,13 +90,13 @@ export function HistoryView({
       {query.variant && <p className={hint}>Showing the changes of one variant.</p>}
 
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-border bg-surface p-6 text-center text-sm">{filtered ? "No change matches this filter." : "No change of stock has been recorded yet."}</p>
+        <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">{filtered ? "No change matches this filter." : "No change of stock has been recorded yet."}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">
             <caption className="sr-only">Changes of stock levels, newest first</caption>
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className={th}>
                   When
                 </th>
@@ -125,7 +125,7 @@ export function HistoryView({
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-border last:border-0">
+                <tr key={r.id} className="border-b border-line last:border-0">
                   <td className={`${td} whitespace-nowrap`}>{momentText(r.createdAt, timeZone)}</td>
                   <td className={td}>
                     {r.productId ? (

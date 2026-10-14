@@ -38,7 +38,7 @@ export default async function PlatformVatCountryPage({ params }: PageProps<"/adm
         <h1 className="text-display text-ink">{country.name}</h1>
         <p className="max-w-2xl text-sm text-muted">The VAT rates stores charge on sales to {country.name}, and how shipping is taxed there.</p>
       </div>
-      <section aria-labelledby="now" className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="now" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
         <h2 id="now" className="font-medium">
           Today
         </h2>

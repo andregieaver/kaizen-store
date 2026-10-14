@@ -1,6 +1,6 @@
 import { categoriesFor, describeRate, VAT_CATEGORIES, VAT_CATEGORY_LABELS, type VatCategoryRow } from "@/lib/vat";
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
 /** The categories to offer when the editor's context carries none: the three that are always there. */

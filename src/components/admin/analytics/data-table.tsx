@@ -72,8 +72,8 @@ const PILL_CLASS: Record<PillTone, string> = {
   good: "border-(--chart-good) text-(--chart-good)",
   warning: "border-(--chart-warn) text-(--chart-warn)",
   bad: "border-(--chart-bad) text-(--chart-bad)",
-  neutral: "border-border text-muted",
-  info: "border-border text-foreground",
+  neutral: "border-line text-muted",
+  info: "border-line text-ink",
 };
 
 /** A short state in words ("Out of stock", "Behind pace") with an icon, so colour is never all it says. */
@@ -163,7 +163,7 @@ export function DataTable<R>({
 }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+      <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
         <span className="sr-only">{`${caption}: `}</span>
         {empty}
       </div>
@@ -173,7 +173,7 @@ export function DataTable<R>({
   // The more columns, the less room between them: a table of twelve has to fit a laptop's width without hiding its last columns.
   const pad = columns.length >= 10 ? "px-1" : columns.length >= 8 ? "px-1.5" : "px-3";
   const table = (
-    <div className={`relative overflow-x-auto rounded-lg border border-border bg-background ${sticky ? "max-h-[32rem] overflow-y-auto" : ""}`}>
+    <div className={`relative overflow-x-auto rounded-lg border border-line bg-card ${sticky ? "max-h-[32rem] overflow-y-auto" : ""}`}>
       <table className="w-full border-collapse text-[13px]">
         <caption className={showCaption ? "px-3 py-2 text-left text-xs font-medium text-muted" : "sr-only"}>{caption}</caption>
         <thead>
@@ -183,11 +183,11 @@ export function DataTable<R>({
               const ariaSort = active ? (sort.dir === "asc" ? "ascending" : "descending") : c.sortable && sortHref ? "none" : undefined;
               const align = c.align === "right" ? "text-right" : "text-left";
               return (
-                <th key={c.key} scope="col" aria-sort={ariaSort} className={`border-b border-border ${pad} py-2 align-bottom text-xs ${align} ${stickyHead}`}>
+                <th key={c.key} scope="col" aria-sort={ariaSort} className={`border-b border-line ${pad} py-2 align-bottom text-xs ${align} ${stickyHead}`}>
                   {c.sortable && sortHref ? (
                     <Link
                       href={sortHref(c.key, nextSort(sort, c.key, c.firstDir ?? "desc"))}
-                      className={`inline-flex items-center gap-1 hover:text-foreground ${active ? "text-foreground" : ""}`}
+                      className={`inline-flex items-center gap-1 hover:text-ink ${active ? "text-ink" : ""}`}
                     >
                       <span>{c.label}</span>
                       <span aria-hidden="true" className="text-[0.7em]">
@@ -204,7 +204,7 @@ export function DataTable<R>({
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={rowKey(row, i)} className="border-b border-border last:border-b-0">
+            <tr key={rowKey(row, i)} className="border-b border-line last:border-b-0">
               {columns.map((c, j) => (
                 <td key={c.key} className={`${pad} py-1.5 ${c.align === "right" ? "text-right tabular-nums" : "text-left"} ${j === 0 ? "max-w-[14rem] truncate" : ""}`}>
                   {c.cell(row)}
@@ -213,7 +213,7 @@ export function DataTable<R>({
             </tr>
           ))}
         </tbody>
-        {footer ? <tfoot className="border-t border-border font-medium">{footer}</tfoot> : null}
+        {footer ? <tfoot className="border-t border-line font-medium">{footer}</tfoot> : null}
       </table>
     </div>
   );

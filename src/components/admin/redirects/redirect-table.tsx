@@ -31,10 +31,10 @@ export type RedirectTableActions = RedirectFormActions & {
 };
 
 const STATUS_STYLE: Record<RedirectStatus, string> = {
-  active: "text-foreground",
+  active: "text-ink",
   not_used: "text-muted",
-  target_missing: "text-amber-700 dark:text-amber-400",
-  chain: "text-amber-700 dark:text-amber-400",
+  target_missing: "text-warning-text",
+  chain: "text-warning-text",
 };
 
 /** The status of a row in words, never by colour alone. */
@@ -92,7 +92,7 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
   return (
     <div className="flex flex-col gap-3" aria-busy={pending}>
       {canWrite && selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface p-3 text-sm" role="group" aria-label="Selected redirects">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-sunken p-3 text-sm" role="group" aria-label="Selected redirects">
           {asking && asking.length > 1 ? (
             <>
               <span>Delete {asking.length} redirects? Browsers that have seen them may keep following them for a while.</span>
@@ -119,7 +119,7 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
       <div role="status" aria-live="polite" className="flex flex-col gap-1 text-sm">
         {notice && <p>{notice}</p>}
         {problems.length > 0 && (
-          <ul className="list-disc pl-5 text-red-700 dark:text-red-400">
+          <ul className="list-disc pl-5 text-danger-text">
             {problems.map((p) => (
               <li key={p}>{p}</li>
             ))}
@@ -130,7 +130,7 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
         <table className="w-full text-sm">
           <caption className="sr-only">The store&apos;s redirects, newest first</caption>
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-b border-line">
               {canWrite && (
                 <th scope="col" className={`${th} w-8`}>
                   <input
@@ -224,7 +224,7 @@ function RowGroup({
   const manual = row.kind === "manual";
   return (
     <>
-      <tr className="border-b border-border last:border-0">
+      <tr className="border-b border-line last:border-0">
         {canWrite && (
           <td className={td}>
             {!row.readOnly && <input type="checkbox" aria-label={`Select the redirect from ${row.source}`} checked={selected} onChange={(e) => onSelect(e.target.checked)} className="size-4" />}
@@ -270,7 +270,7 @@ function RowGroup({
         </td>
       </tr>
       {editing && (
-        <tr className="border-b border-border bg-background">
+        <tr className="border-b border-line bg-card">
           <td colSpan={columns} className="p-3">
             {manual ? (
               <RedirectForm actions={actions} initial={{ from: row.source, to: row.target ?? "" }} editing={{ id: row.id, source: row.source }} onDone={() => onEdit(false)} onCancel={() => onEdit(false)} />

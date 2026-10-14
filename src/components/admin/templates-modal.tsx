@@ -55,7 +55,7 @@ export function TemplatesModal({
         <button
           type="button"
           onClick={onClose}
-          className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+          className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
           Done
         </button>
@@ -97,7 +97,7 @@ function Browser({
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="tablist" aria-label="Where templates come from" className="grid grid-cols-2 border-b border-border">
+      <div role="tablist" aria-label="Where templates come from" className="grid grid-cols-2 border-b border-line">
         {TEMPLATE_SOURCES.map((each, index) => (
           <button
             key={each}
@@ -112,7 +112,7 @@ function Browser({
               if (event.key === "ArrowRight") select(index + 1);
               if (event.key === "ArrowLeft") select(index - 1);
             }}
-            className="min-h-11 border-b-2 border-transparent px-2 text-sm font-medium text-muted aria-selected:border-foreground aria-selected:text-foreground"
+            className="min-h-11 border-b-2 border-transparent px-2 text-sm font-medium text-muted aria-selected:border-brand aria-selected:text-ink"
           >
             {TEMPLATE_SOURCE_LABELS[each]}
           </button>
@@ -130,7 +130,7 @@ function Browser({
             value={filters.query}
             onChange={(event) => setFilters({ ...filters, query: event.target.value })}
             placeholder="Search by name, publisher or what is in it"
-            className="min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+            className="min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm"
           />
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div role="group" aria-label="Kind" className="flex flex-wrap gap-2">
@@ -140,7 +140,7 @@ function Browser({
                   type="button"
                   aria-pressed={filters.kind === chip.value}
                   onClick={() => setFilters({ ...filters, kind: chip.value })}
-                  className="min-h-9 rounded-full border border-border px-3 text-xs aria-pressed:border-foreground aria-pressed:bg-surface aria-pressed:font-medium"
+                  className="min-h-9 rounded-full border border-line px-3 text-xs aria-pressed:border-brand aria-pressed:bg-sunken aria-pressed:font-medium"
                 >
                   {chip.label}
                 </button>
@@ -152,7 +152,7 @@ function Browser({
                 role="switch"
                 checked={filters.activeOnly}
                 onChange={(event) => setFilters({ ...filters, activeOnly: event.target.checked })}
-                className="size-5 shrink-0 accent-foreground"
+                className="size-5 shrink-0 accent-brand"
               />
               Activated only
             </label>
@@ -160,12 +160,12 @@ function Browser({
         </div>
 
         {list.status === "error" ? (
-          <div role="alert" className="flex flex-col items-start gap-2 text-sm text-red-700 dark:text-red-400">
+          <div role="alert" className="flex flex-col items-start gap-2 text-sm text-danger-text">
             <p>{list.problem}</p>
             <button
               type="button"
               onClick={() => load(source, true)}
-              className="min-h-9 rounded-md border border-border px-3 text-xs text-foreground"
+              className="min-h-9 rounded-md border border-line px-3 text-xs text-ink"
             >
               Try again
             </button>
@@ -181,7 +181,7 @@ function Browser({
             <button
               type="button"
               onClick={() => setFilters(NO_FILTERS)}
-              className="min-h-9 rounded-md border border-border px-3 text-xs"
+              className="min-h-9 rounded-md border border-line px-3 text-xs"
             >
               Clear filters
             </button>
@@ -198,14 +198,14 @@ function Browser({
                 {group.items.map((item) => {
                   const reason = blockedReason(item, { pageType, rowsFull, blocksFull });
                   return (
-                    <li key={item.id} className="flex flex-col gap-1 rounded-md border border-border p-3">
+                    <li key={item.id} className="flex flex-col gap-1 rounded-md border border-line p-3">
                       <div className="flex flex-wrap items-start gap-3">
                         <div className="flex min-w-0 flex-1 basis-48 flex-col gap-0.5">
                           <span className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-medium">{item.name}</span>
                             <PageTypeBadge item={item} warn={!fitsPage(item, pageType)} />
                             {item.active && (
-                              <span className="rounded-full bg-surface px-1.5 py-px text-[11px] leading-4 text-muted">
+                              <span className="rounded-full bg-sunken px-1.5 py-px text-[11px] leading-4 text-muted">
                                 Activated
                               </span>
                             )}
@@ -227,7 +227,7 @@ function Browser({
                             disabled={controller.busy.has(item.id)}
                             aria-label={`${item.active ? "Deactivate" : "Activate"} ${item.name}`}
                             className={`min-h-9 shrink-0 rounded-md px-3 text-xs font-medium disabled:opacity-50 ${
-                              item.active ? "border border-border hover:bg-surface" : "bg-foreground text-background"
+                              item.active ? "border border-edge hover:bg-sunken" : "bg-brand text-brand-ink"
                             }`}
                           >
                             {item.active ? "Deactivate" : "Activate"}

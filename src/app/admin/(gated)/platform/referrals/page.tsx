@@ -23,7 +23,7 @@ import {
 export const metadata: Metadata = { title: "Referrals" };
 
 const date = (iso: string) => iso.slice(0, 10);
-const control = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
 const amounts = (rows: { currency: string; minor: number }[]) =>
@@ -35,7 +35,7 @@ function ReferrerActions({ referrer }: { referrer: AdminReferrer }) {
     <div className="flex flex-col gap-2">
       {referrer.blockedAt ? (
         <form action={unblockReferrerAction.bind(null, referrer.accountId)}>
-          <button type="submit" className="min-h-9 rounded-md border border-border px-3 text-sm">
+          <button type="submit" className="min-h-9 rounded-md border border-line px-3 text-sm">
             Unblock<span className="sr-only"> {referrer.email}</span>
           </button>
         </form>
@@ -99,7 +99,7 @@ export default async function PlatformReferralsPage() {
       </div>
 
       <Section id="settings-heading" title="The program">
-        <ActionForm action={saveReferralSettingsAction} className="flex max-w-xl flex-col gap-4 rounded-card border border-border bg-background p-5" successMessage="Saved.">
+        <ActionForm action={saveReferralSettingsAction} className="flex max-w-xl flex-col gap-4 rounded-card border border-line bg-card p-5" successMessage="Saved.">
           <label className="flex items-center gap-2 text-sm font-medium">
             <input type="checkbox" name="enabled" defaultChecked={settings.enabled} className="size-4" />
             The program is on
@@ -141,14 +141,14 @@ export default async function PlatformReferralsPage() {
 
       <Section id="referrers-heading" title="Referrers">
         {referrers.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+          <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
             No one has opened Referrals yet.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-background">
+          <div className="overflow-x-auto rounded-lg border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="px-4 py-2 font-medium">Referrer</th>
                   <th scope="col" className="px-4 py-2 font-medium">Brought in</th>
                   <th scope="col" className="px-4 py-2 font-medium">Earned</th>
@@ -160,14 +160,14 @@ export default async function PlatformReferralsPage() {
               </thead>
               <tbody>
                 {referrers.map((r) => (
-                  <tr key={r.accountId} className="border-b border-border align-top last:border-0">
+                  <tr key={r.accountId} className="border-b border-line align-top last:border-0">
                     <td className="px-4 py-2">
                       <Link href={`/admin/platform/customers/${r.accountId}`} className="underline">
                         {r.email}
                       </Link>
                       <span className="block font-mono text-muted">{r.code}</span>
                       {r.blockedAt && (
-                        <span className="block text-red-700 dark:text-red-400">
+                        <span className="block text-danger-text">
                           Blocked {date(r.blockedAt)}: {r.blockedReason}
                         </span>
                       )}
@@ -201,14 +201,14 @@ export default async function PlatformReferralsPage() {
 
       <Section id="referred-heading" title="Referred stores">
         {referrals.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+          <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
             No store has opened through a referral yet.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-background">
+          <div className="overflow-x-auto rounded-lg border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="px-4 py-2 font-medium">Store</th>
                   <th scope="col" className="px-4 py-2 font-medium">Referred by</th>
                   <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">Terms</th>
@@ -221,14 +221,14 @@ export default async function PlatformReferralsPage() {
               </thead>
               <tbody>
                 {referrals.map((r) => (
-                  <tr key={r.id} className="border-b border-border align-top last:border-0">
+                  <tr key={r.id} className="border-b border-line align-top last:border-0">
                     <td className="px-4 py-2">
                       <Link href={`/admin/platform/stores/${r.storeSlug}`} className="underline">
                         {r.storeName}
                       </Link>
                       <span className="block text-muted">Opened {date(r.since)}</span>
                       {r.status === "void" && (
-                        <span className="block text-red-700 dark:text-red-400">Void: {r.voidReason}</span>
+                        <span className="block text-danger-text">Void: {r.voidReason}</span>
                       )}
                     </td>
                     <td className="px-4 py-2 text-muted">{r.referrerEmail}</td>
@@ -248,7 +248,7 @@ export default async function PlatformReferralsPage() {
                     <td className="px-4 py-2">
                       {r.status === "void" ? (
                         <form action={restoreReferralAction.bind(null, r.id)}>
-                          <button type="submit" className="min-h-9 rounded-md border border-border px-3 text-sm">
+                          <button type="submit" className="min-h-9 rounded-md border border-line px-3 text-sm">
                             Count again<span className="sr-only"> {r.storeName}</span>
                           </button>
                         </form>

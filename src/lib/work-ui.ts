@@ -411,9 +411,9 @@ export function progressView(
 
 /** The bar's colour and the label's, per stage. Colours carry no meaning alone: the label always says it too. */
 export const STAGE_STYLES: Record<EstimateStage, { bar: string; text: string; name: string }> = {
-  ok: { bar: "bg-emerald-600", text: "text-muted", name: "On track" },
-  near: { bar: "bg-amber-500", text: "text-amber-800 dark:text-amber-300", name: "Nearly used up" },
-  over: { bar: "bg-red-600", text: "text-red-700 dark:text-red-400", name: "Over the estimate" },
+  ok: { bar: "bg-positive-solid", text: "text-muted", name: "On track" },
+  near: { bar: "bg-warning-solid", text: "text-warning-text", name: "Nearly used up" },
+  over: { bar: "bg-danger-solid", text: "text-danger-text", name: "Over the estimate" },
 };
 
 // --- The Time page's filters --------------------------------------------------------------------------

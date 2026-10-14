@@ -238,6 +238,6 @@ describe("what the order says", () => {
   it("marks a refund past its legal deadline", () => {
     const { text, html } = draw(detail({ due: { state: "overdue", deadline: new Date("2026-10-19T10:00:00Z"), daysToDeadline: -2, waitingFor: null, clockStart: null } }));
     expect(text).toContain("Refund overdue by 2 days");
-    expect(html).toContain("text-red-700");
+    expect(html).toContain("text-danger-text");
   });
 });

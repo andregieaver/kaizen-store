@@ -33,9 +33,9 @@ import {
  * and files.
  */
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const hint = "font-normal text-muted";
-const small = "min-h-9 min-w-9 rounded border border-border px-2 text-sm disabled:opacity-40";
+const small = "min-h-9 min-w-9 rounded border border-line px-2 text-sm disabled:opacity-40";
 
 /** One of a list, with a search box above it to narrow the list down. */
 function SingleSelect({
@@ -117,7 +117,7 @@ function MultiSelect({
           {ids.map((chosen, index) => {
             const name = names.get(chosen) ?? "A removed one";
             return (
-              <li key={chosen} className="flex items-center gap-2 rounded-md border border-border px-2 py-1 text-sm">
+              <li key={chosen} className="flex items-center gap-2 rounded-md border border-line px-2 py-1 text-sm">
                 <span className="min-w-0 flex-1 truncate">{name}</span>
                 <button
                   type="button"
@@ -186,7 +186,7 @@ function MultiSelect({
             type="button"
             onClick={add}
             disabled={pick === ""}
-            className="min-h-10 rounded-md border border-border px-3 text-sm disabled:opacity-40"
+            className="min-h-10 rounded-md border border-line px-3 text-sm disabled:opacity-40"
           >
             Add
           </button>
@@ -374,7 +374,7 @@ export function FileField({
   return (
     <div className="flex flex-col gap-2">
       {value && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-line px-3 py-2 text-sm">
           <span className="min-w-0 flex-1 truncate" title={value.name}>
             {value.name} <span className={hint}>({fileSize(value.size)})</span>
           </span>
@@ -391,7 +391,7 @@ export function FileField({
       {upload ? (
         <div>
           <label
-            className={`inline-block w-fit cursor-pointer rounded-md border border-border px-3 py-2 text-sm focus-within:outline-2 ${busy ? "opacity-50" : ""}`}
+            className={`inline-block w-fit cursor-pointer rounded-md border border-line px-3 py-2 text-sm focus-within:outline-2 ${busy ? "opacity-50" : ""}`}
           >
             {busy ? "Uploading …" : value ? "Replace file" : "Choose file"}
             <input
@@ -411,7 +411,7 @@ export function FileField({
         <p className={`${hint} text-xs`}>Uploads are not set up here.</p>
       )}
       {problem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}

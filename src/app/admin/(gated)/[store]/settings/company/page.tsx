@@ -17,7 +17,7 @@ import { saveAudienceAction, saveBusinessAction, saveOfficeAction } from "./acti
 
 export const metadata: Metadata = { title: "Company" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 /**
  * Who the store is and where to find it (D40): the business that sells,
@@ -87,7 +87,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
         <p className="mb-4 text-sm text-muted">Where the business is run from, and when you can be reached.</p>
         <ActionForm action={saveOfficeAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <PlaceFields place={company.office} countries={countries} defaultCountry={homeCountry} what="the office" />
-          <div className="border-t border-border pt-4">
+          <div className="border-t border-line pt-4">
             <h3 className="mb-3 text-sm font-medium">Office hours</h3>
             <HoursEditor name="hours" initial={company.office?.hours ?? null} optional />
           </div>
@@ -104,20 +104,20 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
             <p className="text-sm text-muted">Places where shoppers can visit you or collect their orders.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={`${base}/places/new?kind=shop`} className="min-h-10 rounded-pill border border-border px-3 py-2 text-sm hover:bg-surface">
+            <Link href={`${base}/places/new?kind=shop`} className="min-h-10 rounded-pill border border-edge px-3 py-2 text-sm hover:bg-sunken">
               Add a store
             </Link>
-            <Link href={`${base}/places/new?kind=pickup`} className="min-h-10 rounded-pill border border-border px-3 py-2 text-sm hover:bg-surface">
+            <Link href={`${base}/places/new?kind=pickup`} className="min-h-10 rounded-pill border border-edge px-3 py-2 text-sm hover:bg-sunken">
               Add a pickup point
             </Link>
           </div>
         </div>
         {company.places.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">
+          <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
             No stores or pickup points yet. Add one if shoppers can visit you or collect orders.
           </p>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-line">
             {company.places.map((place) => (
               <PlaceRow key={place.id} place={place} href={`${base}/places/${place.id}`} />
             ))}
@@ -135,13 +135,13 @@ function PlaceRow({ place, href }: { place: StoreLocation; href: string }) {
         <Link href={href} className="font-medium underline-offset-2 hover:underline">
           {place.name}
         </Link>{" "}
-        <span className="rounded bg-surface px-1.5 py-0.5 text-xs">{KIND_LABELS[place.kind]}</span>
+        <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">{KIND_LABELS[place.kind]}</span>
         <span className="block text-muted">
           {place.street}, {place.postalCode} {place.city}
         </span>
         <span className="block text-xs text-muted">{place.hours ? weekSummary(place.hours.week) : "No opening hours shown"}</span>
       </div>
-      <Link href={href} className="min-h-10 rounded-md px-3 py-2 hover:bg-surface">
+      <Link href={href} className="min-h-10 rounded-md px-3 py-2 hover:bg-sunken">
         Edit <span className="sr-only">{place.name}</span>
       </Link>
     </li>

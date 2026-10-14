@@ -20,7 +20,7 @@ export function StoresList({
   return (
     <ul className="grid gap-3 sm:grid-cols-2">
       {stores.map((store) => (
-        <li key={store.slug} className="flex flex-col rounded-lg border border-border bg-background hover:border-foreground">
+        <li key={store.slug} className="flex flex-col rounded-lg border border-line bg-card hover:border-brand">
           <Link href={`/admin/${store.slug}`} className="block rounded-t-lg p-4">
             <span className="font-medium">{store.name}</span>
             <span className="block text-sm text-muted">
@@ -28,7 +28,7 @@ export function StoresList({
             </span>
           </Link>
           {canDuplicate && (store.role === "owner" || platformAdmin) && (
-            <div className="border-t border-border px-4 py-2 text-sm">
+            <div className="border-t border-line px-4 py-2 text-sm">
               <Link href={copyWizardPath(store.slug)} className="underline underline-offset-2">
                 Duplicate<span className="sr-only"> {store.name}</span>
               </Link>

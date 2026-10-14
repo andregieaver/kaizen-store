@@ -12,7 +12,7 @@ import {
   type HoverTiming,
 } from "@/lib/hover-timing";
 
-const FIELD = "min-h-10 rounded-md border border-border bg-background px-3 text-sm";
+const FIELD = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
 
 /**
  * How long hover changes take and their easing (D206): for the theme (the whole site) or one part (itself and what it

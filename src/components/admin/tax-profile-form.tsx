@@ -7,10 +7,10 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { OSS_SCHEME_LABELS, OSS_SCHEMES, formOf, type OssScheme, type ReadinessLine, type TaxProfile } from "@/lib/tax-profile";
 import { EU_COUNTRIES } from "@/lib/vat-number";
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm disabled:opacity-60";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "font-normal text-muted";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 /** The latest check of the store's own number, as the screen shows it (serialisable: no server-only types). */
 export type OwnNumberCheck = {
@@ -293,10 +293,10 @@ export function ReadinessList({ lines }: { lines: ReadinessLine[] }) {
       <h2 id="readiness" className="font-medium">
         What is on
       </h2>
-      <ul className="flex flex-col divide-y divide-border text-sm">
+      <ul className="flex flex-col divide-y divide-line text-sm">
         {lines.map((line) => (
           <li key={line.key} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2 first:pt-0 last:pb-0">
-            <span className={`rounded-full border border-border px-2 py-0.5 text-xs font-medium ${line.on ? "bg-surface" : "text-muted"}`}>{line.on ? "On" : "Off"}</span>
+            <span className={`rounded-full border border-line px-2 py-0.5 text-xs font-medium ${line.on ? "bg-sunken" : "text-muted"}`}>{line.on ? "On" : "Off"}</span>
             <span className="min-w-0 flex-1">{line.text}</span>
           </li>
         ))}

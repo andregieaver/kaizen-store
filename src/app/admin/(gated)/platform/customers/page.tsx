@@ -36,9 +36,9 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
           type="search"
           defaultValue={q}
           placeholder="Search by name, email or store"
-          className="min-h-10 w-full max-w-sm rounded-md border border-border bg-background px-3 text-sm"
+          className="min-h-10 w-full max-w-sm rounded-md border border-line bg-card px-3 text-sm"
         />
-        <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+        <button type="submit" className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           Search
         </button>
         {q && (
@@ -48,14 +48,14 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
         )}
       </form>
       {customers.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border bg-background p-8 text-center text-sm text-muted">
+        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           {q ? "No customer matches the search." : "No customers yet."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-border bg-background">
+        <div className="overflow-x-auto rounded-lg border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b border-line">
                 <th scope="col" className="px-4 py-2 font-medium">Customer</th>
                 <th scope="col" className="px-4 py-2 font-medium">Stores and plans</th>
                 <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Since</th>
@@ -63,7 +63,7 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
             </thead>
             <tbody>
               {customers.map((c) => (
-                <tr key={c.id} className="border-b border-border align-top last:border-0">
+                <tr key={c.id} className="border-b border-line align-top last:border-0">
                   <td className="px-4 py-2">
                     <div className="flex items-center gap-3">
                       <Avatar avatar={avatarFor(c)} size={32} />

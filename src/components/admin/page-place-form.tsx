@@ -28,7 +28,7 @@ export function PagePlaceForm({
 }) {
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
   return (
-    <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby={`place-${id}`}>
+    <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby={`place-${id}`}>
       <h3 id={`place-${id}`} className="font-medium">
         {name}
       </h3>
@@ -36,7 +36,7 @@ export function PagePlaceForm({
       <ActionForm action={choose as never} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           {name} shows
-          <select name="page" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal">
+          <select name="page" defaultValue={current ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal">
             <option value="">{standard}</option>
             {pages.map((page) => (
               <option key={page.id} value={page.id}>

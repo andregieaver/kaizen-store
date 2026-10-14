@@ -14,7 +14,7 @@ export function PrivacyBanner({ base, data }: { base: string; data: PrivacyCardD
   const request = data.request;
   if (!request || !data.overdue) return null;
   return (
-    <p role="alert" className="rounded-md border border-red-700 bg-background p-3 text-sm dark:border-red-400">
+    <p role="alert" className="rounded-md border border-danger-text bg-card p-3 text-sm">
       <span className={`font-medium ${alertText}`}>A privacy request for this customer is overdue.</span>{" "}
       <Link href={`${base}/privacy/${request.id}`} className="underline">
         Open the request
@@ -58,12 +58,12 @@ export function PrivacyCard({
         <p className="mt-1 text-muted">{data.countsLine ? `The store holds: ${data.countsLine}.` : "The store holds no data about this person that a file would list."}</p>
       </div>
       {exportProblem && (
-        <p role="alert" className="rounded-md border border-red-700 p-2 dark:border-red-400">
+        <p role="alert" className="rounded-md border border-danger-text p-2">
           {exportProblem}
         </p>
       )}
       {request && (
-        <p className="rounded-md border border-border p-3">
+        <p className="rounded-md border border-line p-3">
           <span className="block font-medium">{PRIVACY_KIND_LABELS[request.kind]} request open</span>
           <span className="block text-muted">
             Received {dayText(request.receivedAt, timeZone)}, due {dayText(request.extendedUntil ?? request.dueAt, timeZone)}

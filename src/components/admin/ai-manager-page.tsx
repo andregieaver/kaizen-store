@@ -36,7 +36,7 @@ export async function AiManagerPage({
 }) {
   const memory = tab === "memory";
   const [memories, learning] = memory ? await Promise.all([listMemories(accountId), learningOn(accountId)]) : [[], true];
-  const tabClass = (on: boolean) => `rounded-md px-3 py-1.5 text-sm ${on ? "bg-surface font-medium" : "text-muted hover:bg-surface"}`;
+  const tabClass = (on: boolean) => `rounded-md px-3 py-1.5 text-sm ${on ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`;
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">

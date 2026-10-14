@@ -60,7 +60,7 @@ export function EstimateProgress({
           aria-valuemax={100}
           aria-valuenow={Math.min(100, view.percent)}
           aria-valuetext={`${view.percent} % used. ${style.name}. ${view.label}`}
-          className="h-2 w-full overflow-hidden rounded-full bg-surface"
+          className="h-2 w-full overflow-hidden rounded-full bg-sunken"
         >
           <div className={`h-full ${style.bar}`} style={{ width: `${view.fill}%` }} />
         </div>

@@ -67,7 +67,7 @@ export function ColorField(props: Always | Maybe) {
           aria-label={`${label}: choose`}
           value={value ?? "#000000"}
           onChange={(event) => set(event.target.value)}
-          className="h-10 w-14 cursor-pointer rounded-md border border-border bg-background p-1"
+          className="h-10 w-14 cursor-pointer rounded-md border border-line bg-card p-1"
         />
         <input
           id={id}
@@ -82,7 +82,7 @@ export function ColorField(props: Always | Maybe) {
             if (HEX6.test(next)) onChange(next.toLowerCase());
           }}
           onBlur={() => setDraft(null)}
-          className="min-h-10 w-28 rounded-md border border-border bg-background px-2 font-mono text-sm aria-invalid:border-red-700"
+          className="min-h-10 w-28 rounded-md border border-line bg-card px-2 font-mono text-sm aria-invalid:border-danger-text"
         />
         {props.onClear && value !== undefined && (
           <button
@@ -93,7 +93,7 @@ export function ColorField(props: Always | Maybe) {
             }}
             aria-label={`Clear ${label.toLowerCase()}`}
             title="Clear"
-            className="flex size-8 items-center justify-center rounded text-muted hover:bg-surface hover:text-foreground"
+            className="flex size-8 items-center justify-center rounded text-muted hover:bg-sunken hover:text-ink"
           >
             <X aria-hidden className="size-4" />
           </button>
@@ -110,7 +110,7 @@ export function ColorField(props: Always | Maybe) {
               aria-label={`${swatch.name} (${swatch.colour})`}
               aria-pressed={value?.toLowerCase() === swatch.colour}
               title={`${swatch.name} ${swatch.colour}`}
-              className="size-6 rounded-full border border-border shadow-sm aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-foreground"
+              className="size-6 rounded-full border border-line shadow-sm aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-ink"
               // The swatch shows the theme's own colour: data, not the admin's look.
               style={{ backgroundColor: swatch.colour }}
             />
@@ -161,7 +161,7 @@ function OpacitySlider({
           aria-valuetext={`${shown}%`}
           aria-describedby={`${id}-note`}
           onChange={(event) => set(Number(event.target.value))}
-          className="w-40 accent-foreground disabled:opacity-50"
+          className="w-40 accent-brand disabled:opacity-50"
         />
         <input
           type="number"
@@ -175,7 +175,7 @@ function OpacitySlider({
             const next = Number.parseInt(event.target.value, 10);
             if (Number.isFinite(next)) set(Math.min(100, Math.max(0, next)));
           }}
-          className="min-h-10 w-20 rounded-md border border-border bg-background px-2 text-sm disabled:opacity-50"
+          className="min-h-10 w-20 rounded-md border border-line bg-card px-2 text-sm disabled:opacity-50"
         />
         <span className="text-sm text-muted">%</span>
       </div>

@@ -12,7 +12,7 @@ export function TranslateButton({ seq, translate }: { seq: number; translate: (s
   const [state, setState] = useState<{ status: "idle" | "busy" } | { status: "done"; text: string } | { status: "failed"; problem: string }>({ status: "idle" });
   if (state.status === "done")
     return (
-      <div className="max-w-[85%] rounded-2xl border border-dashed border-border px-3 py-2 text-sm" data-translation>
+      <div className="max-w-[85%] rounded-2xl border border-dashed border-line px-3 py-2 text-sm" data-translation>
         <p className="text-xs text-muted">In English · Translated by AI · only you see this</p>
         <p className="whitespace-pre-line">{state.text}</p>
       </div>

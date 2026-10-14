@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The activity log while it is read: the heading, the filters and a column of entries. */
 export default function ActivityLoading() {

@@ -97,7 +97,7 @@ export function DisplayFields({
         disabled={Boolean(locked) && kind === "always"}
         onChange={(event) => choose(event.target.value as DisplayKind)}
         aria-describedby={`${id}-hint`}
-        className="min-h-10 rounded-md border border-border bg-background px-3 text-sm"
+        className="min-h-10 rounded-md border border-line bg-card px-3 text-sm"
       >
         {DISPLAYS.map((d) => (
           <option key={d} value={d}>
@@ -132,7 +132,7 @@ export function RuleBuilder({
   const currency = choices?.currency ?? "EUR";
   const setGroup = (index: number, group: ConditionGroup) => onChange(rules.flatMap((g, i) => (i !== index ? [g] : group.length > 0 ? [group] : [])));
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border p-3" data-rule-builder="">
+    <div className="flex flex-col gap-2 rounded-md border border-line p-3" data-rule-builder="">
       <p className="text-xs text-muted">
         Shown when every condition of a group holds, in any group.
         {choices && choices.timeZone && <> Times are in {setup.kaizen ? "Kaizen's" : "the store's"} time zone, {choices.timeZone}.</>}
@@ -144,7 +144,7 @@ export function RuleBuilder({
               Or
             </p>
           )}
-          <fieldset className="flex flex-col gap-2 rounded-md bg-surface p-2">
+          <fieldset className="flex flex-col gap-2 rounded-md bg-sunken p-2">
             <legend className="sr-only">Group {groupIndex + 1}</legend>
             {group.map((condition, index) => (
               <div key={index} className="flex flex-col gap-1">
@@ -167,7 +167,7 @@ export function RuleBuilder({
             <button
               type="button"
               onClick={() => setGroup(groupIndex, [...group, newCondition(first, currency)])}
-              className="flex min-h-9 items-center gap-1 self-start rounded-md border border-border px-2 text-sm"
+              className="flex min-h-9 items-center gap-1 self-start rounded-md border border-line px-2 text-sm"
             >
               <Plus aria-hidden className="size-4" /> And
             </button>
@@ -177,7 +177,7 @@ export function RuleBuilder({
       <button
         type="button"
         onClick={() => onChange([...rules, [newCondition(first, currency)]])}
-        className="flex min-h-9 items-center gap-1 self-start rounded-md border border-border px-2 text-sm"
+        className="flex min-h-9 items-center gap-1 self-start rounded-md border border-line px-2 text-sm"
       >
         <Plus aria-hidden className="size-4" /> Or
       </button>
@@ -186,7 +186,7 @@ export function RuleBuilder({
 }
 
 const GROUP_ORDER = ["Visitor", "Place and language", "Time", "Cart and address"] as const;
-const fieldClass = "min-h-9 rounded-md border border-border bg-background px-2 text-sm";
+const fieldClass = "min-h-9 rounded-md border border-line bg-card px-2 text-sm";
 
 function ConditionRow({
   condition,
@@ -215,7 +215,7 @@ function ConditionRow({
     } else onChange({ ...condition, op } as Condition);
   };
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border bg-background p-2" role="group" aria-label={label}>
+    <div className="flex flex-col gap-2 rounded-md border border-line bg-card p-2" role="group" aria-label={label}>
       <div className="flex flex-wrap items-center gap-2">
         <select
           aria-label={`${label}: what it asks`}
@@ -243,7 +243,7 @@ function ConditionRow({
             </option>
           ))}
         </select>
-        <button type="button" onClick={onRemove} aria-label={`Remove ${label.toLowerCase()}`} className="ml-auto flex size-9 items-center justify-center rounded-md hover:bg-surface">
+        <button type="button" onClick={onRemove} aria-label={`Remove ${label.toLowerCase()}`} className="ml-auto flex size-9 items-center justify-center rounded-md hover:bg-sunken">
           <X aria-hidden className="size-4" />
         </button>
       </div>
@@ -320,7 +320,7 @@ function ValueField({
                 type="button"
                 aria-pressed={on}
                 onClick={() => set(on ? c.value.filter((d) => d !== day) : [...c.value, day].sort())}
-                className="min-h-9 rounded-pill border border-border px-2 text-sm aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background"
+                className="min-h-9 rounded-pill border border-edge px-2 text-sm aria-pressed:border-brand aria-pressed:bg-inverse aria-pressed:text-inverse-ink"
               >
                 {WEEKDAY_LABELS[day].slice(0, 3)}
               </button>
@@ -441,7 +441,7 @@ export function IdChoice({
           {removed.map((id) => (
             <li key={id} className="flex items-center gap-1 rounded border border-(--danger) px-2 py-0.5 text-xs text-(--danger)">
               Removed
-              <button type="button" onClick={() => toggle(id)} aria-label="Take the removed one out" className="rounded hover:bg-surface">
+              <button type="button" onClick={() => toggle(id)} aria-label="Take the removed one out" className="rounded hover:bg-sunken">
                 <X aria-hidden className="size-3" />
               </button>
             </li>
@@ -490,7 +490,7 @@ export function DisplayBadge({ show }: { show: Show | undefined }) {
     <span
       data-builder-display={mark.tone}
       title={mark.text}
-      className={`pointer-events-none absolute right-1 bottom-1 z-20 inline-flex items-center gap-1 rounded border bg-surface px-1.5 py-0.5 text-[11px] shadow-sm ${
+      className={`pointer-events-none absolute right-1 bottom-1 z-20 inline-flex items-center gap-1 rounded border bg-sunken px-1.5 py-0.5 text-[11px] shadow-sm ${
         mark.tone === "rules" ? "border-(--danger) text-(--danger)" : "border-(--chart-1) text-(--chart-1)"
       }`}
     >
@@ -512,13 +512,13 @@ export function DisplayLegend({ parts, onOpen }: { parts: { id: string; name: st
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen(!open)}
-        className="flex min-h-9 items-center gap-2 rounded-md border border-border px-3 text-sm"
+        className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-sm"
       >
         <Eye aria-hidden className="size-4 text-(--chart-1)" strokeWidth={1.75} />
         Who sees what ({parts.length})
       </button>
       {open && (
-        <div id={id} className="absolute right-0 z-40 mt-1 flex w-80 flex-col gap-2 rounded-md border border-border bg-background p-3 text-sm shadow-md">
+        <div id={id} className="absolute right-0 z-40 mt-1 flex w-80 flex-col gap-2 rounded-md border border-line bg-card p-3 text-sm shadow-md">
           <p className="flex items-center gap-2 text-xs">
             <Eye aria-hidden className="size-3.5 text-(--chart-1)" /> Blue: never shown, or only to signed-in or signed-out visitors.
           </p>
@@ -528,12 +528,12 @@ export function DisplayLegend({ parts, onOpen }: { parts: { id: string; name: st
           <p className="flex items-center gap-2 text-xs text-muted">
             <Eye aria-hidden className="size-3.5" /> Grey: hidden at the screen size shown.
           </p>
-          <ul className="flex flex-col gap-1 border-t border-border pt-2">
+          <ul className="flex flex-col gap-1 border-t border-line pt-2">
             {parts.map((part) => {
               const mark = displayMark(part.show)!;
               return (
                 <li key={part.id}>
-                  <button type="button" onClick={() => onOpen(part.id)} className="flex w-full items-center justify-between gap-2 rounded px-1 py-1 text-left hover:bg-surface">
+                  <button type="button" onClick={() => onOpen(part.id)} className="flex w-full items-center justify-between gap-2 rounded px-1 py-1 text-left hover:bg-sunken">
                     <span>{part.name}</span>
                     <span className={`text-xs ${mark.tone === "rules" ? "text-(--danger)" : "text-(--chart-1)"}`}>{mark.text}</span>
                   </button>

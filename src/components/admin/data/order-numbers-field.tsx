@@ -44,7 +44,7 @@ export function OrderNumbersField({ slug, defaultValue, max }: { slug: string; d
           {pending ? "Checking …" : "Check the numbers"}
         </button>
         <div role="status" aria-live="polite" className="text-sm">
-          {checked && "problem" in checked && <span className="text-red-700 dark:text-red-400">{checked.problem}</span>}
+          {checked && "problem" in checked && <span className="text-danger-text">{checked.problem}</span>}
           {checked && "found" in checked && (
             <span>
               {checked.found} of these {checked.found === 1 ? "is an order" : "are orders"} of this store.

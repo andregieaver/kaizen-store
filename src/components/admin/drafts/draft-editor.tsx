@@ -86,7 +86,7 @@ function AddressFields({ prefix, value, onChange }: { prefix: string; value: Edi
   );
 }
 
-const card = "flex flex-col gap-3 rounded-lg border border-border bg-background p-4";
+const card = "flex flex-col gap-3 rounded-lg border border-line bg-card p-4";
 
 /**
  * The draft order editor (wave 3, D173, `docs/wave-3-orders.md` 2.4): one screen with the market, the customer, the lines (products and custom items, a custom price), the discount the buyer sees, the shipping, the notes and tags,
@@ -281,7 +281,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
       <div className="flex min-w-0 flex-col gap-6">
         <div role="status" aria-live="polite" className="flex flex-wrap items-center gap-3 text-sm">
           <span className="font-medium">{number}</span>
-          <span className={status === "invalid" || status === "error" || status === "conflict" ? "text-red-700 dark:text-red-400" : "text-muted"}>
+          <span className={status === "invalid" || status === "error" || status === "conflict" ? "text-danger-text" : "text-muted"}>
             {status === "saving"
               ? "Saving …"
               : status === "dirty"
@@ -301,7 +301,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
           </button>
         </div>
         {message && (
-          <p role="alert" className="rounded-lg border border-border bg-surface p-3 text-sm text-red-700 dark:text-red-400">
+          <p role="alert" className="rounded-lg border border-line bg-sunken p-3 text-sm text-danger-text">
             {message}
             {status === "conflict" && (
               <>
@@ -314,14 +314,14 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
           </p>
         )}
         {generalIssues.length > 0 && (
-          <ul role="alert" className="list-disc rounded-lg border border-border bg-surface p-3 pl-8 text-sm text-red-700 dark:text-red-400">
+          <ul role="alert" className="list-disc rounded-lg border border-line bg-sunken p-3 pl-8 text-sm text-danger-text">
             {generalIssues.map((i, n) => (
               <li key={`${i.path}-${n}`}>{i.message}</li>
             ))}
           </ul>
         )}
         {marketNote && (
-          <p role="status" className="rounded-lg border border-border bg-surface p-3 text-sm">
+          <p role="status" className="rounded-lg border border-line bg-sunken p-3 text-sm">
             The market changed. {marketNote}
           </p>
         )}
@@ -385,11 +385,11 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
             </label>
             <input id="draft-customer-search" value={customerQuery} onChange={(e) => setCustomerQuery(e.target.value)} autoComplete="off" className={field} />
             {shownCustomers && (
-              <ul className="flex flex-col divide-y divide-border rounded-md border border-border bg-surface text-sm" aria-label="Customers found">
+              <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-sunken text-sm" aria-label="Customers found">
                 {shownCustomers.length === 0 && <li className="p-2 text-muted">No customer found. Type an email below instead.</li>}
                 {shownCustomers.map((c) => (
                   <li key={c.id}>
-                    <button type="button" onClick={() => void chooseCustomer(c)} className="flex w-full flex-col items-start p-2 text-left hover:bg-background">
+                    <button type="button" onClick={() => void chooseCustomer(c)} className="flex w-full flex-col items-start p-2 text-left hover:bg-card">
                       <span>{c.name || c.email}</span>
                       {c.name && <span className="text-xs text-muted">{c.email}</span>}
                     </button>
@@ -449,7 +449,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
           {form.lines.length === 0 ? (
             <p className="text-sm text-muted">Nothing yet. Add a product, or a custom item for something that is not in the catalogue.</p>
           ) : (
-            <ol className="flex flex-col divide-y divide-border">
+            <ol className="flex flex-col divide-y divide-line">
               {form.lines.map((line, index) => (
                 <li key={line.key} className="flex flex-col gap-2 py-3">
                   <div className="flex flex-wrap items-start gap-3">
@@ -508,7 +508,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
                     </label>
                   )}
                   {lineIssue(index).map((text) => (
-                    <p key={text} role="alert" className="text-sm text-red-700 dark:text-red-400">
+                    <p key={text} role="alert" className="text-sm text-danger-text">
                       {text}
                     </p>
                   ))}
@@ -528,14 +528,14 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
             </ol>
           )}
           {form.lines.length < DRAFT_LINES_MAX ? (
-            <div className="flex flex-col gap-3 border-t border-border pt-3">
+            <div className="flex flex-col gap-3 border-t border-line pt-3">
               <div className="flex flex-col gap-1">
                 <label htmlFor="draft-variant-search" className="text-sm font-medium">
                   Add a product <span className="font-normal text-muted">(title or SKU)</span>
                 </label>
                 <input id="draft-variant-search" value={variantQuery} onChange={(e) => setVariantQuery(e.target.value)} autoComplete="off" className={field} />
                 {shownVariants && (
-                  <ul className="flex flex-col divide-y divide-border rounded-md border border-border bg-surface text-sm" aria-label="Products found">
+                  <ul className="flex flex-col divide-y divide-line rounded-md border border-line bg-sunken text-sm" aria-label="Products found">
                     {shownVariants.length === 0 && <li className="p-2 text-muted">No product for sale in this market matches. Downloads, subscriptions, bookings and hosts&apos; listings cannot be on a draft.</li>}
                     {shownVariants.map((c) => (
                       <li key={c.variantId}>
@@ -546,7 +546,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
                             setVariantQuery("");
                             setVariantChoices(null);
                           }}
-                          className="flex w-full items-start justify-between gap-3 p-2 text-left hover:bg-background"
+                          className="flex w-full items-start justify-between gap-3 p-2 text-left hover:bg-card"
                         >
                           <span>
                             {c.productTitle}
@@ -657,9 +657,9 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
             {form.tags.length > 0 && (
               <ul className="flex flex-wrap gap-2">
                 {form.tags.map((tag) => (
-                  <li key={tag} className="inline-flex items-center gap-1 rounded-full border border-border bg-surface py-0.5 pr-1 pl-3 text-xs">
+                  <li key={tag} className="inline-flex items-center gap-1 rounded-full border border-line bg-sunken py-0.5 pr-1 pl-3 text-xs">
                     {tag}
-                    <button type="button" onClick={() => patch({ tags: form.tags.filter((t) => t !== tag) })} aria-label={`Remove the tag ${tag}`} className="inline-flex size-6 items-center justify-center rounded-full hover:bg-background">
+                    <button type="button" onClick={() => patch({ tags: form.tags.filter((t) => t !== tag) })} aria-label={`Remove the tag ${tag}`} className="inline-flex size-6 items-center justify-center rounded-full hover:bg-card">
                       <span aria-hidden="true">×</span>
                     </button>
                   </li>

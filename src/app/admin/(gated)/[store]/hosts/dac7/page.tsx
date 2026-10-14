@@ -55,7 +55,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
             key={y}
             href={`${base}/dac7?year=${y}`}
             aria-current={y === year ? "page" : undefined}
-            className={`min-h-10 rounded-md border border-border px-3 py-2 ${y === year ? "bg-surface font-medium" : ""}`}
+            className={`min-h-10 rounded-md border border-line px-3 py-2 ${y === year ? "bg-sunken font-medium" : ""}`}
           >
             {y}
             {y === current && " (so far)"}
@@ -64,7 +64,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
       </nav>
 
       {(missingDetails.length > 0 || missingAddresses.length > 0) && (
-        <div role="alert" className="rounded-lg border border-red-700/40 p-4 text-sm text-red-700 dark:text-red-400">
+        <div role="alert" className="rounded-lg border border-danger-text/40 p-4 text-sm text-danger-text">
           {missingDetails.length > 0 && <p>Tax details missing for: {missingDetails.map((s) => s.name).join(", ")}.</p>}
           {missingAddresses.length > 0 && <p>Address missing for: {missingAddresses.map((p) => p.name).join(", ")}.</p>}
           <p>Hosts give these in their area; remind them before you file.</p>
@@ -78,7 +78,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
         {report.sellers.length === 0 ? (
           <p className="text-sm text-muted">No host was paid in {year}: there is nothing to report.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border bg-background">
+          <div className="overflow-x-auto rounded-lg border border-line bg-card">
             <table className="w-full text-sm">
               <thead className="text-left text-muted">
                 <tr>
@@ -90,7 +90,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
                   <th className="p-2 text-right font-normal">Bookings</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-line">
                 {report.sellers.map((s) => (
                   <tr key={`${s.hostId}:${s.currency}`}>
                     <td className="p-2">{s.name}</td>
@@ -118,7 +118,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
           <h2 id="properties-heading" className="font-medium">
             Homes rented out
           </h2>
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {report.properties.map((p) => (
               <li key={`${p.resourceId}:${p.currency}`} className="flex flex-wrap justify-between gap-2 p-3">
                 <span>
@@ -142,11 +142,11 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
             </h2>
             <p className="text-muted">Spreadsheets with every field the report asks for, per quarter.</p>
             <div className="flex flex-wrap gap-3">
-              <a href={`${base}/dac7/${year}/sellers.csv`} className="min-h-10 rounded-md border border-border px-3 py-2" download>
+              <a href={`${base}/dac7/${year}/sellers.csv`} className="min-h-10 rounded-md border border-line px-3 py-2" download>
                 Hosts ({year})
               </a>
               {report.properties.length > 0 && (
-                <a href={`${base}/dac7/${year}/properties.csv`} className="min-h-10 rounded-md border border-border px-3 py-2" download>
+                <a href={`${base}/dac7/${year}/properties.csv`} className="min-h-10 rounded-md border border-line px-3 py-2" download>
                   Homes ({year})
                 </a>
               )}

@@ -18,7 +18,7 @@ import { createStoreAction } from "./actions";
 
 export const metadata: Metadata = { title: "Your stores" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /** All the account's stores, and a way to create another. */
 export default async function AllStoresPage() {
@@ -48,7 +48,7 @@ export default async function AllStoresPage() {
       )}
 
       {canCreate && (
-        <section aria-labelledby="new-store" className="flex max-w-3xl flex-col gap-3 rounded-card border border-border bg-background p-5">
+        <section aria-labelledby="new-store" className="flex max-w-3xl flex-col gap-3 rounded-card border border-line bg-card p-5">
           <div>
             <h2 id="new-store" className="font-medium">
               Create a store
@@ -99,7 +99,7 @@ export default async function AllStoresPage() {
           <h2 id="closed-heading" className="text-lg font-medium">
             Closed stores
           </h2>
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {closed.map((c) => (
               <li key={c.slug} className="p-4">
                 <Link href={`/admin/${c.slug}`} className="font-medium underline-offset-2 hover:underline">
@@ -119,7 +119,7 @@ export default async function AllStoresPage() {
           <h2 id="copies-heading" className="text-lg font-medium">
             Recent copies
           </h2>
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {copies.map((copy) => (
               <li key={copy.id} className="p-4">
                 <Link href={copyProgressPath(copy.id)} className="font-medium underline-offset-2 hover:underline">
@@ -139,7 +139,7 @@ export default async function AllStoresPage() {
           <h2 id="hosting-heading" className="text-lg font-medium">
             Hosting
           </h2>
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
             {hostings.map((h) => (
               <li key={h.slug} className="p-4">
                 <Link href={`/admin/hosting/${h.slug}`} className="font-medium underline-offset-2 hover:underline">

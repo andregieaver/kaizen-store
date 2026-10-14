@@ -20,7 +20,7 @@ export function SharingChoice({ value, onChange }: { value: PartSharing; onChang
       {PART_SHARING.map((option) => (
         <label
           key={option}
-          className="flex cursor-pointer items-start gap-2 rounded-md border border-border p-2 text-sm has-checked:border-foreground has-checked:bg-surface has-focus-visible:outline-2"
+          className="flex cursor-pointer items-start gap-2 rounded-md border border-line p-2 text-sm has-checked:border-brand has-checked:bg-sunken has-focus-visible:outline-2"
         >
           <input
             type="radio"
@@ -28,7 +28,7 @@ export function SharingChoice({ value, onChange }: { value: PartSharing; onChang
             value={option}
             checked={value === option}
             onChange={() => onChange(option)}
-            className="mt-1 size-4 shrink-0 accent-foreground"
+            className="mt-1 size-4 shrink-0 accent-brand"
           />
           <span className="flex flex-col">
             <span className="font-medium">{SHARING_LABELS[option].label}</span>
@@ -45,7 +45,7 @@ export function SharingChoice({ value, onChange }: { value: PartSharing; onChang
 export function SharingBadge({ sharing }: { sharing: PartSharing }) {
   if (sharing === "private") return null;
   return (
-    <span className="rounded-full border border-border px-1.5 py-px text-[11px] leading-4 text-muted">
+    <span className="rounded-full border border-line px-1.5 py-px text-[11px] leading-4 text-muted">
       {SHARING_LABELS[sharing].label}
     </span>
   );
@@ -90,7 +90,7 @@ export function SharingSelect({
           disabled={busy}
           aria-label={`Sharing of ${part.name}`}
           onChange={(event) => change(event.target.value as PartSharing)}
-          className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-xs disabled:opacity-50"
+          className="h-8 min-w-0 flex-1 rounded-md border border-line bg-card px-2 text-xs disabled:opacity-50"
         >
           {PART_SHARING.map((option) => (
             <option key={option} value={option}>

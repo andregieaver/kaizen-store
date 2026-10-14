@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The tax settings while they are read: the heading, the readiness list and the cards of the form. */
 export default function TaxSettingsLoading() {

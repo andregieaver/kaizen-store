@@ -74,11 +74,11 @@ export type EditorTerm = {
   entity: FieldEntity;
 };
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
-const small = "min-h-9 rounded-md border border-border px-3 text-sm hover:bg-surface disabled:opacity-40";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
+const small = "min-h-9 rounded-md border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-40";
 
 /**
  * A group of custom fields (D118): its name, where it applies, its fields in
@@ -244,7 +244,7 @@ export function FieldGroupEditor({
       >
         <div ref={problemsRef}>
           {problems.length > 0 && (
-            <div role="alert" className="rounded-lg border border-red-700 p-4 text-sm">
+            <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
               <p className="font-medium">Nothing was saved yet. Please fix:</p>
               <ul className="mt-2 list-disc pl-5">
                 {problems.map((problem) => (
@@ -377,13 +377,13 @@ export function FieldGroupEditor({
               type="button"
               onClick={() => setPicking(true)}
               disabled={fields.length >= MAX_GROUP_FIELDS}
-              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+              className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50"
             >
               Add field
             </button>
           </div>
           {fields.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">
+            <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
               No fields yet. Add one to start.
             </p>
           ) : (
@@ -407,7 +407,7 @@ export function FieldGroupEditor({
           <button
             type="submit"
             disabled={saving}
-            className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50"
+            className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
           >
             {saving ? "Saving …" : "Save group"}
           </button>
@@ -559,7 +559,7 @@ function FieldRow({
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`rounded-md border border-border bg-surface ${isDragging ? "relative z-10 opacity-90 shadow-lg" : ""}`}
+      className={`rounded-md border border-line bg-sunken ${isDragging ? "relative z-10 opacity-90 shadow-lg" : ""}`}
     >
       <div className="flex flex-wrap items-center gap-2 p-2">
         <button
@@ -568,7 +568,7 @@ function FieldRow({
           {...listeners}
           aria-label={`Drag ${name}`}
           aria-roledescription="sortable field"
-          className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted hover:bg-background active:cursor-grabbing"
+          className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted hover:bg-card active:cursor-grabbing"
         >
           <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
             <circle cx="9" cy="6" r="1.5" />
@@ -585,16 +585,16 @@ function FieldRow({
           {isStructural(field.type) && <p className="truncate text-xs text-muted">{subFieldsSummary(field)}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-1 text-xs">
-          <span className="rounded-full border border-border px-2 py-0.5">{FIELD_TYPES[field.type].label}</span>
-          {field.required && <span className="rounded-full bg-foreground px-2 py-0.5 text-background">Required</span>}
+          <span className="rounded-full border border-line px-2 py-0.5">{FIELD_TYPES[field.type].label}</span>
+          {field.required && <span className="rounded-full bg-brand px-2 py-0.5 text-brand-ink">Required</span>}
           {field.access === "public" && (
-            <span className="rounded-full border border-foreground px-2 py-0.5">Public</span>
+            <span className="rounded-full border border-brand px-2 py-0.5">Public</span>
           )}
           {field.when && field.when.length > 0 && (
-            <span className="rounded-full border border-border px-2 py-0.5">Has logic</span>
+            <span className="rounded-full border border-line px-2 py-0.5">Has logic</span>
           )}
           {broken && (
-            <span className="rounded-full border border-red-700 px-2 py-0.5 text-red-700">Logic needs a look</span>
+            <span className="rounded-full border border-danger-text px-2 py-0.5 text-danger-text">Logic needs a look</span>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-1">
@@ -622,7 +622,7 @@ function FieldRow({
           <button type="button" className={small} onClick={onCopy} aria-label={`Duplicate ${name}`}>
             Duplicate
           </button>
-          <button type="button" className={`${small} text-red-700`} onClick={onRemove} aria-label={`Delete ${name}`}>
+          <button type="button" className={`${small} text-danger-text`} onClick={onRemove} aria-label={`Delete ${name}`}>
             Delete
           </button>
         </div>
@@ -689,7 +689,7 @@ function LocationBuilder({
       {location.map((all, g) => (
         <div key={g} className="flex flex-col gap-2">
           {g > 0 && <p className="text-sm font-medium text-muted">or</p>}
-          <ul className="flex flex-col gap-2 rounded-md border border-border p-3">
+          <ul className="flex flex-col gap-2 rounded-md border border-line p-3">
             {all.map((rule, r) => {
               const fits = ruleFits(rule, draft.entities);
               const options = valueOptions(rule.param);
@@ -744,7 +744,7 @@ function LocationBuilder({
                     </select>
                     <button
                       type="button"
-                      className={`${small} text-red-700`}
+                      className={`${small} text-danger-text`}
                       onClick={() => remove(g, r)}
                       aria-label={`Remove ${name}`}
                     >
@@ -752,7 +752,7 @@ function LocationBuilder({
                     </button>
                   </div>
                   {!fits && (
-                    <p role="alert" className="text-xs text-red-700">
+                    <p role="alert" className="text-xs text-danger-text">
                       The kinds of thing chosen above do not have this. Remove the rule, or choose the kind again.
                     </p>
                   )}

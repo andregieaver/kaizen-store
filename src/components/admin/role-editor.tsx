@@ -2,7 +2,7 @@ import { ActionForm, SubmitButton, type FormState } from "@/components/admin/act
 import { AREA_LABELS, WORKING_AREAS, levelIn, type AreaLevel } from "@/lib/permissions";
 import { LEVELS, levelField } from "@/lib/role-form";
 
-const field = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const field = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /**
  * One role's form (wave 1, 1f, `docs/wave-1-trust.md` 2.7): a name and, for each working area, no access, can view or can change. Team and
@@ -32,7 +32,7 @@ export function RoleEditor({
         <table className="w-full min-w-[28rem] text-left text-sm">
           <caption className="sr-only">What this role can do in each part of the admin</caption>
           <thead>
-            <tr className="border-b border-border text-muted">
+            <tr className="border-b border-line text-muted">
               <th scope="col" className="py-2 pr-4 font-medium">
                 Area
               </th>
@@ -43,7 +43,7 @@ export function RoleEditor({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-line">
             {WORKING_AREAS.map((area) => {
               const chosen: AreaLevel = levelIn(role?.permissions ?? [], area);
               return (

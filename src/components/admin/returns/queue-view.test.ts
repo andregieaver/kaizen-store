@@ -56,7 +56,7 @@ describe("the returns queue", () => {
     const { html, text } = draw([row({ due: overdue, overdue: true, acknowledgementPending: true })]);
     expect(text).toContain("Refund overdue by 4 days");
     expect(text).toContain("Acknowledgement not sent");
-    expect(html).toContain("text-red-700");
+    expect(html).toContain("text-danger-text");
   });
 
   it("shows a refunded return's amount instead of a deadline", () => {

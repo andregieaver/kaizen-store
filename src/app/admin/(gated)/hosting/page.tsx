@@ -18,7 +18,7 @@ export default async function HostingPage() {
       {hostings.length === 0 ? (
         <p className="text-sm text-muted">You do not host for any store.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+        <ul className="divide-y divide-line rounded-lg border border-line bg-card">
           {hostings.map((h) => (
             <li key={h.slug} className="p-4 text-sm">
               <Link href={`/admin/hosting/${h.slug}`} className="font-medium underline-offset-2 hover:underline">

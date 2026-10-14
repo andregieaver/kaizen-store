@@ -13,8 +13,8 @@ import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Search" };
 
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-sm font-normal text-muted";
 

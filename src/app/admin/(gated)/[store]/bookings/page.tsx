@@ -82,7 +82,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   const href = (week: string, who: string | null = staffId) =>
     `/admin/${store.slug}/bookings?week=${week}${who ? `&staff=${who}` : ""}`;
   const span = (b: StoreBooking) => `${time.format(new Date(b.startsAt))}–${time.format(new Date(b.endsAt))}`;
-  const chip = "rounded-full border border-border px-3 py-1 text-sm";
+  const chip = "rounded-full border border-line px-3 py-1 text-sm";
 
   return (
     <div className="flex flex-col gap-6">
@@ -108,14 +108,14 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
 
       {staff.length > 1 && (
         <nav aria-label="Staff" className="flex flex-wrap gap-2">
-          <Link href={href(monday, null)} className={`${chip} ${staffId ? "" : "bg-foreground text-background"}`}>
+          <Link href={href(monday, null)} className={`${chip} ${staffId ? "" : "bg-brand text-brand-ink"}`}>
             Everyone
           </Link>
           {staff.map((member) => (
             <Link
               key={member.id}
               href={href(monday, member.id)}
-              className={`${chip} ${staffId === member.id ? "bg-foreground text-background" : ""}`}
+              className={`${chip} ${staffId === member.id ? "bg-brand text-brand-ink" : ""}`}
             >
               {member.name}
             </Link>
@@ -124,13 +124,13 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
       )}
 
       {/* The week as a grid, on screens wide enough for seven columns. */}
-      <div className="hidden overflow-x-auto rounded-lg border border-border bg-background md:block" data-week-grid>
+      <div className="hidden overflow-x-auto rounded-lg border border-line bg-card md:block" data-week-grid>
         <div className="grid min-w-[48rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
-          <div className="border-b border-border" />
+          <div className="border-b border-line" />
           {days.map((day) => (
             <div
               key={day}
-              className={`border-b border-l border-border p-2 text-center text-sm ${day === today ? "font-medium" : ""}`}
+              className={`border-b border-l border-line p-2 text-center text-sm ${day === today ? "font-medium" : ""}`}
             >
               {dayLabel.format(noon(day))}
             </div>
@@ -152,9 +152,9 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
               })),
             );
             return (
-              <div key={day} className={`relative border-l border-border ${day === today ? "bg-surface/60" : ""}`} style={{ height }}>
+              <div key={day} className={`relative border-l border-line ${day === today ? "bg-sunken/60" : ""}`} style={{ height }}>
                 {Array.from({ length: endHour - startHour - 1 }, (_, i) => (
-                  <div key={i} className="absolute inset-x-0 border-t border-border/60" style={{ top: (i + 1) * HOUR }} />
+                  <div key={i} className="absolute inset-x-0 border-t border-line/60" style={{ top: (i + 1) * HOUR }} />
                 ))}
                 {placed.map((item) => {
                   const b = list.find((x) => x.id === item.id)!;
@@ -166,8 +166,8 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
                       title={`${span(b)} ${b.service} · ${b.staff}${b.customer ? ` · ${b.customer}` : ""}`}
                       className={`absolute overflow-hidden rounded-md border px-1.5 py-0.5 text-xs leading-tight hover:z-10 hover:shadow ${
                         b.status === "held"
-                          ? "border-dashed border-border bg-background text-muted"
-                          : "border-foreground/20 bg-surface"
+                          ? "border-dashed border-line bg-card text-muted"
+                          : "border-brand/20 bg-sunken"
                       }`}
                       style={{
                         top,
@@ -189,7 +189,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
 
       {/* Every booking this week by day, with what can be done about it. */}
       {bookings.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">No bookings this week.</p>
+        <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">No bookings this week.</p>
       ) : (
         <div className="flex max-w-3xl flex-col gap-6">
           {days
@@ -197,11 +197,11 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
             .map((day) => (
               <section key={day} aria-label={longDay.format(noon(day))}>
                 <h2 className="mb-2 font-medium">{longDay.format(noon(day))}</h2>
-                <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+                <ul className="divide-y divide-line rounded-lg border border-line bg-card">
                   {bookings
                     .filter((b) => dayOf(b) === day)
                     .map((b) => (
-                      <li key={b.id} id={`booking-${b.id}`} className="flex scroll-mt-4 flex-wrap items-start justify-between gap-3 p-3 text-sm target:bg-surface">
+                      <li key={b.id} id={`booking-${b.id}`} className="flex scroll-mt-4 flex-wrap items-start justify-between gap-3 p-3 text-sm target:bg-sunken">
                         <div>
                           <span className="font-medium tabular-nums">{span(b)}</span> {b.service}
                           <span className="block text-muted">
@@ -211,7 +211,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
                         </div>
                         <div className="flex flex-col items-end gap-1 text-right">
                           {b.status === "held" ? (
-                            <span className="rounded bg-surface px-1.5 py-0.5 text-xs">Being paid for</span>
+                            <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">Being paid for</span>
                           ) : (
                             b.orderId && (
                               <Link href={`/admin/${store.slug}/orders/${b.orderId}`} className="underline">
@@ -219,7 +219,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
                               </Link>
                             )
                           )}
-                          {b.noShowAt && <span className="rounded bg-surface px-1.5 py-0.5 text-xs">No-show</span>}
+                          {b.noShowAt && <span className="rounded bg-sunken px-1.5 py-0.5 text-xs">No-show</span>}
                           {b.status === "confirmed" && !b.noShowAt && Date.parse(b.startsAt) <= now && (
                             <details className="text-left">
                               <summary className="cursor-pointer text-right text-muted underline">No-show…</summary>

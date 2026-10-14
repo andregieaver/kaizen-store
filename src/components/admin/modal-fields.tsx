@@ -59,7 +59,7 @@ export function ModalFields({
   const set = (patch: Partial<RowModal>) => modal && onChange({ modal: { ...modal, ...patch } });
 
   return (
-    <div className="flex flex-col gap-4 border-t border-border pt-4">
+    <div className="flex flex-col gap-4 border-t border-line pt-4">
       <div className="flex flex-col gap-1">
         <label htmlFor={switchId} className="flex items-start gap-3 text-sm">
           <input
@@ -123,7 +123,7 @@ function ModalSettings({
       {!onSite && (
         <p
           data-modal-left-out
-          className="rounded-md border border-red-700 p-3 text-sm text-red-700 dark:text-red-400"
+          className="rounded-md border border-danger-text p-3 text-sm text-danger-text"
         >
           {MODAL_LEFT_OUT}
         </p>
@@ -151,11 +151,11 @@ function ModalSettings({
             aria-invalid={Boolean(keyIssue)}
             aria-describedby={`${keyId}-hint`}
             onChange={(event) => set({ key: event.target.value.toLowerCase() })}
-            className={`${fieldClass} w-56 aria-invalid:border-red-700`}
+            className={`${fieldClass} w-56 aria-invalid:border-danger-text`}
           />
           <CopyLink text={modalHash(modal.key)} disabled={Boolean(keyIssue)} />
         </div>
-        <span id={`${keyId}-hint`} className={`text-xs ${keyIssue ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+        <span id={`${keyId}-hint`} className={`text-xs ${keyIssue ? "text-danger-text " : "text-muted"}`}>
           {keyIssue ??
             `A link to ${modalHash(modal.key)} opens this modal. Changing the name changes links already made to it.`}
         </span>
@@ -189,11 +189,11 @@ function ModalSettings({
               aria-invalid={Boolean(classIssue)}
               aria-describedby={`${classId}-hint`}
               onChange={(event) => setTriggers({ className: event.target.value.trim() })}
-              className={`${fieldClass} w-64 aria-invalid:border-red-700`}
+              className={`${fieldClass} w-64 aria-invalid:border-danger-text`}
             />
             <span
               id={`${classId}-hint`}
-              className={`text-xs ${classIssue ? "text-red-700 dark:text-red-400" : "text-muted"}`}
+              className={`text-xs ${classIssue ? "text-danger-text " : "text-muted"}`}
             >
               {classIssue ?? "One class, written without the dot."}
             </span>
@@ -307,7 +307,7 @@ function ModalSettings({
       {problems.length > 0 && (
         <ul
           role="alert"
-          className="flex flex-col gap-1 rounded-md border border-red-700 p-3 text-sm text-red-700 dark:text-red-400"
+          className="flex flex-col gap-1 rounded-md border border-danger-text p-3 text-sm text-danger-text"
         >
           {problems.map((problem) => (
             <li key={problem}>{problem}</li>
@@ -373,7 +373,7 @@ export function ModalPicker({ rows, href, onPick }: { rows: PageRow[]; href: str
         ))}
       </select>
       <span
-        className={`text-xs ${(current && !current.triggers.button) || leftOut ? "text-red-700 dark:text-red-400" : "text-muted"}`}
+        className={`text-xs ${(current && !current.triggers.button) || leftOut ? "text-danger-text " : "text-muted"}`}
       >
         {current && !current.triggers.button
           ? "That modal is not set to open from a button or link: switch that on in its row's settings."

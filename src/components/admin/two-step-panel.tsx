@@ -10,9 +10,9 @@ import { RecoveryCodesView } from "./recovery-codes-view";
 export type EnrolStarted = { ok: true; factorId: string; qrCode: string; secret: string; uri: string } | { ok: false; problem: string };
 export type EnrolFinished = { ok: true; codes: string[] } | { ok: false; problem: string; locked?: boolean };
 
-const button = "min-h-10 rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface disabled:opacity-40";
-const primary = "min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40";
-const field = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const button = "min-h-10 rounded-md border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken disabled:opacity-40";
+const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
+const field = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /** The secret in groups of four, so it can be typed by hand without losing the place. */
 export const groupedSecret = (secret: string): string => secret.replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
@@ -65,7 +65,7 @@ export function EnrolPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      {why && <p className="rounded-lg border border-border bg-background p-3 text-sm">{why}</p>}
+      {why && <p className="rounded-lg border border-line bg-card p-3 text-sm">{why}</p>}
       {!started ? (
         <div className="flex flex-col gap-3 text-sm">
           <p className="text-muted">
@@ -108,11 +108,11 @@ export function EnrolPanel({
               Open your authenticator app and scan this code
               {/* The QR code is an SVG from the Auth server, drawn as a picture so nothing in it runs. */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={started.qrCode} alt="QR code to scan with your authenticator app" width={176} height={176} className="mt-2 rounded-md border border-border bg-white p-2" />
+              <img src={started.qrCode} alt="QR code to scan with your authenticator app" width={176} height={176} className="mt-2 rounded-md border border-line bg-white p-2" />
             </li>
             <li>
               Or type this key into the app by hand:
-              <code className="mt-1 block w-fit rounded-md border border-border bg-background px-2 py-1 font-mono break-all">{groupedSecret(started.secret)}</code>
+              <code className="mt-1 block w-fit rounded-md border border-line bg-card px-2 py-1 font-mono break-all">{groupedSecret(started.secret)}</code>
             </li>
             <li>
               <label htmlFor={`${id}-code`} className="font-medium">
@@ -139,7 +139,7 @@ export function EnrolPanel({
           </div>
         </form>
       )}
-      <p role="alert" className="min-h-5 text-sm text-red-700 dark:text-red-400">
+      <p role="alert" className="min-h-5 text-sm text-danger-text">
         {problem}
       </p>
     </div>
@@ -192,7 +192,7 @@ export function ManageTwoStep({
       />
     );
   }
-  if (done) return <p role="status" className="rounded-lg border border-border bg-background p-3 text-sm">{done}</p>;
+  if (done) return <p role="status" className="rounded-lg border border-line bg-card p-3 text-sm">{done}</p>;
   if (!enrolled) {
     return (
       <div className="flex flex-col gap-3 text-sm">
@@ -239,7 +239,7 @@ export function ManageTwoStep({
       </div>
       <p className="text-muted">Making new codes ends the old ones.{platformAdmin ? " Platform admins cannot switch two-step sign-in off." : ""}</p>
       {confirming && (
-        <div className="flex flex-col gap-2 rounded-lg border border-border bg-background p-3">
+        <div className="flex flex-col gap-2 rounded-lg border border-line bg-card p-3">
           <p>
             Switch it off? Your account will be protected by your password or sign-in link alone. A store that requires two-step sign-in will ask you to set it up again.
           </p>
@@ -268,7 +268,7 @@ export function ManageTwoStep({
           </div>
         </div>
       )}
-      <p role="alert" className="min-h-5 text-red-700 dark:text-red-400">
+      <p role="alert" className="min-h-5 text-danger-text">
         {problem}
       </p>
     </div>

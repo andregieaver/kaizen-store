@@ -159,7 +159,7 @@ export const SHOP_PART_ICONS: Record<ShopPart, ReactNode> = {
 
 export function ShopPartIcon({ part }: { part: ShopPart }) {
   return (
-    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
+    <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-inverse/75 text-inverse-ink">
       <svg viewBox="0 0 24 24" className="size-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         {SHOP_PART_ICONS[part]}
       </svg>

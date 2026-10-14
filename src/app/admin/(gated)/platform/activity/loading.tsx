@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The platform's activity log while it is read. */
 export default function PlatformActivityLoading() {

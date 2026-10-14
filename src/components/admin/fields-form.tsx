@@ -39,10 +39,10 @@ import { RichTextEditor } from "./rich-text-editor";
 
 export type { FieldFileUploader };
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const hint = "font-normal text-muted";
-const button = "min-h-10 rounded-md border border-border px-3 text-sm";
-const small = "min-h-9 min-w-9 rounded border border-border px-2 text-sm disabled:opacity-40";
+const button = "min-h-10 rounded-md border border-line px-3 text-sm";
+const small = "min-h-9 min-w-9 rounded border border-line px-2 text-sm disabled:opacity-40";
 
 /** Uploads a picture chosen on the owner's computer (shrunk here first); the host says where it goes. */
 export type PictureUpload = (file: File) => Promise<{ url: string; thumbnailUrl: string | null } | { problem: string }>;
@@ -176,7 +176,7 @@ function GroupForm({
   const own = ownView(data, locale, main);
 
   return (
-    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-4">
+    <fieldset className="flex flex-col gap-3 rounded-md border border-line p-4">
       <legend className="px-1 text-sm font-medium">{group.name}</legend>
       {shown.length === 0 ? (
         <p className="text-sm text-muted">This group has no fields yet.</p>
@@ -329,7 +329,7 @@ function FieldInput({
             aria-label={`${def.label}: unit`}
             value={unit}
             onChange={(event) => measured && onChange({ value: measured.value, unit: event.target.value })}
-            className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
+            className="min-h-10 rounded-md border border-line bg-card px-2 text-sm"
           >
             {units.map((u) => (
               <option key={u} value={u}>
@@ -393,7 +393,7 @@ function FieldInput({
               role="radio"
               aria-checked={value === choice.key}
               onClick={() => onChange(value === choice.key && !def.required ? undefined : choice.key)}
-              className={`${button} aria-checked:border-foreground aria-checked:bg-foreground aria-checked:text-background`}
+              className={`${button} aria-checked:border-brand aria-checked:bg-inverse aria-checked:text-inverse-ink`}
             >
               {localized(choice.label, choice.labels, locale)}
             </button>
@@ -472,7 +472,7 @@ function FieldInput({
             onChange={(event) =>
               onChange({ source: event.target.value as "youtube" | "vimeo", link: video?.link ?? "" })
             }
-            className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
+            className="min-h-10 rounded-md border border-line bg-card px-2 text-sm"
           >
             <option value="youtube">YouTube</option>
             <option value="vimeo">Vimeo</option>
@@ -530,7 +530,7 @@ function FieldInput({
             type="color"
             value={typeof value === "string" ? value : "#000000"}
             onChange={(event) => onChange(event.target.value)}
-            className="h-10 w-14 rounded-md border border-border bg-background p-1"
+            className="h-10 w-14 rounded-md border border-line bg-card p-1"
           />
           <span className="text-muted">{typeof value === "string" ? value : "Not chosen"}</span>
           {typeof value === "string" && (
@@ -658,7 +658,7 @@ function GroupField({
   const own = value ?? {};
   const eff = ctx.from ? { ...inherited, ...own } : own;
   return (
-    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3 text-sm">
+    <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3 text-sm">
       <legend className="px-1 font-medium">{legend}</legend>
       {help}
       {ctx.from && (
@@ -776,7 +776,7 @@ function RepeaterField({
   };
 
   return (
-    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3 text-sm">
+    <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3 text-sm">
       <legend className="px-1 font-medium">{legend}</legend>
       {help}
       {!structure && (
@@ -814,7 +814,7 @@ function RepeaterField({
               return (
                 <tr
                   key={rowId(row)}
-                  className="mb-3 block rounded-md border border-border p-2 md:mb-0 md:table-row md:rounded-none md:border-0 md:p-0"
+                  className="mb-3 block rounded-md border border-line p-2 md:mb-0 md:table-row md:rounded-none md:border-0 md:p-0"
                 >
                   <td className="block p-1 text-xs text-muted md:table-cell md:align-top md:pt-3">
                     <span className="md:hidden">Row </span>
@@ -873,7 +873,7 @@ function RepeaterField({
           {rows.map((row, index) => {
             const { own, inherited, eff } = cellsOf(row);
             return (
-              <li key={rowId(row)} className="flex flex-col gap-3 rounded-md border border-border p-3">
+              <li key={rowId(row)} className="flex flex-col gap-3 rounded-md border border-line p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-medium text-muted">Row {index + 1}</span>
                   {structure && (
@@ -912,7 +912,7 @@ function RepeaterField({
           )}
         </div>
       )}
-      {needed && <p className="text-xs text-red-700 dark:text-red-400">{needed}</p>}
+      {needed && <p className="text-xs text-danger-text">{needed}</p>}
       <p role="status" aria-live="polite" className="sr-only">
         {status}
       </p>
@@ -971,7 +971,7 @@ function FlexibleField({
   };
 
   return (
-    <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3 text-sm">
+    <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3 text-sm">
       <legend className="px-1 font-medium">{legend}</legend>
       {help}
       {!structure && (
@@ -991,7 +991,7 @@ function FlexibleField({
             const inherited = mainRows.get(rowId(row));
             const eff = ctx.from ? { ...inherited, ...row } : row;
             return (
-              <li key={rowId(row)} className="flex flex-col gap-3 rounded-md border border-border p-3">
+              <li key={rowId(row)} className="flex flex-col gap-3 rounded-md border border-line p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="text-xs font-medium text-muted">
                     Row {index + 1}: {layoutName(layout)}
@@ -1056,7 +1056,7 @@ function FlexibleField({
           )}
         </div>
       )}
-      {needed && <p className="text-xs text-red-700 dark:text-red-400">{needed}</p>}
+      {needed && <p className="text-xs text-danger-text">{needed}</p>}
       <p role="status" aria-live="polite" className="sr-only">
         {status}
       </p>
@@ -1135,7 +1135,7 @@ function MoneyInput({
             const parsed = parseAmount(text, next);
             if (parsed !== null) onChange({ amountMinor: parsed, currency: next });
           }}
-          className="min-h-10 rounded-md border border-border bg-background px-2 text-sm"
+          className="min-h-10 rounded-md border border-line bg-card px-2 text-sm"
         >
           {options.length === 0 && <option value="">No currency</option>}
           {options.map((code) => (
@@ -1146,7 +1146,7 @@ function MoneyInput({
         </select>
       </div>
       {invalid && (
-        <p id={problemId} role="alert" className="text-xs text-red-700 dark:text-red-400">
+        <p id={problemId} role="alert" className="text-xs text-danger-text">
           Write an amount of zero or more with at most as many decimals as {currency || "the currency"} has.
         </p>
       )}
@@ -1229,7 +1229,7 @@ function PictureField({
           <img
             src={value.thumbnailUrl ?? value.url}
             alt=""
-            className="size-20 rounded-md border border-border object-cover"
+            className="size-20 rounded-md border border-line object-cover"
           />
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <label htmlFor={alt} className="text-xs font-medium">
@@ -1257,7 +1257,7 @@ function PictureField({
       <LibraryButton onPicked={(picture) => onChange({ url: picture.url, thumbnailUrl: picture.thumbnailUrl, alt: value?.alt || picture.alt })} />
       {!upload && <p className="text-xs text-muted">Uploads are not set up on this server.</p>}
       {problem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}
@@ -1312,7 +1312,7 @@ function GalleryField({
               <img
                 src={image.thumbnailUrl ?? image.url}
                 alt=""
-                className="size-14 rounded-md border border-border object-cover"
+                className="size-14 rounded-md border border-line object-cover"
               />
               <input
                 aria-label={`Description of picture ${index + 1}`}
@@ -1329,7 +1329,7 @@ function GalleryField({
                 aria-label={`Move picture ${index + 1} up`}
                 disabled={index === 0}
                 onClick={() => move(index, index - 1)}
-                className="min-h-9 min-w-9 rounded border border-border text-sm disabled:opacity-40"
+                className="min-h-9 min-w-9 rounded border border-line text-sm disabled:opacity-40"
               >
                 ↑
               </button>
@@ -1338,7 +1338,7 @@ function GalleryField({
                 aria-label={`Move picture ${index + 1} down`}
                 disabled={index === value.length - 1}
                 onClick={() => move(index, index + 1)}
-                className="min-h-9 min-w-9 rounded border border-border text-sm disabled:opacity-40"
+                className="min-h-9 min-w-9 rounded border border-line text-sm disabled:opacity-40"
               >
                 ↓
               </button>
@@ -1364,7 +1364,7 @@ function GalleryField({
       )}
       {value.length >= most && <p className="text-xs text-muted">The gallery is full ({most} pictures).</p>}
       {problem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {problem}
         </p>
       )}
@@ -1389,7 +1389,7 @@ function PictureButton({
 }) {
   return (
     <label
-      className={`w-fit cursor-pointer rounded-md border border-border px-3 py-2 text-sm focus-within:outline-2 ${disabled ? "opacity-50" : ""}`}
+      className={`w-fit cursor-pointer rounded-md border border-line px-3 py-2 text-sm focus-within:outline-2 ${disabled ? "opacity-50" : ""}`}
     >
       {busy ? "Uploading …" : label}
       <input

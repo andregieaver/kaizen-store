@@ -32,10 +32,10 @@ function split(minutes: number): { amount: string; unit: Unit } {
   return { amount: String(minutes), unit: "minutes" };
 }
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 /**
  * One cart reminder (D33): when it goes, whether it carries a discount
@@ -127,7 +127,7 @@ export function ReminderEditor({
         className="flex flex-col gap-6"
       >
         {problems.length > 0 && (
-          <div role="alert" className="rounded-lg border border-red-700 p-4 text-sm">
+          <div role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
             <p className="font-medium">Nothing was saved yet. Please fix:</p>
             <ul className="mt-2 list-disc pl-5">
               {problems.map((problem) => (
@@ -199,14 +199,14 @@ export function ReminderEditor({
             The email
           </h2>
           {languages.length > 1 && (
-            <div role="group" aria-label="Language" className="flex flex-wrap gap-1 rounded-full bg-surface p-1">
+            <div role="group" aria-label="Language" className="flex flex-wrap gap-1 rounded-full bg-sunken p-1">
               {languages.map((l) => (
                 <button
                   key={l.locale}
                   type="button"
                   aria-pressed={l.locale === locale}
                   onClick={() => setLocale(l.locale)}
-                  className={`min-h-9 rounded-full px-3 text-sm ${l.locale === locale ? "bg-background font-medium shadow-sm" : "text-muted"}`}
+                  className={`min-h-9 rounded-full px-3 text-sm ${l.locale === locale ? "bg-card font-medium shadow-sm" : "text-muted"}`}
                 >
                   {l.label}
                 </button>
@@ -248,7 +248,7 @@ export function ReminderEditor({
           <button
             type="submit"
             disabled={saving}
-            className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50"
+            className="min-h-11 rounded-pill bg-brand px-5 font-medium text-brand-ink disabled:opacity-50"
           >
             {saving ? "Saving …" : "Save reminder"}
           </button>
@@ -268,21 +268,21 @@ export function ReminderEditor({
               type="button"
               disabled={testing}
               onClick={() => startTesting(async () => setTestMessage(await sendTest(locale)))}
-              className="min-h-10 rounded-md border border-border px-3 text-sm disabled:opacity-50"
+              className="min-h-10 rounded-md border border-line px-3 text-sm disabled:opacity-50"
             >
               {testing ? "Sending …" : "Send a test to me"}
             </button>
           )}
         </div>
         {testMessage && (
-          <p role="status" className={`text-sm ${testMessage.ok ? "" : "text-red-700 dark:text-red-400"}`}>
+          <p role="status" className={`text-sm ${testMessage.ok ? "" : "text-danger-text "}`}>
             {testMessage.message}
           </p>
         )}
         {sendTest && <p className={hint}>The test sends the saved version, with a sample {purpose === "plan" ? "plan" : "cart"}.</p>}
         {preview && (
-          <div className="overflow-hidden rounded-lg border border-border bg-background">
-            <p className="border-b border-border px-4 py-2 text-sm">
+          <div className="overflow-hidden rounded-lg border border-line bg-card">
+            <p className="border-b border-line px-4 py-2 text-sm">
               <span className="text-muted">Subject:</span> {preview.subject}
             </p>
             <iframe title="Email preview" srcDoc={preview.html} sandbox="" className="h-[36rem] w-full bg-white" />

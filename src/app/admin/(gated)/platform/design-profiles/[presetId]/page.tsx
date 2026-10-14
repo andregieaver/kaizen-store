@@ -14,9 +14,9 @@ import { DesignShell } from "./shell";
 
 export const metadata: Metadata = { title: "Design profile" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const field = "flex flex-col gap-1 text-sm font-medium";
-const card = "flex flex-col gap-3 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-3 rounded-lg border border-line bg-card p-5";
 const KIND_WORDS = { template: "the demo template", starter: "store template", store: "store" } as const;
 
 /**
@@ -32,7 +32,7 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
   return (
     <DesignShell design={design} facts={facts} tab="details">
       {query.made && (
-        <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
           The design profile is made, unpublished. Set its look up on the tabs above, preview the draft, then publish it.
           {query.notes && " Some of the store's look could not be kept: custom fields, menus other than the header's and footer's, or CSS reaching into its files."}
         </p>

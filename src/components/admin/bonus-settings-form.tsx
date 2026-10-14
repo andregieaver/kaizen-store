@@ -18,9 +18,9 @@ import {
 import type { BonusResult, BonusSettings } from "@/lib/bonus";
 
 const control =
-  "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm aria-invalid:border-red-700 dark:aria-invalid:border-red-400 disabled:opacity-60";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
-const errorText = "text-sm text-red-700 dark:text-red-400";
+  "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm aria-invalid:border-danger-text disabled:opacity-60";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
+const errorText = "text-sm text-danger-text";
 
 type Errors = Partial<Record<BonusField, string>>;
 
@@ -168,7 +168,7 @@ export function BonusSettingsView({
             />
             <span className="font-medium">The bonus program is on</span>
           </label>
-          <div id="bonus-enabled-notes" className="rounded-md bg-surface p-3 text-sm">
+          <div id="bonus-enabled-notes" className="rounded-md bg-sunken p-3 text-sm">
             {values.enabled ? (
               <>
                 <p className="mb-1 font-medium">{savedOn ? "While it is on" : "When you turn it on"}</p>
@@ -369,7 +369,7 @@ export function BonusSettingsView({
           <button
             type="submit"
             disabled={pending}
-            className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+            className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
           >
             {pending ? "Saving …" : "Save"}
           </button>

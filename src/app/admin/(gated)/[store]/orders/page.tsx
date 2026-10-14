@@ -33,25 +33,25 @@ export default async function OrdersPage({ params, searchParams }: Props) {
         <h1 className="text-display text-ink">Orders</h1>
         <nav aria-label="Order tools" className="flex flex-wrap gap-2 text-sm">
           {memberCan(member, "orders:write") && (
-            <Link href={`/admin/${store.slug}/orders/drafts/new`} className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 font-medium text-background">
+            <Link href={`/admin/${store.slug}/orders/drafts/new`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 font-medium text-brand-ink">
               Make a draft order
             </Link>
           )}
-          <Link href={`/admin/${store.slug}/orders/drafts`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4">
+          <Link href={`/admin/${store.slug}/orders/drafts`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4">
             Draft orders
           </Link>
-          <Link href={`/admin/${store.slug}/emails`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4">
+          <Link href={`/admin/${store.slug}/emails`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4">
             Emails to customers
           </Link>
           {/* The order file (D165) holds personal data, so only the owner is offered it. */}
           {memberCan(member, "owner") && (
-            <Link href={`/admin/${store.slug}/orders/export`} className="inline-flex min-h-10 items-center rounded-md border border-border px-4">
+            <Link href={`/admin/${store.slug}/orders/export`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4">
               Export
             </Link>
           )}
         </nav>
       </div>
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-background" />}>
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-card" />}>
         <OrderListBody storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>
     </div>

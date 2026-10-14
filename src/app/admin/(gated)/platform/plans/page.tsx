@@ -13,7 +13,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 
 export const metadata: Metadata = { title: "Plans" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const INTERVAL_LABEL: Record<PlanInterval, string> = { month: "Per month", year: "Per year" };
 
 /** Kaizen's plans for stores: tiers, prices and fees, kept in step with Stripe. */
@@ -52,7 +52,7 @@ export default async function PlansPage() {
       </div>
 
       {modes.length === 0 && (
-        <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
           Kaizen&apos;s Stripe keys are not set, so plans are saved here only. Once the keys are in
           place (Platform → Stripe), press Sync to Stripe: each plan becomes a Stripe product with
           a monthly and a yearly price in every currency.
@@ -63,7 +63,7 @@ export default async function PlansPage() {
         <section
           key={plan.id}
           aria-labelledby={`plan-${plan.id}`}
-          className="flex flex-col gap-4 rounded-card border border-border bg-background p-5"
+          className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id={`plan-${plan.id}`} className="font-medium">
@@ -75,7 +75,7 @@ export default async function PlansPage() {
               {modes.map((mode) => {
                 const sync = plan.sync[mode];
                 return (
-                  <span key={mode} className={sync?.error ? "text-red-700 dark:text-red-400" : ""}>
+                  <span key={mode} className={sync?.error ? "text-danger-text" : ""}>
                     {sync?.synced ? `in Stripe (${mode})` : sync?.error ? `Stripe (${mode}): ${sync.error}` : `not in Stripe (${mode}) yet`}{" "}
                   </span>
                 );
@@ -92,7 +92,7 @@ export default async function PlansPage() {
         </section>
       ))}
 
-      <section aria-labelledby="new-plan" className="flex flex-col gap-4 rounded-lg border border-dashed border-border bg-background p-5">
+      <section aria-labelledby="new-plan" className="flex flex-col gap-4 rounded-lg border border-dashed border-line bg-card p-5">
         <h2 id="new-plan" className="font-medium">
           New plan
         </h2>

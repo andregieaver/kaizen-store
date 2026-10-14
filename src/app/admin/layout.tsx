@@ -29,7 +29,7 @@ export default function AdminRootLayout({ children }: LayoutProps<"/admin">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: colorModeScript(ADMIN_COLOR_KEY) + adminSchemeScript() }} />
       </head>
-      <body className="min-h-full bg-surface font-sans">
+      <body className="min-h-full bg-sunken font-sans">
         {/* Reads the address, so it waits in its own boundary and never holds the page back. */}
         <Suspense fallback={null}>
           <AdminProgress />

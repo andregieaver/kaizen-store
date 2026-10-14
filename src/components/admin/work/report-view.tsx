@@ -59,7 +59,7 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
       </div>
 
       {params.problem && (
-        <p role="alert" className="rounded-lg border border-border bg-background p-4 text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="rounded-lg border border-line bg-card p-4 text-sm text-danger-text">
           {params.problem} Showing this month instead.
         </p>
       )}
@@ -69,7 +69,7 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
       <ReportTotalsView report={report} locale={locale} />
 
       {empty ? (
-        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
           Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
         </p>
       ) : (

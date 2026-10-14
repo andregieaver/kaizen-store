@@ -10,8 +10,8 @@ import type { StoreRole } from "@/server/store-roles";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
-const field = "min-h-10 rounded-md border border-border bg-background px-3 text-sm font-normal";
-const badge = "rounded-full border border-border px-2 py-0.5 text-xs text-muted";
+const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
+const badge = "rounded-full border border-line px-2 py-0.5 text-xs text-muted";
 
 /** The options of a role select: owner (unless a collaborator), the default admin set, and the store's roles. */
 export function RoleOptions({ roles, collaborator = false }: { roles: readonly Pick<StoreRole, "id" | "name">[]; collaborator?: boolean }): ReactNode {
@@ -57,7 +57,7 @@ export function TeamList({
   const past = members.filter(ended);
   return (
     <div className="flex flex-col gap-4">
-      <ul className="divide-y divide-border">
+      <ul className="divide-y divide-line">
         {active.map((member) => (
           <li key={member.accountId} className="flex flex-col gap-3 py-3 text-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -118,7 +118,7 @@ export function TeamList({
       {past.length > 0 && (
         <div>
           <h3 className="mb-2 text-sm font-medium text-muted">Access ended</h3>
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-line">
             {past.map((member) => (
               <li key={member.accountId} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm text-muted">
                 <span className="break-words">{member.name ? `${member.name} (${member.email})` : member.email}</span>
@@ -138,7 +138,7 @@ export function TeamList({
 export function InviteForms({ roles, actions }: { roles: readonly Pick<StoreRole, "id" | "name">[]; actions: { staff: Action; collaborator: Action } }) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <section aria-labelledby="invite-heading" className="rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="invite-heading" className="rounded-card border border-line bg-card p-5">
         <h2 id="invite-heading" className="mb-1 font-medium">
           Invite someone
         </h2>
@@ -159,7 +159,7 @@ export function InviteForms({ roles, actions }: { roles: readonly Pick<StoreRole
           </div>
         </ActionForm>
       </section>
-      <section aria-labelledby="collaborator-heading" className="rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="collaborator-heading" className="rounded-card border border-line bg-card p-5">
         <h2 id="collaborator-heading" className="mb-1 font-medium">
           Invite a collaborator
         </h2>
@@ -204,7 +204,7 @@ export function TwoStepRequirement({
   action: Action;
 }) {
   return (
-    <section aria-labelledby="two-step-heading" className="rounded-card border border-border bg-background p-5">
+    <section aria-labelledby="two-step-heading" className="rounded-card border border-line bg-card p-5">
       <h2 id="two-step-heading" className="mb-1 font-medium">
         Two-step sign-in
       </h2>

@@ -62,7 +62,7 @@ export function PrintButton({
     <button
       type="button"
       onClick={() => printDocument(documentTitle)}
-      className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background print:hidden"
+      className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink print:hidden"
     >
       {label}
     </button>

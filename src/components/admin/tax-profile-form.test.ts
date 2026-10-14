@@ -74,7 +74,7 @@ describe("TaxProfileForm", () => {
 
   it("uses the admin's tokens, never a fixed colour", () => {
     const out = form(swedish);
-    expect(out).toContain("border-border");
+    expect(out).toContain("border-line");
     expect(out).not.toMatch(/#[0-9a-f]{3,8}\b|bg-white|text-black|bg-gray|text-gray/i);
   });
 });

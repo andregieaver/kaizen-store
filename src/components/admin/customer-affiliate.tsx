@@ -30,7 +30,7 @@ export function CustomerAffiliateSection({
   const credits = moneyIn(data.currency, locale);
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   return (
-    <section aria-labelledby="affiliate" className="rounded-card border border-border bg-background p-5">
+    <section aria-labelledby="affiliate" className="rounded-card border border-line bg-card p-5">
       <h2 id="affiliate" className="mb-3 font-medium">
         Referrals
       </h2>
@@ -60,7 +60,7 @@ export function CustomerAffiliateSection({
             </div>
           </dl>
           {data.blocked && (
-            <p role="note" className="mb-3 rounded-md bg-surface p-3 text-sm">
+            <p role="note" className="mb-3 rounded-md bg-sunken p-3 text-sm">
               Blocked: they earn nothing new. {data.blockedReason && <>Reason: {data.blockedReason}</>}
             </p>
           )}

@@ -12,8 +12,8 @@ import { saveScheduleAction } from "./actions";
 
 export const metadata: Metadata = { title: "Subscription boxes" };
 
-const card = "rounded-lg border border-border bg-background p-5";
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const card = "rounded-lg border border-line bg-card p-5";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 const LIST_STATUS: Record<string, string> = { active: "On", paused: "Paused", cancelled: "Ended", setup: "Saving card" };
 const ORDER_STATUS: Record<string, string> = {
@@ -55,7 +55,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="font-medium">
               {schedule.name} <span className="font-normal text-muted">· {schedule.marketCode}</span>
-              {!schedule.active && <span className="ml-2 rounded bg-surface px-1.5 py-0.5 text-xs text-muted">Off</span>}
+              {!schedule.active && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs text-muted">Off</span>}
             </h2>
             <p className="text-sm text-muted">
               {schedule.lists} {schedule.lists === 1 ? "list" : "lists"} · next cutoff {when(next.cutoffAt)} for {day(next.date)}
@@ -73,7 +73,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="border-b border-border">
+                      <tr className="border-b border-line">
                         <th scope="col" className="py-2 pr-4 font-medium">Order</th>
                         <th scope="col" className="py-2 pr-4 font-medium">Customer</th>
                         <th scope="col" className="py-2 pr-4 text-right font-medium">Items</th>
@@ -83,7 +83,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
                     </thead>
                     <tbody>
                       {current.orders.map((order) => (
-                        <tr key={order.orderId} className="border-b border-border last:border-0">
+                        <tr key={order.orderId} className="border-b border-line last:border-0">
                           <td className="py-2 pr-4">
                             <Link href={`/admin/${store.slug}/orders/${order.orderId}`} className="underline">
                               #{order.number}
@@ -136,7 +136,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-line">
                   <th scope="col" className="py-2 pr-4 font-medium">Customer</th>
                   <th scope="col" className="py-2 pr-4 font-medium">Delivery day</th>
                   <th scope="col" className="py-2 pr-4 text-right font-medium">Items</th>
@@ -146,7 +146,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
               </thead>
               <tbody>
                 {lists.map((list) => (
-                  <tr key={list.id} className="border-b border-border last:border-0">
+                  <tr key={list.id} className="border-b border-line last:border-0">
                     <td className="py-2 pr-4">
                       <Link href={`/admin/${store.slug}/customers/${list.customerId}`} className="underline">
                         {list.name || list.email}

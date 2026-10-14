@@ -5,7 +5,7 @@ import { BUILT_IN_VIEWS, type OrderListParams } from "@/lib/order-list";
 
 export type ViewLink = { id: string; title: string };
 
-const tab = "rounded-md px-3 py-1.5 text-sm text-muted hover:text-foreground aria-[current=page]:bg-background aria-[current=page]:font-medium aria-[current=page]:text-foreground";
+const tab = "rounded-md px-3 py-1.5 text-sm text-muted hover:text-ink aria-[current=page]:bg-card aria-[current=page]:font-medium aria-[current=page]:text-ink";
 
 /**
  * The views above the list (wave 3, D173, `docs/wave-3-orders.md` 2.2.4): the built-in ones (All, To send, Waiting for stock, Unfinished checkouts, Archived), then the store's saved
@@ -15,13 +15,13 @@ const tab = "rounded-md px-3 py-1.5 text-sm text-muted hover:text-foreground ari
 export function ViewBar({ base, params, views, openViewId }: { base: string; params: OrderListParams; views: ViewLink[]; openViewId: string | null }) {
   const onlyShow = (show: OrderListParams["show"]) => openViewId === null && params.show === show && noFilters(params);
   return (
-    <nav aria-label="Order views" className="flex flex-wrap items-center gap-1 border-b border-border pb-2">
+    <nav aria-label="Order views" className="flex flex-wrap items-center gap-1 border-b border-line pb-2">
       {BUILT_IN_VIEWS.map((view) => (
         <Link key={view.label} href={builtInHref(base, params, view.show)} aria-current={onlyShow(view.show) ? "page" : undefined} className={tab}>
           {view.label}
         </Link>
       ))}
-      {views.length > 0 && <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />}
+      {views.length > 0 && <span className="mx-1 h-5 w-px bg-line" aria-hidden="true" />}
       {views.map((view) => (
         <Link key={view.id} href={viewHref(base, view.id)} aria-current={openViewId === view.id ? "page" : undefined} className={tab}>
           {view.title}

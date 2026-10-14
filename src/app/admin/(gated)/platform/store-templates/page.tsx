@@ -23,9 +23,9 @@ import {
 
 export const metadata: Metadata = { title: "Store templates" };
 
-const control = "min-h-10 rounded-md border border-border bg-background px-3 font-normal";
+const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const field = "flex flex-col gap-1 text-sm font-medium";
-const button = "flex min-h-10 items-center gap-1.5 rounded-md border border-border px-3 text-sm hover:bg-surface";
+const button = "flex min-h-10 items-center gap-1.5 rounded-md border border-edge px-3 text-sm hover:bg-sunken";
 
 /**
  * Store templates (D175, `docs/store-templates.md`): starting points for new stores, each a store set up for one kind of business.
@@ -56,16 +56,16 @@ export default async function StoreTemplatesPage({ searchParams }: PageProps<"/a
       </div>
 
       <nav aria-label="Which store templates" className="flex flex-wrap gap-2 text-sm">
-        <Link href="/admin/platform/store-templates" aria-current={filter === "current" ? "page" : undefined} className={`${button} aria-[current=page]:bg-surface aria-[current=page]:font-medium`}>
+        <Link href="/admin/platform/store-templates" aria-current={filter === "current" ? "page" : undefined} className={`${button} aria-[current=page]:bg-sunken aria-[current=page]:font-medium`}>
           Store templates
         </Link>
-        <Link href="/admin/platform/store-templates?show=archived" aria-current={filter === "archived" ? "page" : undefined} className={`${button} aria-[current=page]:bg-surface aria-[current=page]:font-medium`}>
+        <Link href="/admin/platform/store-templates?show=archived" aria-current={filter === "archived" ? "page" : undefined} className={`${button} aria-[current=page]:bg-sunken aria-[current=page]:font-medium`}>
           Archived
         </Link>
       </nav>
 
       {query.deleted && (
-        <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
           The store template was deleted. Its store and published copies are closed and kept.
         </p>
       )}
@@ -89,7 +89,7 @@ export default async function StoreTemplatesPage({ searchParams }: PageProps<"/a
       )}
 
       {filter === "current" && (
-        <section aria-labelledby="new-starter" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+        <section aria-labelledby="new-starter" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
           <div>
             <h2 id="new-starter" className="font-medium">
               New store template
@@ -159,12 +159,12 @@ function StarterItem({ starter, first, last, archived }: { starter: StarterRow; 
     starter.requests > 0 && `${starter.requests} ${starter.requests === 1 ? "access request" : "access requests"}`,
   ].filter(Boolean);
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4 md:flex-row md:items-start">
+    <li className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 md:flex-row md:items-start">
       {shown.pictureUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- a template's picture from Kaizen's media library
-        <img src={shown.pictureUrl} alt="" className="aspect-video w-full rounded-md border border-border object-cover md:w-48" />
+        <img src={shown.pictureUrl} alt="" className="aspect-video w-full rounded-md border border-line object-cover md:w-48" />
       ) : (
-        <div aria-hidden="true" className="hidden aspect-video w-48 rounded-md border border-dashed border-border md:block" />
+        <div aria-hidden="true" className="hidden aspect-video w-48 rounded-md border border-dashed border-line md:block" />
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
         <span className="font-medium">

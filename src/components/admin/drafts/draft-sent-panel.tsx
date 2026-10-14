@@ -21,7 +21,7 @@ export type DraftSentActions = {
   paidOutside: (input: { version: number; method: ManualPaymentMethod; reference?: string }) => Promise<DraftActionResponse>;
 };
 
-const card = "flex flex-col gap-2 rounded-lg border border-border bg-background p-4 text-sm";
+const card = "flex flex-col gap-2 rounded-lg border border-line bg-card p-4 text-sm";
 
 /** One address as the lines a person reads. */
 const addressLines = (a: Record<string, string | null>): string[] =>

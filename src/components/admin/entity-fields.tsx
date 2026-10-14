@@ -12,7 +12,7 @@ import {
   type FieldLookups,
 } from "@/lib/custom-fields";
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 /** The groups of a store's custom fields (D118) that apply to what is being edited, as it is now (unsaved changes count). */
 export const applicableGroups = (groups: FieldGroup[], facts: Facts): FieldGroup[] =>
@@ -85,7 +85,7 @@ export function EntityFields({
               role="tab"
               aria-selected={l === locale}
               onClick={() => setLocale(l)}
-              className="min-h-9 rounded-pill border border-border px-3 text-sm aria-selected:border-foreground aria-selected:bg-foreground aria-selected:text-background"
+              className="min-h-9 rounded-pill border border-edge px-3 text-sm aria-selected:border-brand aria-selected:bg-inverse aria-selected:text-inverse-ink"
             >
               {name(l)}
             </button>

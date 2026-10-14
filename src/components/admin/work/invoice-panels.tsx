@@ -22,7 +22,7 @@ export { BillUnbilledButton };
  */
 
 const button =
-  "inline-flex min-h-9 items-center justify-center rounded-md border border-border bg-background px-3 text-sm disabled:opacity-40";
+  "inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-card px-3 text-sm disabled:opacity-40";
 
 // --- A client's invoices ---------------------------------------------------------------------------------------------
 
@@ -152,7 +152,7 @@ export function BillUnbilledPanel({
   return (
     <section
       aria-label="Bill unbilled time"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-background p-4"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card p-4"
       data-slot="bill-unbilled"
     >
       <p className="text-sm">
@@ -188,10 +188,10 @@ async function InvoiceList({
   const list = await listWorkInvoices(store.id, { ...filter, pageSize: 50 });
   const base = `${workBase(storeSlug)}/invoices`;
   if (list.rows.length === 0)
-    return <p className="rounded-lg border border-border bg-background p-4 text-sm text-muted">{empty}</p>;
+    return <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">{empty}</p>;
   return (
     <ul
-      className="flex flex-col divide-y divide-border rounded-lg border border-border bg-background px-4"
+      className="flex flex-col divide-y divide-line rounded-lg border border-line bg-card px-4"
       aria-label="Invoices"
     >
       {list.rows.map((row) => (

@@ -74,7 +74,7 @@ export function RecurringPanelView({
       ) : (
         <ul className="flex flex-col gap-3">
           {list.templates.map((template) => (
-            <li key={template.id} className="rounded-lg border border-border bg-background p-4">
+            <li key={template.id} className="rounded-lg border border-line bg-card p-4">
               <TemplateCard storeSlug={storeSlug} template={template} form={form} locale={locale} />
             </li>
           ))}

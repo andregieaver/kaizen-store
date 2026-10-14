@@ -67,7 +67,7 @@ export function SubscriptionActions({
             name="change"
             value={`${c.change}:${c.periods ?? 1}`}
             disabled={pending}
-            className="min-h-10 rounded-md border border-border px-4 text-sm disabled:opacity-50"
+            className="min-h-10 rounded-md border border-line px-4 text-sm disabled:opacity-50"
           >
             {label(c)}
           </button>

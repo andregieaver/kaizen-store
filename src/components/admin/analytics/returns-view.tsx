@@ -199,11 +199,11 @@ export function ReturnsView(props: ReturnsViewProps) {
       ) : null}
 
       {!r.tracked ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+        <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
           No return has been recorded in Kaizen yet, so there are no rates, reasons or products to show. They appear once a shopper uses the withdrawal function or a return request.
         </div>
       ) : nothing ? (
-        <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-muted">
+        <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
           No return was made or refunded in this period, so there are no reasons, times or products to show.
         </div>
       ) : (

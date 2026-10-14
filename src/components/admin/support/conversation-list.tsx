@@ -22,7 +22,7 @@ export function ConversationList({
 }) {
   if (rows.length === 0) return <p className="p-4 text-sm text-muted">{empty}</p>;
   return (
-    <ul className="divide-y divide-border" aria-label="Conversations">
+    <ul className="divide-y divide-line" aria-label="Conversations">
       {rows.map((row) => {
         const current = row.id === selected;
         return (
@@ -32,11 +32,11 @@ export function ConversationList({
               onClick={() => onOpen?.(row)}
               aria-current={current ? "true" : undefined}
               data-conversation={row.id}
-              className={`flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-surface ${current ? "bg-surface" : ""}`}
+              className={`flex w-full flex-col gap-1 px-4 py-3 text-left hover:bg-sunken ${current ? "bg-sunken" : ""}`}
             >
               <span className="flex items-center gap-2">
                 {row.unread && (
-                  <span className="size-2 shrink-0 rounded-full bg-foreground" aria-label="Unread" role="img" />
+                  <span className="size-2 shrink-0 rounded-full bg-brand" aria-label="Unread" role="img" />
                 )}
                 <span className={`min-w-0 flex-1 truncate ${row.unread ? "font-medium" : "font-medium"}`}>{row.who}</span>
                 <span className="shrink-0 text-xs text-muted">{agoWords(row.lastMessageAt, now)}</span>
@@ -44,7 +44,7 @@ export function ConversationList({
               {row.store && <span className="truncate text-xs text-muted">{row.store.name}</span>}
               <span className="line-clamp-1 text-sm text-muted">{row.summaryTitle ?? (row.preview || "No messages yet")}</span>
               <span className="flex items-center gap-2 text-xs">
-                <span className={`rounded-full border border-border px-2 py-0.5 ${row.handler === "queue" && row.status === "open" ? "font-medium" : "text-muted"}`}>
+                <span className={`rounded-full border border-line px-2 py-0.5 ${row.handler === "queue" && row.status === "open" ? "font-medium" : "text-muted"}`}>
                   {handlerWords(row, now)}
                 </span>
                 {row.signedIn && <span className="text-muted">Signed in</span>}

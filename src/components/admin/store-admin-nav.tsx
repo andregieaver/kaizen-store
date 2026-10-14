@@ -85,7 +85,7 @@ export function StoreTabs({ items, label }: { items: NavItem[]; label: string })
             <Link
               href={item.href}
               aria-current={isCurrent(item) ? "page" : undefined}
-              className="flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm text-muted hover:text-foreground aria-[current=page]:border-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
+              className="flex min-h-11 items-center border-b-2 border-transparent px-3 text-sm text-muted hover:text-ink aria-[current=page]:border-brand aria-[current=page]:font-medium aria-[current=page]:text-ink"
             >
               {item.icon && <NavIcon name={item.icon} className="mr-1.5 size-4" />}
               {item.label}
@@ -102,7 +102,7 @@ export function StoreTabs({ items, label }: { items: NavItem[]; label: string })
 function Badge({ count }: { count?: number }) {
   if (!count) return null;
   return (
-    <span className="ml-1.5 rounded-full bg-foreground px-1.5 py-0.5 text-xs leading-none text-background" aria-label={`${count} waiting`}>
+    <span className="ml-1.5 rounded-full bg-brand px-1.5 py-0.5 text-xs leading-none text-brand-ink" aria-label={`${count} waiting`}>
       {count > 99 ? "99+" : count}
     </span>
   );
@@ -122,7 +122,7 @@ export function StoreSidebar({ groups, label }: { groups: NavGroup[]; label: str
                 <Link
                   href={item.href}
                   aria-current={isCurrent(item) ? "page" : undefined}
-                  className="flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-surface aria-[current=page]:bg-surface aria-[current=page]:font-medium"
+                  className="flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium"
                 >
                   {item.icon && <NavIcon name={item.icon} className="mr-2 size-4" />}
                   {item.label}

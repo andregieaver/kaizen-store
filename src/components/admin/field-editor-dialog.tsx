@@ -60,10 +60,10 @@ import { Modal } from "./modal";
 
 export type FieldLanguage = { locale: string; name: string };
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm font-normal";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
-const small = "min-h-9 rounded-md border border-border px-3 text-sm hover:bg-surface disabled:opacity-40";
+const small = "min-h-9 rounded-md border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-40";
 
 const PLACEHOLDER_TYPES: readonly FieldType[] = ["text", "textarea", "email", "url", "phone", "number", "measurement", "money"];
 
@@ -180,14 +180,14 @@ export function FieldEditorDialog({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-10 rounded-pill border border-border px-4 text-sm hover:bg-surface"
+            className="min-h-10 rounded-pill border border-edge px-4 text-sm hover:bg-sunken"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={apply}
-            className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+            className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
           >
             Apply
           </button>
@@ -197,7 +197,7 @@ export function FieldEditorDialog({
       {draft && (
         <div className="flex flex-col gap-4">
           {attempted && problems.length > 0 && (
-            <div role="alert" className="rounded-md border border-red-700 p-3 text-sm">
+            <div role="alert" className="rounded-md border border-danger-text p-3 text-sm">
               <p className="font-medium">The field cannot be used yet. Please fix:</p>
               <ul className="mt-1 list-disc pl-5">
                 {problems.map((problem, index) => (
@@ -206,7 +206,7 @@ export function FieldEditorDialog({
               </ul>
             </div>
           )}
-          <div role="tablist" aria-label="Field settings" className="flex flex-wrap gap-1 border-b border-border">
+          <div role="tablist" aria-label="Field settings" className="flex flex-wrap gap-1 border-b border-line">
             {tabs.map((item, index) => (
               <button
                 key={item.id}
@@ -218,7 +218,7 @@ export function FieldEditorDialog({
                 tabIndex={shownTab === item.id ? 0 : -1}
                 onClick={() => setTab(item.id)}
                 onKeyDown={(event) => onTabKey(event, index)}
-                className="-mb-px min-h-10 border-b-2 border-transparent px-3 text-sm aria-selected:border-foreground aria-selected:font-medium"
+                className="-mb-px min-h-10 border-b-2 border-transparent px-3 text-sm aria-selected:border-brand aria-selected:font-medium"
               >
                 {item.label}
               </button>
@@ -317,7 +317,7 @@ function General({
         </span>
       </label>
       {others.length > 0 && (
-        <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3">
+        <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3">
           <legend className="px-1 text-sm font-medium">Label in other languages</legend>
           {others.map((language) => (
             <label key={language.locale} className={label}>
@@ -351,12 +351,12 @@ function General({
           field&apos;s own id, not its name.
         </span>
         {nameProblem === "invalid" && (
-          <span className="text-xs font-normal text-red-700">
+          <span className="text-xs font-normal text-danger-text">
             Use lowercase letters, digits and underscores, starting with a letter.
           </span>
         )}
         {nameProblem === "taken" && (
-          <span className="text-xs font-normal text-red-700">Another field next to this one has that name.</span>
+          <span className="text-xs font-normal text-danger-text">Another field next to this one has that name.</span>
         )}
       </label>
       <label className={label}>
@@ -614,7 +614,7 @@ function RepeaterSettings({ draft, update }: PanelProps) {
         ).map(([value, name, text]) => (
           <label
             key={value}
-            className="flex items-start gap-3 rounded-md border border-border p-3 text-sm has-[:checked]:border-foreground"
+            className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-brand"
           >
             <input
               type="radio"
@@ -716,7 +716,7 @@ function SubFieldsEditor({
         </button>
       </div>
       {subs.length === 0 ? (
-        <p role="alert" className="rounded-md border border-dashed border-red-700 p-4 text-center text-sm">
+        <p role="alert" className="rounded-md border border-dashed border-danger-text p-4 text-center text-sm">
           A {holder} needs at least one field. Add one to start.
         </p>
       ) : (
@@ -726,19 +726,19 @@ function SubFieldsEditor({
             return (
               <li
                 key={sub.id}
-                className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface p-2"
+                className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-sunken p-2"
               >
                 <div className="min-w-0 flex-1 basis-40">
                   <p className="truncate text-sm font-medium">{sub.label || "Untitled field"}</p>
                   <p className="truncate font-mono text-xs text-muted">{sub.name}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1 text-xs">
-                  <span className="rounded-full border border-border px-2 py-0.5">{FIELD_TYPES[sub.type].label}</span>
+                  <span className="rounded-full border border-line px-2 py-0.5">{FIELD_TYPES[sub.type].label}</span>
                   {sub.required && (
-                    <span className="rounded-full bg-foreground px-2 py-0.5 text-background">Required</span>
+                    <span className="rounded-full bg-brand px-2 py-0.5 text-brand-ink">Required</span>
                   )}
                   {sub.when && sub.when.length > 0 && (
-                    <span className="rounded-full border border-border px-2 py-0.5">Has logic</span>
+                    <span className="rounded-full border border-line px-2 py-0.5">Has logic</span>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
@@ -773,7 +773,7 @@ function SubFieldsEditor({
                   </button>
                   <button
                     type="button"
-                    className={`${small} text-red-700`}
+                    className={`${small} text-danger-text`}
                     aria-label={`Delete ${name}`}
                     onClick={() => remove(sub)}
                   >
@@ -887,7 +887,7 @@ function LayoutsEditor({
         </button>
       </div>
       {layouts.length === 0 ? (
-        <p role="alert" className="rounded-md border border-dashed border-red-700 p-4 text-center text-sm">
+        <p role="alert" className="rounded-md border border-dashed border-danger-text p-4 text-center text-sm">
           Flexible content needs at least one layout. Add one to start.
         </p>
       ) : (
@@ -898,7 +898,7 @@ function LayoutsEditor({
             const taken = layouts.filter((_, i) => i !== index).map((l) => l.key);
             const isOpen = open === layout.key;
             return (
-              <li key={index} className="rounded-md border border-border bg-surface">
+              <li key={index} className="rounded-md border border-line bg-sunken">
                 <div className="flex flex-wrap items-center gap-2 p-2">
                   <div className="min-w-0 flex-1 basis-40">
                     <p className="truncate text-sm font-medium">{layout.label || "Untitled layout"}</p>
@@ -937,7 +937,7 @@ function LayoutsEditor({
                     </button>
                     <button
                       type="button"
-                      className={`${small} text-red-700`}
+                      className={`${small} text-danger-text`}
                       aria-label={`Delete layout ${name}`}
                       onClick={() => remove(layout)}
                     >
@@ -946,7 +946,7 @@ function LayoutsEditor({
                   </div>
                 </div>
                 {isOpen && (
-                  <div className="flex flex-col gap-3 border-t border-border p-3">
+                  <div className="flex flex-col gap-3 border-t border-line p-3">
                     <div className="flex flex-wrap items-end gap-2">
                       <label className={`${label} min-w-40 flex-1`}>
                         Layout label
@@ -974,7 +974,7 @@ function LayoutsEditor({
                             change(layout.key, { ...layout, key: event.target.value });
                             setOpen(event.target.value);
                           }}
-                          className={`${input} font-mono ${locked ? "bg-surface" : ""}`}
+                          className={`${input} font-mono ${locked ? "bg-sunken" : ""}`}
                         />
                       </label>
                     </div>
@@ -1132,7 +1132,7 @@ function ChoicesEditor({
           const locked = savedKeys.includes(choice.key);
           const taken = choices.filter((_, i) => i !== index).map((c) => c.key);
           return (
-            <li key={index} className="flex flex-col gap-2 rounded-md border border-border p-3">
+            <li key={index} className="flex flex-col gap-2 rounded-md border border-line p-3">
               <div className="flex flex-wrap items-end gap-2">
                 <label className={`${label} min-w-40 flex-1`}>
                   Label
@@ -1156,7 +1156,7 @@ function ChoicesEditor({
                     readOnly={locked}
                     aria-describedby={locked ? "key-locked-hint" : undefined}
                     onChange={(event) => change(index, { ...choice, key: event.target.value })}
-                    className={`${input} font-mono ${locked ? "bg-surface" : ""}`}
+                    className={`${input} font-mono ${locked ? "bg-sunken" : ""}`}
                   />
                 </label>
                 <div className="flex gap-1">
@@ -1180,7 +1180,7 @@ function ChoicesEditor({
                   </button>
                   <button
                     type="button"
-                    className={`${small} text-red-700`}
+                    className={`${small} text-danger-text`}
                     aria-label={`Remove choice ${choice.label || index + 1}`}
                     onClick={() => onChange(choices.filter((_, i) => i !== index))}
                   >
@@ -1266,7 +1266,7 @@ function Logic({ draft, update, above, sub }: PanelProps & { above: FieldDef[]; 
           {groups.map((all, g) => (
             <div key={g} className="flex flex-col gap-2">
               {g > 0 && <p className="text-sm font-medium text-muted">or</p>}
-              <ul className="flex flex-col gap-2 rounded-md border border-border p-3">
+              <ul className="flex flex-col gap-2 rounded-md border border-line p-3">
                 {all.map((condition, r) => (
                   <li key={r} className="flex flex-col gap-1">
                     {r > 0 && <span className="text-xs font-medium text-muted">and</span>}
@@ -1418,7 +1418,7 @@ function ConditionRow({
         ))}
       </select>
       {control}
-      <button type="button" className={`${small} text-red-700`} onClick={onRemove} aria-label={`Remove ${name}`}>
+      <button type="button" className={`${small} text-danger-text`} onClick={onRemove} aria-label={`Remove ${name}`}>
         Remove
       </button>
     </div>
@@ -1433,7 +1433,7 @@ function Storefront({ draft, update }: PanelProps) {
       {(Object.keys(FIELD_ACCESS) as (keyof typeof FIELD_ACCESS)[]).map((access) => (
         <label
           key={access}
-          className="flex items-start gap-3 rounded-md border border-border p-3 text-sm has-[:checked]:border-foreground"
+          className="flex items-start gap-3 rounded-md border border-line p-3 text-sm has-[:checked]:border-brand"
         >
           <input
             type="radio"
@@ -1488,7 +1488,7 @@ function Uses({ draft, update }: PanelProps) {
     },
   ];
   return (
-    <div className="mt-2 flex flex-col gap-2 border-t border-border pt-3">
+    <div className="mt-2 flex flex-col gap-2 border-t border-line pt-3">
       <p className="text-sm font-medium">Also use it for</p>
       {uses
         .filter((use) => use.allowed)

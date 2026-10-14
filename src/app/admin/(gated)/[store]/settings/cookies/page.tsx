@@ -33,7 +33,7 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
           choices shoppers make about them. Your cookie page lists every cookie, in each of your languages.
         </p>
       </div>
-      <section aria-labelledby="visit-counting-heading" className="flex flex-col gap-1 rounded-card border border-border bg-background p-5">
+      <section aria-labelledby="visit-counting-heading" className="flex flex-col gap-1 rounded-card border border-line bg-card p-5">
         <h2 id="visit-counting-heading" className="font-medium">
           Visit counting for your analytics: {store.visitCounting ? "on" : "off"}
         </h2>

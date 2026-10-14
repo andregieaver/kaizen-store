@@ -46,7 +46,7 @@ export function AdminColorSwitch({ save, className }: { save: SaveColorMode; cla
     <ColorModeSwitch
       storageKey={ADMIN_COLOR_KEY}
       labels={{ toDark: "Switch to dark colours", toLight: "Switch to light colours" }}
-      className={className ?? "flex size-9 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-foreground"}
+      className={className ?? "flex size-9 items-center justify-center rounded-md text-muted hover:bg-sunken hover:text-ink"}
       onChoice={(choice) => start(() => save(choice))}
     />
   );
@@ -63,7 +63,7 @@ export function AppearanceField({ saved, save }: { saved: ColorChoice; save: Sav
         {(Object.keys(COLOR_CHOICES) as ColorChoice[]).map((option) => (
           <label
             key={option}
-            className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-border px-3 text-sm has-checked:border-foreground has-checked:font-medium"
+            className="flex min-h-10 cursor-pointer items-center gap-2 rounded-md border border-line px-3 text-sm has-checked:border-brand has-checked:font-medium"
           >
             <input
               type="radio"

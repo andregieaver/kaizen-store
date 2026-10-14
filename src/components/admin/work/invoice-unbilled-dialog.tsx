@@ -191,7 +191,7 @@ function UnbilledBody({
       </div>
 
       {loadProblem && (
-        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+        <p role="alert" className="text-sm text-danger-text">
           {loadProblem}
         </p>
       )}
@@ -205,7 +205,7 @@ function UnbilledBody({
       )}
 
       {byAssignment.map(([id, assignment]) => (
-        <fieldset key={id} className="flex flex-col gap-2 rounded-md border border-border p-3">
+        <fieldset key={id} className="flex flex-col gap-2 rounded-md border border-line p-3">
           <legend className="px-1 text-sm font-medium">
             {choosing ? (
               <label className="flex items-center gap-2">

@@ -211,12 +211,12 @@ async function PaymentsStep({ member }: { member: Membership }) {
   return (
     <div className="flex flex-col gap-4">
       {settings.modes.includes("test") ? (
-        <p role="status" className="rounded-md border border-border p-3 text-sm">
+        <p role="status" className="rounded-md border border-line p-3 text-sm">
           Test payments are on, with nothing to set up: Kaizen creates a test Stripe account for your
           store. Try your checkout with the card 4242 4242 4242 4242.
         </p>
       ) : (
-        <p role="status" className="rounded-md border border-border p-3 text-sm">
+        <p role="status" className="rounded-md border border-line p-3 text-sm">
           Payments are not available on Kaizen yet. You can continue; your store is ready for them.
         </p>
       )}
@@ -239,7 +239,7 @@ async function PaymentsStep({ member }: { member: Membership }) {
       <div>
         <Link
           href={`/admin/${store.slug}/setup/products`}
-          className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+          className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
           Continue
         </Link>
@@ -285,7 +285,7 @@ function BookingsStep({ member, progress }: { member: Membership; progress: Setu
       <div>
         <Link
           href={`${base}/setup/${nextSetupStep("bookings", store)}`}
-          className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+          className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
           Continue
         </Link>
@@ -302,7 +302,7 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
       {products.length === 0 ? (
         <p className="text-sm">Your store has no products.</p>
       ) : (
-        <ul className="divide-y divide-border rounded-md border border-border text-sm">
+        <ul className="divide-y divide-line rounded-md border border-line text-sm">
           {products.map((product) => (
             <li key={product.handle} className="flex justify-between gap-4 px-3 py-2">
               <span>{product.title}</span>
@@ -326,7 +326,7 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
       <div className="flex flex-wrap gap-3">
         <Link
           href={`/admin/${store.slug}/setup/launch`}
-          className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+          className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
           {progress.counts.demoProducts > 0 ? "Keep them for now" : "Continue"}
         </Link>
@@ -383,7 +383,7 @@ function LaunchStep({ member, progress }: { member: Membership; progress: SetupP
         ))}
       </ul>
       {store.setupCompletedAt ? (
-        <div role="status" className="flex flex-col gap-3 rounded-md border border-foreground p-4 text-sm">
+        <div role="status" className="flex flex-col gap-3 rounded-md border border-brand p-4 text-sm">
           <p className="font-medium">
             {selling ? "Your store is open. Share its address with your first customers." : "Your website is open. Share its address with your visitors."}
           </p>

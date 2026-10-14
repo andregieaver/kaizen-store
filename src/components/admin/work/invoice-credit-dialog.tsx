@@ -195,7 +195,7 @@ export function CreditForm({
                 const message =
                   attempted && partialProblem && !partialProblem.ok ? partialProblem.errors[line.id] : undefined;
                 return (
-                  <tr key={line.id} className="border-t border-border align-top">
+                  <tr key={line.id} className="border-t border-line align-top">
                     <td className="py-2 pr-3">{line.description}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">
                       {quantityField(remaining.quantityHundredths)} {line.unit === "hour" ? "h" : "units"}
@@ -220,7 +220,7 @@ export function CreditForm({
                         <p
                           id={`credit-${line.id}-error`}
                           role="alert"
-                          className="mt-1 text-sm text-red-700 dark:text-red-400"
+                          className="mt-1 text-sm text-danger-text"
                         >
                           {message}
                         </p>
@@ -241,7 +241,7 @@ export function CreditForm({
             </tbody>
           </table>
           {attempted && partialProblem && !partialProblem.ok && partialProblem.general && (
-            <p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-400">
+            <p role="alert" className="mt-2 text-sm text-danger-text">
               {partialProblem.general}
             </p>
           )}
@@ -288,7 +288,7 @@ export function CreditForm({
       {earlierNeeded && (
         <div
           role="alert"
-          className="flex flex-col gap-2 rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950 dark:text-amber-100"
+          className="flex flex-col gap-2 rounded-md border border-warning-line bg-warning-soft p-3 text-sm text-warning-text"
         >
           <p>{earlierNeeded}</p>
           <label className="flex items-start gap-2">
@@ -304,7 +304,7 @@ export function CreditForm({
       )}
 
       {canRefund > 0 && (
-        <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
+        <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
           <legend className="px-1 text-sm font-medium">Money already received</legend>
           <label className="flex items-start gap-2 text-sm">
             <input

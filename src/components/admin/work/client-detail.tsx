@@ -119,7 +119,7 @@ export function ClientAssignments({
     );
   }
   return (
-    <div className="overflow-x-auto rounded-lg border border-border bg-background">
+    <div className="overflow-x-auto rounded-lg border border-line bg-card">
       <table className="w-full text-sm">
         <caption className="sr-only">Assignments</caption>
         <thead>
@@ -138,7 +138,7 @@ export function ClientAssignments({
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className="divide-y divide-line">
           {assignments.map((a) => {
             const s = a.summary;
             return (

@@ -1,4 +1,4 @@
-const block = "animate-pulse rounded-lg bg-background";
+const block = "animate-pulse rounded-lg bg-card";
 
 /** The Orders page while the list is read: the heading, the view bar, the search and rows. */
 export default function OrdersLoading() {

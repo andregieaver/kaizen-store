@@ -18,7 +18,7 @@ describe("KpiCard", () => {
   it("makes the whole card the link where it is explained", () => {
     const out = html(h(KpiCard, { label: "Orders", value: "31", href: "/admin/shop/analytics/finance" }));
     expect(out).toMatch(/^<a [^>]*href="\/admin\/shop\/analytics\/finance"/);
-    expect(out).toContain("rounded-lg border border-border bg-background");
+    expect(out).toContain("rounded-lg border border-line bg-card");
   });
 
   it("words each change with its sign, an arrow and what it is against, never colour alone", () => {

@@ -31,7 +31,7 @@ import { adjustBonusAction, saveCustomerFieldsAction } from "./actions";
 
 export const metadata: Metadata = { title: "Customer" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 
 /**
  * One customer (D35): who they are and how to reach them, every order and
@@ -111,7 +111,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           // Subscriptions (D178): the figure and the list are there while the feature is on (off, none can be running).
           ...(subscriptionsOn ? [["Active subscriptions", String(customer.liveSubscriptions)]] : []),
         ].map(([label, value]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-lg border border-border bg-background p-4">
+          <div key={label} className="flex flex-col gap-1 rounded-lg border border-line bg-card p-4">
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
           </div>
@@ -128,7 +128,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
-                    <tr className="border-b border-border">
+                    <tr className="border-b border-line">
                       <th scope="col" className="py-2 pr-4 font-medium">Order</th>
                       <th scope="col" className="py-2 pr-4 font-medium">Placed</th>
                       <th scope="col" className="py-2 pr-4 font-medium">Status</th>
@@ -137,7 +137,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
                   </thead>
                   <tbody>
                     {customer.orderList.map((order) => (
-                      <tr key={order.id} className="border-b border-border last:border-0">
+                      <tr key={order.id} className="border-b border-line last:border-0">
                         <td className="py-2 pr-4">
                           <Link href={`${base}/orders/${order.id}`} className="font-medium underline">
                             #{order.number}
@@ -174,7 +174,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             {customer.subscriptionList.length === 0 ? (
               <p className="text-sm text-muted">No subscriptions.</p>
             ) : (
-              <ul className="divide-y divide-border text-sm">
+              <ul className="divide-y divide-line text-sm">
                 {customer.subscriptionList.map((s) => (
                   <li key={s.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
                     <span>
@@ -234,7 +234,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             {emails.length === 0 ? (
               <p className="text-sm text-muted">No emails yet.</p>
             ) : (
-              <ul className="divide-y divide-border text-sm">
+              <ul className="divide-y divide-line text-sm">
                 {emails.map((email) => (
                   <li key={email.id} className="flex flex-wrap justify-between gap-2 py-2">
                     <Link href={`${base}/emails/${email.id}`} className="underline">
@@ -291,7 +291,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
               <ActionForm action={setCustomerGroupAction.bind(null, store.slug, customer.customerId)} className="flex flex-col gap-2">
                 <label className="flex flex-col gap-1 font-medium">
                   Customer group
-                  <select name="groupId" defaultValue={access?.tierId ?? ""} className="min-h-10 rounded-md border border-border bg-background px-3 font-normal">
+                  <select name="groupId" defaultValue={access?.tierId ?? ""} className="min-h-10 rounded-md border border-line bg-card px-3 font-normal">
                     <option value="">None</option>
                     {groups.map((group) => (
                       <option key={group.id} value={group.id}>

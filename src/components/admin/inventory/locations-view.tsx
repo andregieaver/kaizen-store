@@ -121,7 +121,7 @@ export function LocationsView({
         <table className="w-full text-sm">
           <caption className="sr-only">The store&apos;s stock locations in the order orders are taken from them</caption>
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-b border-line">
               <th scope="col" className={th}>
                 Order
               </th>
@@ -147,7 +147,7 @@ export function LocationsView({
               const activeRows = rows.filter((r) => r.active);
               const at = activeRows.findIndex((r) => r.id === row.id);
               return (
-                <tr key={row.id} className="border-b border-border last:border-0">
+                <tr key={row.id} className="border-b border-line last:border-0">
                   <td className={`${td} tabular-nums`}>{row.active ? index + 1 : <span className={hint}>-</span>}</td>
                   <td className={`${td} font-medium`}>{row.name}</td>
                   <td className={td}>{countryName(row.country)}</td>
@@ -157,16 +157,16 @@ export function LocationsView({
                     <span className="flex flex-wrap justify-end gap-2">
                       {canWrite && row.active && (
                         <>
-                          <button type="button" disabled={pending || at <= 0} onClick={() => run(async () => void show(await tools.move(row.id, "up"), "Moved up."))} aria-label={`Move ${row.name} up`} className="min-h-9 rounded-md border border-border px-2 text-xs disabled:opacity-40">
+                          <button type="button" disabled={pending || at <= 0} onClick={() => run(async () => void show(await tools.move(row.id, "up"), "Moved up."))} aria-label={`Move ${row.name} up`} className="min-h-9 rounded-md border border-line px-2 text-xs disabled:opacity-40">
                             Move up
                           </button>
-                          <button type="button" disabled={pending || at < 0 || at >= activeRows.length - 1} onClick={() => run(async () => void show(await tools.move(row.id, "down"), "Moved down."))} aria-label={`Move ${row.name} down`} className="min-h-9 rounded-md border border-border px-2 text-xs disabled:opacity-40">
+                          <button type="button" disabled={pending || at < 0 || at >= activeRows.length - 1} onClick={() => run(async () => void show(await tools.move(row.id, "down"), "Moved down."))} aria-label={`Move ${row.name} down`} className="min-h-9 rounded-md border border-line px-2 text-xs disabled:opacity-40">
                             Move down
                           </button>
                         </>
                       )}
                       {canWrite && (
-                        <button type="button" disabled={pending} onClick={() => setRenaming({ id: row.id, name: row.name, country: row.country })} aria-label={`Rename ${row.name}`} className="min-h-9 rounded-md border border-border px-2 text-xs">
+                        <button type="button" disabled={pending} onClick={() => setRenaming({ id: row.id, name: row.name, country: row.country })} aria-label={`Rename ${row.name}`} className="min-h-9 rounded-md border border-line px-2 text-xs">
                           Rename
                         </button>
                       )}
@@ -177,13 +177,13 @@ export function LocationsView({
                           onClick={() => row.impact && setConfirming({ id: row.id, impact: row.impact })}
                           aria-label={`Deactivate ${row.name}`}
                           title={activeCount <= 1 ? "A store keeps at least one active location." : undefined}
-                          className="min-h-9 rounded-md border border-border px-2 text-xs disabled:opacity-40"
+                          className="min-h-9 rounded-md border border-line px-2 text-xs disabled:opacity-40"
                         >
                           Deactivate
                         </button>
                       )}
                       {isOwner && !row.active && (
-                        <button type="button" disabled={pending} onClick={() => reactivate(row.id)} aria-label={`Reactivate ${row.name}`} className="min-h-9 rounded-md border border-border px-2 text-xs">
+                        <button type="button" disabled={pending} onClick={() => reactivate(row.id)} aria-label={`Reactivate ${row.name}`} className="min-h-9 rounded-md border border-line px-2 text-xs">
                           Reactivate
                         </button>
                       )}
@@ -223,7 +223,7 @@ export function LocationsView({
             until then.
           </p>
           {words.refusal && (
-            <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+            <p role="alert" className="text-sm text-danger-text">
               {words.refusal}
             </p>
           )}
@@ -312,7 +312,7 @@ export function LocationsView({
       )}
 
       <div role="status" aria-live="polite">
-        {message && <p className={`text-sm ${message.tone === "problem" ? "text-red-700 dark:text-red-400" : ""}`}>{message.text}</p>}
+        {message && <p className={`text-sm ${message.tone === "problem" ? "text-danger-text " : ""}`}>{message.text}</p>}
       </div>
     </div>
   );

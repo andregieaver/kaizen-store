@@ -11,7 +11,7 @@ import { Modal } from "./modal";
 type Result = { ok: true; id?: string; ids?: string[] } | { ok: false; problems: string[] };
 
 const button =
-  "flex min-h-10 items-center rounded-md border border-border px-4 text-sm hover:bg-surface disabled:opacity-50";
+  "flex min-h-10 items-center rounded-md border border-edge px-4 text-sm hover:bg-sunken disabled:opacity-50";
 /** The biggest file of groups read; a store has at most 50 groups of at most 60 fields. */
 const IMPORT_MAX_BYTES = 2_000_000;
 
@@ -78,7 +78,7 @@ export function FieldsToolbar({
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href={`${base}/new`}
-          className="flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
+          className="flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink"
         >
           New group
         </Link>
@@ -103,7 +103,7 @@ export function FieldsToolbar({
         )}
       </div>
       {problems.length > 0 && !presets && (
-        <div role="alert" className="rounded-lg border border-red-700 p-3 text-sm">
+        <div role="alert" className="rounded-lg border border-danger-text p-3 text-sm">
           <ul className="list-disc pl-5">
             {problems.map((problem) => (
               <li key={problem}>{problem}</li>
@@ -124,13 +124,13 @@ export function FieldsToolbar({
             have their own places: do not keep them in custom fields.
           </p>
           {problems.length > 0 && (
-            <p role="alert" className="text-sm text-red-700">
+            <p role="alert" className="text-sm text-danger-text">
               {problems.join(" ")}
             </p>
           )}
           <ul className="grid gap-2 sm:grid-cols-2">
             {FIELD_PRESETS.map((preset) => (
-              <li key={preset.key} className="flex flex-col gap-2 rounded-md border border-border p-3">
+              <li key={preset.key} className="flex flex-col gap-2 rounded-md border border-line p-3">
                 <div>
                   <p className="text-sm font-medium">{preset.name}</p>
                   <p className="text-xs text-muted">{preset.description}</p>
@@ -142,7 +142,7 @@ export function FieldsToolbar({
                   type="button"
                   disabled={pending}
                   onClick={() => startFromPreset(preset.key)}
-                  className="min-h-10 self-start rounded-pill border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
+                  className="min-h-10 self-start rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-50"
                 >
                   Use {preset.name}
                 </button>

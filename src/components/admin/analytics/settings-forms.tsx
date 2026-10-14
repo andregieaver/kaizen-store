@@ -113,8 +113,8 @@ export function settingsFromForm(form: Record<string, FormDataEntryValue>, curre
 // Small parts
 // ---------------------------------------------------------------------------
 
-const field = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const field = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 function Field({ label, hint, children }: { label: ReactNode; hint?: ReactNode; children: ReactNode }) {
   return (
@@ -177,9 +177,9 @@ function CostsSection({ base, currency, summary, actions }: Pick<AnalyticsSettin
               aria-valuemax={activeVariants}
               aria-valuenow={variantsWithCost}
               aria-valuetext={`${formatCount(variantsWithCost)} of ${formatCount(activeVariants)}`}
-              className="h-2 w-full max-w-md overflow-hidden rounded-full border border-border bg-surface"
+              className="h-2 w-full max-w-md overflow-hidden rounded-full border border-line bg-sunken"
             >
-              <div className="h-full bg-foreground" style={{ width: `${Math.round((share ?? 0) * 100)}%` }} />
+              <div className="h-full bg-brand" style={{ width: `${Math.round((share ?? 0) * 100)}%` }} />
             </div>
           </div>
         )}
@@ -200,16 +200,16 @@ function CostsSection({ base, currency, summary, actions }: Pick<AnalyticsSettin
           <span className="text-muted">to enter or change costs.</span>
         </p>
 
-        <div className="flex flex-col gap-2 border-t border-border pt-4">
+        <div className="flex flex-col gap-2 border-t border-line pt-4">
           <h3 className="text-sm font-medium">Costs on earlier orders</h3>
           {variantsWithCost === 0 ? (
             <p className="text-sm text-muted">Once variants have a cost you can apply it to orders sold before you entered it.</p>
           ) : backfillableLines === 0 ? (
             <p className="text-sm text-muted">No earlier order lines are waiting for a cost: every line whose variant has a cost already has it.</p>
           ) : actions ? (
-            <details className="max-w-xl rounded-lg border border-border bg-surface">
+            <details className="max-w-xl rounded-lg border border-line bg-sunken">
               <summary className="min-h-10 cursor-pointer list-none px-4 py-2.5 text-sm font-medium">Apply costs to earlier orders</summary>
-              <div className="border-t border-border p-4">
+              <div className="border-t border-line p-4">
                 <ActionForm action={actions.backfillCosts} className="flex flex-col gap-3" replaceOnSuccess successMessage="Updated 0 order lines.">
                   <p className="text-sm">
                     This gives <strong className="tabular-nums">{lines}</strong> earlier order {backfillableLines === 1 ? "line" : "lines"} the cost its variant has
@@ -281,7 +281,7 @@ function FeesSection({ currency, locale, settings, actions }: Pick<AnalyticsSett
             </div>
           </ActionForm>
         ) : (
-          <dl className="divide-y divide-border">
+          <dl className="divide-y divide-line">
             <ReadOnly label="Payment fee, percent of each order" value={settings.paymentFeeBps > 0 ? formatPercent(settings.paymentFeeBps / 10_000, 2) : NOT_ENTERED} />
             <ReadOnly label="Payment fee, fixed amount per order" value={money(settings.paymentFeeFixedMinor)} />
             <ReadOnly label="Shipping cost per order" value={money(settings.shippingCostMinor)} />

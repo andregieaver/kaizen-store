@@ -3,10 +3,10 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { InstructionTranslations } from "@/lib/return-instructions";
 import { MAX_INSTRUCTIONS, MAX_TRANSIT_DAYS, MAX_WINDOW_DAYS, MIN_WINDOW_DAYS, type ReturnSettings } from "@/lib/withdrawal";
 
-const input = "min-h-10 w-full rounded-md border border-border bg-background px-3 text-sm disabled:opacity-60";
+const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm disabled:opacity-60";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "font-normal text-muted";
-const card = "flex flex-col gap-4 rounded-lg border border-border bg-background p-5";
+const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
 
 export type SettingsLanguage = { locale: string; name: string };
 
@@ -160,7 +160,7 @@ export function ReturnSettingsForm({
             <textarea name="instructions" defaultValue={settings.instructions} rows={5} maxLength={MAX_INSTRUCTIONS} className={`${input} py-2`} />
           </label>
           {others.length > 0 && (
-            <div className="flex flex-col gap-3 border-t border-border pt-4">
+            <div className="flex flex-col gap-3 border-t border-line pt-4">
               <p className="text-sm text-muted">
                 A text for each of the other languages. Where there is none, customers read the {main.name} text. You can have AI suggest them from{" "}
                 <a href={translateHref} className="underline">

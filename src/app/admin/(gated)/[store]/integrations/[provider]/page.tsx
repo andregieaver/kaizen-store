@@ -16,11 +16,11 @@ import { connectSlackAction, removeIntegrationAction, saveIntegrationAction, sen
 
 export const metadata: Metadata = { title: "Integration" };
 
-const card = "rounded-lg border border-border bg-background p-5";
+const card = "rounded-lg border border-line bg-card p-5";
 const STATUS: Record<DeliveryRow["status"], { text: string; tone: string }> = {
-  delivered: { text: "Delivered", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" },
-  pending: { text: "Trying again", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" },
-  failed: { text: "Failed", tone: "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200" },
+  delivered: { text: "Delivered", tone: "bg-positive-soft text-positive-text" },
+  pending: { text: "Trying again", tone: "bg-warning-soft text-warning-text" },
+  failed: { text: "Failed", tone: "bg-danger-soft text-danger-text" },
 };
 
 /** What came back from "Add to Slack" (D101). */
@@ -68,7 +68,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
       {returned && (
         <p
           role={returned.ok ? "status" : "alert"}
-          className={`rounded-md px-4 py-3 text-sm ${returned.ok ? "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"}`}
+          className={`rounded-md px-4 py-3 text-sm ${returned.ok ? "bg-positive-soft text-positive-text " : "bg-warning-soft text-warning-text "}`}
         >
           {returned.text}
         </p>
@@ -83,7 +83,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
             Slack asks which channel Kaizen may post to. Kaizen can post there and nothing else: it cannot read your messages.
           </p>
           <form action={connectSlackAction.bind(null, store.slug)}>
-            <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background">
+            <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
               {integration ? "Choose another channel in Slack" : "Add to Slack"}
             </button>
           </form>
@@ -125,7 +125,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
                 required={!integration}
                 placeholder={info.example}
                 aria-describedby="webhook-url-hint"
-                className="min-h-10 rounded-md border border-border bg-background px-3 font-mono text-sm font-normal"
+                className="min-h-10 rounded-md border border-line bg-card px-3 font-mono text-sm font-normal"
               />
               <p id="webhook-url-hint" className="font-normal text-muted">
                 {integration
@@ -185,7 +185,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-border">
+                  <tr className="border-b border-line">
                     <th scope="col" className="py-2 pr-4 font-medium">Event</th>
                     <th scope="col" className="py-2 pr-4 font-medium">When</th>
                     <th scope="col" className="py-2 font-medium">Result</th>
@@ -193,7 +193,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
                 </thead>
                 <tbody>
                   {deliveries.map((d) => (
-                    <tr key={d.id} className="border-b border-border align-top last:border-0">
+                    <tr key={d.id} className="border-b border-line align-top last:border-0">
                       <td className="py-2 pr-4">{eventLabel(d.event)}</td>
                       <td className="py-2 pr-4 whitespace-nowrap">{when(d.createdAt)}</td>
                       <td className="py-2">

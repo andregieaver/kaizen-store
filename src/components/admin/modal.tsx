@@ -42,14 +42,14 @@ export function Modal({
         // A click on the backdrop (the dialog itself, outside its box) closes it.
         if (event.target === event.currentTarget) onClose();
       }}
-      className={`m-auto max-h-[90dvh] w-[calc(100%-2rem)] rounded-lg border border-border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/40 ${
+      className={`m-auto max-h-[90dvh] w-[calc(100%-2rem)] rounded-lg border border-line bg-card p-0 text-ink shadow-2xl backdrop:bg-black/40 ${
         wide ? "max-w-3xl" : "max-w-lg"
       }`}
     >
       {open && (
         // The dialog's own border takes 2 px of its 90dvh; only the middle scrolls.
         <div className="flex max-h-[calc(90dvh-2px)] flex-col">
-          <div className="flex items-center justify-between gap-4 border-b border-border px-5 py-3">
+          <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-3">
             <h2 id={titleId} className="font-medium">
               {title}
             </h2>
@@ -57,7 +57,7 @@ export function Modal({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="flex size-9 items-center justify-center rounded-full hover:bg-surface"
+              className="flex size-9 items-center justify-center rounded-full hover:bg-sunken"
             >
               <svg viewBox="0 0 24 24" aria-hidden className="size-5" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -65,7 +65,7 @@ export function Modal({
             </button>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto p-5">{children}</div>
-          {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-3">{footer}</div>}
+          {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
         </div>
       )}
     </dialog>

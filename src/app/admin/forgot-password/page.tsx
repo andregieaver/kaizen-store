@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
             name="email"
             required
             autoComplete="username"
-            className="min-h-10 rounded-md border border-border bg-background px-3 font-normal"
+            className="min-h-10 rounded-md border border-line bg-card px-3 font-normal"
           />
         </label>
         <SubmitButton>Email me a link</SubmitButton>

@@ -75,7 +75,7 @@ export default function StripeConnectEmbed({
     <ConnectComponentsProvider connectInstance={connect}>
       <div className="flex flex-col gap-4">
         {problem && (
-          <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+          <p role="alert" className="text-sm text-danger-text">
             {problem}
           </p>
         )}
@@ -87,7 +87,7 @@ export default function StripeConnectEmbed({
                 type="button"
                 onClick={() => setManaging((open) => !open)}
                 aria-expanded={managing}
-                className="min-h-10 rounded-md border border-border bg-background px-4 text-sm"
+                className="min-h-10 rounded-md border border-line bg-card px-4 text-sm"
               >
                 {managing ? "Hide account details" : "Business and bank details"}
               </button>

@@ -18,7 +18,7 @@ export default async function PlatformEmailsPage() {
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-display text-ink">Emails</h1>
-      <section className="rounded-card border border-border bg-background p-5 text-sm">
+      <section className="rounded-card border border-line bg-card p-5 text-sm">
         <h2 className="mb-2 font-medium">Sending</h2>
         {settings ? (
           <div className="flex flex-col gap-2">
@@ -52,7 +52,7 @@ export default async function PlatformEmailsPage() {
           </div>
         )}
       </section>
-      <section className="rounded-card border border-border bg-background p-5">
+      <section className="rounded-card border border-line bg-card p-5">
         <EmailLog emails={emails} base="/admin/platform/emails" showStore />
       </section>
     </div>

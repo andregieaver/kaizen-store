@@ -65,7 +65,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     <>
       <nav aria-label="Period" className="flex flex-wrap items-center gap-2 text-sm">
         {WINDOW_ORDER.map((d) => (
-          <Link key={d} href={reportHref(base, { days: d, covered: showCovered, ignored: showIgnored })} aria-current={days === d ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-surface aria-[current=page]:font-medium">
+          <Link key={d} href={reportHref(base, { days: d, covered: showCovered, ignored: showIgnored })} aria-current={days === d ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-sunken aria-[current=page]:font-medium">
             {windowWords(d)}
           </Link>
         ))}
@@ -94,7 +94,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           </p>
           {uncounted && <p className={`${card} !p-3 text-sm`}>{uncounted}</p>}
           {report.rows.length === 0 ? (
-            <p className="rounded-lg border border-border bg-surface p-6 text-center text-sm">
+            <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">
               {report.distinct === 0 && !showCovered && !showIgnored
                 ? "Nothing to fix. Addresses that were asked for and not found will be listed here, most asked first."
                 : "No address to show with these choices."}

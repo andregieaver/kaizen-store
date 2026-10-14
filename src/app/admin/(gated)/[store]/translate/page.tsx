@@ -29,7 +29,7 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
         </p>
       </div>
       {languages.length < 2 ? (
-        <p className="rounded-card border border-border bg-background p-5 text-sm">
+        <p className="rounded-card border border-line bg-card p-5 text-sm">
           {featureOn(store, "languages") ? (
             <>
               The store has only one language. Add another under{" "}
@@ -44,7 +44,7 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
           )}
         </p>
       ) : !connection?.textModel ? (
-        <p className="rounded-card border border-border bg-background p-5 text-sm">
+        <p className="rounded-card border border-line bg-card p-5 text-sm">
           The store has no AI text model. Choose one under{" "}
           <Link href={`/admin/${store.slug}/settings/ai`} className="underline">Settings → AI</Link>.
         </p>

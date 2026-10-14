@@ -11,7 +11,7 @@ import { saveFeaturesAction } from "./actions";
 
 export const metadata: Metadata = { title: "Plan features" };
 
-const input = "min-h-9 w-full rounded-md border border-border bg-background px-2 text-sm font-normal";
+const input = "min-h-9 w-full rounded-md border border-line bg-card px-2 text-sm font-normal";
 
 /**
  * The plan comparison (D132): every feature in a row, every active plan a column, a box to tick where the plan includes
@@ -40,16 +40,16 @@ export default async function PlanFeaturesPage() {
       </div>
 
       {columns.length === 0 ? (
-        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
           There is no active plan yet. Make one under <Link href="/admin/platform/plans" className="underline">Plans</Link>,
           then come back to say what it includes.
         </p>
       ) : (
         <ActionForm action={saveFeaturesAction} className="flex flex-col gap-4">
-          <div className="overflow-x-auto rounded-lg border border-border bg-background">
+          <div className="overflow-x-auto rounded-lg border border-line bg-card">
             <table className="w-full min-w-[56rem] text-left text-sm">
               <thead>
-                <tr className="border-b border-border text-muted">
+                <tr className="border-b border-line text-muted">
                   <th scope="col" className="px-3 py-2 font-normal">
                     Feature
                   </th>
@@ -60,7 +60,7 @@ export default async function PlanFeaturesPage() {
                     Place
                   </th>
                   {columns.map((plan) => (
-                    <th key={plan.id} scope="col" className="w-24 px-3 py-2 text-center font-medium text-foreground">
+                    <th key={plan.id} scope="col" className="w-24 px-3 py-2 text-center font-medium text-ink">
                       {plan.name}
                     </th>
                   ))}
@@ -70,14 +70,14 @@ export default async function PlanFeaturesPage() {
                 </tr>
               </thead>
               {groups.map((group) => (
-                <tbody key={group.category} className="border-b border-border last:border-0">
-                  <tr className="bg-surface">
+                <tbody key={group.category} className="border-b border-line last:border-0">
+                  <tr className="bg-sunken">
                     <th colSpan={columns.length + 4} scope="colgroup" className="px-3 py-1.5 text-left text-sm font-medium">
                       {group.category}
                     </th>
                   </tr>
                   {group.features.map((feature) => (
-                    <tr key={feature.id} className="border-t border-border align-top">
+                    <tr key={feature.id} className="border-t border-line align-top">
                       <td className="px-3 py-2">
                         <input
                           name={`f:${feature.id}:name`}
@@ -138,13 +138,13 @@ export default async function PlanFeaturesPage() {
                 </tbody>
               ))}
               <tbody>
-                <tr className="bg-surface">
+                <tr className="bg-sunken">
                   <th colSpan={columns.length + 4} scope="colgroup" className="px-3 py-1.5 text-left text-sm font-medium">
                     New features
                   </th>
                 </tr>
                 {Array.from({ length: NEW_FEATURE_ROWS }, (_, i) => (
-                  <tr key={i} className="border-t border-border align-top">
+                  <tr key={i} className="border-t border-line align-top">
                     <td className="px-3 py-2">
                       <input name={`n:${i}:name`} aria-label={`New feature ${i + 1}: name`} maxLength={80} placeholder="Name" className={input} />
                       <input
