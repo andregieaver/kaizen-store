@@ -561,6 +561,25 @@ html[data-footer-reveal] .footer-reveal {
     bottom: 0;
   }
 }
+/* The page lifts off the footer it uncovers: a soft shadow along its lower edge, only while the footer is pinned under it. */
+html[data-footer-reveal] .over-footer {
+  box-shadow:
+    0 12px 24px -10px rgb(0 0 0 / 0.18),
+    0 4px 8px -4px rgb(0 0 0 / 0.1);
+}
+/* On dark colours a shadow needs more weight to be seen (D99: the choice on <html>, else the device's). */
+html[data-footer-reveal][data-color-mode="dark"] .over-footer {
+  box-shadow:
+    0 12px 28px -10px rgb(0 0 0 / 0.6),
+    0 4px 10px -4px rgb(0 0 0 / 0.4);
+}
+@media (prefers-color-scheme: dark) {
+  html[data-footer-reveal]:not([data-color-mode="light"]) .over-footer {
+    box-shadow:
+      0 12px 28px -10px rgb(0 0 0 / 0.6),
+      0 4px 10px -4px rgb(0 0 0 / 0.4);
+  }
+}
 
 /*
  * A table that scrolls inside itself (D203, `TableScroll`): its box is as tall as the block allows (70 % of the screen unless set), the

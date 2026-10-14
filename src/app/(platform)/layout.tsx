@@ -67,7 +67,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
         </a>
         {headerLayout ? <KaizenSiteHeader chrome={chrome} layout={headerLayout} /> : <PlatformHeader chrome={chrome} />}
         {/* A footer revealed on scroll (D184) lies under the page, which covers it. */}
-        {footerLayout?.content.footerReveal ? <div className="relative z-10 bg-background">{children}</div> : children}
+        {footerLayout?.content.footerReveal ? <div className="over-footer relative z-10 bg-background">{children}</div> : children}
         {footerLayout?.content.footerReveal && <FooterRevealGuard />}
         {footerLayout ? <KaizenSiteFooter chrome={chrome} layout={footerLayout} /> : <PlatformFooter chrome={chrome} />}
         {/* Phone enhancements, each in its own boundary, as in the storefront (D30). */}

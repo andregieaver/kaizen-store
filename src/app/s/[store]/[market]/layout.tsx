@@ -176,7 +176,7 @@ export default async function MarketLayout({ children, drawer, params }: Props) 
           id="main"
           // A footer revealed on scroll (D184) lies under the page, which covers it.
           className={`mx-auto w-full max-w-(--content-width) flex-1 px-4 py-8 has-[>.store-page]:max-w-none has-[>.store-page]:p-0 ${
-            footerLayout?.content.footerReveal ? "relative z-10 bg-background" : ""
+            footerLayout?.content.footerReveal ? "over-footer relative z-10 bg-background" : ""
           }`}
         >
           {children}
