@@ -521,7 +521,14 @@ directions are right.
 **Built so far.** Step 1, the roles and `meadow` (D217): `src/app/admin/schemes/meadow.css` sets every role in light and dark,
 `admin.css` maps the older names onto them and reads roles only (no colour of its own), the role names are in the `@theme`
 of `globals.css`, the registry is `src/lib/admin-schemes.ts` (`ADMIN_SCHEMES`, `ADMIN_ROLES`, `CONTRAST_RULES`) and
-`src/app/admin/admin-schemes.test.ts` holds every scheme to it. The components, layouts, `indigo` and the picker are next.
+`src/app/admin/admin-schemes.test.ts` holds every scheme to it.
+Step 2, the components (D218): the type scale and shapes of 5.1 and 5.2 are Tailwind names in `globals.css`'s `@theme`
+(`text-display`, `text-metric`, `text-title`, `text-body-strong`, `text-caption`, `text-chip`, `text-eyebrow`; `rounded-card`,
+`rounded-panel`, `rounded-pill`, `rounded-tile`), and `src/components/admin/ui/` holds `Button`/`ButtonLink` (5.6), `Chip`,
+`TrendChip`, `CountBadge` (5.7), `Card`, `KpiTile`, `ShareBar`, `ScoreBar`, `InsightPanel`, `List`/`ListRow` with `RowId`,
+`RowText`, `RowDate`, `RowAmount` (5.8) and `PageHeader` (5.5), server components in the roles only (`ui.test.ts` scans them for
+a colour, an older token or a bold weight). Pages move to them as they are touched. The `rail` layout, `indigo` and the picker are
+next.
 
 ---
 

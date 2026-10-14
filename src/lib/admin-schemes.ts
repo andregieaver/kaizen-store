@@ -49,6 +49,7 @@ export const CONTRAST_RULES: readonly [string, string, number, string][] = [
   ["brand-text", "card", 4.5, "the brand as text on a card"],
   ["brand-text", "brand-soft", 4.5, "the brand as text on its tint (the current sidebar item)"],
   ["inverse-ink", "inverse", 4.5, "words on the inverse (the current tab, a card's strong button)"],
+  ["danger-text", "danger-line", 4.5, "a danger button's words under the pointer"],
   ["rail-icon", "rail", 4.5, "the rail's icons"],
   ["focus", "card", 3, "the focus ring on a card"],
   ["focus", "canvas", 3, "the focus ring on the canvas"],

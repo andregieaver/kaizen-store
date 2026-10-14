@@ -68,12 +68,15 @@ html[data-admin] ::selection {
   background: color-mix(in srgb, var(--brand-solid) 24%, transparent);
 }
 
-html[data-admin] :is(h1, h2, h3) {
+/* A heading in one of the type scale's sizes (`text-display`, `text-title`, ...) takes the scale's tracking and weight instead. */
+html[data-admin] :is(h1, h2, h3):not(.text-display, .text-metric-lg, .text-metric, .text-title) {
   letter-spacing: -0.02em;
+}
+html[data-admin] :is(h1, h2, h3) {
   text-wrap: balance;
 }
 /* Hierarchy is size and colour, never weight: titles are medium, not bold (docs/admin-style.md 1.4). */
-html[data-admin] h1:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+html[data-admin] h1:not(.text-display, .text-metric-lg, .text-metric, .text-title, :is([data-theme-canvas], [data-theme-preview]) *) {
   font-weight: 500;
 }
 html[data-admin] :is(table, [data-tabular]):not(:is([data-theme-canvas], [data-theme-preview]) *) {
