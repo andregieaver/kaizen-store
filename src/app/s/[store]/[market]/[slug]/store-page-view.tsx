@@ -11,7 +11,7 @@ import { pageExcerpt, pageSlugProblem, RESERVED_STORE_PAGE_SLUGS } from "@/lib/p
 import { PAGE_ROLES, roleAddress } from "@/lib/page-roles";
 import { featureOn } from "@/lib/store-features";
 import { localizePage } from "@/lib/page-translation";
-import { adminOrigin, marketPath, storeSiteUrl } from "@/lib/paths";
+import { adminOrigin, marketHome, marketPath, storeSiteUrl } from "@/lib/paths";
 import { pageJsonLd } from "@/lib/structured-data";
 import { experimentOfPage } from "@/server/experiments";
 import { findPublishedPage, type PublishedPage } from "@/server/pages";
@@ -104,8 +104,9 @@ export async function StorePageView({ params, searchParams, variant }: { params:
   // A page that moved: its old address leads to the new one for good.
   if ("redirect" in found) permanentRedirect(`${home}/${found.redirect}`);
   const { page } = found;
-  // The front page (D54) has one address: the market's own.
-  if (page.id === store.frontPageId) permanentRedirect(home);
+  // The front page (D54) has one address: the market's own, which is `/` for a store that sells in one country on its own host
+  // (`home` is empty there, and a redirect to it would answer with the page's own address again).
+  if (page.id === store.frontPageId) permanentRedirect(marketHome(store.slug, market.slug));
   // So has the All products page (D83): /products.
   // The All products page is drawn at /products; in a website (D178 step 5: the online shop off) there is none, so it stays at its own address.
   if (page.id === store.productsPageId && featureOn(store, "shop")) permanentRedirect(`${home}/products`);
