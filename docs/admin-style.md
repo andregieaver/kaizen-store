@@ -586,6 +586,11 @@ names itself, since there is no header row) and `RowActions` (the row's buttons,
 `Chip`. Tables stay where figures are compared down a column, where rows are edited or selected, where a document's lines are
 listed and where values are to be copied. Next: the `focus` layout for the signed-out pages.
 
+Step 12, focus (D228): the sign-in, forgotten-password, two-step and consent pages are drawn by `FocusFrame`: Kaizen's mark in a
+plain top bar and one card on the canvas (440 px, 560 px for the two-step set-up) with the page's `h1`, a sentence and the form,
+and no level's navigation. `focus` is in `ADMIN_LAYOUTS`; the scan test requires it of every signed-out page. `SubmitButton` is a
+pill. Not built yet: `focus` for signed-in pages that are one form (the setup wizard), and the `workspace` layout.
+
 ---
 
 ## 9. Do and don't

@@ -8,6 +8,7 @@ import { getAccount } from "@/server/auth";
 import { isOwner } from "@/server/kaizen-life";
 
 import { decideConsentAction } from "./actions";
+import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Sign in with Kaizen Store" };
 
@@ -19,7 +20,6 @@ const SCOPE_WORDS: Record<string, string> = {
   phone: "your phone number",
 };
 
-const box = "mx-auto flex min-h-screen max-w-md flex-col justify-center gap-5 px-6";
 const button = "inline-flex min-h-11 items-center justify-center rounded-md px-5 text-sm font-medium";
 
 /**
@@ -31,7 +31,7 @@ const button = "inline-flex min-h-11 items-center justify-center rounded-md px-5
  */
 export default function ConsentPage({ searchParams }: PageProps<"/admin/oauth/consent">) {
   return (
-    <Suspense fallback={<main className={box} />}>
+    <Suspense fallback={<FocusFrame />}>
       <Consent searchParams={searchParams} />
     </Suspense>
   );
@@ -42,18 +42,18 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
   const id = typeof raw === "string" && /^[A-Za-z0-9_-]{8,200}$/.test(raw) ? raw : null;
   if (!id) {
     return (
-      <main className={box}>
-        <h1 className="text-display text-ink">This sign-in could not be read</h1>
+      <FocusFrame>
+        <FocusHeading title="This sign-in could not be read" />
         <p className="text-sm">Go back to the app you came from and try again.</p>
-      </main>
+      </FocusFrame>
     );
   }
   const account = await getAccount();
   if (!account) redirect(`/admin/sign-in?next=${encodeURIComponent(`/admin/oauth/consent?authorization_id=${id}`)}`);
   if (!(await isOwner(account))) {
     return (
-      <main className={box}>
-        <h1 className="text-display text-ink">For store owners</h1>
+      <FocusFrame>
+        <FocusHeading title="For store owners" />
         <p className="text-sm">
           Only store owners can sign in to other apps with their Kaizen Store account. You are signed in as {account.email}.
         </p>
@@ -63,17 +63,17 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
             Go back
           </button>
         </form>
-      </main>
+      </FocusFrame>
     );
   }
   const supabase = await createClient();
   const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(id);
   if (error || !data) {
     return (
-      <main className={box}>
-        <h1 className="text-display text-ink">This sign-in has expired</h1>
+      <FocusFrame>
+        <FocusHeading title="This sign-in has expired" />
         <p className="text-sm">Go back to the app you came from and try again.</p>
-      </main>
+      </FocusFrame>
     );
   }
   // Already said yes to this app: straight back.
@@ -81,8 +81,8 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
   const shares = [...new Set(data.scope.split(/\s+/).map((s) => SCOPE_WORDS[s]).filter(Boolean))];
   const app = data.client.name || "An app";
   return (
-    <main className={box}>
-      <h1 className="text-display text-ink">Sign in to {app} with Kaizen Store</h1>
+    <FocusFrame>
+      <FocusHeading title={<>Sign in to {app} with Kaizen Store</>} />
       {failed && (
         <p role="alert" className="text-sm">
           That did not go through. Try again.
@@ -108,6 +108,6 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
         </Link>
         .
       </p>
-    </main>
+    </FocusFrame>
   );
 }

@@ -98,8 +98,8 @@ export function SubmitButton({
       disabled={disabled || pending}
       className={
         variant === "primary"
-          ? "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
-          : "min-h-10 rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40"
+          ? "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40"
+          : "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40"
       }
     >
       {pending ? "Working …" : children}

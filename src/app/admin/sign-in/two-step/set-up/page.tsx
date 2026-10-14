@@ -9,6 +9,7 @@ import { getAssurance } from "@/server/auth";
 import { getStore } from "@/server/stores";
 
 import { finishEnrolmentAction, leaveTwoStepAction, startEnrolmentAction } from "../actions";
+import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Set up two-step sign-in" };
 
@@ -19,11 +20,11 @@ export const metadata: Metadata = { title: "Set up two-step sign-in" };
  */
 export default function SetUpPage({ searchParams }: PageProps<"/admin/sign-in/two-step/set-up">) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 px-6 py-10">
+    <FocusFrame width="wide">
       <Suspense fallback={<p className="text-sm text-muted">Loading …</p>}>
         <SetUp searchParams={searchParams} />
       </Suspense>
-    </main>
+    </FocusFrame>
   );
 }
 
@@ -52,10 +53,7 @@ async function SetUp({ searchParams }: { searchParams: PageProps<"/admin/sign-in
   }
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-display text-ink">Set up two-step sign-in</h1>
-        <p className="text-sm text-muted">Signed in as {account.email}.</p>
-      </div>
+      <FocusHeading title="Set up two-step sign-in" description={<>Signed in as {account.email}.</>} />
       <EnrolPanel
         start={startEnrolmentAction}
         finish={finishEnrolmentAction}

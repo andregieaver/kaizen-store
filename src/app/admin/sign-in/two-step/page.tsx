@@ -9,6 +9,7 @@ import { TWO_STEP_PATHS, heldPath } from "@/lib/two-step";
 import { getAssurance } from "@/server/auth";
 
 import { leaveTwoStepAction, verifyTwoStepAction } from "./actions";
+import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Two-step sign-in" };
 
@@ -19,11 +20,11 @@ export const metadata: Metadata = { title: "Two-step sign-in" };
  */
 export default function TwoStepPage({ searchParams }: PageProps<"/admin/sign-in/two-step">) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
+    <FocusFrame>
       <Suspense fallback={<p className="text-sm text-muted">Loading …</p>}>
         <Challenge searchParams={searchParams} />
       </Suspense>
-    </main>
+    </FocusFrame>
   );
 }
 
@@ -39,7 +40,7 @@ async function Challenge({ searchParams }: { searchParams: PageProps<"/admin/sig
   if (assurance.state === "unknown") {
     return (
       <>
-        <h1 className="text-display text-ink">We could not check your sign-in</h1>
+        <FocusHeading title="We could not check your sign-in" />
         <p role="alert" className="text-sm">
           We could not check your two-step status. Try again.
         </p>
@@ -55,10 +56,7 @@ async function Challenge({ searchParams }: { searchParams: PageProps<"/admin/sig
 
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-display text-ink">Two-step sign-in</h1>
-        <p className="text-sm text-muted">Open your authenticator app and type the six-digit code it shows for Kaizen Store.</p>
-      </div>
+      <FocusHeading title="Two-step sign-in" description="Open your authenticator app and type the six-digit code it shows for Kaizen Store." />
       <ActionForm action={verifyTwoStepAction.bind(null, next)} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm font-medium">
           Code

@@ -7,6 +7,7 @@ import { PasswordField } from "@/components/admin/password-field";
 import { safeNext } from "@/lib/password";
 import { getAccount } from "@/server/auth";
 import { kaizenLifeSignInOn } from "@/server/kaizen-life";
+import { buttonClass, FocusFrame } from "@/components/admin/ui";
 
 import { signIn, signInWithKaizenLife } from "./actions";
 
@@ -14,8 +15,14 @@ export const metadata: Metadata = { title: "Sign in" };
 
 export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
-      <h1 className="text-display text-ink">Sign in to Kaizen</h1>
+    <FocusFrame
+      title="Sign in to Kaizen"
+      aside={
+        <Link href="/sign-up" className="underline-offset-2 hover:underline">
+          Ask for a store
+        </Link>
+      }
+    >
       <Suspense fallback={null}>
         <Notice searchParams={searchParams} />
       </Suspense>
@@ -57,14 +64,14 @@ export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">
           Email me a sign-in link instead
         </SubmitButton>
       </ActionForm>
-      <p className="text-sm text-muted">
+      <p className="text-body text-muted">
         Kaizen is in a private beta: only invited accounts can sign in.{" "}
         <Link href="/sign-up" className="underline">
           Ask for a store
         </Link>
         , or ask a store&apos;s owner to invite you.
       </p>
-    </main>
+    </FocusFrame>
   );
 }
 
@@ -116,7 +123,7 @@ async function KaizenLifeButton({ searchParams }: { searchParams: PageProps<"/ad
   return (
     <form action={signInWithKaizenLife} className="flex flex-col gap-2">
       {typeof next === "string" && <input type="hidden" name="next" value={safeNext(next)} />}
-      <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
+      <button type="submit" className={buttonClass("secondary", "card", true)}>
         Sign in with Kaizen Life
       </button>
       <p className="text-xs text-muted">For store owners with a Kaizen Life account.</p>

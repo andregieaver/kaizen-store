@@ -30,6 +30,13 @@ export const ADMIN_LAYOUTS = [
     regions: ["rail", "topbar", "sidebar", "main", "panel"],
     for: "The reference: the sections as icons in a dark rail, a plain top bar with the switcher and the account, a section's pages beside.",
   },
+  {
+    id: "focus",
+    name: "Focus",
+    // Drawn by `FocusFrame`, not `AdminFrame`: the pages before a person is let in, where no level's sections exist yet.
+    regions: ["topbar", "main"],
+    for: "One task on its own: Kaizen's mark in a plain top bar and one card on the canvas. The sign-in, two-step, password and consent pages.",
+  },
 ] as const satisfies readonly AdminLayout[];
 
 export type AdminLayoutId = (typeof ADMIN_LAYOUTS)[number]["id"];

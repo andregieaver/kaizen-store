@@ -5,7 +5,7 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, fillWidth, InsightPanel, KpiTile, List, ListRow, PageHeader, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, ShareBar, TrendChip } from "./index";
+import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, fillWidth, FocusFrame, FocusHeading, InsightPanel, KpiTile, List, ListRow, PageHeader, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, ShareBar, TrendChip } from "./index";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 
@@ -164,6 +164,29 @@ describe("lists", () => {
     expect(out).toContain("Used 3 of 10");
     expect(out.match(/<a /g)).toHaveLength(1);
     expect(out).toContain('class="ml-auto flex shrink-0 items-center gap-1"');
+  });
+});
+
+describe("the focus layout", () => {
+  it("draws Kaizen's mark, one card on the canvas with the page's h1, and no level's navigation", () => {
+    const out = html(
+      h(FocusFrame, { title: "Sign in to Kaizen", description: "Only invited accounts.", back: { href: "/admin/sign-in", label: "Back to sign in" }, aside: "Ask for a store", children: "form" }),
+    );
+    expect(out).toContain('data-admin-layout="focus"');
+    expect(out).toContain("bg-canvas");
+    expect(out).toContain('<h1 class="text-display text-ink">Sign in to Kaizen</h1>');
+    expect(out).toContain('href="/admin/sign-in"');
+    expect(out).toContain("Ask for a store");
+    expect(out).toContain("rounded-card bg-card");
+    expect(out.match(/<main/g)).toHaveLength(1);
+    expect(out).not.toContain("<nav");
+    expect(out).toContain("max-w-[440px]");
+    expect(html(h(FocusFrame, { width: "wide" }))).toContain("max-w-[560px]");
+  });
+
+  it("lets a page whose title depends on what it finds draw the heading inside", () => {
+    const out = html(h(FocusFrame, { children: h(FocusHeading, { title: "This sign-in has expired" }) }));
+    expect(out.match(/<h1/g)).toHaveLength(1);
   });
 });
 

@@ -10,6 +10,7 @@ import { getAssurance } from "@/server/auth";
 import { recoveryAvailable } from "@/server/recovery-codes";
 
 import { recoveryCodeAction } from "../actions";
+import { FocusFrame, FocusHeading } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Use a recovery code" };
 
@@ -19,11 +20,11 @@ export const metadata: Metadata = { title: "Use a recovery code" };
  */
 export default function RecoveryPage({ searchParams }: PageProps<"/admin/sign-in/two-step/recovery">) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
+    <FocusFrame>
       <Suspense fallback={<p className="text-sm text-muted">Loading …</p>}>
         <Recovery searchParams={searchParams} />
       </Suspense>
-    </main>
+    </FocusFrame>
   );
 }
 
@@ -36,13 +37,7 @@ async function Recovery({ searchParams }: { searchParams: PageProps<"/admin/sign
   const available = recoveryAvailable();
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <h1 className="text-display text-ink">Use a recovery code</h1>
-        <p className="text-sm text-muted">
-          Type one of the ten recovery codes you saved when you set up two-step sign-in, like K7QM2-9WXDB. Each works once. Using one takes your
-          two-step sign-in away and signs you out everywhere, and we email you to say so. You then sign in again and set it up anew.
-        </p>
-      </div>
+      <FocusHeading title="Use a recovery code" description="Type one of the ten recovery codes you saved when you set up two-step sign-in, like K7QM2-9WXDB. Each works once. Using one takes your two-step sign-in away and signs you out everywhere, and we email you to say so. You then sign in again and set it up anew." />
       {available ? (
         <ActionForm action={recoveryCodeAction} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm font-medium">
