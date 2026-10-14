@@ -571,7 +571,7 @@
       "was": "missing"
     },
     "weight": 4,
-    "gap": "Flat rate per market with a free-above threshold, carrier-quoted weight pricing for connected carriers and a per-service weight limit; no merchant-defined weight or price tiers, no regions inside a country and no per-product shipping profiles. Rechecked at HEAD: unchanged.",
+    "gap": "A flat rate per market (`commerce.shipping_rates`), optionally free above a basket value. Connected carriers add carrier-quoted prices by weight (Bring, Porterbuddy) and a weight limit per service (Helthjem). A default weight per carrier connection (`shipping_carriers.default_weight_grams`) stands in for products without one, but only for carrier quotes; the flat rate never reads a weight. Missing: tiers by weight or basket value set by the merchant, zones by postal code inside a country, and shipping profiles per product. Rechecked 2026-10-14: no table, column or code for tiers, zones or profiles.",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -681,7 +681,7 @@
       "was": null
     },
     "weight": 4,
-    "gap": "Booking with Bring (D134), Porterbuddy (D137) and Helthjem (D138), for parcels to Norway, with the label fetched from the carrier when printed and never stored; PostNord cannot book (D136, waiting for its EDI specification); in the store's test environment nothing real is booked; no bulk booking or printing; nothing verified against a carrier's live service.",
+    "gap": "Booking with Bring (D134), Porterbuddy (D137) and Helthjem (D138), for parcels to Norway; the label is fetched from the carrier when printed and never stored. Since D174 a booked parcel names its lines, like any shipment. PostNord cannot book (D136, waiting for its EDI specification). In the store's test environment nothing real is booked. Bulk actions print packing slips and pick lists and mark orders sent (D173, D174, `BULK_ACTIONS`), but do not book or print carrier labels. Undoing a parcel does not cancel the carrier's booking (D174). Nothing has been verified against a carrier's live service.",
     "bucket": "B",
     "wave": 3,
     "criteria": [
@@ -697,13 +697,18 @@
         "src/server/helthjem-shipping.ts",
         "src/server/carrier-label.ts",
         "src/app/admin/(gated)/[store]/orders/[orderId]/label/[shipmentId]/route.ts",
-        "src/server/carriers/index.ts"
+        "src/server/carriers/index.ts",
+        "src/components/admin/orders/send-parcel.tsx",
+        "src/lib/order-bulk.ts",
+        "src/server/order-bulk.ts"
       ],
       "tests": [
         "src/server/bring-shipping.int.test.ts",
         "src/server/porterbuddy-shipping.int.test.ts",
         "src/server/helthjem-shipping.int.test.ts",
-        "src/server/carriers/bring.test.ts"
+        "src/server/carriers/bring.test.ts",
+        "src/server/fulfilment.int.test.ts",
+        "src/server/order-bulk.int.test.ts"
       ],
       "untested": false
     },
@@ -975,7 +980,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "The shopper's order page shows each shipment's carrier and a tracking link; the carrier's latest event is shown to staff only (`carrierTracking()` for Bring, PostNord, Porterbuddy and Helthjem); no out-for-delivery or delivered email, no delivery timeline for the shopper, and a delivery is recorded only when staff press Mark received (D153, `delivered_at`).",
+    "gap": "The shopper's order pages show each parcel with its carrier, tracking link and lines, and what is still to come (D174, `shopperFulfilment()`); each parcel gets its own shipped email listing its lines; the support chat gives a signed-in customer the tracking links as chips (D216 step 9). The carrier's latest event is shown to staff only (`carrierTracking()` for Bring, PostNord, Porterbuddy and Helthjem). Missing: an out-for-delivery or delivered email; the carrier's events on the shopper's page; and recording a delivery from the carrier (a delivery is recorded only when staff press Mark delivered, D153 `delivered_at`, which needs the order sent in full, D174).",
     "bucket": "A",
     "wave": 3,
     "criteria": [
@@ -989,13 +994,18 @@
         "src/server/carrier-tracking.ts",
         "src/server/order-delivery.ts",
         "src/app/s/[store]/[market]/account/orders/[orderId]/page.tsx",
-        "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx"
+        "src/app/s/[store]/[market]/order/[orderId]/order-section.tsx",
+        "src/server/fulfilment.ts",
+        "src/server/support-tools.ts"
       ],
       "tests": [
         "src/server/bring-shipping.int.test.ts",
         "src/server/porterbuddy-shipping.int.test.ts",
         "src/server/helthjem-shipping.int.test.ts",
-        "src/server/returns.int.test.ts"
+        "src/server/returns.int.test.ts",
+        "src/server/fulfilment.int.test.ts",
+        "src/server/support-tools.int.test.ts",
+        "src/app/s/[store]/[market]/order/[orderId]/order-section.test.ts"
       ],
       "untested": false
     },
@@ -1022,7 +1032,7 @@
       "was": "partial"
     },
     "weight": 3,
-    "gap": "Wording and layout are fixed in code (`email-text.ts`, `email-layout.ts`; nb, sv, da, en by hand, other languages through the catalogue, D111); switches are per action, not per event; the store's logo and colours reach the layout but the owner cannot edit a subject or body. Rechecked at HEAD; D153 added its return emails to the same fixed set.",
+    "gap": "Wording and layout are fixed in code (`email-text.ts`, `email-layout.ts`; nb, sv, da and en by hand, other languages through the catalogue, D111). Switches are per action, not per event. The store's logo and colours reach the layout, but the owner cannot edit a subject or body. Rechecked 2026-10-14: no template table or editor; D153 (returns), D173 (drafts, gifts) and D174 (changes, a shipped email per parcel) added their emails to the same fixed set.",
     "bucket": "A",
     "wave": 3,
     "criteria": [

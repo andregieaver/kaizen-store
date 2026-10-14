@@ -127,13 +127,21 @@ export async function listActivity(member: Membership, filters: ActivityFilters 
 
 /** The people the person filter offers: everyone who ever worked in the store or appears in its log, past members included. */
 export async function activityPeople(member: Membership): Promise<{ accountId: string; label: string; current: boolean }[]> {
+  // Who works here is the Team page's to show: a viewer who may not read staff is offered only the people in the entries they may
+  // see (and themselves), never every member by name or email.
+  const holder = holderOf(member);
+  const everyone = can(holder, "owner") || can(holder, "staff:read");
+  const who = everyone
+    ? sql`exists (select 1 from commerce.store_members m where m.store_id = ${member.store.id}::uuid and m.account_id = acc.id)
+       or exists (select 1 from commerce.audit_log l where l.store_id = ${member.store.id}::uuid and l.account_id = acc.id)`
+    : sql`acc.id = ${member.account.id}::uuid
+       or exists (select 1 from commerce.audit_log a where ${where(conditions(member, {}))} and a.account_id = acc.id)`;
   const rows = await db().execute<Row>(sql`
-    select a.id, coalesce(nullif(a.name, ''), a.email) as label,
-      exists (select 1 from commerce.store_members m where m.store_id = ${member.store.id}::uuid and m.account_id = a.id and m.disabled_at is null) as current
-    from commerce.accounts a
-    where exists (select 1 from commerce.store_members m where m.store_id = ${member.store.id}::uuid and m.account_id = a.id)
-       or exists (select 1 from commerce.audit_log l where l.store_id = ${member.store.id}::uuid and l.account_id = a.id)
-    order by lower(coalesce(nullif(a.name, ''), a.email))
+    select acc.id, coalesce(nullif(acc.name, ''), acc.email) as label,
+      exists (select 1 from commerce.store_members m where m.store_id = ${member.store.id}::uuid and m.account_id = acc.id and m.disabled_at is null) as current
+    from commerce.accounts acc
+    where ${who}
+    order by lower(coalesce(nullif(acc.name, ''), acc.email))
   `);
   return rows.map((row) => ({ accountId: String(row.id), label: String(row.label), current: Boolean(row.current) }));
 }

@@ -176,6 +176,18 @@ describe("what an entry says", () => {
     expect(people.find((p) => p.accountId === admin.id)).toMatchObject({ current: true });
     expect(await act.activityActions(clerkM)).toEqual(["order.refunded", "payments.provider_updated", "product.updated"]);
   });
+
+  it("offers a member who may not read the team only the people in the entries they may see, never every member", async () => {
+    const quiet = await makeAccount("act-quiet");
+    await addMember(store.id, quiet.id, "admin");
+    const people = (await act.activityPeople(clerkM)).map((p) => p.accountId);
+    // The orders role reads products, orders and settings: the clerk's own entries and the admin's product change.
+    expect(people.sort()).toEqual([admin.id, clerk.id].sort());
+    expect(people).not.toContain(quiet.id);
+    expect(people).not.toContain(store.account.id);
+    // The owner (and anyone with staff:read) still gets everyone.
+    expect((await act.activityPeople(owner)).map((p) => p.accountId)).toContain(quiet.id);
+  });
 });
 
 describe("paging", () => {
