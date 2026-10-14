@@ -308,7 +308,7 @@ export function DiscountEditor({
         <button
           type="submit"
           disabled={saving}
-          className="min-h-11 rounded-md bg-foreground px-5 font-medium text-background disabled:opacity-50"
+          className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50"
         >
           {saving ? "Saving …" : "Save code"}
         </button>

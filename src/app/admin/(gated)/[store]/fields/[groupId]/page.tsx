@@ -29,7 +29,7 @@ export default async function FieldGroupPage({ params }: PageProps<"/admin/[stor
         <Link href={base} className="text-sm underline">
           Custom fields
         </Link>
-        <h1 className="text-2xl font-semibold">{group.name}</h1>
+        <h1 className="text-display text-ink">{group.name}</h1>
         <p className="text-sm text-muted">{group.active ? "Switched on." : "Switched off."}</p>
       </div>
       <FieldGroupEditor

@@ -65,7 +65,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{copy.list}</h1>
+          <h1 className="text-display text-ink">{copy.list}</h1>
           <p className="max-w-2xl text-sm text-muted">{INTRO[type]}</p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -79,7 +79,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
               Create with AI
             </Link>
           )}
-          <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-md bg-foreground px-5 font-medium text-background">
+          <Link href={`${base}/new`} className="flex min-h-11 items-center rounded-pill bg-foreground px-5 font-medium text-background">
             New {copy.one}
           </Link>
         </div>
@@ -92,7 +92,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
       )}
 
       {pages.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
           No {copy.many} yet. Make the first one with New {copy.one}.
         </p>
       ) : type === "header" || type === "footer" ? (
@@ -109,7 +109,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
       {type === "page" && (
         <section className="flex flex-col gap-4" aria-labelledby="special-pages">
           <div className="flex flex-col gap-1">
-            <h2 id="special-pages" className="text-lg font-semibold">Special pages</h2>
+            <h2 id="special-pages" className="text-lg font-medium">Special pages</h2>
             <p className="max-w-2xl text-sm text-muted">
               Kaizen&apos;s front page, blog and 404 page have a standard look. Build any of them in the page builder instead: choose one
               of your published pages for it, or start from a new page that looks like the standard one. The standard page shows until you do.
@@ -154,7 +154,7 @@ export async function PageTermsView({ type }: { type: PageType }) {
         <Link href={`/admin/platform/${copy.segment}`} className="w-fit text-sm underline">
           {copy.list}
         </Link>
-        <h1 className="text-2xl font-semibold">Categories and tags</h1>
+        <h1 className="text-display text-ink">Categories and tags</h1>
         <p className="max-w-2xl text-sm text-muted">
           Sort Kaizen&apos;s {copy.many} into categories and label them with tags. Choose them for each {copy.one} in
           the editor; a content grid can then show the {copy.many} of a category or tag. The choices go on the site

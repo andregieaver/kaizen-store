@@ -17,8 +17,8 @@ export default async function PlatformEmailsPage() {
   const webhook = emailEventsSetup() === "ok";
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Emails</h1>
-      <section className="rounded-lg border border-border bg-background p-5 text-sm">
+      <h1 className="text-display text-ink">Emails</h1>
+      <section className="rounded-card border border-border bg-background p-5 text-sm">
         <h2 className="mb-2 font-medium">Sending</h2>
         {settings ? (
           <div className="flex flex-col gap-2">
@@ -52,7 +52,7 @@ export default async function PlatformEmailsPage() {
           </div>
         )}
       </section>
-      <section className="rounded-lg border border-border bg-background p-5">
+      <section className="rounded-card border border-border bg-background p-5">
         <EmailLog emails={emails} base="/admin/platform/emails" showStore />
       </section>
     </div>

@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Choose a new password</h1>
+        <h1 className="text-display text-ink">Choose a new password</h1>
         <p className="text-sm text-muted">
           Enter your email and we will send you a link. It signs you in and opens your account,
           where you choose the new password. This also works if you have never had a password.

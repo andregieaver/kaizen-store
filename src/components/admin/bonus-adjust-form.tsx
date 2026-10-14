@@ -91,7 +91,7 @@ export function BonusAdjustForm({
               type="button"
               onClick={confirm}
               disabled={pending}
-              className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
             >
               {pending ? "Working …" : confirming.amountMinor > 0 ? "Yes, add the credits" : "Yes, take the credits"}
             </button>

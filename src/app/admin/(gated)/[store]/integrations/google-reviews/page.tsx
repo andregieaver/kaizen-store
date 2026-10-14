@@ -20,7 +20,7 @@ export default async function StoreGoogleReviewsPage({ params }: PageProps<"/adm
         <Link href={`/admin/${store.slug}/integrations`} className="text-sm underline">
           Integrations
         </Link>
-        <h1 className="text-2xl font-semibold">Google reviews</h1>
+        <h1 className="text-display text-ink">Google reviews</h1>
         <p className="text-sm text-muted">
           Show your business&apos;s rating and reviews on Google with a Testimonials component set to Google reviews. They are asked of
           Google as each page is shown and never kept, as Google&apos;s terms ask; nothing about your visitors is sent.

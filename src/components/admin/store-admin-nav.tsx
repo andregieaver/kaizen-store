@@ -115,7 +115,7 @@ export function StoreSidebar({ groups, label }: { groups: NavGroup[]; label: str
     <nav aria-label={label} className="flex flex-col gap-6">
       {groups.map((group) => (
         <div key={group.heading}>
-          <h2 className="mb-1 px-3 text-xs font-semibold tracking-wide text-muted uppercase">{group.heading}</h2>
+          <h2 className="mb-1 px-3 text-xs font-medium tracking-wide text-muted uppercase">{group.heading}</h2>
           <ul className="flex flex-col gap-0.5">
             {group.items.map((item) => (
               <li key={item.href}>

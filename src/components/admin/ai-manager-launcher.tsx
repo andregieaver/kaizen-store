@@ -108,7 +108,7 @@ export function AiManagerLauncher({
       >
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <Spark className="size-5" />
-          <h2 className="font-semibold">AI manager</h2>
+          <h2 className="font-medium">AI manager</h2>
           <span className="truncate text-sm text-muted">{siteName}</span>
           <button
             type="button"

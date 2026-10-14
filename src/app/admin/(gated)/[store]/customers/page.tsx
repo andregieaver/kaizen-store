@@ -29,7 +29,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Customers</h1>
+          <h1 className="text-display text-ink">Customers</h1>
           <p className="text-sm text-muted">
             Everyone with an account or a paid order, one per email. Guests who bought without an account are here too.
           </p>
@@ -53,7 +53,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
           placeholder="Search by name or email"
           className="min-h-10 w-full max-w-sm rounded-md border border-border bg-background px-3 text-sm"
         />
-        <button type="submit" className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
+        <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
           Search
         </button>
         {q && (

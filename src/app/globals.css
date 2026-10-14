@@ -93,8 +93,9 @@
    * `text-display`, `text-metric`, `text-title`, `text-body-strong`, `text-caption`, `text-eyebrow` (with `uppercase`), and
    * `rounded-card`, `rounded-panel`, `rounded-pill`, `rounded-tile`. Never 600 or 700.
    */
-  --text-display: 2.5rem;
-  --text-display--line-height: 2.75rem;
+  /* The page title: 40 px on a computer, down to 28 px on a phone (5.1 "fluid below md"). */
+  --text-display: clamp(1.75rem, 1.2rem + 1.6vw, 2.5rem);
+  --text-display--line-height: 1.1;
   --text-display--letter-spacing: -0.03em;
   --text-display--font-weight: 400;
   --text-metric-lg: 3rem;

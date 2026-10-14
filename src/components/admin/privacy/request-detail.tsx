@@ -65,7 +65,7 @@ export function RequestDetail({
         <Link href={`${base}/privacy`} className="text-sm underline">
           Privacy requests
         </Link>
-        <h1 className="text-2xl font-semibold">{PRIVACY_KIND_LABELS[request.kind]} request</h1>
+        <h1 className="text-display text-ink">{PRIVACY_KIND_LABELS[request.kind]} request</h1>
         <p className="text-sm text-muted">
           {PRIVACY_STATUS_LABELS[request.status]} · {request.channel === "shopper" ? "asked on the site" : "logged by staff"}
         </p>

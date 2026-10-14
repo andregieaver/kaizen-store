@@ -38,7 +38,7 @@ export function SiteFontsForm({
       <figure className="flex flex-col gap-2 rounded-lg border border-border p-5">
         <figcaption className="text-xs text-muted">Sample</figcaption>
         <div className={body ? fontClass(body) : undefined}>
-          <p className={`text-2xl font-semibold ${heading ? fontClass(heading) : ""}`}>Handmade cups for slow mornings</p>
+          <p className={`text-2xl font-medium ${heading ? fontClass(heading) : ""}`}>Handmade cups for slow mornings</p>
           <p className="mt-2 max-w-prose">
             Each cup is thrown by hand in our workshop and glazed in small batches, so no two are quite alike. Free delivery
             on orders over 500 kr.

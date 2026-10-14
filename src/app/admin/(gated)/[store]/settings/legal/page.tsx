@@ -19,7 +19,7 @@ export default async function LegalPagesPage({ params }: PageProps<"/admin/[stor
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Legal pages</h1>
+        <h1 className="text-display text-ink">Legal pages</h1>
         <p className="max-w-2xl text-sm text-muted">
           The texts a shop is expected to show: its terms, how it handles personal data, how returns and delivery work, the right to withdraw and who the
           business is. Start from a draft, make it yours, publish it, and choose it here.

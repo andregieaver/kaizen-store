@@ -31,7 +31,7 @@ export default async function StaffMemberPage({ params }: PageProps<"/admin/[sto
         <Link href={`/admin/${store.slug}/bookings/staff`} className="text-sm underline">
           Staff and hours
         </Link>
-        <h1 className="text-2xl font-semibold">{staff.name}</h1>
+        <h1 className="text-display text-ink">{staff.name}</h1>
       </div>
       <StaffForm staff={staff} action={saveStaffAction.bind(null, store.slug, staff.id)} />
       <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={staff} actions={storeCalendarActions(store.slug, staff.id)} />

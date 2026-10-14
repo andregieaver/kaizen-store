@@ -462,7 +462,7 @@ function GeographySection({ base, geo, traffic, money }: { base: string; geo: Ge
       ) : null}
       {geo.cities.length > 0 || none.orders > 0 ? (
         <div className="space-y-2">
-          <h3 className="text-base font-semibold">Top cities</h3>
+          <h3 className="text-base font-medium">Top cities</h3>
           <DataTable caption="The cities with most revenue, with orders, share of revenue and average order" columns={cityColumns} rows={geo.cities} rowKey={(c) => c.key} footer={cityFooter} empty="No order has a delivery city." exportId="traffic.cities" exportLeftOut={{ orders: geo.unconverted, currencies: geo.missingCurrencies }} />
           {geo.truncated ? <p className="text-xs text-muted">There are very many cities, so the smallest were not read and &quot;Other cities&quot; is a little low.</p> : null}
         </div>
@@ -553,7 +553,7 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
       ) : (
         <>
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Searches that found nothing: products your customers want</h3>
+            <h3 className="text-base font-medium">Searches that found nothing: products your customers want</h3>
             <p className="max-w-prose text-sm text-muted">
               Each of these is a shopper telling you what they could not find. If you sell it, add the words they used to the product. If you do not, it may be a product worth adding.
             </p>
@@ -574,7 +574,7 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
             ))}
           </div>
           <div className="space-y-2">
-            <h3 className="text-base font-semibold">Most searched</h3>
+            <h3 className="text-base font-medium">Most searched</h3>
             <DataTable caption="The most searched terms with searches, results shown, searches that found nothing and click-through" columns={topColumns} rows={search.topTerms} rowKey={(r) => r.term} exportId="traffic.top_terms" />
           </div>
         </>
@@ -619,12 +619,12 @@ function WhenSection({ time, timeZone, money }: { time: TimeReport; timeZone: st
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div className="min-w-0 rounded-lg border border-border bg-background p-4">
-          <h3 className="mb-3 text-sm font-semibold">Orders by weekday and time of day</h3>
+          <h3 className="mb-3 text-sm font-medium">Orders by weekday and time of day</h3>
           <Heatmap label="Paid orders by weekday and two-hour band" columns={[...WEEKDAY_LABELS]} rows={rows} format={formatCount} emptyText="No paid orders in this period yet." exportId="traffic.heatmap" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
         </div>
         {orders > 0 ? (
           <div className="min-w-0 rounded-lg border border-border bg-background p-4">
-            <h3 className="mb-3 text-sm font-semibold">Orders by weekday</h3>
+            <h3 className="mb-3 text-sm font-medium">Orders by weekday</h3>
             <HorizontalBars label="Paid orders for each weekday" rows={weekdays} exportId="traffic.weekdays" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
           </div>
         ) : null}

@@ -24,7 +24,7 @@ export function PlanDiscount({
   canEdit: boolean;
 }) {
   return (
-    <section aria-labelledby="discount-heading" className="rounded-lg border border-border bg-background p-5 text-sm">
+    <section aria-labelledby="discount-heading" className="rounded-card border border-border bg-background p-5 text-sm">
       <h2 id="discount-heading" className="mb-1 font-medium">
         Discount code
       </h2>

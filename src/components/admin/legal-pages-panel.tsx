@@ -39,7 +39,7 @@ export function LegalPagesPanel({
   return (
     <div className="flex flex-col gap-8">
       <p role="note" className="rounded-lg border border-border bg-background p-4 text-sm">
-        <strong className="font-semibold">Draft texts need a person&apos;s review.</strong> {LEGAL_STARTER_NOTICE}
+        <strong className="font-medium">Draft texts need a person&apos;s review.</strong> {LEGAL_STARTER_NOTICE}
       </p>
 
       {overview.missing.length > 0 && (
@@ -63,7 +63,7 @@ export function LegalPagesPanel({
 
       <ul className="flex flex-col gap-4">
         {overview.roles.map((entry) => (
-          <li key={entry.role} className="rounded-lg border border-border bg-background p-5">
+          <li key={entry.role} className="rounded-card border border-border bg-background p-5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="font-medium">{entry.name}</h2>
               <span className="text-sm text-muted">{entry.page ? `Chosen: ${entry.page.title}` : "No page chosen"}</span>
@@ -125,14 +125,14 @@ export function LegalPagesPanel({
       </ul>
 
       {!overview.shopOn ? (
-        <section aria-labelledby="checkout-heading" className="rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="checkout-heading" className="rounded-card border border-border bg-background p-5">
           <h2 id="checkout-heading" className="mb-1 font-medium">
             At checkout
           </h2>
           <FeatureOffNote storeSlug={storeSlug} feature="shop" owner what="What checkout says about the terms" />
         </section>
       ) : (
-      <section aria-labelledby="checkout-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="checkout-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="checkout-heading" className="mb-1 font-medium">
           At checkout
         </h2>

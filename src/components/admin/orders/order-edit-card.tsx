@@ -62,13 +62,13 @@ export function OrderEditCard({
   const awaiting = edits.find((e) => e.status === "awaiting_payment") ?? null;
   const owed = edits.filter((e) => (e.refundOwedMinor ?? 0) > 0);
   return (
-    <section aria-labelledby="order-changes" className="rounded-lg border border-border bg-background p-5 text-sm">
+    <section aria-labelledby="order-changes" className="rounded-card border border-border bg-background p-5 text-sm">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
         <h2 id="order-changes" className="font-medium">
           Change the items
         </h2>
         {canWrite && !blockText && (
-          <Link href={editHref} className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 font-medium text-background">
+          <Link href={editHref} className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 font-medium text-background">
             Edit items
           </Link>
         )}

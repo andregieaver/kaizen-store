@@ -62,7 +62,7 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
         <Link href="/admin/platform/store-templates" className="w-fit text-sm underline underline-offset-2">
           Store templates
         </Link>
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-display text-ink">
           {shown.title}
           <LifecycleBadge facts={facts} />
         </h1>
@@ -74,7 +74,7 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
         </p>
       </div>
 
-      <section aria-labelledby="state" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="state" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
         <h2 id="state" className="font-medium">
           Publishing
         </h2>
@@ -114,7 +114,7 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
         </div>
       </section>
 
-      <section aria-labelledby="features" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="features" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
         <h2 id="features" className="font-medium">
           Features
         </h2>

@@ -23,7 +23,7 @@ export function WishlistTabs({ storeSlug, current }: { storeSlug: string; curren
           key={tab.key}
           href={tab.href}
           aria-current={tab.key === current ? "page" : undefined}
-          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold"
+          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-medium"
         >
           {tab.label}
         </Link>

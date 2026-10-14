@@ -61,7 +61,7 @@ export function UiTranslator({
     });
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+    <div className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
       <h2 className="font-medium">Translate with AI</h2>
       <p className="text-sm text-muted">
         Kaizen&apos;s AI translates the storefront&apos;s and the emails&apos; text from English. Every text is checked for its placeholders

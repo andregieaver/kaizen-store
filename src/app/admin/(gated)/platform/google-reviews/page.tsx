@@ -13,7 +13,7 @@ export default async function PlatformGoogleReviewsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Google reviews</h1>
+        <h1 className="text-display text-ink">Google reviews</h1>
         <p className="text-sm text-muted">
           Kaizen&apos;s rating and reviews on Google, for Testimonials components on Kaizen&apos;s own pages. Stores set up their own under
           Integrations.

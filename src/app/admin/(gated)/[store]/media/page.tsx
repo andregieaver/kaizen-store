@@ -34,7 +34,7 @@ export default async function MediaPage({ params, searchParams }: PageProps<"/ad
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Media library</h1>
+        <h1 className="text-display text-ink">Media library</h1>
         <p className="max-w-2xl text-sm text-muted">
           Every picture and video {store.name} has uploaded, here or in any editor. Add many at once, find them by name
           or alt text, give pictures alt texts (or let your AI write them), and see where each one is used on the site.

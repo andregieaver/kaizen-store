@@ -56,7 +56,7 @@ export async function ResourceCalendar({
 
   return (
     <>
-      <section aria-labelledby="blocks-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="blocks-heading" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
         <div>
           <h2 id="blocks-heading" className="font-medium">
             {staff ? "Time off" : "Blocked dates"}
@@ -117,7 +117,7 @@ export async function ResourceCalendar({
       </section>
 
       {!staff && (
-        <section aria-labelledby="sync-heading" className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="sync-heading" className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
           <div>
             <h2 id="sync-heading" className="font-medium">
               Calendar sync

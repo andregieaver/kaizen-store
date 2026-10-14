@@ -169,7 +169,7 @@ export function InventoryTable({
     <div className="flex flex-col gap-4" aria-busy={pending}>
       {canWrite && selected.size > 0 && (
         <section aria-label="Change the chosen variants" className={`${card} flex flex-col gap-3`}>
-          <h2 className="text-sm font-semibold">
+          <h2 className="text-sm font-medium">
             {selected.size.toLocaleString("en-GB")} {selected.size === 1 ? "variant" : "variants"} chosen
           </h2>
           <div className="flex flex-wrap items-end gap-3">
@@ -329,7 +329,7 @@ export function InventoryTable({
                           <span className={hint}>-</span>
                         ) : (
                           states.map((s) => (
-                            <span key={s} title={STATE_HELP[s]} className={`rounded-full border border-border px-2 py-0.5 text-xs ${s === "negative" || s === "out" ? "font-semibold" : ""}`}>
+                            <span key={s} title={STATE_HELP[s]} className={`rounded-full border border-border px-2 py-0.5 text-xs ${s === "negative" || s === "out" ? "font-medium" : ""}`}>
                               {STATE_WORDS[s]}
                             </span>
                           ))
@@ -438,7 +438,7 @@ export function InventoryTable({
 
       {reviewing && review.length > 0 && (
         <section aria-label="Review the changes" className={`${card} flex flex-col gap-3`}>
-          <h2 className="text-base font-semibold">Review the changes</h2>
+          <h2 className="text-base font-medium">Review the changes</h2>
           <p className={hint}>Nothing is saved yet. Each row is saved on its own: a row whose stock changed since this page was opened is left alone and listed.</p>
           <div className={tableShell}>
             <table className="w-full text-sm">
@@ -521,7 +521,7 @@ export function InventoryTable({
 
       {saved && (
         <section aria-label="Result" className={`${card} flex flex-col gap-2`}>
-          <h2 className="text-base font-semibold">{savedWords(saved)}</h2>
+          <h2 className="text-base font-medium">{savedWords(saved)}</h2>
           {saved.rows.filter((r) => r.outcome !== "written" && r.outcome !== "unchanged").length > 0 && (
             <ul className="flex flex-col gap-1 text-sm">
               {saved.rows

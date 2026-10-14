@@ -45,7 +45,7 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Rooms and rental items</h1>
+        <h1 className="text-display text-ink">Rooms and rental items</h1>
         <p className="text-sm text-muted">
           What shoppers book for nights or days. Choose which ones each stay or rental offers in the product.
         </p>

@@ -28,7 +28,7 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
   if (!read.ok) {
     return (
       <div className="flex max-w-xl flex-col gap-3">
-        <h1 className="text-2xl font-semibold">Connect a WordPress site</h1>
+        <h1 className="text-display text-ink">Connect a WordPress site</h1>
         <p role="alert" className="rounded-lg border border-red-600 p-4 text-sm">
           This request cannot be used: {read.reason} Start again from the plugin&apos;s settings in WordPress.
         </p>
@@ -40,7 +40,7 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
   const host = new URL(request.site).host;
   return (
     <div className="flex max-w-xl flex-col gap-5">
-      <h1 className="text-2xl font-semibold">Connect {host} to your stores?</h1>
+      <h1 className="text-display text-ink">Connect {host} to your stores?</h1>
       <p className="text-sm text-muted">
         The Kaizen plugin on <strong className="text-foreground">{request.name}</strong> ({request.site}) asks to read the products of your stores, so
         it can show them on its pages. Only approve a site you run.

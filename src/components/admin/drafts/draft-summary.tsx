@@ -103,7 +103,7 @@ export function DraftSummaryPanel({
               <dt>Shipping</dt>
               <dd className="tabular-nums">{summary.shippingMinor === 0 ? "Free" : money(summary.shippingMinor)}</dd>
             </div>
-            <div className="flex justify-between border-t border-border pt-1 text-base font-semibold">
+            <div className="flex justify-between border-t border-border pt-1 text-base font-medium">
               <dt>Total</dt>
               <dd className="tabular-nums">{money(summary.totalMinor)}</dd>
             </div>

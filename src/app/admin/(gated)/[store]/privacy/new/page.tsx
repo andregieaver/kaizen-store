@@ -24,7 +24,7 @@ export default async function NewPrivacyRequestPage({ params }: PageProps<"/admi
         <Link href={`/admin/${store.slug}/privacy`} className="text-sm underline">
           Privacy requests
         </Link>
-        <h1 className="text-2xl font-semibold">Log a request</h1>
+        <h1 className="text-display text-ink">Log a request</h1>
         <p className="max-w-2xl text-sm text-muted">Use this for a request that came by email, post or phone, so the clock and the answer are kept in one place.</p>
       </div>
       <LogRequestForm action={logRequestAction.bind(null, store.slug)} today={todayIn(store.timeZone)} />

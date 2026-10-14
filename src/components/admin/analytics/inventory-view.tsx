@@ -739,7 +739,7 @@ export function InventoryView({
         key={target ?? "all"}
         href={inventoryHref(path, { status: target, sort, showAll: false })}
         aria-current={active ? "true" : undefined}
-        className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm ${active ? "border-foreground bg-surface font-semibold" : "border-border"}`}
+        className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm ${active ? "border-foreground bg-surface font-medium" : "border-border"}`}
       >
         <span>{label}</span>
         <span className="tabular-nums text-muted">{formatCount(count)}</span>

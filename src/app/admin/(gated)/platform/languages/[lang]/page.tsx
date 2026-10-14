@@ -71,7 +71,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
     <div className="flex flex-col gap-6">
       <div>
         <Link href="/admin/platform/languages" className="text-sm underline">← Languages</Link>
-        <h1 className="text-2xl font-semibold">{language.name} <span className="text-base font-normal text-muted">· {nativeName(lang)}</span></h1>
+        <h1 className="text-display text-ink">{language.name} <span className="text-base font-normal text-muted">· {nativeName(lang)}</span></h1>
         <p className="max-w-3xl text-sm text-muted">
           The interface text of stores and emails in this language. The AI writes a draft; read it, correct what is wrong
           and mark it reviewed. Terms of purchase, withdrawal information and other legal texts are not in here: they
@@ -101,7 +101,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
             const g = groups.get(name)!;
             return (
               <Link key={name} href={href(name, filter)} aria-current={name === current ? "page" : undefined}
-                className="flex items-center justify-between rounded-md px-3 py-1.5 hover:bg-surface aria-[current=page]:bg-foreground aria-[current=page]:text-background">
+                className="flex items-center justify-between rounded-pill px-3 py-1.5 hover:bg-surface aria-[current=page]:bg-foreground aria-[current=page]:text-background">
                 <span>{name}</span>
                 <span className="text-xs opacity-80">{g.open > 0 ? `${g.open} of ${g.total}` : "✓"}</span>
               </Link>
@@ -111,11 +111,11 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
 
         <section aria-labelledby="group-heading" className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="group-heading" className="text-lg font-semibold">{current}</h2>
+            <h2 id="group-heading" className="text-lg font-medium">{current}</h2>
             <div role="group" aria-label="Show" className="flex gap-1 text-sm">
               {(Object.keys(FILTERS) as Filter[]).map((f) => (
                 <Link key={f} href={href(current, f)} aria-current={f === filter ? "true" : undefined}
-                  className="rounded-md border border-border px-3 py-1 aria-[current=true]:bg-foreground aria-[current=true]:text-background">
+                  className="rounded-pill border border-border px-3 py-1 aria-[current=true]:bg-foreground aria-[current=true]:text-background">
                   {FILTERS[f]}
                 </Link>
               ))}

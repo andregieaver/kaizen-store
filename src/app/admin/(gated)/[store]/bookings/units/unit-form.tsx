@@ -20,7 +20,7 @@ export function UnitForm({
 }) {
   const stay = kind === "unit";
   return (
-    <ActionForm action={action} className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
+    <ActionForm action={action} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
       <label className={field}>
         Name
         <input name="name" required maxLength={120} defaultValue={unit?.name ?? ""} className={control} />

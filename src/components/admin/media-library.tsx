@@ -291,7 +291,7 @@ export function MediaLibrary({
               >
                 <Preview item={item} small />
                 {choosing && (
-                  <span aria-hidden="true" className={`absolute left-2 top-2 flex size-6 items-center justify-center rounded-md border-2 text-sm font-bold ${chosen.has(item.id) ? "border-foreground bg-foreground text-background" : "border-foreground/60 bg-background"}`}>
+                  <span aria-hidden="true" className={`absolute left-2 top-2 flex size-6 items-center justify-center rounded-md border-2 text-sm font-medium ${chosen.has(item.id) ? "border-foreground bg-foreground text-background" : "border-foreground/60 bg-background"}`}>
                     {chosen.has(item.id) ? "✓" : ""}
                   </span>
                 )}

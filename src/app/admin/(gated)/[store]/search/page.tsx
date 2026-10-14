@@ -29,7 +29,7 @@ export default async function SearchStatsPage({ params }: PageProps<"/admin/[sto
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Search</h1>
+        <h1 className="text-display text-ink">Search</h1>
         <p className="text-sm text-muted">
           What shoppers searched for in the last {stats.days} days. Searches are kept {SEARCH_LOG_DAYS} days, as they can
           contain personal details.
@@ -38,15 +38,15 @@ export default async function SearchStatsPage({ params }: PageProps<"/admin/[sto
       <dl className="grid grid-cols-2 gap-4 sm:max-w-md">
         <div className="rounded-lg border border-border bg-background p-4">
           <dt className="text-sm text-muted">Searches</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{stats.searches}</dd>
+          <dd className="text-2xl font-medium tabular-nums">{stats.searches}</dd>
         </div>
         <div className="rounded-lg border border-border bg-background p-4">
           <dt className="text-sm text-muted">Found nothing</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{stats.searches === 0 ? "–" : percent.format(stats.zeroRate)}</dd>
+          <dd className="text-2xl font-medium tabular-nums">{stats.searches === 0 ? "–" : percent.format(stats.zeroRate)}</dd>
         </div>
         <div className="col-span-2 rounded-lg border border-border bg-background p-4">
           <dt className="text-sm text-muted">Helped by meaning</dt>
-          <dd className="text-2xl font-semibold tabular-nums">
+          <dd className="text-2xl font-medium tabular-nums">
             {stats.meaningSearches === 0 ? "–" : percent.format(stats.meaningHelped / stats.meaningSearches)}
           </dd>
           <dd className="text-sm text-muted">

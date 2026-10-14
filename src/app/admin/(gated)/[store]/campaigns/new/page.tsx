@@ -20,7 +20,7 @@ export default async function NewCampaignPage({ params }: PageProps<"/admin/[sto
         <Link href={`/admin/${store.slug}/campaigns`} className="text-sm underline">
           Campaigns
         </Link>
-        <h1 className="text-2xl font-semibold">New campaign</h1>
+        <h1 className="text-display text-ink">New campaign</h1>
       </div>
       <CampaignForm store={store} campaign={null} />
     </div>

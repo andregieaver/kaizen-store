@@ -87,7 +87,7 @@ export default async function WorkAssignmentPage({
         </nav>
         <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold [overflow-wrap:anywhere]">
+            <h1 className="text-display text-ink [overflow-wrap:anywhere]">
               {assignment.name} <Badge tone={STATUS_TONE[assignment.status]}>{STATUS_TEXT[assignment.status]}</Badge>{" "}
               {s.invoiced && <Badge tone="good">Invoiced</Badge>}
             </h1>

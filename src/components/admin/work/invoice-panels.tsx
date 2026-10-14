@@ -43,7 +43,7 @@ export function ClientInvoicesPanel({ storeSlug, clientId, clientName, locale, a
   return (
     <section aria-labelledby="client-invoices-heading" className="flex flex-col gap-3" data-slot="client-invoices">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="client-invoices-heading" className="text-lg font-semibold">
+        <h2 id="client-invoices-heading" className="text-lg font-medium">
           Invoices
         </h2>
         {archived ? null : <NewInvoiceButton storeSlug={storeSlug} clientId={clientId} className={button} />}
@@ -99,7 +99,7 @@ export function AssignmentInvoicesPanel({
       data-slot="assignment-invoices"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="assignment-invoices-heading" className="text-lg font-semibold">
+        <h2 id="assignment-invoices-heading" className="text-lg font-medium">
           Invoices
         </h2>
         {draftInvoiceId ? (

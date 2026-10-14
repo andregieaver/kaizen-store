@@ -13,7 +13,7 @@ export function BulkFailures({ failures }: { failures: BatchSummary["failures"] 
   if (failures.length === 0) return null;
   return (
     <div className="flex flex-col gap-1">
-      <h3 className="text-sm font-semibold">Not changed, and why</h3>
+      <h3 className="text-sm font-medium">Not changed, and why</h3>
       <ul className="flex flex-col gap-1 text-sm">
         {failures.map((f, i) => (
           <li key={`${f.productId}-${f.field}-${i}`} className="rounded-md border border-border bg-background px-3 py-2">
@@ -38,7 +38,7 @@ export function BulkResult({ summary, undo, onReload }: { summary: BatchSummary;
   const c = summary.counts;
   return (
     <section aria-label="Result" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-base font-semibold">{ACTION_WORDS[summary.action] ?? "Change"}: done</h2>
+      <h2 className="text-base font-medium">{ACTION_WORDS[summary.action] ?? "Change"}: done</h2>
       <p className="text-sm">
         {c.products} {c.products === 1 ? "product" : "products"}: {c.changed} changed, {c.unchanged} left as they were, {c.failed} failed.
       </p>

@@ -608,7 +608,7 @@ function VoiceBar({
       <button type="button" onClick={onMute} aria-pressed={muted} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface">
         {muted ? "Unmute" : "Mute"}
       </button>
-      <button type="button" onClick={onEnd} className="rounded-md bg-foreground px-2 py-1 text-xs text-background" title="End voice mode (Esc)">
+      <button type="button" onClick={onEnd} className="rounded-pill bg-foreground px-2 py-1 text-xs text-background" title="End voice mode (Esc)">
         End
       </button>
     </div>
@@ -631,7 +631,7 @@ function CallBar({ state, working, muted, onMute, onEnd }: { state: LiveState; w
       <button type="button" onClick={onMute} aria-pressed={muted} disabled={!on} className="rounded-md border border-border px-2 py-1 text-xs hover:bg-surface disabled:opacity-50">
         {muted ? "Unmute" : "Mute"}
       </button>
-      <button type="button" onClick={onEnd} className="rounded-md bg-foreground px-2 py-1 text-xs text-background" title="End the call (Esc)">
+      <button type="button" onClick={onEnd} className="rounded-pill bg-foreground px-2 py-1 text-xs text-background" title="End the call (Esc)">
         End
       </button>
     </div>

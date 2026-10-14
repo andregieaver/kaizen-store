@@ -52,7 +52,7 @@ export function TimerBar() {
             <span
               role="timer"
               aria-label="Time on the running timer"
-              className="font-mono text-base font-semibold tabular-nums"
+              className="font-mono text-base font-medium tabular-nums"
             >
               {formatTimerClock(timerElapsedMs(timer, now) / 1000)}
             </span>

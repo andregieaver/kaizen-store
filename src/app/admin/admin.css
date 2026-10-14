@@ -128,14 +128,14 @@ html[data-admin] header nav a:not([aria-current="page"]):hover {
  * Cards (a card-coloured box with a border): flat on the canvas, told apart by colour (docs/admin-style.md 1.2). Their border is the
  * scheme's hairline until the Card component lands, because boxes nested in a card still rely on it to be seen.
  */
-html[data-admin] :is(.rounded-lg, .rounded-xl).border.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *) {
+html[data-admin] :is(.rounded-lg, .rounded-xl, .rounded-card).border.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *) {
   box-shadow: var(--shadow-sm);
   transition:
     border-color 0.18s var(--ease),
     background-color 0.18s var(--ease);
 }
 /* ... and one that is a link answers the pointer with a firmer edge; cards do not move. */
-html[data-admin] a:is(.rounded-lg, .rounded-xl).border.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *):hover {
+html[data-admin] a:is(.rounded-lg, .rounded-xl, .rounded-card).border.bg-background:not(:is([data-theme-canvas], [data-theme-preview]) *):hover {
   border-color: var(--edge);
 }
 

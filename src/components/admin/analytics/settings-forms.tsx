@@ -201,7 +201,7 @@ function CostsSection({ base, currency, summary, actions }: Pick<AnalyticsSettin
         </p>
 
         <div className="flex flex-col gap-2 border-t border-border pt-4">
-          <h3 className="text-sm font-semibold">Costs on earlier orders</h3>
+          <h3 className="text-sm font-medium">Costs on earlier orders</h3>
           {variantsWithCost === 0 ? (
             <p className="text-sm text-muted">Once variants have a cost you can apply it to orders sold before you entered it.</p>
           ) : backfillableLines === 0 ? (
@@ -392,7 +392,7 @@ function TargetsSection({ currency, locale, today, targets, actions }: Pick<Anal
           </ActionForm>
         ) : null}
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold">Targets for the next 12 months</h3>
+          <h3 className="text-sm font-medium">Targets for the next 12 months</h3>
           <DataTable
             caption="Revenue targets for the next 12 months"
             columns={columns}
@@ -434,7 +434,7 @@ function VisitsSection({ summary, visitCounting, actions }: Pick<AnalyticsSettin
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <h3 className="text-sm font-semibold">What is counted</h3>
+            <h3 className="text-sm font-medium">What is counted</h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
               <li>One line per visitor per day, with no name, contact detail, IP address or browser details on it.</li>
               <li>The market, the kind of device (phone, tablet or computer) and where the visitor came from: the link, or the campaign tag in it.</li>
@@ -443,7 +443,7 @@ function VisitsSection({ summary, visitCounting, actions }: Pick<AnalyticsSettin
             </ul>
           </div>
           <div className="flex flex-col gap-1.5">
-            <h3 className="text-sm font-semibold">What is not counted or kept</h3>
+            <h3 className="text-sm font-medium">What is not counted or kept</h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
               <li>No cookies and nothing stored in the browser, so it shows no cookie banner.</li>
               <li>No IP address and no browser details are stored.</li>

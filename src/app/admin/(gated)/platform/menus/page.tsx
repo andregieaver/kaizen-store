@@ -26,7 +26,7 @@ export default async function PlatformMenusPage({ searchParams }: PageProps<"/ad
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Menus</h1>
+        <h1 className="text-display text-ink">Menus</h1>
         <p className="max-w-2xl text-sm text-muted">
           Lists of links to use around Kaizen&apos;s site: in the standard header and footer (chosen under Header and
           footer), and with a Menu component in any page, header or footer. A link to a page shows once it is published,

@@ -46,7 +46,7 @@ export function AnalyticsHeader({
   return (
     <header className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-display text-ink">{title}</h1>
         {description ? <p className="mt-1 max-w-3xl text-sm text-muted">{description}</p> : null}
       </div>
       {picker ? (

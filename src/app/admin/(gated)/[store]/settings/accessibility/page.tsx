@@ -20,7 +20,7 @@ export default async function AccessibilityPage({ params }: PageProps<"/admin/[s
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Accessibility</h1>
+        <h1 className="text-display text-ink">Accessibility</h1>
         <p className="max-w-2xl text-sm text-muted">
           Shops sold to consumers in the EU have to be usable by disabled people, and to say how they meet the requirements. Record what has been
           assessed, and make a draft accessibility statement.

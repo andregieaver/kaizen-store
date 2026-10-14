@@ -81,10 +81,10 @@ export function ActivityFilters({
           <input type="date" name="to" defaultValue={values.to} className={field} />
         </label>
         <div className="flex gap-2">
-          <button type="submit" className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
+          <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
             Filter
           </button>
-          <Link href={action} className="inline-flex min-h-10 items-center rounded-md border border-border bg-background px-4 text-sm hover:bg-surface">
+          <Link href={action} className="inline-flex min-h-10 items-center rounded-pill border border-border bg-background px-4 text-sm hover:bg-surface">
             Clear
           </Link>
         </div>
@@ -104,7 +104,7 @@ export function ActivityFilters({
             Last day
             <input type="date" name="to" required defaultValue={values.to} className={field} />
           </label>
-          <button type="submit" className="min-h-10 rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+          <button type="submit" className="min-h-10 rounded-pill border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
             Download CSV
           </button>
           <p className="basis-full text-xs text-muted">Owners only. Up to 50,000 entries; choose a shorter period for more. Respects the filters above.</p>
@@ -133,7 +133,7 @@ export function ActivityList({
   older?: string | null;
   empty?: string;
 }) {
-  if (entries.length === 0) return <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">{empty}</p>;
+  if (entries.length === 0) return <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">{empty}</p>;
   return (
     <div className="flex flex-col gap-4">
       <ol className="divide-y divide-border rounded-lg border border-border bg-background">
@@ -167,7 +167,7 @@ export function ActivityList({
       </ol>
       {older && (
         <p>
-          <Link href={older} className="inline-flex min-h-10 items-center rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+          <Link href={older} className="inline-flex min-h-10 items-center rounded-pill border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
             Older entries
           </Link>
         </p>

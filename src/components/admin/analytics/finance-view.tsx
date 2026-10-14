@@ -292,7 +292,7 @@ function BridgeTable({ current, comparison, money }: { current: FinancePeriodDat
             const before = prior ? lineOf(prior.statement, line.key) : undefined;
             const beforeAmount = prior ? (before ? before.amountMinor : line.key === "rounding" ? 0 : null) : null;
             return (
-              <tr key={line.key} data-line={line.key} className={`border-b border-border last:border-b-0 ${line.subtotal ? "bg-surface font-semibold" : ""}`}>
+              <tr key={line.key} data-line={line.key} className={`border-b border-border last:border-b-0 ${line.subtotal ? "bg-surface font-medium" : ""}`}>
                 <th scope="row" className="min-w-[10rem] px-3 py-2 text-left align-top font-[inherit]">
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span {...(line.note && !noteShown(line) ? { title: line.note } : {})}>{plainLabel(line.label)}</span>

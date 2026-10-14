@@ -50,13 +50,13 @@ export default async function PlanRemindersPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Plan reminders</h1>
+        <h1 className="text-display text-ink">Plan reminders</h1>
         <p className="text-sm text-muted">
           Emails to store owners who went to pay for a plan and did not finish, with a link straight back to paying.
         </p>
       </div>
 
-      <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-card border border-border bg-background p-5">
         <div className="flex max-w-2xl flex-col gap-2 text-sm">
           <h2 id="switch-heading" className="text-base font-medium">
             {settings.enabled ? (active > 0 ? "Reminders are on" : "On, but every reminder is switched off") : "Reminders are off"}
@@ -88,15 +88,15 @@ export default async function PlanRemindersPage() {
         <div className="grid grid-cols-3 gap-3">
           <div className={tile}>
             <span className="text-sm text-muted">Went to pay</span>
-            <span className="text-2xl font-semibold">{stats.captured}</span>
+            <span className="text-2xl font-medium">{stats.captured}</span>
           </div>
           <div className={tile}>
             <span className="text-sm text-muted">Reminded</span>
-            <span className="text-2xl font-semibold">{stats.reminded}</span>
+            <span className="text-2xl font-medium">{stats.reminded}</span>
           </div>
           <div className={tile}>
             <span className="text-sm text-muted">On a plan after a reminder</span>
-            <span className="text-2xl font-semibold">{stats.recovered}</span>
+            <span className="text-2xl font-medium">{stats.recovered}</span>
           </div>
         </div>
       </section>
@@ -106,7 +106,7 @@ export default async function PlanRemindersPage() {
           <h2 id="steps-heading" className="font-medium">
             Reminders
           </h2>
-          <Link href={`${base}/new`} className="min-h-10 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background">
+          <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background">
             New reminder
           </Link>
         </div>

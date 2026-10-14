@@ -526,7 +526,7 @@ export function PageEditor({
                             ? "Wide pictures"
                             : "About us"
                   }
-                  className={`${input} min-h-12 text-xl font-semibold`}
+                  className={`${input} min-h-12 text-xl font-medium`}
                 />
               </label>
               {layout ? (
@@ -797,7 +797,7 @@ export function PageEditor({
               type="button"
               onClick={() => submit(false)}
               disabled={busy}
-              className="min-h-11 rounded-md bg-foreground px-5 font-medium text-background disabled:opacity-50"
+              className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50"
             >
               {busy ? "Saving …" : "Save"}
             </button>
@@ -815,7 +815,7 @@ export function PageEditor({
                 type="button"
                 onClick={requestPublish}
                 disabled={busy}
-                className="min-h-11 rounded-md bg-foreground px-5 font-medium text-background disabled:opacity-50"
+                className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50"
               >
                 {busy ? "Saving …" : saved?.published ? "Publish changes" : "Publish"}
               </button>
@@ -852,7 +852,7 @@ export function PageEditor({
             onClick={() => setCssOpen((open) => !open)}
             aria-expanded={cssOpen}
             aria-controls="css-panel"
-            className="flex min-h-11 items-center gap-2 rounded-md border border-border px-4 text-sm font-medium hover:bg-surface"
+            className="flex min-h-11 items-center gap-2 rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface"
           >
             <span aria-hidden className="font-mono">{"{ }"}</span>
             Custom CSS
@@ -1186,7 +1186,7 @@ function LanguageField({
           return (
             <label
               key={language.locale}
-              className="relative flex cursor-pointer flex-col rounded-md border border-border px-3 py-1.5 text-sm has-checked:border-foreground has-checked:bg-foreground has-checked:text-background has-focus-visible:outline-2"
+              className="relative flex cursor-pointer flex-col rounded-pill border border-border px-3 py-1.5 text-sm has-checked:border-foreground has-checked:bg-foreground has-checked:text-background has-focus-visible:outline-2"
             >
               <input
                 type="radio"

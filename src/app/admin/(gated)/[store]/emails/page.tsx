@@ -12,8 +12,8 @@ export default async function StoreEmailsPage({ params }: PageProps<"/admin/[sto
   const emails = await listEmails({ storeId: store.id, limit: 200 });
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Emails to customers</h1>
-      <section className="rounded-lg border border-border bg-background p-5">
+      <h1 className="text-display text-ink">Emails to customers</h1>
+      <section className="rounded-card border border-border bg-background p-5">
         <EmailLog emails={emails} base={`/admin/${store.slug}/emails`} locale={store.markets[0]?.locale} />
       </section>
     </div>

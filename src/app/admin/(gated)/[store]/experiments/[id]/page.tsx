@@ -32,7 +32,7 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
         <Link href={base} className="w-fit text-sm underline">
           A/B tests
         </Link>
-        <h1 className="text-2xl font-semibold">{test.name}</h1>
+        <h1 className="text-display text-ink">{test.name}</h1>
         <p className="text-sm text-muted">
           {STATUS_WORDS[test.status]} · {targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role)}
           {test.part && ` · testing ${test.part.label}`} · {goal.label}

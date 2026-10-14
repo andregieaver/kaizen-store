@@ -66,7 +66,7 @@ export default async function WorkTimePage({ params, searchParams }: PageProps<"
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Time</h1>
+        <h1 className="text-display text-ink">Time</h1>
         <p className="text-sm text-muted">
           {owner ? "Time logged by everyone in the store." : "Your time."} Start a timer, log time by hand, and find
           what you logged.

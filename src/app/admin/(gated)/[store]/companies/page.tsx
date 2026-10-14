@@ -28,7 +28,7 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Companies</h1>
+        <h1 className="text-display text-ink">Companies</h1>
         <p className="text-sm text-muted">
           A company&apos;s main account invites its employees by email from My account in the store. Everyone in the company gets its group&apos;s discount, employees the share you set.
         </p>
@@ -74,7 +74,7 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
         </div>
       )}
 
-      <section aria-labelledby="new-company" className="flex max-w-xl flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="new-company" className="flex max-w-xl flex-col gap-3 rounded-card border border-border bg-background p-5">
         <h2 id="new-company" className="font-medium">
           New company
         </h2>

@@ -49,7 +49,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
       <div>
         <p className="text-sm text-muted">{store.name}</p>
-        <h1 className="text-2xl font-semibold">{host.name}</h1>
+        <h1 className="text-display text-ink">{host.name}</h1>
         <p className="text-sm text-muted">
           The store keeps {host.commissionBps / 100} % of each booking; you are paid the rest.
         </p>
@@ -66,7 +66,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         />
       )}
 
-      <section aria-labelledby="tax-heading" className="flex flex-col gap-1 rounded-lg border border-border bg-background p-5 text-sm">
+      <section aria-labelledby="tax-heading" className="flex flex-col gap-1 rounded-card border border-border bg-background p-5 text-sm">
         <h2 id="tax-heading" className="font-medium">
           Tax details
         </h2>

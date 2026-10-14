@@ -93,7 +93,7 @@ export function AffiliateBlockForm({
             <button
               type="submit"
               disabled={pending}
-              className="min-h-9 rounded-md bg-foreground px-3 text-sm font-medium text-background disabled:opacity-40"
+              className="min-h-9 rounded-pill bg-foreground px-3 text-sm font-medium text-background disabled:opacity-40"
             >
               {pending ? "Saving …" : "Block"}
             </button>

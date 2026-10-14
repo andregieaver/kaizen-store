@@ -130,7 +130,7 @@ export function TemplatesTab({
       <button
         type="button"
         onClick={onBrowse}
-        className="min-h-10 rounded-md border border-border px-4 text-sm font-medium hover:bg-surface"
+        className="min-h-10 rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface"
       >
         Browse templates
       </button>

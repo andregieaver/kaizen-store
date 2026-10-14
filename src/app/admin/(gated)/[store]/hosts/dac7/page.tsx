@@ -38,7 +38,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
         <Link href={base} className="text-sm underline">
           Hosts
         </Link>
-        <h1 className="text-2xl font-semibold">Tax report (DAC7)</h1>
+        <h1 className="text-display text-ink">Tax report (DAC7)</h1>
         <p className="text-sm text-muted">
           As a marketplace, the store reports its hosts and what they were paid to the tax authority of the country it is
           based in, once a year, by 31 January for the year before (in Norway, to Skatteetaten). Here is what Kaizen has

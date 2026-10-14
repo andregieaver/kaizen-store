@@ -35,7 +35,7 @@ export function StripeAccountPanel({
   return (
     <section
       aria-labelledby={`stripe-${mode}-heading`}
-      className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5"
+      className="flex flex-col gap-4 rounded-card border border-border bg-background p-5"
     >
       <div>
         <h2 id={`stripe-${mode}-heading`} className="font-medium">

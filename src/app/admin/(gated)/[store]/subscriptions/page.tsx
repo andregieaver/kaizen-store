@@ -19,7 +19,7 @@ export default async function SubscriptionsPage({ params }: Props) {
   const { store } = current;
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Subscriptions</h1>
+      <h1 className="text-display text-ink">Subscriptions</h1>
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-background" />}>
         <SubscriptionList storeSlug={store.slug} />
       </Suspense>
@@ -36,7 +36,7 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
 
   if (subscriptions.length === 0) {
     return (
-      <p className="rounded-lg border border-border bg-background p-8 text-center text-sm">
+      <p className="rounded-card border border-border bg-background p-8 text-center text-sm">
         No subscriptions yet. Offer one under a product&apos;s Subscriptions section; each shopper who
         subscribes appears here.
       </p>

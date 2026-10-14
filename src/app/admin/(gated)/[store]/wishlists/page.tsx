@@ -37,7 +37,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Wishlists</h1>
+        <h1 className="text-display text-ink">Wishlists</h1>
         <p className="text-sm text-muted">
           What shoppers have saved with the heart, signed in or not, and what went from their lists to the cart and was bought.
         </p>
@@ -53,7 +53,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
         ].map(([label, value, note]) => (
           <div key={label} className="flex flex-col gap-1 rounded-lg border border-border bg-background p-4">
             <span className="text-sm text-muted">{label}</span>
-            <span className="text-xl font-semibold">{value}</span>
+            <span className="text-xl font-medium">{value}</span>
             {note && <span className="text-xs text-muted">{note}</span>}
           </div>
         ))}
@@ -73,7 +73,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
               placeholder="Search by list, customer or product"
               className="min-h-10 w-full max-w-sm rounded-md border border-border bg-background px-3 text-sm"
             />
-            <button type="submit" className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
+            <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
               Search
             </button>
             {(q || customerId) && (
@@ -140,7 +140,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           )}
         </div>
 
-        <section aria-labelledby="most-wished" className="h-fit rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="most-wished" className="h-fit rounded-card border border-border bg-background p-5">
           <h2 id="most-wished" className="mb-3 font-medium">Most wished for</h2>
           {top.length === 0 ? (
             <p className="text-sm text-muted">Nothing saved yet.</p>

@@ -28,7 +28,7 @@ export function FeaturesView({ base, owner, shop, groups, count, onSwitch }: Fea
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">Features</h1>
+        <h1 className="text-display text-ink">Features</h1>
         <p className="text-sm text-muted">
           Switch on what your store uses; the rest stays out of your way. Nothing is deleted when you switch something off.
         </p>
@@ -102,7 +102,7 @@ function FeatureItem({ row, base, owner, master = false, onSwitch }: ItemProps) 
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span id={`feature-${row.id}-label`} className={master ? "text-lg font-semibold" : "font-medium"}>
+            <span id={`feature-${row.id}-label`} className={master ? "text-lg font-medium" : "font-medium"}>
               {row.label}
             </span>
             {row.inUse && !master && <span className="rounded border border-border px-1.5 py-0.5 text-xs text-muted">In use</span>}
@@ -226,7 +226,7 @@ export function OffPanel({ id, row, base, blockers, warnings, pending, problems,
             disabled={pending}
             aria-busy={pending || undefined}
             onClick={onConfirm}
-            className="min-h-11 rounded-md bg-foreground px-4 font-medium text-background disabled:opacity-60"
+            className="min-h-11 rounded-pill bg-foreground px-4 font-medium text-background disabled:opacity-60"
           >
             Switch off
           </button>

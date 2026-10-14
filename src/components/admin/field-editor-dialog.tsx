@@ -180,14 +180,14 @@ export function FieldEditorDialog({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-10 rounded-md border border-border px-4 text-sm hover:bg-surface"
+            className="min-h-10 rounded-pill border border-border px-4 text-sm hover:bg-surface"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={apply}
-            className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background"
+            className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background"
           >
             Apply
           </button>

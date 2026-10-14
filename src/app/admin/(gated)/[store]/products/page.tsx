@@ -27,7 +27,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Products</h1>
+        <h1 className="text-display text-ink">Products</h1>
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/admin/${store.slug}/products/export`}
@@ -51,7 +51,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
           </Link>
           <Link
             href={`/admin/${store.slug}/products/new`}
-            className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
+            className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
           >
             Add product
           </Link>
@@ -117,14 +117,14 @@ async function ProductList({
         <Link
           href={base}
           aria-current={archived || needsFilter ? undefined : "page"}
-          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold"
+          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-medium"
         >
           Current
         </Link>
         <Link
           href={`${base}?show=archived`}
           aria-current={archived ? "page" : undefined}
-          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold"
+          className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-medium"
         >
           Archived
         </Link>
@@ -132,7 +132,7 @@ async function ProductList({
           <Link
             href={needsHref}
             aria-current={needsFilter ? "page" : undefined}
-            className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-semibold"
+            className="rounded px-2 py-1 aria-[current=page]:bg-background aria-[current=page]:font-medium"
           >
             Needs content
           </Link>
@@ -141,7 +141,7 @@ async function ProductList({
       {needsFilter ? (
         <NeedsContentList products={needing} base={base} />
       ) : products.length === 0 ? (
-        <div className="rounded-lg border border-border bg-background p-8 text-center">
+        <div className="rounded-card border border-border bg-background p-8 text-center">
           <p className="mb-3">{archived ? "No archived products." : "No products yet."}</p>
           {!archived && (
             <Link href={`${base}/new`} className="underline">

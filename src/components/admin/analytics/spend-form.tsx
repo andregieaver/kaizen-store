@@ -77,7 +77,7 @@ export function SpendSection({ currency, locale, today, entries, limit, actions 
       title="Ad spend"
       description="What you paid for marketing. Sales are known exactly, but ad bills are not, so CAC and ROAS come from what you enter here."
     >
-      <div className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
+      <div className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
         <ActionForm action={actions.add} className="flex flex-col gap-4" successMessage="Saved. CAC and ROAS follow it.">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <Field label="Day" hint="The day the money was spent. Enter a month's spend one day at a time, or the whole amount on one day.">
@@ -117,7 +117,7 @@ export function SpendSection({ currency, locale, today, entries, limit, actions 
         </ActionForm>
 
         <div className="flex flex-col gap-2 border-t border-border pt-4">
-          <h3 className="text-sm font-semibold">Latest entries</h3>
+          <h3 className="text-sm font-medium">Latest entries</h3>
           <DataTable
             caption="Latest ad spend entries"
             columns={columns}

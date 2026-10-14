@@ -34,7 +34,7 @@ export default async function DuplicateStorePage({ params }: PageProps<"/admin/s
             Your stores
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold">Duplicate {result?.ok ? result.choices.source.name : "a store"}</h1>
+        <h1 className="text-display text-ink">Duplicate {result?.ok ? result.choices.source.name : "a store"}</h1>
         <p className="text-sm text-muted">
           Make a new store from this one. Choose what comes along; the new store starts closed and you are its owner.
         </p>
@@ -42,7 +42,7 @@ export default async function DuplicateStorePage({ params }: PageProps<"/admin/s
       {result?.ok ? (
         <StoreCopyWizard choices={result.choices} start={startStoreCopyAction} />
       ) : (
-        <p role="status" className="max-w-xl rounded-lg border border-border bg-background p-5 text-sm">
+        <p role="status" className="max-w-xl rounded-card border border-border bg-background p-5 text-sm">
           You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizen for more.
         </p>
       )}

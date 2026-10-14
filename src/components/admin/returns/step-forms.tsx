@@ -254,10 +254,10 @@ export function RefundWorking({ preview, currency, locale }: { preview: RefundPr
             </tr>
           ))}
           <tr>
-            <th scope="row" className="pt-2 pr-3 font-semibold">
+            <th scope="row" className="pt-2 pr-3 font-medium">
               To refund
             </th>
-            <td className="pt-2 text-right font-semibold tabular-nums">{money(preview.amountMinor)}</td>
+            <td className="pt-2 text-right font-medium tabular-nums">{money(preview.amountMinor)}</td>
           </tr>
         </tbody>
       </table>

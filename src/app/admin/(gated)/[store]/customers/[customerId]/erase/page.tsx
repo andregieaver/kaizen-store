@@ -58,7 +58,7 @@ async function Preview({ storeSlug, customerId, searchParams }: { storeSlug: str
         <Link href={`/admin/${store.slug}/customers/${ref.key}`} className="text-sm underline">
           Customer
         </Link>
-        <h1 className="text-2xl font-semibold">Erase personal data</h1>
+        <h1 className="text-display text-ink">Erase personal data</h1>
         <p className="max-w-2xl text-sm text-muted">
           Read what happens first. Sales the bookkeeping law keeps are kept without the person&apos;s name, address and email until the period ends, then made anonymous. Nothing is deleted from the accounts.
         </p>

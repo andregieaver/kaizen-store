@@ -38,7 +38,7 @@ export function ConversationList({
                 {row.unread && (
                   <span className="size-2 shrink-0 rounded-full bg-foreground" aria-label="Unread" role="img" />
                 )}
-                <span className={`min-w-0 flex-1 truncate ${row.unread ? "font-semibold" : "font-medium"}`}>{row.who}</span>
+                <span className={`min-w-0 flex-1 truncate ${row.unread ? "font-medium" : "font-medium"}`}>{row.who}</span>
                 <span className="shrink-0 text-xs text-muted">{agoWords(row.lastMessageAt, now)}</span>
               </span>
               {row.store && <span className="truncate text-xs text-muted">{row.store.name}</span>}

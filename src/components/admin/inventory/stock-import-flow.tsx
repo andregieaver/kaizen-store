@@ -114,7 +114,7 @@ export function StockCheck({ check, checked }: { check: () => Promise<Step>; che
   const [pending, start] = useTransition();
   return (
     <div className={`${card} flex flex-col gap-3`} aria-busy={pending}>
-      <h2 className="text-base font-semibold">{checked ? "Check the file again" : "Check the file"}</h2>
+      <h2 className="text-base font-medium">{checked ? "Check the file again" : "Check the file"}</h2>
       <p className="text-sm text-muted">The check reads every row against the stock as it is now and lists what an import would do. It changes nothing.</p>
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -163,7 +163,7 @@ export function StockImportApply({
     });
   return (
     <section aria-label="Import" className={`${card} flex flex-col gap-3`} aria-busy={pending}>
-      <h2 className="text-base font-semibold">Ready to import</h2>
+      <h2 className="text-base font-medium">Ready to import</h2>
       <p className="text-sm">
         {wholeNumber(counts.toUpdate)} to change, {wholeNumber(counts.unchanged)} unchanged
         {counts.conflicts > 0 ? `, ${wholeNumber(counts.conflicts)} out of date` : ""}

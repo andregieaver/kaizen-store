@@ -55,7 +55,7 @@ export function FindingsTable({
   return (
     <section aria-labelledby="findings-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="findings-title" className="text-base font-semibold">
+        <h2 id="findings-title" className="text-base font-medium">
           What the file says, product by product
         </h2>
         {problemsHref && (
@@ -68,7 +68,7 @@ export function FindingsTable({
       </div>
       <nav aria-label="Filter by severity" className="flex flex-wrap gap-2 text-sm">
         {SEVERITY_FILTERS.map((s) => (
-          <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-surface aria-[current=page]:font-semibold">
+          <Link key={s} href={hrefFor({ severity: s })} aria-current={severity === s ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-surface aria-[current=page]:font-medium">
             {s === "all" ? "All products" : `${SEVERITY_WORDS[s]}s`}
           </Link>
         ))}

@@ -23,7 +23,7 @@ export default async function PlatformAiUsagePage({ searchParams }: PageProps<"/
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">AI usage</h1>
+          <h1 className="text-display text-ink">AI usage</h1>
           <p className="text-sm text-muted">
             What every store and Kaizen itself used, {chosen.label.toLowerCase()}.{" "}
             <Link href="/admin/platform/ai" className="underline">

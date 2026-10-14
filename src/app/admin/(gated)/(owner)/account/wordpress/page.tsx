@@ -24,7 +24,7 @@ export default async function WordpressPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">WordPress</h1>
+        <h1 className="text-display text-ink">WordPress</h1>
         <p className="max-w-3xl text-sm text-muted">
           Show products from your stores on a WordPress site, as a grid or a carousel, with a shortcode. Install the plugin on the site, choose
           Connect, and approve here. The site can read the products, prices and pictures your stores show shoppers, for the stores you belong to,
@@ -32,7 +32,7 @@ export default async function WordpressPage() {
         </p>
       </div>
 
-      <section aria-labelledby="plugin-heading" className="flex max-w-3xl flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="plugin-heading" className="flex max-w-3xl flex-col gap-3 rounded-card border border-border bg-background p-5">
         <h2 id="plugin-heading" className="font-medium">
           The plugin
         </h2>

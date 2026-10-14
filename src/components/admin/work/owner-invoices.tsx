@@ -65,7 +65,7 @@ export function OwnerInvoicesView({
   return (
     <div className="flex max-w-6xl flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Invoices</h1>
+        <h1 className="text-display text-ink">Invoices</h1>
         <NewInStoreButton
           kind="invoice"
           stores={stores.map(({ slug, name }) => ({ slug, name }))}
@@ -135,7 +135,7 @@ export function OwnerInvoicesView({
                 <span className="block text-xs text-muted">
                   {total.currency}, {total.count} {total.count === 1 ? "invoice" : "invoices"}
                 </span>
-                <span className="font-semibold tabular-nums">
+                <span className="font-medium tabular-nums">
                   {formatMoney(total.totalMinor, total.currency, WORK_LOCALE)}
                 </span>
                 {total.outstandingMinor > 0 && (
@@ -151,7 +151,7 @@ export function OwnerInvoicesView({
       )}
 
       {list.rows.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
           {empty
             ? "No invoices yet. Start one with New invoice, or from a client's unbilled time."
             : "No invoice matches. Try another tab or clear the filters."}

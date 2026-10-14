@@ -29,13 +29,13 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
         <Link href="/admin/platform/discounts" className="text-sm underline">
           Discounts
         </Link>
-        <h1 className="font-mono text-2xl font-semibold">{discount.code}</h1>
+        <h1 className="font-mono text-display text-ink">{discount.code}</h1>
         <p className="text-sm text-muted">
           On {discount.stores} {discount.stores === 1 ? "store's plan" : "stores' plans"}. Changing what it gives makes a new
           coupon in Stripe for codes used from now on; plans that already have it keep what they got.
         </p>
       </div>
-      <section aria-label="Code" className="rounded-lg border border-border bg-background p-5">
+      <section aria-label="Code" className="rounded-card border border-border bg-background p-5">
         <ActionForm action={updatePlatformDiscountAction.bind(null, discount.id)} className="flex flex-col gap-4">
           <PlatformDiscountFields discount={discount} currencies={currencies} />
           <SubmitButton>Save</SubmitButton>

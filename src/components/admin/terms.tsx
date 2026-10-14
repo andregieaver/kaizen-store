@@ -236,7 +236,7 @@ export function TermsManager({
       {(["category", "tag"] as const).map((kind) => {
         const list = kind === "category" ? tree : tags.map((t) => ({ ...t, depth: 0 }));
         return (
-          <section key={kind} aria-labelledby={`${kind}-heading`} className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
+          <section key={kind} aria-labelledby={`${kind}-heading`} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
             <div className="flex flex-col gap-1">
               <h2 id={`${kind}-heading`} className="font-medium">
                 {TERM_LABELS[kind].many}

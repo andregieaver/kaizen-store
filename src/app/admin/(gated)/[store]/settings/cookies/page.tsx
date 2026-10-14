@@ -27,13 +27,13 @@ export default async function StoreCookiesPage({ params }: PageProps<"/admin/[st
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Cookies and tracking</h1>
+        <h1 className="text-display text-ink">Cookies and tracking</h1>
         <p className="max-w-2xl text-sm text-muted">
           What your store stores in shoppers&apos; browsers, the tools and code you use to measure and market, and the
           choices shoppers make about them. Your cookie page lists every cookie, in each of your languages.
         </p>
       </div>
-      <section aria-labelledby="visit-counting-heading" className="flex flex-col gap-1 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="visit-counting-heading" className="flex flex-col gap-1 rounded-card border border-border bg-background p-5">
         <h2 id="visit-counting-heading" className="font-medium">
           Visit counting for your analytics: {store.visitCounting ? "on" : "off"}
         </h2>

@@ -19,7 +19,7 @@ export default async function SupportRequestsPage({ params, searchParams }: Page
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Requests</h1>
+        <h1 className="text-display text-ink">Requests</h1>
         <p className="text-muted">What the chat assistant could not do and passed to your team: refunds, cancelling an order, a new address, an exception.</p>
       </div>
       <RequestsView

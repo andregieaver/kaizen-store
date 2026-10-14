@@ -412,7 +412,7 @@ function Amount({
   return (
     <div>
       <dt className="text-muted">{label}</dt>
-      <dd className={`text-lg tabular-nums ${strong ? "font-semibold" : ""}`}>{value}</dd>
+      <dd className={`text-lg tabular-nums ${strong ? "font-medium" : ""}`}>{value}</dd>
       {note && <dd className="text-xs text-red-700 dark:text-red-400">{note}</dd>}
     </div>
   );

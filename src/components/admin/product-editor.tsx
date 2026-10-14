@@ -238,7 +238,7 @@ export function ProductEditor(props: Props) {
           <Link href={`/admin/${storeSlug}/products`} className="text-sm underline">
             Products
           </Link>
-          <h1 className="text-xl font-semibold">{title || (productId ? "Untitled product" : "New product")}</h1>
+          <h1 className="text-xl font-medium">{title || (productId ? "Untitled product" : "New product")}</h1>
         </div>
         <div className="flex items-center gap-3">
           <label className="flex items-center gap-2 text-sm">
@@ -255,7 +255,7 @@ export function ProductEditor(props: Props) {
           <button
             type="submit"
             disabled={saving}
-            className="min-h-10 rounded-md bg-foreground px-5 text-sm font-medium text-background disabled:opacity-50"
+            className="min-h-10 rounded-pill bg-foreground px-5 text-sm font-medium text-background disabled:opacity-50"
           >
             {saving ? "Saving …" : "Save"}
           </button>
@@ -462,7 +462,7 @@ export function ProductEditor(props: Props) {
         <button
           type="submit"
           disabled={saving}
-          className="min-h-10 rounded-md bg-foreground px-5 text-sm font-medium text-background disabled:opacity-50"
+          className="min-h-10 rounded-pill bg-foreground px-5 text-sm font-medium text-background disabled:opacity-50"
         >
           {saving ? "Saving …" : "Save"}
         </button>
@@ -552,7 +552,7 @@ function TextSection({
                 aria-selected={l === locale}
                 aria-controls={`${tabsId}-panel`}
                 onClick={() => setLocale(l)}
-                className="min-h-9 rounded-md border border-border px-3 text-sm aria-selected:border-foreground aria-selected:font-semibold"
+                className="min-h-9 rounded-md border border-border px-3 text-sm aria-selected:border-foreground aria-selected:font-medium"
               >
                 {languageNames[l] ?? l}
                 {!filled && <span className="text-muted"> (empty)</span>}

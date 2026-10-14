@@ -10,8 +10,8 @@ import { WORK_ROOT } from "@/lib/work-paths";
 export function WorkOff({ title }: { storeSlug?: string; title: string }) {
   return (
     <div className="flex max-w-3xl flex-col gap-3">
-      <h1 className="text-2xl font-semibold">{title}</h1>
-      <p className="rounded-lg border border-border bg-background p-5 text-sm">
+      <h1 className="text-display text-ink">{title}</h1>
+      <p className="rounded-card border border-border bg-background p-5 text-sm">
         Work is off for this store, so this page is hidden from the menu.{" "}
         <Link href={`${WORK_ROOT}/settings`} className="underline">
           Switch it on in Work settings

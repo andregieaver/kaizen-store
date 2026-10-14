@@ -260,7 +260,7 @@ export function Inbox({
   return (
     <div className="flex h-[calc(100dvh-10rem)] min-h-[28rem] flex-col overflow-hidden rounded-lg border border-border bg-background">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
-        <h1 className="text-lg font-semibold">Inbox</h1>
+        <h1 className="text-lg font-medium">Inbox</h1>
         <p className="text-sm text-muted" role="status">
           {waiting === 1 ? "1 waiting" : `${waiting} waiting`}
         </p>

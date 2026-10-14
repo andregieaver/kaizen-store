@@ -7,7 +7,7 @@ import type { GiftFields } from "@/lib/gift";
  */
 export function GiftCard({ gift, slipHref }: { gift: GiftFields; slipHref: string | null }) {
   return (
-    <section aria-labelledby="gift" className="rounded-lg border border-border bg-background p-5 text-sm">
+    <section aria-labelledby="gift" className="rounded-card border border-border bg-background p-5 text-sm">
       <h2 id="gift" className="mb-2 font-medium">
         Gift
       </h2>

@@ -27,7 +27,7 @@ export default async function PlansPage() {
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Plans</h1>
+          <h1 className="text-display text-ink">Plans</h1>
           <p className="max-w-2xl text-sm text-muted">
             What stores pay Kaizen: a price per month or year (excluding VAT; Norwegian stores are
             charged 25 % MVA on top) and a fee on each of their sales. Saving copies the plan to
@@ -63,7 +63,7 @@ export default async function PlansPage() {
         <section
           key={plan.id}
           aria-labelledby={`plan-${plan.id}`}
-          className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5"
+          className="flex flex-col gap-4 rounded-card border border-border bg-background p-5"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id={`plan-${plan.id}`} className="font-medium">

@@ -218,7 +218,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           <Link href={`/admin/${store.slug}/orders`} className="text-sm underline">
             Orders
           </Link>
-          <h1 className="text-2xl font-semibold">Order #{order.number}</h1>
+          <h1 className="text-display text-ink">Order #{order.number}</h1>
           <p className="text-sm text-muted">
             {cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : STATUS_LABELS[order.status]}
             {fulfilment.state === "partly_sent" && ` · ${FULFILMENT_STATE_LABELS.partly_sent.toLowerCase()} (${fulfilment.unitsToSend} ${fulfilment.unitsToSend === 1 ? "unit" : "units"} still to send)`}
@@ -407,7 +407,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               <ReferralDiscountRow minor={order.copied ? 0 : order.referralDiscountMinor} currency={order.currency} locale={locale} />
               <BonusUsedRow bonus={bonus} currency={bonusCurrency} locale={locale} />
               <VatReliefRow kind={order.vatKind} reliefMinor={order.vatReliefMinor} money={money} />
-              <div className="flex justify-between font-semibold"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
+              <div className="flex justify-between font-medium"><dt>Total</dt><dd>{money(order.totalMinor)}</dd></div>
               <div className="flex justify-between text-muted"><dt>{order.vatKind === "reverse_charge" ? "VAT charged (reverse charge)" : "VAT included (standard rate)"}</dt><dd>{money(order.taxMinor)}</dd></div>
               {order.balanceMinor > 0 && (
                 <div className="flex justify-between"><dt>To pay at the appointment</dt><dd>{money(order.balanceMinor)}</dd></div>
@@ -419,7 +419,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               {order.refundedMinor > 0 && (
                 <>
                   <div className="flex justify-between border-t border-border pt-1"><dt>Refunded</dt><dd>−{money(order.refundedMinor)}</dd></div>
-                  <div className="flex justify-between font-semibold"><dt>Kept</dt><dd>{money(order.paidMinor - order.refundedMinor)}</dd></div>
+                  <div className="flex justify-between font-medium"><dt>Kept</dt><dd>{money(order.paidMinor - order.refundedMinor)}</dd></div>
                 </>
               )}
             </dl>

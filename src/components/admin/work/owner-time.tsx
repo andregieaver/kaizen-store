@@ -55,7 +55,7 @@ export function OwnerTimeView({
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Time</h1>
+        <h1 className="text-display text-ink">Time</h1>
         <p className="text-sm text-muted">
           Time logged{stores.length > 1 ? " in all your stores" : ""}. Change an entry in its store: each row leads there.
         </p>

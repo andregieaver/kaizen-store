@@ -28,7 +28,7 @@ export default async function StoreFieldsPage({ params }: PageProps<"/admin/[sto
         <Link href={base} className="text-sm underline">
           Custom fields
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Store details</h1>
+        <h1 className="mt-2 text-display text-ink">Store details</h1>
         <p className="text-sm text-muted">
           Extra information about the whole store, from the groups of custom fields you made for it. A field is shown on
           the site only if you made it public, and you place it in a page, a product layout, a header or a footer.

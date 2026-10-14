@@ -46,7 +46,7 @@ export function SetupFrame({
               <Link
                 href={`${base}/${s.id}`}
                 aria-current={s.id === step ? "step" : undefined}
-                className="flex flex-col gap-1.5 rounded-md py-1 aria-[current=step]:font-semibold"
+                className="flex flex-col gap-1.5 rounded-md py-1 aria-[current=step]:font-medium"
               >
                 <span
                   aria-hidden="true"
@@ -66,8 +66,8 @@ export function SetupFrame({
         </ol>
       </nav>
 
-      <section aria-labelledby="step-title" className="rounded-lg border border-border bg-background p-6">
-        <h1 id="step-title" className="mb-2 text-2xl font-semibold">
+      <section aria-labelledby="step-title" className="rounded-card border border-border bg-background p-6">
+        <h1 id="step-title" className="mb-2 text-2xl font-medium">
           {title}
         </h1>
         <div className="mb-6 text-sm text-muted">{intro}</div>

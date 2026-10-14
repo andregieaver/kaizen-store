@@ -3,20 +3,20 @@ import Link from "next/link";
 import { changeText, hidden, money, type StoreFigures } from "@/lib/control-center";
 import { storeBase, storeHref } from "@/lib/paths";
 
+import { CARD_CLASS, Chip } from "./ui";
+
 const PAYMENTS = { off: "Payments off", test: "Test payments", live: "Live payments", setup: "Payments need setup" } as const;
-const chip = "rounded-full border border-border px-2 py-0.5 text-xs text-muted";
-const warn = "rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-200";
 
 function Figure({ label, value, sub, href }: { label: string; value: string; sub?: string | null; href?: string }) {
   const body = (
     <>
       <span className="text-xs text-muted">{label}</span>
-      <span className="text-lg font-semibold tabular-nums [overflow-wrap:anywhere]">{value}</span>
+      <span className="text-title text-ink tabular-nums [overflow-wrap:anywhere]">{value}</span>
       {sub && <span className="text-xs text-muted">{sub}</span>}
     </>
   );
   return href ? (
-    <Link href={href} className="flex min-w-0 flex-col rounded-md p-2 hover:bg-surface">
+    <Link href={href} className="flex min-w-0 flex-col rounded-panel p-2 hover:bg-sunken">
       {body}
     </Link>
   ) : (
@@ -37,18 +37,34 @@ export function StoreCard({ store }: { store: StoreFigures }) {
   const noStock = hidden(store, "stock");
   const noPlan = hidden(store, "plan");
   return (
-    <article aria-labelledby={`store-${store.slug}`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-4">
+    <article aria-labelledby={`store-${store.slug}`} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
       <div className="flex flex-wrap items-center gap-2">
-        <h3 id={`store-${store.slug}`} className="min-w-0 truncate text-base font-semibold">
+        <h3 id={`store-${store.slug}`} className="min-w-0 truncate text-title text-ink">
           <Link href={base} className="hover:underline">
             {store.name}
           </Link>
         </h3>
-        {store.role === "admin" && <span className={chip}>Staff</span>}
-        {store.suspended && <span className={warn}>Suspended</span>}
-        {!store.open && <span className={warn}>Not open yet</span>}
-        {!noPlan && <span className={`${chip} ml-auto`}>{store.plan ? `${store.plan.name}${["past_due", "unpaid"].includes(store.plan.status) ? " · overdue" : ""}` : "No plan"}</span>}
-        <span className={`${store.payments === "setup" && !store.website ? warn : chip}${noPlan ? " ml-auto" : ""}`}>{store.website ? "Website" : PAYMENTS[store.payments]}</span>
+        {store.role === "admin" && <Chip>Staff</Chip>}
+        {store.suspended && (
+          <Chip signal="warning" dot>
+            Suspended
+          </Chip>
+        )}
+        {!store.open && (
+          <Chip signal="warning" dot>
+            Not open yet
+          </Chip>
+        )}
+        <span className="ml-auto flex flex-wrap gap-2">
+          {!noPlan && (
+            <Chip signal={store.plan && ["past_due", "unpaid"].includes(store.plan.status) ? "warning" : "neutral"}>
+              {store.plan ? `${store.plan.name}${["past_due", "unpaid"].includes(store.plan.status) ? " · overdue" : ""}` : "No plan"}
+            </Chip>
+          )}
+          <Chip signal={store.payments === "setup" && !store.website ? "warning" : store.payments === "live" && !store.website ? "positive" : "neutral"}>
+            {store.website ? "Website" : PAYMENTS[store.payments]}
+          </Chip>
+        </span>
       </div>
       {noSales && noStock ? null : (
       <div className="grid grid-cols-2 gap-1 sm:grid-cols-[minmax(0,1.7fr)_repeat(3,minmax(0,1fr))]">
@@ -65,7 +81,7 @@ export function StoreCard({ store }: { store: StoreFigures }) {
         {!noStock && <Figure label="Running low" value={String(store.lowStock + store.belowLevel)} sub={store.outOfStock > 0 ? `${store.outOfStock} out of stock` : store.owedUnits > 0 ? `${store.owedUnits} owed on backorder` : null} href={store.belowLevel > 0 ? `${base}/inventory?status=low` : `${base}/products`} />}
       </div>
       )}
-      <nav aria-label={`${store.name} shortcuts`} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-border pt-3 text-sm">
+      <nav aria-label={`${store.name} shortcuts`} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-body">
         <Link href={base} className="font-medium underline">
           Open admin
         </Link>

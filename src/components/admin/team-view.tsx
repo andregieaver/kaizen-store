@@ -138,7 +138,7 @@ export function TeamList({
 export function InviteForms({ roles, actions }: { roles: readonly Pick<StoreRole, "id" | "name">[]; actions: { staff: Action; collaborator: Action } }) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <section aria-labelledby="invite-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="invite-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="invite-heading" className="mb-1 font-medium">
           Invite someone
         </h2>
@@ -159,7 +159,7 @@ export function InviteForms({ roles, actions }: { roles: readonly Pick<StoreRole
           </div>
         </ActionForm>
       </section>
-      <section aria-labelledby="collaborator-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="collaborator-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="collaborator-heading" className="mb-1 font-medium">
           Invite a collaborator
         </h2>
@@ -204,7 +204,7 @@ export function TwoStepRequirement({
   action: Action;
 }) {
   return (
-    <section aria-labelledby="two-step-heading" className="rounded-lg border border-border bg-background p-5">
+    <section aria-labelledby="two-step-heading" className="rounded-card border border-border bg-background p-5">
       <h2 id="two-step-heading" className="mb-1 font-medium">
         Two-step sign-in
       </h2>

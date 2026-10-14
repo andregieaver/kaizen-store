@@ -54,11 +54,11 @@ export function DraftsListView({
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Draft status" className="flex flex-wrap gap-1 border-b border-border pb-2 text-sm">
-          <Link href={href({ status: null })} aria-current={status === null ? "page" : undefined} className="rounded-md px-3 py-1.5 text-muted hover:text-foreground aria-[current=page]:bg-background aria-[current=page]:font-semibold aria-[current=page]:text-foreground">
+          <Link href={href({ status: null })} aria-current={status === null ? "page" : undefined} className="rounded-md px-3 py-1.5 text-muted hover:text-foreground aria-[current=page]:bg-background aria-[current=page]:font-medium aria-[current=page]:text-foreground">
             All
           </Link>
           {DRAFT_STATUSES.map((s) => (
-            <Link key={s} href={href({ status: s })} aria-current={status === s ? "page" : undefined} className="rounded-md px-3 py-1.5 text-muted hover:text-foreground aria-[current=page]:bg-background aria-[current=page]:font-semibold aria-[current=page]:text-foreground">
+            <Link key={s} href={href({ status: s })} aria-current={status === s ? "page" : undefined} className="rounded-md px-3 py-1.5 text-muted hover:text-foreground aria-[current=page]:bg-background aria-[current=page]:font-medium aria-[current=page]:text-foreground">
               {DRAFT_STATUS_LABELS[s]}
             </Link>
           ))}

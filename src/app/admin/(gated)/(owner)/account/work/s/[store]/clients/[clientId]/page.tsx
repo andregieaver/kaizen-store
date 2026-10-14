@@ -56,7 +56,7 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
         </Link>
         <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold [overflow-wrap:anywhere]">
+            <h1 className="text-display text-ink [overflow-wrap:anywhere]">
               {client.name} {archived && <Badge>Archived</Badge>}
             </h1>
             {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
@@ -80,7 +80,7 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
 
       <section aria-labelledby="assignments-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="assignments-heading" className="text-lg font-semibold">
+          <h2 id="assignments-heading" className="text-lg font-medium">
             Assignments
           </h2>
           {archived ? (

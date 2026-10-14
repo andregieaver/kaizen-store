@@ -49,7 +49,7 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
             {store.name}
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold">Invoice {invoice.number ?? "(draft)"}</h1>
+        <h1 className="text-display text-ink">Invoice {invoice.number ?? "(draft)"}</h1>
         <p className="text-sm text-muted">
           {INVOICE_STATUS[invoice.status] ?? invoice.status} · {date(invoice.createdAt)}
           {invoice.mode === "test" && " · test mode"}
@@ -82,8 +82,8 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
                 </tr>
               ))}
               <tr>
-                <th scope="row" className="py-2 pr-4 text-left font-semibold">Total</th>
-                <td className="py-2 text-right font-semibold whitespace-nowrap">{money(invoice.totalMinor)}</td>
+                <th scope="row" className="py-2 pr-4 text-left font-medium">Total</th>
+                <td className="py-2 text-right font-medium whitespace-nowrap">{money(invoice.totalMinor)}</td>
               </tr>
             </tbody>
           </table>

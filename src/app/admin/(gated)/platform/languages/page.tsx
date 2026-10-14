@@ -33,7 +33,7 @@ export default async function LanguagesPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Languages</h1>
+        <h1 className="text-display text-ink">Languages</h1>
         <p className="max-w-3xl text-sm text-muted">
           The languages store owners can offer under Languages and currencies. Products, pages and menus can be
           written or translated in any of them; the interface (buttons, cart, checkout and the emails shoppers get)
@@ -42,7 +42,7 @@ export default async function LanguagesPage() {
         </p>
       </div>
 
-      <section aria-labelledby="add-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="add-heading" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
         <h2 id="add-heading" className="font-medium">Add a language</h2>
         <ActionForm action={addLanguageAction} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">

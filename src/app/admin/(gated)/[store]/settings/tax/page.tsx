@@ -47,7 +47,7 @@ export default async function TaxSettingsPage({ params }: PageProps<"/admin/[sto
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Tax</h1>
+        <h1 className="text-display text-ink">Tax</h1>
         <p className="max-w-2xl text-sm text-muted">
           Prices in the store include VAT, and each sale is charged the VAT of the country it goes to. Here the store records its VAT registration and, where it has
           them, its OSS and IOSS registrations.{" "}

@@ -26,7 +26,7 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Hosts</h1>
+        <h1 className="text-display text-ink">Hosts</h1>
         <p className="text-sm text-muted">
           People whose rooms, homes or items the store lists, as a marketplace. Give a stay or rental and its rooms a host in the
           product and under Rooms and items; the host then keeps their calendar and sees their bookings in their own area.

@@ -43,7 +43,7 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
         <Link href={`/admin/${store.slug}/products`} className="w-fit text-sm underline">
           Products
         </Link>
-        <h1 className="text-2xl font-semibold">Categories and tags</h1>
+        <h1 className="text-display text-ink">Categories and tags</h1>
         <p className="max-w-2xl text-sm text-muted">
           Sort your products into categories and label them with tags, so shoppers find them in your menus and
           content grids. Choose a product&apos;s categories and tags when you edit the product. A category can also

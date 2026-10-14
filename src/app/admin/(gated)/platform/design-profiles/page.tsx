@@ -44,7 +44,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Design profiles</h1>
+        <h1 className="text-display text-ink">Design profiles</h1>
         <p className="max-w-3xl text-sm text-muted">
           A look kept to use again: a theme (colours, fonts, buttons, corners, light and dark), a header and footer, a product page layout
           and CSS. Never a store&apos;s name, logos, business details, menus&apos; links, pages or products. Owners apply one from their
@@ -88,7 +88,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
       )}
 
       {filter === "current" && (
-        <section aria-labelledby="new-design" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="new-design" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
           <div>
             <h2 id="new-design" className="font-medium">
               New design profile

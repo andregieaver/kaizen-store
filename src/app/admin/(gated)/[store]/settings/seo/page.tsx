@@ -38,7 +38,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">SEO &amp; Reach</h1>
+        <h1 className="text-display text-ink">SEO &amp; Reach</h1>
         <p className="text-sm text-muted">
           How {store.name} shows up in Google and Bing, when a link is shared, and to AI assistants such
           as ChatGPT and Claude. Kaizen fills in what it can from your products and business details;

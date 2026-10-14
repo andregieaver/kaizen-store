@@ -25,7 +25,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
     return (
       <div className="flex max-w-2xl flex-col gap-6">
         <div>
-          <h1 className="text-2xl font-semibold">{state.status === "closed" ? "This store is closed" : "This store is suspended"}</h1>
+          <h1 className="text-display text-ink">{state.status === "closed" ? "This store is closed" : "This store is suspended"}</h1>
           <p className="text-sm text-muted">
             {state.status === "closed"
               ? `It takes no orders. Its orders, invoices, returns and customer data stay available to you, and are kept for the bookkeeping period of the seller's country.`
@@ -74,7 +74,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Close store</h1>
+        <h1 className="text-display text-ink">Close store</h1>
         <p className="text-sm text-muted">
           Closing stops sales and takes the shop off the web. Nothing is deleted: orders, invoices and customer data stay here for you to read and download, kept for the bookkeeping period
           of the seller&apos;s country and then made anonymous. You can reopen the store yourself for {REOPEN_DAYS} days.

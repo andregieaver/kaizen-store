@@ -25,12 +25,12 @@ export function SectionHub({
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-display text-ink">{title}</h1>
         <p className="max-w-2xl text-sm text-muted">{intro}</p>
       </div>
       {lists.map((list) => (
         <section key={list.heading} aria-label={list.heading || undefined} className="flex flex-col gap-3">
-          {list.heading && <h2 className="text-xs font-semibold tracking-wide text-muted uppercase">{list.heading}</h2>}
+          {list.heading && <h2 className="text-xs font-medium tracking-wide text-muted uppercase">{list.heading}</h2>}
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {list.items.map((item) => (
               <li key={item.path}>

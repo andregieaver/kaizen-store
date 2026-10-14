@@ -75,7 +75,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">{copy.list}</h1>
+          <h1 className="text-display text-ink">{copy.list}</h1>
           <p className="max-w-2xl text-sm text-muted">{INTRO[type]}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -91,7 +91,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           )}
           <Link
             href={`${base}/new`}
-            className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
+            className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
           >
             New {copy.one}
           </Link>
@@ -103,7 +103,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         </p>
       )}
       {pages.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
           No {copy.many} yet. Make the first one with New {copy.one}.
         </p>
       ) : type === "product_layout" ? (
@@ -153,7 +153,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
       {type === "page" && (
         <section className="flex flex-col gap-4" aria-labelledby="special-pages">
           <div className="flex flex-col gap-1">
-            <h2 id="special-pages" className="text-lg font-semibold">Special pages</h2>
+            <h2 id="special-pages" className="text-lg font-medium">Special pages</h2>
             <p className="max-w-2xl text-sm text-muted">
               Your store&apos;s working pages, the blog and the 404 page have a standard look. Build any of them in the
               page builder instead: choose one of your published pages for it, or start from a new page that looks like
@@ -198,7 +198,7 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
         <Link href={storePagesBase(store, type)} className="w-fit text-sm underline">
           {copy.list}
         </Link>
-        <h1 className="text-2xl font-semibold">{copy.One} categories and tags</h1>
+        <h1 className="text-display text-ink">{copy.One} categories and tags</h1>
         <p className="max-w-2xl text-sm text-muted">
           Sort your {copy.many} into categories and label them with tags; a content grid can then show the {copy.many}{" "}
           of a category or tag. Product categories are under Products.
@@ -375,7 +375,7 @@ function FrontPageForm({
   return (
     <ActionForm
       action={setFrontPageAction.bind(null, storeSlug)}
-      className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5"
+      className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
     >
       <h2 className="font-medium">Front page</h2>
       <p className="max-w-2xl text-sm text-muted">
@@ -420,7 +420,7 @@ function ProductsPageForm({
   return (
     <ActionForm
       action={setProductsPageAction.bind(null, storeSlug)}
-      className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5"
+      className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
     >
       <h2 className="font-medium">All products page</h2>
       <p className="max-w-2xl text-sm text-muted">
@@ -468,7 +468,7 @@ function PageRoleForm({
   const copy = ROLE_COPY[role];
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby={`role-${role}`}>
+    <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby={`role-${role}`}>
       <h4 id={`role-${role}`} className="font-medium">{copy.name}</h4>
       <p className="max-w-2xl text-sm text-muted">{copy.hint}</p>
       <ActionForm action={setPageRoleAction.bind(null, storeSlug, role)} className="flex flex-wrap items-end gap-3">

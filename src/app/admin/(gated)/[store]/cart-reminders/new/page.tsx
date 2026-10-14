@@ -24,7 +24,7 @@ export default async function NewReminderPage({ params }: PageProps<"/admin/[sto
         <Link href={`/admin/${store.slug}/cart-reminders`} className="text-sm underline">
           Cart reminders
         </Link>
-        <h1 className="text-2xl font-semibold">New reminder</h1>
+        <h1 className="text-display text-ink">New reminder</h1>
       </div>
       <ReminderForm
         store={store}

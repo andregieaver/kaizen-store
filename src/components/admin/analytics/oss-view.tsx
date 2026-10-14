@@ -142,7 +142,7 @@ export function OssView({ base, locale, scheme, mode, view, periods, canExport, 
               key={m}
               href={href(m)}
               aria-current={m === mode ? "true" : undefined}
-              className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${m === mode ? "border-foreground bg-surface font-semibold" : "border-border"}`}
+              className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${m === mode ? "border-foreground bg-surface font-medium" : "border-border"}`}
             >
               {m === "filing" ? "Filing" : "Books"}
             </Link>

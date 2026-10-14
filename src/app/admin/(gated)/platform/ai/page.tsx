@@ -31,7 +31,7 @@ export default async function PlatformAiPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">AI</h1>
+        <h1 className="text-display text-ink">AI</h1>
         <p className="text-sm text-muted">{status}</p>
         <p className="text-sm text-muted">{pictureLine(settings, "Kaizen's AI")}</p>
         <p className="mt-1 text-sm">

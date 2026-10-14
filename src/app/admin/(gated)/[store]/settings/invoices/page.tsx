@@ -25,7 +25,7 @@ export default async function InvoiceSettingsPage({ params }: PageProps<"/admin/
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Invoicing</h1>
+        <h1 className="text-display text-ink">Invoicing</h1>
         <p className="max-w-2xl text-sm text-muted">
           Every paid order gets an invoice in the store&apos;s own numbered series, made by the system when the payment is recorded, and every refund that
           succeeds gets a credit note in a series of its own. The shopper finds them on the order page and in the order emails. This is not tax advice.

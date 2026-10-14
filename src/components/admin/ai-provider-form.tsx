@@ -533,7 +533,7 @@ function VisionField({
             type="button"
             disabled={pending}
             onClick={() => start(async () => setResult(await check(checked())))}
-            className="min-h-10 w-fit rounded-md border border-border px-4 font-medium hover:bg-surface disabled:opacity-50"
+            className="min-h-10 w-fit rounded-pill border border-border px-4 font-medium hover:bg-surface disabled:opacity-50"
           >
             {pending ? "Looking …" : "Check that it sees pictures"}
           </button>
@@ -566,7 +566,7 @@ export function AiTestButton({ action }: { action: () => Promise<AiTestResult> }
         type="button"
         disabled={pending}
         onClick={() => start(async () => setResult(await action()))}
-        className="min-h-10 w-fit rounded-md border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+        className="min-h-10 w-fit rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
       >
         {pending ? "Testing …" : "Test"}
       </button>
@@ -596,7 +596,7 @@ export function AiEvalButton({ action }: { action: () => Promise<AiEvalResult> }
         type="button"
         disabled={pending}
         onClick={() => start(async () => setResult(await action()))}
-        className="min-h-10 w-fit rounded-md border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+        className="min-h-10 w-fit rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
       >
         {pending ? "Checking … (up to a minute)" : "Check query understanding"}
       </button>
@@ -639,7 +639,7 @@ export function AiImageTestButton({ action }: { action: () => Promise<AiImageTes
         type="button"
         disabled={pending}
         onClick={() => start(async () => setResult(await action()))}
-        className="min-h-10 w-fit rounded-md border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+        className="min-h-10 w-fit rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
       >
         {pending ? "Making a picture … (up to a minute)" : "Test the picture model"}
       </button>

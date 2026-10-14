@@ -32,7 +32,7 @@ export function DesignShell({
         <Link href={facts.archivedAt ? "/admin/platform/design-profiles?show=archived" : "/admin/platform/design-profiles"} className="w-fit text-sm underline underline-offset-2">
           Design profiles
         </Link>
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-display text-ink">
           {shown.title}
           <LifecycleBadge facts={facts} />
         </h1>

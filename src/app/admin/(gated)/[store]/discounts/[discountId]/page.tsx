@@ -29,7 +29,7 @@ export default async function DiscountPage({ params }: PageProps<"/admin/[store]
         <Link href={`/admin/${store.slug}/discounts`} className="text-sm underline">
           Coupons
         </Link>
-        <h1 className="font-mono text-2xl font-semibold">{discount.code}</h1>
+        <h1 className="font-mono text-display text-ink">{discount.code}</h1>
         <p className="text-sm text-muted">
           Used by {discount.used} {discount.used === 1 ? "order" : "orders"}
           {discount.usageLimit !== null && ` of ${discount.usageLimit} allowed`}.

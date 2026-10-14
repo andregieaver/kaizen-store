@@ -104,7 +104,7 @@ export function ImageSizeFields({ block, onChange }: { block: ImageBlock; onChan
             type="button"
             onClick={() => write(undefined)}
             disabled={maxWidth === undefined}
-            className="min-h-10 rounded-md border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
+            className="min-h-10 rounded-pill border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
           >
             Own size
           </button>

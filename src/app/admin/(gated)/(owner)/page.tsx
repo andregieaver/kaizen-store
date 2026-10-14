@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { storesOf } from "@/components/admin/admin-shell-parts";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
 import { StoreCard } from "@/components/admin/store-card";
+import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
 import { attentionFor, changeText, money, totalSales } from "@/lib/control-center";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { requireAccount } from "@/server/auth";
@@ -29,10 +29,7 @@ export default async function ControlCenterPage() {
     if (hostings.length > 0) redirect("/admin/hosting");
     if (account.platformAdmin) redirect("/admin/platform");
     return (
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Control center</h1>
-        <p className="text-sm text-muted">You do not have access to any store yet.</p>
-      </div>
+      <PageHeader title="Control center" meta={["You do not have access to any store yet"]} />
     );
   }
 
@@ -46,12 +43,16 @@ export default async function ControlCenterPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Control center</h1>
-        <p className="text-sm text-muted">
-          {center.stores.length === 1 ? "Your store" : `All ${center.stores.length} stores you work in`}, at a glance.
-        </p>
-      </div>
+      <PageHeader
+        eyebrow="Home"
+        title="Control center"
+        meta={[center.stores.length === 1 ? "Your store at a glance" : `All ${center.stores.length} stores you work in, at a glance`]}
+        actions={
+          <ButtonLink href="/admin/stores" size="header">
+            Manage stores
+          </ButtonLink>
+        }
+      />
 
       <Attention items={attention} empty="Nothing needs you right now. Every order is sent, stock is fine and plans are paid." />
 
@@ -65,15 +66,7 @@ export default async function ControlCenterPage() {
         </StatGrid>
       </Section>
 
-      <Section
-        id="stores-heading"
-        title="Your stores"
-        action={
-          <Link href="/admin/stores" className="text-sm underline">
-            Manage stores
-          </Link>
-        }
-      >
+      <Section id="stores-heading" title="Your stores" action={<ButtonLink kind="link" href="/admin/stores">All stores</ButtonLink>}>
         <div className="grid gap-4 xl:grid-cols-2">
           {center.stores.map((store) => (
             <StoreCard key={store.slug} store={store} />
@@ -82,41 +75,37 @@ export default async function ControlCenterPage() {
       </Section>
 
       {center.latest.length > 0 && (
-        <Section id="latest-heading" title="Latest orders">
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+        <Card title="Latest orders">
+          <List label="Latest orders">
             {center.latest.map((order) => (
-              <li key={order.id}>
-                <Link href={`/admin/${order.storeSlug}/orders/${order.id}`} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-3 hover:bg-surface">
-                  <span className="font-medium">#{order.number}</span>
-                  <span className="min-w-0 flex-1 truncate text-muted">
-                    {order.storeName}
-                    {order.name ? ` · ${order.name}` : ""}
-                  </span>
-                  <span className="text-xs text-muted">{ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}</span>
-                  <time dateTime={order.placedAt} className="hidden text-xs text-muted sm:inline">
-                    {order.placedAt.slice(0, 10)}
-                  </time>
-                  <span className="tabular-nums">{money(order.totalMinor, order.currency)}</span>
-                </Link>
-              </li>
+              <ListRow key={order.id} href={`/admin/${order.storeSlug}/orders/${order.id}`}>
+                <RowId>#{order.number}</RowId>
+                <RowText>
+                  {order.storeName}
+                  {order.name ? ` · ${order.name}` : ""}
+                </RowText>
+                <Chip>{ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}</Chip>
+                <RowDate>
+                  <time dateTime={order.placedAt}>{order.placedAt.slice(0, 10)}</time>
+                </RowDate>
+                <RowAmount>{money(order.totalMinor, order.currency)}</RowAmount>
+              </ListRow>
             ))}
-          </ul>
-        </Section>
+          </List>
+        </Card>
       )}
 
       {hostings.length > 0 && (
-        <Section id="hosting-heading" title="Hosting">
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+        <Card title="Hosting">
+          <List label="Hosting">
             {hostings.map((h) => (
-              <li key={h.slug} className="p-4">
-                <Link href={`/admin/hosting/${h.slug}`} className="font-medium underline-offset-2 hover:underline">
-                  {h.name}
-                </Link>
-                <span className="block text-muted">As {h.hostName}</span>
-              </li>
+              <ListRow key={h.slug} href={`/admin/hosting/${h.slug}`}>
+                <RowId>{h.name}</RowId>
+                <RowText>As {h.hostName}</RowText>
+              </ListRow>
             ))}
-          </ul>
-        </Section>
+          </List>
+        </Card>
       )}
     </div>
   );

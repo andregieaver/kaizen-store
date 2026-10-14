@@ -33,12 +33,12 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
         <Link href={`/admin/${store.slug}/settings/company`} className="text-sm underline">
           Company
         </Link>
-        <h1 className="text-2xl font-semibold">{place.name}</h1>
+        <h1 className="text-display text-ink">{place.name}</h1>
         <p className="text-sm text-muted">{KIND_LABELS[place.kind]}</p>
       </div>
       <ActionForm
         action={savePlaceAction.bind(null, store.slug, place.id)}
-        className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5"
+        className="flex flex-col gap-4 rounded-card border border-border bg-background p-5"
       >
         <input type="hidden" name="kind" value={place.kind} />
         <label className={field}>

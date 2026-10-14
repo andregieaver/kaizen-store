@@ -198,7 +198,7 @@ export function VisibilityFields({
                 disabled={Boolean(locked)}
                 onClick={() => onChange(visibilityPatch(part, size, !shown))}
                 title={`${SIZE_LABELS[size]}: ${shown ? "shown" : "hidden"}`}
-                className="flex min-h-10 items-center gap-2 rounded-md border border-border px-3 text-sm text-muted aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background disabled:opacity-50"
+                className="flex min-h-10 items-center gap-2 rounded-pill border border-border px-3 text-sm text-muted aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background disabled:opacity-50"
               >
                 <DeviceIcon size={size} />
                 <span>{SIZE_LABELS[size]}</span>
@@ -403,7 +403,7 @@ export function ResponsiveBar({
         type="button"
         onClick={onExit}
         aria-keyshortcuts="Control+Shift+R Meta+Shift+R"
-        className="ml-auto min-h-9 rounded-md border border-border px-3 text-sm font-medium hover:bg-surface"
+        className="ml-auto min-h-9 rounded-pill border border-border px-3 text-sm font-medium hover:bg-surface"
       >
         Exit
       </button>

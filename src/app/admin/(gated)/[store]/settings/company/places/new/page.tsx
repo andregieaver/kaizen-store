@@ -28,12 +28,12 @@ export default async function NewPlacePage({ params, searchParams }: PageProps<"
         <Link href={`/admin/${store.slug}/settings/company`} className="text-sm underline">
           Company
         </Link>
-        <h1 className="text-2xl font-semibold">Add a {what}</h1>
+        <h1 className="text-display text-ink">Add a {what}</h1>
         <p className="text-sm text-muted">
           {kind === "shop" ? "A place where shoppers can visit you." : "A place where shoppers can collect their orders."}
         </p>
       </div>
-      <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
+      <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
         <input type="hidden" name="kind" value={kind} />
         <div className={field}>
           <label htmlFor="place-name">Name</label>

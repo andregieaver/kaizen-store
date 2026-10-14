@@ -229,7 +229,7 @@ export function DiscountsView({ currency, locale, report }: DiscountsViewProps) 
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-base font-semibold">Discount codes</h3>
+        <h3 className="text-base font-medium">Discount codes</h3>
         <DataTable
           caption="Discount codes used in the period"
           columns={codeColumns}

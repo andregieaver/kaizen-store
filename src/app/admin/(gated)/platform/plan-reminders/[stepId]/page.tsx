@@ -25,7 +25,7 @@ export default async function PlanReminderPage({ params }: PageProps<"/admin/pla
         <Link href="/admin/platform/plan-reminders" className="text-sm underline">
           Plan reminders
         </Link>
-        <h1 className="text-2xl font-semibold">Reminder after {describeDelay(step.delayMinutes)}</h1>
+        <h1 className="text-display text-ink">Reminder after {describeDelay(step.delayMinutes)}</h1>
       </div>
       <PlanReminderForm step={step} />
       <DeleteReminderButton action={deletePlanReminderAction.bind(null, step.id)} />

@@ -78,7 +78,7 @@ export function FieldsToolbar({
       <div className="flex flex-wrap items-center gap-2">
         <Link
           href={`${base}/new`}
-          className="flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
+          className="flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
         >
           New group
         </Link>
@@ -142,7 +142,7 @@ export function FieldsToolbar({
                   type="button"
                   disabled={pending}
                   onClick={() => startFromPreset(preset.key)}
-                  className="min-h-10 self-start rounded-md border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
+                  className="min-h-10 self-start rounded-pill border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
                 >
                   Use {preset.name}
                 </button>

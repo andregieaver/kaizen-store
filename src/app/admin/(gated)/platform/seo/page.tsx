@@ -28,7 +28,7 @@ export default async function PlatformSeoPage() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Search</h1>
+        <h1 className="text-display text-ink">Search</h1>
         <p className="max-w-2xl text-sm text-muted">
           How Kaizen&apos;s own pages show up in search results, when shared and to AI assistants.
           Each store sets its own under Search in its admin; the site&apos;s{" "}

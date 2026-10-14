@@ -29,14 +29,14 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">A/B tests</h1>
+          <h1 className="text-display text-ink">A/B tests</h1>
           <p className="max-w-2xl text-sm text-muted">
             Try two versions of a page, a row or component of it, your header or footer, or a product layout on real visitors and keep the one that works better.
             Half of the visitors see it as it is, the other half a version you change; Kaizen counts who adds to the cart and who buys, and tells you in plain words when there is a winner. Only visitors who have
             accepted statistics cookies take part; everyone else sees the page as it is.
           </p>
         </div>
-        <Link href={`${base}/new`} className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background">
+        <Link href={`${base}/new`} className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background">
           New test
         </Link>
       </div>

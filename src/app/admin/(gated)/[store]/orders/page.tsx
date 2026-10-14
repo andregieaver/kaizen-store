@@ -30,10 +30,10 @@ export default async function OrdersPage({ params, searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Orders</h1>
+        <h1 className="text-display text-ink">Orders</h1>
         <nav aria-label="Order tools" className="flex flex-wrap gap-2 text-sm">
           {memberCan(member, "orders:write") && (
-            <Link href={`/admin/${store.slug}/orders/drafts/new`} className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 font-medium text-background">
+            <Link href={`/admin/${store.slug}/orders/drafts/new`} className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 font-medium text-background">
               Make a draft order
             </Link>
           )}

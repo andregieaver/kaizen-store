@@ -32,7 +32,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Design</h1>
+        <h1 className="text-display text-ink">Design</h1>
         <p className="max-w-2xl text-sm text-muted">
           How your store looks: choose a theme, change any of its settings, and save your own versions to switch between.
           Pages you build use it too.
@@ -65,7 +65,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
           installFont: installStoreFontAction.bind(null, store.slug),
         }}
       />
-      <section aria-labelledby="cart-heading" className="max-w-3xl rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="cart-heading" className="max-w-3xl rounded-card border border-border bg-background p-5">
         <h2 id="cart-heading" className="mb-1 font-medium">
           Cart
         </h2>

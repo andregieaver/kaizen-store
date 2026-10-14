@@ -214,14 +214,14 @@ export function ReturnsView(props: ReturnsViewProps) {
               {r.reasons.note ? <p className="mt-2 text-xs text-muted">{r.reasons.note}</p> : null}
             </ChartCard>
             <div className="min-w-0 space-y-2">
-              <h3 className="text-sm font-semibold">Withdrawals and voluntary returns</h3>
+              <h3 className="text-sm font-medium">Withdrawals and voluntary returns</h3>
               <p className="text-xs text-muted">A withdrawal is the shopper&apos;s legal right and is not refused. A voluntary return is inside your own longer window and you may decline it.</p>
               <DataTable caption="Returns made in the period by kind, with those refunded" columns={kindColumns} rows={r.kinds} rowKey={(k) => k.kind} exportId="traffic.return_kinds" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </div>
           </div>
           <div className="grid gap-4 2xl:grid-cols-2">
             <div className="min-w-0 space-y-2">
-              <h3 className="text-sm font-semibold">How fast you refund</h3>
+              <h3 className="text-sm font-medium">How fast you refund</h3>
               <p className="text-xs text-muted">For returns refunded in this period. A typical time is shown from {formatCount(MIN_TIMING_SAMPLE)} returns.</p>
               <DataTable caption="Time from the request and from the goods arriving to the refund" columns={timingColumns} rows={timingRows} rowKey={(x) => x.key} exportId="traffic.return_timing" />
               <p className="text-xs text-muted">
@@ -231,7 +231,7 @@ export function ReturnsView(props: ReturnsViewProps) {
               </p>
             </div>
             <div className="min-w-0 space-y-2">
-              <h3 className="text-sm font-semibold">Most returned products</h3>
+              <h3 className="text-sm font-medium">Most returned products</h3>
               <p className="text-xs text-muted">
                 Units returned of what was sold in this period. A product&apos;s rate is shown from {formatCount(MIN_PRODUCT_UNITS)} units sold.
               </p>

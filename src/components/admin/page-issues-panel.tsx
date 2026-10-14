@@ -54,7 +54,7 @@ export function PageIssuesPanel({ issues, onShow = showOnCanvas }: { issues: rea
                     type="button"
                     onClick={() => onShow(issue)}
                     aria-label={`Show the ${issue.where.toLowerCase()} on the page: ${group.title.toLowerCase()}`}
-                    className="min-h-9 w-fit rounded-md border border-border px-3 text-xs font-medium hover:bg-surface"
+                    className="min-h-9 w-fit rounded-pill border border-border px-3 text-xs font-medium hover:bg-surface"
                   >
                     Show it
                   </button>
@@ -98,9 +98,9 @@ export function PublishWithIssuesDialog({
         event.preventDefault();
         onFixFirst();
       }}
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-lg border border-border bg-background p-5 text-foreground backdrop:bg-black/40"
+      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-card border border-border bg-background p-5 text-foreground backdrop:bg-black/40"
     >
-      <h2 id="publish-issues-title" className="mb-2 text-lg font-semibold">
+      <h2 id="publish-issues-title" className="mb-2 text-lg font-medium">
         This page has {issues.length === 1 ? "a problem" : `${issues.length} problems`} to look at
       </h2>
       <p className="mb-3 text-sm text-muted">Fix {issues.length === 1 ? "it" : "them"} first, or publish anyway. Publishing anyway is written down in the activity log.</p>
@@ -112,7 +112,7 @@ export function PublishWithIssuesDialog({
         ))}
       </ul>
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={onFixFirst} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
+        <button type="button" onClick={onFixFirst} className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
           Fix first
         </button>
         <button type="button" onClick={onPublishAnyway} disabled={busy} className="min-h-10 rounded-md border border-border bg-background px-4 text-sm font-medium disabled:opacity-50">

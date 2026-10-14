@@ -17,7 +17,7 @@ export default async function KaizenSupportReportsPage({ searchParams }: PagePro
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Support reports</h1>
+        <h1 className="text-display text-ink">Support reports</h1>
         <p className="text-muted">How Kaizen&apos;s own desk did: visitors of Kaizen&apos;s site and owners asking Kaizen.</p>
       </div>
       {notice && <p className="text-sm">{notice}</p>}

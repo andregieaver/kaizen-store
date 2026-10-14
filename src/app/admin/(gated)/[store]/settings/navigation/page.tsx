@@ -21,7 +21,7 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Header and footer</h1>
+        <h1 className="text-display text-ink">Header and footer</h1>
         <p className="text-sm text-muted">
           Your logo, your icon and the menus {store.name}&apos;s standard header and footer show. To make or change a
           menu, go to{" "}

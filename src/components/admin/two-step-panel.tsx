@@ -211,7 +211,7 @@ export function ManageTwoStep({
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p>
-        <strong className="font-semibold">On.</strong> You are asked for a code from your authenticator app when you sign in.{" "}
+        <strong className="font-medium">On.</strong> You are asked for a code from your authenticator app when you sign in.{" "}
         {codesLeft > 0 ? `${codesLeft} recovery ${codesLeft === 1 ? "code is" : "codes are"} left.` : "You have no recovery codes left: make a new set."}
       </p>
       {!recoveryAvailable && <p className="text-muted">Recovery codes cannot be made on this server right now.</p>}

@@ -199,23 +199,23 @@ export function LocationsView({
 
       {confirming && confirmingRow && words && (
         <section aria-label="Deactivate the location" className={`${card} flex flex-col gap-3`} role="group">
-          <h2 className="text-base font-semibold">Deactivate {confirmingRow.name}?</h2>
+          <h2 className="text-base font-medium">Deactivate {confirmingRow.name}?</h2>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="flex flex-col">
               <dt className={hint}>Units that stop being for sale</dt>
-              <dd className="text-2xl font-semibold tabular-nums">{confirming.impact.units.toLocaleString("en-GB")}</dd>
+              <dd className="text-2xl font-medium tabular-nums">{confirming.impact.units.toLocaleString("en-GB")}</dd>
             </div>
             <div className="flex flex-col">
               <dt className={hint}>Variants</dt>
-              <dd className="text-2xl font-semibold tabular-nums">{confirming.impact.variants.toLocaleString("en-GB")}</dd>
+              <dd className="text-2xl font-medium tabular-nums">{confirming.impact.variants.toLocaleString("en-GB")}</dd>
             </div>
             <div className="flex flex-col">
               <dt className={hint}>Held by checkouts now</dt>
-              <dd className="text-2xl font-semibold tabular-nums">{confirming.impact.committedUnits.toLocaleString("en-GB")}</dd>
+              <dd className="text-2xl font-medium tabular-nums">{confirming.impact.committedUnits.toLocaleString("en-GB")}</dd>
             </div>
             <div className="flex flex-col">
               <dt className={hint}>Owed on backorder here</dt>
-              <dd className="text-2xl font-semibold tabular-nums">{confirming.impact.owedUnits.toLocaleString("en-GB")}</dd>
+              <dd className="text-2xl font-medium tabular-nums">{confirming.impact.owedUnits.toLocaleString("en-GB")}</dd>
             </div>
           </dl>
           <p className="text-sm">

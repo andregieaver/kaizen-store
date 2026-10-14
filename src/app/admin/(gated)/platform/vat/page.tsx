@@ -28,7 +28,7 @@ export default async function PlatformVatPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">VAT</h1>
+        <h1 className="text-display text-ink">VAT</h1>
         <p className="max-w-2xl text-sm text-muted">
           The rates every store charges. Prices include VAT, and each sale takes the VAT of the country it goes to. The rates here were read from public sources and start unverified: they
           are still charged, so work through the list with an accountant. This is not tax advice.

@@ -78,7 +78,7 @@ export function OwnerSettingsView({ rows, actions }: { rows: OwnerSettingsRow[];
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Work settings</h1>
+        <h1 className="text-display text-ink">Work settings</h1>
         <p className="text-sm text-muted">
           Choose which of your stores use Work. Each store is the seller of its own invoices, so its business details,
           VAT, bank account, currency and numbering are set in that store&apos;s own Work settings.
@@ -106,7 +106,7 @@ export function OwnerSettingsView({ rows, actions }: { rows: OwnerSettingsRow[];
 export function OwnerWorkStart({ rows, actions, title }: { rows: OwnerSettingsRow[]; actions: SwitchActions; title: string }) {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">{title}</h1>
+      <h1 className="text-display text-ink">{title}</h1>
       <section aria-labelledby="start-heading" className={`${card} flex flex-col gap-2`}>
         <h2 id="start-heading" className="font-medium">
           Work is for the time you sell

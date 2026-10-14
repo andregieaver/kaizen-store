@@ -10,7 +10,7 @@ export function DataPageHead({ backHref, backLabel, title, intro }: { backHref: 
       <Link href={backHref} className="text-sm text-muted underline underline-offset-2">
         {backLabel}
       </Link>
-      <h1 className="text-2xl font-semibold">{title}</h1>
+      <h1 className="text-display text-ink">{title}</h1>
       <p className="max-w-3xl text-sm text-muted">{intro}</p>
     </header>
   );
@@ -20,7 +20,7 @@ export function DataPageHead({ backHref, backLabel, title, intro }: { backHref: 
 export function Notice({ title, children, tone = "plain" }: { title?: string; children: ReactNode; tone?: "plain" | "warning" }) {
   return (
     <aside className={`${card} flex flex-col gap-1 ${tone === "warning" ? "border-foreground" : ""}`} role={tone === "warning" ? "note" : undefined}>
-      {title && <h2 className="text-sm font-semibold">{title}</h2>}
+      {title && <h2 className="text-sm font-medium">{title}</h2>}
       <div className="text-sm">{children}</div>
     </aside>
   );

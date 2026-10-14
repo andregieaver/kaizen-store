@@ -138,7 +138,7 @@ function Stat({ label, caption, value, reason }: { label: string; caption: strin
       <dt className="text-xs font-medium text-muted" title={caption}>
         {label}
       </dt>
-      <dd className="mt-0.5 text-lg font-semibold tabular-nums">{value ?? NO_FIGURE}</dd>
+      <dd className="mt-0.5 text-lg font-medium tabular-nums">{value ?? NO_FIGURE}</dd>
       <p className="mt-0.5 text-xs text-muted">{value === null ? reason : caption}</p>
     </div>
   );

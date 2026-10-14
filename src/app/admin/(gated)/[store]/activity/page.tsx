@@ -37,7 +37,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Activity log</h1>
+        <h1 className="text-display text-ink">Activity log</h1>
         <p className="max-w-2xl text-sm text-muted">
           What people changed in the store, and when: products, prices, pages, coupons, shipping, the team and the payment settings.{" "}
           {owner ? "You see every entry." : "You see your own entries and those of the parts of the admin you can open."} Entries are kept for 24 months and cannot be changed.

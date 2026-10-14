@@ -51,12 +51,12 @@ export function RecoveryCodesView({
     <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-4">
       <style>{`@media print { body * { visibility: hidden; } [data-print-area], [data-print-area] * { visibility: visible; } [data-print-area] { position: absolute; left: 0; top: 0; } }`}</style>
       <div>
-        <h2 id={`${id}-heading`} className="text-lg font-semibold">
+        <h2 id={`${id}-heading`} className="text-lg font-medium">
           Your recovery codes
         </h2>
         <p className="text-sm text-muted">
           If you lose your phone, one of these signs you in once and takes your two-step sign-in away, so you can set it up again. Each code works once.
-          <strong className="font-semibold text-foreground"> This is the only time they are shown.</strong>
+          <strong className="font-medium text-foreground"> This is the only time they are shown.</strong>
         </p>
       </div>
       <div data-print-area="" className="rounded-lg border border-border bg-background p-4">
@@ -92,7 +92,7 @@ export function RecoveryCodesView({
           type="button"
           onClick={onContinue}
           disabled={!saved}
-          className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+          className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
         >
           {continueLabel}
         </button>

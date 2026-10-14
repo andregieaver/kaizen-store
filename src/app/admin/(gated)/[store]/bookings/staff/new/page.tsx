@@ -20,7 +20,7 @@ export default async function NewStaffPage({ params }: PageProps<"/admin/[store]
         <Link href={`/admin/${store.slug}/bookings/staff`} className="text-sm underline">
           Staff and hours
         </Link>
-        <h1 className="text-2xl font-semibold">Add staff</h1>
+        <h1 className="text-display text-ink">Add staff</h1>
       </div>
       <StaffForm staff={null} action={saveStaffAction.bind(null, store.slug, null)} />
     </div>

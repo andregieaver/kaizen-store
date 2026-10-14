@@ -23,7 +23,7 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Shipping</h1>
+        <h1 className="text-display text-ink">Shipping</h1>
         <p className="text-sm text-muted">
           One flat price per country, including VAT, shown in the cart and at checkout. Leave
           &quot;free from&quot; empty to always charge shipping. Shoppers cannot check out to a

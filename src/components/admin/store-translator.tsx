@@ -224,7 +224,7 @@ export function StoreTranslator({
             (group) =>
               group.units.length > 0 && (
                 <div key={group.title} className="flex flex-col gap-3">
-                  <h3 className="text-sm font-semibold">{group.title}</h3>
+                  <h3 className="text-sm font-medium">{group.title}</h3>
                   {group.hint && <p className="text-xs text-muted">{group.hint}</p>}
                   <ul className="flex flex-col gap-3">
                     {group.units.map((unit) => (

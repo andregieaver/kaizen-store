@@ -37,7 +37,7 @@ export default async function AllStoresPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Your stores</h1>
+        <h1 className="text-display text-ink">Your stores</h1>
         <p className="text-sm text-muted">Each store has its own products, Stripe account and plan.</p>
       </div>
       <StoresList stores={stores} canDuplicate={canDuplicate} platformAdmin={account.platformAdmin} />
@@ -48,7 +48,7 @@ export default async function AllStoresPage() {
       )}
 
       {canCreate && (
-        <section aria-labelledby="new-store" className="flex max-w-3xl flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="new-store" className="flex max-w-3xl flex-col gap-3 rounded-card border border-border bg-background p-5">
           <div>
             <h2 id="new-store" className="font-medium">
               Create a store
@@ -96,7 +96,7 @@ export default async function AllStoresPage() {
       )}
       {closed.length > 0 && (
         <section aria-labelledby="closed-heading" className="flex flex-col gap-2">
-          <h2 id="closed-heading" className="text-lg font-semibold">
+          <h2 id="closed-heading" className="text-lg font-medium">
             Closed stores
           </h2>
           <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
@@ -116,7 +116,7 @@ export default async function AllStoresPage() {
       )}
       {copies.length > 0 && (
         <section aria-labelledby="copies-heading" className="flex flex-col gap-2">
-          <h2 id="copies-heading" className="text-lg font-semibold">
+          <h2 id="copies-heading" className="text-lg font-medium">
             Recent copies
           </h2>
           <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
@@ -136,7 +136,7 @@ export default async function AllStoresPage() {
       )}
       {hostings.length > 0 && (
         <section aria-labelledby="hosting-heading" className="flex flex-col gap-2">
-          <h2 id="hosting-heading" className="text-lg font-semibold">
+          <h2 id="hosting-heading" className="text-lg font-medium">
             Hosting
           </h2>
           <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">

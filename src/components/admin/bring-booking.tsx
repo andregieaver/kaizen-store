@@ -112,7 +112,7 @@ export function BringBooking({
       )}
       {estimatedGrams === 0 && <p className="text-sm text-muted">No weight is set on these products, so enter the parcel&apos;s weight.</p>}
       <div>
-        <button type="button" onClick={load} disabled={busy || !weight.trim()} className="min-h-10 rounded-md border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50">
+        <button type="button" onClick={load} disabled={busy || !weight.trim()} className="min-h-10 rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50">
           {busy && !options ? "Asking Bring …" : options ? "Update services" : "Show Bring's services"}
         </button>
       </div>
@@ -164,7 +164,7 @@ export function BringBooking({
             type="button"
             onClick={book}
             disabled={busy || !service || (chosen?.needsPickupPoint && !point) || lines === "invalid"}
-            className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+            className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
           >
             {busy ? "Booking …" : test ? "Make a test booking" : "Book and mark as sent"}
           </button>

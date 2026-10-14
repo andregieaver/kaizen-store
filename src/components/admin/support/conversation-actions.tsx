@@ -180,7 +180,7 @@ export function ConversationActions({
     <div className="flex flex-col gap-2 border-t border-border p-3" aria-busy={busy || undefined}>
       <div className="flex flex-wrap items-center gap-2">
         {acts.claim && (
-          <button type="button" disabled={busy} onClick={() => void run({ kind: "claim" })} className="rounded-md bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
+          <button type="button" disabled={busy} onClick={() => void run({ kind: "claim" })} className="rounded-pill bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
             Take over
           </button>
         )}
@@ -345,7 +345,7 @@ export function ConversationActions({
                 </button>
               )}
             </span>
-            <button type="submit" disabled={busy || !draft.trim()} className="rounded-md bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
+            <button type="submit" disabled={busy || !draft.trim()} className="rounded-pill bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
               {writingNote ? "Add note" : "Send"}
             </button>
           </div>
@@ -417,7 +417,7 @@ function SummaryEditor({
         <input name="followUp" maxLength={FOLLOW_UP_MAX} defaultValue={current?.followUp ?? ""} className={field} />
       </label>
       <div className="flex gap-2">
-        <button type="submit" disabled={busy} className="rounded-md bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
+        <button type="submit" disabled={busy} className="rounded-pill bg-foreground px-3 py-1.5 text-sm text-background disabled:opacity-50">
           Save summary
         </button>
         <button type="button" onClick={onCancel} className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface">

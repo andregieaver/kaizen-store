@@ -30,7 +30,7 @@ export default async function PlatformPage() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Access requests</h1>
+        <h1 className="text-display text-ink">Access requests</h1>
         <p className="text-sm text-muted">
           Approving creates the store as a copy of the store template chosen (the Standard store is the demo
           template), applies the design profile chosen, makes the requester its owner, and emails them a sign-in link.
@@ -94,7 +94,7 @@ async function PendingRequest({ request, starters, designs }: { request: AccessR
   return (
     <article
       aria-labelledby={`request-${request.id}`}
-      className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5"
+      className="flex flex-col gap-4 rounded-card border border-border bg-background p-5"
     >
       <div>
         <h3 id={`request-${request.id}`} className="font-medium">

@@ -253,7 +253,7 @@ function KindChoice({
   const mode = state.options[kind].mode;
   const errorId = `copy-${kind}-error`;
   return (
-    <fieldset className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-background p-5">
+    <fieldset className="flex min-w-0 flex-col gap-2 rounded-card border border-border bg-background p-5">
       <legend className="px-1 text-base font-medium">{words.title}</legend>
       <p className="text-sm text-muted">{hint}</p>
       {rows.length === 0 ? (
@@ -394,7 +394,7 @@ export function StoreCopyWizard({
         </div>
       )}
 
-      <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <fieldset className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-background p-5">
         <legend className="px-1 text-base font-medium">The new store</legend>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Store name
@@ -467,7 +467,7 @@ export function StoreCopyWizard({
         />
       ))}
 
-      <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <fieldset className="flex min-w-0 flex-col gap-3 rounded-card border border-border bg-background p-5">
         <legend className="px-1 text-base font-medium">People and orders</legend>
         <div className="flex flex-col gap-1">
           <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
@@ -559,7 +559,7 @@ export function StoreCopyWizard({
         </ul>
       </Details>
 
-      <section aria-label="Summary" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-label="Summary" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
         <p id={hintId} className="text-sm">
           {sentence}
         </p>
@@ -573,7 +573,7 @@ export function StoreCopyWizard({
             type="submit"
             aria-disabled={blocked || busy}
             aria-describedby={blocked ? `${hintId} ${reasonId}` : hintId}
-            className={`min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background ${blocked || busy ? "opacity-40" : ""}`}
+            className={`min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background ${blocked || busy ? "opacity-40" : ""}`}
           >
             {busy ? "Starting the copy …" : "Start copy"}
           </button>

@@ -87,7 +87,7 @@ export function AiWriter({
             type="button"
             disabled={pending || !canWrite(action.kind, action.facts)}
             onClick={() => ask(action.kind, action.facts)}
-            className="min-h-9 rounded-md border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
+            className="min-h-9 rounded-pill border border-border px-3 text-sm hover:bg-surface disabled:opacity-50"
           >
             {action.label}
           </button>
@@ -148,7 +148,7 @@ export function AiWriter({
             >
               Use this
             </button>
-            <button type="button" onClick={() => setDraft(null)} className="min-h-10 rounded-md border border-border px-4 text-sm hover:bg-surface">
+            <button type="button" onClick={() => setDraft(null)} className="min-h-10 rounded-pill border border-border px-4 text-sm hover:bg-surface">
               Discard
             </button>
           </div>

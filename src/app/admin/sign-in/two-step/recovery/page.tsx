@@ -37,7 +37,7 @@ async function Recovery({ searchParams }: { searchParams: PageProps<"/admin/sign
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Use a recovery code</h1>
+        <h1 className="text-display text-ink">Use a recovery code</h1>
         <p className="text-sm text-muted">
           Type one of the ten recovery codes you saved when you set up two-step sign-in, like K7QM2-9WXDB. Each works once. Using one takes your
           two-step sign-in away and signs you out everywhere, and we email you to say so. You then sign in again and set it up anew.

@@ -19,7 +19,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Integrations</h1>
+        <h1 className="text-display text-ink">Integrations</h1>
         <p className="text-sm text-muted">Connect Kaizen to the services you already use. Orders, customers and subscriptions go there as they happen.</p>
       </div>
       <ul className="grid gap-4 sm:grid-cols-2">
@@ -35,7 +35,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                   : { text: "On", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" }
                 : { text: "Off", tone: "bg-surface text-muted" };
           return (
-            <li key={info.id} className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
+            <li key={info.id} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
               <div className="flex items-start gap-3">
                 <IntegrationMark id={info.id} />
                 <div className="min-w-0 flex-1">
@@ -66,7 +66,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
       </ul>
       <section aria-labelledby="shipping-carriers" className="flex flex-col gap-4">
         <div>
-          <h2 id="shipping-carriers" className="text-lg font-semibold">
+          <h2 id="shipping-carriers" className="text-lg font-medium">
             Shipping carriers
           </h2>
           <p className="text-sm text-muted">
@@ -87,7 +87,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                   : { text: "Details saved", tone: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200" }
                 : { text: "Needs details", tone: "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200" };
             return (
-              <li key={info.id} className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
+              <li key={info.id} className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
                 <div className="flex items-start gap-3">
                   <IntegrationMark id={info.id} />
                   <div className="min-w-0 flex-1">
@@ -113,14 +113,14 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
           })}
         </ul>
       </section>
-      <section aria-labelledby="google-reviews" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="google-reviews" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
         <div>
           <h2 id="google-reviews" className="font-medium">
             Google reviews
           </h2>
           <p className="text-sm text-muted">Show your rating and reviews on Google in Testimonials components on your pages.</p>
         </div>
-        <Link href={`${base}/google-reviews`} className="inline-flex min-h-10 w-fit items-center rounded-md border border-border px-4 text-sm font-medium hover:bg-surface">
+        <Link href={`${base}/google-reviews`} className="inline-flex min-h-10 w-fit items-center rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface">
           Set up Google reviews
         </Link>
       </section>

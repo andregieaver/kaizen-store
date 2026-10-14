@@ -112,7 +112,7 @@ export function RetentionView({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Data retention</h1>
+        <h1 className="text-display text-ink">Data retention</h1>
         <p className="max-w-2xl text-sm text-muted">
           How long each kind of personal data is kept, and what the daily job removes when the time is up. Bookkeeping periods come from each country&apos;s law and need an accountant to review them;
           the rest are Kaizen&apos;s own choice. This is not legal advice.
@@ -190,7 +190,7 @@ export function RetentionView({
           ).map(([key, text]) => (
             <div key={key} className="rounded-lg border border-border p-3">
               <dt className="text-muted">{text}</dt>
-              <dd className="text-xl font-semibold">{actions(key)}</dd>
+              <dd className="text-xl font-medium">{actions(key)}</dd>
             </div>
           ))}
         </dl>

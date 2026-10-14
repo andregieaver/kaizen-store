@@ -52,7 +52,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
   return (
     <div className="flex flex-col gap-10">
       <div>
-        <h1 className="text-2xl font-semibold">Languages and currencies</h1>
+        <h1 className="text-display text-ink">Languages and currencies</h1>
         <p className="text-sm text-muted">
           Language and currency are chosen separately. Offer any languages, whichever countries you sell to, and any
           currencies, whichever languages. Prices are kept in each country&apos;s own currency and shown to a shopper in
@@ -62,7 +62,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
       </div>
 
       <section className="flex flex-col gap-4" aria-labelledby="languages">
-        <h2 id="languages" className="text-lg font-semibold">Languages</h2>
+        <h2 id="languages" className="text-lg font-medium">Languages</h2>
         <p className="text-sm text-muted">
           Products, pages, menus and emails can be written in each language. The main language is the one you write in
           first; the others are translations. A language a country shows by default cannot be removed.
@@ -78,7 +78,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
                   ))}
                 </select>
               </div>
-              <h3 className="text-base font-semibold">Each country&apos;s language</h3>
+              <h3 className="text-base font-medium">Each country&apos;s language</h3>
               <p className="text-sm text-muted">What shoppers see at the country&apos;s address (<code>/no</code>).</p>
               <ul className="flex flex-col gap-2">
                 {markets.map((market) => (
@@ -156,7 +156,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
             </tbody>
           </table>
 
-          <h3 className="text-base font-semibold">Each country&apos;s language</h3>
+          <h3 className="text-base font-medium">Each country&apos;s language</h3>
           <p className="text-sm text-muted">
             What a country shows at its own address (<code>/no</code>). Shoppers can still switch to any other language
             you offer.
@@ -185,7 +185,7 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
       </section>
 
       <section className="flex flex-col gap-4" aria-labelledby="currencies">
-        <h2 id="currencies" className="text-lg font-semibold">Currencies</h2>
+        <h2 id="currencies" className="text-lg font-medium">Currencies</h2>
         <p className="text-sm text-muted">
           Rates are units of the currency per 1 euro, as the European Central Bank publishes them. A currency needs a
           rate, and so does each country&apos;s own, before amounts can be shown in it. Converted amounts are rounded to

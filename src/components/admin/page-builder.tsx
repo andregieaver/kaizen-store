@@ -2180,7 +2180,7 @@ function GridIcon() {
 function ButtonIcon() {
   return (
     <span aria-hidden className="flex h-9 items-center justify-center rounded-sm bg-foreground/75 text-background">
-      <span className="rounded-full border-2 border-current px-2 text-[10px] leading-4 font-semibold">OK</span>
+      <span className="rounded-full border-2 border-current px-2 text-[10px] leading-4 font-medium">OK</span>
     </span>
   );
 }
@@ -5508,7 +5508,7 @@ function HeadingFields({
           value={block.text}
           maxLength={HEADING_MAX}
           onChange={(event) => onChange({ ...block, text: event.target.value })}
-          className="min-h-11 rounded-md border border-border bg-background px-3 text-base font-semibold"
+          className="min-h-11 rounded-md border border-border bg-background px-3 text-base font-medium"
         />
         <p className="text-xs text-muted">{INLINE_HINT}</p>
       </div>

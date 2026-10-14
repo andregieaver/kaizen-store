@@ -31,7 +31,7 @@ export default async function RolesPage({ params }: PageProps<"/admin/[store]/st
             Team
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold">Roles</h1>
+        <h1 className="text-display text-ink">Roles</h1>
         <p className="max-w-2xl text-sm text-muted">
           A role says, for each part of the admin, whether someone can see it, change it, or not open it at all. Owners hold everything. An admin with no
           role of their own can do everything except the team and the plan. Changing a role changes what everyone who holds it can do, at once.
@@ -43,7 +43,7 @@ export default async function RolesPage({ params }: PageProps<"/admin/[store]/st
           const who = holders.get(role.id) ?? [];
           const template = role.template ? ROLE_TEMPLATES[role.template] : null;
           return (
-            <li key={role.id} className="rounded-lg border border-border bg-background p-5">
+            <li key={role.id} className="rounded-card border border-border bg-background p-5">
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium">{role.name}</span>
@@ -69,7 +69,7 @@ export default async function RolesPage({ params }: PageProps<"/admin/[store]/st
         })}
       </ul>
 
-      <section aria-labelledby="new-role-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="new-role-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="new-role-heading" className="mb-3 font-medium">
           Make a role
         </h2>

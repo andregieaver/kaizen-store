@@ -65,7 +65,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
     <>
       <nav aria-label="Period" className="flex flex-wrap items-center gap-2 text-sm">
         {WINDOW_ORDER.map((d) => (
-          <Link key={d} href={reportHref(base, { days: d, covered: showCovered, ignored: showIgnored })} aria-current={days === d ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-surface aria-[current=page]:font-semibold">
+          <Link key={d} href={reportHref(base, { days: d, covered: showCovered, ignored: showIgnored })} aria-current={days === d ? "page" : undefined} className="rounded px-2 py-1 aria-[current=page]:bg-surface aria-[current=page]:font-medium">
             {windowWords(d)}
           </Link>
         ))}

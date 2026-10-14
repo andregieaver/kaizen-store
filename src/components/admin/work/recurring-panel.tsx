@@ -33,7 +33,7 @@ export type RecurringPanelProps = {
 export function RecurringPanel(props: RecurringPanelProps) {
   return (
     <section aria-labelledby="recurring-heading" className="flex flex-col gap-3" data-slot="client-recurring">
-      <Suspense fallback={<h2 id="recurring-heading" className="text-lg font-semibold">Repeating invoices</h2>}>
+      <Suspense fallback={<h2 id="recurring-heading" className="text-lg font-medium">Repeating invoices</h2>}>
         <RecurringBody {...props} />
       </Suspense>
     </section>
@@ -61,7 +61,7 @@ export function RecurringPanelView({
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="recurring-heading" className="text-lg font-semibold">
+        <h2 id="recurring-heading" className="text-lg font-medium">
           Repeating invoices
         </h2>
         {archived ? null : <NewRecurringButton {...form} />}

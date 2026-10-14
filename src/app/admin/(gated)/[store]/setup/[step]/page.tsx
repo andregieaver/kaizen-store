@@ -239,7 +239,7 @@ async function PaymentsStep({ member }: { member: Membership }) {
       <div>
         <Link
           href={`/admin/${store.slug}/setup/products`}
-          className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
+          className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
         >
           Continue
         </Link>
@@ -285,7 +285,7 @@ function BookingsStep({ member, progress }: { member: Membership; progress: Setu
       <div>
         <Link
           href={`${base}/setup/${nextSetupStep("bookings", store)}`}
-          className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
+          className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
         >
           Continue
         </Link>
@@ -326,7 +326,7 @@ async function ProductsStep({ member, progress }: { member: Membership; progress
       <div className="flex flex-wrap gap-3">
         <Link
           href={`/admin/${store.slug}/setup/launch`}
-          className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
+          className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
         >
           {progress.counts.demoProducts > 0 ? "Keep them for now" : "Continue"}
         </Link>

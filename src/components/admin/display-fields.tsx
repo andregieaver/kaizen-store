@@ -140,7 +140,7 @@ export function RuleBuilder({
       {rules.map((group, groupIndex) => (
         <div key={groupIndex} className="flex flex-col gap-2">
           {groupIndex > 0 && (
-            <p className="text-center text-xs font-semibold tracking-wide text-muted uppercase" aria-hidden>
+            <p className="text-center text-xs font-medium tracking-wide text-muted uppercase" aria-hidden>
               Or
             </p>
           )}
@@ -149,7 +149,7 @@ export function RuleBuilder({
             {group.map((condition, index) => (
               <div key={index} className="flex flex-col gap-1">
                 {index > 0 && (
-                  <p className="text-xs font-semibold text-muted" aria-hidden>
+                  <p className="text-xs font-medium text-muted" aria-hidden>
                     And
                   </p>
                 )}
@@ -320,7 +320,7 @@ function ValueField({
                 type="button"
                 aria-pressed={on}
                 onClick={() => set(on ? c.value.filter((d) => d !== day) : [...c.value, day].sort())}
-                className="min-h-9 rounded-md border border-border px-2 text-sm aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background"
+                className="min-h-9 rounded-pill border border-border px-2 text-sm aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background"
               >
                 {WEEKDAY_LABELS[day].slice(0, 3)}
               </button>

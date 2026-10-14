@@ -5,7 +5,7 @@ import { BUILT_IN_VIEWS, type OrderListParams } from "@/lib/order-list";
 
 export type ViewLink = { id: string; title: string };
 
-const tab = "rounded-md px-3 py-1.5 text-sm text-muted hover:text-foreground aria-[current=page]:bg-background aria-[current=page]:font-semibold aria-[current=page]:text-foreground";
+const tab = "rounded-md px-3 py-1.5 text-sm text-muted hover:text-foreground aria-[current=page]:bg-background aria-[current=page]:font-medium aria-[current=page]:text-foreground";
 
 /**
  * The views above the list (wave 3, D173, `docs/wave-3-orders.md` 2.2.4): the built-in ones (All, To send, Waiting for stock, Unfinished checkouts, Archived), then the store's saved

@@ -31,7 +31,7 @@ export default async function PlanFeaturesPage() {
         <Link href="/admin/platform/plans" className="w-fit text-sm underline">
           Plans
         </Link>
-        <h1 className="text-2xl font-semibold">Plan features</h1>
+        <h1 className="text-display text-ink">Plan features</h1>
         <p className="max-w-2xl text-sm text-muted">
           Tick what each plan includes. The list is what store owners compare when they choose a plan; it describes the
           plans and does not switch anything on or off. Give a feature a category to group it, a number to place it, and
@@ -40,7 +40,7 @@ export default async function PlanFeaturesPage() {
       </div>
 
       {columns.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
           There is no active plan yet. Make one under <Link href="/admin/platform/plans" className="underline">Plans</Link>,
           then come back to say what it includes.
         </p>

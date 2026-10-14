@@ -35,7 +35,7 @@ export function DocumentsCard({
   // An unpaid order has nothing to say yet.
   if (!invoice && creditNotes.length === 0 && documents.eligibility === "not_paid") return null;
   return (
-    <section aria-labelledby="documents" className="rounded-lg border border-border bg-background p-5">
+    <section aria-labelledby="documents" className="rounded-card border border-border bg-background p-5">
       <h2 id="documents" className="mb-2 font-medium">
         Invoice and credit notes
       </h2>

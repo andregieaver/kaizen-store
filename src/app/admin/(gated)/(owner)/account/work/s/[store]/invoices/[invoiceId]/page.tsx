@@ -49,7 +49,7 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
         / {invoice.documentNumber ?? "Draft"}
       </nav>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-display text-ink">{title}</h1>
         {invoice.status === "draft" && <InvoiceStatusChip status="draft" dueOn={null} today={detail.today} />}
       </div>
       <p className="text-sm text-muted">

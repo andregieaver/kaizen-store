@@ -41,15 +41,15 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
         <Link href={base} className="text-sm underline">
           A/B tests
         </Link>
-        <h1 className="text-2xl font-semibold">New A/B test</h1>
+        <h1 className="text-display text-ink">New A/B test</h1>
       </div>
       {asked("page") && pages.length === 0 ? (
-        <p role="alert" className="rounded-lg border border-border bg-background p-5 text-sm">
+        <p role="alert" className="rounded-card border border-border bg-background p-5 text-sm">
           This page cannot be tested now: it is in a running test, it is not published, or it is a page with a place of
           its own that cannot be tested yet (the cookies page, the blog …). A working page such as the cart is tested by a part of it: choose the part in the page builder.
         </p>
       ) : partTarget && !part ? (
-        <p role="alert" className="rounded-lg border border-border bg-background p-5 text-sm">
+        <p role="alert" className="rounded-card border border-border bg-background p-5 text-sm">
           That part of the page cannot be tested: it is not in the published page (publish your changes first), or it is a working part of the shop. Go back to
           the page and choose another.
         </p>

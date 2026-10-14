@@ -233,7 +233,7 @@ function BridgeTable({ caption, lines, money }: { caption: string; lines: readon
       key: "line",
       label: "Line",
       cell: (l) => (
-        <span className={l.kind === "finance" || l.kind === "report" ? "font-semibold" : ""} title={l.text}>
+        <span className={l.kind === "finance" || l.kind === "report" ? "font-medium" : ""} title={l.text}>
           {l.sign !== 0 ? <span className="mr-1 tabular-nums text-muted">{SIGN_MARK[l.sign]}</span> : null}
           {l.label}
         </span>

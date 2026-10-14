@@ -94,9 +94,9 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
 
   return (
     <div className="flex flex-col gap-6">
-      <section aria-labelledby="ab-versions" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="ab-versions" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="ab-versions" className="text-lg font-semibold">1. Change a version</h2>
+          <h2 id="ab-versions" className="text-lg font-medium">1. Change a version</h2>
           {test.variants.length < MAX_VARIANTS && (
             <button type="button" disabled={pending} onClick={() => run(() => addVariantAction(store, test.id))} className={button}>
               Add another version
@@ -166,8 +166,8 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
         </ul>
       </section>
 
-      <section aria-labelledby="ab-settings" className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
-        <h2 id="ab-settings" className="text-lg font-semibold">2. Check the settings</h2>
+      <section aria-labelledby="ab-settings" className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
+        <h2 id="ab-settings" className="text-lg font-medium">2. Check the settings</h2>
         <label className={label}>
           Name
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} className={input} />
@@ -226,8 +226,8 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
       </section>
 
       <Problems problems={problems} />
-      <section aria-labelledby="ab-start" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
-        <h2 id="ab-start" className="text-lg font-semibold">3. Start the test</h2>
+      <section aria-labelledby="ab-start" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
+        <h2 id="ab-start" className="text-lg font-medium">3. Start the test</h2>
         <p className="text-sm text-muted">
           Visitors who have accepted statistics cookies will be shown the versions from the next page view. The test runs for at least {test.minDays} days and
           you can stop it at any time. The page itself does not change until you choose a winner.
@@ -287,8 +287,8 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
     <div className="flex flex-col gap-4">
       <Problems problems={problems} />
       {test.status === "scheduled" && test.scheduledStart && (
-        <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby="ab-scheduled">
-          <h2 id="ab-scheduled" className="text-lg font-semibold">
+        <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby="ab-scheduled">
+          <h2 id="ab-scheduled" className="text-lg font-medium">
             Starts {new Date(test.scheduledStart).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
           </h2>
           <p className="text-sm text-muted">
@@ -306,8 +306,8 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
         </section>
       )}
       {test.status === "running" && (
-        <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby="ab-stop">
-          <h2 id="ab-stop" className="text-lg font-semibold">Running</h2>
+        <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby="ab-stop">
+          <h2 id="ab-stop" className="text-lg font-medium">Running</h2>
           <p className="text-sm text-muted">
             Stopping ends the test for everyone: they see your page as it is again, and what was counted is kept. Only stop when you want to decide.
             {test.plannedEnd && ` It is planned to run until ${new Date(test.plannedEnd).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" })}.`}
@@ -332,8 +332,8 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
         </section>
       )}
       {test.status === "stopped" && (
-        <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby="ab-decide">
-          <h2 id="ab-decide" className="text-lg font-semibold">Decide</h2>
+        <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby="ab-decide">
+          <h2 id="ab-decide" className="text-lg font-medium">Decide</h2>
           <p className="text-sm text-muted">
             The test is stopped and visitors see your page as it was. Choose a version to make it your page, or keep the original.{" "}
             {test.part
@@ -349,7 +349,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
                 confirm === `apply-${v.key}` ? (
                   <span key={v.key} className="flex flex-wrap items-center gap-2 text-sm">
                     {test.part ? `Replace ${test.part.label} with the one in ${v.name}?` : `Replace the page with ${v.name}?`}
-                    <button type="button" disabled={pending} onClick={() => run(() => applyVariantAction(store, test.id, v.key), () => setConfirm(null))} className="min-h-10 rounded-md bg-foreground px-4 text-background disabled:opacity-50">
+                    <button type="button" disabled={pending} onClick={() => run(() => applyVariantAction(store, test.id, v.key), () => setConfirm(null))} className="min-h-10 rounded-pill bg-foreground px-4 text-background disabled:opacity-50">
                       Yes, use {v.name}
                     </button>
                     <button type="button" onClick={() => setConfirm(null)} className="underline">

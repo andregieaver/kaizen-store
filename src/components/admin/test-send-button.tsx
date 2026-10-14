@@ -12,7 +12,7 @@ export function TestSendButton({ action }: { action: () => Promise<{ ok: boolean
         type="button"
         disabled={pending}
         onClick={() => start(async () => setResult(await action()))}
-        className="min-h-10 w-fit rounded-md border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+        className="min-h-10 w-fit rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
       >
         {pending ? "Sending …" : "Send a test"}
       </button>

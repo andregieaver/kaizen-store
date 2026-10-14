@@ -77,7 +77,7 @@ export function InvoicesView({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Invoices</h1>
+        <h1 className="text-display text-ink">Invoices</h1>
         <p className="max-w-3xl text-sm text-muted">
           Every paid order gets an invoice in the store&apos;s own numbered series, and every refund that succeeds gets a credit note. They are made by the
           system when the payment or the refund is recorded and cannot be changed afterwards. This is not tax or accounting advice: have your accountant read
@@ -192,7 +192,7 @@ function ListTab({
           Search
           <input name="q" type="search" defaultValue={query.q} placeholder={credit ? "Credit note, invoice, order or email" : "Invoice, order or email"} maxLength={100} className={`${control} w-full`} />
         </label>
-        <button type="submit" className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
+        <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
           Filter
         </button>
         {!query.all && (
@@ -211,7 +211,7 @@ function ListTab({
       </p>
 
       {documents.rows.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background p-8 text-center text-sm">
+        <p className="rounded-card border border-border bg-background p-8 text-center text-sm">
           {filtered
             ? `No ${noun} match. Change the period or the search.`
             : credit
@@ -265,7 +265,7 @@ function ListTab({
       )}
 
       {canWrite ? (
-        <section aria-labelledby="export" className="rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="export" className="rounded-card border border-border bg-background p-5">
           <h2 id="export" className="font-medium">
             CSV for your accountant
           </h2>
@@ -372,7 +372,7 @@ function WaitingTab({
   const nothing = waiting.length === 0 && waitingNotes.length === 0 && failing.length === 0;
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <div className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
         <p className="max-w-3xl text-sm text-muted">
           A paid order waits for its invoice when something the invoice must state is missing, for example the business details or the VAT registration. The
           payment is never held back. Once the cause is put right the invoice is made within five minutes, dated that day, and still says the payment day as
@@ -381,7 +381,7 @@ function WaitingTab({
         {canWrite ? <CheckAgainForm action={actions.checkAgain} /> : <p className="text-sm text-muted">Members who may change orders can press Check again.</p>}
       </div>
 
-      {nothing && <p className="rounded-lg border border-border bg-background p-8 text-center text-sm">Nothing is waiting. Every paid order has its invoice and every refund its credit note.</p>}
+      {nothing && <p className="rounded-card border border-border bg-background p-8 text-center text-sm">Nothing is waiting. Every paid order has its invoice and every refund its credit note.</p>}
 
       {waiting.length > 0 && (
         <section aria-labelledby="waiting-invoices" className="flex flex-col gap-2">

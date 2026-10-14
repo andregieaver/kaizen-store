@@ -38,7 +38,7 @@ export function TagsCard({
   };
 
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm">
+    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-card border border-border bg-background p-5 text-sm">
       <h2 id={`${id}-h`} className="font-medium">
         Tags
       </h2>

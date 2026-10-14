@@ -168,7 +168,7 @@ export function ReplicatePanel({
   return (
     <section aria-labelledby={`${ids}-title`} className={`${card} flex flex-col gap-4`}>
       <div>
-        <h2 id={`${ids}-title`} className="text-lg font-semibold">
+        <h2 id={`${ids}-title`} className="text-lg font-medium">
           Copy a page from another website
         </h2>
         <p className="max-w-3xl text-sm text-muted">
@@ -353,7 +353,7 @@ function Preview({ job, view, setView }: { job: ReplicaJob; view: "desktop" | "m
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">Live preview</h3>
+        <h3 className="text-sm font-medium">Live preview</h3>
         <div role="group" aria-label="Width" className="inline-flex overflow-hidden rounded-md border border-border text-sm">
           {(["desktop", "mobile"] as const).map((name) => (
             <button key={name} type="button" onClick={() => setView(name)} aria-pressed={view === name} className={`px-3 py-1.5 ${view === name ? "bg-foreground text-background" : "hover:bg-surface"}`}>
@@ -395,7 +395,7 @@ function Summary({ job, pagesHref }: { job: ReplicaJob; pagesHref: string }) {
   const tone = summary.outcome === "done" ? "border-border" : "border-amber-600/50";
   return (
     <div className={`flex flex-col gap-3 rounded-lg border ${tone} bg-surface p-4`} aria-labelledby={`${job.id}-summary`}>
-      <h3 id={`${job.id}-summary`} className="text-base font-semibold">
+      <h3 id={`${job.id}-summary`} className="text-base font-medium">
         {summary.outcome === "done" ? "Summary" : summary.outcome === "aborted" ? "Summary of what was done before it was stopped" : "The copy could not be finished"}
       </h3>
       {summary.finalMatch.desktop !== null && (

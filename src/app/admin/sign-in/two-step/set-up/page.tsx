@@ -53,7 +53,7 @@ async function SetUp({ searchParams }: { searchParams: PageProps<"/admin/sign-in
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Set up two-step sign-in</h1>
+        <h1 className="text-display text-ink">Set up two-step sign-in</h1>
         <p className="text-sm text-muted">Signed in as {account.email}.</p>
       </div>
       <EnrolPanel

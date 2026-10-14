@@ -44,7 +44,7 @@ export default async function StoreTemplatesPage({ searchParams }: PageProps<"/a
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Store templates</h1>
+        <h1 className="text-display text-ink">Store templates</h1>
         <p className="max-w-3xl text-sm text-muted">
           Starting points for new stores: each is a store of its own, set up for one kind of business with its modules,
           products and services, staff and opening hours, pages, menus, legal page drafts, shipping and checkout settings.
@@ -89,7 +89,7 @@ export default async function StoreTemplatesPage({ searchParams }: PageProps<"/a
       )}
 
       {filter === "current" && (
-        <section aria-labelledby="new-starter" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="new-starter" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
           <div>
             <h2 id="new-starter" className="font-medium">
               New store template

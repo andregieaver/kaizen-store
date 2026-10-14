@@ -43,7 +43,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
   if (!id) {
     return (
       <main className={box}>
-        <h1 className="text-2xl font-semibold">This sign-in could not be read</h1>
+        <h1 className="text-display text-ink">This sign-in could not be read</h1>
         <p className="text-sm">Go back to the app you came from and try again.</p>
       </main>
     );
@@ -53,7 +53,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
   if (!(await isOwner(account))) {
     return (
       <main className={box}>
-        <h1 className="text-2xl font-semibold">For store owners</h1>
+        <h1 className="text-display text-ink">For store owners</h1>
         <p className="text-sm">
           Only store owners can sign in to other apps with their Kaizen Store account. You are signed in as {account.email}.
         </p>
@@ -71,7 +71,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
   if (error || !data) {
     return (
       <main className={box}>
-        <h1 className="text-2xl font-semibold">This sign-in has expired</h1>
+        <h1 className="text-display text-ink">This sign-in has expired</h1>
         <p className="text-sm">Go back to the app you came from and try again.</p>
       </main>
     );
@@ -82,7 +82,7 @@ async function Consent({ searchParams }: { searchParams: PageProps<"/admin/oauth
   const app = data.client.name || "An app";
   return (
     <main className={box}>
-      <h1 className="text-2xl font-semibold">Sign in to {app} with Kaizen Store</h1>
+      <h1 className="text-display text-ink">Sign in to {app} with Kaizen Store</h1>
       {failed && (
         <p role="alert" className="text-sm">
           That did not go through. Try again.

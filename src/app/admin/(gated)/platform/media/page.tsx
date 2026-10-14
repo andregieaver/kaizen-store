@@ -34,7 +34,7 @@ export default async function PlatformMediaPage({ searchParams }: PageProps<"/ad
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Media library</h1>
+        <h1 className="text-display text-ink">Media library</h1>
         <p className="max-w-2xl text-sm text-muted">
           Every picture and video uploaded for Kaizen&apos;s own site, here or in any editor. Add many at once, find them by
           name or alt text, give pictures alt texts (or let the AI write them), and see where each one is used on the site.

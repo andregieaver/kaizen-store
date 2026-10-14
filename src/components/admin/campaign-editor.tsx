@@ -406,7 +406,7 @@ export function CampaignEditor({
       </section>
 
       <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving} className="min-h-11 rounded-md bg-foreground px-5 font-medium text-background disabled:opacity-50">
+        <button type="submit" disabled={saving} className="min-h-11 rounded-pill bg-foreground px-5 font-medium text-background disabled:opacity-50">
           {saving ? "Saving …" : "Save campaign"}
         </button>
         <a href={back} className="text-sm underline">

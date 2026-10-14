@@ -18,7 +18,7 @@ export default async function KaizenSupportPage({ searchParams }: PageProps<"/ad
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Kaizen support</h1>
+        <h1 className="text-display text-ink">Kaizen support</h1>
         <p className="text-muted">Ask Kaizen for help with your stores or your account. Kaizen&apos;s assistant answers first, and a person from Kaizen takes over when needed. Answers also come by email when you are away.</p>
       </div>
       <KaizenRequests initial={rows} stores={stores.map((s) => ({ slug: s.store, name: s.name }))} initialOpen={open} />

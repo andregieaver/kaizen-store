@@ -547,6 +547,15 @@ dark, the scheme, and every offered scheme in light and in dark side by side (`S
 figure). A scheme's file also applies to an element marked `data-scheme-preview="{id}"` (and `data-preview-mode="dark"`), which is
 what lets a page show a scheme it is not drawn in; a preview only reads roles, so the older names that `admin.css` maps on `<html>`
 do not follow it, and a component meant for the preview uses the role names.
+Step 7, moving the pages over (D223, started): a codemod moved what every page shared, in `src/app/admin` and
+`src/components/admin`: page titles to `text-display text-ink` (205), every 600 and 700 weight to 500 (244), a section's card
+(`rounded-lg … p-5` and larger) to `rounded-card` (141; boxes inside a card keep their corners), and the main action and the
+bordered secondary buttons to pills (106). The overview parts (`Stat`, `Attention`, `Section`) are KPI tiles, a card of rows and a
+title, so the platform's overview, the control center, a store's Home and the Work and invoice overviews follow; the store's Home
+and the control center are on `PageHeader`, `Card` and `List`. Where a store's own look or a printed document is drawn (the builder's
+stand-ins, the theme editor's preview, previews of a store's pages, packing slips, the print routes) nothing changed.
+`admin-type.scan.test.ts` keeps it so. Next: the remaining pages to `PageHeader`, `Card`, `Chip` and `ListRow` by section, and
+the old token names out (`bg-background`, `bg-surface`, `border-border`) as each section moves.
 
 ---
 

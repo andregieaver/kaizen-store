@@ -29,7 +29,7 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Customer groups</h1>
+        <h1 className="text-display text-ink">Customer groups</h1>
         <p className="text-sm text-muted">
           A fixed percentage off everything a customer in the group buys once (not subscriptions, sign-up fees or shipping), taken off before any coupon.
           Put customers in a group, or give a <Link href={`${base}/companies`} className="underline">company</Link> a group so all its accounts share the discount.
@@ -72,7 +72,7 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
         </div>
       )}
 
-      <section aria-labelledby="new-group" className="flex max-w-xl flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="new-group" className="flex max-w-xl flex-col gap-3 rounded-card border border-border bg-background p-5">
         <h2 id="new-group" className="font-medium">
           New group
         </h2>

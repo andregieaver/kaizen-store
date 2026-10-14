@@ -26,7 +26,7 @@ export default async function PlatformTemplatesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Templates</h1>
+        <h1 className="text-display text-ink">Templates</h1>
         <p className="max-w-3xl text-sm text-muted">
           Whole page layouts, rows, columns and components that store owners share with every store, live as soon as
           they are shared, with the store&apos;s name on them, and Kaizen&apos;s own saved parts. Hide one and it is in

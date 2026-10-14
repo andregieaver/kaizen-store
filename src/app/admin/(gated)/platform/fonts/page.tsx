@@ -17,14 +17,14 @@ export default async function PlatformFontsPage() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Fonts</h1>
+        <h1 className="text-display text-ink">Fonts</h1>
         <p className="max-w-2xl text-sm text-muted">
           Any Google Fonts family for the headings and other text of Kaizen&apos;s own site. Components on its pages can use
           their own. Fonts are copied to Kaizen and load from the site itself, never from Google. Each store chooses its own
           under Fonts in its admin.
         </p>
       </div>
-      <section className="rounded-lg border border-border bg-background p-5">
+      <section className="rounded-card border border-border bg-background p-5">
         <SiteFontsForm fonts={chrome.fonts} action={savePlatformFontsAction} install={installPlatformFontAction} />
       </section>
     </>

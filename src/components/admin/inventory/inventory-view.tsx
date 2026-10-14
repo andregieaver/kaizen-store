@@ -39,7 +39,7 @@ export function InventoryView({
         {counts.map((c) => (
           <div key={c.id} className={`${card} flex flex-col gap-1`}>
             <span className={hint}>{c.label}</span>
-            <span className="text-2xl font-semibold tabular-nums">{figureText(c.n)}</span>
+            <span className="text-2xl font-medium tabular-nums">{figureText(c.n)}</span>
             {c.link && c.n > 0 && (
               <Link href={listHref(base, { ...c.link, location: applied.locationId })} className="text-xs underline underline-offset-2">
                 Show them

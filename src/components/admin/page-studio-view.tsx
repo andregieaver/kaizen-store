@@ -28,7 +28,7 @@ export function PageStudioView({
         <Link href={pagesHref} className="text-sm underline">
           Pages
         </Link>
-        <h1 className="text-2xl font-semibold">Create a page with AI</h1>
+        <h1 className="text-display text-ink">Create a page with AI</h1>
         <p className="max-w-3xl text-sm text-muted">
           Tell the AI what the page is for. It asks a few questions, plans the page with you, then writes it with the page builder&apos;s
           components, makes its pictures and saves it as a draft for you to look over, change and publish. It writes only what the site and you

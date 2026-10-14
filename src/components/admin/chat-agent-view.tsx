@@ -56,7 +56,7 @@ export async function ChatAgentView({
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Chat agent</h1>
+        <h1 className="text-display text-ink">Chat agent</h1>
         <p className="text-sm text-muted">
           {agent?.enabled ? (ready ? `On: ${agent.name} answers visitors on ${siteName}.` : "On, but hidden until the site has an AI text model.") : "Off."}
         </p>

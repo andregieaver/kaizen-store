@@ -18,7 +18,7 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
   if (!domain) {
     return (
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Domains</h1>
+        <h1 className="text-display text-ink">Domains</h1>
         <p className="max-w-2xl text-sm text-muted">
           Your store is at {storeHref(store.slug, storeBase(store.slug))} on Kaizen&apos;s own address for now. Stores get
           addresses of their own, and can use their own domains, once Kaizen&apos;s store domain is set up.
@@ -34,7 +34,7 @@ export default async function DomainsPage({ params }: PageProps<"/admin/[store]/
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Domains</h1>
+        <h1 className="text-display text-ink">Domains</h1>
         <p className="max-w-2xl text-sm text-muted">
           Where shoppers find your store: its address on Kaizen, or a domain of your own.
         </p>

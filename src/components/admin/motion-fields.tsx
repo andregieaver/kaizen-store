@@ -340,7 +340,7 @@ function Section({ title, hint, children }: { title: string; hint: string; child
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3 border-t border-border pt-4">
       <div className="flex flex-col gap-0.5">
-        <h3 id={id} className="text-sm font-semibold">
+        <h3 id={id} className="text-sm font-medium">
           {title}
         </h3>
         <p className="text-xs text-muted">{hint}</p>
@@ -724,7 +724,7 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
     // Where there is room it stays in view under the tabs, so a change can be watched while its settings are worked at.
     <div className="z-[5] flex flex-col gap-2 rounded-md border border-border bg-surface p-3 sm:sticky sm:top-7">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold">Preview</h3>
+        <h3 className="text-sm font-medium">Preview</h3>
         <button
           type="button"
           onClick={() => setReplay((n) => n + 1)}
@@ -810,7 +810,7 @@ function Sample({ part, childFx }: { part: MotionPart; childFx: (index: number) 
     );
   }
   if (part.blockType === "heading" || part.blockType === "richText") {
-    return <p className="text-xl font-semibold">A short line that draws the eye, and a little more to read</p>;
+    return <p className="text-xl font-medium">A short line that draws the eye, and a little more to read</p>;
   }
   if (part.blockType === "image") {
     return <div className="h-24 w-40 rounded bg-accent/25" />;

@@ -71,7 +71,7 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
   return (
     <div className="flex flex-col gap-6">
       <section aria-labelledby="ab-verdict" className={`rounded-lg border-2 bg-background p-5 ${SOFT[verdict.kind]}`}>
-        <h2 id="ab-verdict" className="text-lg font-semibold">
+        <h2 id="ab-verdict" className="text-lg font-medium">
           {verdict.headline}
         </h2>
         <p className="mt-1 max-w-3xl text-sm">{verdict.detail}</p>
@@ -88,7 +88,7 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
       </section>
 
       <section aria-labelledby="ab-versions" className="flex flex-col gap-2">
-        <h2 id="ab-versions" className="text-lg font-semibold">
+        <h2 id="ab-versions" className="text-lg font-medium">
           The versions, for: {goal.label.toLowerCase()}
         </h2>
         <div className="overflow-x-auto rounded-lg border border-border bg-background">
@@ -138,7 +138,7 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
       </section>
 
       <section aria-labelledby="ab-funnel" className="flex flex-col gap-2">
-        <h2 id="ab-funnel" className="text-lg font-semibold">What visitors did</h2>
+        <h2 id="ab-funnel" className="text-lg font-medium">What visitors did</h2>
         <div className="overflow-x-auto rounded-lg border border-border bg-background">
           <table className="w-full text-left text-sm">
             <thead>
@@ -182,7 +182,7 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
       </section>
 
       <section aria-labelledby="ab-trend" className="flex flex-col gap-2">
-        <h2 id="ab-trend" className="text-lg font-semibold">How it developed</h2>
+        <h2 id="ab-trend" className="text-lg font-medium">How it developed</h2>
         <Trend test={test} results={results} />
         {results.weekly.length > 0 && (
           <details className="text-sm">

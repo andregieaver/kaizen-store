@@ -20,7 +20,7 @@ export default async function NewDiscountPage({ params }: PageProps<"/admin/[sto
         <Link href={`/admin/${store.slug}/discounts`} className="text-sm underline">
           Coupons
         </Link>
-        <h1 className="text-2xl font-semibold">New coupon</h1>
+        <h1 className="text-display text-ink">New coupon</h1>
       </div>
       <DiscountForm store={store} discount={null} />
     </div>

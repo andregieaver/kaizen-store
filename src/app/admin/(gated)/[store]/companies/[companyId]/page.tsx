@@ -47,7 +47,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
         <Link href={`${base}/companies`} className="text-sm underline">
           Companies
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{company.name}</h1>
+        <h1 className="mt-2 text-display text-ink">{company.name}</h1>
         <p className="text-sm text-muted">
           {!company.active
             ? "Switched off: its accounts get no discount and it invites no one."

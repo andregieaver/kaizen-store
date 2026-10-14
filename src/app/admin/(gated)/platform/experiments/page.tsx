@@ -38,7 +38,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">A/B tests</h1>
+        <h1 className="text-display text-ink">A/B tests</h1>
         <p className="max-w-2xl text-sm text-muted">
           The A/B tests of every store. Tests that need a look come first: a version that lowers orders, visitors divided unevenly, a test
           nobody sees, one past its end or stopped and forgotten. You can read them here; the store&apos;s owner starts, stops and changes them.
@@ -54,7 +54,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
         ].map(([label, value, note]) => (
           <div key={label} className="rounded-lg border border-border bg-background p-4">
             <dt className="text-sm text-muted">{label}</dt>
-            <dd className="text-2xl font-semibold">{value}</dd>
+            <dd className="text-2xl font-medium">{value}</dd>
             <dd className="text-xs text-muted">{note}</dd>
           </div>
         ))}
@@ -136,7 +136,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
 
       <section aria-labelledby="own" className="flex flex-col gap-3">
         <div>
-          <h2 id="own" className="text-lg font-semibold">
+          <h2 id="own" className="text-lg font-medium">
             Tests that run on their own
           </h2>
           <p className="max-w-2xl text-sm text-muted">

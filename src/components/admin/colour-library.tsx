@@ -98,7 +98,7 @@ function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; 
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        className="min-h-8 rounded-md border border-border px-2 text-xs hover:bg-surface disabled:opacity-50"
+        className="min-h-8 rounded-pill border border-border px-2 text-xs hover:bg-surface disabled:opacity-50"
       >
         Save {what}…
       </button>
@@ -133,7 +133,7 @@ function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; 
         }}
         className="min-h-8 w-32 rounded-md border border-border bg-background px-2 text-xs"
       />
-      <button type="button" onClick={done} className="min-h-8 rounded-md bg-foreground px-2 text-xs font-medium text-background">
+      <button type="button" onClick={done} className="min-h-8 rounded-pill bg-foreground px-2 text-xs font-medium text-background">
         Save
       </button>
       <button type="button" onClick={() => setOpen(false)} className="min-h-8 rounded-md border border-border px-2 text-xs">

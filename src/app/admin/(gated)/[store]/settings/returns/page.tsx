@@ -26,7 +26,7 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Returns</h1>
+        <h1 className="text-display text-ink">Returns</h1>
         <p className="text-sm text-muted">
           Customers in the EU can withdraw from most purchases within 14 days, without giving a reason. These are the store&apos;s rules around that:
           the days it offers on top, who pays to send goods back, and when the refund is made. The defaults are the law&apos;s. The texts

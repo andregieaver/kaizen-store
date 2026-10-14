@@ -38,7 +38,7 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Reports</h1>
+          <h1 className="text-display text-ink">Reports</h1>
           <p className="text-sm text-muted">
             {formatDay(report.from, locale)} to {formatDay(report.to, locale)}, {GROUP_LABELS[report.by].toLowerCase()}
           </p>
@@ -69,7 +69,7 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
       <ReportTotalsView report={report} locale={locale} />
 
       {empty ? (
-        <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
           Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
         </p>
       ) : (

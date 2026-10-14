@@ -49,7 +49,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Your account</h1>
+        <h1 className="text-display text-ink">Your account</h1>
         <p className="text-sm text-muted">
           Signed in as {account.name ? `${account.name} (${account.email})` : account.email}.
         </p>

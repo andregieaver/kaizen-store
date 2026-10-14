@@ -8,8 +8,8 @@ import { workBase } from "@/lib/work-paths";
 export function WorkComingSoon({ storeSlug, title }: { storeSlug: string; title: string }) {
   return (
     <div className="flex max-w-3xl flex-col gap-3">
-      <h1 className="text-2xl font-semibold">{title}</h1>
-      <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
+      <h1 className="text-display text-ink">{title}</h1>
+      <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
         Coming in the next step.{" "}
         <Link href={workBase(storeSlug)} className="underline">
           Back to Work

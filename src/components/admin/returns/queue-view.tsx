@@ -36,7 +36,7 @@ export function ReturnsQueueView({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Returns</h1>
+        <h1 className="text-display text-ink">Returns</h1>
         <p className="text-sm text-muted">
           Withdrawals are the customer&apos;s legal right to change their mind: you cannot refuse them, and the refund is due within 14 days of
           being told. Return requests are inside your own longer window, and you may approve or decline them.
@@ -86,7 +86,7 @@ export function ReturnsQueueView({
           <input type="checkbox" name="overdue" value="1" defaultChecked={filter.overdue} className="size-4" />
           Past the refund deadline
         </label>
-        <button type="submit" className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
+        <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
           Filter
         </button>
         {filtered && (
@@ -97,7 +97,7 @@ export function ReturnsQueueView({
       </form>
 
       {queue.rows.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background p-8 text-center text-sm">
+        <p className="rounded-card border border-border bg-background p-8 text-center text-sm">
           {filtered
             ? "No returns match. Change the filter or clear it."
             : "No returns are open. Withdrawals and return requests appear here as customers make them: they use the Withdraw from the contract link in the order emails and the store's withdrawal page."}

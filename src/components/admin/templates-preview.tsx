@@ -130,7 +130,7 @@ export function TemplatePreviewDialog({
               onClick={onToggleActive}
               disabled={switching}
               aria-pressed={item.active}
-              className="min-h-10 rounded-md border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
+              className="min-h-10 rounded-pill border border-border px-4 text-sm font-medium hover:bg-surface disabled:opacity-50"
             >
               {item.active ? "Deactivate for this store" : "Activate for this store"}
             </button>
@@ -140,7 +140,7 @@ export function TemplatePreviewDialog({
               disabled={usingAny || reason !== null}
               aria-describedby={reason ? reasonId : undefined}
               title={reason ?? undefined}
-              className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
             >
               {using ? "Adding …" : "Use"}
             </button>

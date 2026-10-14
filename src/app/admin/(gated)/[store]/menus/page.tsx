@@ -30,7 +30,7 @@ export default async function MenusPage({ params, searchParams }: PageProps<"/ad
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Menus</h1>
+        <h1 className="text-display text-ink">Menus</h1>
         <p className="max-w-2xl text-sm text-muted">
           Lists of links to use around {store.name}: in the standard header and footer (chosen under Header and footer),
           and with a Menu component in any page, header or footer. A link to a page, article, category or tag shows once

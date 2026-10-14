@@ -72,7 +72,7 @@ export function ChosenDeliveryBooking({
         </label>
       )}
       <div>
-        <button type="button" onClick={submit} disabled={busy || !weight.trim() || lines === "invalid"} className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">
+        <button type="button" onClick={submit} disabled={busy || !weight.trim() || lines === "invalid"} className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50">
           {busy ? "Booking …" : test ? "Make a test booking" : "Book and mark as sent"}
         </button>
       </div>

@@ -182,7 +182,7 @@ export function TasksPanel({
 
   return (
     <section aria-labelledby="tasks-heading" className="flex flex-col gap-3">
-      <h2 id="tasks-heading" className="text-lg font-semibold">
+      <h2 id="tasks-heading" className="text-lg font-medium">
         Tasks
       </h2>
 

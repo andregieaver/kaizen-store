@@ -34,7 +34,7 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Custom fields</h1>
+        <h1 className="text-display text-ink">Custom fields</h1>
         <p className="max-w-2xl text-sm text-muted">
           Add your own fields to products, pages and articles: a size guide, ingredients, a warranty, a designer&apos;s
           name. Group the fields, choose where each group shows, and staff fill them in where they edit. New fields are

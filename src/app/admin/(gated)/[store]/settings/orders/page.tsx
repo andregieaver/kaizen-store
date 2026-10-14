@@ -22,7 +22,7 @@ export default async function OrderSettingsPage({ params }: PageProps<"/admin/[s
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Orders</h1>
+        <h1 className="text-display text-ink">Orders</h1>
         <p className="text-sm text-muted">
           How the store handles orders after they are placed: whether shoppers can send a gift message, whether finished orders are archived for you, and how draft orders are paid.
         </p>

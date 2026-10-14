@@ -18,7 +18,7 @@ export function RedirectsHead({ slug, active, title, intro, back }: { slug: stri
         </Link>
       )}
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">{title}</h1>
+        <h1 className="text-display text-ink">{title}</h1>
         <p className="max-w-3xl text-sm text-muted">{intro}</p>
       </div>
       <nav aria-label="Redirects" className="flex flex-wrap gap-1 border-b border-border text-sm">
@@ -27,7 +27,7 @@ export function RedirectsHead({ slug, active, title, intro, back }: { slug: stri
             key={tab.id}
             href={paths[tab.id]}
             aria-current={active === tab.id ? "page" : undefined}
-            className="-mb-px border-b-2 border-transparent px-3 py-2 text-muted hover:text-foreground aria-[current=page]:border-foreground aria-[current=page]:font-semibold aria-[current=page]:text-foreground"
+            className="-mb-px border-b-2 border-transparent px-3 py-2 text-muted hover:text-foreground aria-[current=page]:border-foreground aria-[current=page]:font-medium aria-[current=page]:text-foreground"
           >
             {tab.label}
           </Link>

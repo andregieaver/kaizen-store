@@ -40,13 +40,13 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Campaigns</h1>
+          <h1 className="text-display text-ink">Campaigns</h1>
           <p className="max-w-2xl text-sm text-muted">
             Offers that need no code: a percentage off, buy more and pay for fewer (3 for 2), or a free product when the basket comes to an amount. They
             can be for the whole store, some products, or a category or tag, and start and stop by themselves.
           </p>
         </div>
-        <Link href={`${base}/new`} className="min-h-10 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background">
+        <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background">
           New campaign
         </Link>
       </div>

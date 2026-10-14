@@ -130,7 +130,7 @@ function Figure({ label, children, help }: { label: string; children: ReactNode;
       <dt className="text-xs text-muted" {...(help ? { title: help } : {})}>
         {label}
       </dt>
-      <dd className="break-words text-lg font-semibold tabular-nums">{children}</dd>
+      <dd className="break-words text-lg font-medium tabular-nums">{children}</dd>
     </div>
   );
 }
@@ -156,7 +156,7 @@ function PeriodGroup({
 }) {
   return (
     <div className="min-w-0 rounded-lg border border-border bg-background p-4">
-      <h3 className="text-base font-semibold">{title}</h3>
+      <h3 className="text-base font-medium">{title}</h3>
       <p className="mb-3 text-xs text-muted">{caption}</p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
         <Figure label="Customers">{formatCount(customers)}</Figure>
@@ -403,7 +403,7 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
           <div className="space-y-3">
             <div className="rounded-lg border border-border bg-surface p-4">
               <p className="text-sm text-muted">Returning customers&apos; share of revenue</p>
-              <p className="text-3xl font-semibold tabular-nums">{formatPercent(nvr.returningRevenueShare, 1)}</p>
+              <p className="text-3xl font-medium tabular-nums">{formatPercent(nvr.returningRevenueShare, 1)}</p>
               <p className="text-sm text-muted">{`${countOf(nvr.returningCustomers, "returning customer")} brought in ${money(nvr.returningRevenueMinor)} of ${money(nvr.newRevenueMinor + nvr.returningRevenueMinor)} in this period.`}</p>
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -498,9 +498,9 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
               return (
                 <li key={s.segment} data-segment={s.segment} className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-background p-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <h3 className="text-base font-semibold">{s.segment}</h3>
+                    <h3 className="text-base font-medium">{s.segment}</h3>
                     <p className="text-sm tabular-nums">
-                      <span className="text-lg font-semibold">{formatCount(s.customers)}</span>
+                      <span className="text-lg font-medium">{formatCount(s.customers)}</span>
                       <span className="text-muted">{` ${s.customers === 1 ? "customer" : "customers"}`}</span>
                       {s.customers > 0 ? <span className="text-muted">{` · ${formatPercent(s.customerShare, 0)}`}</span> : null}
                     </p>

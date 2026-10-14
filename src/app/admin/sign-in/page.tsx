@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "Sign in" };
 export default function SignInPage({ searchParams }: PageProps<"/admin/sign-in">) {
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-6">
-      <h1 className="text-2xl font-semibold">Sign in to Kaizen</h1>
+      <h1 className="text-display text-ink">Sign in to Kaizen</h1>
       <Suspense fallback={null}>
         <Notice searchParams={searchParams} />
       </Suspense>
@@ -116,7 +116,7 @@ async function KaizenLifeButton({ searchParams }: { searchParams: PageProps<"/ad
   return (
     <form action={signInWithKaizenLife} className="flex flex-col gap-2">
       {typeof next === "string" && <input type="hidden" name="next" value={safeNext(next)} />}
-      <button type="submit" className="min-h-10 rounded-md border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
+      <button type="submit" className="min-h-10 rounded-pill border border-border bg-background px-4 text-sm font-medium hover:bg-surface">
         Sign in with Kaizen Life
       </button>
       <p className="text-xs text-muted">For store owners with a Kaizen Life account.</p>

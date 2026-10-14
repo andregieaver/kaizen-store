@@ -84,7 +84,7 @@ export function OverviewBody(props: OverviewProps) {
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Work</h1>
+        <h1 className="text-display text-ink">Work</h1>
         <p className="text-sm text-muted">Your clients, the hours you log for them and the invoices you send.</p>
       </div>
 
@@ -107,7 +107,7 @@ export function OverviewBody(props: OverviewProps) {
       {start ? (
         <section
           aria-labelledby="start-heading"
-          className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5"
+          className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
         >
           <h2 id="start-heading" className="font-medium">
             Add your first client
@@ -119,7 +119,7 @@ export function OverviewBody(props: OverviewProps) {
           <div>
             <Link
               href={`${base}/clients`}
-              className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background"
+              className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background"
             >
               Add your first client
             </Link>
@@ -131,7 +131,7 @@ export function OverviewBody(props: OverviewProps) {
 
           {hasFigures ? (
             <section aria-labelledby="figures-heading" className="flex flex-col gap-4">
-              <h2 id="figures-heading" className="text-lg font-semibold">
+              <h2 id="figures-heading" className="text-lg font-medium">
                 Where things stand
               </h2>
               {overview.currencies.map((f) => (

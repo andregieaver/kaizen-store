@@ -12,7 +12,7 @@ const TONES: Record<string, string> = {
 
 export function IntegrationMark({ id }: { id: string }) {
   return (
-    <span aria-hidden="true" className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-lg font-semibold ${TONES[id] ?? "bg-surface"}`}>
+    <span aria-hidden="true" className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-lg font-medium ${TONES[id] ?? "bg-surface"}`}>
       {id.charAt(0).toUpperCase()}
     </span>
   );

@@ -43,7 +43,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Subscription boxes</h1>
+        <h1 className="text-display text-ink">Subscription boxes</h1>
         <p className="text-sm text-muted">
           At each cutoff, shoppers&apos; lists become that delivery&apos;s orders at the day&apos;s prices, with their stock held. Send each
           order from its page: the customer&apos;s card is charged as you mark it sent. Times are in {store.timeZone.replace("_", " ")}.

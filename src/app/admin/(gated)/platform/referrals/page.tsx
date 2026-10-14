@@ -90,7 +90,7 @@ export default async function PlatformReferralsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Referrals</h1>
+        <h1 className="text-display text-ink">Referrals</h1>
         <p className="max-w-3xl text-sm text-muted">
           Store owners refer other store owners and earn credit on their own Kaizen invoices: a share of the plan and the sales fee the referred
           store pays Kaizen, for a number of months. The terms a referral is made with are the ones below on the day the request is approved;
@@ -99,7 +99,7 @@ export default async function PlatformReferralsPage() {
       </div>
 
       <Section id="settings-heading" title="The program">
-        <ActionForm action={saveReferralSettingsAction} className="flex max-w-xl flex-col gap-4 rounded-lg border border-border bg-background p-5" successMessage="Saved.">
+        <ActionForm action={saveReferralSettingsAction} className="flex max-w-xl flex-col gap-4 rounded-card border border-border bg-background p-5" successMessage="Saved.">
           <label className="flex items-center gap-2 text-sm font-medium">
             <input type="checkbox" name="enabled" defaultChecked={settings.enabled} className="size-4" />
             The program is on

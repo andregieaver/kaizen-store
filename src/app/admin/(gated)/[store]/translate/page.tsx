@@ -21,7 +21,7 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Translate the store</h1>
+        <h1 className="text-display text-ink">Translate the store</h1>
         <p className="text-sm text-muted">
           Products, menus, pages, articles, categories and tags, custom fields and the return instructions into another of the store&apos;s languages in one go, with AI. The AI
           suggests; you read each text and keep the ones that are right, and nothing is written before you save.
@@ -29,7 +29,7 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
         </p>
       </div>
       {languages.length < 2 ? (
-        <p className="rounded-lg border border-border bg-background p-5 text-sm">
+        <p className="rounded-card border border-border bg-background p-5 text-sm">
           {featureOn(store, "languages") ? (
             <>
               The store has only one language. Add another under{" "}
@@ -44,7 +44,7 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
           )}
         </p>
       ) : !connection?.textModel ? (
-        <p className="rounded-lg border border-border bg-background p-5 text-sm">
+        <p className="rounded-card border border-border bg-background p-5 text-sm">
           The store has no AI text model. Choose one under{" "}
           <Link href={`/admin/${store.slug}/settings/ai`} className="underline">Settings → AI</Link>.
         </p>

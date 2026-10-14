@@ -34,7 +34,7 @@ export function SiteLayoutChoice({
   const choices = layouts.filter((layout) => layout.state !== "draft" || layout.id === current);
   const unpublished = layouts.find((layout) => layout.id === current)?.state === "draft";
   return (
-    <ActionForm action={action} className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+    <ActionForm action={action} className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
       <h2 className="font-medium">The {type} in use</h2>
       <p className="max-w-2xl text-sm text-muted">
         {siteName} shows this {type} on every page. Publish a {type} to choose it; the standard one looks as it always has.

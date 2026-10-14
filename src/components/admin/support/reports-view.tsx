@@ -19,7 +19,7 @@ function Figure({ label, value, sub, help }: { label: string; value: ReactNode; 
   return (
     <div className="flex flex-col gap-1 rounded-lg border border-border bg-surface p-4">
       <dt className="text-sm text-muted">{label}</dt>
-      <dd className="text-2xl font-semibold tabular-nums">{value}</dd>
+      <dd className="text-2xl font-medium tabular-nums">{value}</dd>
       {sub && <dd className="text-xs text-muted">{sub}</dd>}
       {help && <dd className="text-xs text-muted">{help}</dd>}
     </div>
@@ -76,7 +76,7 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
       {cut && <p className="rounded-lg border border-border p-3 text-sm">This period has more conversations than one report reads: the figures are from the first 50 000.</p>}
 
       <section aria-labelledby="support-volume" className="flex flex-col gap-3">
-        <h2 id="support-volume" className="text-lg font-semibold">
+        <h2 id="support-volume" className="text-lg font-medium">
           Conversations
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -114,7 +114,7 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
       </section>
 
       <section aria-labelledby="support-speed" className="flex flex-col gap-3">
-        <h2 id="support-speed" className="text-lg font-semibold">
+        <h2 id="support-speed" className="text-lg font-medium">
           Waiting and answering
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -134,7 +134,7 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
       </section>
 
       <section aria-labelledby="support-quality" className="flex flex-col gap-3">
-        <h2 id="support-quality" className="text-lg font-semibold">
+        <h2 id="support-quality" className="text-lg font-medium">
           How it went
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -157,7 +157,7 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
       </section>
 
       <section aria-labelledby="support-requests" className="flex flex-col gap-3">
-        <h2 id="support-requests" className="text-lg font-semibold">
+        <h2 id="support-requests" className="text-lg font-medium">
           Requests to your team
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

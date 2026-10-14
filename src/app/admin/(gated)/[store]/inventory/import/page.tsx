@@ -93,7 +93,7 @@ async function Body({ storeSlug }: { storeSlug: string }) {
       </Notice>
       {jobs.length > 0 && (
         <section aria-labelledby="recent-stock-imports" className="flex flex-col gap-2">
-          <h2 id="recent-stock-imports" className="text-base font-semibold">
+          <h2 id="recent-stock-imports" className="text-base font-medium">
             Recent imports
           </h2>
           <div className={tableShell}>

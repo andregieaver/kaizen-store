@@ -52,7 +52,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Recommendations</h1>
+        <h1 className="text-display text-ink">Recommendations</h1>
         <p className="text-sm text-muted">
           {settings.enabled ? "Recommendations are on." : "Recommendations are off."} Shoppers are shown products that suit what they are looking at,
           searched for, saved or put in the cart, never what they have already bought. Place them with a{" "}
@@ -61,7 +61,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         </p>
       </div>
 
-      <section aria-labelledby="settings" className="flex max-w-2xl flex-col gap-3 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="settings" className="flex max-w-2xl flex-col gap-3 rounded-card border border-border bg-background p-5">
         <h2 id="settings" className="font-medium">Settings</h2>
         <ActionForm action={saveRecommendSettingsAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm font-medium">

@@ -42,7 +42,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">AI</h1>
+        <h1 className="text-display text-ink">AI</h1>
         <p className="text-sm text-muted">{current}</p>
         <p className="text-sm text-muted">{usingOwn ? pictureLine(own, "Your AI") : pictureLine(kaizen, "Kaizen's AI", "Use your own AI below to choose one.")}</p>
         {owner && (

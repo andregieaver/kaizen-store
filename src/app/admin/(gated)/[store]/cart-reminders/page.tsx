@@ -58,13 +58,13 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Cart reminders</h1>
+        <h1 className="text-display text-ink">Cart reminders</h1>
         <p className="text-sm text-muted">
           Emails to shoppers who typed their email at checkout but did not pay, with a link back to the same cart.
         </p>
       </div>
 
-      <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-card border border-border bg-background p-5">
         <div className="flex flex-col gap-2 text-sm">
           <h2 id="switch-heading" className="text-base font-medium">
             {settings.enabled ? (active > 0 ? "Reminders are on" : "On, but every reminder is switched off") : "Reminders are off"}
@@ -103,19 +103,19 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className={tile}>
             <span className="text-sm text-muted">Carts with an email</span>
-            <span className="text-2xl font-semibold">{stats.captured}</span>
+            <span className="text-2xl font-medium">{stats.captured}</span>
           </div>
           <div className={tile}>
             <span className="text-sm text-muted">Reminded</span>
-            <span className="text-2xl font-semibold">{stats.reminded}</span>
+            <span className="text-2xl font-medium">{stats.reminded}</span>
           </div>
           <div className={tile}>
             <span className="text-sm text-muted">Bought after a reminder</span>
-            <span className="text-2xl font-semibold">{stats.recovered}</span>
+            <span className="text-2xl font-medium">{stats.recovered}</span>
           </div>
           <div className={tile}>
             <span className="text-sm text-muted">Sales after reminders</span>
-            <span className="text-2xl font-semibold">{recovered || formatMoney(0, mainCurrency(store), locale)}</span>
+            <span className="text-2xl font-medium">{recovered || formatMoney(0, mainCurrency(store), locale)}</span>
           </div>
         </div>
       </section>
@@ -125,7 +125,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
           <h2 id="steps-heading" className="font-medium">
             Reminders
           </h2>
-          <Link href={`${base}/new`} className="min-h-10 rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background">
+          <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-foreground px-4 py-2 text-sm font-medium text-background">
             New reminder
           </Link>
         </div>
@@ -220,7 +220,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         )}
       </section>
 
-      <section aria-labelledby="privacy-heading" className="rounded-lg border border-border bg-background p-5 text-sm">
+      <section aria-labelledby="privacy-heading" className="rounded-card border border-border bg-background p-5 text-sm">
         <h2 id="privacy-heading" className="mb-2 font-medium">
           For your privacy policy
         </h2>

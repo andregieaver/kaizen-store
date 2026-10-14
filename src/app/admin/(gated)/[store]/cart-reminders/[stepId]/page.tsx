@@ -30,7 +30,7 @@ export default async function ReminderPage({ params }: PageProps<"/admin/[store]
         <Link href={`/admin/${store.slug}/cart-reminders`} className="text-sm underline">
           Cart reminders
         </Link>
-        <h1 className="text-2xl font-semibold">Reminder after {describeDelay(step.delayMinutes)}</h1>
+        <h1 className="text-display text-ink">Reminder after {describeDelay(step.delayMinutes)}</h1>
       </div>
       <ReminderForm store={store} step={step} />
       <DeleteReminderButton action={deleteReminderStepAction.bind(null, store.slug, step.id)} />

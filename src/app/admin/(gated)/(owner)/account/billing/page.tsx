@@ -44,7 +44,7 @@ export default async function OwnerBillingPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Billing</h1>
+        <h1 className="text-display text-ink">Billing</h1>
         <p className="text-sm text-muted">The plan of each store you own, what it costs and when it renews. Change a plan in the store&apos;s own billing.</p>
       </div>
       {rows.length === 0 ? (

@@ -52,7 +52,7 @@ export async function LayoutTab({ presetId, kind }: { presetId: string; kind: De
   if (!pageId) {
     return (
       <DesignShell design={page.design} facts={page.facts} tab={words.tab}>
-        <section className="flex max-w-3xl flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <section className="flex max-w-3xl flex-col gap-3 rounded-card border border-border bg-background p-5">
           <p className="text-sm text-muted">{words.intro}</p>
           <p className="text-sm">
             The profile uses <strong>{words.standard}</strong>: a store that applies it shows the standard {words.one}.

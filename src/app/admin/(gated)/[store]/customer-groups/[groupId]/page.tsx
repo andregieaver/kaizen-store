@@ -36,7 +36,7 @@ export default async function CustomerGroupPage({ params }: PageProps<"/admin/[s
         <Link href={`${base}/customer-groups`} className="text-sm underline">
           Customer groups
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">{group.name}</h1>
+        <h1 className="mt-2 text-display text-ink">{group.name}</h1>
         <p className="text-sm text-muted">
           {group.percent} % off what {group.active ? "its customers buy" : "customers would buy: the group is switched off, so it gives nothing now"}.
         </p>

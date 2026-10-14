@@ -14,7 +14,7 @@ export async function OrderTermsCard({ store, orderId, zone }: { store: Pick<Sto
   const [line, record] = await Promise.all([staffTermsFor(store, orderId, format), termsForOrder(store.id, orderId)]);
   if (line.kind === "none") return null;
   return (
-    <section aria-labelledby="terms" className="rounded-lg border border-border bg-background p-5 text-sm">
+    <section aria-labelledby="terms" className="rounded-card border border-border bg-background p-5 text-sm">
       <h2 id="terms" className="mb-2 font-medium">
         Terms
       </h2>

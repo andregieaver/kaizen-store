@@ -2042,7 +2042,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
           maxLength={200}
           placeholder="Section title (optional)"
           aria-label={`Section title above row ${r + 1}`}
-          className="h-8 w-full rounded border border-dashed border-border bg-surface px-2 font-semibold"
+          className="h-8 w-full rounded border border-dashed border-border bg-surface px-2 font-medium"
           onChange={(event) => setTable(setSection(table, r, event.target.value))}
         />
       </td>
@@ -2064,7 +2064,7 @@ function TableFields({ block, onChange }: BlockEditorProps<TableBlock>) {
                       value={text}
                       maxLength={TABLE_CELL_MAX}
                       aria-label={block.header && r === 0 ? `Heading of column ${c + 1}` : `Row ${r + 1}, column ${c + 1}`}
-                      className={`h-8 w-32 rounded border border-border bg-background px-2 ${block.header && r === 0 ? "font-semibold" : ""}`}
+                      className={`h-8 w-32 rounded border border-border bg-background px-2 ${block.header && r === 0 ? "font-medium" : ""}`}
                       onFocus={(event) => (lastCell.current = { r, c, input: event.currentTarget })}
                       onChange={(event) => set(setCell(rows, r, c, event.target.value))}
                     />

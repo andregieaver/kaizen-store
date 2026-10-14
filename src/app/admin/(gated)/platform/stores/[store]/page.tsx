@@ -59,7 +59,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             Stores
           </Link>
         </p>
-        <h1 className="text-2xl font-semibold">{store.name}</h1>
+        <h1 className="text-display text-ink">{store.name}</h1>
         <p className="text-sm text-muted">
           {billing.ownerEmail ?? "No owner yet"} · {store.details.country ?? "country not set"} ·{" "}
           <Link href={`/admin/${store.slug}`} className="underline">
@@ -82,7 +82,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         />
       )}
 
-      <section aria-labelledby="current-heading" className="rounded-lg border border-border bg-background p-5 text-sm">
+      <section aria-labelledby="current-heading" className="rounded-card border border-border bg-background p-5 text-sm">
         <h2 id="current-heading" className="mb-2 font-medium">
           Current plan
         </h2>
@@ -126,7 +126,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         )}
       </section>
 
-      <section aria-labelledby="assign-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="assign-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="assign-heading" className="mb-1 font-medium">
           {onPlan ? "Change plan" : "Start a plan"}
         </h2>
@@ -178,7 +178,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
       </section>
 
       {onPlan && (
-        <section aria-labelledby="cancel-heading" className="rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="cancel-heading" className="rounded-card border border-border bg-background p-5">
           <h2 id="cancel-heading" className="mb-3 font-medium">
             Cancel plan
           </h2>
@@ -208,7 +208,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         />
       )}
 
-      <section aria-labelledby="fee-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="fee-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="fee-heading" className="mb-1 font-medium">
           Fee per sale
         </h2>
@@ -230,7 +230,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           <SubmitButton>Save fee</SubmitButton>
         </ActionForm>
       </section>
-      <section aria-labelledby="status-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5 text-sm">
+      <section aria-labelledby="status-heading" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5 text-sm">
         <h2 id="status-heading" className="font-medium">
           Store status: {STATUS_WORDS[state?.status ?? store.status]}
         </h2>
@@ -278,7 +278,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           </>
         )}
       </section>
-      <section aria-labelledby="invoices-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="invoices-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="invoices-heading" className="mb-3 font-medium">
           Invoices
         </h2>
@@ -297,7 +297,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         closedNote="The store is not open, so its look cannot be changed."
       />
 
-      <section aria-labelledby="people-heading" className="rounded-lg border border-border bg-background p-5 text-sm">
+      <section aria-labelledby="people-heading" className="rounded-card border border-border bg-background p-5 text-sm">
         <h2 id="people-heading" className="mb-3 font-medium">
           People
         </h2>

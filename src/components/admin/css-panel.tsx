@@ -156,7 +156,7 @@ export function CssPanel({
               type="button"
               onClick={save}
               disabled={saving || !siteChanged || problem !== null}
-              className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
+              className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-40"
             >
               {saving ? "Saving …" : "Save global CSS"}
             </button>

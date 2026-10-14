@@ -28,7 +28,7 @@ export function PagePlaceForm({
 }) {
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
   return (
-    <section className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5" aria-labelledby={`place-${id}`}>
+    <section className="flex flex-col gap-3 rounded-card border border-border bg-background p-5" aria-labelledby={`place-${id}`}>
       <h3 id={`place-${id}`} className="font-medium">
         {name}
       </h3>

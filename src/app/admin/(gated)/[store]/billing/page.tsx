@@ -59,13 +59,13 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Billing</h1>
+        <h1 className="text-display text-ink">Billing</h1>
         <p className="text-sm text-muted">
           What {store.name} pays Kaizen. Each store has its own plan.
         </p>
       </div>
 
-      <section aria-labelledby="plan-heading" className="rounded-lg border border-border bg-background p-5 text-sm">
+      <section aria-labelledby="plan-heading" className="rounded-card border border-border bg-background p-5 text-sm">
         <h2 id="plan-heading" className="mb-3 font-medium">
           {onPlan && billing?.planName ? `Your plan: ${billing.planName}` : "No plan yet"}
         </h2>
@@ -148,7 +148,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
       )}
 
       {onPlan && isOwner && (
-        <section aria-labelledby="manage-heading" className="rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="manage-heading" className="rounded-card border border-border bg-background p-5">
           <h2 id="manage-heading" className="mb-1 font-medium">
             Invoices and payment
           </h2>
@@ -220,7 +220,7 @@ function PlanCard({
       className={`flex h-full flex-col gap-4 rounded-lg border bg-background p-5 ${isCurrent ? "border-foreground" : "border-border"}`}
     >
       <div>
-        <h3 id={`card-${plan.id}`} className="text-lg font-semibold">
+        <h3 id={`card-${plan.id}`} className="text-lg font-medium">
           {plan.name}
         </h3>
         {plan.description && <p className="text-sm text-muted">{plan.description}</p>}
@@ -228,7 +228,7 @@ function PlanCard({
       <div className="text-sm">
         {monthly && (
           <p>
-            <span className="text-xl font-semibold">{formatMoney(monthly.amountMinor, currency, "nb-NO")}</span> / month
+            <span className="text-xl font-medium">{formatMoney(monthly.amountMinor, currency, "nb-NO")}</span> / month
           </p>
         )}
         {yearly && (

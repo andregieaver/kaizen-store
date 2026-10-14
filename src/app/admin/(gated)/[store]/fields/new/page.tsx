@@ -24,7 +24,7 @@ export default async function NewFieldGroupPage({ params, searchParams }: PagePr
         <Link href={base} className="text-sm underline">
           Custom fields
         </Link>
-        <h1 className="text-2xl font-semibold">New group</h1>
+        <h1 className="text-display text-ink">New group</h1>
       </div>
       <FieldGroupEditor
         initial={emptyGroup(start)}

@@ -43,7 +43,7 @@ export function RequestsView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Privacy requests</h1>
+          <h1 className="text-display text-ink">Privacy requests</h1>
           <p className="max-w-2xl text-sm text-muted">
             People may ask what the store holds about them, or ask for it to be erased. Log a request when it arrives, and answer it within one month. This is not legal advice.
           </p>

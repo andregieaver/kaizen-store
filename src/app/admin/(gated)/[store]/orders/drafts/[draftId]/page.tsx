@@ -79,7 +79,7 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
         <Link href={base} className="text-sm text-muted underline underline-offset-2">
           Draft orders
         </Link>
-        <h1 className="text-2xl font-semibold">
+        <h1 className="text-display text-ink">
           Draft {draft.number} <span className="text-base font-normal text-muted">· {DRAFT_STATUS_LABELS[draft.status].toLowerCase()}</span>
         </h1>
       </div>

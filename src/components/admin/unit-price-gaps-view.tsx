@@ -38,7 +38,7 @@ export function NeedsContentNotice({ count, href }: { count: number; href: strin
 export function NeedsContentList({ products, base }: { products: NeedsContent[]; base: string }) {
   if (products.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-background p-8 text-center">
+      <div className="rounded-card border border-border bg-background p-8 text-center">
         <p>No product needs content for the unit price.</p>
       </div>
     );

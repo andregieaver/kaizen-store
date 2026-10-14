@@ -304,7 +304,7 @@ function BridgeTable({ report, money }: { report: SubscriptionsReport; money: (m
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.key} data-step={row.key} className={`border-b border-border last:border-b-0 ${row.subtotal ? "bg-surface font-semibold" : ""}`}>
+            <tr key={row.key} data-step={row.key} className={`border-b border-border last:border-b-0 ${row.subtotal ? "bg-surface font-medium" : ""}`}>
               <th scope="row" className="px-3 py-2 text-left align-top font-[inherit]">
                 <span className="block">{row.label}</span>
                 <span className="mt-0.5 block max-w-md text-xs font-normal text-muted">{row.detail}</span>
@@ -419,7 +419,7 @@ export function SubscriptionsView(props: SubscriptionsViewProps) {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <BridgeTable report={report} money={money} />
           <div className="min-w-0 rounded-lg border border-border bg-background p-4">
-            <h3 className="mb-3 text-sm font-semibold">MRR, start to end</h3>
+            <h3 className="mb-3 text-sm font-medium">MRR, start to end</h3>
             <HorizontalBars label="MRR at the start, what was added and lost, and MRR at the end" rows={bridgeBars(report, money)} exportId="subscriptions.mrr_bridge" />
           </div>
         </div>

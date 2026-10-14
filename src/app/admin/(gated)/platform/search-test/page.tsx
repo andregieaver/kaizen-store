@@ -38,7 +38,7 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Search test</h1>
+        <h1 className="text-display text-ink">Search test</h1>
         <p className="text-sm text-muted">
           Does hybrid search (words, meaning and understanding) help shoppers more than keyword search alone? While a test runs,
           each search in every store is given one of the two at random. No cookie is set: the unit is the search, and opening a

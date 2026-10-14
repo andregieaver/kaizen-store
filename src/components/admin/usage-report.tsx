@@ -153,7 +153,7 @@ function Tile({ label, value, note }: { label: string; value: string; note?: str
   return (
     <div className="rounded-lg border border-border p-4">
       <p className="text-xs font-medium tracking-wide text-muted uppercase">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-1 text-2xl font-medium tabular-nums">{value}</p>
       {note && <p className="mt-1 text-xs text-muted">{note}</p>}
     </div>
   );

@@ -41,7 +41,7 @@ function useMenu() {
 export type SwitcherStore = { slug: string; name: string; role: "owner" | "admin"; suspended?: boolean };
 
 const item = "flex min-h-10 items-center gap-2 rounded-md px-3 text-sm hover:bg-surface aria-[current=page]:bg-surface aria-[current=page]:font-medium";
-const heading = "px-3 pb-1 pt-1 text-xs font-semibold tracking-wide text-muted uppercase";
+const heading = "px-3 pb-1 pt-1 text-xs font-medium tracking-wide text-muted uppercase";
 /** The links of a section sit a step in from its heading, with a rule down their side. */
 const indented = "ml-3 flex flex-col gap-0.5 border-l border-border pl-1";
 
@@ -109,7 +109,7 @@ export function AdminSwitcher({
         aria-expanded={open}
         className="flex min-h-10 max-w-full items-center gap-2 rounded-md px-2 hover:bg-surface"
       >
-        <span className="hidden font-semibold sm:inline">Kaizen</span>
+        <span className="hidden font-medium sm:inline">Kaizen</span>
         <span aria-hidden="true" className="hidden text-muted sm:inline">
           /
         </span>

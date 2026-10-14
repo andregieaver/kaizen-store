@@ -165,7 +165,7 @@ function Choice({
         <button
           type="submit"
           disabled={room !== null}
-          className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+          className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
         >
           {mode === "replace" ? (replacing ? `Replace ${count(rows.length, "row")}` : "Use layout") : "Add rows"}
         </button>

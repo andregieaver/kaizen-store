@@ -33,7 +33,7 @@ export default async function CampaignPage({ params }: PageProps<"/admin/[store]
         <Link href={`/admin/${store.slug}/campaigns`} className="text-sm underline">
           Campaigns
         </Link>
-        <h1 className="text-2xl font-semibold">{campaign.name}</h1>
+        <h1 className="text-display text-ink">{campaign.name}</h1>
         <p className="text-sm text-muted">
           {STATUS[campaignStatus(campaign)]}. {orders} {orders === 1 ? "order has" : "orders have"} got something from it.
         </p>

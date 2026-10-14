@@ -30,14 +30,14 @@ export function RepliesManager({ replies, languages, save, remove }: { replies: 
       </section>
       {save && (
         <section aria-labelledby="new-reply" className="flex flex-col gap-2">
-          <h2 id="new-reply" className="text-lg font-semibold">
+          <h2 id="new-reply" className="text-lg font-medium">
             New saved reply
           </h2>
           <ReplyForm languages={languages} save={save} />
         </section>
       )}
       <section aria-labelledby="all-replies" className="flex flex-col gap-3">
-        <h2 id="all-replies" className="text-lg font-semibold">
+        <h2 id="all-replies" className="text-lg font-medium">
           Saved replies ({replies.length})
         </h2>
         {replies.length === 0 ? (

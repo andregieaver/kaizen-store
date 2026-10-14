@@ -56,12 +56,12 @@ export function AccessibilityForm({
   return (
     <div className="flex flex-col gap-8">
       <p role="note" className="rounded-lg border border-border bg-background p-4 text-sm">
-        <strong className="font-semibold">An automated check finds only part of the problems</strong> and does not replace an assessment by someone who knows
+        <strong className="font-medium">An automated check finds only part of the problems</strong> and does not replace an assessment by someone who knows
         accessibility. This page never says the site meets the requirements on its own: that needs an assessment you give below. The statement text is a draft
         written by hand and not checked by a lawyer.
       </p>
 
-      <section aria-labelledby="facts-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="facts-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="facts-heading" className="mb-2 font-medium">
           What the site itself knows
         </h2>
@@ -74,7 +74,7 @@ export function AccessibilityForm({
       </section>
 
       <ActionForm action={actions.save} className="flex flex-col gap-6">
-        <fieldset className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <fieldset className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
           <legend className="px-1 font-medium">Assessment</legend>
           {A11Y_STATUSES.map((status) => (
             <label key={status} className="flex items-start gap-2 text-sm">
@@ -105,7 +105,7 @@ export function AccessibilityForm({
           </div>
         </fieldset>
 
-        <fieldset className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <fieldset className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
           <legend className="px-1 font-medium">The statement</legend>
           <label className="flex flex-col gap-1 text-sm font-medium">
             Known issues
@@ -136,7 +136,7 @@ export function AccessibilityForm({
           </div>
           {body && (
             <p className="text-sm text-muted">
-              For a shop in {body.country} the statement names <strong className="font-semibold text-foreground">{body.body}</strong>
+              For a shop in {body.country} the statement names <strong className="font-medium text-foreground">{body.body}</strong>
               {body.verified ? "." : ", marked as not verified: the text tells readers to check with the authority. Nobody has confirmed this body yet."}
             </p>
           )}
@@ -146,7 +146,7 @@ export function AccessibilityForm({
         </div>
       </ActionForm>
 
-      <section aria-labelledby="draft-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="draft-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="draft-heading" className="mb-1 font-medium">
           Make a draft statement
         </h2>

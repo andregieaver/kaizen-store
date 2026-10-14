@@ -143,7 +143,7 @@ export function ImportOptionsForm({ choices, check, checked }: { choices: Option
         run();
       }}
     >
-      <h2 className="text-base font-semibold">What should the import do</h2>
+      <h2 className="text-base font-medium">What should the import do</h2>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="opt-mode" className={label}>
@@ -258,7 +258,7 @@ export function ImportApply({
 
   return (
     <section aria-label="Import" className={`${card} flex flex-col gap-3`} aria-busy={pending}>
-      <h2 className="text-base font-semibold">Ready to import</h2>
+      <h2 className="text-base font-medium">Ready to import</h2>
       <p className="text-sm">
         {wholeNumber(counts.toCreate)} to create, {wholeNumber(counts.toUpdate)} to update, {wholeNumber(counts.unchanged)} unchanged
         {counts.withProblems > 0 ? `, ${wholeNumber(counts.withProblems)} with problems` : ""}.

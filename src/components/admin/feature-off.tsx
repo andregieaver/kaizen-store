@@ -36,7 +36,7 @@ export function FeatureOff({ storeSlug, feature, features, owner }: Props) {
   const href = `/admin/${storeSlug}/settings/features`;
   return (
     <section aria-labelledby="feature-off-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-5">
-      <h1 id="feature-off-heading" className="text-xl font-semibold">
+      <h1 id="feature-off-heading" className="text-xl font-medium">
         {label} {ids.length > 1 ? "are" : "is"} switched off
       </h1>
       <p className="text-sm text-muted">
@@ -46,7 +46,7 @@ export function FeatureOff({ storeSlug, feature, features, owner }: Props) {
       </p>
       {owner ? (
         <p>
-          <Link href={href} className="inline-flex min-h-11 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background">
+          <Link href={href} className="inline-flex min-h-11 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background">
             Go to Features
           </Link>
         </p>

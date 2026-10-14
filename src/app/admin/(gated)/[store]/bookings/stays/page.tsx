@@ -64,7 +64,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Stays and rentals</h1>
+          <h1 className="text-display text-ink">Stays and rentals</h1>
           <p className="text-sm text-muted">
             {longDay.format(noon(from))} to {longDay.format(noon(addDays(from, DAYS - 1)))}, in {tz.replace("_", " ")} time.
           </p>
@@ -103,7 +103,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
                   <th
                     key={day}
                     scope="col"
-                    className={`border-b border-l border-border p-1 text-center text-xs font-normal tabular-nums ${day === today ? "font-semibold" : ""}`}
+                    className={`border-b border-l border-border p-1 text-center text-xs font-normal tabular-nums ${day === today ? "font-medium" : ""}`}
                   >
                     {dayHead.format(noon(day))}
                   </th>

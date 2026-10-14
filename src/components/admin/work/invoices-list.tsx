@@ -73,7 +73,7 @@ export function InvoicesListView({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Invoices</h1>
+        <h1 className="text-display text-ink">Invoices</h1>
         <div className="flex flex-wrap items-center gap-2">
           <InvoiceExportSlot storeSlug={storeSlug} query={invoiceListQuery(params)} />
           <NewInvoiceButton storeSlug={storeSlug} choices={choices} defaultOpen={openNew} />
@@ -151,7 +151,7 @@ export function InvoicesListView({
       </form>
 
       {list.rows.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
           {empty
             ? "No invoices yet. Start one with New invoice, or from a client's unbilled time."
             : "No invoice matches. Try another tab or clear the filters."}

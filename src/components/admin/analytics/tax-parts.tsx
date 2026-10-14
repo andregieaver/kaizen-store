@@ -33,7 +33,7 @@ export function TaxViewTabs({ current, hrefs }: { current: TaxViewId; hrefs: Rec
           key={id}
           href={hrefs[id]}
           aria-current={id === current ? "page" : undefined}
-          className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${id === current ? "border-foreground bg-surface font-semibold" : "border-border"}`}
+          className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${id === current ? "border-foreground bg-surface font-medium" : "border-border"}`}
         >
           {TAX_VIEW_LABEL[id]}
         </Link>

@@ -39,7 +39,7 @@ async function Challenge({ searchParams }: { searchParams: PageProps<"/admin/sig
   if (assurance.state === "unknown") {
     return (
       <>
-        <h1 className="text-2xl font-semibold">We could not check your sign-in</h1>
+        <h1 className="text-display text-ink">We could not check your sign-in</h1>
         <p role="alert" className="text-sm">
           We could not check your two-step status. Try again.
         </p>
@@ -56,7 +56,7 @@ async function Challenge({ searchParams }: { searchParams: PageProps<"/admin/sig
   return (
     <>
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">Two-step sign-in</h1>
+        <h1 className="text-display text-ink">Two-step sign-in</h1>
         <p className="text-sm text-muted">Open your authenticator app and type the six-digit code it shows for Kaizen Store.</p>
       </div>
       <ActionForm action={verifyTwoStepAction.bind(null, next)} className="flex flex-col gap-4">

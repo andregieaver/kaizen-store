@@ -30,7 +30,7 @@ export function DesignProfilePanel({
   closedNote?: string;
 }) {
   return (
-    <section aria-labelledby="design-profiles-heading" className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
+    <section aria-labelledby="design-profiles-heading" className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
       <div>
         <h2 id="design-profiles-heading" className="font-medium">
           Design profiles

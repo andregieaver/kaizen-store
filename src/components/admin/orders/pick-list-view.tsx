@@ -10,7 +10,7 @@ export function PickListView({ list }: { list: PickList }) {
   return (
     <article aria-label="Pick list" className="flex flex-col gap-4 bg-white p-6 text-black print:p-0">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl font-semibold">Pick list</h2>
+        <h2 className="text-xl font-medium">Pick list</h2>
         <p className="text-sm">
           {list.totalUnits} {list.totalUnits === 1 ? "unit" : "units"} for {list.orderCount} {list.orderCount === 1 ? "order" : "orders"} · {list.by === "product" ? "by product" : "by order"}
         </p>
@@ -56,7 +56,7 @@ export function PickListView({ list }: { list: PickList }) {
                 <td className="py-2 pr-2 font-mono">{row.sku}</td>
                 <td className="py-2 pr-2">{row.title}</td>
                 <td className="py-2 pr-2 text-right tabular-nums">{row.orders}</td>
-                <td className="py-2 text-right text-lg font-semibold tabular-nums">{row.units}</td>
+                <td className="py-2 text-right text-lg font-medium tabular-nums">{row.units}</td>
               </tr>
             ))}
           </tbody>
@@ -65,7 +65,7 @@ export function PickListView({ list }: { list: PickList }) {
         <div className="flex flex-col gap-4">
           {list.orders.map((order) => (
             <section key={order.orderId} aria-label={`Order ${order.number}`} className="break-inside-avoid">
-              <h3 className="border-b-2 border-black pb-1 font-semibold">
+              <h3 className="border-b-2 border-black pb-1 font-medium">
                 #{order.number} <span className="font-normal">· {order.units} {order.units === 1 ? "unit" : "units"}</span>
               </h3>
               <table className="w-full text-left text-sm">
@@ -75,7 +75,7 @@ export function PickListView({ list }: { list: PickList }) {
                       <td className="w-8 py-1.5 pr-2">
                         <span aria-hidden="true" className="inline-block size-4 border border-black" />
                       </td>
-                      <td className="w-14 py-1.5 pr-2 text-right font-semibold tabular-nums">{line.units}</td>
+                      <td className="w-14 py-1.5 pr-2 text-right font-medium tabular-nums">{line.units}</td>
                       <td className="py-1.5 pr-2">{line.title}</td>
                       <td className="py-1.5 text-right font-mono">{line.sku}</td>
                     </tr>

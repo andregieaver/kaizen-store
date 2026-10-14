@@ -69,7 +69,7 @@ export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, de
           {label}
         </p>
         <div className="space-y-1">
-          <p className="text-lg font-semibold text-muted">
+          <p className="text-lg font-medium text-muted">
             <span aria-hidden="true">–</span>
             <span className="sr-only">Not available</span>
           </p>
@@ -94,7 +94,7 @@ export function KpiCard({ label, value, state = "ok", missing, deltaPrevious, de
       {/* The figure never shrinks to make room for the trend line: in a narrow card the line goes under the figure, in a wide one beside it
           (decided by the card's width, so a row of cards is all one way). */}
       <div className="flex flex-col gap-1 @[17rem]:flex-row @[17rem]:flex-wrap @[17rem]:items-end @[17rem]:justify-between @[17rem]:gap-x-3">
-        <p className={`max-w-full break-words font-semibold leading-tight ${valueSize(value, emphasis)}`}>{known ? value : <span className="text-muted">–</span>}</p>
+        <p className={`max-w-full break-words font-medium leading-tight ${valueSize(value, emphasis)}`}>{known ? value : <span className="text-muted">–</span>}</p>
         {series && series.length > 0 ? (
           <span className="self-end @[17rem]:self-auto">
             <Sparkline values={series} tone={toneOf(deltaPrevious ?? deltaLastYear, good)} />

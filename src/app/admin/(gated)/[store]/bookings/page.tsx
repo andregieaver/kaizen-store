@@ -88,7 +88,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Bookings</h1>
+          <h1 className="text-display text-ink">Bookings</h1>
           <p className="text-sm text-muted">
             Week of {longDay.format(noon(monday))}, in {tz.replace("_", " ")} time.
           </p>
@@ -130,7 +130,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
           {days.map((day) => (
             <div
               key={day}
-              className={`border-b border-l border-border p-2 text-center text-sm ${day === today ? "font-semibold" : ""}`}
+              className={`border-b border-l border-border p-2 text-center text-sm ${day === today ? "font-medium" : ""}`}
             >
               {dayLabel.format(noon(day))}
             </div>

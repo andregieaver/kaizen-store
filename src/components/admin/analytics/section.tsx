@@ -26,7 +26,7 @@ export function AnalyticsSection({
     <section aria-labelledby={id} className="scroll-mt-20 space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <div className="min-w-0">
-          <Heading id={id} className={level === 3 ? "text-base font-semibold" : "text-lg font-semibold"}>
+          <Heading id={id} className={level === 3 ? "text-base font-medium" : "text-lg font-medium"}>
             {title}
           </Heading>
           {description ? <p className="mt-0.5 max-w-prose text-sm text-muted">{description}</p> : null}
@@ -44,7 +44,7 @@ export function ChartCard({ title, description, action, children }: { title: str
     <div className="min-w-0 rounded-lg border border-border bg-background p-4">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold">{title}</h3>
+          <h3 className="text-sm font-medium">{title}</h3>
           {description ? <p className="mt-0.5 text-xs text-muted">{description}</p> : null}
         </div>
         {action ? <div className="max-w-full text-xs">{action}</div> : null}
@@ -71,7 +71,7 @@ export function Note({ tone = "info", title, children }: { tone?: NoteTone; titl
     >
       <span
         aria-hidden="true"
-        className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold leading-none ${tone === "warning" ? "border-(--chart-warn) text-(--chart-warn)" : "border-muted text-muted"}`}
+        className={`mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-medium leading-none ${tone === "warning" ? "border-(--chart-warn) text-(--chart-warn)" : "border-muted text-muted"}`}
       >
         {NOTE_ICON[tone]}
       </span>

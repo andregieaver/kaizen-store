@@ -48,7 +48,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
         <Link href={`/admin/${store.slug}/hosts`} className="text-sm underline">
           Hosts
         </Link>
-        <h1 className="text-2xl font-semibold">{host.name}</h1>
+        <h1 className="text-display text-ink">{host.name}</h1>
         <p className="text-sm text-muted">
           {host.email} · {host.signedInBefore ? "Has signed in" : "Not signed in yet"}
         </p>

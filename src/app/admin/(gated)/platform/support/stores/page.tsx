@@ -21,7 +21,7 @@ export default async function StoresSupportPage({ searchParams }: PageProps<"/ad
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Stores&apos; support</h1>
+        <h1 className="text-display text-ink">Stores&apos; support</h1>
         <p className="text-muted">Each store&apos;s support desk in figures: counts and rates only, never a conversation.</p>
       </div>
       {notice && <p className="text-sm">{notice}</p>}

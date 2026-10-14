@@ -108,7 +108,7 @@ export function OrderEditSummary({
                   <td className="py-1 text-right tabular-nums">{key === "discountMinor" && summary.after![key] > 0 ? `−${money(summary.after![key])}` : money(summary.after![key])}</td>
                 </tr>
               ))}
-              <tr className="border-t border-border font-semibold">
+              <tr className="border-t border-border font-medium">
                 <th scope="row" className="py-1">
                   Total
                 </th>

@@ -77,7 +77,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
     <div className="flex max-w-5xl flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Work</h1>
+          <h1 className="text-display text-ink">Work</h1>
           <p className="text-sm text-muted">
             {many
               ? "Your clients, hours and invoices across all your stores, in one place."
@@ -116,7 +116,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
       {noClients ? (
         <section
           aria-labelledby="start-heading"
-          className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5"
+          className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
         >
           <h2 id="start-heading" className="font-medium">
             Add your first client
@@ -135,7 +135,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
 
           {combined.currencies.length > 0 ? (
             <section aria-labelledby="figures-heading" className="flex flex-col gap-4">
-              <h2 id="figures-heading" className="text-lg font-semibold">
+              <h2 id="figures-heading" className="text-lg font-medium">
                 Where things stand{many ? ", all stores" : ""}
               </h2>
               {combined.currencies.map((f) => (

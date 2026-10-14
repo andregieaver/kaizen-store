@@ -28,7 +28,7 @@ export default async function ReferralsPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Referrals</h1>
+        <h1 className="text-display text-ink">Referrals</h1>
         <p className="max-w-3xl text-sm text-muted">
           Tell another store owner about Kaizen. When they open a store through your link, you earn {bpsText(settings.commissionBps)} of what their
           store pays Kaizen for {settings.months} months: its plan and Kaizen&apos;s fee on its sales. You earn it as credit, which comes off your
@@ -52,7 +52,7 @@ export default async function ReferralsPage() {
               The referral program is paused: stores that open now do not earn you anything. Credit you have can still be used.
             </p>
           )}
-          <section aria-labelledby="link-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+          <section aria-labelledby="link-heading" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
             <h2 id="link-heading" className="sr-only">
               Your link
             </h2>

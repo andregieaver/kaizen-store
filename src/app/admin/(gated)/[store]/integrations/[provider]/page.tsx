@@ -57,7 +57,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
         <div className="mt-1 flex items-center gap-3">
           <IntegrationMark id={info.id} />
           <div>
-            <h1 className="text-2xl font-semibold">{info.name}</h1>
+            <h1 className="text-display text-ink">{info.name}</h1>
             <p className="text-sm text-muted">
               {integration ? (integration.enabled ? `On · sending to ${integration.hint}` : `Off · address ${integration.hint}`) : "Not set up"}
             </p>
@@ -83,7 +83,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
             Slack asks which channel Kaizen may post to. Kaizen can post there and nothing else: it cannot read your messages.
           </p>
           <form action={connectSlackAction.bind(null, store.slug)}>
-            <button type="submit" className="inline-flex min-h-10 items-center rounded-md bg-foreground px-4 text-sm font-medium text-background">
+            <button type="submit" className="inline-flex min-h-10 items-center rounded-pill bg-foreground px-4 text-sm font-medium text-background">
               {integration ? "Choose another channel in Slack" : "Add to Slack"}
             </button>
           </form>

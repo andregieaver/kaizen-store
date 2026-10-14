@@ -36,7 +36,7 @@ export default async function PlatformNavigationPage() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Header and footer</h1>
+        <h1 className="text-display text-ink">Header and footer</h1>
         <p className="max-w-2xl text-sm text-muted">
           Kaizen&apos;s logo, its icon, who runs it and the menus its standard header and footer show. To make or
           change a menu, go to{" "}

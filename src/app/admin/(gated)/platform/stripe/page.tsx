@@ -26,7 +26,7 @@ export default async function PlatformStripePage() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Stripe</h1>
+        <h1 className="text-display text-ink">Stripe</h1>
         <p className="text-sm text-muted">
           Kaizen is a Stripe Connect platform: each store sells through its own Stripe account, and
           Kaizen bills stores for their plans from its own. Keys come from Vercel (

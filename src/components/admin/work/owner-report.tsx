@@ -54,7 +54,7 @@ export function OwnerReportView({
     <div className="flex max-w-6xl flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Reports</h1>
+          <h1 className="text-display text-ink">Reports</h1>
           <p className="text-sm text-muted">
             {formatDay(report.from || params.period.from, WORK_LOCALE)} to{" "}
             {formatDay(report.to || params.period.to, WORK_LOCALE)}, {GROUP_LABELS[report.by].toLowerCase()}
@@ -127,7 +127,7 @@ export function OwnerReportView({
       {(many || manyCurrencies) && <CurrencyNote />}
 
       {report.rows.length === 0 ? (
-        <p className="rounded-lg border border-border bg-background p-5 text-sm text-muted">
+        <p className="rounded-card border border-border bg-background p-5 text-sm text-muted">
           Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
         </p>
       ) : (

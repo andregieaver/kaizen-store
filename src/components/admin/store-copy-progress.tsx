@@ -34,7 +34,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
   return (
     <div className="flex max-w-2xl flex-col gap-5">
       <div>
-        <h1 className="text-2xl font-semibold">{heading}</h1>
+        <h1 className="text-display text-ink">{heading}</h1>
         <p role="status" aria-live="polite" className="text-sm text-muted">
           {line}
         </p>
@@ -67,7 +67,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       {status === "done" && (
         <section
           aria-labelledby="copy-next"
-          className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5"
+          className="flex flex-col gap-3 rounded-card border border-border bg-background p-5"
         >
           <h2 id="copy-next" className="font-medium">
             What next

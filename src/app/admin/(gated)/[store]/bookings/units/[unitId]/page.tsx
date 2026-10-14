@@ -33,7 +33,7 @@ export default async function UnitPage({ params }: PageProps<"/admin/[store]/boo
         <Link href={`/admin/${store.slug}/bookings/units`} className="text-sm underline">
           Rooms and rental items
         </Link>
-        <h1 className="text-2xl font-semibold">{unit.name}</h1>
+        <h1 className="text-display text-ink">{unit.name}</h1>
       </div>
       <UnitForm kind={kind} unit={unit} hosts={await hostChoices(store.id)} action={saveUnitAction.bind(null, store.slug, kind, unit.id)} />
       <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={unit} actions={storeCalendarActions(store.slug, unit.id)} />

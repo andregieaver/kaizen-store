@@ -111,7 +111,7 @@ function ExceptionEditor({
   const what = exception.kind === "season" ? "season" : "date";
   return (
     <fieldset className="flex flex-col gap-3 rounded-md border border-border p-3">
-      <legend className="px-1 text-xs font-semibold tracking-wide text-muted uppercase">
+      <legend className="px-1 text-xs font-medium tracking-wide text-muted uppercase">
         {exception.kind === "season" ? "Season" : "Single date"}
       </legend>
       <div className="flex flex-wrap items-end gap-3">

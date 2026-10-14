@@ -29,7 +29,7 @@ export default async function WorkClientsPage({ params, searchParams }: PageProp
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Clients</h1>
+          <h1 className="text-display text-ink">Clients</h1>
           <p className="text-sm text-muted">The people and companies you bill for your work.</p>
         </div>
         <NewClientButton

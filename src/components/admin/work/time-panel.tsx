@@ -44,7 +44,7 @@ export function TimePanel({
   return (
     <section aria-labelledby="time-heading" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="time-heading" className="text-lg font-semibold">
+        <h2 id="time-heading" className="text-lg font-medium">
           Time
         </h2>
         <FormDialogButton label="Log time" title="Log time" primary wide={false}>

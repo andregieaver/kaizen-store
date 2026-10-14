@@ -34,7 +34,7 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Wishlists</h1>
+        <h1 className="text-display text-ink">Wishlists</h1>
         <p className="text-sm text-muted">
           Every item a shopper put in the cart from one of their lists, and whether it was bought. An item counts as bought
           when the order it went into is paid.
@@ -48,7 +48,7 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
             key={f.key}
             href={f.key === "all" ? base : `${base}?show=${f.key}`}
             aria-current={f.key === show ? "page" : undefined}
-            className="rounded-full border border-border px-3 py-1 aria-[current=page]:border-foreground aria-[current=page]:font-semibold"
+            className="rounded-full border border-border px-3 py-1 aria-[current=page]:border-foreground aria-[current=page]:font-medium"
           >
             {f.label}
           </Link>

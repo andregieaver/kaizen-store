@@ -85,7 +85,7 @@ export function EntityFields({
               role="tab"
               aria-selected={l === locale}
               onClick={() => setLocale(l)}
-              className="min-h-9 rounded-md border border-border px-3 text-sm aria-selected:border-foreground aria-selected:bg-foreground aria-selected:text-background"
+              className="min-h-9 rounded-pill border border-border px-3 text-sm aria-selected:border-foreground aria-selected:bg-foreground aria-selected:text-background"
             >
               {name(l)}
             </button>

@@ -47,7 +47,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
         <Link href={`${base}/wishlists`} className="text-sm underline">
           Wishlists
         </Link>
-        <h1 className="text-2xl font-semibold">{list.name}</h1>
+        <h1 className="text-display text-ink">{list.name}</h1>
         <p className="text-sm text-muted">
           {list.items.length === 1 ? "1 item" : `${list.items.length} items`}
           {currency && totalMinor > 0 && ` · ${formatMoney(totalMinor, currency, locale)} at today's prices`} · made {date(list.createdAt)} ·{" "}

@@ -40,7 +40,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">AI prices</h1>
+        <h1 className="text-display text-ink">AI prices</h1>
         <p className="max-w-2xl text-sm text-muted">
           What each model costs, in US dollars, from the provider&apos;s price list: per million tokens, and where it bills them so, per picture, per minute of audio
           (speech to text and live voice calls) and per million characters spoken.{" "}
@@ -54,7 +54,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
       </div>
 
       {unpriced.length > 0 && (
-        <section aria-labelledby="unpriced" className="rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="unpriced" className="rounded-card border border-border bg-background p-5">
           <h2 id="unpriced" className="font-medium">
             Used without a price
           </h2>
@@ -75,7 +75,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
         </section>
       )}
 
-      <section aria-labelledby="set-price" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="set-price" className="rounded-card border border-border bg-background p-5">
         <h2 id="set-price" className="font-medium">
           Set a price
         </h2>
@@ -122,7 +122,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
         </p>
       </section>
 
-      <section aria-labelledby="prices" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="prices" className="rounded-card border border-border bg-background p-5">
         <h2 id="prices" className="font-medium">
           Prices
         </h2>

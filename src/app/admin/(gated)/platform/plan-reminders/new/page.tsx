@@ -21,7 +21,7 @@ export default async function NewPlanReminderPage() {
         <Link href="/admin/platform/plan-reminders" className="text-sm underline">
           Plan reminders
         </Link>
-        <h1 className="text-2xl font-semibold">New reminder</h1>
+        <h1 className="text-display text-ink">New reminder</h1>
       </div>
       <PlanReminderForm
         step={{ id: null, delayMinutes: last > 0 ? last + 24 * 60 : 60, active: true, discountCodeId: null, content: newPlanStepContent(steps.length) }}

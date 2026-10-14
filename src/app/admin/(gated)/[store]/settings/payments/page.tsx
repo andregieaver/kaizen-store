@@ -41,7 +41,7 @@ export default async function PaymentSettingsPage({
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Payments</h1>
+        <h1 className="text-display text-ink">Payments</h1>
         <p className="text-sm text-muted">
           Shoppers pay your business directly through your store&apos;s own Stripe account.{" "}
           {isOwner ? "" : "Only an owner can switch payments on and off."}
@@ -49,7 +49,7 @@ export default async function PaymentSettingsPage({
       </div>
 
       {modes.length === 0 && (
-        <section role="status" className="rounded-lg border border-border bg-background p-5 text-sm">
+        <section role="status" className="rounded-card border border-border bg-background p-5 text-sm">
           <h2 className="mb-2 font-medium">Payments are not available yet</h2>
           {account.platformAdmin ? (
             <p>
@@ -64,7 +64,7 @@ export default async function PaymentSettingsPage({
       )}
 
       {modes.includes("test") && (
-        <section aria-labelledby="test-heading" className="flex flex-col gap-2 rounded-lg border border-border bg-background p-5 text-sm">
+        <section aria-labelledby="test-heading" className="flex flex-col gap-2 rounded-card border border-border bg-background p-5 text-sm">
           <h2 id="test-heading" className="font-medium">
             Test payments
           </h2>
@@ -94,7 +94,7 @@ export default async function PaymentSettingsPage({
       )}
 
       {modes.length > 0 && (
-        <section aria-labelledby="checkout-heading" className="rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="checkout-heading" className="rounded-card border border-border bg-background p-5">
           <h2 id="checkout-heading" className="mb-1 font-medium">
             Checkout
           </h2>
@@ -165,7 +165,7 @@ export default async function PaymentSettingsPage({
       )}
 
       {modes.length > 0 && (
-        <section aria-labelledby="methods-heading" className="rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="methods-heading" className="rounded-card border border-border bg-background p-5">
           <h2 id="methods-heading" className="mb-1 font-medium">
             Payment methods
           </h2>
@@ -186,7 +186,7 @@ export default async function PaymentSettingsPage({
         </section>
       )}
 
-      <section aria-labelledby="audit-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="audit-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="audit-heading" className="mb-3 font-medium">
           Recent changes
         </h2>

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { AfterSaleNote } from "@/components/admin/after-sale-gate";
 import { HomeAnalyticsAlerts, HomeAnalyticsAlertsFallback } from "@/components/admin/analytics/home-alerts";
 import { Attention, Section, Stat, StatGrid } from "@/components/admin/overview-parts";
+import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowId, RowText } from "@/components/admin/ui";
 import { attentionFor, changeText, hidden, money, totalSales } from "@/lib/control-center";
 import { ORDER_STATUS_LABELS } from "@/lib/order-status";
 import { featureOn } from "@/lib/store-features";
@@ -61,9 +62,14 @@ export default async function AdminOverview({ params }: Props) {
 
   return (
     <div className="flex flex-col gap-8">
-      <h1 className="text-2xl font-semibold">Overview</h1>
+      <PageHeader
+        eyebrow="Home"
+        status={store.setupCompletedAt ? undefined : <Chip signal="warning" dot>Not open yet</Chip>}
+        title={store.name}
+        meta={[selling ? "Online shop" : "Website", `Overview of ${now.toLocaleDateString("en-GB", { day: "numeric", month: "long" })}`]}
+      />
       {!store.setupCompletedAt && (
-        <p role="status" className="rounded-lg border border-border bg-background p-4 text-sm">
+        <p role="status" className="text-body text-muted">
           This store is not open yet. An owner can finish the setup.
         </p>
       )}
@@ -90,30 +96,25 @@ export default async function AdminOverview({ params }: Props) {
         </Section>
       )}
       {store.setupCompletedAt && selling && center.latest.length > 0 && (
-        <Section id="latest-heading" title="Latest orders" action={<Link href={`${base}/orders`} className="text-sm underline">All orders</Link>}>
-          <ul className="divide-y divide-border rounded-lg border border-border bg-background text-sm">
+        <Card title="Latest orders" aside={<ButtonLink kind="link" href={`${base}/orders`}>All orders</ButtonLink>}>
+          <List label="Latest orders">
             {center.latest.map((order) => (
-              <li key={order.id}>
-                <Link href={`${base}/orders/${order.id}`} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-3 hover:bg-surface">
-                  <span className="font-medium">#{order.number}</span>
-                  <span className="min-w-0 flex-1 truncate text-muted">{order.name ?? ""}</span>
-                  <span className="text-xs text-muted">{ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}</span>
-                  <time dateTime={order.placedAt} className="hidden text-xs text-muted sm:inline">
-                    {order.placedAt.slice(0, 10)}
-                  </time>
-                  <span className="tabular-nums">{money(order.totalMinor, order.currency)}</span>
-                </Link>
-              </li>
+              <ListRow key={order.id} href={`${base}/orders/${order.id}`}>
+                <RowId>#{order.number}</RowId>
+                <RowText>{order.name ?? ""}</RowText>
+                <Chip>{ORDER_STATUS_LABELS[order.status as keyof typeof ORDER_STATUS_LABELS] ?? order.status}</Chip>
+                <RowDate>
+                  <time dateTime={order.placedAt}>{order.placedAt.slice(0, 10)}</time>
+                </RowDate>
+                <RowAmount>{money(order.totalMinor, order.currency)}</RowAmount>
+              </ListRow>
             ))}
-          </ul>
-        </Section>
+          </List>
+        </Card>
       )}
       {remaining > 0 && (
-        <section aria-labelledby="checklist-heading" className="rounded-lg border border-border bg-background p-5">
-          <h2 id="checklist-heading" className="mb-3 font-medium">
-            Finish setting up ({steps.length - remaining} of {steps.length} done)
-          </h2>
-          <ol className="flex flex-col gap-2 text-sm">
+        <Card title="Finish setting up" aside={`${steps.length - remaining} of ${steps.length} done`}>
+          <ol className="flex flex-col gap-2 text-body">
             {steps.map((step) => (
               <li key={step.label} className="flex items-baseline gap-2">
                 <span aria-hidden="true">{step.done ? "✓" : "○"}</span>
@@ -132,7 +133,7 @@ export default async function AdminOverview({ params }: Props) {
               </li>
             ))}
           </ol>
-        </section>
+        </Card>
       )}
     </div>
   );

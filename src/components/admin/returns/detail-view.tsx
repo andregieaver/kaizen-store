@@ -122,7 +122,7 @@ export function ReturnDetailView({
           Returns
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold">Return {detail.number}</h1>
+          <h1 className="text-display text-ink">Return {detail.number}</h1>
           <StatusBadge status={detail.status} />
           <KindBadge kind={detail.kind} />
         </div>
@@ -162,13 +162,13 @@ export function ReturnDetailView({
 
       <ol aria-label="Where the return is" className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
         {detail.steps.map(({ step, state }) => (
-          <li key={step} aria-current={state === "current" ? "step" : undefined} className={state === "upcoming" || state === "skipped" ? "text-muted" : state === "current" ? "font-semibold" : ""}>
+          <li key={step} aria-current={state === "current" ? "step" : undefined} className={state === "upcoming" || state === "skipped" ? "text-muted" : state === "current" ? "font-medium" : ""}>
             <span aria-hidden="true">{STEP_MARK[state]} </span>
             {STATUS_LABELS[step as ReturnStatus]}
             <span className="sr-only">{state === "done" ? " (done)" : state === "current" ? " (now)" : state === "skipped" ? " (not reached)" : " (to come)"}</span>
           </li>
         ))}
-        {(detail.status === "declined" || detail.status === "cancelled") && <li className="font-semibold">{STATUS_LABELS[detail.status as ReturnStatus]}</li>}
+        {(detail.status === "declined" || detail.status === "cancelled") && <li className="font-medium">{STATUS_LABELS[detail.status as ReturnStatus]}</li>}
       </ol>
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">

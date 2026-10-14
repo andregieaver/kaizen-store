@@ -22,7 +22,7 @@ export default async function NewUnitPage({ params, searchParams }: PageProps<"/
         <Link href={`/admin/${store.slug}/bookings/units`} className="text-sm underline">
           Rooms and rental items
         </Link>
-        <h1 className="text-2xl font-semibold">{kind === "unit" ? "Add a room or home" : "Add a rental item"}</h1>
+        <h1 className="text-display text-ink">{kind === "unit" ? "Add a room or home" : "Add a rental item"}</h1>
       </div>
       <UnitForm kind={kind} unit={null} hosts={await hostChoices(store.id)} action={saveUnitAction.bind(null, store.slug, kind, null)} />
     </div>

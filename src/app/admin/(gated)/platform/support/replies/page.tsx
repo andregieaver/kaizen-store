@@ -19,7 +19,7 @@ export default async function KaizenSupportRepliesPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Saved replies</h1>
+        <h1 className="text-display text-ink">Saved replies</h1>
         <p className="text-muted">Answers Kaizen&apos;s people use often, put in a reply with / in the inbox.</p>
       </div>
       <RepliesManager replies={replies} languages={KAIZEN_LANGUAGES.map((code) => ({ code, name: languageName(code) }))} save={saveKaizenReplyAction} remove={deleteKaizenReplyAction} />

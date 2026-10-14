@@ -14,7 +14,7 @@ export default async function HostingPage() {
   if (hostings.length === 1) redirect(`/admin/hosting/${hostings[0].slug}`);
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold">Hosting</h1>
+      <h1 className="text-display text-ink">Hosting</h1>
       {hostings.length === 0 ? (
         <p className="text-sm text-muted">You do not host for any store.</p>
       ) : (

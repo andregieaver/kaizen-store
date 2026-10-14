@@ -24,7 +24,7 @@ export default async function NewDraftPage({ params }: PageProps<"/admin/[store]
         <Link href={`/admin/${store.slug}/orders/drafts`} className="text-sm text-muted underline underline-offset-2">
           Draft orders
         </Link>
-        <h1 className="text-2xl font-semibold">New draft order</h1>
+        <h1 className="text-display text-ink">New draft order</h1>
         <p className="max-w-3xl text-sm text-muted">Choose where the order is for first: it decides the currency, the prices, the VAT and the shipping rate.</p>
       </div>
       {memberCan(member, "orders:write") ? (

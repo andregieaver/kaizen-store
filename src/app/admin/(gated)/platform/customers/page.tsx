@@ -23,7 +23,7 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Customers</h1>
+        <h1 className="text-display text-ink">Customers</h1>
         <p className="text-sm text-muted">Everyone who runs a store, with each store&apos;s plan. Newest first.</p>
       </div>
       <form role="search" className="flex flex-wrap gap-2">
@@ -38,7 +38,7 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
           placeholder="Search by name, email or store"
           className="min-h-10 w-full max-w-sm rounded-md border border-border bg-background px-3 text-sm"
         />
-        <button type="submit" className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background">
+        <button type="submit" className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background">
           Search
         </button>
         {q && (

@@ -12,12 +12,12 @@ export function DryRunSummary({ counts }: { counts: { toCreate: number; toUpdate
   ];
   return (
     <section aria-label="What the check found" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-base font-semibold">What the check found</h2>
+      <h2 className="text-base font-medium">What the check found</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-2xl font-semibold">{wholeNumber(n)}</dd>
+            <dd className="text-2xl font-medium">{wholeNumber(n)}</dd>
           </div>
         ))}
       </dl>
@@ -43,12 +43,12 @@ export function AppliedSummary({ counts, jobId, written }: { counts: AppliedCoun
   ];
   return (
     <section aria-label="Result" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-base font-semibold">{written ? "What was imported" : "What was imported before it stopped"}</h2>
+      <h2 className="text-base font-medium">{written ? "What was imported" : "What was imported before it stopped"}</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-2xl font-semibold">{wholeNumber(n)}</dd>
+            <dd className="text-2xl font-medium">{wholeNumber(n)}</dd>
           </div>
         ))}
       </dl>

@@ -35,7 +35,7 @@ export default async function PlatformOverviewPage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold">Home</h1>
+        <h1 className="text-display text-ink">Home</h1>
         <p className="text-sm text-muted">How Kaizen is doing, and what needs the team.</p>
       </div>
 

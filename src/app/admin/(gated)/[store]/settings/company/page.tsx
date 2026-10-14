@@ -33,7 +33,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Company</h1>
+        <h1 className="text-display text-ink">Company</h1>
         <p className="text-sm text-muted">Who you are and where to find you: the business that sells, your office and any stores or pickup points.</p>
       </div>
 
@@ -104,10 +104,10 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
             <p className="text-sm text-muted">Places where shoppers can visit you or collect their orders.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href={`${base}/places/new?kind=shop`} className="min-h-10 rounded-md border border-border px-3 py-2 text-sm hover:bg-surface">
+            <Link href={`${base}/places/new?kind=shop`} className="min-h-10 rounded-pill border border-border px-3 py-2 text-sm hover:bg-surface">
               Add a store
             </Link>
-            <Link href={`${base}/places/new?kind=pickup`} className="min-h-10 rounded-md border border-border px-3 py-2 text-sm hover:bg-surface">
+            <Link href={`${base}/places/new?kind=pickup`} className="min-h-10 rounded-pill border border-border px-3 py-2 text-sm hover:bg-surface">
               Add a pickup point
             </Link>
           </div>

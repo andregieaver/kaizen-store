@@ -42,7 +42,7 @@ export function CustomerBonus({
   const waiting = entries.filter((entry) => isUsableNow(entry, now) === false);
 
   return (
-    <section aria-labelledby="bonus" className="rounded-lg border border-border bg-background p-5">
+    <section aria-labelledby="bonus" className="rounded-card border border-border bg-background p-5">
       <h2 id="bonus" className="mb-3 font-medium">
         Bonus credits
       </h2>
@@ -57,11 +57,11 @@ export function CustomerBonus({
       <dl className="mb-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-3">
         <div className="flex flex-col gap-0.5">
           <dt className="text-muted">Available now</dt>
-          <dd className="text-xl font-semibold">{money(balance.availableMinor)}</dd>
+          <dd className="text-xl font-medium">{money(balance.availableMinor)}</dd>
         </div>
         <div className="flex flex-col gap-0.5">
           <dt className="text-muted">Waiting for the return period</dt>
-          <dd className="text-xl font-semibold">{money(balance.pendingMinor)}</dd>
+          <dd className="text-xl font-medium">{money(balance.pendingMinor)}</dd>
         </div>
         <div className="col-span-2 flex flex-col gap-0.5 md:col-span-1">
           <dt className="text-muted">Next to expire</dt>

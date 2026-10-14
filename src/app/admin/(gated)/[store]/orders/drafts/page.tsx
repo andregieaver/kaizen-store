@@ -28,7 +28,7 @@ export default async function DraftsPage({ params, searchParams }: Props) {
         <Link href={`/admin/${store.slug}/orders`} className="text-sm text-muted underline underline-offset-2">
           Orders
         </Link>
-        <h1 className="text-2xl font-semibold">Draft orders</h1>
+        <h1 className="text-display text-ink">Draft orders</h1>
         <p className="max-w-3xl text-sm text-muted">
           A draft is an order you make for a customer: products or custom items, your own prices, a discount and shipping. Send it and the customer gets a link to pay on Stripe&apos;s page, or record that they paid you outside Kaizen.
         </p>

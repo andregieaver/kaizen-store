@@ -26,7 +26,7 @@ export default async function BonusPage({ params }: PageProps<"/admin/[store]/bo
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Bonus credits</h1>
+        <h1 className="text-display text-ink">Bonus credits</h1>
         <p className="text-sm text-muted">
           {settings.enabled ? "The bonus program is on." : "The bonus program is off."} Signed-in customers earn credits
           on what they buy and use them as a price reduction on a later order.

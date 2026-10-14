@@ -40,7 +40,7 @@ export async function AiManagerPage({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold">AI manager</h1>
+        <h1 className="text-display text-ink">AI manager</h1>
         <p className="text-sm text-muted">
           Your guide to the admin and your right hand{area === "store" ? ` for ${siteName}` : " for Kaizen"}. Open it from any page with the AI manager button or ⌘K (Ctrl+K).
         </p>

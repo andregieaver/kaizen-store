@@ -135,7 +135,7 @@ export function GoogleReviewsSettings({
                   type="button"
                   disabled={pending || option.id === place?.id}
                   onClick={() => run(() => actions.choose(option.id), `Showing reviews of ${option.name}.`, () => setFound(null))}
-                  className="inline-flex min-h-9 items-center rounded-md border border-border px-3 text-sm font-medium hover:bg-surface disabled:opacity-50"
+                  className="inline-flex min-h-9 items-center rounded-pill border border-border px-3 text-sm font-medium hover:bg-surface disabled:opacity-50"
                 >
                   {option.id === place?.id ? "Chosen" : "Choose"}
                 </button>

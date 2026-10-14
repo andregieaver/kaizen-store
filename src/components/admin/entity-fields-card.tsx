@@ -92,7 +92,7 @@ export function EntityFieldsCard({
           type="button"
           onClick={submit}
           disabled={busy}
-          className="min-h-10 rounded-md bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
+          className="min-h-10 rounded-pill bg-foreground px-4 text-sm font-medium text-background disabled:opacity-50"
         >
           {busy ? "Saving …" : "Save fields"}
         </button>

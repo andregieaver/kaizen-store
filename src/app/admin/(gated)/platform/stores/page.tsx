@@ -17,7 +17,7 @@ export default async function PlatformStoresPage() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Stores</h1>
+        <h1 className="text-display text-ink">Stores</h1>
         <p className="text-sm text-muted">
           Each store&apos;s plan with Kaizen and its fee per sale. Open a store to start, change or
           cancel its plan, or give it its own fee.

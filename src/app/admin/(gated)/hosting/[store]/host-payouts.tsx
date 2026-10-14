@@ -38,7 +38,7 @@ export function HostPayouts({
   const publishableKey = platformPublishableKey(mode);
   const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
   return (
-    <section aria-labelledby="payouts-heading" className="flex flex-col gap-4 rounded-lg border border-border bg-background p-5">
+    <section aria-labelledby="payouts-heading" className="flex flex-col gap-4 rounded-card border border-border bg-background p-5">
       <div>
         <h2 id="payouts-heading" className="font-medium">
           {mode === "live" ? "Getting paid" : "Getting paid (test mode)"}

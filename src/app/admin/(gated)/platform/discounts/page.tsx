@@ -33,7 +33,7 @@ export default async function PlatformDiscountsPage() {
   return (
     <>
       <div>
-        <h1 className="text-2xl font-semibold">Discounts</h1>
+        <h1 className="text-display text-ink">Discounts</h1>
         <p className="max-w-2xl text-sm text-muted">
           Codes store owners use on their plan: a percentage or an amount off, once, for some months or for good.
           Kaizen puts each in Stripe{modes.length > 0 ? ` (${modes.join(" and ")} mode)` : ""}, which applies it to the
@@ -99,7 +99,7 @@ export default async function PlatformDiscountsPage() {
         </div>
       )}
 
-      <section aria-labelledby="new-heading" className="rounded-lg border border-border bg-background p-5">
+      <section aria-labelledby="new-heading" className="rounded-card border border-border bg-background p-5">
         <h2 id="new-heading" className="mb-4 font-medium">
           New code
         </h2>

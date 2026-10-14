@@ -498,7 +498,7 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
                     onChange({ ...gradient, colors: colours.filter((_, i) => i !== index) });
                   }}
                   aria-label={`Remove colour ${index + 1}`}
-                  className="min-h-10 rounded-md border border-border px-2 text-xs hover:bg-surface disabled:opacity-50"
+                  className="min-h-10 rounded-pill border border-border px-2 text-xs hover:bg-surface disabled:opacity-50"
                 >
                   Remove
                 </button>
@@ -513,7 +513,7 @@ export function GradientText({ value, onChange, mark, muted, label = "Gradient t
                 setRevision((n) => n + 1);
                 onChange({ ...gradient, colors: [...colours, colours[colours.length - 1]] });
               }}
-              className="min-h-9 rounded-md border border-border px-3 text-xs hover:bg-surface disabled:opacity-50"
+              className="min-h-9 rounded-pill border border-border px-3 text-xs hover:bg-surface disabled:opacity-50"
             >
               Add a colour
             </button>

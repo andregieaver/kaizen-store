@@ -21,7 +21,7 @@ export default async function SupportSettingsPage({ params }: PageProps<"/admin/
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Support settings</h1>
+        <h1 className="text-display text-ink">Support settings</h1>
         <p className="text-muted">Who answers the store&apos;s customers in the chat, and what happens when nobody is there.</p>
       </div>
       <SupportSettingsForm

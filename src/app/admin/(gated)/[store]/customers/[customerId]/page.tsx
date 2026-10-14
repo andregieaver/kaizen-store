@@ -89,7 +89,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
         <Link href={`${base}/customers`} className="text-sm underline">
           Customers
         </Link>
-        <h1 className="mt-2 flex items-center gap-3 text-2xl font-semibold">
+        <h1 className="mt-2 flex items-center gap-3 text-display text-ink">
           <Avatar avatar={avatarFor(customer)} size={48} />
           <span className="min-w-0 break-words">{customer.name || customer.email}</span>
         </h1>
@@ -113,7 +113,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
         ].map(([label, value]) => (
           <div key={label} className="flex flex-col gap-1 rounded-lg border border-border bg-background p-4">
             <span className="text-sm text-muted">{label}</span>
-            <span className="text-xl font-semibold">{value}</span>
+            <span className="text-xl font-medium">{value}</span>
           </div>
         ))}
       </div>

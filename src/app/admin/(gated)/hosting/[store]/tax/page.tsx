@@ -40,7 +40,7 @@ export default async function HostTaxPage({ params }: PageProps<"/admin/hosting/
         <Link href={`/admin/hosting/${store.slug}`} className="text-sm underline">
           {host.name}
         </Link>
-        <h1 className="text-2xl font-semibold">Tax details</h1>
+        <h1 className="text-display text-ink">Tax details</h1>
         <p className="text-sm text-muted">
           EU rules (DAC7) make {store.name} report to the tax authority, once a year, who its hosts are and what they were
           paid. Only you and the store see these details.

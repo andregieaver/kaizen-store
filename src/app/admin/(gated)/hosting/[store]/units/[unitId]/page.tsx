@@ -46,11 +46,11 @@ export default async function HostUnitPage({ params }: PageProps<"/admin/hosting
         <Link href={`/admin/hosting/${store.slug}`} className="text-sm underline">
           {host.name}
         </Link>
-        <h1 className="text-2xl font-semibold">{unit.name}</h1>
+        <h1 className="text-display text-ink">{unit.name}</h1>
       </div>
       <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={unit} actions={actions} />
       {property && (
-        <section aria-labelledby="property-heading" className="flex flex-col gap-3 rounded-lg border border-border bg-background p-5">
+        <section aria-labelledby="property-heading" className="flex flex-col gap-3 rounded-card border border-border bg-background p-5">
           <div>
             <h2 id="property-heading" className="font-medium">
               Where it is

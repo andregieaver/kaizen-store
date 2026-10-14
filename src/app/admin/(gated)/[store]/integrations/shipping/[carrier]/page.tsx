@@ -61,7 +61,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
         <div className="mt-1 flex items-center gap-3">
           <IntegrationMark id={info.id} />
           <div>
-            <h1 className="text-2xl font-semibold">{info.name}</h1>
+            <h1 className="text-display text-ink">{info.name}</h1>
             <p className="text-sm text-muted">
               {saved
                 ? saved.complete

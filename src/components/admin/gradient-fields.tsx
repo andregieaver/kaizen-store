@@ -236,7 +236,7 @@ export function BackgroundMotionFields({
 }) {
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4">
-      <h4 className="text-sm font-semibold">Background motion</h4>
+      <h4 className="text-sm font-medium">Background motion</h4>
       <EffectPicker
         legend="Background effect"
         kind="background"

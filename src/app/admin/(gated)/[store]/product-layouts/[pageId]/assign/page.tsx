@@ -53,7 +53,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
         <Link href={base} className="w-fit text-sm underline">
           Product layouts
         </Link>
-        <h1 className="text-2xl font-semibold">Where “{layout.draft.title || "Untitled"}” is used</h1>
+        <h1 className="text-display text-ink">Where “{layout.draft.title || "Untitled"}” is used</h1>
         <p className="text-sm text-muted">
           A product&apos;s page uses its own layout if it has one (chosen in the product editor), else its nearest
           category&apos;s, else one of its tags&apos;, else the store&apos;s standard layout, else Kaizen&apos;s.
@@ -66,7 +66,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
         )}
       </div>
       <ActionForm action={assignLayoutAction.bind(null, store.slug, layout.id)} className="flex flex-col gap-6">
-        <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-background p-5">
+        <fieldset className="flex flex-col gap-2 rounded-card border border-border bg-background p-5">
           <legend className="px-1 font-medium">The whole store</legend>
           <label className="flex items-center gap-3 text-sm">
             <input type="checkbox" name="standard" defaultChecked={use.standard} className="size-4" />
@@ -76,7 +76,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
             </span>
           </label>
         </fieldset>
-        <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-background p-5">
+        <fieldset className="flex flex-col gap-2 rounded-card border border-border bg-background p-5">
           <legend className="px-1 font-medium">Product categories</legend>
           {categories.length === 0 ? (
             <p className="text-sm text-muted">The store has no product categories yet.</p>
@@ -85,7 +85,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
           )}
           <p className="text-xs text-muted">A category&apos;s layout is also used for the categories below it that have none of their own.</p>
         </fieldset>
-        <fieldset className="flex flex-col gap-2 rounded-lg border border-border bg-background p-5">
+        <fieldset className="flex flex-col gap-2 rounded-card border border-border bg-background p-5">
           <legend className="px-1 font-medium">Product tags</legend>
           {tags.length === 0 ? <p className="text-sm text-muted">The store has no product tags yet.</p> : tags.map((tag) => check(tag.id, tag.name))}
         </fieldset>

@@ -28,7 +28,7 @@ export default async function PlatformActivityPage({ searchParams }: PageProps<"
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-semibold">Activity log</h1>
+        <h1 className="text-display text-ink">Activity log</h1>
         <p className="max-w-2xl text-sm text-muted">
           What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets and approvals. A store&apos;s own
           changes are in that store&apos;s log. Entries are kept for 24 months and cannot be changed.
