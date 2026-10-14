@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -11,6 +10,7 @@ import { listPlatformDiscounts } from "@/server/platform-discounts";
 import { deletePlatformDiscountAction, updatePlatformDiscountAction } from "../../actions";
 import { deleteQuestion, PlatformDiscountFields } from "../discount-fields";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Discount code" };
 
@@ -25,16 +25,11 @@ export default async function PlatformDiscountPage({ params }: PageProps<"/admin
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/admin/platform/discounts" className="text-sm underline">
-          Discounts
-        </Link>
-        <h1 className="font-mono text-display text-ink">{discount.code}</h1>
-        <p className="text-sm text-muted">
-          On {discount.stores} {discount.stores === 1 ? "store's plan" : "stores' plans"}. Changing what it gives makes a new
-          coupon in Stripe for codes used from now on; plans that already have it keep what they got.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: "/admin/platform/discounts", label: "Discounts" }}
+        title={<span className="font-mono">{discount.code}</span>}
+        description={<>On {discount.stores} {discount.stores === 1 ? "store's plan" : "stores' plans"}. Changing what it gives makes a new coupon in Stripe for codes used from now on; plans that already have it keep what they got.</>}
+      />
       <section aria-label="Code" className="rounded-card border border-line bg-card p-5">
         <ActionForm action={updatePlatformDiscountAction.bind(null, discount.id)} className="flex flex-col gap-4">
           <PlatformDiscountFields discount={discount} currencies={currencies} />

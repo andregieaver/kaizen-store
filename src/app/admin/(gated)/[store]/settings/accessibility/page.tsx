@@ -4,6 +4,7 @@ import { AccessibilityForm } from "@/components/admin/a11y-statement-form";
 import { enforcementBodyOf } from "@/lib/a11y-statement";
 import { a11yFacts, getA11ySettings } from "@/server/accessibility";
 import { requireOwnerRole } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import { createStatementAction, saveAccessibilityAction } from "./actions";
 
@@ -19,13 +20,10 @@ export default async function AccessibilityPage({ params }: PageProps<"/admin/[s
   const slug = store.slug;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Accessibility</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Shops sold to consumers in the EU have to be usable by disabled people, and to say how they meet the requirements. Record what has been
-          assessed, and make a draft accessibility statement.
-        </p>
-      </div>
+      <PageHeader
+        title="Accessibility"
+        description={<>Shops sold to consumers in the EU have to be usable by disabled people, and to say how they meet the requirements. Record what has been assessed, and make a draft accessibility statement.</>}
+      />
       <AccessibilityForm
         settings={settings}
         facts={facts}

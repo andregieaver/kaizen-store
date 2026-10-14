@@ -8,6 +8,7 @@ import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import { requirePermission } from "@/server/permissions";
 import { listDiscounts } from "@/server/discounts";
+import { PageHeader } from "@/components/admin/ui";
 
 import { deleteDiscountAction } from "./actions";
 
@@ -37,10 +38,7 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Coupons</h1>
-          <p className="text-sm text-muted">Codes shoppers type in the cart or at checkout for money off or free shipping.</p>
-        </div>
+        <PageHeader title="Coupons" description={<>Codes shoppers type in the cart or at checkout for money off or free shipping.</>} />
         <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
           New coupon
         </Link>

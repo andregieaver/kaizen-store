@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { ExperimentForm } from "@/components/admin/experiment-form";
 import { requirePermission } from "@/server/permissions";
 import { describePart, testablePart, type PartKind } from "@/lib/experiment-parts";
 import { buttonsOf, formsOf, publishedContentOf, testablePages } from "@/server/experiment-admin";
+import { PageHeader } from "@/components/admin/ui";
 
 import { createExperimentAction } from "../actions";
 
@@ -37,12 +37,7 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
   const base = `/admin/${store.slug}/experiments`;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={base} className="text-sm underline">
-          A/B tests
-        </Link>
-        <h1 className="text-display text-ink">New A/B test</h1>
-      </div>
+      <PageHeader back={{ href: base, label: "A/B tests" }} title="New A/B test" />
       {asked("page") && pages.length === 0 ? (
         <p role="alert" className="rounded-card border border-line bg-card p-5 text-sm">
           This page cannot be tested now: it is in a running test, it is not published, or it is a page with a place of

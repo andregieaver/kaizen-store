@@ -5,6 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { decimalAmount } from "@/lib/dac7";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { dac7Report } from "@/server/dac7";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Tax report (DAC7)" };
 
@@ -34,20 +35,11 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={base} className="text-sm underline">
-          Hosts
-        </Link>
-        <h1 className="text-display text-ink">Tax report (DAC7)</h1>
-        <p className="text-sm text-muted">
-          As a marketplace, the store reports its hosts and what they were paid to the tax authority of the country it is
-          based in, once a year, by 31 January for the year before (in Norway, to Skatteetaten). Here is what Kaizen has
-          gathered for {year}: check it, then file it in the tax authority&apos;s service. Amounts are what guests paid,
-          refunds taken off, by quarter of payment; the commission is the store&apos;s. The host&apos;s net is
-          what they earned after the commission and Kaizen&apos;s fee (before Stripe&apos;s own fees); it is for your
-          records, and not part of what the report asks for.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: base, label: "Hosts" }}
+        title="Tax report (DAC7)"
+        description={<>As a marketplace, the store reports its hosts and what they were paid to the tax authority of the country it is based in, once a year, by 31 January for the year before (in Norway, to Skatteetaten). Here is what Kaizen has gathered for {year}: check it, then file it in the tax authority&apos;s service. Amounts are what guests paid, refunds taken off, by quarter of payment; the commission is the store&apos;s. The host&apos;s net is what they earned after the commission and Kaizen&apos;s fee (before Stripe&apos;s own fees); it is for your records, and not part of what the report asks for.</>}
+      />
 
       <nav aria-label="Year" className="flex flex-wrap gap-2 text-sm">
         {[current, current - 1, current - 2].map((y) => (

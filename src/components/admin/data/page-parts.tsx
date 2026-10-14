@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { card, hint } from "./ui";
+import { PageHeader } from "@/components/admin/ui";
 
 /** The head of a data page: where it sits (a link back to the list it belongs to), its title and what it is for. Full width, like the other admin pages. */
 export function DataPageHead({ backHref, backLabel, title, intro }: { backHref: string; backLabel: string; title: string; intro: ReactNode }) {
@@ -10,9 +11,8 @@ export function DataPageHead({ backHref, backLabel, title, intro }: { backHref: 
       <Link href={backHref} className="text-sm text-muted underline underline-offset-2">
         {backLabel}
       </Link>
-      <h1 className="text-display text-ink">{title}</h1>
-      <p className="max-w-3xl text-sm text-muted">{intro}</p>
-    </header>
+      <PageHeader title={<>{title}</>} description={<>{intro}</>} />
+      </header>
   );
 }
 

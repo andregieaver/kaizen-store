@@ -22,6 +22,7 @@ import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 import { getFieldData } from "@/server/custom-fields";
+import { PageHeader } from "@/components/admin/ui";
 
 import {
   chooseStoreSiteLayoutAction,
@@ -74,10 +75,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-display text-ink">{copy.list}</h1>
-          <p className="max-w-2xl text-sm text-muted">{INTRO[type]}</p>
-        </div>
+        <PageHeader title={<>{copy.list}</>} description={<>{INTRO[type]}</>} />
         <div className="flex flex-wrap gap-2">
           {!LAYOUT_TYPES.includes(type) && (
             <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium">
@@ -198,12 +196,11 @@ export async function StorePageTermsView({ type, params }: { type: PageType; par
         <Link href={storePagesBase(store, type)} className="w-fit text-sm underline">
           {copy.list}
         </Link>
-        <h1 className="text-display text-ink">{copy.One} categories and tags</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Sort your {copy.many} into categories and label them with tags; a content grid can then show the {copy.many}{" "}
-          of a category or tag. Product categories are under Products.
-        </p>
-      </div>
+        <PageHeader
+          title={<>{copy.One} categories and tags</>}
+          description={<>Sort your {copy.many} into categories and label them with tags; a content grid can then show the {copy.many}{" "}of a category or tag. Product categories are under Products.</>}
+        />
+        </div>
       <TermsManager
         initial={terms}
         usedBy={copy.many}

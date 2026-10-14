@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -13,6 +12,7 @@ import { getFieldGroup } from "@/server/custom-fields";
 import { deleteFieldGroupAction, saveFieldGroupAction } from "../actions";
 import { editorTerms, roleOptions, storeLanguages } from "../data";
 import { featureOn } from "@/lib/store-features";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Group of custom fields" };
 
@@ -25,13 +25,11 @@ export default async function FieldGroupPage({ params }: PageProps<"/admin/[stor
   const base = `/admin/${store.slug}/fields`;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={base} className="text-sm underline">
-          Custom fields
-        </Link>
-        <h1 className="text-display text-ink">{group.name}</h1>
-        <p className="text-sm text-muted">{group.active ? "Switched on." : "Switched off."}</p>
-      </div>
+      <PageHeader
+        back={{ href: base, label: "Custom fields" }}
+        title={<>{group.name}</>}
+        description={<>{group.active ? "Switched on." : "Switched off."}</>}
+      />
       <FieldGroupEditor
         initial={groupToInput(group)}
         terms={terms}

@@ -10,6 +10,7 @@ import { money } from "@/lib/control-center";
 import { bpsText, type AdminReferrer } from "@/lib/referrals";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getReferralSettings, listReferrals, listReferrers, referralTotals } from "@/server/referrals";
+import { PageHeader } from "@/components/admin/ui";
 
 import {
   adjustReferralCreditAction,
@@ -89,14 +90,10 @@ export default async function PlatformReferralsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Referrals</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          Store owners refer other store owners and earn credit on their own Kaizen invoices: a share of the plan and the sales fee the referred
-          store pays Kaizen, for a number of months. The terms a referral is made with are the ones below on the day the request is approved;
-          changing them later does not change stores already referred.
-        </p>
-      </div>
+      <PageHeader
+        title="Referrals"
+        description={<>Store owners refer other store owners and earn credit on their own Kaizen invoices: a share of the plan and the sales fee the referred store pays Kaizen, for a number of months. The terms a referral is made with are the ones below on the day the request is approved; changing them later does not change stores already referred.</>}
+      />
 
       <Section id="settings-heading" title="The program">
         <ActionForm action={saveReferralSettingsAction} className="flex max-w-xl flex-col gap-4 rounded-card border border-line bg-card p-5" successMessage="Saved.">

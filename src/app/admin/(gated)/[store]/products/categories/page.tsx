@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { TermsManager } from "@/components/admin/terms";
@@ -9,6 +8,7 @@ import { siteUrl } from "@/lib/site";
 import { requirePermission } from "@/server/permissions";
 import { listTerms } from "@/server/taxonomy";
 import { categoryGaps } from "@/server/unit-price-gaps";
+import { PageHeader } from "@/components/admin/ui";
 
 import { storeLanguages, termFieldsSetup } from "../../fields/data";
 
@@ -39,19 +39,11 @@ export default async function ProductTermsPage({ params }: PageProps<"/admin/[st
   };
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link href={`/admin/${store.slug}/products`} className="w-fit text-sm underline">
-          Products
-        </Link>
-        <h1 className="text-display text-ink">Categories and tags</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Sort your products into categories and label them with tags, so shoppers find them in your menus and
-          content grids. Choose a product&apos;s categories and tags when you edit the product. A category can also
-          require a price per kg or litre of its products, and each category and tag can have its own title and description
-          for search results in each language. Changing a category&apos;s or tag&apos;s address leaves a redirect from the
-          old one.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/products`, label: "Products" }}
+        title="Categories and tags"
+        description={<>Sort your products into categories and label them with tags, so shoppers find them in your menus and content grids. Choose a product&apos;s categories and tags when you edit the product. A category can also require a price per kg or litre of its products, and each category and tag can have its own title and description for search results in each language. Changing a category&apos;s or tag&apos;s address leaves a redirect from the old one.</>}
+      />
       <TermsManager
         initial={terms}
         usedBy="products"

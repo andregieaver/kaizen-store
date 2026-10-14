@@ -6,6 +6,7 @@ import { REOPEN_DAYS, closureBlockers, closureWarnings, ownerMayReopen, reopenDe
 import { signedInRecently } from "@/server/auth";
 import { requireOwnerRole } from "@/server/permissions";
 import { storeObligations, storeState } from "@/server/store-closure";
+import { PageHeader } from "@/components/admin/ui";
 
 import { closeStoreAction, reopenStoreAction, signInAgainAction } from "./actions";
 
@@ -25,12 +26,10 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
     return (
       <div className="flex max-w-2xl flex-col gap-6">
         <div>
-          <h1 className="text-display text-ink">{state.status === "closed" ? "This store is closed" : "This store is suspended"}</h1>
-          <p className="text-sm text-muted">
-            {state.status === "closed"
-              ? `It takes no orders. Its orders, invoices, returns and customer data stay available to you, and are kept for the bookkeeping period of the seller's country.`
-              : "Kaizen has paused it. It takes no orders and cannot be changed until Kaizen reopens it."}
-          </p>
+          <PageHeader
+            title={<>{state.status === "closed" ? "This store is closed" : "This store is suspended"}</>}
+            description={<>{state.status === "closed" ? `It takes no orders. Its orders, invoices, returns and customer data stay available to you, and are kept for the bookkeeping period of the seller's country.` : "Kaizen has paused it. It takes no orders and cannot be changed until Kaizen reopens it."}</>}
+          />
           {state.reason && <p className="mt-2 text-sm">Reason given: {state.reason}</p>}
         </div>
         {state.status === "closed" && state.closedAt && (
@@ -73,13 +72,10 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
   const fresh = await signedInRecently();
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Close store</h1>
-        <p className="text-sm text-muted">
-          Closing stops sales and takes the shop off the web. Nothing is deleted: orders, invoices and customer data stay here for you to read and download, kept for the bookkeeping period
-          of the seller&apos;s country and then made anonymous. You can reopen the store yourself for {REOPEN_DAYS} days.
-        </p>
-      </div>
+      <PageHeader
+        title="Close store"
+        description={<>Closing stops sales and takes the shop off the web. Nothing is deleted: orders, invoices and customer data stay here for you to read and download, kept for the bookkeeping period of the seller&apos;s country and then made anonymous. You can reopen the store yourself for {REOPEN_DAYS} days.</>}
+      />
 
       {blockers.length > 0 && (
         <section aria-labelledby="blockers" className="flex flex-col gap-2 rounded-lg border border-line bg-sunken p-4">

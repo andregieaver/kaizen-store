@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { PLATFORM_BASE } from "@/lib/platform-nav";
+import { PageHeader } from "@/components/admin/ui";
 
 type Card = { path: string; label: string; description: string };
 
@@ -24,10 +25,7 @@ export function SectionHub({
   const lists = groups ?? [{ heading: "", items: items ?? [] }];
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">{title}</h1>
-        <p className="max-w-2xl text-sm text-muted">{intro}</p>
-      </div>
+      <PageHeader title={<>{title}</>} description={<>{intro}</>} />
       {lists.map((list) => (
         <section key={list.heading} aria-label={list.heading || undefined} className="flex flex-col gap-3">
           {list.heading && <h2 className="text-xs font-medium tracking-wide text-muted uppercase">{list.heading}</h2>}

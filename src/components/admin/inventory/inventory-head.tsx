@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { INVENTORY_TABS, inventoryPaths, type InventoryTab } from "@/lib/inventory-admin";
+import { PageHeader } from "@/components/admin/ui";
 
 /**
  * The head of every Inventory page (wave 3, D172, `docs/wave-3-inventory.md` 2.2): the title, what the page is for and the tabs (the list, the history,
@@ -17,10 +18,7 @@ export function InventoryHead({ slug, active, title, intro, back }: { slug: stri
           {back.label}
         </Link>
       )}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-display text-ink">{title}</h1>
-        <p className="max-w-3xl text-sm text-muted">{intro}</p>
-      </div>
+      <PageHeader title={<>{title}</>} description={<>{intro}</>} />
       <nav aria-label="Inventory" className="flex flex-wrap gap-1 border-b border-line text-sm">
         {INVENTORY_TABS.map((tab) => (
           <Link

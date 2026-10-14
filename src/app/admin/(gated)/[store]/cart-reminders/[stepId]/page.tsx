@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -8,6 +7,7 @@ import { DeleteReminderButton } from "@/components/admin/delete-reminder-button"
 import { describeDelay } from "@/lib/cart-reminders";
 import { requirePermission } from "@/server/permissions";
 import { getCartReminderStep } from "@/server/cart-reminders";
+import { PageHeader } from "@/components/admin/ui";
 
 import { deleteReminderStepAction } from "../actions";
 import { ReminderForm } from "../reminder-form";
@@ -26,12 +26,10 @@ export default async function ReminderPage({ params }: PageProps<"/admin/[store]
   if (!step) notFound();
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/cart-reminders`} className="text-sm underline">
-          Cart reminders
-        </Link>
-        <h1 className="text-display text-ink">Reminder after {describeDelay(step.delayMinutes)}</h1>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/cart-reminders`, label: "Cart reminders" }}
+        title={<>Reminder after {describeDelay(step.delayMinutes)}</>}
+      />
       <ReminderForm store={store} step={step} />
       <DeleteReminderButton action={deleteReminderStepAction.bind(null, store.slug, step.id)} />
     </div>

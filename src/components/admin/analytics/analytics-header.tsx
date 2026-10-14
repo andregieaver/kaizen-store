@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { addDays } from "@/lib/analytics-period";
 import type { AnalyticsContext } from "@/server/analytics-context";
+import { PageHeader } from "@/components/admin/ui";
 
 import { PeriodPicker } from "./period-picker";
 import { Note } from "./section";
@@ -46,7 +47,7 @@ export function AnalyticsHeader({
   return (
     <header className="space-y-4">
       <div>
-        <h1 className="text-display text-ink">{title}</h1>
+        <PageHeader title={<>{title}</>} />
         {description ? <p className="mt-1 max-w-3xl text-sm text-muted">{description}</p> : null}
       </div>
       {picker ? (

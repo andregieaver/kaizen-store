@@ -5,6 +5,7 @@ import { primaryButton, secondaryButton } from "@/components/admin/work/work-par
 import { WORDPRESS_PLUGIN_FILE, WORDPRESS_PLUGIN_VERSION } from "@/lib/wordpress-plugin";
 import { requireAccount } from "@/server/auth";
 import { connectionsOf } from "@/server/wordpress";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { revokeConnectionAction } from "./actions";
 
@@ -23,19 +24,12 @@ export default async function WordpressPage() {
   const sites = await connectionsOf(account.id);
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">WordPress</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          Show products from your stores on a WordPress site, as a grid or a carousel, with a shortcode. Install the plugin on the site, choose
-          Connect, and approve here. The site can read the products, prices and pictures your stores show shoppers, for the stores you belong to,
-          and a shopper there can put them in a cart that opens in your store to be paid. The site reads no orders, customers or settings, and changes no product, price, order or setting.
-        </p>
-      </div>
+      <PageHeader
+        title="WordPress"
+        description={<>Show products from your stores on a WordPress site, as a grid or a carousel, with a shortcode. Install the plugin on the site, choose Connect, and approve here. The site can read the products, prices and pictures your stores show shoppers, for the stores you belong to, and a shopper there can put them in a cart that opens in your store to be paid. The site reads no orders, customers or settings, and changes no product, price, order or setting.</>}
+      />
 
-      <section aria-labelledby="plugin-heading" className="flex max-w-3xl flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <h2 id="plugin-heading" className="font-medium">
-          The plugin
-        </h2>
+      <Card title="The plugin" className="flex max-w-3xl flex-col gap-3" compact>
         <ol className="list-decimal pl-5 text-sm text-muted">
           <li>Download the plugin (version {WORDPRESS_PLUGIN_VERSION}).</li>
           <li>In WordPress, open Plugins, Add New Plugin, Upload Plugin, choose the file and activate it.</li>
@@ -46,7 +40,7 @@ export default async function WordpressPage() {
             Download the plugin
           </a>
         </div>
-      </section>
+      </Card>
 
       <section aria-labelledby="sites-heading" className="flex max-w-3xl flex-col gap-3">
         <h2 id="sites-heading" className="font-medium">

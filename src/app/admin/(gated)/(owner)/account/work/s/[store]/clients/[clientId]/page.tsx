@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import {
@@ -19,6 +18,7 @@ import { formDefaults, getClient, listAssignments } from "@/server/work";
 import { sellerDetails } from "@/server/work-settings";
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Client" };
 
@@ -50,18 +50,13 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`${base}/clients`} className="text-sm underline">
-          Clients
-        </Link>
-        <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-display text-ink [overflow-wrap:anywhere]">
-              {client.name} {archived && <Badge>Archived</Badge>}
-            </h1>
-            {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
-          </div>
-          <div className="flex flex-wrap items-start gap-2">
+      <PageHeader
+        back={{ href: `${base}/clients`, label: "Clients" }}
+        title={client.name}
+        status={archived ? <Badge>Archived</Badge> : undefined}
+        meta={[subtitle]}
+        actions={
+          <>
             <EditClientButton
               storeSlug={store.slug}
               client={client}
@@ -71,9 +66,9 @@ export default async function WorkClientPage({ params }: PageProps<"/admin/accou
               sellerCountry={seller.country}
             />
             <ArchiveClientButton storeSlug={store.slug} clientId={client.id} archived={archived} />
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <ClientFigures client={client} />
       <ClientDetails client={client} locale={locale} paymentDaysDefault={defaults.paymentDays} />

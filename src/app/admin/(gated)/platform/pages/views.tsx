@@ -22,6 +22,7 @@ import { getPlatformPageRoles } from "@/server/platform-roles";
 import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
+import { PageHeader } from "@/components/admin/ui";
 
 import { choosePlatformSiteLayoutAction, createPageTermAction, createPlatformRolePageAction, setPlatformPageRoleAction, deletePageTermAction, updatePageTermAction } from "./actions";
 import { platformPageContext } from "./context";
@@ -64,10 +65,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-display text-ink">{copy.list}</h1>
-          <p className="max-w-2xl text-sm text-muted">{INTRO[type]}</p>
-        </div>
+        <PageHeader title={<>{copy.list}</>} description={<>{INTRO[type]}</>} />
         <div className="flex flex-wrap gap-3">
           {!LAYOUT_TYPES.includes(type) && (
             <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-md border border-line px-5 font-medium">
@@ -154,13 +152,11 @@ export async function PageTermsView({ type }: { type: PageType }) {
         <Link href={`/admin/platform/${copy.segment}`} className="w-fit text-sm underline">
           {copy.list}
         </Link>
-        <h1 className="text-display text-ink">Categories and tags</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Sort Kaizen&apos;s {copy.many} into categories and label them with tags. Choose them for each {copy.one} in
-          the editor; a content grid can then show the {copy.many} of a category or tag. The choices go on the site
-          when the {copy.one} is published.
-        </p>
-      </div>
+        <PageHeader
+          title="Categories and tags"
+          description={<>Sort Kaizen&apos;s {copy.many} into categories and label them with tags. Choose them for each {copy.one} in the editor; a content grid can then show the {copy.many} of a category or tag. The choices go on the site when the {copy.one} is published.</>}
+        />
+        </div>
       <TermsManager
         initial={terms}
         usedBy={copy.many}

@@ -11,6 +11,7 @@ import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { DEFAULT_EVENTS, getIntegration, listDeliveries, type DeliveryRow } from "@/server/integrations";
 import { slackAppOn } from "@/server/slack";
+import { PageHeader } from "@/components/admin/ui";
 
 import { connectSlackAction, removeIntegrationAction, saveIntegrationAction, sendTestAction } from "../actions";
 
@@ -56,12 +57,10 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
         </Link>
         <div className="mt-1 flex items-center gap-3">
           <IntegrationMark id={info.id} />
-          <div>
-            <h1 className="text-display text-ink">{info.name}</h1>
-            <p className="text-sm text-muted">
-              {integration ? (integration.enabled ? `On · sending to ${integration.hint}` : `Off · address ${integration.hint}`) : "Not set up"}
-            </p>
-          </div>
+          <PageHeader
+            title={<>{info.name}</>}
+            description={<>{integration ? (integration.enabled ? `On · sending to ${integration.hint}` : `Off · address ${integration.hint}`) : "Not set up"}</>}
+          />
         </div>
       </div>
 

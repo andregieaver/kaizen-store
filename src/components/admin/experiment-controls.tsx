@@ -19,6 +19,7 @@ import {
 } from "@/app/admin/(gated)/[store]/experiments/actions";
 import { DEVICES, MAX_VARIANTS, type Device } from "@/lib/experiments";
 import type { ExperimentInfo } from "@/server/experiment-admin";
+import { Card } from "@/components/admin/ui";
 
 import { PAGE_TYPE_COPY } from "./page-type-copy";
 import { RuntimeEstimate } from "./runtime-estimate";
@@ -166,8 +167,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
         </ul>
       </section>
 
-      <section aria-labelledby="ab-settings" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
-        <h2 id="ab-settings" className="text-lg font-medium">2. Check the settings</h2>
+      <Card title="2. Check the settings" className="flex flex-col gap-4" compact>
         <label className={label}>
           Name
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} className={input} />
@@ -223,11 +223,10 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
           </button>
           {saved && <span role="status" className="text-sm text-muted">Saved.</span>}
         </div>
-      </section>
+      </Card>
 
       <Problems problems={problems} />
-      <section aria-labelledby="ab-start" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <h2 id="ab-start" className="text-lg font-medium">3. Start the test</h2>
+      <Card title="3. Start the test" className="flex flex-col gap-3" compact>
         <p className="text-sm text-muted">
           Visitors who have accepted statistics cookies will be shown the versions from the next page view. The test runs for at least {test.minDays} days and
           you can stop it at any time. The page itself does not change until you choose a winner.
@@ -271,7 +270,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
             </button>
           )}
         </div>
-      </section>
+      </Card>
     </div>
   );
 }

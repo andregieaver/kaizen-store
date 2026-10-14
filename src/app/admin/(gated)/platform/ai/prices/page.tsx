@@ -6,6 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatPerMillion, formatUnitPrice } from "@/lib/ai-cost";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listPrices, unpricedModels } from "@/server/ai-prices";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { setAiPriceAction } from "./actions";
 
@@ -39,25 +40,13 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">AI prices</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          What each model costs, in US dollars, from the provider&apos;s price list: per million tokens, and where it bills them so, per picture, per minute of audio
-          (speech to text and live voice calls) and per million characters spoken.{" "}
-          <Link href="/admin/platform/ai/usage" className="underline">
-            AI usage
-          </Link>{" "}
-          multiplies everything a call used by the price its model had that day. Check the prices against the providers&apos; lists now and then: a
-          price you change counts from today and leaves earlier calls as they were. A price left empty means &quot;no price&quot;: usage in that unit shows as
-          unpriced, with a &quot;+&quot; on the totals.
-        </p>
-      </div>
+      <PageHeader
+        title="AI prices"
+        description={<>What each model costs, in US dollars, from the provider&apos;s price list: per million tokens, and where it bills them so, per picture, per minute of audio (speech to text and live voice calls) and per million characters spoken.{" "}<Link href="/admin/platform/ai/usage" className="underline">AI usage</Link>{" "}multiplies everything a call used by the price its model had that day. Check the prices against the providers&apos; lists now and then: a price you change counts from today and leaves earlier calls as they were. A price left empty means &quot;no price&quot;: usage in that unit shows as unpriced, with a &quot;+&quot; on the totals.</>}
+      />
 
       {unpriced.length > 0 && (
-        <section aria-labelledby="unpriced" className="rounded-card border border-line bg-card p-5">
-          <h2 id="unpriced" className="font-medium">
-            Used without a price
-          </h2>
+        <Card title="Used without a price" compact>
           <p className="mb-3 mt-1 text-sm text-muted">These models were used in the last 90 days with no price for what they did, so the usage pages cannot say what they cost.</p>
           <ul className="flex flex-col divide-y divide-line text-sm">
             {unpriced.map((m) => (
@@ -72,13 +61,10 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       )}
 
-      <section aria-labelledby="set-price" className="rounded-card border border-line bg-card p-5">
-        <h2 id="set-price" className="font-medium">
-          Set a price
-        </h2>
+      <Card title="Set a price" compact>
         <ActionForm action={setAiPriceAction} className="mt-3 flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Provider
@@ -120,12 +106,9 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
           empty when the model has none, or when the provider bills its pictures or audio as tokens (a call that reports tokens is priced by them, so a
           unit price on top would count twice).
         </p>
-      </section>
+      </Card>
 
-      <section aria-labelledby="prices" className="rounded-card border border-line bg-card p-5">
-        <h2 id="prices" className="font-medium">
-          Prices
-        </h2>
+      <Card title="Prices" compact>
         {models.size === 0 ? (
           <p className="mt-2 text-sm text-muted">No prices yet.</p>
         ) : (
@@ -165,7 +148,7 @@ export default async function PlatformAiPricesPage({ searchParams }: PageProps<"
             </table>
           </div>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

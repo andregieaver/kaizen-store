@@ -5,6 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requirePermission } from "@/server/permissions";
 import { listTiers } from "@/server/customer-tiers";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { saveGroupAction } from "./actions";
 
@@ -28,13 +29,10 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Customer groups</h1>
-        <p className="text-sm text-muted">
-          A fixed percentage off everything a customer in the group buys once (not subscriptions, sign-up fees or shipping), taken off before any coupon.
-          Put customers in a group, or give a <Link href={`${base}/companies`} className="underline">company</Link> a group so all its accounts share the discount.
-        </p>
-      </div>
+      <PageHeader
+        title="Customer groups"
+        description={<>A fixed percentage off everything a customer in the group buys once (not subscriptions, sign-up fees or shipping), taken off before any coupon. Put customers in a group, or give a <Link href={`${base}/companies`} className="underline">company</Link> a group so all its accounts share the discount.</>}
+      />
 
       {groups.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
@@ -72,10 +70,7 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
         </div>
       )}
 
-      <section aria-labelledby="new-group" className="flex max-w-xl flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <h2 id="new-group" className="font-medium">
-          New group
-        </h2>
+      <Card title="New group" className="flex max-w-xl flex-col gap-3" compact>
         <ActionForm action={saveGroupAction.bind(null, store.slug, null)} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Name
@@ -93,7 +88,7 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
             <SubmitButton>Make group</SubmitButton>
           </div>
         </ActionForm>
-      </section>
+      </Card>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { InvoiceNotes, InvoiceReadinessList, InvoiceSettingsForm, SeriesForm } from "@/components/admin/invoices/invoice-settings-form";
 import { getInvoiceSettings, invoiceReadiness, seriesStates } from "@/server/invoice-settings";
 import { requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveInvoiceSettingsAction, setSeriesAction } from "./actions";
 
@@ -24,13 +25,10 @@ export default async function InvoiceSettingsPage({ params }: PageProps<"/admin/
   const [settings, readiness, series] = await Promise.all([getInvoiceSettings(store.id), invoiceReadiness(store.id), seriesStates(store.id)]);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Invoicing</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Every paid order gets an invoice in the store&apos;s own numbered series, made by the system when the payment is recorded, and every refund that
-          succeeds gets a credit note in a series of its own. The shopper finds them on the order page and in the order emails. This is not tax advice.
-        </p>
-      </div>
+      <PageHeader
+        title="Invoicing"
+        description={<>Every paid order gets an invoice in the store&apos;s own numbered series, made by the system when the payment is recorded, and every refund that succeeds gets a credit note in a series of its own. The shopper finds them on the order page and in the order emails. This is not tax advice.</>}
+      />
       <InvoiceReadinessList base={base} readiness={readiness} />
       <InvoiceSettingsForm settings={settings} readiness={readiness} paymentsHref={`${base}/settings/payments`} saveAction={saveInvoiceSettingsAction.bind(null, store.slug)} />
       {series.map((state) => (

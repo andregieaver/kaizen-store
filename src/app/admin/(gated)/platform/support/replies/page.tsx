@@ -4,6 +4,7 @@ import { RepliesManager } from "@/components/admin/support/replies-manager";
 import { languageName } from "@/lib/support-translate";
 import { kaizenDesk } from "@/server/support-desk";
 import { listReplies } from "@/server/support-replies";
+import { PageHeader } from "@/components/admin/ui";
 
 import { deleteKaizenReplyAction, saveKaizenReplyAction } from "./actions";
 
@@ -18,10 +19,7 @@ export default async function KaizenSupportRepliesPage() {
   const replies = await listReplies(staff);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Saved replies</h1>
-        <p className="text-muted">Answers Kaizen&apos;s people use often, put in a reply with / in the inbox.</p>
-      </div>
+      <PageHeader title="Saved replies" description={<>Answers Kaizen&apos;s people use often, put in a reply with / in the inbox.</>} />
       <RepliesManager replies={replies} languages={KAIZEN_LANGUAGES.map((code) => ({ code, name: languageName(code) }))} save={saveKaizenReplyAction} remove={deleteKaizenReplyAction} />
     </div>
   );

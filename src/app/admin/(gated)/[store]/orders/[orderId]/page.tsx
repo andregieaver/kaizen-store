@@ -78,6 +78,7 @@ import { cancelOrderEditAction, recordWaitingEditPaidOutsideAction, resendOrderE
 import { archiveOrderAction, changeTagsAction, unarchiveOrderAction } from "../ops-actions";
 import { markDeliveredAction, registerWithdrawalAction } from "../../returns/actions";
 import { todayIn } from "@/lib/work-dates";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -214,45 +215,11 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Link href={`/admin/${store.slug}/orders`} className="text-sm underline">
-            Orders
-          </Link>
-          <h1 className="text-display text-ink">Order #{order.number}</h1>
-          <p className="text-sm text-muted">
-            {cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : STATUS_LABELS[order.status]}
-            {fulfilment.state === "partly_sent" && ` · ${FULFILMENT_STATE_LABELS.partly_sent.toLowerCase()} (${fulfilment.unitsToSend} ${fulfilment.unitsToSend === 1 ? "unit" : "units"} still to send)`}
-            {awaitingEdit && " · change awaiting payment"}
-            {order.edits.some((e) => e.status === "applied") && " · edited"} · placed{" "}
-            {when(order.placedAt)} ·{" "}
-            {order.marketCode}
-            {order.archivedAt && " · archived"}
-            {order.copied && " · copied history"}
-            {order.source === "draft" && (
-              <>
-                {" · "}
-                staff-made
-                {order.draft?.number && (
-                  <>
-                    {" from draft "}
-                    <Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">
-                      {order.draft.number}
-                    </Link>
-                  </>
-                )}
-                {order.madeBy?.email && ` by ${order.madeBy.email}`}
-              </>
-            )}
-            {order.subscriptionId && (
-              <>
-                {" · "}
-                <Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">
-                  part of a subscription
-                </Link>
-              </>
-            )}
-          </p>
-        </div>
+        <PageHeader
+          back={{ href: `/admin/${store.slug}/orders`, label: "Orders" }}
+          title={<>Order #{order.number}</>}
+          description={<>{cancelledAfterPayment ? "Cancelled and refunded" : toCharge ? "To send: charged when sent" : STATUS_LABELS[order.status]}{fulfilment.state === "partly_sent" && ` · ${FULFILMENT_STATE_LABELS.partly_sent.toLowerCase()} (${fulfilment.unitsToSend} ${fulfilment.unitsToSend === 1 ? "unit" : "units"} still to send)`}{awaitingEdit && " · change awaiting payment"}{order.edits.some((e) => e.status === "applied") && " · edited"} · placed{" "}{when(order.placedAt)} ·{" "}{order.marketCode}{order.archivedAt && " · archived"}{order.copied && " · copied history"}{order.source === "draft" && (<>{" · "}staff-made{order.draft?.number && (<>{" from draft "}<Link href={`/admin/${store.slug}/orders/drafts/${order.draft.id}`} className="underline">{order.draft.number}</Link></>)}{order.madeBy?.email && ` by ${order.madeBy.email}`}</>)}{order.subscriptionId && (<>{" · "}<Link href={`/admin/${store.slug}/subscriptions/${order.subscriptionId}`} className="underline">part of a subscription</Link></>)}</>}
+        />
         {(paid || canWrite || memberCan(member, "owner")) && (
           <div className="flex flex-wrap items-start gap-2">
             {canWrite && (

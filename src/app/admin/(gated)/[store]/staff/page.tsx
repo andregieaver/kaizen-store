@@ -6,6 +6,7 @@ import { requireOwnerRole } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
 import { ensureStoreRoles, listStoreRoles } from "@/server/store-roles";
 import { twoStepRequired } from "@/server/team";
+import { PageHeader } from "@/components/admin/ui";
 
 import {
   assignRoleAction,
@@ -33,13 +34,10 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Team</h1>
-          <p className="max-w-2xl text-sm text-muted">
-            People listed here can sign in with a link sent to their email, or with their password. Owners manage the team and the plan; everyone else
-            works in the parts of the admin their role gives them.
-          </p>
-        </div>
+        <PageHeader
+          title="Team"
+          description={<>People listed here can sign in with a link sent to their email, or with their password. Owners manage the team and the plan; everyone else works in the parts of the admin their role gives them.</>}
+        />
         <div className="flex gap-2">
           <Link href={`/admin/${slug}/staff/roles`} className="inline-flex min-h-10 items-center rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken">
             Roles

@@ -9,6 +9,7 @@ import { AI_ASSISTANT_BOTS, AI_TRAINING_BOTS, LLMS_MAX, RULES_MAX } from "@/lib/
 import { requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 import { altTextGaps, storeSitemapPath } from "@/server/seo";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveStoreSeoAction } from "../../../actions";
 import { uploadImageAction } from "../../products/actions";
@@ -37,14 +38,10 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">SEO &amp; Reach</h1>
-        <p className="text-sm text-muted">
-          How {store.name} shows up in Google and Bing, when a link is shared, and to AI assistants such
-          as ChatGPT and Claude. Kaizen fills in what it can from your products and business details;
-          everything here is optional.
-        </p>
-      </div>
+      <PageHeader
+        title={<>SEO &amp; Reach</>}
+        description={<>How {store.name} shows up in Google and Bing, when a link is shared, and to AI assistants such as ChatGPT and Claude. Kaizen fills in what it can from your products and business details; everything here is optional.</>}
+      />
 
       <section aria-labelledby="status-heading" className={card}>
         <h2 id="status-heading" className="font-medium">

@@ -8,6 +8,7 @@ import { UnverifiedCard } from "@/components/admin/vat/rates-table";
 import { ShippingRulesCard } from "@/components/admin/vat/shipping-rules-card";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listShippingVatRules, unverifiedRates, vatCoverage } from "@/server/vat-admin";
+import { PageHeader } from "@/components/admin/ui";
 
 import { addVatCategoryAction, setShippingVatRuleAction, setVatCategoryActiveAction, setVatRateAction, verifyVatRateAction } from "./actions";
 
@@ -27,13 +28,10 @@ export default async function PlatformVatPage() {
   const countries = coverage.countries.map((c) => ({ code: c.code, name: c.name })).sort((a, b) => a.name.localeCompare(b.name));
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">VAT</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          The rates every store charges. Prices include VAT, and each sale takes the VAT of the country it goes to. The rates here were read from public sources and start unverified: they
-          are still charged, so work through the list with an accountant. This is not tax advice.
-        </p>
-      </div>
+      <PageHeader
+        title="VAT"
+        description={<>The rates every store charges. Prices include VAT, and each sale takes the VAT of the country it goes to. The rates here were read from public sources and start unverified: they are still charged, so work through the list with an accountant. This is not tax advice.</>}
+      />
       <UnverifiedCard rows={unverified} categoryName={(code) => names.get(code) ?? code} verify={(c, k, from) => verifyVatRateAction.bind(null, c, k, from)} />
       <CoverageCard categories={coverage.categories} countries={coverage.countries} />
       <RateForm categories={coverage.categories.filter((c) => c.code !== "exempt")} countries={countries} action={setVatRateAction} />

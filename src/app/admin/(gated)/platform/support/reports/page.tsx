@@ -5,6 +5,7 @@ import { ReportsView } from "@/components/admin/support/reports-view";
 import { addDays, parseAnalyticsParams, todayIn } from "@/lib/analytics-period";
 import { kaizenDesk } from "@/server/support-desk";
 import { KAIZEN_TIME_ZONE, deskReport } from "@/server/support-reports";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Support reports" };
 
@@ -16,10 +17,10 @@ export default async function KaizenSupportReportsPage({ searchParams }: PagePro
   const { report, cut } = await deskReport(staff.desk, period, KAIZEN_TIME_ZONE);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Support reports</h1>
-        <p className="text-muted">How Kaizen&apos;s own desk did: visitors of Kaizen&apos;s site and owners asking Kaizen.</p>
-      </div>
+      <PageHeader
+        title="Support reports"
+        description={<>How Kaizen&apos;s own desk did: visitors of Kaizen&apos;s site and owners asking Kaizen.</>}
+      />
       {notice && <p className="text-sm">{notice}</p>}
       <ReportsView
         report={report}

@@ -10,6 +10,7 @@ import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { enabledLanguages } from "@/server/languages";
 import { uiCounts } from "@/server/ui-text";
+import { PageHeader } from "@/components/admin/ui";
 
 import { fetchRatesAction, saveCurrenciesAction, saveLanguagesAction, saveStoreLanguageAction } from "./actions";
 
@@ -51,15 +52,10 @@ export default async function LocalizationPage({ params }: PageProps<"/admin/[st
 
   return (
     <div className="flex flex-col gap-10">
-      <div>
-        <h1 className="text-display text-ink">Languages and currencies</h1>
-        <p className="text-sm text-muted">
-          Language and currency are chosen separately. Offer any languages, whichever countries you sell to, and any
-          currencies, whichever languages. Prices are kept in each country&apos;s own currency and shown to a shopper in
-          the currency they choose at the rates below. Shoppers choose from the header; the choice is in the address
-          (for example <code>/no-en-eur</code>).
-        </p>
-      </div>
+      <PageHeader
+        title="Languages and currencies"
+        description={<>Language and currency are chosen separately. Offer any languages, whichever countries you sell to, and any currencies, whichever languages. Prices are kept in each country&apos;s own currency and shown to a shopper in the currency they choose at the rates below. Shoppers choose from the header; the choice is in the address (for example <code>/no-en-eur</code>).</>}
+      />
 
       <section className="flex flex-col gap-4" aria-labelledby="languages">
         <h2 id="languages" className="text-lg font-medium">Languages</h2>

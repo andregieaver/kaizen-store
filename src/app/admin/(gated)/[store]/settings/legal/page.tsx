@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { LegalPagesPanel } from "@/components/admin/legal-pages-panel";
 import { legalOverview } from "@/server/legal-starters";
 import { requireOwnerRole } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import { createStarterAction, setLegalRoleAction, setTermsModeAction } from "./actions";
 
@@ -18,13 +19,10 @@ export default async function LegalPagesPage({ params }: PageProps<"/admin/[stor
   const slug = member.store.slug;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Legal pages</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          The texts a shop is expected to show: its terms, how it handles personal data, how returns and delivery work, the right to withdraw and who the
-          business is. Start from a draft, make it yours, publish it, and choose it here.
-        </p>
-      </div>
+      <PageHeader
+        title="Legal pages"
+        description={<>The texts a shop is expected to show: its terms, how it handles personal data, how returns and delivery work, the right to withdraw and who the business is. Start from a draft, make it yours, publish it, and choose it here.</>}
+      />
       <LegalPagesPanel
         overview={overview}
         storeSlug={slug}

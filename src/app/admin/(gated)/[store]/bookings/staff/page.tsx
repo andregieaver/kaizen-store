@@ -5,6 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { weekSummary } from "@/lib/opening-hours";
 import { requirePermission } from "@/server/permissions";
 import { listResources } from "@/server/bookings";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Staff and hours" };
 
@@ -20,10 +21,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/bo
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Staff and hours</h1>
-          <p className="text-sm text-muted">Who takes appointments, and when. Choose who does each appointment in the product.</p>
-        </div>
+        <PageHeader title="Staff and hours" description={<>Who takes appointments, and when. Choose who does each appointment in the product.</>} />
         <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
           Add staff
         </Link>

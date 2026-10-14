@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PRIVACY_KIND_LABELS, PRIVACY_STATUS_LABELS } from "@/lib/privacy-request";
 import { STAFF_TEXT } from "@/lib/privacy-text";
 import type { RequestView } from "@/server/privacy-requests";
+import { PageHeader } from "@/components/admin/ui";
 
 import { alertText, buttonPrimary, card, clockWords, dayText } from "./styles";
 
@@ -42,12 +43,10 @@ export function RequestsView({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-display text-ink">Privacy requests</h1>
-          <p className="max-w-2xl text-sm text-muted">
-            People may ask what the store holds about them, or ask for it to be erased. Log a request when it arrives, and answer it within one month. This is not legal advice.
-          </p>
-        </div>
+        <PageHeader
+          title="Privacy requests"
+          description={<>People may ask what the store holds about them, or ask for it to be erased. Log a request when it arrives, and answer it within one month. This is not legal advice.</>}
+        />
         {canWrite && (
           <Link href={`${base}/privacy/new`} className={buttonPrimary}>
             Log a request

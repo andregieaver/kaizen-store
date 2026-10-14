@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { formatBps, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listStoreBilling } from "@/server/billing";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Stores" };
 
@@ -16,13 +17,10 @@ export default async function PlatformStoresPage() {
   const stores = await listStoreBilling({ includeClosed: true });
   return (
     <>
-      <div>
-        <h1 className="text-display text-ink">Stores</h1>
-        <p className="text-sm text-muted">
-          Each store&apos;s plan with Kaizen and its fee per sale. Open a store to start, change or
-          cancel its plan, or give it its own fee.
-        </p>
-      </div>
+      <PageHeader
+        title="Stores"
+        description={<>Each store&apos;s plan with Kaizen and its fee per sale. Open a store to start, change or cancel its plan, or give it its own fee.</>}
+      />
       <div className="overflow-x-auto rounded-lg border border-line bg-card">
         <table className="w-full text-left text-sm">
           <thead>

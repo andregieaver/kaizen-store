@@ -2,6 +2,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { PERSONAL_DATA } from "@/lib/personal-data";
 import { describePeriod, isBookkeepingKind, RETENTION_KINDS, type RetentionBasis, type RetentionKind } from "@/lib/retention";
 import type { RetentionOverview, StoredRule } from "@/server/retention";
+import { PageHeader } from "@/components/admin/ui";
 
 import { ChangeRuleForm } from "./retention-forms";
 import { StepForm } from "./request-actions";
@@ -111,13 +112,10 @@ export function RetentionView({
   const actions = (a: string) => personal.filter((e) => e.erasure === a).length;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Data retention</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          How long each kind of personal data is kept, and what the daily job removes when the time is up. Bookkeeping periods come from each country&apos;s law and need an accountant to review them;
-          the rest are Kaizen&apos;s own choice. This is not legal advice.
-        </p>
-      </div>
+      <PageHeader
+        title="Data retention"
+        description={<>How long each kind of personal data is kept, and what the daily job removes when the time is up. Bookkeeping periods come from each country&apos;s law and need an accountant to review them; the rest are Kaizen&apos;s own choice. This is not legal advice.</>}
+      />
 
       <section aria-labelledby="unreviewed" className={card}>
         <h2 id="unreviewed" className="font-medium">

@@ -6,6 +6,7 @@ import { FeatureOffNote } from "@/components/admin/feature-off";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listCountries } from "@/server/stores";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveCountriesSettingsAction } from "./actions";
 
@@ -28,13 +29,10 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-display text-ink">Countries</h1>
-        <p className="text-sm text-muted">
-          Each country gets its own storefront address, in its own language and currency, with its own prices and shipping. A product shows in a
-          country once it has a price there.
-        </p>
-      </div>
+      <PageHeader
+        title="Countries"
+        description={<>Each country gets its own storefront address, in its own language and currency, with its own prices and shipping. A product shows in a country once it has a price there.</>}
+      />
 
       <section aria-labelledby="home-heading" className="flex flex-col gap-2 rounded-lg border border-line bg-sunken p-4">
         <h2 id="home-heading" className="text-base font-medium">Your own country</h2>

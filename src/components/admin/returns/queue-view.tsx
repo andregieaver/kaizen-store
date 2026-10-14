@@ -5,6 +5,7 @@ import { formatMoney } from "@/lib/money";
 import { countsSentence, dayText, KIND_FILTERS, queueHref, STATUS_FILTERS } from "@/lib/return-admin";
 import type { ReturnQueueFilter } from "@/lib/return-input";
 import type { Queue, ReturnCounts } from "@/server/returns";
+import { PageHeader } from "@/components/admin/ui";
 
 import { DueMark, KindBadge, StatusBadge } from "./ui";
 
@@ -36,11 +37,10 @@ export function ReturnsQueueView({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-display text-ink">Returns</h1>
-        <p className="text-sm text-muted">
-          Withdrawals are the customer&apos;s legal right to change their mind: you cannot refuse them, and the refund is due within 14 days of
-          being told. Return requests are inside your own longer window, and you may approve or decline them.
-        </p>
+        <PageHeader
+          title="Returns"
+          description={<>Withdrawals are the customer&apos;s legal right to change their mind: you cannot refuse them, and the refund is due within 14 days of being told. Return requests are inside your own longer window, and you may approve or decline them.</>}
+        />
         <p className="mt-1 text-sm text-muted">
           A customer who withdrew by email, letter or phone, or whose statement the form could not match to an order, has still withdrawn: open the order
           from Orders and register it under Returns and withdrawals.

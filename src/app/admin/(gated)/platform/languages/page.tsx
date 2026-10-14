@@ -8,6 +8,7 @@ import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listLanguages, storesUsing } from "@/server/languages";
 import { uiCoverage } from "@/server/ui-text";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { addLanguageAction, saveLocalesAction, setEnabledAction } from "./actions";
 
@@ -32,18 +33,12 @@ export default async function LanguagesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Languages</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          The languages store owners can offer under Languages and currencies. Products, pages and menus can be
-          written or translated in any of them; the interface (buttons, cart, checkout and the emails shoppers get)
-          is written by hand in Norwegian, Swedish, Danish and English, and translated by AI and reviewed here for the
-          others. A language without interface text shows English there.
-        </p>
-      </div>
+      <PageHeader
+        title="Languages"
+        description={<>The languages store owners can offer under Languages and currencies. Products, pages and menus can be written or translated in any of them; the interface (buttons, cart, checkout and the emails shoppers get) is written by hand in Norwegian, Swedish, Danish and English, and translated by AI and reviewed here for the others. A language without interface text shows English there.</>}
+      />
 
-      <section aria-labelledby="add-heading" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <h2 id="add-heading" className="font-medium">Add a language</h2>
+      <Card title="Add a language" className="flex flex-col gap-3" compact>
         <ActionForm action={addLanguageAction} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-sm font-medium">
             From the world&apos;s languages
@@ -56,7 +51,7 @@ export default async function LanguagesPage() {
           </label>
           <SubmitButton>Add</SubmitButton>
         </ActionForm>
-      </section>
+      </Card>
 
       <section aria-labelledby="list-heading" className="flex flex-col gap-3">
         <h2 id="list-heading" className="sr-only">Languages</h2>

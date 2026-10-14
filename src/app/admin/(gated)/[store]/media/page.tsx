@@ -8,6 +8,7 @@ import { aiFor } from "@/server/ai";
 import { altSite, missingAltTexts } from "@/server/alt-texts";
 import { uploadsEnabled } from "@/server/media";
 import { compressibleCount, listMedia } from "@/server/media-library";
+import { PageHeader } from "@/components/admin/ui";
 
 import { startVideoUploadAction, uploadImageAction } from "../products/actions";
 import {
@@ -33,13 +34,10 @@ export default async function MediaPage({ params, searchParams }: PageProps<"/ad
   const { store } = await requirePermission((await params).store, "website:read");
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Media library</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Every picture and video {store.name} has uploaded, here or in any editor. Add many at once, find them by name
-          or alt text, give pictures alt texts (or let your AI write them), and see where each one is used on the site.
-        </p>
-      </div>
+      <PageHeader
+        title="Media library"
+        description={<>Every picture and video {store.name} has uploaded, here or in any editor. Add many at once, find them by name or alt text, give pictures alt texts (or let your AI write them), and see where each one is used on the site.</>}
+      />
       {/* The search in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
         <Library storeSlug={store.slug} searchParams={searchParams} />

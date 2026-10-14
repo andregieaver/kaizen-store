@@ -7,6 +7,7 @@ import { money } from "@/lib/control-center";
 import { requireAccount } from "@/server/auth";
 import { ownedStores } from "@/server/ai-usage";
 import { listStoreBilling, type StoreBilling } from "@/server/billing";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Billing" };
 
@@ -43,10 +44,10 @@ export default async function OwnerBillingPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Billing</h1>
-        <p className="text-sm text-muted">The plan of each store you own, what it costs and when it renews. Change a plan in the store&apos;s own billing.</p>
-      </div>
+      <PageHeader
+        title="Billing"
+        description={<>The plan of each store you own, what it costs and when it renews. Change a plan in the store&apos;s own billing.</>}
+      />
       {rows.length === 0 ? (
         <p className="rounded-lg border border-line p-4 text-sm">You do not own a store yet, so there are no plans to show.</p>
       ) : (

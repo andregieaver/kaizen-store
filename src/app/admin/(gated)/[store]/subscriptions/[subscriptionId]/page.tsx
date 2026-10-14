@@ -15,6 +15,7 @@ import { requirePermission } from "@/server/permissions";
 import { customerSummary } from "@/server/customer-admin";
 import type { OrderStatus } from "@/server/orders";
 import { allowedChanges, getSubscription, swapChoices } from "@/server/subscriptions";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { changeContentsAction } from "../actions";
 
@@ -52,24 +53,17 @@ export default async function SubscriptionPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/subscriptions`} className="text-sm underline">
-          Subscriptions
-        </Link>
-        <h1 className="text-display text-ink">Subscription #{subscription.number}</h1>
-        <p className="text-sm text-muted">
-          {SUBSCRIPTION_STATUS_LABELS[subscription.status]} ·{" "}
-          {planSummary({ interval: subscription.interval, intervalCount: subscription.intervalCount, discountPercent: 0 })}{" "}
-          · started {date(subscription.createdAt)} · {subscription.marketCode}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/subscriptions`, label: "Subscriptions" }}
+        title={<>Subscription #{subscription.number}</>}
+        description={<>{SUBSCRIPTION_STATUS_LABELS[subscription.status]} ·{" "}{planSummary({ interval: subscription.interval, intervalCount: subscription.intervalCount, discountPercent: 0 })}{" "}· started {date(subscription.createdAt)} · {subscription.marketCode}</>}
+      />
 
       {customer && <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />}
 
       <div className="grid gap-6 md:grid-cols-[1fr_18rem]">
         <div className="flex flex-col gap-6">
-          <section aria-labelledby="items" className="rounded-card border border-line bg-card p-5">
-            <h2 id="items" className="mb-3 font-medium">Each renewal</h2>
+          <Card title="Each renewal" compact>
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
@@ -103,11 +97,10 @@ export default async function SubscriptionPage({
             <p className="mt-3 text-xs text-muted">
               The customer keeps these prices for as long as the subscription runs, unless the items are changed.
             </p>
-          </section>
+          </Card>
 
           {choices && (
-            <section aria-labelledby="change" className="rounded-card border border-line bg-card p-5 text-sm">
-              <h2 id="change" className="mb-1 font-medium">Change the next deliveries</h2>
+            <Card title="Change the next deliveries" className="text-sm" compact>
               <p className="mb-3 text-muted">
                 A swapped item takes today&apos;s price with the purchase option&apos;s discount. Nothing is charged now; the
                 customer is emailed.
@@ -136,11 +129,10 @@ export default async function SubscriptionPage({
                   failed: "The change could not be saved. Check it and try again.",
                 }}
               />
-            </section>
+            </Card>
           )}
 
-          <section aria-labelledby="orders" className="rounded-card border border-line bg-card p-5 text-sm">
-            <h2 id="orders" className="mb-2 font-medium">Orders</h2>
+          <Card title="Orders" className="text-sm" compact>
             <ul className="flex flex-col gap-1">
               {subscription.orders.map((order) => (
                 <li key={order.id} className="flex justify-between gap-4">
@@ -154,7 +146,7 @@ export default async function SubscriptionPage({
                 </li>
               ))}
             </ul>
-          </section>
+          </Card>
         </div>
 
         <div className="flex flex-col gap-6">
@@ -174,8 +166,7 @@ export default async function SubscriptionPage({
               <p className="text-muted">Not known until payment.</p>
             )}
           </section>
-          <section aria-labelledby="renewal" className="rounded-card border border-line bg-card p-5 text-sm">
-            <h2 id="renewal" className="mb-2 font-medium">Renewal</h2>
+          <Card title="Renewal" className="text-sm" compact>
             <ul className="mb-3 flex flex-col gap-1">
               <li>
                 {!live
@@ -199,7 +190,7 @@ export default async function SubscriptionPage({
             {changes.length > 0 && (
               <SubscriptionActions storeSlug={store.slug} subscriptionId={subscription.id} changes={changes} />
             )}
-          </section>
+          </Card>
         </div>
       </div>
     </div>

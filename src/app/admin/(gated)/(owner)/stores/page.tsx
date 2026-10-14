@@ -13,6 +13,7 @@ import { MAX_STORES_PER_OWNER } from "@/server/platform";
 import { listStoreCopies } from "@/server/store-copy";
 import { designChoices } from "@/server/design-presets";
 import { starterCards } from "@/server/store-starters";
+import { PageHeader } from "@/components/admin/ui";
 
 import { createStoreAction } from "./actions";
 
@@ -36,10 +37,7 @@ export default async function AllStoresPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Your stores</h1>
-        <p className="text-sm text-muted">Each store has its own products, Stripe account and plan.</p>
-      </div>
+      <PageHeader title="Your stores" description={<>Each store has its own products, Stripe account and plan.</>} />
       <StoresList stores={stores} canDuplicate={canDuplicate} platformAdmin={account.platformAdmin} />
       {full && (
         <p role="note" className="max-w-xl text-sm text-muted">

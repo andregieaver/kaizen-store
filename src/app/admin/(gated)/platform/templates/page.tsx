@@ -6,6 +6,7 @@ import { LAYOUT_TYPE_LABELS } from "@/lib/page-layout";
 import { KIND_LABELS, SHARING_LABELS } from "@/lib/templates";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listMarketplaceTemplates } from "@/server/templates";
+import { PageHeader } from "@/components/admin/ui";
 
 import { setTemplateHiddenAction } from "./actions";
 
@@ -25,14 +26,10 @@ export default async function PlatformTemplatesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Templates</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          Whole page layouts, rows, columns and components that store owners share with every store, live as soon as
-          they are shared, with the store&apos;s name on them, and Kaizen&apos;s own saved parts. Hide one and it is in
-          no store&apos;s list; pages that already have a copy keep it.
-        </p>
-      </div>
+      <PageHeader
+        title="Templates"
+        description={<>Whole page layouts, rows, columns and components that store owners share with every store, live as soon as they are shared, with the store&apos;s name on them, and Kaizen&apos;s own saved parts. Hide one and it is in no store&apos;s list; pages that already have a copy keep it.</>}
+      />
       <p className="text-sm text-muted">
         {templates.length === 0
           ? "Nothing is shared yet."

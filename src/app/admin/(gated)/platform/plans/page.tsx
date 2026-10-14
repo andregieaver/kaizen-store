@@ -10,6 +10,7 @@ import { platformModes } from "@/server/stripe";
 
 import { savePlanAction, syncPlansAction } from "../actions";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Plans" };
 
@@ -26,19 +27,10 @@ export default async function PlansPage() {
   return (
     <>
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-display text-ink">Plans</h1>
-          <p className="max-w-2xl text-sm text-muted">
-            What stores pay Kaizen: a price per month or year (excluding VAT; Norwegian stores are
-            charged 25 % MVA on top) and a fee on each of their sales. Saving copies the plan to
-            Stripe. A changed price applies to new subscriptions; stores on the old price keep it
-            until you move them.{" "}
-            <Link href="/admin/platform/plans/features" className="underline">
-              Say what each plan includes
-            </Link>
-            .
-          </p>
-        </div>
+        <PageHeader
+          title="Plans"
+          description={<>What stores pay Kaizen: a price per month or year (excluding VAT; Norwegian stores are charged 25 % MVA on top) and a fee on each of their sales. Saving copies the plan to Stripe. A changed price applies to new subscriptions; stores on the old price keep it until you move them.{" "}<Link href="/admin/platform/plans/features" className="underline">Say what each plan includes</Link>.</>}
+        />
         <ActionForm action={syncPlansAction} successMessage="Plans are up to date in Stripe." className="flex flex-col items-end gap-1">
           <SubmitButton disabled={modes.length === 0}>Sync to Stripe</SubmitButton>
           <p className="text-sm text-muted">

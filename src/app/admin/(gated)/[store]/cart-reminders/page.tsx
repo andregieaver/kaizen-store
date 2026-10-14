@@ -13,6 +13,7 @@ import {
   type AbandonedCheckoutRow,
 } from "@/server/cart-reminders";
 import { listDiscounts } from "@/server/discounts";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { setCartRemindersAction } from "./actions";
 
@@ -57,12 +58,10 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Cart reminders</h1>
-        <p className="text-sm text-muted">
-          Emails to shoppers who typed their email at checkout but did not pay, with a link back to the same cart.
-        </p>
-      </div>
+      <PageHeader
+        title="Cart reminders"
+        description={<>Emails to shoppers who typed their email at checkout but did not pay, with a link back to the same cart.</>}
+      />
 
       <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-card border border-line bg-card p-5">
         <div className="flex flex-col gap-2 text-sm">
@@ -220,15 +219,12 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         )}
       </section>
 
-      <section aria-labelledby="privacy-heading" className="rounded-card border border-line bg-card p-5 text-sm">
-        <h2 id="privacy-heading" className="mb-2 font-medium">
-          For your privacy policy
-        </h2>
+      <Card title="For your privacy policy" className="text-sm" compact>
         <p className="text-muted">
           Say that when a shopper types their email at checkout and does not finish, you may email reminders about the
           cart; that they can say no at checkout or in any reminder; and that the email and cart are erased after 60 days.
         </p>
-      </section>
+      </Card>
     </div>
   );
 }

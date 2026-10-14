@@ -1,6 +1,6 @@
-import Link from "next/link";
 
 import type { ReplicaJob } from "@/lib/replicate";
+import { PageHeader } from "@/components/admin/ui";
 
 import { PageStudio, type StudioActions } from "./page-studio";
 import { ReplicatePanel } from "./replicate-panel";
@@ -24,17 +24,11 @@ export function PageStudioView({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={pagesHref} className="text-sm underline">
-          Pages
-        </Link>
-        <h1 className="text-display text-ink">Create a page with AI</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          Tell the AI what the page is for. It asks a few questions, plans the page with you, then writes it with the page builder&apos;s
-          components, makes its pictures and saves it as a draft for you to look over, change and publish. It writes only what the site and you
-          tell it: no prices, stock, reviews or claims it cannot back up.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: pagesHref, label: "Pages" }}
+        title="Create a page with AI"
+        description={<>Tell the AI what the page is for. It asks a few questions, plans the page with you, then writes it with the page builder&apos;s components, makes its pictures and saves it as a draft for you to look over, change and publish. It writes only what the site and you tell it: no prices, stock, reviews or claims it cannot back up.</>}
+      />
       {replicate && <ReplicatePanel storeSlug={replicate.storeSlug} initial={replicate.initial} pagesHref={pagesHref} aiSees={abilities.sees} settingsHref={settingsHref} />}
       <PageStudio actions={actions} language={language} abilities={abilities} editBase={pagesHref} settingsHref={settingsHref} />
     </div>

@@ -7,6 +7,7 @@ import { moneyByCurrency } from "@/components/admin/customer-bar";
 import { WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
 import { listStoreWishlists, mostWishedProducts, wishlistFigures } from "@/server/wishlist-admin";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Wishlists" };
 
@@ -36,12 +37,10 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Wishlists</h1>
-        <p className="text-sm text-muted">
-          What shoppers have saved with the heart, signed in or not, and what went from their lists to the cart and was bought.
-        </p>
-      </div>
+      <PageHeader
+        title="Wishlists"
+        description={<>What shoppers have saved with the heart, signed in or not, and what went from their lists to the cart and was bought.</>}
+      />
       <WishlistTabs storeSlug={store.slug} current="lists" />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -140,8 +139,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           )}
         </div>
 
-        <section aria-labelledby="most-wished" className="h-fit rounded-card border border-line bg-card p-5">
-          <h2 id="most-wished" className="mb-3 font-medium">Most wished for</h2>
+        <Card title="Most wished for" className="h-fit" compact>
           {top.length === 0 ? (
             <p className="text-sm text-muted">Nothing saved yet.</p>
           ) : (
@@ -159,7 +157,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
               ))}
             </ol>
           )}
-        </section>
+        </Card>
       </div>
     </div>
   );

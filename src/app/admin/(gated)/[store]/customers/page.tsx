@@ -8,6 +8,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { listCustomers } from "@/server/customer-admin";
 import { featureOn } from "@/lib/store-features";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -28,12 +29,10 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Customers</h1>
-          <p className="text-sm text-muted">
-            Everyone with an account or a paid order, one per email. Guests who bought without an account are here too.
-          </p>
-        </div>
+        <PageHeader
+          title="Customers"
+          description={<>Everyone with an account or a paid order, one per email. Guests who bought without an account are here too.</>}
+        />
         {/* The customer file (D165) holds personal data, so only the owner is offered it. */}
         {memberCan(member, "owner") && (
           <Link href={`${base}/export`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium">

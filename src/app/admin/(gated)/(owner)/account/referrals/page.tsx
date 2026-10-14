@@ -9,6 +9,7 @@ import { bpsText, referralUrl, REFERRAL_KIND_LABELS } from "@/lib/referrals";
 import { siteUrl } from "@/lib/site";
 import { requireAccount } from "@/server/auth";
 import { referrerOverview } from "@/server/referrals";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Referrals" };
 
@@ -27,14 +28,10 @@ export default async function ReferralsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Referrals</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          Tell another store owner about Kaizen. When they open a store through your link, you earn {bpsText(settings.commissionBps)} of what their
-          store pays Kaizen for {settings.months} months: its plan and Kaizen&apos;s fee on its sales. You earn it as credit, which comes off your
-          own Kaizen invoices.
-        </p>
-      </div>
+      <PageHeader
+        title="Referrals"
+        description={<>Tell another store owner about Kaizen. When they open a store through your link, you earn {bpsText(settings.commissionBps)} of what their store pays Kaizen for {settings.months} months: its plan and Kaizen&apos;s fee on its sales. You earn it as credit, which comes off your own Kaizen invoices.</>}
+      />
 
       {!overview.enabled && !overview.code ? (
         <p className="rounded-lg border border-line bg-card p-4 text-sm">The referral program is not running right now. Check back later.</p>

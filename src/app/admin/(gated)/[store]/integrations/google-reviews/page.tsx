@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { GoogleReviewsSettings } from "@/components/admin/google-reviews-settings";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getGoogleSettings } from "@/server/google-reviews";
+import { PageHeader } from "@/components/admin/ui";
 
 import { chooseStorePlaceAction, findStorePlacesAction, removeStoreGoogleAction, saveStoreGoogleKeyAction } from "./actions";
 
@@ -16,16 +16,11 @@ export default async function StoreGoogleReviewsPage({ params }: PageProps<"/adm
   const settings = await getGoogleSettings(store.id);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/integrations`} className="text-sm underline">
-          Integrations
-        </Link>
-        <h1 className="text-display text-ink">Google reviews</h1>
-        <p className="text-sm text-muted">
-          Show your business&apos;s rating and reviews on Google with a Testimonials component set to Google reviews. They are asked of
-          Google as each page is shown and never kept, as Google&apos;s terms ask; nothing about your visitors is sent.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/integrations`, label: "Integrations" }}
+        title="Google reviews"
+        description={<>Show your business&apos;s rating and reviews on Google with a Testimonials component set to Google reviews. They are asked of Google as each page is shown and never kept, as Google&apos;s terms ask; nothing about your visitors is sent.</>}
+      />
       {memberCan(current, "owner") ? (
         <GoogleReviewsSettings
           hint={settings?.hint ?? null}

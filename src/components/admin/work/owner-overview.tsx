@@ -9,6 +9,7 @@ import type { CurrencyFigures } from "@/lib/work-overview";
 import { WORK_ROOT, workBase } from "@/lib/work-paths";
 import { formatDuration } from "@/lib/work-time";
 import type { OwnerOverviewView } from "@/server/work-owner";
+import { PageHeader } from "@/components/admin/ui";
 
 import { CurrencyNote, StoreTag } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
@@ -76,14 +77,10 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
   return (
     <div className="flex max-w-5xl flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Work</h1>
-          <p className="text-sm text-muted">
-            {many
-              ? "Your clients, hours and invoices across all your stores, in one place."
-              : "Your clients, the hours you log for them and the invoices you send."}
-          </p>
-        </div>
+        <PageHeader
+          title="Work"
+          description={<>{many ? "Your clients, hours and invoices across all your stores, in one place." : "Your clients, the hours you log for them and the invoices you send."}</>}
+        />
         <div className="flex flex-wrap gap-2">
           <NewInStoreButton kind="client" stores={choices} defaultSlug="" primary={false} />
           <NewInStoreButton kind="invoice" stores={choices} defaultSlug="" />

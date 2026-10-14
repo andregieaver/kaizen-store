@@ -7,6 +7,7 @@ import { roleChoiceValue } from "@/lib/role-form";
 import { avatarFor } from "@/server/avatars";
 import type { StaffMember } from "@/server/settings";
 import type { StoreRole } from "@/server/store-roles";
+import { Card } from "@/components/admin/ui";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
@@ -138,10 +139,7 @@ export function TeamList({
 export function InviteForms({ roles, actions }: { roles: readonly Pick<StoreRole, "id" | "name">[]; actions: { staff: Action; collaborator: Action } }) {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <section aria-labelledby="invite-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="invite-heading" className="mb-1 font-medium">
-          Invite someone
-        </h2>
+      <Card title="Invite someone" compact>
         <p className="mb-3 text-sm text-muted">Staff keep their access until you remove it.</p>
         <ActionForm action={actions.staff} className="flex flex-col gap-3 sm:max-w-md">
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -158,11 +156,8 @@ export function InviteForms({ roles, actions }: { roles: readonly Pick<StoreRole
             <SubmitButton>Invite</SubmitButton>
           </div>
         </ActionForm>
-      </section>
-      <section aria-labelledby="collaborator-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="collaborator-heading" className="mb-1 font-medium">
-          Invite a collaborator
-        </h2>
+      </Card>
+      <Card title="Invite a collaborator" compact>
         <p className="mb-3 text-sm text-muted">
           For an agency or a freelancer: access with a role you choose and an end date. A collaborator is never an owner and never sees the team or the plan.
         </p>
@@ -186,7 +181,7 @@ export function InviteForms({ roles, actions }: { roles: readonly Pick<StoreRole
             <SubmitButton>Invite collaborator</SubmitButton>
           </div>
         </ActionForm>
-      </section>
+      </Card>
     </div>
   );
 }
@@ -204,10 +199,7 @@ export function TwoStepRequirement({
   action: Action;
 }) {
   return (
-    <section aria-labelledby="two-step-heading" className="rounded-card border border-line bg-card p-5">
-      <h2 id="two-step-heading" className="mb-1 font-medium">
-        Two-step sign-in
-      </h2>
+    <Card title="Two-step sign-in" compact>
       <p className="mb-3 text-sm text-muted">
         {withIt} of {total} {total === 1 ? "person" : "people"} on the team {withIt === 1 ? "has" : "have"} it. Everyone who has it is asked for a code whatever you choose here.
         Platform admins must use it. People set it up themselves on Your account.
@@ -226,6 +218,6 @@ export function TwoStepRequirement({
           <SubmitButton>Save</SubmitButton>
         </div>
       </ActionForm>
-    </section>
+    </Card>
   );
 }

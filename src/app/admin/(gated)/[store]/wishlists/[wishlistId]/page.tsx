@@ -10,6 +10,7 @@ import { formatMoney } from "@/lib/money";
 import { requirePermission } from "@/server/permissions";
 import { customerSummary } from "@/server/customer-admin";
 import { getStoreWishlist, listCartAdds } from "@/server/wishlist-admin";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Wishlist" };
 
@@ -43,17 +44,11 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`${base}/wishlists`} className="text-sm underline">
-          Wishlists
-        </Link>
-        <h1 className="text-display text-ink">{list.name}</h1>
-        <p className="text-sm text-muted">
-          {list.items.length === 1 ? "1 item" : `${list.items.length} items`}
-          {currency && totalMinor > 0 && ` · ${formatMoney(totalMinor, currency, locale)} at today's prices`} · made {date(list.createdAt)} ·{" "}
-          {list.keepAfterCart ? "items stay in the list when added to the cart" : "items leave the list when added to the cart"}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `${base}/wishlists`, label: "Wishlists" }}
+        title={<>{list.name}</>}
+        description={<>{list.items.length === 1 ? "1 item" : `${list.items.length} items`}{currency && totalMinor > 0 && ` · ${formatMoney(totalMinor, currency, locale)} at today's prices`} · made {date(list.createdAt)} ·{" "}{list.keepAfterCart ? "items stay in the list when added to the cart" : "items leave the list when added to the cart"}</>}
+      />
 
       {customer ? (
         <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />

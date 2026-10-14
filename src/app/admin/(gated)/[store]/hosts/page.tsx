@@ -5,6 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { hostTaxStatus } from "@/server/dac7";
 import { listHosts } from "@/server/hosts";
+import { PageHeader } from "@/components/admin/ui";
 
 import { inviteHostAction } from "./actions";
 import { HostForm } from "./host-form";
@@ -25,13 +26,10 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Hosts</h1>
-        <p className="text-sm text-muted">
-          People whose rooms, homes or items the store lists, as a marketplace. Give a stay or rental and its rooms a host in the
-          product and under Rooms and items; the host then keeps their calendar and sees their bookings in their own area.
-        </p>
-      </div>
+      <PageHeader
+        title="Hosts"
+        description={<>People whose rooms, homes or items the store lists, as a marketplace. Give a stay or rental and its rooms a host in the product and under Rooms and items; the host then keeps their calendar and sees their bookings in their own area.</>}
+      />
       {hosts.length > 0 && (
         <p className="text-sm">
           <Link href={`${base}/dac7`} className="underline">

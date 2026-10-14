@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 
 import { requireFeature } from "@/components/admin/feature-off";
@@ -7,6 +6,7 @@ import { DraftsListView } from "@/components/admin/drafts/drafts-list-view";
 import { isDraftStatus } from "@/lib/draft-status";
 import { listDrafts } from "@/server/draft-orders";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Draft orders" };
 
@@ -24,15 +24,11 @@ export default async function DraftsPage({ params, searchParams }: Props) {
   const { store } = member;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/orders`} className="text-sm text-muted underline underline-offset-2">
-          Orders
-        </Link>
-        <h1 className="text-display text-ink">Draft orders</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          A draft is an order you make for a customer: products or custom items, your own prices, a discount and shipping. Send it and the customer gets a link to pay on Stripe&apos;s page, or record that they paid you outside Kaizen.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/orders`, label: "Orders" }}
+        title="Draft orders"
+        description={<>A draft is an order you make for a customer: products or custom items, your own prices, a discount and shipping. Send it and the customer gets a link to pay on Stripe&apos;s page, or record that they paid you outside Kaizen.</>}
+      />
       <Suspense fallback={<div className="h-64 animate-pulse rounded-lg bg-card" />}>
         <Body storeSlug={store.slug} searchParams={searchParams} />
       </Suspense>

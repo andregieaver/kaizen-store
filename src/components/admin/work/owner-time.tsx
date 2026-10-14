@@ -7,6 +7,7 @@ import { WORK_ROOT, workBase } from "@/lib/work-paths";
 import { formatDuration } from "@/lib/work-time";
 import { TIME_BILLING_OPTIONS, activeFilterCount, timeFilterQuery, type TimeFilters } from "@/lib/work-ui";
 import type { OwnerTimeList } from "@/server/work-owner";
+import { PageHeader } from "@/components/admin/ui";
 
 import { StoreFilter } from "./owner-common";
 import { Badge, control, secondaryButton } from "./work-parts";
@@ -54,12 +55,10 @@ export function OwnerTimeView({
   const range = (from: string, to: string) => query({ ...filters, from, to });
   return (
     <div className="flex max-w-5xl flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Time</h1>
-        <p className="text-sm text-muted">
-          Time logged{stores.length > 1 ? " in all your stores" : ""}. Change an entry in its store: each row leads there.
-        </p>
-      </div>
+      <PageHeader
+        title="Time"
+        description={<>Time logged{stores.length > 1 ? " in all your stores" : ""}. Change an entry in its store: each row leads there.</>}
+      />
 
       <form
         method="get"

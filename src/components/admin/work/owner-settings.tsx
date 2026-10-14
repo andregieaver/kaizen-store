@@ -4,6 +4,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { switchOffNote } from "@/lib/work-owner";
 import { workBase } from "@/lib/work-paths";
 import type { OwnerSettingsRow } from "@/server/work-owner";
+import { PageHeader } from "@/components/admin/ui";
 
 import { WorkSwitchForm } from "./owner-switch";
 import { Badge, card } from "./work-parts";
@@ -77,13 +78,10 @@ function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActio
 export function OwnerSettingsView({ rows, actions }: { rows: OwnerSettingsRow[]; actions: SwitchActions }) {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Work settings</h1>
-        <p className="text-sm text-muted">
-          Choose which of your stores use Work. Each store is the seller of its own invoices, so its business details,
-          VAT, bank account, currency and numbering are set in that store&apos;s own Work settings.
-        </p>
-      </div>
+      <PageHeader
+        title="Work settings"
+        description={<>Choose which of your stores use Work. Each store is the seller of its own invoices, so its business details, VAT, bank account, currency and numbering are set in that store&apos;s own Work settings.</>}
+      />
       {rows.length === 0 ? (
         <p className={`${card} text-sm text-muted`}>
           You do not work in any store yet. When you are added to a store, it is listed here.
@@ -106,7 +104,7 @@ export function OwnerSettingsView({ rows, actions }: { rows: OwnerSettingsRow[];
 export function OwnerWorkStart({ rows, actions, title }: { rows: OwnerSettingsRow[]; actions: SwitchActions; title: string }) {
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <h1 className="text-display text-ink">{title}</h1>
+      <PageHeader title={<>{title}</>} />
       <section aria-labelledby="start-heading" className={`${card} flex flex-col gap-2`}>
         <h2 id="start-heading" className="font-medium">
           Work is for the time you sell

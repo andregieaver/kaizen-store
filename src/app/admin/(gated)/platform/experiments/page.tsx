@@ -7,6 +7,7 @@ import { daysBetween } from "@/lib/platform-experiments";
 import { requirePlatformAdmin } from "@/server/auth";
 import { platformExperiments } from "@/server/platform-experiments";
 import { platformUnitTests } from "@/server/platform-unit-tests";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B tests" };
 
@@ -37,13 +38,10 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">A/B tests</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          The A/B tests of every store. Tests that need a look come first: a version that lowers orders, visitors divided unevenly, a test
-          nobody sees, one past its end or stopped and forgotten. You can read them here; the store&apos;s owner starts, stops and changes them.
-        </p>
-      </div>
+      <PageHeader
+        title="A/B tests"
+        description={<>The A/B tests of every store. Tests that need a look come first: a version that lowers orders, visitors divided unevenly, a test nobody sees, one past its end or stopped and forgotten. You can read them here; the store&apos;s owner starts, stops and changes them.</>}
+      />
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[

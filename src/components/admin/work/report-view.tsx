@@ -15,6 +15,7 @@ import { ReportTable } from "./report-table";
 import { ReportTotalsView } from "./report-totals";
 import { secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { PageHeader } from "@/components/admin/ui";
 
 export type ReportViewProps = {
   storeSlug: string;
@@ -37,12 +38,10 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Reports</h1>
-          <p className="text-sm text-muted">
-            {formatDay(report.from, locale)} to {formatDay(report.to, locale)}, {GROUP_LABELS[report.by].toLowerCase()}
-          </p>
-        </div>
+        <PageHeader
+          title="Reports"
+          description={<>{formatDay(report.from, locale)} to {formatDay(report.to, locale)}, {GROUP_LABELS[report.by].toLowerCase()}</>}
+        />
         <div className="flex flex-wrap items-center gap-2">
           <Link href={`${base}/print${query}`} target="_blank" className={secondaryButton}>
             Print view

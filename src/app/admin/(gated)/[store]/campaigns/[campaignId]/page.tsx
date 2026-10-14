@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -8,6 +7,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { campaignStatus } from "@/lib/campaigns";
 import { requirePermission } from "@/server/permissions";
 import { getCampaign, listCampaigns } from "@/server/campaigns";
+import { PageHeader } from "@/components/admin/ui";
 
 import { deleteCampaignAction } from "../actions";
 import { CampaignForm } from "../campaign-form";
@@ -29,15 +29,11 @@ export default async function CampaignPage({ params }: PageProps<"/admin/[store]
   const orders = (await listCampaigns(store.id)).find((c) => c.id === campaign.id)?.orders ?? 0;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/campaigns`} className="text-sm underline">
-          Campaigns
-        </Link>
-        <h1 className="text-display text-ink">{campaign.name}</h1>
-        <p className="text-sm text-muted">
-          {STATUS[campaignStatus(campaign)]}. {orders} {orders === 1 ? "order has" : "orders have"} got something from it.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/campaigns`, label: "Campaigns" }}
+        title={<>{campaign.name}</>}
+        description={<>{STATUS[campaignStatus(campaign)]}. {orders} {orders === 1 ? "order has" : "orders have"} got something from it.</>}
+      />
       <CampaignForm store={store} campaign={campaign} orders={orders} />
       <DeleteDiscountButton
         action={deleteCampaignAction.bind(null, store.slug, campaign.id)}

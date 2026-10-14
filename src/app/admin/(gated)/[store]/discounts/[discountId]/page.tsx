@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -7,6 +6,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { requirePermission } from "@/server/permissions";
 import { getDiscount } from "@/server/discounts";
+import { PageHeader } from "@/components/admin/ui";
 
 import { deleteDiscountAction } from "../actions";
 import { DiscountForm } from "../discount-form";
@@ -25,16 +25,11 @@ export default async function DiscountPage({ params }: PageProps<"/admin/[store]
   if (!discount) notFound();
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/discounts`} className="text-sm underline">
-          Coupons
-        </Link>
-        <h1 className="font-mono text-display text-ink">{discount.code}</h1>
-        <p className="text-sm text-muted">
-          Used by {discount.used} {discount.used === 1 ? "order" : "orders"}
-          {discount.usageLimit !== null && ` of ${discount.usageLimit} allowed`}.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/discounts`, label: "Coupons" }}
+        title={<span className="font-mono">{discount.code}</span>}
+        description={<>Used by {discount.used} {discount.used === 1 ? "order" : "orders"}{discount.usageLimit !== null && ` of ${discount.usageLimit} allowed`}.</>}
+      />
       <DiscountForm store={store} discount={discount} />
       <DeleteDiscountButton
         action={deleteDiscountAction.bind(null, store.slug, discount.id)}

@@ -6,6 +6,7 @@ import { StoreCopyWizard } from "@/components/admin/store-copy-wizard";
 import { listStores } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
+import { PageHeader } from "@/components/admin/ui";
 
 import { copyChoicesAction, startStoreCopyAction } from "../../copy-actions";
 
@@ -34,11 +35,11 @@ export default async function DuplicateStorePage({ params }: PageProps<"/admin/s
             Your stores
           </Link>
         </p>
-        <h1 className="text-display text-ink">Duplicate {result?.ok ? result.choices.source.name : "a store"}</h1>
-        <p className="text-sm text-muted">
-          Make a new store from this one. Choose what comes along; the new store starts closed and you are its owner.
-        </p>
-      </div>
+        <PageHeader
+          title={<>Duplicate {result?.ok ? result.choices.source.name : "a store"}</>}
+          description={<>Make a new store from this one. Choose what comes along; the new store starts closed and you are its owner.</>}
+        />
+        </div>
       {result?.ok ? (
         <StoreCopyWizard choices={result.choices} start={startStoreCopyAction} />
       ) : (

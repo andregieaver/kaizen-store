@@ -9,6 +9,7 @@ import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { ensureTestAccount, requestIp } from "@/server/connect";
 import { kaizenInvoicingOn } from "@/server/invoice-settings";
 import { getPaymentSettings, recentAudit } from "@/server/settings";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { setStripeProviderAction } from "../../../actions";
 
@@ -40,13 +41,10 @@ export default async function PaymentSettingsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Payments</h1>
-        <p className="text-sm text-muted">
-          Shoppers pay your business directly through your store&apos;s own Stripe account.{" "}
-          {isOwner ? "" : "Only an owner can switch payments on and off."}
-        </p>
-      </div>
+      <PageHeader
+        title="Payments"
+        description={<>Shoppers pay your business directly through your store&apos;s own Stripe account.{" "}{isOwner ? "" : "Only an owner can switch payments on and off."}</>}
+      />
 
       {modes.length === 0 && (
         <section role="status" className="rounded-card border border-line bg-card p-5 text-sm">
@@ -64,10 +62,7 @@ export default async function PaymentSettingsPage({
       )}
 
       {modes.includes("test") && (
-        <section aria-labelledby="test-heading" className="flex flex-col gap-2 rounded-card border border-line bg-card p-5 text-sm">
-          <h2 id="test-heading" className="font-medium">
-            Test payments
-          </h2>
+        <Card title="Test payments" className="flex flex-col gap-2 text-sm" compact>
           <p>
             {testReady
               ? "Ready. Nothing to set up: Kaizen created a test Stripe account for your store."
@@ -80,7 +75,7 @@ export default async function PaymentSettingsPage({
             orders show under Orders; no real money moves. Your storefront says it is in test mode
             while it is.
           </p>
-        </section>
+        </Card>
       )}
 
       {modes.includes("live") && (
@@ -94,10 +89,7 @@ export default async function PaymentSettingsPage({
       )}
 
       {modes.length > 0 && (
-        <section aria-labelledby="checkout-heading" className="rounded-card border border-line bg-card p-5">
-          <h2 id="checkout-heading" className="mb-1 font-medium">
-            Checkout
-          </h2>
+        <Card title="Checkout" compact>
           <p className="mb-4 text-sm text-muted">
             Currently {stripe.enabled ? "on" : "off"}
             {stripe.enabled ? `, in ${stripe.activeMode} mode` : ""}.{" "}
@@ -161,14 +153,11 @@ export default async function PaymentSettingsPage({
               </div>
             </fieldset>
           </ActionForm>
-        </section>
+        </Card>
       )}
 
       {modes.length > 0 && (
-        <section aria-labelledby="methods-heading" className="rounded-card border border-line bg-card p-5">
-          <h2 id="methods-heading" className="mb-1 font-medium">
-            Payment methods
-          </h2>
+        <Card title="Payment methods" compact>
           <p className="text-sm text-muted">
             Stripe shows each shopper the methods that suit them from the ones you turn on in your
             Stripe Dashboard under{" "}
@@ -183,13 +172,10 @@ export default async function PaymentSettingsPage({
             : cards, Apple Pay and Google Pay, Klarna, MobilePay in Denmark, Swish in Sweden, and
             more.
           </p>
-        </section>
+        </Card>
       )}
 
-      <section aria-labelledby="audit-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="audit-heading" className="mb-3 font-medium">
-          Recent changes
-        </h2>
+      <Card title="Recent changes" compact>
         {audit.length === 0 ? (
           <p className="text-sm text-muted">No changes yet.</p>
         ) : (
@@ -204,7 +190,7 @@ export default async function PaymentSettingsPage({
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

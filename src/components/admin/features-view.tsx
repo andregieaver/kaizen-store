@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import type { FeatureBlocker, FeatureGroupId, FeatureId, FeatureRow } from "@/lib/store-features";
+import { PageHeader } from "@/components/admin/ui";
 
 /** What a switch's server action answers (`switchFeatureAction`). */
 export type SwitchResult = { ok: true } | { ok: false; problems: string[]; blockers?: FeatureBlocker[]; warnings?: string[]; needsConfirmation?: boolean };
@@ -28,10 +29,10 @@ export function FeaturesView({ base, owner, shop, groups, count, onSwitch }: Fea
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-display text-ink">Features</h1>
-        <p className="text-sm text-muted">
-          Switch on what your store uses; the rest stays out of your way. Nothing is deleted when you switch something off.
-        </p>
+        <PageHeader
+          title="Features"
+          description={<>Switch on what your store uses; the rest stays out of your way. Nothing is deleted when you switch something off.</>}
+        />
         <p className="text-sm font-medium" data-testid="feature-count">
           {count.on} of {count.total} on
         </p>

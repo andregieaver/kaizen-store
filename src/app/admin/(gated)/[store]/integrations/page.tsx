@@ -7,6 +7,7 @@ import { CARRIERS } from "@/lib/shipping-carriers";
 import { requirePermission } from "@/server/permissions";
 import { listIntegrations } from "@/server/integrations";
 import { listCarriers } from "@/server/shipping-carriers";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Integrations" };
 
@@ -18,10 +19,10 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Integrations</h1>
-        <p className="text-sm text-muted">Connect Kaizen to the services you already use. Orders, customers and subscriptions go there as they happen.</p>
-      </div>
+      <PageHeader
+        title="Integrations"
+        description={<>Connect Kaizen to the services you already use. Orders, customers and subscriptions go there as they happen.</>}
+      />
       <ul className="grid gap-4 sm:grid-cols-2">
         {INTEGRATIONS.map((info) => {
           const status = connected.find((c) => c.provider === info.id);

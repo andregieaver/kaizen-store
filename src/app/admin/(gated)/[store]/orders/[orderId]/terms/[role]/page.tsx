@@ -8,6 +8,7 @@ import { LEGAL_ROLE_COPY, isLegalRole } from "@/lib/legal-roles";
 import { blockText } from "@/lib/page-content";
 import { requirePermission } from "@/server/permissions";
 import { snapshotForOrder } from "@/server/checkout-terms";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Terms as shown" };
 
@@ -35,13 +36,10 @@ export default async function OrderTermsAsShownPage({ params }: PageProps<"/admi
           Back to the order
         </Link>
       </p>
-      <div>
-        <h1 className="text-display text-ink">{snapshot.title}</h1>
-        <p className="text-sm text-muted">
-          {LEGAL_ROLE_COPY[role].name} as the shopper saw it when they ordered, {when}. Version {snapshot.hash.slice(0, 8)}, language {snapshot.locale}. The
-          mode was {snapshot.mode === "checkbox" ? "a tick box" : "a link"}. This is the plain text of the kept copy, not today&apos;s page.
-        </p>
-      </div>
+      <PageHeader
+        title={<>{snapshot.title}</>}
+        description={<>{LEGAL_ROLE_COPY[role].name} as the shopper saw it when they ordered, {when}. Version {snapshot.hash.slice(0, 8)}, language {snapshot.locale}. The mode was {snapshot.mode === "checkbox" ? "a tick box" : "a link"}. This is the plain text of the kept copy, not today&apos;s page.</>}
+      />
       <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-5 text-sm">
         {paragraphs.length === 0 ? <p className="text-muted">The kept copy has no text.</p> : paragraphs.map((text, index) => <p key={index} className="break-words whitespace-pre-line">{text}</p>)}
       </div>

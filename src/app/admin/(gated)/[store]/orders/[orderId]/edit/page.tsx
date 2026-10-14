@@ -11,6 +11,7 @@ import { getOrderAdmin } from "@/server/order-admin";
 import { orderEditability, previewOrderEdit } from "@/server/order-edits";
 import { mayRecordOutsidePayment } from "@/server/order-settings";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import {
   applyOrderEditAction,
@@ -44,12 +45,11 @@ export default async function OrderEditPage({ params }: PageProps<"/admin/[store
       <Link href={orderHref} className="text-sm text-muted underline underline-offset-2">
         Order #{order.number}
       </Link>
-      <h1 className="text-display text-ink">Edit the items of order #{order.number}</h1>
-      <p className="max-w-3xl text-sm text-muted">
-        Items kept keep the price and discounts they were sold with. A lower total is refunded at once; a higher total is paid by the customer through a link before the order changes. The order keeps its
-        number, and an invoiced order gets a credit note and an additional invoice that refer to its invoice.
-      </p>
-    </div>
+      <PageHeader
+        title={<>Edit the items of order #{order.number}</>}
+        description={<>Items kept keep the price and discounts they were sold with. A lower total is refunded at once; a higher total is paid by the customer through a link before the order changes. The order keeps its number, and an invoiced order gets a credit note and an additional invoice that refer to its invoice.</>}
+      />
+      </div>
   );
   if (!memberCan(member, "orders:write")) {
     return (

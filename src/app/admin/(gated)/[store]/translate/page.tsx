@@ -7,6 +7,7 @@ import { featureOn } from "@/lib/store-features";
 import { aiFor } from "@/server/ai";
 import { requirePermission } from "@/server/permissions";
 import { translationCoverage } from "@/server/store-translate";
+import { PageHeader } from "@/components/admin/ui";
 
 import { translateStorePageAction } from "../pages/actions";
 import { applyAction, worklistAction } from "./actions";
@@ -20,14 +21,10 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Translate the store</h1>
-        <p className="text-sm text-muted">
-          Products, menus, pages, articles, categories and tags, custom fields and the return instructions into another of the store&apos;s languages in one go, with AI. The AI
-          suggests; you read each text and keep the ones that are right, and nothing is written before you save.
-          Pages are saved as drafts, so nothing is published for you.
-        </p>
-      </div>
+      <PageHeader
+        title="Translate the store"
+        description={<>Products, menus, pages, articles, categories and tags, custom fields and the return instructions into another of the store&apos;s languages in one go, with AI. The AI suggests; you read each text and keep the ones that are right, and nothing is written before you save. Pages are saved as drafts, so nothing is published for you.</>}
+      />
       {languages.length < 2 ? (
         <p className="rounded-card border border-line bg-card p-5 text-sm">
           {featureOn(store, "languages") ? (

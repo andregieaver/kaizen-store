@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BonusAdjustForm } from "@/components/admin/bonus-adjust-form";
 import { entryLabel, isUsableNow, moneyIn, signedMoney } from "@/lib/bonus-admin";
 import type { BonusBalance, BonusEntry, BonusResult } from "@/lib/bonus";
+import { Card } from "@/components/admin/ui";
 
 /** Whether a customer's page shows credits: the program is on, or the customer has some history from before. */
 export const showsBonus = (enabled: boolean, entries: readonly unknown[]): boolean => enabled || entries.length > 0;
@@ -42,10 +43,7 @@ export function CustomerBonus({
   const waiting = entries.filter((entry) => isUsableNow(entry, now) === false);
 
   return (
-    <section aria-labelledby="bonus" className="rounded-card border border-line bg-card p-5">
-      <h2 id="bonus" className="mb-3 font-medium">
-        Bonus credits
-      </h2>
+    <Card title="Bonus credits" compact>
       {!enabled && (
         <p className="mb-3 rounded-md bg-sunken p-3 text-sm">
           The bonus program is off, so this customer earns and uses no credits now. Their balance is kept.{" "}
@@ -164,6 +162,6 @@ export function CustomerBonus({
           />
         </div>
       </details>
-    </section>
+    </Card>
   );
 }

@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { isoCountries } from "@/lib/iso-countries";
 import { getHostTaxDetails } from "@/server/dac7";
 import { requireHost } from "@/server/hosts";
+import { PageHeader } from "@/components/admin/ui";
 
 import { hostSaveTaxDetailsAction } from "../actions";
 
@@ -40,12 +41,11 @@ export default async function HostTaxPage({ params }: PageProps<"/admin/hosting/
         <Link href={`/admin/hosting/${store.slug}`} className="text-sm underline">
           {host.name}
         </Link>
-        <h1 className="text-display text-ink">Tax details</h1>
-        <p className="text-sm text-muted">
-          EU rules (DAC7) make {store.name} report to the tax authority, once a year, who its hosts are and what they were
-          paid. Only you and the store see these details.
-        </p>
-      </div>
+        <PageHeader
+          title="Tax details"
+          description={<>EU rules (DAC7) make {store.name} report to the tax authority, once a year, who its hosts are and what they were paid. Only you and the store see these details.</>}
+        />
+        </div>
       <ActionForm action={hostSaveTaxDetailsAction.bind(null, store.slug)} className="flex flex-col gap-4">
         <fieldset className="flex flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">You rent out as</legend>

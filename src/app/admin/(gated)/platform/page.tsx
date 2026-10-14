@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { Attention, Section, Stat, StatGrid, type AttentionItem } from "@/components/admin/overview-parts";
 import { requirePlatformAdmin } from "@/server/auth";
 import { platformOverview } from "@/server/platform-overview";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Platform home" };
 
@@ -34,10 +35,7 @@ export default async function PlatformOverviewPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Home</h1>
-        <p className="text-sm text-muted">How Kaizen is doing, and what needs the team.</p>
-      </div>
+      <PageHeader title="Home" description={<>How Kaizen is doing, and what needs the team.</>} />
 
       <Attention items={attention} empty="Nothing is waiting. No requests, overdue plans or failed emails." />
 

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AssignmentStatusControl, DeleteAssignmentButton } from "@/components/admin/work/assignment-actions";
@@ -17,6 +16,7 @@ import { listAssignmentChoices } from "@/server/work-choices";
 import { listTimeEntries } from "@/server/work-time";
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Assignment" };
 
@@ -75,24 +75,17 @@ export default async function WorkAssignmentPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <nav aria-label="Breadcrumb" className="text-sm">
-          <Link href={`${base}/clients`} className="underline">
-            Clients
-          </Link>{" "}
-          /{" "}
-          <Link href={`${base}/clients/${assignment.clientId}`} className="underline">
-            {assignment.clientName}
-          </Link>
-        </nav>
-        <div className="mt-1 flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-display text-ink [overflow-wrap:anywhere]">
-              {assignment.name} <Badge tone={STATUS_TONE[assignment.status]}>{STATUS_TEXT[assignment.status]}</Badge>{" "}
-              {s.invoiced && <Badge tone="good">Invoiced</Badge>}
-            </h1>
-          </div>
-          <div className="flex flex-wrap items-end gap-2">
+      <PageHeader
+        back={{ href: `${base}/clients/${assignment.clientId}`, label: assignment.clientName }}
+        title={assignment.name}
+        status={
+          <>
+            <Badge tone={STATUS_TONE[assignment.status]}>{STATUS_TEXT[assignment.status]}</Badge>
+            {s.invoiced && <Badge tone="good">Invoiced</Badge>}
+          </>
+        }
+        actions={
+          <>
             <AssignmentStatusControl storeSlug={store.slug} assignmentId={assignment.id} status={assignment.status} />
             <TimerToggle target={target} subject={assignment.name} className="min-h-10" />
             <EditAssignmentButton
@@ -105,9 +98,9 @@ export default async function WorkAssignmentPage({
               estimateAlert={defaults.estimateAlert}
               moveTo={untouched ? moveTo : undefined}
             />
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <AssignmentSummaryCard assignment={assignment} base={base} locale={locale} />
 

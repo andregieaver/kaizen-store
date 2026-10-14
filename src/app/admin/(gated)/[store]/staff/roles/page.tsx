@@ -7,6 +7,7 @@ import { ROLE_TEMPLATES } from "@/lib/permissions";
 import { roleSummary } from "@/lib/role-form";
 import { requireOwnerRole } from "@/server/permissions";
 import { ensureStoreRoles, listStoreRoles, roleHolders } from "@/server/store-roles";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { createRoleAction, deleteRoleAction, updateRoleAction } from "../actions";
 
@@ -31,12 +32,11 @@ export default async function RolesPage({ params }: PageProps<"/admin/[store]/st
             Team
           </Link>
         </p>
-        <h1 className="text-display text-ink">Roles</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          A role says, for each part of the admin, whether someone can see it, change it, or not open it at all. Owners hold everything. An admin with no
-          role of their own can do everything except the team and the plan. Changing a role changes what everyone who holds it can do, at once.
-        </p>
-      </div>
+        <PageHeader
+          title="Roles"
+          description={<>A role says, for each part of the admin, whether someone can see it, change it, or not open it at all. Owners hold everything. An admin with no role of their own can do everything except the team and the plan. Changing a role changes what everyone who holds it can do, at once.</>}
+        />
+        </div>
 
       <ul className="flex flex-col gap-4">
         {roles.map((role) => {
@@ -69,12 +69,9 @@ export default async function RolesPage({ params }: PageProps<"/admin/[store]/st
         })}
       </ul>
 
-      <section aria-labelledby="new-role-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="new-role-heading" className="mb-3 font-medium">
-          Make a role
-        </h2>
+      <Card title="Make a role" compact>
         <RoleEditor action={createRoleAction.bind(null, slug)} submitLabel="Make role" idPrefix="new-role" />
-      </section>
+      </Card>
     </div>
   );
 }

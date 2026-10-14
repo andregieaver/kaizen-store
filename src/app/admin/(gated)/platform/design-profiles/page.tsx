@@ -9,6 +9,7 @@ import { DESIGN_LIMITS, designPreviewPath, designTabHref, type DesignRow } from 
 import { listFilterOf, type LifecycleFacts } from "@/lib/lifecycle";
 import { requirePlatformAdmin } from "@/server/auth";
 import { designLifecycle, listDesigns, shownDesignDetails, snapshotSources } from "@/server/design-presets";
+import { PageHeader } from "@/components/admin/ui";
 
 import {
   archiveDesignAction,
@@ -43,15 +44,10 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Design profiles</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          A look kept to use again: a theme (colours, fonts, buttons, corners, light and dark), a header and footer, a product page layout
-          and CSS. Never a store&apos;s name, logos, business details, menus&apos; links, pages or products. Owners apply one from their
-          store&apos;s Design settings, and people creating a store choose one after the store template. Applying keeps the store&apos;s look
-          from before, so it can be put back. Every change is a draft until you publish it.
-        </p>
-      </div>
+      <PageHeader
+        title="Design profiles"
+        description={<>A look kept to use again: a theme (colours, fonts, buttons, corners, light and dark), a header and footer, a product page layout and CSS. Never a store&apos;s name, logos, business details, menus&apos; links, pages or products. Owners apply one from their store&apos;s Design settings, and people creating a store choose one after the store template. Applying keeps the store&apos;s look from before, so it can be put back. Every change is a draft until you publish it.</>}
+      />
 
       <nav aria-label="Which design profiles" className="flex flex-wrap gap-2">
         <Link href="/admin/platform/design-profiles" aria-current={filter === "current" ? "page" : undefined} className={tab}>

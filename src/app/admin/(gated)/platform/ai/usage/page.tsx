@@ -5,6 +5,7 @@ import { PeriodLinks, UsageReport } from "@/components/admin/usage-report";
 import { usagePeriod } from "@/lib/ai-usage";
 import { requirePlatformAdmin } from "@/server/auth";
 import { usageByDay, usageRows } from "@/server/ai-usage";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "AI usage" };
 
@@ -22,15 +23,10 @@ export default async function PlatformAiUsagePage({ searchParams }: PageProps<"/
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <div>
-          <h1 className="text-display text-ink">AI usage</h1>
-          <p className="text-sm text-muted">
-            What every store and Kaizen itself used, {chosen.label.toLowerCase()}.{" "}
-            <Link href="/admin/platform/ai" className="underline">
-              AI settings
-            </Link>
-          </p>
-        </div>
+        <PageHeader
+          title="AI usage"
+          description={<>What every store and Kaizen itself used, {chosen.label.toLowerCase()}.{" "}<Link href="/admin/platform/ai" className="underline">AI settings</Link></>}
+        />
         <PeriodLinks base="/admin/platform/ai/usage" period={chosen.id} />
       </div>
       <UsageReport rows={rows} days={days} scope="platform" />

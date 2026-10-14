@@ -7,6 +7,7 @@ import { designPreviewPath } from "@/lib/design-presets";
 import { latestDesignUse, listOfferedDesigns } from "@/server/design-presets";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { listSavedThemes } from "@/server/themes";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import {
   applyDesignAction,
@@ -31,13 +32,10 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
   const designFailed = (await searchParams).design === "failed";
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Design</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          How your store looks: choose a theme, change any of its settings, and save your own versions to switch between.
-          Pages you build use it too.
-        </p>
-      </div>
+      <PageHeader
+        title="Design"
+        description={<>How your store looks: choose a theme, change any of its settings, and save your own versions to switch between. Pages you build use it too.</>}
+      />
       {designFailed && (
         <p role="alert" className="max-w-3xl rounded-lg border border-line bg-card p-4 text-sm">
           The store is made, but the design profile you chose could not be applied: it has its store template&apos;s look. Apply the
@@ -65,10 +63,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
           installFont: installStoreFontAction.bind(null, store.slug),
         }}
       />
-      <section aria-labelledby="cart-heading" className="max-w-3xl rounded-card border border-line bg-card p-5">
-        <h2 id="cart-heading" className="mb-1 font-medium">
-          Cart
-        </h2>
+      <Card title="Cart" className="max-w-3xl" compact>
         <p className="mb-4 text-sm text-muted">On phones, the cart slides out over the page. Larger screens show it as a page.</p>
         <ActionForm action={saveCartBehaviourAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <label className="flex items-start gap-2 text-sm">
@@ -85,7 +80,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
             <SubmitButton>Save</SubmitButton>
           </div>
         </ActionForm>
-      </section>
+      </Card>
     </div>
   );
 }

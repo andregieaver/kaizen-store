@@ -4,6 +4,7 @@ import { RequestsView } from "@/components/admin/support/requests-view";
 import { requirePermission } from "@/server/permissions";
 import { listRequests } from "@/server/support-actions";
 import { memberDesk } from "@/server/support-desk";
+import { PageHeader } from "@/components/admin/ui";
 
 import { decideRequestAction } from "./actions";
 
@@ -18,10 +19,10 @@ export default async function SupportRequestsPage({ params, searchParams }: Page
   const rows = await listRequests(staff.desk, which);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Requests</h1>
-        <p className="text-muted">What the chat assistant could not do and passed to your team: refunds, cancelling an order, a new address, an exception.</p>
-      </div>
+      <PageHeader
+        title="Requests"
+        description={<>What the chat assistant could not do and passed to your team: refunds, cancelling an order, a new address, an exception.</>}
+      />
       <RequestsView
         rows={rows}
         which={which}

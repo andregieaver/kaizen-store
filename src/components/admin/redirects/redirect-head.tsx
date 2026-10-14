@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { REDIRECT_TABS, redirectPaths, type RedirectTab } from "@/lib/redirect-admin";
+import { PageHeader } from "@/components/admin/ui";
 
 /**
  * The head of every redirect page (wave 2, D168, `docs/wave-2-redirects.md` 2.2, 2.3): the title, what the page is for and the four tabs (the redirects, the
@@ -17,10 +18,7 @@ export function RedirectsHead({ slug, active, title, intro, back }: { slug: stri
           {back.label}
         </Link>
       )}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-display text-ink">{title}</h1>
-        <p className="max-w-3xl text-sm text-muted">{intro}</p>
-      </div>
+      <PageHeader title={<>{title}</>} description={<>{intro}</>} />
       <nav aria-label="Redirects" className="flex flex-wrap gap-1 border-b border-line text-sm">
         {REDIRECT_TABS.map((tab) => (
           <Link

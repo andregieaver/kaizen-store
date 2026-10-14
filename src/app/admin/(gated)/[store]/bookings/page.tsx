@@ -11,6 +11,7 @@ import { hoursOn } from "@/lib/opening-hours";
 import { requirePermission } from "@/server/permissions";
 import { NoShowForm } from "@/components/admin/no-show-form";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
+import { PageHeader } from "@/components/admin/ui";
 
 import { CancelBookingForm } from "./cancel-booking-form";
 
@@ -87,12 +88,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-display text-ink">Bookings</h1>
-          <p className="text-sm text-muted">
-            Week of {longDay.format(noon(monday))}, in {tz.replace("_", " ")} time.
-          </p>
-        </div>
+        <PageHeader title="Bookings" description={<>Week of {longDay.format(noon(monday))}, in {tz.replace("_", " ")} time.</>} />
         <nav aria-label="Weeks" className="flex flex-wrap gap-2 text-sm">
           <Link href={href(addDays(monday, -7))} className={chip}>
             ← Previous

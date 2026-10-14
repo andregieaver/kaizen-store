@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { MIN_PER_ARM, rate } from "@/lib/experiment-stats";
 import { experimentResults, listExperiments, type Comparison, type ExperimentResults, type Verdict } from "@/server/search-experiment";
+import { PageHeader } from "@/components/admin/ui";
 
 import { startSearchTestAction, stopSearchTestAction } from "./actions";
 
@@ -37,14 +38,10 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Search test</h1>
-        <p className="text-sm text-muted">
-          Does hybrid search (words, meaning and understanding) help shoppers more than keyword search alone? While a test runs,
-          each search in every store is given one of the two at random. No cookie is set: the unit is the search, and opening a
-          result is recorded by the result&apos;s link.
-        </p>
-      </div>
+      <PageHeader
+        title="Search test"
+        description={<>Does hybrid search (words, meaning and understanding) help shoppers more than keyword search alone? While a test runs, each search in every store is given one of the two at random. No cookie is set: the unit is the search, and opening a result is recorded by the result&apos;s link.</>}
+      />
 
       <section aria-labelledby="run" className={card}>
         <h2 id="run" className="mb-2 font-medium">

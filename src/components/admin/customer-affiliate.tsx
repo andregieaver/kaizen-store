@@ -4,6 +4,7 @@ import { AffiliateBlockForm } from "@/components/admin/affiliate-block-form";
 import { attributionStatus, personLabel } from "@/lib/affiliate-admin";
 import type { AffiliateResult, CustomerAffiliate } from "@/lib/affiliates";
 import { moneyIn } from "@/lib/bonus-admin";
+import { Card } from "@/components/admin/ui";
 
 /** Whether a customer's page shows the referral program: they have a link, were referred, or an order came through one. */
 export const showsAffiliate = (data: CustomerAffiliate): boolean => data.code !== null || data.referredBy !== null || data.attributions.length > 0;
@@ -30,10 +31,7 @@ export function CustomerAffiliateSection({
   const credits = moneyIn(data.currency, locale);
   const date = (iso: string) => new Date(iso).toLocaleDateString(locale, { dateStyle: "medium", timeZone: "Europe/Oslo" });
   return (
-    <section aria-labelledby="affiliate" className="rounded-card border border-line bg-card p-5">
-      <h2 id="affiliate" className="mb-3 font-medium">
-        Referrals
-      </h2>
+    <Card title="Referrals" compact>
       {data.referredBy && (
         <p className="mb-3 text-sm">
           Came through the link of{" "}
@@ -86,6 +84,6 @@ export function CustomerAffiliateSection({
           </ul>
         </>
       )}
-    </section>
+    </Card>
   );
 }

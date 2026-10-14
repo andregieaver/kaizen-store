@@ -6,6 +6,7 @@ import { pageLanguages } from "@/lib/page-translation";
 import { aiFor, canSpeak } from "@/server/ai";
 import { getChatAgentForEdit } from "@/server/chat-agent";
 import { DOCUMENTS_MAX, knowledgeStatus, listDocuments } from "@/server/knowledge";
+import { PageHeader } from "@/components/admin/ui";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
 import { ChatAgentForm, type SaveChatAgent } from "./chat-agent-form";
@@ -55,12 +56,10 @@ export async function ChatAgentView({
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Chat agent</h1>
-        <p className="text-sm text-muted">
-          {agent?.enabled ? (ready ? `On: ${agent.name} answers visitors on ${siteName}.` : "On, but hidden until the site has an AI text model.") : "Off."}
-        </p>
-      </div>
+      <PageHeader
+        title="Chat agent"
+        description={<>{agent?.enabled ? (ready ? `On: ${agent.name} answers visitors on ${siteName}.` : "On, but hidden until the site has an AI text model.") : "Off."}</>}
+      />
 
       <section aria-labelledby="about" className={card}>
         <h2 id="about" className="mb-1 font-medium">How it works</h2>

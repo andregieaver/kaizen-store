@@ -5,6 +5,7 @@ import { dayLabel, documentPdfHref, documentPrintHref, invoicesHref, WAITING_TIT
 import { WAITING_WORDS } from "@/lib/invoice-readiness";
 import { formatMoney } from "@/lib/money";
 import type { DocumentLink, OrderDocuments } from "@/server/invoices";
+import { Card } from "@/components/admin/ui";
 
 import { SendAgainForm } from "./waiting-actions";
 
@@ -35,10 +36,7 @@ export function DocumentsCard({
   // An unpaid order has nothing to say yet.
   if (!invoice && creditNotes.length === 0 && documents.eligibility === "not_paid") return null;
   return (
-    <section aria-labelledby="documents" className="rounded-card border border-line bg-card p-5">
-      <h2 id="documents" className="mb-2 font-medium">
-        Invoice and credit notes
-      </h2>
+    <Card title="Invoice and credit notes" compact>
       {invoice ? (
         <ul className="flex flex-col gap-3 text-sm">
           <DocumentRow base={base} link={invoice} label="Invoice" canWrite={canWrite} sendAgain={sendAgain} locale={locale} />
@@ -68,7 +66,7 @@ export function DocumentsCard({
           )}
         </div>
       )}
-    </section>
+    </Card>
   );
 }
 

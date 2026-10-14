@@ -7,6 +7,7 @@ import { CompanyFields } from "@/components/admin/company-fields";
 import { requirePermission } from "@/server/permissions";
 import { listCompanies, employeePercent } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { lookupRegisterCompanyAction, saveCompanyAction, searchRegisterCompaniesAction } from "./actions";
 
@@ -27,12 +28,10 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Companies</h1>
-        <p className="text-sm text-muted">
-          A company&apos;s main account invites its employees by email from My account in the store. Everyone in the company gets its group&apos;s discount, employees the share you set.
-        </p>
-      </div>
+      <PageHeader
+        title="Companies"
+        description={<>A company&apos;s main account invites its employees by email from My account in the store. Everyone in the company gets its group&apos;s discount, employees the share you set.</>}
+      />
 
       {companies.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">No companies yet.</p>
@@ -74,10 +73,7 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
         </div>
       )}
 
-      <section aria-labelledby="new-company" className="flex max-w-xl flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <h2 id="new-company" className="font-medium">
-          New company
-        </h2>
+      <Card title="New company" className="flex max-w-xl flex-col gap-3" compact>
         <ActionForm action={saveCompanyAction.bind(null, store.slug, null)} className="flex flex-col gap-3">
           <CompanyFields
             groups={groups}
@@ -89,7 +85,7 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
             <SubmitButton>Make company</SubmitButton>
           </div>
         </ActionForm>
-      </section>
+      </Card>
     </div>
   );
 }

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import { CampaignForm } from "../campaign-form";
 
@@ -16,12 +16,7 @@ export default async function NewCampaignPage({ params }: PageProps<"/admin/[sto
   const { store } = gated;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/campaigns`} className="text-sm underline">
-          Campaigns
-        </Link>
-        <h1 className="text-display text-ink">New campaign</h1>
-      </div>
+      <PageHeader back={{ href: `/admin/${store.slug}/campaigns`, label: "Campaigns" }} title="New campaign" />
       <CampaignForm store={store} campaign={null} />
     </div>
   );

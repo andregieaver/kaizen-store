@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -11,6 +10,7 @@ import { alertText } from "@/components/admin/privacy/styles";
 import { findCustomer } from "@/server/customer-admin";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { erasurePreview } from "@/server/privacy-admin";
+import { PageHeader } from "@/components/admin/ui";
 
 import { eraseCustomerAction } from "./actions";
 
@@ -55,13 +55,11 @@ async function Preview({ storeSlug, customerId, searchParams }: { storeSlug: str
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link href={`/admin/${store.slug}/customers/${ref.key}`} className="text-sm underline">
-          Customer
-        </Link>
-        <h1 className="text-display text-ink">Erase personal data</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Read what happens first. Sales the bookkeeping law keeps are kept without the person&apos;s name, address and email until the period ends, then made anonymous. Nothing is deleted from the accounts.
-        </p>
+        <PageHeader
+          back={{ href: `/admin/${store.slug}/customers/${ref.key}`, label: "Customer" }}
+          title="Erase personal data"
+          description={<>Read what happens first. Sales the bookkeeping law keeps are kept without the person&apos;s name, address and email until the period ends, then made anonymous. Nothing is deleted from the accounts.</>}
+        />
         <p className={`mt-2 text-sm font-medium ${alertText}`}>Erasing cannot be undone.</p>
       </div>
       <ErasurePlanView plan={preview.plan} locale={locale} />

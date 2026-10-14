@@ -5,6 +5,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { formatPriceInput } from "@/lib/product-input";
 import { requirePermission } from "@/server/permissions";
 import { getShippingSettings } from "@/server/settings";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveShippingAction } from "../../../actions";
 
@@ -22,14 +23,10 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Shipping</h1>
-        <p className="text-sm text-muted">
-          One flat price per country, including VAT, shown in the cart and at checkout. Leave
-          &quot;free from&quot; empty to always charge shipping. Shoppers cannot check out to a
-          country without a shipping price.
-        </p>
-      </div>
+      <PageHeader
+        title="Shipping"
+        description={<>One flat price per country, including VAT, shown in the cart and at checkout. Leave &quot;free from&quot; empty to always charge shipping. Shoppers cannot check out to a country without a shipping price.</>}
+      />
       <ActionForm action={saveShippingAction.bind(null, store.slug)} className="flex flex-col gap-4">
         <table className="w-full max-w-2xl rounded-lg border border-line bg-card text-left text-sm">
           <thead>

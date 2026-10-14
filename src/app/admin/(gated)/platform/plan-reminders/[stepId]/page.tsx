@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -10,6 +9,7 @@ import { getPlanReminderStep } from "@/server/plan-reminders";
 import { deletePlanReminderAction } from "../actions";
 import { PlanReminderForm } from "../reminder-form";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Plan reminder" };
 
@@ -21,12 +21,10 @@ export default async function PlanReminderPage({ params }: PageProps<"/admin/pla
   if (!step) notFound();
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/admin/platform/plan-reminders" className="text-sm underline">
-          Plan reminders
-        </Link>
-        <h1 className="text-display text-ink">Reminder after {describeDelay(step.delayMinutes)}</h1>
-      </div>
+      <PageHeader
+        back={{ href: "/admin/platform/plan-reminders", label: "Plan reminders" }}
+        title={<>Reminder after {describeDelay(step.delayMinutes)}</>}
+      />
       <PlanReminderForm step={step} />
       <DeleteReminderButton action={deletePlanReminderAction.bind(null, step.id)} />
     </div>

@@ -10,6 +10,7 @@ import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getEditorContext, listAdminProducts } from "@/server/products";
 import { productsNeedingMeasure } from "@/server/unit-price-gaps";
+import { PageHeader } from "@/components/admin/ui";
 
 import { continueBulkAction, matchingAction, previewBulkAction, startBulkAction, undoBatchAction } from "./bulk/actions";
 
@@ -27,7 +28,7 @@ export default async function ProductsPage({ params, searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-display text-ink">Products</h1>
+        <PageHeader title="Products" />
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/admin/${store.slug}/products/export`}

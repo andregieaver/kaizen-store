@@ -13,6 +13,7 @@ import { listMenuProducts } from "@/server/navigation";
 import { uploadsEnabled } from "@/server/media";
 import { listMenuPages } from "@/server/pages";
 import { listTerms } from "@/server/taxonomy";
+import { PageHeader } from "@/components/admin/ui";
 
 import { uploadImageAction } from "../products/actions";
 import { deleteMenuAction, saveMenuAction } from "./actions";
@@ -29,14 +30,10 @@ export default async function MenusPage({ params, searchParams }: PageProps<"/ad
   const { store } = await requirePermission((await params).store, "website:read");
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Menus</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Lists of links to use around {store.name}: in the standard header and footer (chosen under Header and footer),
-          and with a Menu component in any page, header or footer. A link to a page, article, category or tag shows once
-          it is published, and follows it to a new address.
-        </p>
-      </div>
+      <PageHeader
+        title="Menus"
+        description={<>Lists of links to use around {store.name}: in the standard header and footer (chosen under Header and footer), and with a Menu component in any page, header or footer. A link to a page, article, category or tag shows once it is published, and follows it to a new address.</>}
+      />
       {/* The menu chosen in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
         <Menus storeSlug={store.slug} searchParams={searchParams} />

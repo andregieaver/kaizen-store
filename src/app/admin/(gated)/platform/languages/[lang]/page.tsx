@@ -11,6 +11,7 @@ import { fullCatalog, isBuiltIn } from "@/lib/ui-catalog-all";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listLanguages } from "@/server/languages";
 import { uiRows } from "@/server/ui-text";
+import { PageHeader } from "@/components/admin/ui";
 
 import { clearAction, generateAction, planAction, reviewAction, saveGroupAction } from "../actions";
 
@@ -69,15 +70,12 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/admin/platform/languages" className="text-sm underline">← Languages</Link>
-        <h1 className="text-display text-ink">{language.name} <span className="text-base font-normal text-muted">· {nativeName(lang)}</span></h1>
-        <p className="max-w-3xl text-sm text-muted">
-          The interface text of stores and emails in this language. The AI writes a draft; read it, correct what is wrong
-          and mark it reviewed. Terms of purchase, withdrawal information and other legal texts are not in here: they
-          are written and reviewed by the store, not translated by the AI.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: "/admin/platform/languages", label: "Languages" }}
+        title={language.name}
+        meta={[nativeName(lang)]}
+        description="The interface text of stores and emails in this language. The AI writes a draft; read it, correct what is wrong and mark it reviewed. Terms of purchase, withdrawal information and other legal texts are not in here: they are written and reviewed by the store, not translated by the AI."
+      />
 
       <UiTranslator
         name={language.name}

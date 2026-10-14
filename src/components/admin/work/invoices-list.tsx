@@ -18,6 +18,7 @@ import { InvoiceExportSlot } from "./invoice-export-slot";
 import { InvoiceStatusChip } from "./invoice-status";
 import { control, secondaryButton, smallButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
+import { PageHeader } from "@/components/admin/ui";
 
 const th = "px-3 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
 
@@ -73,7 +74,7 @@ export function InvoicesListView({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-display text-ink">Invoices</h1>
+        <PageHeader title="Invoices" />
         <div className="flex flex-wrap items-center gap-2">
           <InvoiceExportSlot storeSlug={storeSlug} query={invoiceListQuery(params)} />
           <NewInvoiceButton storeSlug={storeSlug} choices={choices} defaultOpen={openNew} />

@@ -14,6 +14,7 @@ import { listAssignmentChoices, listPeople } from "@/server/work-choices";
 import { listTimeEntries } from "@/server/work-time";
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Time" };
 
@@ -65,13 +66,10 @@ export default async function WorkTimePage({ params, searchParams }: PageProps<"
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Time</h1>
-        <p className="text-sm text-muted">
-          {owner ? "Time logged by everyone in the store." : "Your time."} Start a timer, log time by hand, and find
-          what you logged.
-        </p>
-      </div>
+      <PageHeader
+        title="Time"
+        description={<>{owner ? "Time logged by everyone in the store." : "Your time."} Start a timer, log time by hand, and find what you logged.</>}
+      />
 
       <QuickTimer storeSlug={store.slug} choices={choices} today={today} />
 

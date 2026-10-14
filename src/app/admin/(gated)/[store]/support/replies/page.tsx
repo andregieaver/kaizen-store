@@ -5,6 +5,7 @@ import { languageName } from "@/lib/support-translate";
 import { requirePermission } from "@/server/permissions";
 import { memberDesk } from "@/server/support-desk";
 import { listReplies } from "@/server/support-replies";
+import { PageHeader } from "@/components/admin/ui";
 
 import { deleteReplyAction, saveReplyAction } from "./actions";
 
@@ -19,10 +20,7 @@ export default async function SupportRepliesPage({ params }: PageProps<"/admin/[
   const languages = member.store.localization.locales.map((code) => ({ code, name: languageName(code) }));
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Saved replies</h1>
-        <p className="text-muted">Answers your team uses often, put in a reply with / in the inbox.</p>
-      </div>
+      <PageHeader title="Saved replies" description={<>Answers your team uses often, put in a reply with / in the inbox.</>} />
       <RepliesManager
         replies={replies}
         languages={languages}

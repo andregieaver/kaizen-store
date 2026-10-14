@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { KaizenRequests } from "@/components/admin/support/kaizen-requests";
 import { requireAccount } from "@/server/auth";
 import { myStores, requesterConversations } from "@/server/support-kaizen";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Kaizen support" };
 
@@ -17,10 +18,10 @@ export default async function KaizenSupportPage({ searchParams }: PageProps<"/ad
   const open = typeof c === "string" && rows.some((row) => row.id === c) ? c : null;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Kaizen support</h1>
-        <p className="text-muted">Ask Kaizen for help with your stores or your account. Kaizen&apos;s assistant answers first, and a person from Kaizen takes over when needed. Answers also come by email when you are away.</p>
-      </div>
+      <PageHeader
+        title="Kaizen support"
+        description={<>Ask Kaizen for help with your stores or your account. Kaizen&apos;s assistant answers first, and a person from Kaizen takes over when needed. Answers also come by email when you are away.</>}
+      />
       <KaizenRequests initial={rows} stores={stores.map((s) => ({ slug: s.store, name: s.name }))} initialOpen={open} />
     </div>
   );

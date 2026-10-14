@@ -11,6 +11,7 @@ import { recommendationReport } from "@/server/recommend-events";
 import { REPLAY_ORDERS, replayOnOrders } from "@/server/recommend-eval";
 import { costWords } from "@/lib/ai-usage";
 import { getRecommendSettingsFresh, listRules, ruleProducts, usedThisMonth, type RuleKind } from "@/server/recommend-settings";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { addRuleAction, removeRuleAction, saveRecommendSettingsAction } from "./actions";
 
@@ -51,18 +52,12 @@ export default async function RecommendationsPage({ params, searchParams }: Page
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Recommendations</h1>
-        <p className="text-sm text-muted">
-          {settings.enabled ? "Recommendations are on." : "Recommendations are off."} Shoppers are shown products that suit what they are looking at,
-          searched for, saved or put in the cart, never what they have already bought. Place them with a{" "}
-          <Link href={`${base}/pages`} className="underline">page</Link>&apos;s content grid: choose &ldquo;Recommend products for each
-          shopper&rdquo; for a product grid, in a product layout, an article, the All products page or any page.
-        </p>
-      </div>
+      <PageHeader
+        title="Recommendations"
+        description={<>{settings.enabled ? "Recommendations are on." : "Recommendations are off."} Shoppers are shown products that suit what they are looking at, searched for, saved or put in the cart, never what they have already bought. Place them with a{" "}<Link href={`${base}/pages`} className="underline">page</Link>&apos;s content grid: choose &ldquo;Recommend products for each shopper&rdquo; for a product grid, in a product layout, an article, the All products page or any page.</>}
+      />
 
-      <section aria-labelledby="settings" className="flex max-w-2xl flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <h2 id="settings" className="font-medium">Settings</h2>
+      <Card title="Settings" className="flex max-w-2xl flex-col gap-3" compact>
         <ActionForm action={saveRecommendSettingsAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm font-medium">
             <input type="checkbox" name="enabled" defaultChecked={settings.enabled} disabled={!canEdit} className="size-4" />
@@ -101,7 +96,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           </div>
           {canEdit ? <SubmitButton>Save</SubmitButton> : <p className="text-sm text-muted">Only an owner can change these.</p>}
         </ActionForm>
-      </section>
+      </Card>
 
       <section aria-labelledby="rules" className="flex flex-col gap-3">
         <h2 id="rules" className="font-medium">Your rules</h2>

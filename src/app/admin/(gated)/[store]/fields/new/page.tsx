@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { FieldGroupEditor } from "@/components/admin/field-group-editor";
 import { emptyGroup, isFieldEntity } from "@/lib/custom-fields";
@@ -9,6 +8,7 @@ import { requirePermission } from "@/server/permissions";
 import { saveFieldGroupAction } from "../actions";
 import { editorTerms, roleOptions, storeLanguages } from "../data";
 import { featureOn } from "@/lib/store-features";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "New group of custom fields" };
 
@@ -20,12 +20,7 @@ export default async function NewFieldGroupPage({ params, searchParams }: PagePr
   const base = `/admin/${store.slug}/fields`;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={base} className="text-sm underline">
-          Custom fields
-        </Link>
-        <h1 className="text-display text-ink">New group</h1>
-      </div>
+      <PageHeader back={{ href: base, label: "Custom fields" }} title="New group" />
       <FieldGroupEditor
         initial={emptyGroup(start)}
         terms={await editorTerms(store.id)}

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -10,6 +9,7 @@ import { PlaceFields } from "@/components/admin/place-fields";
 import { requirePermission } from "@/server/permissions";
 import { getLocation, KIND_LABELS } from "@/server/company";
 import { listCountries } from "@/server/stores";
+import { PageHeader } from "@/components/admin/ui";
 
 import { deletePlaceAction, savePlaceAction } from "../../actions";
 
@@ -29,13 +29,11 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/settings/company`} className="text-sm underline">
-          Company
-        </Link>
-        <h1 className="text-display text-ink">{place.name}</h1>
-        <p className="text-sm text-muted">{KIND_LABELS[place.kind]}</p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/settings/company`, label: "Company" }}
+        title={<>{place.name}</>}
+        description={<>{KIND_LABELS[place.kind]}</>}
+      />
       <ActionForm
         action={savePlaceAction.bind(null, store.slug, place.id)}
         className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"

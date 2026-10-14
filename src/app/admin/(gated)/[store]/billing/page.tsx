@@ -10,6 +10,7 @@ import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { getFeatureMatrix } from "@/server/plan-features";
 import { planRemindersOn, planRemindersOptedOut } from "@/server/plan-reminders";
 import { billingMode, completePlanCheckout, getStoreBilling, listPlans, type Plan, type StoreBilling } from "@/server/billing";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import {
   applyPlanDiscountAction,
@@ -58,17 +59,9 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Billing</h1>
-        <p className="text-sm text-muted">
-          What {store.name} pays Kaizen. Each store has its own plan.
-        </p>
-      </div>
+      <PageHeader title="Billing" description={<>What {store.name} pays Kaizen. Each store has its own plan.</>} />
 
-      <section aria-labelledby="plan-heading" className="rounded-card border border-line bg-card p-5 text-sm">
-        <h2 id="plan-heading" className="mb-3 font-medium">
-          {onPlan && billing?.planName ? `Your plan: ${billing.planName}` : "No plan yet"}
-        </h2>
+      <Card title={<>{onPlan && billing?.planName ? `Your plan: ${billing.planName}` : "No plan yet"}</>} className="text-sm" compact>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
           {onPlan && billing?.price && (
             <>
@@ -90,7 +83,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
           <dd>{formatBps(billing?.feeBps ?? 0)} of each sale, taken when the shopper pays</dd>
         </dl>
         {mode === "test" && <p className="mt-3 text-muted">Kaizen is in test mode: no real money is charged.</p>}
-      </section>
+      </Card>
 
       {/* On a running plan a code applies at once; otherwise it goes with the plan chosen below (D38). */}
       {mode && onPlan && (isOwner || billing?.discount) && codeField}
@@ -148,10 +141,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
       )}
 
       {onPlan && isOwner && (
-        <section aria-labelledby="manage-heading" className="rounded-card border border-line bg-card p-5">
-          <h2 id="manage-heading" className="mb-1 font-medium">
-            Invoices and payment
-          </h2>
+        <Card title="Invoices and payment" compact>
           <p className="mb-4 text-sm text-muted">
             See all of Kaizen&apos;s invoices, pay an open one, or change the card you pay with.
           </p>
@@ -171,7 +161,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
               )}
             </ActionForm>
           </div>
-        </section>
+        </Card>
       )}
     </div>
   );

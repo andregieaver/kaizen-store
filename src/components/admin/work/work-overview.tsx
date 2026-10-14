@@ -7,6 +7,7 @@ import { formatDay } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
 import type { CurrencyFigures, WorkOverview } from "@/lib/work-overview";
 import type { ReadinessProblem } from "@/lib/work-vat";
+import { PageHeader } from "@/components/admin/ui";
 
 /** What the overview shows, from the reader's rows and the names to put on them (`getWorkOverview`). */
 export type OverviewProps = {
@@ -83,10 +84,7 @@ export function OverviewBody(props: OverviewProps) {
 
   return (
     <div className="flex max-w-5xl flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Work</h1>
-        <p className="text-sm text-muted">Your clients, the hours you log for them and the invoices you send.</p>
-      </div>
+      <PageHeader title="Work" description={<>Your clients, the hours you log for them and the invoices you send.</>} />
 
       {props.missing.length > 0 && (
         <section aria-labelledby="ready-heading" className="rounded-lg border border-line bg-card p-4 text-sm">

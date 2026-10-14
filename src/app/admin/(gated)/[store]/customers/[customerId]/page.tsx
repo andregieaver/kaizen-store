@@ -24,6 +24,7 @@ import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
 import { privacyCard } from "@/server/privacy-admin";
+import { PageHeader } from "@/components/admin/ui";
 
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
@@ -85,21 +86,16 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`${base}/customers`} className="text-sm underline">
-          Customers
-        </Link>
-        <h1 className="mt-2 flex items-center gap-3 text-display text-ink">
-          <Avatar avatar={avatarFor(customer)} size={48} />
-          <span className="min-w-0 break-words">{customer.name || customer.email}</span>
-        </h1>
-        <p className="text-sm text-muted">
-          {accountLabel(customer.account)}
-          {customer.firstOrderAt && ` · first order ${date(customer.firstOrderAt)}`}
-          {customer.accountCreatedAt && ` · account since ${date(customer.accountCreatedAt)}`}
-          {customer.lastSignInAt && ` · last signed in ${date(customer.lastSignInAt)}`}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `${base}/customers`, label: "Customers" }}
+        title={<span className="flex items-center gap-3"><Avatar avatar={avatarFor(customer)} size={48} /> <span className="min-w-0 break-words">{customer.name || customer.email}</span></span>}
+        meta={[
+          accountLabel(customer.account),
+          customer.firstOrderAt && `First order ${date(customer.firstOrderAt)}`,
+          customer.accountCreatedAt && `Account since ${date(customer.accountCreatedAt)}`,
+          customer.lastSignInAt && `Last signed in ${date(customer.lastSignInAt)}`,
+        ]}
+      />
 
       {privacy && <PrivacyBanner base={base} data={privacy} />}
 

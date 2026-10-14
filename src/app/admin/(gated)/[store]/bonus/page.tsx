@@ -6,6 +6,7 @@ import { BonusSettingsForm } from "@/components/admin/bonus-settings-form";
 import { mainCurrency } from "@/lib/markets";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { bonusOverview, getBonusSettings } from "@/server/bonus";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveBonusAction } from "./actions";
 
@@ -25,13 +26,10 @@ export default async function BonusPage({ params }: PageProps<"/admin/[store]/bo
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Bonus credits</h1>
-        <p className="text-sm text-muted">
-          {settings.enabled ? "The bonus program is on." : "The bonus program is off."} Signed-in customers earn credits
-          on what they buy and use them as a price reduction on a later order.
-        </p>
-      </div>
+      <PageHeader
+        title="Bonus credits"
+        description={<>{settings.enabled ? "The bonus program is on." : "The bonus program is off."} Signed-in customers earn credits on what they buy and use them as a price reduction on a later order.</>}
+      />
       <BonusOverviewCard overview={overview} locale={locale} />
       <BonusSettingsForm
         initial={settings}

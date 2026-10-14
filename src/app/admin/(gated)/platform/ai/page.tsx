@@ -8,6 +8,7 @@ import { pictureLine } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { countStoresWithOwnAi, getAiSettings } from "@/server/ai";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 import { checkPlatformVisionAction, evalPlatformAiAction, removePlatformAiAction, savePlatformAiAction, testPlatformAiAction, testPlatformImageAction } from "./actions";
 
@@ -31,8 +32,7 @@ export default async function PlatformAiPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-display text-ink">AI</h1>
-        <p className="text-sm text-muted">{status}</p>
+        <PageHeader title="AI" description={<>{status}</>} />
         <p className="text-sm text-muted">{pictureLine(settings, "Kaizen's AI")}</p>
         <p className="mt-1 text-sm">
           <Link href="/admin/platform/ai/usage" className="underline">

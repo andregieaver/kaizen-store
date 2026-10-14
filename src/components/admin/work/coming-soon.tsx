@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { workBase } from "@/lib/work-paths";
+import { PageHeader } from "@/components/admin/ui";
 
 /**
  * A stand-in for a Work page that is built in a later step, so the menu's
@@ -7,14 +8,9 @@ import { workBase } from "@/lib/work-paths";
  */
 export function WorkComingSoon({ storeSlug, title }: { storeSlug: string; title: string }) {
   return (
-    <div className="flex max-w-3xl flex-col gap-3">
-      <h1 className="text-display text-ink">{title}</h1>
-      <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
-        Coming in the next step.{" "}
-        <Link href={workBase(storeSlug)} className="underline">
-          Back to Work
-        </Link>
-      </p>
-    </div>
+    <PageHeader
+      title={<>{title}</>}
+      description={<>Coming in the next step.{" "}<Link href={workBase(storeSlug)} className="underline">Back to Work</Link></>}
+    />
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { GoogleReviewsSettings } from "@/components/admin/google-reviews-settings";
 import { getGoogleSettings } from "@/server/google-reviews";
+import { PageHeader } from "@/components/admin/ui";
 
 import { choosePlatformPlaceAction, findPlatformPlacesAction, removePlatformGoogleAction, savePlatformGoogleKeyAction } from "./actions";
 
@@ -12,13 +13,10 @@ export default async function PlatformGoogleReviewsPage() {
   const settings = await getGoogleSettings(null);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Google reviews</h1>
-        <p className="text-sm text-muted">
-          Kaizen&apos;s rating and reviews on Google, for Testimonials components on Kaizen&apos;s own pages. Stores set up their own under
-          Integrations.
-        </p>
-      </div>
+      <PageHeader
+        title="Google reviews"
+        description={<>Kaizen&apos;s rating and reviews on Google, for Testimonials components on Kaizen&apos;s own pages. Stores set up their own under Integrations.</>}
+      />
       <GoogleReviewsSettings
         hint={settings?.hint ?? null}
         place={settings?.place ?? null}

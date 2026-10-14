@@ -7,6 +7,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { getResource } from "@/server/bookings";
 import { getUnitProperty } from "@/server/dac7";
 import { requireHost } from "@/server/hosts";
+import { PageHeader } from "@/components/admin/ui";
 
 import { ResourceCalendar, type CalendarActions } from "../../../../[store]/bookings/resource-calendar";
 import {
@@ -46,8 +47,8 @@ export default async function HostUnitPage({ params }: PageProps<"/admin/hosting
         <Link href={`/admin/hosting/${store.slug}`} className="text-sm underline">
           {host.name}
         </Link>
-        <h1 className="text-display text-ink">{unit.name}</h1>
-      </div>
+        <PageHeader title={<>{unit.name}</>} />
+        </div>
       <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={unit} actions={actions} />
       {property && (
         <section aria-labelledby="property-heading" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">

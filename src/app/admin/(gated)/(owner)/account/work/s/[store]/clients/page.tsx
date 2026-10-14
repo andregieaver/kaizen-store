@@ -10,6 +10,7 @@ import { formDefaults, listClients } from "@/server/work";
 import { sellerDetails } from "@/server/work-settings";
 import { workBase } from "@/lib/work-paths";
 import { requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Clients" };
 
@@ -28,10 +29,7 @@ export default async function WorkClientsPage({ params, searchParams }: PageProp
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Clients</h1>
-          <p className="text-sm text-muted">The people and companies you bill for your work.</p>
-        </div>
+        <PageHeader title="Clients" description={<>The people and companies you bill for your work.</>} />
         <NewClientButton
           storeSlug={store.slug}
           countries={countries.map(({ code, name }) => ({ code, name }))}

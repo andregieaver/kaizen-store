@@ -12,6 +12,7 @@ import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getCompany, KIND_LABELS, type StoreLocation } from "@/server/company";
 import { listCountries } from "@/server/stores";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveAudienceAction, saveBusinessAction, saveOfficeAction } from "./actions";
 
@@ -32,10 +33,10 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Company</h1>
-        <p className="text-sm text-muted">Who you are and where to find you: the business that sells, your office and any stores or pickup points.</p>
-      </div>
+      <PageHeader
+        title="Company"
+        description={<>Who you are and where to find you: the business that sells, your office and any stores or pickup points.</>}
+      />
 
       <section aria-labelledby="business" className={card}>
         <h2 id="business" className="mb-1 font-medium">Business</h2>

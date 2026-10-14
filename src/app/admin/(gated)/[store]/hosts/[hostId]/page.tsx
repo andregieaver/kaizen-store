@@ -10,6 +10,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { getHostTaxDetails, hostTaxStatus } from "@/server/dac7";
 import { getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { getHost, hostListings } from "@/server/hosts";
+import { PageHeader } from "@/components/admin/ui";
 
 import { setHostDisabledAction, updateHostAction } from "../actions";
 import { HostForm } from "../host-form";
@@ -44,15 +45,11 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/hosts`} className="text-sm underline">
-          Hosts
-        </Link>
-        <h1 className="text-display text-ink">{host.name}</h1>
-        <p className="text-sm text-muted">
-          {host.email} · {host.signedInBefore ? "Has signed in" : "Not signed in yet"}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/hosts`, label: "Hosts" }}
+        title={<>{host.name}</>}
+        description={<>{host.email} · {host.signedInBefore ? "Has signed in" : "Not signed in yet"}</>}
+      />
       {owner ? (
         <HostForm host={host} action={updateHostAction.bind(null, store.slug, host.id)} />
       ) : (

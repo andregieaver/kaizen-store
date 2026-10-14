@@ -5,6 +5,7 @@ import { PeriodLinks, UsageReport } from "@/components/admin/usage-report";
 import { usagePeriod } from "@/lib/ai-usage";
 import { requireAccount } from "@/server/auth";
 import { ownedStores, usageByDay, usageRows } from "@/server/ai-usage";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "AI usage" };
 
@@ -31,13 +32,10 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <div>
-          <h1 className="text-display text-ink">AI usage</h1>
-          <p className="text-sm text-muted">
-            What the AI used for {store ? store.name : owned.length === 1 ? owned[0].name : "the stores you own"}, {chosen.label.toLowerCase()}. Kaizen&apos;s AI is included in your plan; usage on a key of
-            your own is billed by that provider.
-          </p>
-        </div>
+        <PageHeader
+          title="AI usage"
+          description={<>What the AI used for {store ? store.name : owned.length === 1 ? owned[0].name : "the stores you own"}, {chosen.label.toLowerCase()}. Kaizen&apos;s AI is included in your plan; usage on a key of your own is billed by that provider.</>}
+        />
         <PeriodLinks base={base} period={chosen.id} extra={keep} />
         {owned.length > 1 && (
           <nav aria-label="Store" className="flex flex-wrap gap-1 text-sm">

@@ -5,6 +5,7 @@ import { activityQuery } from "@/lib/activity-text";
 import { isAuditArea } from "@/lib/audit";
 import { listPlatformActivity, platformActivityFilters } from "@/server/activity";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Activity log" };
 
@@ -27,13 +28,10 @@ export default async function PlatformActivityPage({ searchParams }: PageProps<"
   const base = "/admin/platform/activity";
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Activity log</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets and approvals. A store&apos;s own
-          changes are in that store&apos;s log. Entries are kept for 24 months and cannot be changed.
-        </p>
-      </div>
+      <PageHeader
+        title="Activity log"
+        description={<>What platform admins and the platform did, not tied to one store: two-step sign-in events, recovery codes used, resets and approvals. A store&apos;s own changes are in that store&apos;s log. Entries are kept for 24 months and cannot be changed.</>}
+      />
       <ActivityFilters action={base} values={values} people={choices.people} areas={["platform", "account"]} actions={choices.actions} zoneName="UTC" />
       <ActivityList
         entries={page.entries}

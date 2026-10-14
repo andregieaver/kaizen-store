@@ -6,6 +6,7 @@ import { primaryButton, secondaryButton } from "@/components/admin/work/work-par
 import { readApproval } from "@/lib/wordpress";
 import { getAccount } from "@/server/auth";
 import { storesOf } from "@/server/wordpress";
+import { PageHeader } from "@/components/admin/ui";
 
 import { answerApprovalAction } from "../actions";
 
@@ -28,7 +29,7 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
   if (!read.ok) {
     return (
       <div className="flex max-w-xl flex-col gap-3">
-        <h1 className="text-display text-ink">Connect a WordPress site</h1>
+        <PageHeader title="Connect a WordPress site" />
         <p role="alert" className="rounded-lg border border-danger-text p-4 text-sm">
           This request cannot be used: {read.reason} Start again from the plugin&apos;s settings in WordPress.
         </p>
@@ -40,11 +41,10 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
   const host = new URL(request.site).host;
   return (
     <div className="flex max-w-xl flex-col gap-5">
-      <h1 className="text-display text-ink">Connect {host} to your stores?</h1>
-      <p className="text-sm text-muted">
-        The Kaizen plugin on <strong className="text-ink">{request.name}</strong> ({request.site}) asks to read the products of your stores, so
-        it can show them on its pages. Only approve a site you run.
-      </p>
+      <PageHeader
+        title={<>Connect {host} to your stores?</>}
+        description={<>The Kaizen plugin on <strong className="text-ink">{request.name}</strong> ({request.site}) asks to read the products of your stores, so it can show them on its pages. Only approve a site you run.</>}
+      />
       <section aria-labelledby="reads-heading" className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4 text-sm">
         <h2 id="reads-heading" className="font-medium">
           What it can read

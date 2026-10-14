@@ -8,6 +8,7 @@ import { exportDates } from "@/lib/calendar-sync";
 import { requirePermission } from "@/server/permissions";
 import { listBookings, listResources, type StoreBooking } from "@/server/bookings";
 import { blocksBetween } from "@/server/calendar-sync";
+import { PageHeader } from "@/components/admin/ui";
 
 import { CancelBookingForm } from "../cancel-booking-form";
 
@@ -63,12 +64,10 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-display text-ink">Stays and rentals</h1>
-          <p className="text-sm text-muted">
-            {longDay.format(noon(from))} to {longDay.format(noon(addDays(from, DAYS - 1)))}, in {tz.replace("_", " ")} time.
-          </p>
-        </div>
+        <PageHeader
+          title="Stays and rentals"
+          description={<>{longDay.format(noon(from))} to {longDay.format(noon(addDays(from, DAYS - 1)))}, in {tz.replace("_", " ")} time.</>}
+        />
         <nav aria-label="Weeks" className="flex flex-wrap gap-2 text-sm">
           <Link href={href(addDays(from, -DAYS))} className={chip}>
             ← Earlier

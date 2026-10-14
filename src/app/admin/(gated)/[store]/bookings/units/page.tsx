@@ -4,6 +4,7 @@ import Link from "next/link";
 import { requireFeature } from "@/components/admin/feature-off";
 import { requirePermission } from "@/server/permissions";
 import { listResources, type BookingResource } from "@/server/bookings";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Rooms and rental items" };
 
@@ -44,12 +45,10 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Rooms and rental items</h1>
-        <p className="text-sm text-muted">
-          What shoppers book for nights or days. Choose which ones each stay or rental offers in the product.
-        </p>
-      </div>
+      <PageHeader
+        title="Rooms and rental items"
+        description={<>What shoppers book for nights or days. Choose which ones each stay or rental offers in the product.</>}
+      />
       <section aria-labelledby="units-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="units-heading" className="font-medium">

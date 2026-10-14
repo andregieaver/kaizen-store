@@ -6,6 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { featureGroups, NEW_FEATURE_ROWS } from "@/lib/plan-features";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getFeatureMatrix } from "@/server/plan-features";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveFeaturesAction } from "./actions";
 
@@ -27,17 +28,11 @@ export default async function PlanFeaturesPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <Link href="/admin/platform/plans" className="w-fit text-sm underline">
-          Plans
-        </Link>
-        <h1 className="text-display text-ink">Plan features</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Tick what each plan includes. The list is what store owners compare when they choose a plan; it describes the
-          plans and does not switch anything on or off. Give a feature a category to group it, a number to place it, and
-          tick Remove to take it out.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: "/admin/platform/plans", label: "Plans" }}
+        title="Plan features"
+        description={<>Tick what each plan includes. The list is what store owners compare when they choose a plan; it describes the plans and does not switch anything on or off. Give a feature a category to group it, a number to place it, and tick Remove to take it out.</>}
+      />
 
       {columns.length === 0 ? (
         <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">

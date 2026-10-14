@@ -3,6 +3,7 @@ import Link from "next/link";
 import { deleteAllMemoriesAction, deleteMemoryAction, setLearningAction, updateMemoryAction } from "@/app/admin/(gated)/memory-actions";
 import { learningOn, listMemories } from "@/server/assistant-memory";
 import type { Conversation, ConversationSummary } from "@/server/owner-assistant";
+import { PageHeader } from "@/components/admin/ui";
 
 import { AiManagerChat, type Abilities, type AiManagerActions } from "./ai-manager";
 import { AiMemory } from "./ai-memory";
@@ -39,12 +40,10 @@ export async function AiManagerPage({
   const tabClass = (on: boolean) => `rounded-md px-3 py-1.5 text-sm ${on ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`;
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-display text-ink">AI manager</h1>
-        <p className="text-sm text-muted">
-          Your guide to the admin and your right hand{area === "store" ? ` for ${siteName}` : " for Kaizen"}. Open it from any page with the AI manager button or ⌘K (Ctrl+K).
-        </p>
-      </div>
+      <PageHeader
+        title="AI manager"
+        description={<>Your guide to the admin and your right hand{area === "store" ? ` for ${siteName}` : " for Kaizen"}. Open it from any page with the AI manager button or ⌘K (Ctrl+K).</>}
+      />
       <nav aria-label="AI manager" className="flex gap-1">
         <Link href={base} className={tabClass(!memory)} aria-current={!memory ? "page" : undefined}>
           Conversations

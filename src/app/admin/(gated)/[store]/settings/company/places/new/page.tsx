@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { HoursEditor } from "@/components/admin/hours-editor";
@@ -7,6 +6,7 @@ import { PlaceFields } from "@/components/admin/place-fields";
 import { requirePermission } from "@/server/permissions";
 import { KIND_LABELS } from "@/server/company";
 import { listCountries } from "@/server/stores";
+import { PageHeader } from "@/components/admin/ui";
 
 import { savePlaceAction } from "../../actions";
 
@@ -24,15 +24,11 @@ export default async function NewPlacePage({ params, searchParams }: PageProps<"
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/settings/company`} className="text-sm underline">
-          Company
-        </Link>
-        <h1 className="text-display text-ink">Add a {what}</h1>
-        <p className="text-sm text-muted">
-          {kind === "shop" ? "A place where shoppers can visit you." : "A place where shoppers can collect their orders."}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/settings/company`, label: "Company" }}
+        title={<>Add a {what}</>}
+        description={<>{kind === "shop" ? "A place where shoppers can visit you." : "A place where shoppers can collect their orders."}</>}
+      />
       <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
         <input type="hidden" name="kind" value={kind} />
         <div className={field}>

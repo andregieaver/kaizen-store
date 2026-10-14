@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { A11Y_STATUSES, A11Y_STATUS_WORDS, type A11yFacts, type A11ySettings, type EnforcementBody } from "@/lib/a11y-statement";
+import { Card } from "@/components/admin/ui";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
@@ -61,17 +62,14 @@ export function AccessibilityForm({
         written by hand and not checked by a lawyer.
       </p>
 
-      <section aria-labelledby="facts-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="facts-heading" className="mb-2 font-medium">
-          What the site itself knows
-        </h2>
+      <Card title="What the site itself knows" compact>
         <ul className="list-disc pl-5 text-sm">
           {factLines(facts).map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>
         <p className="mt-3 text-sm text-muted">The statement includes these as they stand when you make it.</p>
-      </section>
+      </Card>
 
       <ActionForm action={actions.save} className="flex flex-col gap-6">
         <fieldset className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
@@ -146,10 +144,7 @@ export function AccessibilityForm({
         </div>
       </ActionForm>
 
-      <section aria-labelledby="draft-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="draft-heading" className="mb-1 font-medium">
-          Make a draft statement
-        </h2>
+      <Card title="Make a draft statement" compact>
         <p className="mb-3 text-sm text-muted">
           Makes a draft page from what is saved above and what the site knows, in the store&apos;s language and the others among Norwegian, Swedish, Danish and
           English. It is never published for you. Save your changes first. Then publish it and choose it as the accessibility statement under{" "}
@@ -161,7 +156,7 @@ export function AccessibilityForm({
         <ActionForm action={actions.createStatement}>
           <SubmitButton variant="secondary">Create a draft statement</SubmitButton>
         </ActionForm>
-      </section>
+      </Card>
     </div>
   );
 }

@@ -563,8 +563,16 @@ signals (red `danger`, amber `warning`, green `positive`, blue `insight`, grey `
 strong fill `-solid`, a border `-line` or `-text`; their `dark:` twins removed, as the roles carry dark). A solid red button with
 white words is the danger button (`bg-danger-soft text-danger-text`). `admin.css` matches both spellings while the old one is still
 used where a store's look is drawn. The scan test now refuses an older name or a fixed colour in the admin, apart from colours that
-are someone else's on purpose (the builder's resize handles, carriers' marks, the search engine's preview). Next: pages to
-`PageHeader`, `Card`, `Chip` and `ListRow` section by section, where the structure, not only the colour, should change.
+are someone else's on purpose (the builder's resize handles, carriers' marks, the search engine's preview).
+Step 9, structure (D225): every signed-in page is titled by `PageHeader`, which gained `back` (the page it belongs under, a chevron
+link above the title) and `description` (a sentence at a 75-character measure, under the meta line). A codemod moved the 178
+pages whose title block was a title, an optional back link and an optional description (the description's JSX moved as written,
+its line breaks joined by JSX's own rule), and 13 detail pages with a badge, an avatar, a code or actions beside the title were
+moved by hand (badges to `status`, facts to `meta`, buttons to `actions`). 49 section cards whose first child was their own `h2`
+are `Card` (`compact` keeps their 20 px). The scan test refuses an `h1` of a signed-in page's own, except the compact tools and
+notices (the setup wizard, the support inbox, the product editor, the switched-off notice, the printed report, the error page) and
+screen-reader titles; the sign-in, two-step and OAuth pages keep theirs until the `focus` layout. Next: the 35 cards with an
+action beside their title (to `Card`'s `aside`), tables to a list in a card where they are lists, and the `focus` layout.
 
 ---
 

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -8,6 +7,7 @@ import { DeleteDiscountButton } from "@/components/admin/delete-discount-button"
 import { requirePermission } from "@/server/permissions";
 import { hostChoices } from "@/server/hosts";
 import { getResource } from "@/server/bookings";
+import { PageHeader } from "@/components/admin/ui";
 
 import { removeUnitAction, saveUnitAction } from "../../actions";
 import { ResourceCalendar } from "../../resource-calendar";
@@ -29,12 +29,7 @@ export default async function UnitPage({ params }: PageProps<"/admin/[store]/boo
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/bookings/units`} className="text-sm underline">
-          Rooms and rental items
-        </Link>
-        <h1 className="text-display text-ink">{unit.name}</h1>
-      </div>
+      <PageHeader back={{ href: `/admin/${store.slug}/bookings/units`, label: "Rooms and rental items" }} title={<>{unit.name}</>} />
       <UnitForm kind={kind} unit={unit} hosts={await hostChoices(store.id)} action={saveUnitAction.bind(null, store.slug, kind, unit.id)} />
       <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={unit} actions={storeCalendarActions(store.slug, unit.id)} />
       <DeleteDiscountButton

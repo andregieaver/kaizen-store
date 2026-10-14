@@ -11,6 +11,7 @@ import { getStoreBilling, getStoreInvoice } from "@/server/billing";
 import { listStorePeople } from "@/server/platform-customers";
 import { getStore } from "@/server/stores";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Invoice" };
 
@@ -49,12 +50,11 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
             {store.name}
           </Link>
         </p>
-        <h1 className="text-display text-ink">Invoice {invoice.number ?? "(draft)"}</h1>
-        <p className="text-sm text-muted">
-          {INVOICE_STATUS[invoice.status] ?? invoice.status} · {date(invoice.createdAt)}
-          {invoice.mode === "test" && " · test mode"}
-        </p>
-      </div>
+        <PageHeader
+          title={<>Invoice {invoice.number ?? "(draft)"}</>}
+          description={<>{INVOICE_STATUS[invoice.status] ?? invoice.status} · {date(invoice.createdAt)}{invoice.mode === "test" && " · test mode"}</>}
+        />
+        </div>
 
       {owner && (
         <CustomerBar

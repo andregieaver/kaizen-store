@@ -5,6 +5,7 @@ import { WORK_ROOT, workBase } from "@/lib/work-paths";
 import { formatDuration } from "@/lib/work-time";
 import { clientFigures, type ClientShow } from "@/lib/work-ui";
 import type { OwnerClient } from "@/server/work-owner";
+import { PageHeader } from "@/components/admin/ui";
 
 import { StoreFilter } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
@@ -48,12 +49,7 @@ export function OwnerClientsList({
   return (
     <div className="flex max-w-5xl flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Clients</h1>
-          <p className="text-sm text-muted">
-            The people and companies you bill{many ? ", across all your stores" : ""}.
-          </p>
-        </div>
+        <PageHeader title="Clients" description={<>The people and companies you bill{many ? ", across all your stores" : ""}.</>} />
         <NewInStoreButton
           kind="client"
           stores={stores.map(({ slug, name }) => ({ slug, name }))}

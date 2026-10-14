@@ -7,6 +7,7 @@ import { can } from "@/lib/permissions";
 import { activityActions, activityPeople, listActivity, readableAreas } from "@/server/activity";
 import { holderOf } from "@/server/auth";
 import { requireMemberAny } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Activity log" };
 
@@ -36,13 +37,10 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Activity log</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          What people changed in the store, and when: products, prices, pages, coupons, shipping, the team and the payment settings.{" "}
-          {owner ? "You see every entry." : "You see your own entries and those of the parts of the admin you can open."} Entries are kept for 24 months and cannot be changed.
-        </p>
-      </div>
+      <PageHeader
+        title="Activity log"
+        description={<>What people changed in the store, and when: products, prices, pages, coupons, shipping, the team and the payment settings.{" "}{owner ? "You see every entry." : "You see your own entries and those of the parts of the admin you can open."} Entries are kept for 24 months and cannot be changed.</>}
+      />
       {problem && (
         <p role="alert" className="rounded-lg border border-line bg-card p-3 text-sm">
           {problem}

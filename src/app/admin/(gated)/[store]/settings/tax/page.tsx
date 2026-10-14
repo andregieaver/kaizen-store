@@ -6,6 +6,7 @@ import { featureOn } from "@/lib/store-features";
 import { TAX_WARNINGS } from "@/lib/tax-profile";
 import { requirePermission } from "@/server/permissions";
 import { taxProfileView } from "@/server/tax-profile";
+import { PageHeader } from "@/components/admin/ui";
 
 import { checkVatNumberAction, saveTaxProfileAction } from "./actions";
 
@@ -46,16 +47,10 @@ export default async function TaxSettingsPage({ params }: PageProps<"/admin/[sto
     : null;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Tax</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Prices in the store include VAT, and each sale is charged the VAT of the country it goes to. Here the store records its VAT registration and, where it has
-          them, its OSS and IOSS registrations.{" "}
-          {business &&
-            "A business in another EU country that gives a valid VAT number can buy goods without VAT (reverse charge) once the store's own number has been checked. "}
-          This is not tax advice.
-        </p>
-      </div>
+      <PageHeader
+        title="Tax"
+        description={<>Prices in the store include VAT, and each sale is charged the VAT of the country it goes to. Here the store records its VAT registration and, where it has them, its OSS and IOSS registrations.{" "}{business && "A business in another EU country that gives a valid VAT number can buy goods without VAT (reverse charge) once the store's own number has been checked. "}This is not tax advice.</>}
+      />
       <ReadinessList lines={business ? view.readiness : view.readiness.filter((line) => line.key !== "reverse_charge")} />
       <TaxProfileForm
         profile={view.profile}

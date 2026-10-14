@@ -6,6 +6,7 @@ import { languageName } from "@/lib/localization";
 import { featureOn } from "@/lib/store-features";
 import { memberCan, requireOwnerRole } from "@/server/permissions";
 import { getInstructionTranslations, getReturnSettings } from "@/server/return-settings";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveReturnSettingsAction } from "./actions";
 
@@ -25,14 +26,10 @@ export default async function ReturnSettingsPage({ params }: PageProps<"/admin/[
   const [main, ...others] = store.localization.locales;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Returns</h1>
-        <p className="text-sm text-muted">
-          Customers in the EU can withdraw from most purchases within 14 days, without giving a reason. These are the store&apos;s rules around that:
-          the days it offers on top, who pays to send goods back, and when the refund is made. The defaults are the law&apos;s. The texts
-          customers read about their right are reviewed by a person: this is not legal advice.
-        </p>
-      </div>
+      <PageHeader
+        title="Returns"
+        description={<>Customers in the EU can withdraw from most purchases within 14 days, without giving a reason. These are the store&apos;s rules around that: the days it offers on top, who pays to send goods back, and when the refund is made. The defaults are the law&apos;s. The texts customers read about their right are reviewed by a person: this is not legal advice.</>}
+      />
       <ReturnSettingsForm
         settings={settings}
         translations={translations}

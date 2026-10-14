@@ -9,6 +9,7 @@ import { CompanyFields } from "@/components/admin/company-fields";
 import { requirePermission } from "@/server/permissions";
 import { employeePercent, getCompany, listInvites, listMembers } from "@/server/companies";
 import { listTiers } from "@/server/customer-tiers";
+import { PageHeader } from "@/components/admin/ui";
 
 import {
   deleteCompanyAction,
@@ -43,19 +44,11 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`${base}/companies`} className="text-sm underline">
-          Companies
-        </Link>
-        <h1 className="mt-2 text-display text-ink">{company.name}</h1>
-        <p className="text-sm text-muted">
-          {!company.active
-            ? "Switched off: its accounts get no discount and it invites no one."
-            : company.tierName && company.tierActive
-              ? `${company.tierName}: ${company.tierPercent} % for the main account${employees ? `, ${employees} % for employees` : ", nothing for employees"}.`
-              : "No customer group, or it is switched off: no discount."}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `${base}/companies`, label: "Companies" }}
+        title={<>{company.name}</>}
+        description={<>{!company.active ? "Switched off: its accounts get no discount and it invites no one." : company.tierName && company.tierActive ? `${company.tierName}: ${company.tierPercent} % for the main account${employees ? `, ${employees} % for employees` : ", nothing for employees"}.` : "No customer group, or it is switched off: no discount."}</>}
+      />
 
       <section aria-labelledby="settings" className={card}>
         <h2 id="settings" className="font-medium">

@@ -9,6 +9,7 @@ import { listConsents } from "@/server/consents";
 import { latestFindings, listScans } from "@/server/cookie-scans";
 import { getPlatformChrome } from "@/server/platform-navigation";
 import { listCookieNotes } from "@/server/site-cookies";
+import { PageHeader } from "@/components/admin/ui";
 
 import { requestPlatformScanAction, savePlatformCookieNoteAction, savePlatformTrackingAction } from "./actions";
 
@@ -27,13 +28,10 @@ export default async function PlatformCookiesPage() {
   ]);
   return (
     <>
-      <div>
-        <h1 className="text-display text-ink">Cookies and tracking</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          What Kaizen&apos;s own site stores in visitors&apos; browsers, the tools it uses to measure and market, and the
-          choices visitors make. Each store sets its own under Cookies and tracking in its admin.
-        </p>
-      </div>
+      <PageHeader
+        title="Cookies and tracking"
+        description={<>What Kaizen&apos;s own site stores in visitors&apos; browsers, the tools it uses to measure and market, and the choices visitors make. Each store sets its own under Cookies and tracking in its admin.</>}
+      />
       <TrackingForm tracking={chrome.tracking} action={savePlatformTrackingAction} cookiePage="/cookies" />
       <CookieScanPanel
         scans={scans}

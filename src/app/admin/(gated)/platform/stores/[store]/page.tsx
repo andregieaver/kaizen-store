@@ -19,6 +19,7 @@ import { getStore } from "@/server/stores";
 
 import { applyStoreDiscountAction, assignPlanAction, cancelPlanAction, setStoreFeeAction } from "../../actions";
 import { requirePlatformAdmin } from "@/server/auth";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { applyDesignToStoreAction, restoreDesignForStoreAction } from "../../design-profiles/actions";
 import { closeStoreForPlatformAction, reopenStoreForPlatformAction, suspendStoreAction } from "./actions";
@@ -59,14 +60,11 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             Stores
           </Link>
         </p>
-        <h1 className="text-display text-ink">{store.name}</h1>
-        <p className="text-sm text-muted">
-          {billing.ownerEmail ?? "No owner yet"} · {store.details.country ?? "country not set"} ·{" "}
-          <Link href={`/admin/${store.slug}`} className="underline">
-            Open the store&apos;s admin
-          </Link>
-        </p>
-      </div>
+        <PageHeader
+          title={<>{store.name}</>}
+          description={<>{billing.ownerEmail ?? "No owner yet"} · {store.details.country ?? "country not set"} ·{" "}<Link href={`/admin/${store.slug}`} className="underline">Open the store&apos;s admin</Link></>}
+        />
+        </div>
 
       {owner && (
         <CustomerBar
@@ -82,10 +80,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         />
       )}
 
-      <section aria-labelledby="current-heading" className="rounded-card border border-line bg-card p-5 text-sm">
-        <h2 id="current-heading" className="mb-2 font-medium">
-          Current plan
-        </h2>
+      <Card title="Current plan" className="text-sm" compact>
         {billing.planName && billing.status ? (
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1">
             <dt className="text-muted">Plan</dt>
@@ -124,12 +119,9 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         ) : (
           <p>No plan. The store pays the default fee per sale.</p>
         )}
-      </section>
+      </Card>
 
-      <section aria-labelledby="assign-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="assign-heading" className="mb-1 font-medium">
-          {onPlan ? "Change plan" : "Start a plan"}
-        </h2>
+      <Card title={<>{onPlan ? "Change plan" : "Start a plan"}</>} compact>
         {!mode ? (
           <p className="text-sm text-muted">Kaizen&apos;s Stripe keys are not set (Platform → Stripe).</p>
         ) : offered.length === 0 ? (
@@ -175,13 +167,10 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             </div>
           </ActionForm>
         )}
-      </section>
+      </Card>
 
       {onPlan && (
-        <section aria-labelledby="cancel-heading" className="rounded-card border border-line bg-card p-5">
-          <h2 id="cancel-heading" className="mb-3 font-medium">
-            Cancel plan
-          </h2>
+        <Card title="Cancel plan" compact>
           <ActionForm action={cancelPlanAction.bind(null, store.id)} className="flex flex-wrap gap-3">
             {billing.cancelAtPeriodEnd ? (
               <SubmitButton name="when" value="undo" variant="secondary">
@@ -196,7 +185,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
               Cancel now
             </SubmitButton>
           </ActionForm>
-        </section>
+        </Card>
       )}
 
       {mode && (
@@ -208,10 +197,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         />
       )}
 
-      <section aria-labelledby="fee-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="fee-heading" className="mb-1 font-medium">
-          Fee per sale
-        </h2>
+      <Card title="Fee per sale" compact>
         <p className="mb-3 text-sm text-muted">
           Now {formatBps(billing.feeBps)}
           {billing.saleFeeBpsOverride !== null ? " (the store's own fee)" : onPlan ? " (from its plan)" : " (the default)"}.
@@ -229,11 +215,8 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
           </label>
           <SubmitButton>Save fee</SubmitButton>
         </ActionForm>
-      </section>
-      <section aria-labelledby="status-heading" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5 text-sm">
-        <h2 id="status-heading" className="font-medium">
-          Store status: {STATUS_WORDS[state?.status ?? store.status]}
-        </h2>
+      </Card>
+      <Card title={<>Store status: {STATUS_WORDS[state?.status ?? store.status]}</>} className="flex flex-col gap-3 text-sm" compact>
         {state?.reason && <p className="text-muted">Reason on file: {state.reason}</p>}
         {state && state.status !== "active" ? (
           <ActionForm action={reopenStoreForPlatformAction.bind(null, store.id)} className="flex flex-col gap-2" successMessage="The store is open again.">
@@ -277,13 +260,10 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             </ActionForm>
           </>
         )}
-      </section>
-      <section aria-labelledby="invoices-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="invoices-heading" className="mb-3 font-medium">
-          Invoices
-        </h2>
+      </Card>
+      <Card title="Invoices" compact>
         <InvoiceList storeSlug={store.slug} invoices={invoices} date={date} />
-      </section>
+      </Card>
 
       {/* Design profiles (D176): a platform admin applies one to any store, a store template's included (an unpublished one only there). */}
       <DesignProfilePanel
@@ -297,10 +277,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         closedNote="The store is not open, so its look cannot be changed."
       />
 
-      <section aria-labelledby="people-heading" className="rounded-card border border-line bg-card p-5 text-sm">
-        <h2 id="people-heading" className="mb-3 font-medium">
-          People
-        </h2>
+      <Card title="People" className="text-sm" compact>
         {people.length === 0 ? (
           <p className="text-muted">Nobody runs the store yet.</p>
         ) : (
@@ -315,7 +292,7 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
             ))}
           </ul>
         )}
-      </section>
+      </Card>
     </>
   );
 }

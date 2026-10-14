@@ -15,6 +15,7 @@ import { getStore } from "@/server/stores";
 import { requirePlatformAdmin } from "@/server/auth";
 import { twoStepOfAccount } from "@/server/team";
 import { avatarFor } from "@/server/avatars";
+import { PageHeader } from "@/components/admin/ui";
 
 import { resetTwoStepAction } from "./actions";
 
@@ -51,23 +52,18 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href="/admin/platform/customers" className="text-sm underline">
-          Customers
-        </Link>
-        <h1 className="flex items-center gap-3 text-display text-ink">
-          <Avatar avatar={avatarFor(customer)} size={48} />
-          <span className="min-w-0 break-words">{customer.name || customer.email}</span>
-        </h1>
-        <p className="text-sm text-muted">
-          <a href={`mailto:${customer.email}`} className="underline">
+      <PageHeader
+        back={{ href: "/admin/platform/customers", label: "Customers" }}
+        title={<span className="flex items-center gap-3"><Avatar avatar={avatarFor(customer)} size={48} /> <span className="min-w-0 break-words">{customer.name || customer.email}</span></span>}
+        meta={[
+          <a key="email" href={`mailto:${customer.email}`} className="underline">
             {customer.email}
-          </a>{" "}
-          · since {date(customer.createdAt)}
-          {customer.platformAdmin && " · platform admin"}
-          {customer.disabled && " · disabled"}
-        </p>
-      </div>
+          </a>,
+          `Since ${date(customer.createdAt)}`,
+          customer.platformAdmin && "Platform admin",
+          customer.disabled && "Disabled",
+        ]}
+      />
 
       <div className="grid grid-cols-3 gap-3">
         {[

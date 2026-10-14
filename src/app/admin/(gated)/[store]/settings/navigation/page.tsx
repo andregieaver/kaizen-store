@@ -6,6 +6,7 @@ import { marketPath, storeHref } from "@/lib/paths";
 import { requirePermission } from "@/server/permissions";
 import { uploadsEnabled } from "@/server/media";
 import { listStoreMenus } from "@/server/menus";
+import { PageHeader } from "@/components/admin/ui";
 
 import { uploadImageAction } from "../../products/actions";
 import { saveNavigationAction } from "./actions";
@@ -20,25 +21,10 @@ export default async function NavigationPage({ params }: PageProps<"/admin/[stor
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Header and footer</h1>
-        <p className="text-sm text-muted">
-          Your logo, your icon and the menus {store.name}&apos;s standard header and footer show. To make or change a
-          menu, go to{" "}
-          <Link href={`/admin/${store.slug}/menus`} className="underline">
-            Menus
-          </Link>
-          ; to lay out the header and footer themselves, build them under{" "}
-          <Link href={`/admin/${store.slug}/headers`} className="underline">
-            Headers
-          </Link>{" "}
-          and{" "}
-          <Link href={`/admin/${store.slug}/footers`} className="underline">
-            Footers
-          </Link>
-          .
-        </p>
-      </div>
+      <PageHeader
+        title="Header and footer"
+        description={<>Your logo, your icon and the menus {store.name}&apos;s standard header and footer show. To make or change a menu, go to{" "}<Link href={`/admin/${store.slug}/menus`} className="underline">Menus</Link>; to lay out the header and footer themselves, build them under{" "}<Link href={`/admin/${store.slug}/headers`} className="underline">Headers</Link>{" "}and{" "}<Link href={`/admin/${store.slug}/footers`} className="underline">Footers</Link>.</>}
+      />
       <NavigationEditor
         initial={{ ...store.navigation, headerMenuId: store.headerMenuId, footerMenuId: store.footerMenuId }}
         menus={menus.map(({ id, name }) => ({ id, name }))}

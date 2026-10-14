@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveStaffAction } from "../../actions";
 import { StaffForm } from "../staff-form";
@@ -16,12 +16,7 @@ export default async function NewStaffPage({ params }: PageProps<"/admin/[store]
   const { store } = current;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/bookings/staff`} className="text-sm underline">
-          Staff and hours
-        </Link>
-        <h1 className="text-display text-ink">Add staff</h1>
-      </div>
+      <PageHeader back={{ href: `/admin/${store.slug}/bookings/staff`, label: "Staff and hours" }} title="Add staff" />
       <StaffForm staff={null} action={saveStaffAction.bind(null, store.slug, null)} />
     </div>
   );

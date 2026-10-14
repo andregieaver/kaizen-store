@@ -14,6 +14,7 @@ import { avatarFor } from "@/server/avatars";
 import { isOwner, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { lifeLink, lifeLinkOn } from "@/server/kaizen-life-link";
 import { twoStepStatus } from "@/server/two-step";
+import { PageHeader } from "@/components/admin/ui";
 
 import {
   accountAvatarAction,
@@ -48,12 +49,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
   ]);
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-display text-ink">Your account</h1>
-        <p className="text-sm text-muted">
-          Signed in as {account.name ? `${account.name} (${account.email})` : account.email}.
-        </p>
-      </div>
+      <PageHeader title="Your account" description={<>Signed in as {account.name ? `${account.name} (${account.email})` : account.email}.</>} />
 
       <section aria-labelledby="picture-heading" className="flex max-w-md flex-col gap-3">
         <h2 id="picture-heading" className="font-medium">

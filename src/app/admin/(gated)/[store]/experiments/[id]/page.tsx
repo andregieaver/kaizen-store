@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DraftPanel, RunPanel } from "@/components/admin/experiment-controls";
@@ -9,6 +8,7 @@ import { GOAL_WORDS, STATUS_WORDS } from "@/lib/experiments";
 import { requirePermission } from "@/server/permissions";
 import { getExperiment } from "@/server/experiment-admin";
 import { experimentResults } from "@/server/experiment-results";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B test" };
 
@@ -29,16 +29,11 @@ export default async function ExperimentPage({ params }: PageProps<"/admin/[stor
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <Link href={base} className="w-fit text-sm underline">
-          A/B tests
-        </Link>
-        <h1 className="text-display text-ink">{test.name}</h1>
-        <p className="text-sm text-muted">
-          {STATUS_WORDS[test.status]} · {targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role)}
-          {test.part && ` · testing ${test.part.label}`} · {goal.label}
-          {test.startedAt && ` · started ${date.format(new Date(test.startedAt))}`}
-          {test.stoppedAt && ` · stopped ${date.format(new Date(test.stoppedAt))}`}
-        </p>
+        <PageHeader
+          back={{ href: base, label: "A/B tests" }}
+          title={<>{test.name}</>}
+          description={<>{STATUS_WORDS[test.status]} · {targetLabel(test.page.kind, test.page.slug, test.page.title, test.page.role)}{test.part && ` · testing ${test.part.label}`} · {goal.label}{test.startedAt && ` · started ${date.format(new Date(test.startedAt))}`}{test.stoppedAt && ` · stopped ${date.format(new Date(test.stoppedAt))}`}</>}
+        />
         {test.hypothesis && <p className="max-w-3xl text-sm">&ldquo;{test.hypothesis}&rdquo;</p>}
       </div>
       {test.status === "draft" ? (

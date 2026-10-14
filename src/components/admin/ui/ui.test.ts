@@ -149,3 +149,13 @@ describe("the page header", () => {
     expect(out).toContain("text-eyebrow text-muted uppercase");
   });
 });
+
+describe("the page header's way back and description", () => {
+  it("leads back to the page it belongs under, and says what the page is for at a reading width", () => {
+    const out = html(h(PageHeader, { back: { href: "/admin/s/plans", label: "Plans" }, title: "Plan features", description: "Tick what each plan includes." }));
+    expect(out).toMatch(/<a [^>]*href="\/admin\/s\/plans"[^>]*>.*Plans<\/a>/);
+    expect(out).toContain('aria-hidden="true"'); // the chevron
+    expect(out).toContain('<div class="mt-2 max-w-[75ch] text-body text-ink-2">Tick what each plan includes.</div>');
+    expect(out.indexOf("Plans")).toBeLessThan(out.indexOf("<h1"));
+  });
+});

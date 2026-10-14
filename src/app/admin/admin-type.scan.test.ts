@@ -59,4 +59,13 @@ describe("the admin's type and shapes", () => {
     // Fixed palette colours: a signal role says what the colour means, and follows the scheme into dark.
     expect(source).not.toMatch(/(?<![\w-])(?:[\w\-[\]=&]+:)*(?:text|bg|border|ring|divide|outline|fill|stroke|decoration)-(?:red|rose|amber|yellow|orange|green|emerald|teal|lime|blue|sky|indigo|violet|purple|gray|neutral|zinc|slate|stone)-\d{2,3}(?![\w-])/);
   });
+
+  it("titles every signed-in page with PageHeader, not an h1 of its own", () => {
+    // The tools and notices that draw a compact title of their own on purpose, and pages titled for screen readers only.
+    const COMPACT = ["setup-frame.tsx", "support/inbox.tsx", "product-editor.tsx", "feature-off.tsx", "work/report-print.tsx", "(gated)/error.tsx"];
+    const own = admin
+      .filter((path) => (path.startsWith("src/app/admin/(gated)") || path.startsWith("src/components/admin")) && !COMPACT.some((part) => path.includes(part)))
+      .filter((path) => /<h1(?![^>]*className="sr-only")[\s>]/.test(readFileSync(join(ROOT, path), "utf8")));
+    expect(own).toEqual([]);
+  });
 });

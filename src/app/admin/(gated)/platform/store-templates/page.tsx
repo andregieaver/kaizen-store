@@ -9,6 +9,7 @@ import { listFilterOf } from "@/lib/lifecycle";
 import { STARTER_CATEGORIES, STARTER_CATEGORY_LABELS, STARTER_LIMITS, type StarterRow } from "@/lib/store-starters";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listStarters, shownDetails, starterLifecycle, starterPreviewHref } from "@/server/store-starters";
+import { PageHeader } from "@/components/admin/ui";
 
 import {
   archiveStarterAction,
@@ -43,17 +44,10 @@ export default async function StoreTemplatesPage({ searchParams }: PageProps<"/a
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Store templates</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          Starting points for new stores: each is a store of its own, set up for one kind of business with its modules,
-          products and services, staff and opening hours, pages, menus, legal page drafts, shipping and checkout settings.
-          Owners choose one when they create a store, and so do people asking for a store at sign-up; the Standard store
-          (the demo template) is always offered first. A template takes no orders and is never shown to search engines.
-          Changes to a template, its details or its store, reach owners only when you publish it: publishing keeps a copy of its store as it
-          is then, which new stores are made from.
-        </p>
-      </div>
+      <PageHeader
+        title="Store templates"
+        description={<>Starting points for new stores: each is a store of its own, set up for one kind of business with its modules, products and services, staff and opening hours, pages, menus, legal page drafts, shipping and checkout settings. Owners choose one when they create a store, and so do people asking for a store at sign-up; the Standard store (the demo template) is always offered first. A template takes no orders and is never shown to search engines. Changes to a template, its details or its store, reach owners only when you publish it: publishing keeps a copy of its store as it is then, which new stores are made from.</>}
+      />
 
       <nav aria-label="Which store templates" className="flex flex-wrap gap-2 text-sm">
         <Link href="/admin/platform/store-templates" aria-current={filter === "current" ? "page" : undefined} className={`${button} aria-[current=page]:bg-sunken aria-[current=page]:font-medium`}>

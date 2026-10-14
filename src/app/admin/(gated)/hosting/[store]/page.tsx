@@ -9,6 +9,7 @@ import { requestIp } from "@/server/connect";
 import { hostTaxStatus } from "@/server/dac7";
 import { ensureHostTestAccount, getHostStripeAccounts, hostEarnings, storePaymentMode } from "@/server/host-payments";
 import { hostListings, hostResources, requireHost } from "@/server/hosts";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { HostPayouts } from "./host-payouts";
 
@@ -49,11 +50,11 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
       <div>
         <p className="text-sm text-muted">{store.name}</p>
-        <h1 className="text-display text-ink">{host.name}</h1>
-        <p className="text-sm text-muted">
-          The store keeps {host.commissionBps / 100} % of each booking; you are paid the rest.
-        </p>
-      </div>
+        <PageHeader
+          title={<>{host.name}</>}
+          description={<>The store keeps {host.commissionBps / 100} % of each booking; you are paid the rest.</>}
+        />
+        </div>
 
       {mode && (
         <HostPayouts
@@ -66,10 +67,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         />
       )}
 
-      <section aria-labelledby="tax-heading" className="flex flex-col gap-1 rounded-card border border-line bg-card p-5 text-sm">
-        <h2 id="tax-heading" className="font-medium">
-          Tax details
-        </h2>
+      <Card title="Tax details" className="flex flex-col gap-1 text-sm" compact>
         {tax?.details ? (
           <p>Given. The store reports them once a year with what you were paid (DAC7).</p>
         ) : (
@@ -81,7 +79,7 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
         <Link href={`${base}/tax`} className="underline">
           {tax?.details ? "Change your tax details" : "Give your tax details"}
         </Link>
-      </section>
+      </Card>
 
       <section aria-labelledby="bookings-heading" className="flex flex-col gap-2">
         <h2 id="bookings-heading" className="font-medium">

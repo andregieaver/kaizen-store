@@ -17,6 +17,7 @@ import {
 import { getWorkInvoiceDetail, nextInvoiceNumberPreview } from "@/server/work-invoices";
 import { workBase } from "@/lib/work-paths";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Invoice" };
 
@@ -49,7 +50,7 @@ export default async function WorkInvoicePage({ params }: PageProps<"/admin/acco
         / {invoice.documentNumber ?? "Draft"}
       </nav>
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-display text-ink">{title}</h1>
+        <PageHeader title={<>{title}</>} />
         {invoice.status === "draft" && <InvoiceStatusChip status="draft" dueOn={null} today={detail.today} />}
       </div>
       <p className="text-sm text-muted">

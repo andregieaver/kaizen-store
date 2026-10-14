@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
@@ -16,6 +15,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { listDesigns } from "@/server/design-presets";
 import { featureFacts } from "@/server/store-features";
 import { getStarter, shownDetails, starterLifecycle, starterPreviewHref } from "@/server/store-starters";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { uploadPlatformImageAction } from "../../actions";
 import {
@@ -58,26 +58,19 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link href="/admin/platform/store-templates" className="w-fit text-sm underline underline-offset-2">
-          Store templates
-        </Link>
-        <h1 className="text-display text-ink">
-          {shown.title}
-          <LifecycleBadge facts={facts} />
-        </h1>
-        <p className="text-sm text-muted">
-          Its store is /s/{starter.storeSlug}
-          {starter.publishedAt && ` · last published ${starter.publishedAt.slice(0, 10)}`}
-          {starter.publishedSlug && ` · new stores are copied from /s/${starter.publishedSlug}`}
-          {` · ${starter.storesMade} ${starter.storesMade === 1 ? "store" : "stores"} made from it`}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: "/admin/platform/store-templates", label: "Store templates" }}
+        title={shown.title}
+        status={<LifecycleBadge facts={facts} />}
+        meta={[
+          `Its store is /s/${starter.storeSlug}`,
+          starter.publishedAt && `Last published ${starter.publishedAt.slice(0, 10)}`,
+          starter.publishedSlug && `New stores are copied from /s/${starter.publishedSlug}`,
+          `${starter.storesMade} ${starter.storesMade === 1 ? "store" : "stores"} made from it`,
+        ]}
+      />
 
-      <section aria-labelledby="state" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <h2 id="state" className="font-medium">
-          Publishing
-        </h2>
+      <Card title="Publishing" className="flex flex-col gap-3" compact>
         <ul className="list-disc pl-5 text-sm text-muted">
           <li>Save draft keeps the details here only; owners see the published ones until you publish.</li>
           <li>
@@ -112,7 +105,7 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
             }}
           />
         </div>
-      </section>
+      </Card>
 
       <section aria-labelledby="features" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
         <h2 id="features" className="font-medium">

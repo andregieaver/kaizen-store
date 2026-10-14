@@ -7,6 +7,7 @@ import { SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listPlatformCustomers } from "@/server/platform-customers";
 import { requirePlatformAdmin } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -22,10 +23,7 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Customers</h1>
-        <p className="text-sm text-muted">Everyone who runs a store, with each store&apos;s plan. Newest first.</p>
-      </div>
+      <PageHeader title="Customers" description={<>Everyone who runs a store, with each store&apos;s plan. Newest first.</>} />
       <form role="search" className="flex flex-wrap gap-2">
         <label className="sr-only" htmlFor="customer-search">
           Search by name, email or store

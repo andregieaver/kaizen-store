@@ -11,6 +11,7 @@ import { getWorkSeries, getWorkSettings, sellerDetails } from "@/server/work-set
 
 import { saveWorkSeriesAction, saveWorkSettingsAction } from "../settings-actions";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Work settings" };
 
@@ -37,15 +38,10 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Work settings</h1>
-        <p className="text-sm text-muted">
-          What your invoices say about you, how clients pay, and how invoices are numbered.{" "}
-          <Link href={workBase(store.slug)} className="underline">
-            Back to Work
-          </Link>
-        </p>
-      </div>
+      <PageHeader
+        title="Work settings"
+        description={<>What your invoices say about you, how clients pay, and how invoices are numbered.{" "}<Link href={workBase(store.slug)} className="underline">Back to Work</Link></>}
+      />
 
       <section aria-labelledby="ready-heading" className={card}>
         <h2 id="ready-heading" className="mb-1 font-medium">

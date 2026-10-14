@@ -8,6 +8,7 @@ import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { requirePermission } from "@/server/permissions";
 import { listCampaigns } from "@/server/campaigns";
+import { PageHeader } from "@/components/admin/ui";
 
 import { deleteCampaignAction, setCampaignActiveAction } from "./actions";
 
@@ -39,13 +40,10 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Campaigns</h1>
-          <p className="max-w-2xl text-sm text-muted">
-            Offers that need no code: a percentage off, buy more and pay for fewer (3 for 2), or a free product when the basket comes to an amount. They
-            can be for the whole store, some products, or a category or tag, and start and stop by themselves.
-          </p>
-        </div>
+        <PageHeader
+          title="Campaigns"
+          description={<>Offers that need no code: a percentage off, buy more and pay for fewer (3 for 2), or a free product when the basket comes to an amount. They can be for the whole store, some products, or a category or tag, and start and stop by themselves.</>}
+        />
         <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
           New campaign
         </Link>

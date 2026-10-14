@@ -20,6 +20,7 @@ import {
 } from "@/lib/invoice-admin";
 import { formatMoney } from "@/lib/money";
 import type { DocumentListRow, DocumentPage, FailingPdf, InvoiceCounts, WaitingCreditNote, WaitingInvoice } from "@/server/invoices";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { CheckAgainForm, RetryPdfForm } from "./waiting-actions";
 
@@ -77,12 +78,10 @@ export function InvoicesView({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-display text-ink">Invoices</h1>
-        <p className="max-w-3xl text-sm text-muted">
-          Every paid order gets an invoice in the store&apos;s own numbered series, and every refund that succeeds gets a credit note. They are made by the
-          system when the payment or the refund is recorded and cannot be changed afterwards. This is not tax or accounting advice: have your accountant read
-          what the documents say.
-        </p>
+        <PageHeader
+          title="Invoices"
+          description={<>Every paid order gets an invoice in the store&apos;s own numbered series, and every refund that succeeds gets a credit note. They are made by the system when the payment or the refund is recorded and cannot be changed afterwards. This is not tax or accounting advice: have your accountant read what the documents say.</>}
+        />
         <p role="status" className="mt-1 text-sm">
           {countsSentence(counts)}
         </p>
@@ -265,10 +264,7 @@ function ListTab({
       )}
 
       {canWrite ? (
-        <section aria-labelledby="export" className="rounded-card border border-line bg-card p-5">
-          <h2 id="export" className="font-medium">
-            CSV for your accountant
-          </h2>
+        <Card title="CSV for your accountant" compact>
           <p className="mb-3 text-sm text-muted">
             One row for each {credit ? "credit note" : "invoice"} issued in the period: number, dates, order, the buyer&apos;s name, country and VAT number,
             amounts, the VAT for each rate, the VAT in the seller&apos;s currency where the document has it, and the VAT treatment. It holds personal data, so
@@ -288,7 +284,7 @@ function ListTab({
               Download CSV
             </button>
           </form>
-        </section>
+        </Card>
       ) : (
         <p className="text-sm text-muted">The CSV for the accountant is for members who may change orders.</p>
       )}

@@ -6,6 +6,7 @@ import { addDays, parseAnalyticsParams, todayIn } from "@/lib/analytics-period";
 import { requirePermission } from "@/server/permissions";
 import { memberDesk } from "@/server/support-desk";
 import { deskReport } from "@/server/support-reports";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Support reports" };
 
@@ -20,10 +21,10 @@ export default async function SupportReportsPage({ params, searchParams }: PageP
   const { report, cut } = await deskReport(staff.desk, period, timeZone);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Support reports</h1>
-        <p className="text-muted">How the store&apos;s conversations went: who answered, how long customers waited, and what they asked about.</p>
-      </div>
+      <PageHeader
+        title="Support reports"
+        description={<>How the store&apos;s conversations went: who answered, how long customers waited, and what they asked about.</>}
+      />
       {notice && <p className="text-sm">{notice}</p>}
       <ReportsView
         report={report}

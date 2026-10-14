@@ -1,6 +1,7 @@
 import { platformDiscountSummary } from "@/lib/discounts";
 import { formatMoney } from "@/lib/money";
 import type { StoreBilling } from "@/server/billing";
+import { Card } from "@/components/admin/ui";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
 
@@ -24,10 +25,7 @@ export function PlanDiscount({
   canEdit: boolean;
 }) {
   return (
-    <section aria-labelledby="discount-heading" className="rounded-card border border-line bg-card p-5 text-sm">
-      <h2 id="discount-heading" className="mb-1 font-medium">
-        Discount code
-      </h2>
+    <Card title="Discount code" className="text-sm" compact>
       {discount ? (
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <p>
@@ -63,6 +61,6 @@ export function PlanDiscount({
           <SubmitButton variant="secondary">Apply</SubmitButton>
         </ActionForm>
       )}
-    </section>
+    </Card>
   );
 }

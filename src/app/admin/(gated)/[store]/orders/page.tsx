@@ -9,6 +9,7 @@ import { listOrdersPage, resolveOrderList } from "@/server/order-list";
 import { listOrderViews } from "@/server/order-views";
 import { tagSuggestions } from "@/server/order-tags";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import { bulkOrdersAction, deleteOrderViewAction, reorderOrderViewsAction, saveOrderViewAction, updateOrderViewAction } from "./list-actions";
 
@@ -30,7 +31,7 @@ export default async function OrdersPage({ params, searchParams }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h1 className="text-display text-ink">Orders</h1>
+        <PageHeader title="Orders" />
         <nav aria-label="Order tools" className="flex flex-wrap gap-2 text-sm">
           {memberCan(member, "orders:write") && (
             <Link href={`/admin/${store.slug}/orders/drafts/new`} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 font-medium text-brand-ink">

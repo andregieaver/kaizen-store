@@ -4,6 +4,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { OrderSettingsForm } from "@/components/admin/orders/settings-form";
 import { getOrderSettings } from "@/server/order-settings";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveOrderSettingsAction } from "./actions";
 
@@ -21,12 +22,10 @@ export default async function OrderSettingsPage({ params }: PageProps<"/admin/[s
   const settings = await getOrderSettings(member.store.id);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Orders</h1>
-        <p className="text-sm text-muted">
-          How the store handles orders after they are placed: whether shoppers can send a gift message, whether finished orders are archived for you, and how draft orders are paid.
-        </p>
-      </div>
+      <PageHeader
+        title="Orders"
+        description={<>How the store handles orders after they are placed: whether shoppers can send a gift message, whether finished orders are archived for you, and how draft orders are paid.</>}
+      />
       <OrderSettingsForm
         settings={settings}
         canEdit={memberCan(member, "settings:write")}

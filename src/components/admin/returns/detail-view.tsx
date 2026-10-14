@@ -20,6 +20,7 @@ import { closeWithoutRefundNeedsConfirm, isEnded, type ReturnStatus } from "@/li
 import { formatStoreDay } from "@/lib/return-time";
 import { sendBackDay, type ReturnReason } from "@/lib/withdrawal";
 import type { ReturnDetail } from "@/server/returns";
+import { PageHeader } from "@/components/admin/ui";
 
 import {
   AcknowledgementForm,
@@ -118,14 +119,16 @@ export function ReturnDetailView({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Link href={`${base}/returns`} className="text-sm underline">
-          Returns
-        </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-display text-ink">Return {detail.number}</h1>
-          <StatusBadge status={detail.status} />
-          <KindBadge kind={detail.kind} />
-        </div>
+        <PageHeader
+          back={{ href: `${base}/returns`, label: "Returns" }}
+          title={<>Return {detail.number}</>}
+          status={
+            <>
+              <StatusBadge status={detail.status} />
+              <KindBadge kind={detail.kind} />
+            </>
+          }
+        />
         <p className="text-sm text-muted">
           <Link href={orderHref} className="underline">
             Order #{detail.orderNumber}

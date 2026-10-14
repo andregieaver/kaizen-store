@@ -14,6 +14,7 @@ import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { setPlanRemindersAction } from "./actions";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Plan reminders" };
 
@@ -49,12 +50,10 @@ export default async function PlanRemindersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Plan reminders</h1>
-        <p className="text-sm text-muted">
-          Emails to store owners who went to pay for a plan and did not finish, with a link straight back to paying.
-        </p>
-      </div>
+      <PageHeader
+        title="Plan reminders"
+        description={<>Emails to store owners who went to pay for a plan and did not finish, with a link straight back to paying.</>}
+      />
 
       <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-card border border-line bg-card p-5">
         <div className="flex max-w-2xl flex-col gap-2 text-sm">

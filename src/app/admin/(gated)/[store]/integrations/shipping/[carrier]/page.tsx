@@ -12,6 +12,7 @@ import { CHECKOUT_SERVICES, getCheckoutSettings } from "@/server/delivery-option
 import { getShippingSettings } from "@/server/settings";
 import { db } from "@/db/client";
 import { getCarrier } from "@/server/shipping-carriers";
+import { PageHeader } from "@/components/admin/ui";
 
 import { checkCarrierAction, removeCarrierAction, saveCarrierAction, saveCheckoutSettingsAction } from "../actions";
 
@@ -60,18 +61,10 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
         </Link>
         <div className="mt-1 flex items-center gap-3">
           <IntegrationMark id={info.id} />
-          <div>
-            <h1 className="text-display text-ink">{info.name}</h1>
-            <p className="text-sm text-muted">
-              {saved
-                ? saved.complete
-                  ? `Details saved ${when(saved.updatedAt)} · ${saved.environment === "live" ? "live" : "test"}${
-                      live ? (saved.check?.ok ? " · connected" : saved.check ? " · not accepted by the carrier" : " · not checked yet") : " · waiting for the connection"
-                    }`
-                  : "Some details are still missing"
-                : "Not set up"}
-            </p>
-          </div>
+          <PageHeader
+            title={<>{info.name}</>}
+            description={<>{saved ? saved.complete ? `Details saved ${when(saved.updatedAt)} · ${saved.environment === "live" ? "live" : "test"}${ live ? (saved.check?.ok ? " · connected" : saved.check ? " · not accepted by the carrier" : " · not checked yet") : " · waiting for the connection" }` : "Some details are still missing" : "Not set up"}</>}
+          />
         </div>
       </div>
 

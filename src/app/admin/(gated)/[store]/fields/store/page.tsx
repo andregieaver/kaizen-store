@@ -4,6 +4,7 @@ import Link from "next/link";
 import { EntityFieldsCard } from "@/components/admin/entity-fields-card";
 import { requirePermission } from "@/server/permissions";
 import { storeFieldsForEditor } from "@/server/field-entities";
+import { PageHeader } from "@/components/admin/ui";
 
 import { saveStoreFieldsAction } from "../actions";
 import { entityFieldsSetup } from "../data";
@@ -24,16 +25,11 @@ export default async function StoreFieldsPage({ params }: PageProps<"/admin/[sto
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={base} className="text-sm underline">
-          Custom fields
-        </Link>
-        <h1 className="mt-2 text-display text-ink">Store details</h1>
-        <p className="text-sm text-muted">
-          Extra information about the whole store, from the groups of custom fields you made for it. A field is shown on
-          the site only if you made it public, and you place it in a page, a product layout, a header or a footer.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: base, label: "Custom fields" }}
+        title={<>Store details</>}
+        description={<>Extra information about the whole store, from the groups of custom fields you made for it. A field is shown on the site only if you made it public, and you place it in a page, a product layout, a header or a footer.</>}
+      />
       {editor.groups.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No group of custom fields is on the store yet.{" "}

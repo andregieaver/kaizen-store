@@ -10,6 +10,7 @@ import { getPlatformSeo, PLATFORM_DEFAULTS } from "@/server/seo";
 
 import { savePlatformSeoAction, uploadPlatformImageAction } from "../actions";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Search" };
 
@@ -27,25 +28,10 @@ export default async function PlatformSeoPage() {
   const origin = siteUrl();
   return (
     <>
-      <div>
-        <h1 className="text-display text-ink">Search</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          How Kaizen&apos;s own pages show up in search results, when shared and to AI assistants.
-          Each store sets its own under Search in its admin; the site&apos;s{" "}
-          <a href="/robots.txt" className="underline">
-            robots.txt
-          </a>
-          ,{" "}
-          <a href="/sitemap.xml" className="underline">
-            sitemap
-          </a>{" "}
-          and{" "}
-          <a href="/llms.txt" className="underline">
-            llms.txt
-          </a>{" "}
-          bring Kaizen&apos;s and every open store&apos;s together.
-        </p>
-      </div>
+      <PageHeader
+        title="Search"
+        description={<>How Kaizen&apos;s own pages show up in search results, when shared and to AI assistants. Each store sets its own under Search in its admin; the site&apos;s{" "}<a href="/robots.txt" className="underline">robots.txt</a>,{" "}<a href="/sitemap.xml" className="underline">sitemap</a>{" "}and{" "}<a href="/llms.txt" className="underline">llms.txt</a>{" "}bring Kaizen&apos;s and every open store&apos;s together.</>}
+      />
 
       <ActionForm action={savePlatformSeoAction} successMessage="Search and sharing saved." className="flex flex-col gap-6">
         <section aria-labelledby="home-heading" className={card}>

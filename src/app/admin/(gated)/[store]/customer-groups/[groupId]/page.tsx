@@ -8,6 +8,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { requirePermission } from "@/server/permissions";
 import { listCompanies } from "@/server/companies";
 import { getTier, tierMembers } from "@/server/customer-tiers";
+import { PageHeader } from "@/components/admin/ui";
 
 import { addToGroupAction, deleteGroupAction, removeFromGroupAction, saveGroupAction } from "../actions";
 
@@ -32,15 +33,11 @@ export default async function CustomerGroupPage({ params }: PageProps<"/admin/[s
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`${base}/customer-groups`} className="text-sm underline">
-          Customer groups
-        </Link>
-        <h1 className="mt-2 text-display text-ink">{group.name}</h1>
-        <p className="text-sm text-muted">
-          {group.percent} % off what {group.active ? "its customers buy" : "customers would buy: the group is switched off, so it gives nothing now"}.
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `${base}/customer-groups`, label: "Customer groups" }}
+        title={<>{group.name}</>}
+        description={<>{group.percent} % off what {group.active ? "its customers buy" : "customers would buy: the group is switched off, so it gives nothing now"}.</>}
+      />
 
       <section aria-labelledby="settings" className={card}>
         <h2 id="settings" className="font-medium">

@@ -7,6 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { planSummary, renewalState, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requirePermission } from "@/server/permissions";
 import { listSubscriptions } from "@/server/subscriptions";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Subscriptions" };
 
@@ -19,7 +20,7 @@ export default async function SubscriptionsPage({ params }: Props) {
   const { store } = current;
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-display text-ink">Subscriptions</h1>
+      <PageHeader title="Subscriptions" />
       <Suspense fallback={<div className="h-40 animate-pulse rounded-lg bg-card" />}>
         <SubscriptionList storeSlug={store.slug} />
       </Suspense>

@@ -13,6 +13,7 @@ import {
 import { WORK_LOCALE, withStore, type WorkStore } from "@/lib/work-owner";
 import { WORK_ROOT, workBase } from "@/lib/work-paths";
 import type { OwnerInvoiceList, OwnerInvoiceRow } from "@/server/work-owner";
+import { PageHeader } from "@/components/admin/ui";
 
 import { InvoiceStatusChip } from "./invoice-status";
 import { CurrencyNote, StoreFilter } from "./owner-common";
@@ -65,7 +66,7 @@ export function OwnerInvoicesView({
   return (
     <div className="flex max-w-6xl flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-display text-ink">Invoices</h1>
+        <PageHeader title="Invoices" />
         <NewInStoreButton
           kind="invoice"
           stores={stores.map(({ slug, name }) => ({ slug, name }))}

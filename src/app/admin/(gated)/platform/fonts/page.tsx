@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { SiteFontsForm } from "@/components/admin/site-fonts-form";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getPlatformChrome } from "@/server/platform-navigation";
+import { PageHeader } from "@/components/admin/ui";
 
 import { installPlatformFontAction, savePlatformFontsAction } from "./actions";
 
@@ -16,14 +17,10 @@ export default async function PlatformFontsPage() {
   const chrome = await getPlatformChrome();
   return (
     <>
-      <div>
-        <h1 className="text-display text-ink">Fonts</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Any Google Fonts family for the headings and other text of Kaizen&apos;s own site. Components on its pages can use
-          their own. Fonts are copied to Kaizen and load from the site itself, never from Google. Each store chooses its own
-          under Fonts in its admin.
-        </p>
-      </div>
+      <PageHeader
+        title="Fonts"
+        description={<>Any Google Fonts family for the headings and other text of Kaizen&apos;s own site. Components on its pages can use their own. Fonts are copied to Kaizen and load from the site itself, never from Google. Each store chooses its own under Fonts in its admin.</>}
+      />
       <section className="rounded-card border border-line bg-card p-5">
         <SiteFontsForm fonts={chrome.fonts} action={savePlatformFontsAction} install={installPlatformFontAction} />
       </section>

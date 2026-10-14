@@ -13,6 +13,7 @@ import {
   type ReportParams,
   type ReportPreset,
 } from "@/lib/work-reports";
+import { PageHeader } from "@/components/admin/ui";
 
 import { REPORT_HEADINGS, REPORT_NOTES, reportCells } from "./report-columns";
 import { ReportTotalsView } from "./report-totals";
@@ -53,14 +54,10 @@ export function OwnerReportView({
   return (
     <div className="flex max-w-6xl flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-display text-ink">Reports</h1>
-          <p className="text-sm text-muted">
-            {formatDay(report.from || params.period.from, WORK_LOCALE)} to{" "}
-            {formatDay(report.to || params.period.to, WORK_LOCALE)}, {GROUP_LABELS[report.by].toLowerCase()}
-            {stores.length > 1 ? (storeSlug ? ", one store" : ", all stores") : ""}
-          </p>
-        </div>
+        <PageHeader
+          title="Reports"
+          description={<>{formatDay(report.from || params.period.from, WORK_LOCALE)} to{" "}{formatDay(report.to || params.period.to, WORK_LOCALE)}, {GROUP_LABELS[report.by].toLowerCase()}{stores.length > 1 ? (storeSlug ? ", one store" : ", all stores") : ""}</>}
+        />
         <a href={`${base}/csv${query}`} download className={secondaryButton}>
           Download CSV
         </a>

@@ -5,6 +5,7 @@ import { labelOf, type PlanSummary } from "@/lib/erasure-plan";
 import { PRIVACY_KIND_LABELS, PRIVACY_STATUS_LABELS, REFUSAL_REASON_LABELS } from "@/lib/privacy-request";
 import { STAFF_TEXT } from "@/lib/privacy-text";
 import type { RequestView } from "@/server/privacy-requests";
+import { PageHeader } from "@/components/admin/ui";
 
 import { ACTION_WORDS } from "./plan-view";
 import { ExtendForm, NoDataHint, RefuseForm, StepForm } from "./request-actions";
@@ -61,15 +62,11 @@ export function RequestDetail({
   const eraseHref = subjectKey ? `${base}/customers/${subjectKey}/erase?request=${request.id}` : null;
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`${base}/privacy`} className="text-sm underline">
-          Privacy requests
-        </Link>
-        <h1 className="text-display text-ink">{PRIVACY_KIND_LABELS[request.kind]} request</h1>
-        <p className="text-sm text-muted">
-          {PRIVACY_STATUS_LABELS[request.status]} · {request.channel === "shopper" ? "asked on the site" : "logged by staff"}
-        </p>
-      </div>
+      <PageHeader
+        back={{ href: `${base}/privacy`, label: "Privacy requests" }}
+        title={<>{PRIVACY_KIND_LABELS[request.kind]} request</>}
+        description={<>{PRIVACY_STATUS_LABELS[request.status]} · {request.channel === "shopper" ? "asked on the site" : "logged by staff"}</>}
+      />
 
       {problem && (
         <p role="alert" className="rounded-md border border-danger-text bg-card p-3 text-sm">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LEGAL_ROLE_COPY } from "@/lib/legal-roles";
 import { staffTermsFor, termsForOrder } from "@/server/checkout-terms";
 import type { Store } from "@/server/stores";
+import { Card } from "@/components/admin/ui";
 
 /**
  * What the shopper was shown about the terms when they ordered (wave 1, 1e, docs/wave-1-trust.md 2.4): "Terms accepted {date} as ticked/shown", or
@@ -14,10 +15,7 @@ export async function OrderTermsCard({ store, orderId, zone }: { store: Pick<Sto
   const [line, record] = await Promise.all([staffTermsFor(store, orderId, format), termsForOrder(store.id, orderId)]);
   if (line.kind === "none") return null;
   return (
-    <section aria-labelledby="terms" className="rounded-card border border-line bg-card p-5 text-sm">
-      <h2 id="terms" className="mb-2 font-medium">
-        Terms
-      </h2>
+    <Card title="Terms" className="text-sm" compact>
       <p>{line.text}.</p>
       {record && record.snapshots.length > 0 && (
         <ul className="mt-2 flex flex-col gap-1">
@@ -32,6 +30,6 @@ export async function OrderTermsCard({ store, orderId, zone }: { store: Pick<Sto
         </ul>
       )}
       {line.kind === "not_recorded" && <p className="mt-1 text-muted">Checkout showed the link, but the record could not be kept for this order.</p>}
-    </section>
+    </Card>
   );
 }

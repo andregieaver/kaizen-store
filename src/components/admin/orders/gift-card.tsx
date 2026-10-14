@@ -1,4 +1,5 @@
 import type { GiftFields } from "@/lib/gift";
+import { Card } from "@/components/admin/ui";
 
 /**
  * The buyer's gift on the order page (wave 3, D173, `docs/wave-3-orders.md` 2.3): *To*, *From* and the message in full, as TEXT (line breaks kept with `white-space: pre-wrap`, escaped by
@@ -7,10 +8,7 @@ import type { GiftFields } from "@/lib/gift";
  */
 export function GiftCard({ gift, slipHref }: { gift: GiftFields; slipHref: string | null }) {
   return (
-    <section aria-labelledby="gift" className="rounded-card border border-line bg-card p-5 text-sm">
-      <h2 id="gift" className="mb-2 font-medium">
-        Gift
-      </h2>
+    <Card title="Gift" className="text-sm" compact>
       <dl className="flex flex-col gap-1">
         <div className="flex gap-2">
           <dt className="w-12 shrink-0 text-muted">To</dt>
@@ -32,6 +30,6 @@ export function GiftCard({ gift, slipHref }: { gift: GiftFields; slipHref: strin
           Print gift slip
         </a>
       )}
-    </section>
+    </Card>
   );
 }

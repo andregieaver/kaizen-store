@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
@@ -7,6 +6,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
 import { requirePermission } from "@/server/permissions";
 import { getResource } from "@/server/bookings";
+import { PageHeader } from "@/components/admin/ui";
 
 import { removeStaffAction, saveStaffAction } from "../../actions";
 import { ResourceCalendar } from "../../resource-calendar";
@@ -27,12 +27,7 @@ export default async function StaffMemberPage({ params }: PageProps<"/admin/[sto
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/bookings/staff`} className="text-sm underline">
-          Staff and hours
-        </Link>
-        <h1 className="text-display text-ink">{staff.name}</h1>
-      </div>
+      <PageHeader back={{ href: `/admin/${store.slug}/bookings/staff`, label: "Staff and hours" }} title={<>{staff.name}</>} />
       <StaffForm staff={staff} action={saveStaffAction.bind(null, store.slug, staff.id)} />
       <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={staff} actions={storeCalendarActions(store.slug, staff.id)} />
       <DeleteDiscountButton

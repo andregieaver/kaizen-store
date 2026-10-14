@@ -11,6 +11,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
 import { listOfferedDesigns } from "@/server/design-presets";
 import { listOfferedStarters } from "@/server/store-starters";
+import { PageHeader } from "@/components/admin/ui";
 
 import { decideAction } from "../actions";
 
@@ -29,13 +30,10 @@ export default async function PlatformPage() {
 
   return (
     <>
-      <div>
-        <h1 className="text-display text-ink">Access requests</h1>
-        <p className="text-sm text-muted">
-          Approving creates the store as a copy of the store template chosen (the Standard store is the demo
-          template), applies the design profile chosen, makes the requester its owner, and emails them a sign-in link.
-        </p>
-      </div>
+      <PageHeader
+        title="Access requests"
+        description={<>Approving creates the store as a copy of the store template chosen (the Standard store is the demo template), applies the design profile chosen, makes the requester its owner, and emails them a sign-in link.</>}
+      />
 
       <section aria-labelledby="pending-heading" className="flex flex-col gap-4">
         <h2 id="pending-heading" className="font-medium">

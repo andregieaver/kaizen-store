@@ -7,6 +7,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { uploadsEnabled } from "@/server/media";
 import { listPlatformMenus } from "@/server/menus";
 import { getPlatformNavigationForEdit } from "@/server/platform-navigation";
+import { PageHeader } from "@/components/admin/ui";
 
 import { uploadPlatformImageAction } from "../actions";
 import { savePlatformNavigationAction } from "./actions";
@@ -35,25 +36,10 @@ export default async function PlatformNavigationPage() {
   ]);
   return (
     <>
-      <div>
-        <h1 className="text-display text-ink">Header and footer</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Kaizen&apos;s logo, its icon, who runs it and the menus its standard header and footer show. To make or
-          change a menu, go to{" "}
-          <Link href="/admin/platform/menus" className="underline">
-            Menus
-          </Link>
-          ; to lay out the header and footer themselves, build them under{" "}
-          <Link href="/admin/platform/headers" className="underline">
-            Headers
-          </Link>{" "}
-          and{" "}
-          <Link href="/admin/platform/footers" className="underline">
-            Footers
-          </Link>
-          .
-        </p>
-      </div>
+      <PageHeader
+        title="Header and footer"
+        description={<>Kaizen&apos;s logo, its icon, who runs it and the menus its standard header and footer show. To make or change a menu, go to{" "}<Link href="/admin/platform/menus" className="underline">Menus</Link>; to lay out the header and footer themselves, build them under{" "}<Link href="/admin/platform/headers" className="underline">Headers</Link>{" "}and{" "}<Link href="/admin/platform/footers" className="underline">Footers</Link>.</>}
+      />
       <NavigationEditor
         initial={{ ...navigation, headerMenuId, footerMenuId }}
         menus={menus.map(({ id, name }) => ({ id, name }))}

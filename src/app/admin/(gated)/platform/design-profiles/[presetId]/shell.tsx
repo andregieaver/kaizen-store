@@ -6,6 +6,7 @@ import { PreviewLink } from "@/components/admin/preview-link";
 import { DESIGN_TABS, designPreviewPath, designTabHref, type DesignRow, type DesignTab } from "@/lib/design-presets";
 import type { LifecycleFacts } from "@/lib/lifecycle";
 import { shownDesignDetails } from "@/server/design-presets";
+import { PageHeader } from "@/components/admin/ui";
 
 import { archiveDesignAction, deleteDesignAction, publishDesignAction, unarchiveDesignAction, unpublishDesignAction } from "../actions";
 
@@ -28,24 +29,20 @@ export function DesignShell({
   const shown = shownDesignDetails(design);
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Link href={facts.archivedAt ? "/admin/platform/design-profiles?show=archived" : "/admin/platform/design-profiles"} className="w-fit text-sm underline underline-offset-2">
-          Design profiles
-        </Link>
-        <h1 className="text-display text-ink">
-          {shown.title}
-          <LifecycleBadge facts={facts} />
-        </h1>
-        <p className="text-sm text-muted">
-          {design.publishedAt ? `Last published ${design.publishedAt.slice(0, 10)}` : "Never published"} · applied to {design.storesUsing}{" "}
-          {design.storesUsing === 1 ? "store" : "stores"}
-          {design.requests > 0 && ` · chosen on ${design.requests} ${design.requests === 1 ? "access request" : "access requests"}`}
-          {design.recommendedBy.length > 0 && ` · recommended by ${design.recommendedBy.join(", ")}`}
-        </p>
-        {facts.changed && facts.publishedAt && (
-          <p className="text-sm">Unpublished changes: stores get them when you publish. Until then they apply the profile as last published.</p>
-        )}
-      </div>
+      <PageHeader
+        back={{ href: facts.archivedAt ? "/admin/platform/design-profiles?show=archived" : "/admin/platform/design-profiles", label: "Design profiles" }}
+        title={shown.title}
+        status={<LifecycleBadge facts={facts} />}
+        meta={[
+          design.publishedAt ? `Last published ${design.publishedAt.slice(0, 10)}` : "Never published",
+          `Applied to ${design.storesUsing} ${design.storesUsing === 1 ? "store" : "stores"}`,
+          design.requests > 0 && `Chosen on ${design.requests} ${design.requests === 1 ? "access request" : "access requests"}`,
+          design.recommendedBy.length > 0 && `Recommended by ${design.recommendedBy.join(", ")}`,
+        ]}
+        description={
+          facts.changed && facts.publishedAt ? "Unpublished changes: stores get them when you publish. Until then they apply the profile as last published." : undefined
+        }
+      />
       <div className="flex flex-wrap items-center gap-2">
         <PreviewLink href={designPreviewPath(design.id, null, true)} label={design.published ? "Preview as published" : "Preview"} title={shown.title} />
         {design.workspaceStoreId && <PreviewLink href={designPreviewPath(design.id, null, true, true)} label="Preview the draft" title={shown.title} />}

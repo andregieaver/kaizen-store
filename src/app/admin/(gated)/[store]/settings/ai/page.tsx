@@ -8,6 +8,7 @@ import { pictureLine } from "@/lib/ai-vision";
 import { EVAL_CASES, PASS_RATE } from "@/lib/query-eval";
 import { getAiSettings, type AiSettings } from "@/server/ai";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import { checkStoreVisionAction, evalStoreAiAction, removeStoreAiAction, saveStoreAiAction, testStoreAiAction, testStoreImageAction } from "./actions";
 
@@ -42,8 +43,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-display text-ink">AI</h1>
-        <p className="text-sm text-muted">{current}</p>
+        <PageHeader title="AI" description={<>{current}</>} />
         <p className="text-sm text-muted">{usingOwn ? pictureLine(own, "Your AI") : pictureLine(kaizen, "Kaizen's AI", "Use your own AI below to choose one.")}</p>
         {owner && (
           <p className="mt-1 text-sm">

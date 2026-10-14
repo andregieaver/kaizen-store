@@ -6,6 +6,7 @@ import { addDays, parseAnalyticsParams, todayIn } from "@/lib/analytics-period";
 import { requirePlatformAdmin } from "@/server/auth";
 import { storeTotals } from "@/server/support-platform";
 import { KAIZEN_TIME_ZONE } from "@/server/support-reports";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Stores' support" };
 
@@ -20,10 +21,10 @@ export default async function StoresSupportPage({ searchParams }: PageProps<"/ad
   const { stores, cut } = await storeTotals(period);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Stores&apos; support</h1>
-        <p className="text-muted">Each store&apos;s support desk in figures: counts and rates only, never a conversation.</p>
-      </div>
+      <PageHeader
+        title={<>Stores&apos; support</>}
+        description={<>Each store&apos;s support desk in figures: counts and rates only, never a conversation.</>}
+      />
       {notice && <p className="text-sm">{notice}</p>}
       <PeriodPicker basePath="/admin/platform/support/stores" preset={period.preset} from={period.from} to={addDays(period.to, -1)} compare="none" showCompare={false} max={todayIn(now, KAIZEN_TIME_ZONE)} />
       <StoreTotalsView stores={stores} cut={cut} periodLabel={period.label} />

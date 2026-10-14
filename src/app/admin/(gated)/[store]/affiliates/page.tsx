@@ -7,6 +7,7 @@ import { AttributionsTable, ReferrersTable } from "@/components/admin/affiliate-
 import { memberCan, requirePermission } from "@/server/permissions";
 import { affiliateOverview, getAffiliateSettings, listAffiliates, listAttributions } from "@/server/affiliates";
 import { getBonusSettings } from "@/server/bonus";
+import { PageHeader } from "@/components/admin/ui";
 
 import { blockAffiliateAction, saveAffiliateAction } from "./actions";
 
@@ -34,18 +35,10 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Referral program</h1>
-        <p className="text-sm text-muted">
-          {working
-            ? "The referral program is on."
-            : settings.enabled
-              ? "The referral program is paused: the bonus program is off."
-              : "The referral program is off."}{" "}
-          Signed-in customers share a link; a friend&apos;s first order gets a welcome discount and the customer who shared it earns
-          bonus credits.
-        </p>
-      </div>
+      <PageHeader
+        title="Referral program"
+        description={<>{working ? "The referral program is on." : settings.enabled ? "The referral program is paused: the bonus program is off." : "The referral program is off."}{" "}Signed-in customers share a link; a friend&apos;s first order gets a welcome discount and the customer who shared it earns bonus credits.</>}
+      />
       <AffiliateOverviewCard overview={overview} locale={locale} />
       <AffiliateSettingsForm
         initial={settings}

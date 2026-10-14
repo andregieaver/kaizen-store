@@ -8,6 +8,7 @@ import { platformModes, WEBHOOK_KINDS } from "@/server/stripe";
 
 import { connectWebhooksAction, saveCheckoutUiAction, saveSaleFeeAction } from "../actions";
 import { requirePlatformAdmin } from "@/server/auth";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Stripe" };
 
@@ -25,15 +26,10 @@ export default async function PlatformStripePage() {
   const modes = platformModes();
   return (
     <>
-      <div>
-        <h1 className="text-display text-ink">Stripe</h1>
-        <p className="text-sm text-muted">
-          Kaizen is a Stripe Connect platform: each store sells through its own Stripe account, and
-          Kaizen bills stores for their plans from its own. Keys come from Vercel (
-          <code>STRIPE_SECRET_KEY_TEST</code>, <code>STRIPE_PUBLISHABLE_KEY_TEST</code> and the{" "}
-          <code>_LIVE</code> pair). Plans are billed in live mode once live keys are set.
-        </p>
-      </div>
+      <PageHeader
+        title="Stripe"
+        description={<>Kaizen is a Stripe Connect platform: each store sells through its own Stripe account, and Kaizen bills stores for their plans from its own. Keys come from Vercel (<code>STRIPE_SECRET_KEY_TEST</code>, <code>STRIPE_PUBLISHABLE_KEY_TEST</code> and the{" "}<code>_LIVE</code> pair). Plans are billed in live mode once live keys are set.</>}
+      />
       <ul className="grid gap-3 sm:grid-cols-2">
         {PAYMENT_MODES.map((mode) => {
           const configured = modes.includes(mode);

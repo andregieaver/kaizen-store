@@ -5,6 +5,7 @@ import { requireFeature } from "@/components/admin/feature-off";
 import { CartAddTable, WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
 import { listCartAdds } from "@/server/wishlist-admin";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "From wishlist to purchase" };
 
@@ -33,13 +34,10 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-display text-ink">Wishlists</h1>
-        <p className="text-sm text-muted">
-          Every item a shopper put in the cart from one of their lists, and whether it was bought. An item counts as bought
-          when the order it went into is paid.
-        </p>
-      </div>
+      <PageHeader
+        title="Wishlists"
+        description={<>Every item a shopper put in the cart from one of their lists, and whether it was bought. An item counts as bought when the order it went into is paid.</>}
+      />
       <WishlistTabs storeSlug={store.slug} current="activity" />
 
       <nav aria-label="Filter" className="flex flex-wrap gap-2 text-sm">

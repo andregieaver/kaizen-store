@@ -12,6 +12,7 @@ import { listPlatformMenus, menuUses } from "@/server/menus";
 import { uploadsEnabled } from "@/server/media";
 import { listMenuPages } from "@/server/pages";
 import { listTerms } from "@/server/taxonomy";
+import { PageHeader } from "@/components/admin/ui";
 
 import { uploadPlatformImageAction } from "../actions";
 import { deletePlatformMenuAction, savePlatformMenuAction } from "./actions";
@@ -25,14 +26,10 @@ export default async function PlatformMenusPage({ searchParams }: PageProps<"/ad
   await requirePlatformAdmin();
   return (
     <>
-      <div>
-        <h1 className="text-display text-ink">Menus</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Lists of links to use around Kaizen&apos;s site: in the standard header and footer (chosen under Header and
-          footer), and with a Menu component in any page, header or footer. A link to a page shows once it is published,
-          and follows it to a new address.
-        </p>
-      </div>
+      <PageHeader
+        title="Menus"
+        description={<>Lists of links to use around Kaizen&apos;s site: in the standard header and footer (chosen under Header and footer), and with a Menu component in any page, header or footer. A link to a page shows once it is published, and follows it to a new address.</>}
+      />
       {/* The menu chosen in the address is read per request. */}
       <Suspense fallback={<div className="h-96 animate-pulse rounded-lg bg-card" />}>
         <Menus searchParams={searchParams} />

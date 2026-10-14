@@ -9,6 +9,7 @@ import { PICK_LIST_MAX } from "@/lib/fulfilment-limits";
 import { parsePickParams, PICK_BY, PICK_SORTS, type PickBy, type PickSort } from "@/lib/pick-list";
 import { requirePermission } from "@/server/permissions";
 import { pickListData } from "@/server/pick-list";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Pick list" };
 
@@ -38,7 +39,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
   if (!parsed.ok) {
     return (
       <div className="flex flex-col gap-3">
-        <h1 className="text-display text-ink">Pick list</h1>
+        <PageHeader title="Pick list" />
         <p role="alert" className="rounded-lg border border-line bg-sunken p-4 text-sm">
           {parsed.problem === "none" ? "Tick the orders to pick on the orders page, then choose Print pick list." : `A pick list takes at most ${PICK_LIST_MAX} orders. Tick fewer.`}
         </p>
@@ -50,7 +51,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
   if (!data.ok) {
     return (
       <div className="flex flex-col gap-3">
-        <h1 className="text-display text-ink">Pick list</h1>
+        <PageHeader title="Pick list" />
         <p role="alert" className="rounded-lg border border-line bg-sunken p-4 text-sm">
           {data.problem === "too_many" ? `A pick list takes at most ${PICK_LIST_MAX} orders. Tick fewer.` : "Tick the orders to pick on the orders page."}
         </p>
@@ -67,7 +68,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
     <PrintArea className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-display text-ink">Pick list</h1>
+          <PageHeader title="Pick list" />
           {data.list.orderCount > 0 && <PrintButton label="Print the pick list" />}
         </div>
         <nav aria-label="How the list is laid out" className="flex flex-wrap items-center gap-2">

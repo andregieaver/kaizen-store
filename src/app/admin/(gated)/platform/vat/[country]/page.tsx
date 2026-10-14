@@ -9,6 +9,7 @@ import { ShippingRulesCard } from "@/components/admin/vat/shipping-rules-card";
 import { PLATFORM_BASE } from "@/lib/platform-nav";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listShippingVatRules, listVatRates, vatCoverage } from "@/server/vat-admin";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { setShippingVatRuleAction, setVatRateAction, verifyVatRateAction } from "../actions";
 
@@ -35,13 +36,12 @@ export default async function PlatformVatCountryPage({ params }: PageProps<"/adm
             VAT
           </Link>
         </p>
-        <h1 className="text-display text-ink">{country.name}</h1>
-        <p className="max-w-2xl text-sm text-muted">The VAT rates stores charge on sales to {country.name}, and how shipping is taxed there.</p>
-      </div>
-      <section aria-labelledby="now" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
-        <h2 id="now" className="font-medium">
-          Today
-        </h2>
+        <PageHeader
+          title={<>{country.name}</>}
+          description={<>The VAT rates stores charge on sales to {country.name}, and how shipping is taxed there.</>}
+        />
+        </div>
+      <Card title="Today" className="flex flex-col gap-4" compact>
         <ul className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           {todays.map((category) => {
             const cell = country.cells[category.code];
@@ -59,7 +59,7 @@ export default async function PlatformVatCountryPage({ params }: PageProps<"/adm
             );
           })}
         </ul>
-      </section>
+      </Card>
       <RateHistory rows={rates} categoryName={(c) => names.get(c) ?? c} verify={(c, k, from) => verifyVatRateAction.bind(null, c, k, from)} />
       <RateForm categories={todays} countries={countries} country={code} action={setVatRateAction} />
       <ShippingRulesCard rules={shippingRules} countries={countries} country={code} action={setShippingVatRuleAction} />

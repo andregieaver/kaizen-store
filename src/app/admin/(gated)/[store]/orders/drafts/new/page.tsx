@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { requireFeature } from "@/components/admin/feature-off";
 import { NewDraftForm } from "@/components/admin/drafts/new-draft-form";
 import { draftMarketOptions } from "@/lib/draft-markets";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { PageHeader } from "@/components/admin/ui";
 
 import { createDraftAction } from "../actions";
 
@@ -20,13 +20,11 @@ export default async function NewDraftPage({ params }: PageProps<"/admin/[store]
   const options = draftMarketOptions(store.markets, store.localization);
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Link href={`/admin/${store.slug}/orders/drafts`} className="text-sm text-muted underline underline-offset-2">
-          Draft orders
-        </Link>
-        <h1 className="text-display text-ink">New draft order</h1>
-        <p className="max-w-3xl text-sm text-muted">Choose where the order is for first: it decides the currency, the prices, the VAT and the shipping rate.</p>
-      </div>
+      <PageHeader
+        back={{ href: `/admin/${store.slug}/orders/drafts`, label: "Draft orders" }}
+        title="New draft order"
+        description={<>Choose where the order is for first: it decides the currency, the prices, the VAT and the shipping rate.</>}
+      />
       {memberCan(member, "orders:write") ? (
         <NewDraftForm options={options} action={createDraftAction.bind(null, store.slug)} defaultCountry={store.markets[0]?.code ?? ""} />
       ) : (

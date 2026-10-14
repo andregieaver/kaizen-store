@@ -14,6 +14,7 @@ import { platformModes } from "@/server/stripe";
 import { createPlatformDiscountAction, deletePlatformDiscountAction, setPlatformDiscountActiveAction } from "../actions";
 import { deleteQuestion, PlatformDiscountFields } from "./discount-fields";
 import { requirePlatformAdmin } from "@/server/auth";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Discounts" };
 
@@ -32,14 +33,10 @@ export default async function PlatformDiscountsPage() {
 
   return (
     <>
-      <div>
-        <h1 className="text-display text-ink">Discounts</h1>
-        <p className="max-w-2xl text-sm text-muted">
-          Codes store owners use on their plan: a percentage or an amount off, once, for some months or for good.
-          Kaizen puts each in Stripe{modes.length > 0 ? ` (${modes.join(" and ")} mode)` : ""}, which applies it to the
-          plan&apos;s invoices. A code can be changed or deleted at any time; plans that already have it keep what they got.
-        </p>
-      </div>
+      <PageHeader
+        title="Discounts"
+        description={<>Codes store owners use on their plan: a percentage or an amount off, once, for some months or for good. Kaizen puts each in Stripe{modes.length > 0 ? ` (${modes.join(" and ")} mode)` : ""}, which applies it to the plan&apos;s invoices. A code can be changed or deleted at any time; plans that already have it keep what they got.</>}
+      />
 
       {discounts.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-line bg-card">
@@ -99,15 +96,12 @@ export default async function PlatformDiscountsPage() {
         </div>
       )}
 
-      <section aria-labelledby="new-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="new-heading" className="mb-4 font-medium">
-          New code
-        </h2>
+      <Card title="New code" compact>
         <ActionForm action={createPlatformDiscountAction} className="flex flex-col gap-4" replaceOnSuccess>
           <PlatformDiscountFields discount={null} currencies={currencies} />
           <SubmitButton>Make code</SubmitButton>
         </ActionForm>
-      </section>
+      </Card>
     </>
   );
 }

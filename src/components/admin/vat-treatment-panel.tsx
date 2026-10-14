@@ -1,6 +1,7 @@
 import { formatMoney } from "@/lib/money";
 import { ratePercent } from "@/lib/vat";
 import { reasonStaffText, type OrderVatTreatment, type VatKind } from "@/lib/vat-treatment";
+import { Card } from "@/components/admin/ui";
 
 const KIND_WORDS: Record<VatKind, string> = {
   standard: "Standard: VAT charged",
@@ -82,10 +83,7 @@ export function VatTreatmentPanel({
   const nameDiffers =
     vies.registeredName !== null && typedCompany !== null && vies.registeredName.trim().toLowerCase() !== typedCompany.trim().toLowerCase();
   return (
-    <section aria-labelledby="vat-treatment" className="rounded-card border border-line bg-card p-5">
-      <h2 id="vat-treatment" className="mb-1 font-medium">
-        VAT treatment
-      </h2>
+    <Card title="VAT treatment" compact>
       <p className="text-sm font-medium">{KIND_WORDS[kind]}</p>
       <p className="mb-3 text-sm text-muted">{reasonStaffText(treatment.reason)}</p>
       {rows.length > 0 && (
@@ -104,6 +102,6 @@ export function VatTreatmentPanel({
         </p>
       )}
       <p className="mt-3 text-xs text-muted">Frozen when the order was placed. The buyer&apos;s number and VIES&apos;s answer are shown only to staff and to the buyer on their own order.</p>
-    </section>
+    </Card>
   );
 }

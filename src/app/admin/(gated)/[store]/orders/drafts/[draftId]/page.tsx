@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { z } from "zod";
@@ -28,6 +27,7 @@ import {
   sendDraftAction,
 } from "../actions";
 import { featureOn } from "@/lib/store-features";
+import { PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Draft order" };
 
@@ -75,14 +75,7 @@ async function Body({ storeSlug, draftId }: { storeSlug: string; draftId: string
   const base = `/admin/${store.slug}/orders/drafts`;
   return (
     <>
-      <div>
-        <Link href={base} className="text-sm text-muted underline underline-offset-2">
-          Draft orders
-        </Link>
-        <h1 className="text-display text-ink">
-          Draft {draft.number} <span className="text-base font-normal text-muted">· {DRAFT_STATUS_LABELS[draft.status].toLowerCase()}</span>
-        </h1>
-      </div>
+      <PageHeader back={{ href: base, label: "Draft orders" }} title={`Draft ${draft.number}`} meta={[DRAFT_STATUS_LABELS[draft.status]]} />
       <DraftScreen
         editable={draft.status === "open" && canWrite}
         editor={{
