@@ -8,6 +8,7 @@ import { cache } from "react";
 import { db } from "@/db/client";
 import { areaOfAction, type AuditChanges } from "@/lib/audit";
 import { isColorChoice, type ColorChoice } from "@/lib/color-mode";
+import { adminScheme, isOfferedScheme } from "@/lib/admin-schemes";
 import { signedInWithin } from "@/lib/fresh-sign-in";
 import { type PermissionHolder } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
@@ -30,6 +31,8 @@ export type Account = {
   avatarPath?: string | null;
   /** The admin's colours for them (D99): their device's, light or dark. */
   colorMode?: ColorChoice;
+  /** The admin's colour scheme for them (D221): a registered scheme's id, the default when theirs is no longer offered. */
+  adminScheme?: string;
   /** Where the session stands on two-step sign-in (wave 1, 1f): set by `getAccount()` and `getSessionAccount()`, absent on a hand-made account in a test. */
   assurance?: AccountAssurance;
 };
@@ -88,6 +91,7 @@ const toAccount = (row: Row): Account => ({
   platformAdmin: Boolean(row.platform_admin),
   avatarPath: row.avatar_path ? String(row.avatar_path) : null,
   colorMode: isColorChoice(row.color_mode) ? row.color_mode : "system",
+  adminScheme: adminScheme(typeof row.admin_scheme === "string" ? row.admin_scheme : null).id,
 });
 
 /** The kill switch (`ADMIN_TWO_STEP=off`) is read per call, so a test or a redeploy changes it at once. */
@@ -114,7 +118,7 @@ export const readSession = cache(async (): Promise<SessionFacts | null> => {
   const level = (data?.claims as { aal?: unknown } | undefined)?.aal === "aal2" ? "aal2" : "aal1";
 
   const [row] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode, two_step_since, two_step_reenrol_at from commerce.accounts
+    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme, two_step_since, two_step_reenrol_at from commerce.accounts
     where auth_user_id = ${userId}::uuid and disabled_at is null
   `);
   if (!row) return null;
@@ -335,7 +339,7 @@ export async function passMembership(storeSlug: string, accountId: string): Prom
   const store = await getStore(storeSlug);
   if (!store) return null;
   const [person] = await db().execute<Row>(sql`
-    select id, email, name, platform_admin, avatar_path, color_mode from commerce.accounts
+    select id, email, name, platform_admin, avatar_path, color_mode, admin_scheme from commerce.accounts
     where id = ${accountId}::uuid and disabled_at is null
   `);
   if (!person) return null;
@@ -405,7 +409,7 @@ export async function linkAccount(authUserId: string, email: string): Promise<Ac
      where lower(email) = lower(${email})
        and disabled_at is null
        and (auth_user_id is null or auth_user_id = ${authUserId}::uuid)
-    returning id, email, name, platform_admin, avatar_path, color_mode
+    returning id, email, name, platform_admin, avatar_path, color_mode, admin_scheme
   `);
   return row ? toAccount(row) : null;
 }
@@ -413,6 +417,12 @@ export async function linkAccount(authUserId: string, email: string): Promise<Ac
 /** Keeps the account's light or dark for the admin (D99), so it follows them to any device. */
 export async function saveColorMode(accountId: string, choice: ColorChoice): Promise<void> {
   await db().execute(sql`update commerce.accounts set color_mode = ${choice} where id = ${accountId}::uuid`);
+}
+
+/** Keeps the account's colour scheme for the admin (D221); only a scheme that is offered. */
+export async function saveAdminScheme(accountId: string, scheme: string): Promise<void> {
+  if (!isOfferedScheme(scheme)) return;
+  await db().execute(sql`update commerce.accounts set admin_scheme = ${scheme} where id = ${accountId}::uuid`);
 }
 
 /** What an entry can say beyond its action and details (wave 1, 1f, docs/wave-1-trust.md 2.10): where it belongs, what it was done to, what changed. */

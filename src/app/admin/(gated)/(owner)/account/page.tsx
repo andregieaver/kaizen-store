@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { PasswordField } from "@/components/admin/password-field";
 import { AppearanceField } from "@/components/admin/admin-colors";
+import { SchemeField } from "@/components/admin/admin-scheme";
 import { ManageTwoStep } from "@/components/admin/two-step-panel";
 import { AvatarPicker } from "@/components/avatar-picker";
 import { MIN_PASSWORD_LENGTH } from "@/lib/password";
@@ -16,6 +17,7 @@ import { twoStepStatus } from "@/server/two-step";
 
 import {
   accountAvatarAction,
+  adminSchemeAction,
   colorModeAction,
   connectKaizenLifeAction,
   connectLifeAssistantAction,
@@ -78,6 +80,14 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
         </h2>
         <p className="text-sm text-muted">How the admin looks for you. Your stores keep the colours set under Design.</p>
         <AppearanceField saved={account.colorMode ?? "system"} save={colorModeAction} />
+      </section>
+
+      <section aria-labelledby="scheme-heading" className="flex max-w-md flex-col gap-3">
+        <h2 id="scheme-heading" className="font-medium">
+          Colour scheme
+        </h2>
+        <p className="text-sm text-muted">The admin&apos;s colours, in light and in dark. Your stores keep the colours set under Design.</p>
+        <SchemeField saved={account.adminScheme ?? "meadow"} save={adminSchemeAction} />
       </section>
 
       {owner && (

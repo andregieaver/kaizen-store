@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { AdminColorSync } from "@/components/admin/admin-colors";
+import { AdminSchemeSync } from "@/components/admin/admin-scheme";
 import { SessionKeeper, SessionRecovery } from "@/components/admin/session";
 import { getAccount, getAssurance, heldDestination } from "@/server/auth";
 
@@ -35,6 +36,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col">
       <SessionKeeper />
       <AdminColorSync saved={account.colorMode ?? "system"} />
+      <AdminSchemeSync saved={account.adminScheme ?? "meadow"} />
       {children}
     </div>
   );

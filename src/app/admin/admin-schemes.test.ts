@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ADMIN_ROLES, ADMIN_SCHEMES, CONTRAST_RULES, DEFAULT_ADMIN_SCHEME, SHADOW_ROLES } from "@/lib/admin-schemes";
+import { ADMIN_ROLES, ADMIN_SCHEMES, adminScheme, adminSchemeScript, CONTRAST_RULES, DEFAULT_ADMIN_SCHEME, isOfferedScheme, SHADOW_ROLES } from "@/lib/admin-schemes";
 import { contrastRatio } from "@/lib/theme";
 
 /**
@@ -134,5 +134,35 @@ describe("the admin's colour schemes together", () => {
     }
     // `globals.css` sets these on `:root` and `:root:not([data-color-mode="light"])` (0,2,0): `html[data-admin]:root` (0,2,1) outranks both.
     expect(adminCss).toMatch(/html\[data-admin\]:root \{/);
+  });
+});
+
+describe("choosing a scheme (D221)", () => {
+  it("keeps the account's check in step with the registry: every scheme can be saved, nothing else", () => {
+    const schema = readFileSync(join(__dirname, "../../db/schema.ts"), "utf8");
+    const check = schema.match(/accounts_admin_scheme", sql`\$\{t\.adminScheme\} in \(([^)]*)\)/)?.[1] ?? "";
+    expect(check.split(",").map((v) => v.trim().replace(/'/g, "")).sort()).toEqual(ADMIN_SCHEMES.map((s) => s.id).sort());
+  });
+
+  it("offers indigo beside meadow, and falls back to the default for an id it does not know", () => {
+    expect(isOfferedScheme("indigo")).toBe(true);
+    expect(isOfferedScheme("sepia")).toBe(false);
+    expect(isOfferedScheme(null)).toBe(false);
+    expect(adminScheme("sepia").id).toBe(DEFAULT_ADMIN_SCHEME);
+    expect(adminScheme("indigo").id).toBe("indigo");
+  });
+
+  it("writes only an offered scheme's id on <html> before the page is drawn", () => {
+    const run = (saved: string | null) => {
+      const attrs: Record<string, string> = {};
+      const document = { documentElement: { setAttribute: (k: string, v: string) => (attrs[k] = v) } };
+      const localStorage = { getItem: () => saved };
+      new Function("document", "localStorage", adminSchemeScript())(document, localStorage);
+      return attrs["data-admin-scheme"];
+    };
+    expect(run("indigo")).toBe("indigo");
+    expect(run("sepia")).toBeUndefined();
+    expect(run('"><script>')).toBeUndefined();
+    expect(run(null)).toBeUndefined();
   });
 });

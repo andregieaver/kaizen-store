@@ -51,6 +51,7 @@ describe("cookie consent (D58)", () => {
     expect(declaredCookies("store", { metaPixel: "123456" }).map((c) => c.name)).toContain("_fbp");
     expect(declaredCookies("platform", {}).map((c) => c.name)).toEqual([
       "kaizen_admin_color_mode",
+      "kaizen_admin_scheme",
       "consent_…",
       "sb-…-auth-token",
       "kaizen_life_link",

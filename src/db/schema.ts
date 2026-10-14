@@ -371,6 +371,8 @@ export const accounts = commerce.table(
     avatarPath: text("avatar_path"),
     /** The admin's colours for them (D99): `system` (their device's), `light` or `dark`. */
     colorMode: text("color_mode").notNull().default("system"),
+    /** The admin's colour scheme for them (D221, `ADMIN_SCHEMES` in `src/lib/admin-schemes.ts`); a new scheme widens the check. */
+    adminScheme: text("admin_scheme").notNull().default("meadow"),
     /** Operators of the platform itself (approve access requests). */
     platformAdmin: boolean("platform_admin").notNull().default(false),
     /** The AI manager learns their preferences from conversations (D103); off, it only keeps what they tell it to. */
@@ -395,6 +397,7 @@ export const accounts = commerce.table(
   (t) => [
     uniqueIndex("accounts_email_idx").on(sql`lower(${t.email})`),
     check("accounts_color_mode", sql`${t.colorMode} in ('system', 'light', 'dark')`),
+    check("accounts_admin_scheme", sql`${t.adminScheme} in ('meadow', 'indigo')`),
   ],
 );
 

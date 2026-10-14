@@ -9,8 +9,9 @@ import type { AvatarPickerState } from "@/components/avatar-picker";
 import { passwordProblem } from "@/lib/password";
 import { createClient } from "@/lib/supabase/server";
 import { siteUrl } from "@/lib/site";
+import { isOfferedScheme } from "@/lib/admin-schemes";
 import { isColorChoice } from "@/lib/color-mode";
-import { audit, requireAccount, saveColorMode } from "@/server/auth";
+import { audit, requireAccount, saveAdminScheme, saveColorMode } from "@/server/auth";
 import { removeAccountAvatar, setAccountAvatar } from "@/server/avatars";
 import { isOwner, KAIZEN_LIFE_PROVIDER, kaizenLifeIdentity, kaizenLifeSignInOn } from "@/server/kaizen-life";
 import { LINK_COOKIE, linkStart, unlinkLife } from "@/server/kaizen-life-link";
@@ -77,6 +78,12 @@ export async function accountAvatarAction(form: FormData): Promise<AvatarPickerS
 export async function colorModeAction(choice: unknown): Promise<void> {
   const account = await requireAccount();
   if (isColorChoice(choice) && choice !== account.colorMode) await saveColorMode(account.id, choice);
+}
+
+/** Keeps the account's colour scheme for the admin (D221); the page has applied it already. */
+export async function adminSchemeAction(scheme: unknown): Promise<void> {
+  const account = await requireAccount();
+  if (isOfferedScheme(scheme) && scheme !== account.adminScheme) await saveAdminScheme(account.id, scheme);
 }
 
 /** Connects the account's Kaizen Life account (D95): off to Kaizen Life, back to Your account. Owners only. */

@@ -2227,6 +2227,13 @@
       "when": 1791934236698,
       "tag": "20261013233036_support_desk_mode_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 318,
+      "version": "7",
+      "when": 1791967445045,
+      "tag": "20261014084405_admin_scheme",
+      "breakpoints": true
     }
   ]
 }

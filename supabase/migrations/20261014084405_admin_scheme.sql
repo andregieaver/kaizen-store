@@ -1,0 +1,2 @@
+ALTER TABLE "commerce"."accounts" ADD COLUMN "admin_scheme" text DEFAULT 'meadow' NOT NULL;--> statement-breakpoint
+ALTER TABLE "commerce"."accounts" ADD CONSTRAINT "accounts_admin_scheme" CHECK ("commerce"."accounts"."admin_scheme" in ('meadow', 'indigo'));

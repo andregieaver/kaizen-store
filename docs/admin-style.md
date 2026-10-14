@@ -491,7 +491,7 @@ prefers the current look keep it.
 
 ### 7.3 Who chooses
 
-The scheme is the account's, like its colour mode (D99): `accounts.admin_scheme`, chosen under Your account › Appearance, with
+The scheme is the account's, like its colour mode (D99): `accounts.admin_scheme`, chosen under Your account › Colour scheme, with
 `meadow` the default. The platform may set a default for new accounts. The layout is the level's and the page's, not the
 person's: what is drawn should be the same for everyone on the same page, so that help, screenshots and the AI manager's
 directions are right.
@@ -535,7 +535,12 @@ line or tabs (the switcher, the actions, the account), and a section with pages 
 (the `rail-sidebar` arrangement, chosen by the section, not a layout of its own yet). The tokens of 6.2 are Tailwind classes in
 the frame for now, not a `layouts/{id}.css`. Step 4 (D220): the platform (`platformTabs()` in `platform-nav.ts`, Settings at the
 foot, the requests and support counts on their tiles) and the owner's level (`ownerTabs()`, Account at the foot) are `rail` too;
-hosting, one page with no sections, stays `classic`. `indigo` and the picker follow.
+hosting, one page with no sections, stays `classic`. Step 5 (D221): `indigo` (`src/app/admin/schemes/indigo.css`, D149's look
+as roles, white words on its brand) is the second scheme, and the picker is the *Colour scheme* field on Your account
+(`SchemeField` in `src/components/admin/admin-scheme.tsx`): kept on the account (`accounts.admin_scheme`, a check listing every
+scheme, held to `ADMIN_SCHEMES` by a test) and in the browser (`kaizen_admin_scheme`), put on `<html>` before the page is drawn
+by `adminSchemeScript()`, and brought in line on another device by `AdminSchemeSync`. A new scheme widens the check in a
+migration. The scheme preview page of 7.1 and a default for new accounts are not built.
 
 ---
 

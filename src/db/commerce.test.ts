@@ -1113,6 +1113,13 @@ describe("accounts and members", () => {
     await expect(db.query("update commerce.accounts set color_mode = 'sepia' where id = $1", [id])).rejects.toThrow(/accounts_color_mode/);
   });
 
+  it("keeps an account's colour scheme for the admin, meadow until chosen, and only a registered one (D221)", async () => {
+    const id = await createAccount("scheme@example.com");
+    expect((await one<{ admin_scheme: string }>("select admin_scheme from commerce.accounts where id = $1", [id])).admin_scheme).toBe("meadow");
+    await db.query("update commerce.accounts set admin_scheme = 'indigo' where id = $1", [id]);
+    await expect(db.query("update commerce.accounts set admin_scheme = 'sepia' where id = $1", [id])).rejects.toThrow(/accounts_admin_scheme/);
+  });
+
   it("always keeps at least one active owner per store", async () => {
     const shop = await createStore("owner-test", ["NO"]);
     const owner = await createAccount("owner@example.com");

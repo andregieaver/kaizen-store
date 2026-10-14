@@ -1,0 +1,252 @@
+/*
+ * The admin's colour scheme `indigo` (docs/admin-style.md 7.1): the admin's look before `meadow` (D149's cool tint and its one
+ * indigo), as roles, for anyone who prefers it. It applies only when <html> names it (`data-admin-scheme`, the account's choice,
+ * D221). White words read on this darker brand, so `--brand-ink` is white here. Values are plain hex so `admin-schemes.test.ts`
+ * can read them and hold every pair of `CONTRAST_RULES`.
+ */
+
+/* ------------------------------------------------------------------ light */
+
+html[data-admin][data-admin-scheme="indigo"] {
+  --canvas: #eef1f7;
+  --card: #ffffff;
+  --sunken: #f5f7fb;
+  --rail: #131a2e;
+  --rail-icon: #a3abc2;
+  --ink: #131a2e;
+  --ink-2: #3d4560;
+  --muted: #5a6279;
+  --faint: #9aa1b3;
+  --line: #e6e9f1;
+  --edge: #dde2ec;
+  --inverse: #131a2e;
+  --inverse-ink: #ffffff;
+
+  --brand: #4f46e5;
+  --brand-ink: #ffffff;
+  --brand-hover: #4338ca;
+  --brand-text: #4338ca;
+  --brand-soft: #eef0ff;
+  --focus: #4f46e5;
+
+  --positive-solid: #16a34a;
+  --positive-text: #166534;
+  --positive-soft: #ecfdf3;
+  --positive-line: #bbf7d0;
+  --warning-solid: #f59e0b;
+  --warning-text: #92400e;
+  --warning-soft: #fef6e4;
+  --warning-line: #fde3a7;
+  --danger-solid: #ef4444;
+  --danger-text: #b91c1c;
+  --danger-soft: #fef2f2;
+  --danger-line: #fdd8d8;
+  --neutral-solid: #94a3b8;
+  --neutral-text: #3d4560;
+  --neutral-soft: #f5f7fb;
+  --neutral-line: #dde2ec;
+  --insight-solid: #4f46e5;
+  --insight-text: #4338ca;
+  --insight-soft: #eef0ff;
+  --insight-line: #c7d2fe;
+
+  --shadow-float: 0 6px 16px -4px rgb(19 26 46 / 0.12), 0 2px 4px rgb(19 26 46 / 0.05);
+  --shadow-modal: 0 24px 64px -12px rgb(19 26 46 / 0.28);
+
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-seq-0: #eef3fb;
+  --chart-seq-1: #cde2fb;
+  --chart-seq-2: #9ec5f4;
+  --chart-seq-3: #6da7ec;
+  --chart-seq-4: #3987e5;
+  --chart-seq-5: #1c5cab;
+  --chart-seq-6: #0d366b;
+  --chart-seq-0-ink: #131a2e;
+  --chart-seq-1-ink: #131a2e;
+  --chart-seq-2-ink: #131a2e;
+  --chart-seq-3-ink: #131a2e;
+  --chart-seq-4-ink: #131a2e;
+  --chart-seq-5-ink: #ffffff;
+  --chart-seq-6-ink: #ffffff;
+  --chart-good: #006300;
+  --chart-bad: #b91c1c;
+  --chart-warn: #b45309;
+  --chart-grid: #dde2ec;
+  --chart-axis: #b9c0d0;
+  --chart-compare: #8a93a8;
+
+  --tone-1: #b91c1c;
+  --tone-2: #c2410c;
+  --tone-3: #8a93a8;
+  --tone-4: #15803d;
+  --tone-5: #006300;
+}
+
+/* ------------------------------------------------------------------- dark */
+
+@media (prefers-color-scheme: dark) {
+  html[data-admin][data-admin-scheme="indigo"]:not([data-color-mode="light"]) {
+    --canvas: #0b0e18;
+    --card: #141927;
+    --sunken: #1d2437;
+    --rail: #070a12;
+    --rail-icon: #9aa3bd;
+    --ink: #e8eaf4;
+    --ink-2: #c0c6d8;
+    --muted: #9aa3bd;
+    --faint: #5f6883;
+    --line: #232a40;
+    --edge: #2b3350;
+    --inverse: #e8eaf4;
+    --inverse-ink: #131a2e;
+
+    --brand: #5b5fe8;
+    --brand-ink: #ffffff;
+    --brand-hover: #4c4fd9;
+    --brand-text: #a5b4fc;
+    --brand-soft: #222a52;
+    --focus: #818cf8;
+
+    --positive-solid: #22c55e;
+    --positive-text: #4ade80;
+    --positive-soft: #12291c;
+    --positive-line: #1f4a30;
+    --warning-solid: #f59e0b;
+    --warning-text: #fbbf24;
+    --warning-soft: #2e2614;
+    --warning-line: #57461c;
+    --danger-solid: #ef4444;
+    --danger-text: #f87171;
+    --danger-soft: #2f1a1f;
+    --danger-line: #4f2229;
+    --neutral-solid: #7c86a3;
+    --neutral-text: #c0c6d8;
+    --neutral-soft: #1d2437;
+    --neutral-line: #2b3350;
+    --insight-solid: #6366f1;
+    --insight-text: #a5b4fc;
+    --insight-soft: #1c2246;
+    --insight-line: #313a7a;
+
+    --shadow-float: 0 8px 20px -4px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
+    --shadow-modal: 0 24px 64px -12px rgb(0 0 0 / 0.7);
+
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    --chart-6: #008300;
+    --chart-seq-0: #1d2437;
+    --chart-seq-1: #104281;
+    --chart-seq-2: #256abf;
+    --chart-seq-3: #3987e5;
+    --chart-seq-4: #6da7ec;
+    --chart-seq-5: #9ec5f4;
+    --chart-seq-6: #cde2fb;
+    --chart-seq-0-ink: #e8eaf4;
+    --chart-seq-1-ink: #ffffff;
+    --chart-seq-2-ink: #ffffff;
+    --chart-seq-3-ink: #131a2e;
+    --chart-seq-4-ink: #131a2e;
+    --chart-seq-5-ink: #131a2e;
+    --chart-seq-6-ink: #131a2e;
+    --chart-good: #0ca30c;
+    --chart-bad: #f87171;
+    --chart-warn: #fab219;
+    --chart-grid: #2b3350;
+    --chart-axis: #3b4566;
+    --chart-compare: #7c86a3;
+
+    --tone-1: #f87171;
+    --tone-2: #fb923c;
+    --tone-3: #7c86a3;
+    --tone-4: #4ade80;
+    --tone-5: #0ca30c;
+  }
+}
+
+html[data-admin][data-admin-scheme="indigo"][data-color-mode="dark"] {
+  --canvas: #0b0e18;
+  --card: #141927;
+  --sunken: #1d2437;
+  --rail: #070a12;
+  --rail-icon: #9aa3bd;
+  --ink: #e8eaf4;
+  --ink-2: #c0c6d8;
+  --muted: #9aa3bd;
+  --faint: #5f6883;
+  --line: #232a40;
+  --edge: #2b3350;
+  --inverse: #e8eaf4;
+  --inverse-ink: #131a2e;
+
+  --brand: #5b5fe8;
+  --brand-ink: #ffffff;
+  --brand-hover: #4c4fd9;
+  --brand-text: #a5b4fc;
+  --brand-soft: #222a52;
+  --focus: #818cf8;
+
+  --positive-solid: #22c55e;
+  --positive-text: #4ade80;
+  --positive-soft: #12291c;
+  --positive-line: #1f4a30;
+  --warning-solid: #f59e0b;
+  --warning-text: #fbbf24;
+  --warning-soft: #2e2614;
+  --warning-line: #57461c;
+  --danger-solid: #ef4444;
+  --danger-text: #f87171;
+  --danger-soft: #2f1a1f;
+  --danger-line: #4f2229;
+  --neutral-solid: #7c86a3;
+  --neutral-text: #c0c6d8;
+  --neutral-soft: #1d2437;
+  --neutral-line: #2b3350;
+  --insight-solid: #6366f1;
+  --insight-text: #a5b4fc;
+  --insight-soft: #1c2246;
+  --insight-line: #313a7a;
+
+  --shadow-float: 0 8px 20px -4px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.3);
+  --shadow-modal: 0 24px 64px -12px rgb(0 0 0 / 0.7);
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-seq-0: #1d2437;
+  --chart-seq-1: #104281;
+  --chart-seq-2: #256abf;
+  --chart-seq-3: #3987e5;
+  --chart-seq-4: #6da7ec;
+  --chart-seq-5: #9ec5f4;
+  --chart-seq-6: #cde2fb;
+  --chart-seq-0-ink: #e8eaf4;
+  --chart-seq-1-ink: #ffffff;
+  --chart-seq-2-ink: #ffffff;
+  --chart-seq-3-ink: #131a2e;
+  --chart-seq-4-ink: #131a2e;
+  --chart-seq-5-ink: #131a2e;
+  --chart-seq-6-ink: #131a2e;
+  --chart-good: #0ca30c;
+  --chart-bad: #f87171;
+  --chart-warn: #fab219;
+  --chart-grid: #2b3350;
+  --chart-axis: #3b4566;
+  --chart-compare: #7c86a3;
+
+  --tone-1: #f87171;
+  --tone-2: #fb923c;
+  --tone-3: #7c86a3;
+  --tone-4: #4ade80;
+  --tone-5: #0ca30c;
+}

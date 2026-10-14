@@ -168,6 +168,21 @@ export const KNOWN_COOKIES: KnownCookie[] = [
     },
   },
   {
+    // In local storage, not a cookie: set in Kaizen's admin by someone signed in who chooses a colour scheme (D221).
+    name: "kaizen_admin_scheme",
+    pattern: /^kaizen_admin_scheme$/,
+    provider: "Kaizen",
+    category: "necessary",
+    days: null,
+    on: "platform",
+    purpose: {
+      en: "In Kaizen's admin: remembers the colour scheme you chose, so pages open in it.",
+      nb: "I Kaizens administrasjon: husker fargeskjemaet du valgte, så sidene åpnes med det.",
+      sv: "I Kaizens administration: kommer ihåg färgschemat du valde, så att sidorna öppnas med det.",
+      da: "I Kaizens administration: husker det farveskema, du valgte, så siderne åbner med det.",
+    },
+  },
+  {
     // In the tab's session storage, not a cookie: only once a visitor writes to the chat agent (D81).
     name: "kaizen_chat",
     pattern: /^kaizen_chat$/,

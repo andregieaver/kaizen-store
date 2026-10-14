@@ -27,6 +27,25 @@ test("the admin is marked, tinted and has a brand colour, in light and in dark",
   await page.screenshot({ path: "test-results/admin-look-dark.png" });
 });
 
+test("a colour scheme kept in the browser is on the page before it is drawn, and an unknown one is ignored (D221)", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/admin/sign-in");
+  await page.evaluate(() => localStorage.setItem("kaizen_admin_scheme", "indigo"));
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-admin-scheme", "indigo");
+  expect((await computed(page, "html", "--brand")).trim()).toBe("#4f46e5");
+  // White words read on indigo's darker brand.
+  const action = page.getByRole("button", { name: "Sign in", exact: true });
+  expect(await action.evaluate((el) => getComputedStyle(el).color)).toBe("rgb(255, 255, 255)");
+  await page.emulateMedia({ colorScheme: "dark" });
+  expect((await computed(page, "html", "--canvas")).trim()).toBe("#0b0e18");
+
+  await page.evaluate(() => localStorage.setItem("kaizen_admin_scheme", "sepia"));
+  await page.reload();
+  await expect(page.locator("html")).not.toHaveAttribute("data-admin-scheme", /.*/);
+  expect((await computed(page, "html", "--brand")).trim()).toBe("#3bd968");
+});
+
 test("a focused field gets the brand ring, and the main action lifts when pointed at", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light", reducedMotion: "no-preference" });
   await page.goto("/admin/sign-in");
