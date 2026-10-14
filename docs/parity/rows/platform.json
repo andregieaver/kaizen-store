@@ -736,7 +736,7 @@
       "was": null
     },
     "weight": 3,
-    "gap": "The page replicator (D150) copies another site's pages into the builder, store copy (D129) duplicates one Kaizen store, and `scripts/import-life-work.mjs` imports Work history from Kaizen Life; there is no catalogue or customer import from another platform. Shopify's own migration app imports no orders either, so the missing order import is a gap against third-party tools, not against the native feature.",
+    "gap": "The page replicator (D150) copies another site's pages into the builder, store copy (D129) duplicates one Kaizen store, and `scripts/import-life-work.mjs` imports Work history from Kaizen Life. Since wave 2 (D165) the product import job also reads Shopify's product CSV: a check step lists findings before anything is saved (a dry run), it asks whether prices include VAT and which market the plain Price column is for, fetches pictures only through `safeFetch()`, matches products by handle so a repeated import updates rather than duplicates, and never imports the compare-at price or turns Vendor into a manufacturer; a redirect import reads Shopify's `Redirect from`/`Redirect to` file. Still missing: a WooCommerce product file; any customer import (deferred to wave 5 with consent, `customers.customer-profiles-notes-csv-import-and-export`); redirects made automatically from a product import's old addresses (only a separate redirect file does this); and order history import. Shopify's own migration app imports no orders either, so the missing order import is a gap against third-party tools, not against the native feature.",
     "bucket": "A",
     "wave": 2,
     "criteria": [
@@ -751,14 +751,23 @@
         "src/lib/replicate-build.ts",
         "src/server/store-copy.ts",
         "scripts/import-life-work.mjs",
-        "src/lib/work-import.ts"
+        "src/lib/work-import.ts",
+        "src/lib/product-import.ts",
+        "src/server/product-import.ts",
+        "src/server/data-jobs.ts",
+        "src/lib/redirect-csv.ts",
+        "src/server/redirect-import.ts"
       ],
       "tests": [
         "src/server/replicate.int.test.ts",
         "src/server/store-copy.int.test.ts",
         "src/server/work-import.int.test.ts",
         "src/lib/work-import.test.ts",
-        "e2e/replicate.spec.ts"
+        "e2e/replicate.spec.ts",
+        "src/server/product-import.int.test.ts",
+        "src/lib/product-import.test.ts",
+        "src/server/redirect-import.int.test.ts",
+        "src/lib/redirect-csv.test.ts"
       ],
       "untested": false
     },
