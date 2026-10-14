@@ -37,10 +37,13 @@ export type AdminLayoutId = (typeof ADMIN_LAYOUTS)[number]["id"];
 export const ADMIN_LEVELS = ["platform", "control", "store", "hosting"] as const;
 export type AdminLevel = (typeof ADMIN_LEVELS)[number];
 
-/** The layout each level is drawn in. The store level moved first (docs/admin-style.md section 8); the others follow. */
+/**
+ * The layout each level is drawn in (docs/admin-style.md section 8): the store's, the platform's and the owner's are the rail (D219);
+ * hosting, a single page with no sections, stays classic.
+ */
 export const LEVEL_LAYOUTS: Record<AdminLevel, AdminLayoutId> = {
-  platform: "classic",
-  control: "classic",
+  platform: "rail",
+  control: "rail",
   store: "rail",
   hosting: "classic",
 };

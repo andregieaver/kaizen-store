@@ -4,7 +4,8 @@ import { AdminFrame, MenuFooterLink } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher } from "@/components/admin/admin-shell-parts";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
-import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, STORE_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, sectionPrefixes, withBase } from "@/lib/platform-nav";
+import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
+import { PLAN_ITEMS, PLATFORM_BASE, SETTINGS_ITEMS, STORE_ITEMS, SUPPORT_ITEMS, WEBSITE_ITEMS, platformTabs, sectionPrefixes, withBase } from "@/lib/platform-nav";
 import { requirePlatformAdmin } from "@/server/auth";
 import { countPendingRequests } from "@/server/platform";
 import { waitingCount } from "@/server/support";
@@ -49,24 +50,16 @@ const areas: NavArea[] = [
  * Kaizen's own admin (D107), in the same shell as a store's: the level
  * switcher and account menu in the header, the operator's sections as tabs
  * with icons, each section's own pages in its own sidebar (D144), and the whole
- * width of the screen to work in.
+ * width of the screen to work in. Drawn in the `rail` layout (D219): the sections
+ * are the rail's icons, Settings at its foot.
  */
 export default async function PlatformLayout({ children }: LayoutProps<"/admin/platform">) {
   const account = await requirePlatformAdmin();
   const [waiting, supportWaiting] = await Promise.all([countPendingRequests(), waitingCount([(await kaizenDesk()).desk])]);
-  const tabs: NavItem[] = [
-    { href: base, label: "Home", exact: true, icon: "home" },
-    { href: `${base}/website`, label: "Website", icon: "monitor", also: website },
-    { href: `${base}/stores`, label: "Stores", icon: "shopping-bag", also: storePages },
-    { href: `${base}/customers`, label: "Customers", icon: "users" },
-    { href: `${base}/plans`, label: "Plans", icon: "credit-card", also: planPages },
-    { href: `${base}/requests`, label: "Requests", icon: "bell", badge: waiting },
-    // Support (D216): Kaizen's own desk, with the conversations waiting for a person.
-    { href: `${base}/support`, label: "Support", icon: "chat", also: supportPages, badge: supportWaiting },
-    { href: `${base}/settings`, label: "Settings", icon: "cog", also: settings },
-  ];
+  const tabs: NavItem[] = platformTabs({ requests: waiting, support: supportWaiting });
   return (
     <AdminFrame
+      layout={LEVEL_LAYOUTS.platform}
       switcher={
         <Suspense fallback={<span className="px-2 font-medium">Platform</span>}>
           <LevelSwitcher account={account} level="platform" label="Platform" />

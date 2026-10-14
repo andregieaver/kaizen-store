@@ -533,8 +533,9 @@ their regions, `LEVEL_LAYOUTS`) and `AdminFrame`'s `layout`. In `rail` the store
 marked `foot` by `storeTabs()`, at the bottom; a waiting count on the tile and in its name), the top bar has no background,
 line or tabs (the switcher, the actions, the account), and a section with pages of its own keeps its sidebar beside the rail
 (the `rail-sidebar` arrangement, chosen by the section, not a layout of its own yet). The tokens of 6.2 are Tailwind classes in
-the frame for now, not a `layouts/{id}.css`. The platform, the owner's level and hosting stay `classic`; `indigo` and the
-picker follow.
+the frame for now, not a `layouts/{id}.css`. Step 4 (D220): the platform (`platformTabs()` in `platform-nav.ts`, Settings at the
+foot, the requests and support counts on their tiles) and the owner's level (`ownerTabs()`, Account at the foot) are `rail` too;
+hosting, one page with no sections, stays `classic`. `indigo` and the picker follow.
 
 ---
 

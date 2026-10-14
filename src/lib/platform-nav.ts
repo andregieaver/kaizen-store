@@ -4,6 +4,8 @@
  * have none. Stores has had one since store templates (D175).
  */
 
+import type { NavIconName } from "@/components/admin/nav-icons";
+
 export const PLATFORM_BASE = "/admin/platform";
 
 export type SectionItem = { path: string; label: string; description: string; exact?: boolean };
@@ -69,3 +71,23 @@ export const sectionPrefixes = (hub: string | null, items: SectionItem[]) => [..
 
 export const withBase = (items: SectionItem[]) =>
   items.map((i) => ({ href: `${PLATFORM_BASE}${i.path}`, label: i.label, ...(i.exact && { exact: true as const }) }));
+
+type Tab = { href: string; label: string; icon: NavIconName; exact?: boolean; also?: string[]; badge?: number; foot?: boolean };
+
+/**
+ * The platform's sections as tabs, or as the rail's tiles (D219): Home, then each section with the addresses inside it, and Settings at
+ * the rail's foot. `requests` and `support` are the counts waiting (access requests, and Kaizen's own desk's conversations, D216).
+ */
+export function platformTabs(counts: { requests?: number; support?: number } = {}): Tab[] {
+  const base = PLATFORM_BASE;
+  return [
+    { href: base, label: "Home", exact: true, icon: "home" },
+    { href: `${base}/website`, label: "Website", icon: "monitor", also: sectionPrefixes("/website", WEBSITE_ITEMS) },
+    { href: `${base}/stores`, label: "Stores", icon: "shopping-bag", also: sectionPrefixes(null, STORE_ITEMS) },
+    { href: `${base}/customers`, label: "Customers", icon: "users" },
+    { href: `${base}/plans`, label: "Plans", icon: "credit-card", also: sectionPrefixes(null, PLAN_ITEMS) },
+    { href: `${base}/requests`, label: "Requests", icon: "bell", ...(counts.requests ? { badge: counts.requests } : {}) },
+    { href: `${base}/support`, label: "Support", icon: "chat", also: sectionPrefixes(null, SUPPORT_ITEMS), ...(counts.support ? { badge: counts.support } : {}) },
+    { href: `${base}/settings`, label: "Settings", icon: "cog", also: sectionPrefixes("/settings", SETTINGS_ITEMS), foot: true },
+  ];
+}

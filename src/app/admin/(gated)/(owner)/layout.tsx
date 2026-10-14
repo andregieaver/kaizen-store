@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { AdminFrame } from "@/components/admin/admin-frame";
 import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/admin-shell-parts";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
+import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { ownerAreas, ownerTabs } from "@/lib/owner-nav";
 import { requireAccount } from "@/server/auth";
 import { waitingCount } from "@/server/support";
@@ -14,7 +15,8 @@ import { ownerDesks } from "@/server/support-desk";
  * the platform's pattern (D144). Billing, AI usage and Referrals (D131) are
  * pages of Account, in its sidebar, and the whole width is theirs. Someone who
  * only works in stores (staff) sees Stores and their account, and Work when
- * one of their stores has it on.
+ * one of their stores has it on. Drawn in the `rail` layout (D219), Account at
+ * the rail's foot.
  */
 export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
   const account = await requireAccount();
@@ -29,6 +31,7 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
   const areas: NavArea[] = ownerAreas(who);
   return (
     <AdminFrame
+      layout={LEVEL_LAYOUTS.control}
       switcher={
         <Suspense fallback={<span className="px-2 font-medium">{owner ? "Control center" : "Your stores"}</span>}>
           <LevelSwitcher account={account} level="control" label={owner ? "Control center" : "Your stores"} />
