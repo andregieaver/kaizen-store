@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 
 import { HidingHeader, MobileMenu } from "@/components/store-chrome";
 
+import type { AdminLayoutId } from "@/lib/admin-layouts";
+
 import { AdminMain } from "./admin-main";
+import { AdminRail } from "./admin-rail";
 import { AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
 
 /**
@@ -12,6 +15,10 @@ import { AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea, type NavG
  * the account menu, the level's daily sections as tabs, everything else in a
  * sidebar under headings, which on phones slides out from the menu button
  * together with the tabs. A level supplies only what is its own.
+ *
+ * `layout` (docs/admin-style.md section 6, `src/lib/admin-layouts.ts`): `classic` is the above; `rail` puts the tabs in a dark rail
+ * of icons at the left (`AdminRail`) and draws a plain top bar with the switcher, the actions and the account, no tabs: a region a
+ * layout leaves out is not rendered. Phones draw both the same: the top bar and the slide-out menu.
  */
 export function AdminFrame({
   switcher,
@@ -26,6 +33,8 @@ export function AdminFrame({
   menuFooter,
   fullWidth = "^$",
   before,
+  layout = "classic",
+  home,
   children,
 }: {
   /** The level switcher (`AdminSwitcher`). */
@@ -50,10 +59,82 @@ export function AdminFrame({
   fullWidth?: string;
   /** Something rendered before the header (scripts that only listen). */
   before?: ReactNode;
+  layout?: AdminLayoutId;
+  /** The rail's logo tile: where it leads and its name. */
+  home?: { href: string; label: string };
   children: ReactNode;
 }) {
   const hasMenu = tabs.length > 0 || groups.length > 0 || (areas?.length ?? 0) > 0 || Boolean(menuFooter);
   const bar = wide ? "" : "max-w-7xl";
+  // Under `lg` a section's sidebar is not drawn (beside the rail too), so its pages are in the slide-out menu.
+  const menuButton = hasMenu && (
+    <button
+      type="button"
+      data-open-menu
+      aria-haspopup="dialog"
+      className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-surface lg:hidden"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+      </svg>
+      <span className="sr-only">Menu</span>
+    </button>
+  );
+  const sidebar = (railed: boolean) =>
+    areas ? (
+      <AreaSidebar areas={areas} fallback={groups} label="More" railed={railed} />
+    ) : groups.length > 0 ? (
+      <aside className={`hidden w-52 shrink-0 lg:block ${railed ? "pt-2 pb-8" : "py-8"}`}>
+        <div className={`sticky ${railed ? "top-6" : "top-32"}`}>
+          <StoreSidebar groups={groups} label="More" />
+        </div>
+      </aside>
+    ) : null;
+  const menu = hasMenu && (
+    <MobileMenu title={menuTitle} labels={{ close: "Close menu", menu: "Menu" }}>
+      {areas ? (
+        <AreaMenu
+          tabs={tabs}
+          areas={areas}
+          fallback={groups}
+          label="All pages"
+          footer={menuFooter && <div className="flex flex-col gap-4 border-t border-border px-3 pt-6 text-sm">{menuFooter}</div>}
+        />
+      ) : (
+        <>
+          <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: "Sections", items: tabs }] : []), ...groups]} label="All pages" />
+          {menuFooter && <div className="flex flex-col gap-4 border-t border-border px-3 pt-6 text-sm">{menuFooter}</div>}
+        </>
+      )}
+    </MobileMenu>
+  );
+
+  if (layout === "rail") {
+    // The rail (docs/admin-style.md 5.3, 5.4): the sections down the left, then a plain bar over the page, no background or line.
+    return (
+      <>
+        {before}
+        <div data-admin-layout="rail" className="flex min-h-dvh w-full flex-1">
+          <AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizen" }} label={tabsLabel} />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header data-admin-topbar className="flex h-16 shrink-0 items-center gap-2 px-4 md:px-8">
+              {menuButton}
+              {switcher}
+              <div className="ml-auto flex shrink-0 items-center gap-2 text-sm">
+                {actions}
+                {account}
+              </div>
+            </header>
+            <AdminMain fullWidth={fullWidth} wide={wide} railed sidebar={sidebar(true)}>
+              {children}
+            </AdminMain>
+          </div>
+        </div>
+        {menu}
+      </>
+    );
+  }
+
   return (
     <>
       {before}
@@ -61,19 +142,7 @@ export function AdminFrame({
         <header className="border-b border-border bg-background">
           <div className={`mx-auto flex h-14 items-center gap-2 px-4 ${bar}`}>
             {/* The slide-out menu (below) opens on any `data-open-menu` button. */}
-            {hasMenu && (
-            <button
-              type="button"
-              data-open-menu
-              aria-haspopup="dialog"
-              className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-surface lg:hidden"
-            >
-              <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
-              </svg>
-              <span className="sr-only">Menu</span>
-            </button>
-            )}
+            {menuButton}
             {switcher}
             <div className="ml-auto flex shrink-0 items-center gap-2 text-sm">
               {actions}
@@ -91,39 +160,12 @@ export function AdminFrame({
       <AdminMain
         fullWidth={fullWidth}
         wide={wide}
-        sidebar={
-          areas ? (
-            <AreaSidebar areas={areas} fallback={groups} label="More" />
-          ) : groups.length > 0 ? (
-            <aside className="hidden w-52 shrink-0 py-8 lg:block">
-              <div className="sticky top-32">
-                <StoreSidebar groups={groups} label="More" />
-              </div>
-            </aside>
-          ) : null
-        }
+        sidebar={sidebar(false)}
       >
         {children}
       </AdminMain>
 
-      {hasMenu && (
-      <MobileMenu title={menuTitle} labels={{ close: "Close menu", menu: "Menu" }}>
-        {areas ? (
-          <AreaMenu
-            tabs={tabs}
-            areas={areas}
-            fallback={groups}
-            label="All pages"
-            footer={menuFooter && <div className="flex flex-col gap-4 border-t border-border px-3 pt-6 text-sm">{menuFooter}</div>}
-          />
-        ) : (
-          <>
-            <StoreSidebar groups={[...(tabs.length > 0 ? [{ heading: "Sections", items: tabs }] : []), ...groups]} label="All pages" />
-            {menuFooter && <div className="flex flex-col gap-4 border-t border-border px-3 pt-6 text-sm">{menuFooter}</div>}
-          </>
-        )}
-      </MobileMenu>
-      )}
+      {menu}
     </>
   );
 }

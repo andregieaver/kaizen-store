@@ -527,8 +527,14 @@ Step 2, the components (D218): the type scale and shapes of 5.1 and 5.2 are Tail
 `rounded-panel`, `rounded-pill`, `rounded-tile`), and `src/components/admin/ui/` holds `Button`/`ButtonLink` (5.6), `Chip`,
 `TrendChip`, `CountBadge` (5.7), `Card`, `KpiTile`, `ShareBar`, `ScoreBar`, `InsightPanel`, `List`/`ListRow` with `RowId`,
 `RowText`, `RowDate`, `RowAmount` (5.8) and `PageHeader` (5.5), server components in the roles only (`ui.test.ts` scans them for
-a colour, an older token or a bold weight). Pages move to them as they are touched. The `rail` layout, `indigo` and the picker are
-next.
+a colour, an older token or a bold weight). Pages move to them as they are touched.
+Step 3, the `rail` layout for the store level (D219): `src/lib/admin-layouts.ts` (`ADMIN_LAYOUTS`: `classic` and `rail`,
+their regions, `LEVEL_LAYOUTS`) and `AdminFrame`'s `layout`. In `rail` the store's sections are `AdminRail`'s icon tiles (Settings,
+marked `foot` by `storeTabs()`, at the bottom; a waiting count on the tile and in its name), the top bar has no background,
+line or tabs (the switcher, the actions, the account), and a section with pages of its own keeps its sidebar beside the rail
+(the `rail-sidebar` arrangement, chosen by the section, not a layout of its own yet). The tokens of 6.2 are Tailwind classes in
+the frame for now, not a `layouts/{id}.css`. The platform, the owner's level and hosting stay `classic`; `indigo` and the
+picker follow.
 
 ---
 

@@ -22,13 +22,16 @@ export type NavItem = {
   icon?: NavIconName;
   /** Other addresses that are inside this section (a tab whose pages live at addresses of their own); an `exact` one is marked on these too, but not below its own address. */
   also?: string[];
+  /** Drawn at the foot of the rail rather than with the others (Settings, docs/admin-style.md 5.3). */
+  foot?: boolean;
 };
 export type NavGroup = { heading: string; items: NavItem[] };
 
 /** An address is inside `prefix` when it is that address or below it. */
 const inside = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
-function useIsCurrent() {
+/** Whether a link is the page being viewed, or a section the page is inside. */
+export function useIsCurrent() {
   const pathname = usePathname();
   return (item: NavItem) =>
     item.exact ? pathname === item.href || (item.also ?? []).some((prefix) => inside(pathname, prefix)) : [item.href, ...(item.also ?? [])].some((prefix) => inside(pathname, prefix));
@@ -47,12 +50,13 @@ export function useAreaGroups(areas: NavArea[], fallback: NavGroup[]): NavGroup[
 }
 
 /** The sidebar of the section being viewed; nothing, not even its room, where the section has none. */
-export function AreaSidebar({ areas, fallback, label }: { areas: NavArea[]; fallback: NavGroup[]; label: string }) {
+export function AreaSidebar({ areas, fallback, label, railed = false }: { areas: NavArea[]; fallback: NavGroup[]; label: string; railed?: boolean }) {
   const groups = useAreaGroups(areas, fallback);
   if (groups.length === 0) return null;
+  // Beside the rail there is no sticky header above it, so it keeps to the top of the screen.
   return (
-    <aside className="hidden w-52 shrink-0 py-8 lg:block">
-      <div className="sticky top-32">
+    <aside className={`hidden w-52 shrink-0 lg:block ${railed ? "pt-2 pb-8" : "py-8"}`}>
+      <div className={`sticky ${railed ? "top-6" : "top-32"}`}>
         <StoreSidebar groups={groups} label={label} />
       </div>
     </aside>

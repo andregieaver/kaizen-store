@@ -15,7 +15,7 @@ export function List({ label, children }: { label?: string; children: ReactNode 
   );
 }
 
-const ROW = "flex min-h-16 items-center gap-4 py-3";
+const ROW = "flex min-h-16 flex-wrap items-center gap-x-4 gap-y-1 py-3";
 
 export function ListRow({ href, highlight = false, children }: { href?: string; highlight?: boolean; children: ReactNode }) {
   const shape = highlight ? "rounded-panel bg-sunken px-4" : "";

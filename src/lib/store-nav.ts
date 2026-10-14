@@ -327,7 +327,7 @@ type Link = { href: string; label: string; exact?: boolean };
  * The tabs of a store's admin: Home, then each section offered, with the addresses inside it. A page of cards marks only itself, its pages are
  * inside their own section. `counts` puts a number on a section's tab (Support: the conversations waiting for a person, D216).
  */
-export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): (Link & { icon: NavIconName; also: string[]; badge?: number })[] {
+export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, counts: Partial<Record<StoreSection["key"], number>> = {}): (Link & { icon: NavIconName; also: string[]; badge?: number; foot?: boolean })[] {
   return [
     { href: base, label: "Home", icon: "home", exact: true, also: HOME_PATHS.map((p) => `${base}${p}`) },
     ...storeSections(flags, canOpen).map((s) => ({
@@ -336,6 +336,8 @@ export function storeTabs(base: string, flags: StoreFlags, canOpen?: CanOpen, co
       icon: s.icon,
       ...(s.hub && { exact: true }),
       ...(counts[s.key] ? { badge: counts[s.key] } : {}),
+      // Settings sit at the foot of the rail (docs/admin-style.md 5.3); in the tabs and the menu they keep their place.
+      ...(s.key === "settings" && { foot: true }),
       // The page of cards is the tab's own address; only the pages in the sidebar are inside it (Design is `/settings/design`, the Website's).
       also: s.groups.flatMap((g) => g.items.map((i) => `${base}${i.path}`)),
     })),

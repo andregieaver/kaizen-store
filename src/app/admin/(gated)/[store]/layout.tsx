@@ -7,6 +7,7 @@ import { AdminAccountMenu, LevelSwitcher, storesOf } from "@/components/admin/ad
 import { AdminTrail } from "@/components/admin/admin-trail";
 import { AiManagerLauncher } from "@/components/admin/ai-manager-launcher";
 import type { NavArea, NavItem } from "@/components/admin/store-admin-nav";
+import { LEVEL_LAYOUTS } from "@/lib/admin-layouts";
 import { featureOn } from "@/lib/store-features";
 import { storeBase, storeHref, storeOrigins } from "@/lib/paths";
 import { canOpenPath, permissionOfPath } from "@/lib/permissions";
@@ -35,7 +36,8 @@ const FULL_WIDTH = String.raw`^/admin/[^/]+/(pages|articles|product-layouts|head
  * sections as tabs with icons, each section's own pages in its sidebar (the
  * slide-out menu on phones) and the whole width of the screen to work in, as
  * the platform's (D144). The level switcher takes the person to any other
- * store, the control center or the platform.
+ * store, the control center or the platform. Drawn in the `rail` layout
+ * (docs/admin-style.md 6.3): the sections are the rail's icons.
  */
 export default async function StoreAdminLayout({ children, params }: LayoutProps<"/admin/[store]">) {
   const member = await requireMemberAny((await params).store);
@@ -67,6 +69,8 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
   const areas: NavArea[] = storeAreas(base, store, canOpen);
   return (
     <AdminFrame
+      layout={LEVEL_LAYOUTS.store}
+      home={{ href: "/admin", label: "Kaizen: all your stores" }}
       before={<AdminTrail storeSlug={store.slug} storeOrigins={storeOrigins(store.slug)} />}
       switcher={
         <Suspense fallback={<span className="px-2 font-medium">{store.name}</span>}>
