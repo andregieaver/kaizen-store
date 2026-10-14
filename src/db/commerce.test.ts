@@ -5921,3 +5921,15 @@ describe("store analytics data (D152)", () => {
     expect((await one<{ visit_counting: boolean }>("select visit_counting from commerce.stores where id = $1", [fresh.id])).visit_counting).toBe(false);
   });
 });
+
+describe("the chat agent's picture frame (D233)", () => {
+  it("is kept with the agent and copied with a duplicated store", async () => {
+    const owner = await createAccount("frame-copier@example.com");
+    const src = await createStore("frame-copy-source", ["DE"]);
+    const style = { fill: "gradient", colour: "#112233", colour2: "#445566", angle: 90, border: 2, borderColour: "#ffffff", shadow: "glow", shadowColour: "#000000" };
+    await db.query("insert into commerce.chat_agents (store_id, enabled, name, avatar_style) values ($1, true, 'Ingrid', $2::jsonb)", [src, JSON.stringify(style)]);
+    const { id: copy } = await one<{ id: string }>("select commerce.duplicate_store($1, 'frame-copy', 'Copy', $2) as id", [src, owner]);
+    const copied = await one<{ avatar_style: unknown }>("select avatar_style from commerce.chat_agents where store_id = $1", [copy]);
+    expect(copied.avatar_style).toEqual(style);
+  });
+});

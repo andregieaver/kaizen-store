@@ -201,6 +201,8 @@ of running `playwright install`.
   from Kaizen's own data, never the model's. `navigate` only opens the
   site's existing pages, built with `marketPath()`. Answers pass
   `cleanReply()`; products are cards drawn by the widget with `VatAmount`.
+  The picture's frame (D233: fill, border, shadow; `chat_agents.avatar_style`) is read only
+  through `cleanAvatarStyle()` and drawn only by `avatarFrameStyle()` (`src/lib/chat-avatar.ts`, no zod).
   Knowledge is `knowledge_chunks` (SQL only, like `product_embeddings`):
   documents cut on save, published pages and articles by
   `syncPageKnowledge()` in the five-minute cron, vectors by

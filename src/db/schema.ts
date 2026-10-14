@@ -5957,6 +5957,8 @@ export const chatAgents = commerce.table(
     occupation: text("occupation").notNull().default(""),
     /** Its picture: `{ url, width, height }`, or null. */
     avatar: jsonb("avatar"),
+    /** How its picture is framed on the site (`AvatarStyle`, `src/lib/chat-avatar.ts`): fill behind it, border and shadow; null is the standard look. */
+    avatarStyle: jsonb("avatar_style"),
     /** Its first words, by locale; empty uses the built-in greeting in the visitor's language. */
     greeting: jsonb("greeting").notNull().default({}),
     /** The owner's own guidance on tone and what to point out, under the fixed rules. */

@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."chat_agents" ADD COLUMN "avatar_style" jsonb;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { MESSAGE_MAX, type ChatProduct } from "@/lib/chat";
+import { avatarFill, avatarFrameStyle, type AvatarStyle } from "@/lib/chat-avatar";
 import { readSession, signalsOf } from "@/lib/recommend-session";
 import {
   STORAGE_KEY,
@@ -93,6 +94,8 @@ export type ChatWidgetProps = {
     name: string;
     occupation: string;
     avatar: { url: string; width: number; height: number } | null;
+    /** How the picture is framed (D233): fill, border and shadow; null or left out is the standard look. */
+    avatarStyle?: AvatarStyle | null;
     voice: boolean;
     /** The desk's mode (D216): the chat agent alone, the AI first, or people only. */
     mode: "off" | "ai_first" | "people";
@@ -531,12 +534,20 @@ export function ChatWidget({ site, signInHref, locale, agent, deskName, privacyH
     return null;
   };
 
+  // The owner's frame (D233): its fill shows through a picture's see-through parts, and replaces the accent behind the icon.
+  const frame = avatarFrameStyle(agent.avatarStyle);
+  const filled = agent.avatarStyle ? avatarFill(agent.avatarStyle) !== undefined : false;
   const avatar = (size: string) =>
     agent.avatar ? (
       // eslint-disable-next-line @next/next/no-img-element -- the owner's uploaded picture, already small
-      <img src={agent.avatar.url} alt="" width={agent.avatar.width} height={agent.avatar.height} className={`${size} shrink-0 rounded-full object-cover`} />
+      <img src={agent.avatar.url} alt="" width={agent.avatar.width} height={agent.avatar.height} style={frame} data-chat-avatar="" className={`${size} box-border shrink-0 rounded-full object-cover`} />
     ) : (
-      <span aria-hidden className={`${size} flex shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground`}>
+      <span
+        aria-hidden
+        style={frame}
+        data-chat-avatar=""
+        className={`${size} box-border flex shrink-0 items-center justify-center rounded-full ${filled ? "text-foreground" : "bg-accent text-accent-foreground"}`}
+      >
         <Icon name="chat" className="size-1/2" />
       </span>
     );

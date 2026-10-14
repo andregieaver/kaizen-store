@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { cleanAvatarStyle } from "./chat-avatar";
 import { cleanSignals } from "./recommendations";
 import { AGENT_NAME_MAX, GREETING_MAX, HISTORY_MAX, INSTRUCTIONS_MAX, MESSAGE_MAX, OCCUPATION_MAX } from "./chat";
 
@@ -35,6 +36,8 @@ export const chatAgentInput = z.object({
       height: z.number().int().min(1).max(10_000),
     })
     .nullable(),
+  /** How the picture is framed on the site (D233); anything out of range falls back, nothing is the standard look. */
+  avatarStyle: z.unknown().optional().transform((value) => cleanAvatarStyle(value)),
   greeting: z.record(
     z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/),
     z.string().trim().max(GREETING_MAX, `Keep the greeting under ${GREETING_MAX} characters.`),

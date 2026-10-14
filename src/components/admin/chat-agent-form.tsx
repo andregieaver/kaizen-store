@@ -3,9 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { avatarFrameStyle } from "@/lib/chat-avatar";
 import { AGENT_NAME_MAX, GREETING_MAX, INSTRUCTIONS_MAX, OCCUPATION_MAX } from "@/lib/chat";
 import { type ChatAgentInput } from "@/lib/chat-schema";
 
+import { ChatAvatarFields } from "./chat-avatar-fields";
 import { ImageUploadButton, type Upload } from "./image-upload";
 
 export type SaveChatAgent = (json: string) => Promise<{ ok: true } | { ok: false; problems: string[] }>;
@@ -60,9 +62,20 @@ export function ChatAgentForm({
         <div className="flex flex-col items-center gap-2">
           {value.avatar ? (
             // eslint-disable-next-line @next/next/no-img-element -- the uploaded picture as the site shows it
-            <img src={value.avatar.url} alt="" width={96} height={96} className="size-24 rounded-full border border-line object-cover" />
+            <img
+              src={value.avatar.url}
+              alt=""
+              width={96}
+              height={96}
+              style={value.avatarStyle ? avatarFrameStyle(value.avatarStyle) : undefined}
+              className={`box-border size-24 rounded-full object-cover ${value.avatarStyle ? "" : "border border-line"}`}
+            />
           ) : (
-            <span aria-hidden className="flex size-24 items-center justify-center rounded-full border border-dashed border-line text-sm text-muted">
+            <span
+              aria-hidden
+              style={value.avatarStyle ? avatarFrameStyle(value.avatarStyle) : undefined}
+              className={`box-border flex size-24 items-center justify-center rounded-full text-sm text-muted ${value.avatarStyle ? "" : "border border-dashed border-line"}`}
+            >
               No picture
             </span>
           )}
@@ -90,6 +103,8 @@ export function ChatAgentForm({
           </label>
         </div>
       </div>
+
+      <ChatAvatarFields value={value.avatarStyle} onChange={(avatarStyle) => set({ avatarStyle })} />
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-1 text-sm font-medium">Greeting</legend>

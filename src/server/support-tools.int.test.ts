@@ -98,7 +98,7 @@ beforeAll(async () => {
     lang: market.lang,
     locale: market.locale,
     market: market.slug,
-    agent: { storeId, enabled: true, name: "Mia", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 1000 },
+    agent: { storeId, enabled: true, name: "Mia", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 1000 },
     connection: { provider: "openai", source: "store", apiUrl: "https://ai.example.com/v1", apiKey: "sk-test", textModel: "text-model", embeddingModel: null, space: null } as never,
     settings: (await support.deskSettings(systemDesk(storeId)))!,
   };

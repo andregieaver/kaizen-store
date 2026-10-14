@@ -82,12 +82,13 @@ export async function ChatAgentView({
                   name: agent.name,
                   occupation: agent.occupation,
                   avatar: agent.avatar,
+                  avatarStyle: agent.avatarStyle,
                   greeting: agent.greeting,
                   instructions: agent.instructions,
                   voice: agent.voice,
                   dailyLimit: agent.dailyLimit,
                 }
-              : { enabled: false, name: "", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 }
+              : { enabled: false, name: "", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 }
           }
           languages={languages}
           voiceReady={canSpeak(connection)}

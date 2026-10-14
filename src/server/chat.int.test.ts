@@ -138,7 +138,7 @@ describe("the agent", () => {
     ]);
     const reply = await chat.runChat(
       { kind: "store", store, market },
-      { storeId, enabled: true, name: "Ingrid", occupation: "Kundeservice", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
+      { storeId, enabled: true, name: "Ingrid", occupation: "Kundeservice", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
       { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Har dere lamper?" }], signals: { views: [], searches: [] } },
       connection,
     );
@@ -172,7 +172,7 @@ describe("the agent", () => {
     ]);
     const reply = await chat.runChat(
       { kind: "store", store, market },
-      { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
+      { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
       { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Er det noe tilbud på lamper?" }], signals: { views: [], searches: [] } },
       connection,
     );
@@ -191,7 +191,7 @@ describe("the agent", () => {
 
   it("says a backorder, and the days the store states, only from the store's own stock read (D172)", async () => {
     const market = store.markets.find((m) => m.code === "NO")!;
-    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
+    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
     const variantsOf = async (handle: string) => {
       const sent = fakeModel([{ content: null, tool_calls: [call("1", "get_product", { handle })] }, { content: "Se her." }]);
       await chat.runChat({ kind: "store", store, market }, agent, { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Har dere den?" }], signals: { views: [], searches: [] } }, connection);
@@ -218,7 +218,7 @@ describe("the agent", () => {
 
   it("tells the model the store's return policy from its settings, and the legal default when it has set none (D153)", async () => {
     const market = store.markets.find((m) => m.code === "NO")!;
-    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
+    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
     const info = async (forStore: Store) => {
       const sent = fakeModel([{ content: null, tool_calls: [call("1", "store_info", {})] }, { content: "Se siden for å angre kjøpet." }]);
       await chat.runChat({ kind: "store", store: forStore, market }, agent, { market: market.slug, path: `/s/${slug}/no`, messages: [{ role: "user", content: "Kan jeg returnere?" }], signals: { views: [], searches: [] } }, connection);
@@ -241,7 +241,7 @@ describe("the agent", () => {
 
   it("recommends through the store's recommendation engine, which it uses only while the store has it on (D139)", async () => {
     const market = store.markets.find((m) => m.code === "NO")!;
-    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
+    const agent = { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 };
     const ask = (steps: Row[]) => {
       const sent = fakeModel(steps);
       return {
@@ -283,7 +283,7 @@ describe("the agent", () => {
     ]);
     const reply = await chat.runChat(
       { kind: "store", store, market },
-      { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
+      { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
       { messages: [{ role: "user", content: "Vis meg noe" }], signals: { views: [], searches: [] } },
       connection,
     );
@@ -299,7 +299,7 @@ describe("the agent", () => {
     const sent = fakeModel([...loop.slice(0, 4), { content: "Butikken heter Chat test." }]);
     const reply = await chat.runChat(
       { kind: "store", store, market },
-      { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
+      { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
       { messages: [{ role: "user", content: "Hva heter dere?" }], signals: { views: [], searches: [] } },
       connection,
     );

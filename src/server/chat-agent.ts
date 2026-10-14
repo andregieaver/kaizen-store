@@ -8,6 +8,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { db, readDb } from "@/db/client";
 import { cleanReply, kaizenTools, returnFacts, SHOP_DESTINATIONS, SHOP_TOOLS, storeTools, systemPrompt, type ChatAction, type ChatProduct, type ChatReply } from "@/lib/chat";
 import { chatAgentInput, navigateArgs, type ChatRequest } from "@/lib/chat-schema";
+import { cleanAvatarStyle, type AvatarStyle } from "@/lib/chat-avatar";
 import { chatDetails } from "@/lib/custom-fields";
 import { featureOn } from "@/lib/store-features";
 import { cardNotices, noticesFor, noticeText, type CampaignNotice, type CampaignNotices } from "@/lib/campaign-notices";
@@ -55,6 +56,8 @@ export type ChatAgent = {
   name: string;
   occupation: string;
   avatar: { url: string; width: number; height: number } | null;
+  /** How the picture is framed on the site (D233), null for the standard look. */
+  avatarStyle: AvatarStyle | null;
   greeting: Record<string, string>;
   instructions: string;
   voice: boolean;
@@ -72,6 +75,7 @@ function toAgent(row: Row): ChatAgent {
     name: String(row.name),
     occupation: String(row.occupation),
     avatar: (row.avatar as ChatAgent["avatar"]) ?? null,
+    avatarStyle: cleanAvatarStyle(row.avatar_style),
     greeting: (row.greeting as Record<string, string>) ?? {},
     instructions: String(row.instructions),
     voice: Boolean(row.voice),
@@ -99,6 +103,7 @@ export type ChatWidgetProfile = {
   name: string;
   occupation: string;
   avatar: ChatAgent["avatar"];
+  avatarStyle: ChatAgent["avatarStyle"];
   greeting: Record<string, string>;
   voice: boolean;
   /** Who answers the site's customers: the chat agent alone (`off`), the AI first, or people only. */
@@ -133,6 +138,7 @@ export async function chatWidgetFor(storeId: string | null): Promise<ChatWidgetP
     name: people ? "" : (agent?.name ?? ""),
     occupation: people ? "" : (agent?.occupation ?? ""),
     avatar: people ? null : (agent?.avatar ?? null),
+    avatarStyle: people ? null : (agent?.avatarStyle ?? null),
     greeting: people ? {} : (agent?.greeting ?? {}),
     voice: ai && agent!.voice && canSpeak(connection!),
     mode,
@@ -149,11 +155,12 @@ export async function saveChatAgent(account: Account, storeId: string | null, ra
   const agent = parsed.data;
   const greeting = Object.fromEntries(Object.entries(agent.greeting).filter(([, text]) => text));
   await db().execute(sql`
-    insert into commerce.chat_agents (store_id, enabled, name, occupation, avatar, greeting, instructions, voice, daily_limit, updated_by)
+    insert into commerce.chat_agents (store_id, enabled, name, occupation, avatar, avatar_style, greeting, instructions, voice, daily_limit, updated_by)
     values (${storeId}::uuid, ${agent.enabled}, ${agent.name}, ${agent.occupation}, ${agent.avatar ? JSON.stringify(agent.avatar) : null}::jsonb,
+      ${agent.avatarStyle ? JSON.stringify(agent.avatarStyle) : null}::jsonb,
       ${JSON.stringify(greeting)}::jsonb, ${agent.instructions}, ${agent.voice}, ${agent.dailyLimit}, ${account.id}::uuid)
     on conflict (store_id) do update set
-      enabled = excluded.enabled, name = excluded.name, occupation = excluded.occupation, avatar = excluded.avatar,
+      enabled = excluded.enabled, name = excluded.name, occupation = excluded.occupation, avatar = excluded.avatar, avatar_style = excluded.avatar_style,
       greeting = excluded.greeting, instructions = excluded.instructions, voice = excluded.voice,
       daily_limit = excluded.daily_limit, updated_at = now(), updated_by = excluded.updated_by
   `);

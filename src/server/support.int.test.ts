@@ -75,7 +75,7 @@ beforeAll(async () => {
     lang: market.lang,
     locale: market.locale,
     market: market.slug,
-    agent: { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
+    agent: { storeId, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 },
     connection,
     settings: await support.ensureDesk(systemDesk(storeId)),
   };
@@ -513,7 +513,7 @@ describe("asking for a person, and the two modes (step 5: C7, C8, C20)", () => {
       lang: market.lang,
       locale: market.locale,
       market: market.slug,
-      agent: ai ? { storeId: id, enabled: true, name: "Ingrid", occupation: "", avatar: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 } : null,
+      agent: ai ? { storeId: id, enabled: true, name: "Ingrid", occupation: "", avatar: null, avatarStyle: null, greeting: {}, instructions: "", voice: false, dailyLimit: 500 } : null,
       connection: ai ? connection : null,
       settings,
     };

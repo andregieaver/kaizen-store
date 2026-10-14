@@ -2234,6 +2234,20 @@
       "when": 1791967445045,
       "tag": "20261014084405_admin_scheme",
       "breakpoints": true
+    },
+    {
+      "idx": 319,
+      "version": "7",
+      "when": 1791998291423,
+      "tag": "20261014171811_chat_avatar_style",
+      "breakpoints": true
+    },
+    {
+      "idx": 320,
+      "version": "7",
+      "when": 1791998308523,
+      "tag": "20261014171828_chat_avatar_style_copy",
+      "breakpoints": true
     }
   ]
 }
