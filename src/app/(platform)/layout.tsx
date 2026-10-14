@@ -4,15 +4,13 @@ import { Suspense } from "react";
 
 import { SiteConsent } from "@/components/consent/site-consent";
 import { CustomCss } from "@/components/custom-css";
-import { FontLinks } from "@/components/font-links";
-import { BreakpointSheet } from "@/components/part-styles";
-import { DEFAULT_BREAKPOINTS } from "@/lib/breakpoints";
+import { StoreThemeStyles } from "@/components/store-theme";
+import { themeAttributes } from "@/lib/theme";
 import { PlatformBottomBar, PlatformFooter, PlatformHeader, PlatformMenu } from "@/components/platform-layout";
 import { OffPayRoutes } from "@/components/off-pay-routes";
 import { KaizenChat } from "@/components/site-chat";
 import { KaizenSiteFooter, KaizenSiteHeader } from "@/components/site-parts";
 import { t } from "@/lib/i18n";
-import { siteFontFamilies } from "@/lib/fonts";
 import { siteUrl } from "@/lib/site";
 import { siteIcons } from "@/lib/site-icons";
 import { siteFontStyle } from "@/server/fonts";
@@ -45,16 +43,15 @@ export default async function PlatformLayout({ children }: LayoutProps<"/">) {
   // Kaizen's own header and footer built in the page builder (D80), else the standard ones.
   const [chrome, headerLayout, footerLayout] = await Promise.all([getPlatformChrome(), siteLayoutFor(null, "header"), siteLayoutFor(null, "footer")]);
   return (
-    <html lang="en" className="h-full antialiased">
+    // Kaizen's own theme (D235): its choices as attributes, its colours and sizes as variables, as a store's (D60).
+    <html lang="en" className="h-full antialiased" {...themeAttributes(chrome.theme.settings)} suppressHydrationWarning={chrome.theme.settings.visitorSwitch}>
       {/* On phones the bottom bar covers the last 4rem, so the page ends above it. */}
       <body
         className="flex min-h-full flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] font-sans md:pb-0"
         style={siteFontStyle(chrome.fonts)}
       >
-        {/* Kaizen's own fonts, from its copies (D59). */}
-        <FontLinks families={siteFontFamilies(chrome.fonts)} />
-        {/* Kaizen's screen sizes are the defaults (D179): the breakpoint classes of what is drawn outside rows. */}
-        <BreakpointSheet breakpoints={DEFAULT_BREAKPOINTS} />
+        {/* Kaizen's own fonts, from its copies (D59), its theme (D235) and its screen sizes' breakpoint classes (D179). */}
+        <StoreThemeStyles store={{ id: "kaizen", theme: chrome.theme, fonts: chrome.fonts }} />
         {/* Kaizen's own CSS for every page, and its header's and footer's (D100). */}
         <CustomCss css={chrome.customCss} name="kaizen" />
         <CustomCss css={headerLayout?.content.css} name={`header-${headerLayout?.id}`} />

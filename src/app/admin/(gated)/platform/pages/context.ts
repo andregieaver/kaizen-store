@@ -2,7 +2,10 @@ import { pickPlatformMediaAction } from "../media/actions";
 import { listMenuPages } from "@/server/pages";
 import "server-only";
 
-import { platformSwatches } from "@/lib/colour";
+import { themeSwatches } from "@/lib/colour";
+import { breakpointsOf } from "@/lib/breakpoints";
+import { themeSetsOf } from "@/lib/page-a11y";
+import { themeAttributes, themeCss } from "@/lib/theme";
 import type { PageOwnerContext } from "@/components/admin/page-context";
 import { PAGE_TYPE_COPY } from "@/components/admin/page-type-copy";
 import { reservedPageSlugs, type PageType } from "@/lib/page-content";
@@ -23,6 +26,8 @@ import {
   deletePageAction,
   deleteSavedPartAction,
   savePlatformCssAction,
+  savePlatformLibraryAction,
+  savePlatformThemeTabAction,
   gridPreviewAction,
   gridTermsAction,
   platformLinkTargetsAction,
@@ -61,10 +66,17 @@ export async function platformPageContext(type: PageType = "page", author = ""):
     standardMenus: { header: chrome.headerMenuId, footer: chrome.footerMenuId },
     menusHref: "/admin/platform/menus",
     plans: planChoices(plans),
-    theme: null,
+    // Kaizen's own theme (D235), as a store's is given: its Theme tab, its saved colours, and the theme under every part.
+    theme: {
+      css: themeCss(chrome.theme.settings, "[data-theme-canvas]"),
+      attributes: themeAttributes(chrome.theme.settings),
+      breakpoints: breakpointsOf(chrome.theme.settings),
+      settings: chrome.theme.settings,
+    },
     templates: null,
-    check: null,
-    colours: platformSwatches(),
+    // The page checker reads contrast against Kaizen's colours (wave 1, 1e); Kaizen has no checkout page.
+    check: { theme: themeSetsOf(chrome.theme.settings), checkoutPageId: null },
+    colours: themeSwatches(chrome.theme.settings),
     variantOf: null,
     experimentsHref: null,
     fields: null,
@@ -84,6 +96,8 @@ export async function platformPageContext(type: PageType = "page", author = ""):
       linkTargets: platformLinkTargetsAction,
       installFont: installPlatformFontAction,
       saveSiteCss: savePlatformCssAction,
+      saveThemeTab: savePlatformThemeTabAction,
+      saveLibrary: savePlatformLibraryAction,
       translate: null,
     },
   };

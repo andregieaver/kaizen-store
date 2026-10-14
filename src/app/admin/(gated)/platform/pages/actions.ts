@@ -13,6 +13,7 @@ import { isPlatformRole, PLATFORM_ROLE_COPY } from "@/lib/platform-roles";
 import type { FormState } from "@/components/admin/action-form";
 import { createSavedPart, deleteSavedPart, updateSavedPart, type SavedResult } from "@/server/saved-parts";
 import { saveSiteCss } from "@/server/site-css";
+import { savePlatformThemeLibrary, savePlatformThemeTab } from "@/server/themes";
 import { PLATFORM_NAVIGATION_TAG } from "@/server/platform-navigation";
 import { createTerm, deleteTerm, listTerms, termsTag, updateTerm, type TermsResult } from "@/server/taxonomy";
 import { gridData } from "@/server/content-grid";
@@ -74,6 +75,34 @@ export async function deletePageAction(type: PageType, id: string): Promise<{ pr
   await deletePage(admin, null, id, type);
   updateTag(PAGES_TAG);
   redirect(`${listOf(type)}?deleted=1`);
+}
+
+/** What Kaizen's page builder's Theme tab holds (D235): into Kaizen's theme, live on its site at once. */
+export async function savePlatformThemeTabAction(payload: string) {
+  const admin = await requirePlatformAdmin();
+  const result = await savePlatformThemeTab(admin, readJson(payload));
+  if (result.ok) {
+    updateTag(PLATFORM_NAVIGATION_TAG);
+    updateTag(PAGES_TAG);
+  }
+  return result;
+}
+
+/** Kaizen's saved colours and gradients (D235), from its page builder's colour fields; nothing else of the theme. */
+export async function savePlatformLibraryAction(payload: string) {
+  const admin = await requirePlatformAdmin();
+  const result = await savePlatformThemeLibrary(admin, readJson(payload));
+  if (result.ok) updateTag(PLATFORM_NAVIGATION_TAG);
+  return result;
+}
+
+/** A payload the browser sent as JSON, or null (which the checks refuse). */
+function readJson(payload: string): unknown {
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
 }
 
 /** Kaizen's own CSS for every one of its pages (D100): live at once. */

@@ -2248,6 +2248,13 @@
       "when": 1791998308523,
       "tag": "20261014171828_chat_avatar_style_copy",
       "breakpoints": true
+    },
+    {
+      "idx": 321,
+      "version": "7",
+      "when": 1792006518131,
+      "tag": "20261014193518_platform_theme",
+      "breakpoints": true
     }
   ]
 }

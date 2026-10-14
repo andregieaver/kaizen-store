@@ -1,0 +1,1 @@
+ALTER TABLE "commerce"."platform_settings" ADD COLUMN "theme" jsonb;

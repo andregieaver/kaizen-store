@@ -10,7 +10,10 @@ import { colourLibrarySchema } from "@/lib/colour-library";
 import { themeElementsSchema, themeFontFamilies } from "@/lib/theme-elements";
 import { themeHoverSchema } from "@/lib/hover-timing";
 
+import { parseSiteFonts } from "@/lib/fonts-schema";
+
 import { audit, type Account } from "./auth";
+import { platformTheme } from "./platform-navigation";
 import { findFont, installFonts } from "./fonts";
 
 /**
@@ -92,11 +95,27 @@ export async function saveThemeTab(
   store: { id: string; theme: StoreTheme },
   input: unknown,
 ): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
+  const settings = themeTabSettings(store.theme.settings, input);
+  if (!settings.ok) return settings;
+  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings: settings.settings });
+}
+
+/** A theme's settings with what the page builder's Theme tab sent laid in (D182): the same for a store and for Kaizen (D235). */
+function themeTabSettings(current: ThemeSettings, input: unknown): { ok: true; settings: ThemeSettings } | { ok: false; problems: string[] } {
   const parsed = themeTabInput.safeParse(input);
   if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
   const { elements, maxWidth, background, hover } = parsed.data;
-  const settings = withThemeTab(store.theme.settings, { elements: elements ?? {}, maxWidth, background, hover });
-  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings });
+  return { ok: true, settings: withThemeTab(current, { elements: elements ?? {}, maxWidth, background, hover }) };
+}
+
+/** A theme's settings with its saved colours and gradients replaced (D183): the same for a store and for Kaizen (D235). */
+function librarySettings(current: ThemeSettings, input: unknown): { ok: true; settings: ThemeSettings } | { ok: false; problems: string[] } {
+  const parsed = colourLibrarySchema.safeParse(input);
+  if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
+  const { library: _before, ...rest } = current;
+  void _before;
+  const empty = parsed.data.colours.length === 0 && parsed.data.gradients.length === 0;
+  return { ok: true, settings: { ...rest, ...(!empty && { library: parsed.data }) } };
 }
 
 /** Saves the store's saved colours and gradients (D183) and nothing else of the theme. */
@@ -105,13 +124,42 @@ export async function saveThemeLibrary(
   store: { id: string; theme: StoreTheme },
   input: unknown,
 ): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
-  const parsed = colourLibrarySchema.safeParse(input);
+  const settings = librarySettings(store.theme.settings, input);
+  if (!settings.ok) return settings;
+  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings: settings.settings });
+}
+
+/**
+ * Kaizen's own theme (D235, `platform_settings.theme`), written as a store's is: checked by the same schema and kept in a
+ * store's shape. Its fonts stay `platform_settings.fonts` (the Fonts page), laid over it when read.
+ */
+async function savePlatformTheme(account: Account, settings: ThemeSettings): Promise<{ ok: true; theme: StoreTheme } | { ok: false; problems: string[] }> {
+  const parsed = storeThemeInput.safeParse({ base: "minimal", savedId: null, settings });
   if (!parsed.success) return { ok: false, problems: problemsOf(parsed.error) };
-  const { library: _before, ...rest } = store.theme.settings;
-  void _before;
-  const empty = parsed.data.colours.length === 0 && parsed.data.gradients.length === 0;
-  const settings = { ...rest, ...(!empty && { library: parsed.data }) };
-  return saveStoreTheme(account, store.id, { base: store.theme.base, savedId: store.theme.savedId, settings });
+  const fontProblems = await readyFonts(parsed.data.settings);
+  if (fontProblems.length > 0) return { ok: false, problems: fontProblems };
+  const theme = parsed.data;
+  await db().execute(sql`update commerce.platform_settings set theme = ${JSON.stringify(theme)}::jsonb where id`);
+  await audit(account.id, null, "platform.theme_updated", {});
+  return { ok: true, theme };
+}
+
+/** Kaizen's theme as it is now, read fresh (not the site's cached copy). */
+async function platformThemeNow(): Promise<StoreTheme> {
+  const [row] = await db().execute<Row>(sql`select theme, fonts from commerce.platform_settings where id`);
+  return platformTheme(row?.theme, parseSiteFonts(row?.fonts));
+}
+
+/** What Kaizen's page builder's Theme tab sends (D235): as `saveThemeTab()`, into Kaizen's theme. */
+export async function savePlatformThemeTab(account: Account, input: unknown) {
+  const settings = themeTabSettings((await platformThemeNow()).settings, input);
+  return settings.ok ? savePlatformTheme(account, settings.settings) : settings;
+}
+
+/** Kaizen's saved colours and gradients (D235): as `saveThemeLibrary()`, into Kaizen's theme. */
+export async function savePlatformThemeLibrary(account: Account, input: unknown) {
+  const settings = librarySettings((await platformThemeNow()).settings, input);
+  return settings.ok ? savePlatformTheme(account, settings.settings) : settings;
 }
 
 const savedThemeInput = z.object({

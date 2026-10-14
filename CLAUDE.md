@@ -833,6 +833,16 @@ stand-in is the only fake, and only it is told it is one.
   are the theme's (`store.fonts` is derived from it). Logos are drawn with
   `LogoPicture` and `darkBehindLogo()`, which swap in the logo for dark
   backgrounds (`navigation.logoDark`) where the theme puts it on a dark one.
+  Kaizen's own site has a theme too (D235, `platform_settings.theme`, a store's
+  shape, read by `platformTheme()`/`getPlatformTheme()`: Minimal until changed,
+  which is what Kaizen always looked like, with `platform_settings.fonts` laid
+  over it): drawn by the platform layout as a store's (`StoreThemeStyles`,
+  `themeAttributes()`), laid under Kaizen's pages by `themeElementsFor(null)`,
+  and edited in Kaizen's page builder's Theme tab and saved colours
+  (`savePlatformThemeTab()`, `savePlatformThemeLibrary()`, sharing the store's
+  `themeTabSettings()`/`librarySettings()`). Kaizen's builder is the store's
+  builder given Kaizen's context: a new builder capability is wired into both
+  `pages/context.ts` files, or said why it is a store's only.
 - Fonts (D59, `src/lib/fonts.ts`, `src/server/fonts.ts`): Google Fonts,
   always self-hosted. A family is installed (`installFont()`: downloaded once
   into `commerce.fonts`/`font_files`) before anything uses it, from the

@@ -928,6 +928,12 @@ export const platformSettings = commerce.table(
     /** Kaizen's own CSS for every one of its pages (D100), checked by `cssProblem()` in lib/custom-css. */
     customCss: text("custom_css").notNull().default(""),
     /**
+     * Kaizen's own theme (D235), in a store's shape (`{ base, savedId, settings }`, read by `parseStoreTheme()`): null is Minimal,
+     * which is what Kaizen's site always looked like. The page builder's Theme tab and saved colours write it; its fonts are
+     * `fonts` above, laid over it when read.
+     */
+    theme: jsonb("theme"),
+    /**
      * When stores' domains last asked for a new deployment (P8): routing to
      * custom domains is built into each deployment, so a change needs one.
      */

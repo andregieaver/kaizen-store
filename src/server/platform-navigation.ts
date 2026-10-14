@@ -21,6 +21,7 @@ import {
 import { type TrackingSettings } from "@/lib/cookie-consent";
 import { parseTracking } from "@/lib/cookie-consent-schema";
 import { parseSiteFonts, type SiteFonts } from "@/lib/fonts-schema";
+import { parseStoreTheme, type StoreTheme } from "@/lib/theme";
 
 import { audit, type Account } from "./auth";
 import { ownMenus, standardMenusInput } from "./navigation";
@@ -53,6 +54,8 @@ export type PlatformChrome = {
   fonts: SiteFonts;
   /** Kaizen's own CSS for every one of its pages (D100). */
   customCss: string;
+  /** Kaizen's own theme (D235): Minimal until the page builder's Theme tab or saved colours change it; its fonts are `fonts`. */
+  theme: StoreTheme;
 };
 
 async function loadSettings(): Promise<{
@@ -64,12 +67,13 @@ async function loadSettings(): Promise<{
   tracking: TrackingSettings;
   fonts: SiteFonts;
   customCss: string;
+  theme: StoreTheme;
 }> {
   "use cache";
   cacheLife("hours");
   cacheTag(PLATFORM_NAVIGATION_TAG);
   const [[row], menus] = await Promise.all([
-    readDb().execute<Row>(sql`select navigation, business, tracking, fonts, custom_css, header_menu_id, footer_menu_id from commerce.platform_settings`),
+    readDb().execute<Row>(sql`select navigation, business, tracking, fonts, custom_css, theme, header_menu_id, footer_menu_id from commerce.platform_settings`),
     readDb().execute<Row>(sql`select id, name, items from commerce.menus where store_id is null order by name`),
   ]);
   return {
@@ -81,7 +85,19 @@ async function loadSettings(): Promise<{
     tracking: parseTracking(row?.tracking),
     fonts: parseSiteFonts(row?.fonts),
     customCss: String(row?.custom_css ?? ""),
+    theme: platformTheme(row?.theme, parseSiteFonts(row?.fonts)),
   };
+}
+
+/** Kaizen's theme as stored, completed from Minimal, with Kaizen's own fonts (D235). */
+export function platformTheme(stored: unknown, fonts: SiteFonts): StoreTheme {
+  const theme = parseStoreTheme(stored);
+  return { ...theme, settings: { ...theme.settings, fonts } };
+}
+
+/** Kaizen's own theme (D235). */
+export async function getPlatformTheme(): Promise<StoreTheme> {
+  return (await loadSettings()).theme;
 }
 
 /** Kaizen's own icon (D62), or none for the default. */
