@@ -591,6 +591,10 @@ plain top bar and one card on the canvas (440 px, 560 px for the two-step set-up
 and no level's navigation. `focus` is in `ADMIN_LAYOUTS`; the scan test requires it of every signed-out page. `SubmitButton` is a
 pill. Not built yet: `focus` for signed-in pages that are one form (the setup wizard), and the `workspace` layout.
 
+Step 13, the setup wizard (D229): a level's `AdminFrame` takes `focus` (the addresses drawn so, a way back, a title) and draws
+those pages without the rail, the sidebar, the menu and the level's actions, the top bar holding the way back and what is being
+done, the page in one 760 px column. The store's level asks it for its setup wizard. Next: the `workspace` layout.
+
 ---
 
 ## 9. Do and don't

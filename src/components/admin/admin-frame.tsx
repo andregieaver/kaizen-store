@@ -6,6 +6,7 @@ import { HidingHeader, MobileMenu } from "@/components/store-chrome";
 import type { AdminLayoutId } from "@/lib/admin-layouts";
 
 import { AdminMain } from "./admin-main";
+import { ByPath } from "./by-path";
 import { AdminRail } from "./admin-rail";
 import { AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
 
@@ -34,6 +35,7 @@ export function AdminFrame({
   fullWidth = "^$",
   before,
   layout = "classic",
+  focus,
   home,
   children,
 }: {
@@ -60,6 +62,11 @@ export function AdminFrame({
   /** Something rendered before the header (scripts that only listen). */
   before?: ReactNode;
   layout?: AdminLayoutId;
+  /**
+   * Addresses drawn in the `focus` layout (docs/admin-style.md 6.3, a regular expression's source): no rail, sidebar, tabs or menu, a top
+   * bar with a way back and what is being done, and the page in one column (the setup wizard).
+   */
+  focus?: { pattern: string; back: { href: string; label: string }; title: ReactNode };
   /** The rail's logo tile: where it leads and its name. */
   home?: { href: string; label: string };
   children: ReactNode;
@@ -109,23 +116,44 @@ export function AdminFrame({
     </MobileMenu>
   );
 
+  // A page in the `focus` layout keeps the level's account menu and nothing of its navigation.
+  const focused = (normal: ReactNode, inFocus: ReactNode) =>
+    focus ? <ByPath pattern={focus.pattern} match={inFocus} otherwise={normal} /> : normal;
+  const focusStart = focus && (
+    <div className="flex min-w-0 items-center gap-3">
+      <Link href={focus.back.href} className="inline-flex shrink-0 items-center gap-1 text-body text-ink-2 hover:text-ink">
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="size-4" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        {focus.back.label}
+      </Link>
+      <span aria-hidden className="h-5 w-px bg-line" />
+      <span className="truncate text-body-strong text-ink">{focus.title}</span>
+    </div>
+  );
+
   if (layout === "rail") {
     // The rail (docs/admin-style.md 5.3, 5.4): the sections down the left, then a plain bar over the page, no background or line.
     return (
       <>
         {before}
         <div data-admin-layout="rail" className="flex min-h-dvh w-full flex-1">
-          <AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizen" }} label={tabsLabel} />
+          {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizen" }} label={tabsLabel} />, null)}
           <div className="flex min-w-0 flex-1 flex-col">
             <header data-admin-topbar className="flex h-16 shrink-0 items-center gap-2 px-4 md:px-8">
-              {menuButton}
-              {switcher}
+              {focused(
+                <>
+                  {menuButton}
+                  {switcher}
+                </>,
+                focusStart,
+              )}
               <div className="ml-auto flex shrink-0 items-center gap-2 text-sm">
-                {actions}
+                {focused(actions, null)}
                 {account}
               </div>
             </header>
-            <AdminMain fullWidth={fullWidth} wide={wide} railed sidebar={sidebar(true)}>
+            <AdminMain fullWidth={fullWidth} focus={focus?.pattern} wide={wide} railed sidebar={sidebar(true)}>
               {children}
             </AdminMain>
           </div>

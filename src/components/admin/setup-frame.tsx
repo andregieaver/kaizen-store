@@ -1,9 +1,10 @@
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { SetupStep, SetupStepId } from "@/lib/setup-steps";
 import type { SetupProgress } from "@/server/setup";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { ButtonLink, CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The frame around every setup step: where you are, what is done, and a way
@@ -12,7 +13,6 @@ import { CARD_CLASS } from "@/components/admin/ui";
  */
 export function SetupFrame({
   storeSlug,
-  storeName,
   steps,
   step,
   progress,
@@ -21,7 +21,8 @@ export function SetupFrame({
   children,
 }: {
   storeSlug: string;
-  storeName: string;
+  /** Named in the top bar of the `focus` layout ("Setting up …"), so not repeated here. */
+  storeName?: string;
   steps: SetupStep[];
   step: SetupStepId;
   progress: SetupProgress;
@@ -36,26 +37,21 @@ export function SetupFrame({
   const base = `/admin/${storeSlug}/setup`;
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <nav aria-label="Setup steps">
-        <p className="mb-3 text-sm text-muted">
-          Setting up {storeName} · Step {index + 1} of {steps.length}
+        <p className="mb-3 text-eyebrow text-muted uppercase">
+          Step {index + 1} of {steps.length}
         </p>
-        <ol className="flex gap-2 text-xs sm:text-sm">
+        <ol className="flex gap-2 text-caption sm:text-body">
           {steps.map((s, i) => (
             <li key={s.id} className="min-w-0 flex-1">
               <Link
                 href={`${base}/${s.id}`}
                 aria-current={s.id === step ? "step" : undefined}
-                className="flex flex-col gap-1.5 rounded-md py-1 aria-[current=step]:font-medium"
+                className="flex flex-col gap-1.5 rounded-md py-1 text-ink-2 hover:text-ink aria-[current=step]:text-body-strong aria-[current=step]:text-ink"
               >
-                <span
-                  aria-hidden="true"
-                  className={`h-1.5 rounded-full ${
-                    s.id === step ? "bg-brand" : done(s.id) ? "bg-brand/50" : "bg-line"
-                  }`}
-                />
-                <span>
+                <span aria-hidden="true" className={`h-1.5 rounded-pill ${s.id === step ? "bg-brand" : done(s.id) ? "bg-brand/50" : "bg-line"}`} />
+                <span className="truncate">
                   <span className="sr-only">
                     Step {i + 1}: {done(s.id) ? "done, " : ""}
                   </span>
@@ -67,26 +63,26 @@ export function SetupFrame({
         </ol>
       </nav>
 
-      <section aria-labelledby="step-title" className={`p-6 ${CARD_CLASS}`}>
-        <h1 id="step-title" className="mb-2 text-2xl font-medium">
+      <section aria-labelledby="step-title" className={`p-6 sm:p-8 ${CARD_CLASS}`}>
+        <h1 id="step-title" className="mb-2 text-display text-ink">
           {title}
         </h1>
-        <div className="mb-6 text-sm text-muted">{intro}</div>
+        <div className="mb-6 text-body text-ink-2">{intro}</div>
         {children}
       </section>
 
-      <div className="flex justify-between text-sm">
+      <div className="flex items-center justify-between gap-3">
         {previous ? (
-          <Link href={`${base}/${previous.id}`} className="underline">
+          <ButtonLink href={`${base}/${previous.id}`} kind="quiet" icon={<ChevronLeft />}>
             Back
-          </Link>
+          </ButtonLink>
         ) : (
           <span />
         )}
         {next && (
-          <Link href={`${base}/${next.id}`} className="underline">
+          <ButtonLink href={`${base}/${next.id}`} kind="secondary">
             Skip for now
-          </Link>
+          </ButtonLink>
         )}
       </div>
     </div>

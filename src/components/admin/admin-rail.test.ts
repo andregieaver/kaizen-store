@@ -71,4 +71,43 @@ describe("the frame in each layout", () => {
     expect(out).not.toContain("data-admin-rail");
     expect(out.match(/aria-label="Main sections"/g)).toHaveLength(1);
   });
+
+  it("draws the setup wizard in the focus layout: a way back and what is being done, no rail, sidebar, menu or actions", () => {
+    const focused = () =>
+      renderToStaticMarkup(
+        h(AdminFrame, {
+          layout: "rail",
+          switcher: "Store switcher",
+          actions: "AI manager",
+          account: "Me",
+          tabs,
+          groups: [],
+          areas,
+          tabsLabel: "Main sections",
+          menuTitle: "Store",
+          focus: { pattern: "^/admin/[^/]+/setup(/|$)", back: { href: "/admin/s", label: "Leave setup" }, title: "Setting up Kaffe" },
+          children: h("p", null, "Step"),
+        }),
+      );
+    path.current = "/admin/s/setup/details";
+    const out = focused();
+    expect(out).toContain('data-admin-layout="focus"');
+    expect(out).toContain("max-w-[760px]");
+    expect(out).not.toContain("data-admin-rail");
+    expect(out).not.toContain("Main sections");
+    expect(out).not.toContain("data-open-menu");
+    expect(out).not.toContain("Store switcher");
+    expect(out).not.toContain("AI manager");
+    expect(out).toContain('href="/admin/s"');
+    expect(out).toContain("Leave setup");
+    expect(out).toContain("Setting up Kaffe");
+    expect(out).toContain("Me");
+    expect(out).toContain("Step");
+    // Any other page of the store keeps the rail.
+    path.current = "/admin/s/orders";
+    const normal = focused();
+    expect(normal).toContain("data-admin-rail");
+    expect(normal).toContain("Store switcher");
+    expect(normal).not.toContain("Leave setup");
+  });
 });

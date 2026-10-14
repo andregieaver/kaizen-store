@@ -31,6 +31,9 @@ import {
 /** The page editor (a page's own address, or a new page) uses the whole width, without the section's sidebar (D53). */
 const FULL_WIDTH = String.raw`^/admin/[^/]+/(pages|articles|product-layouts|headers|footers)/(new|[0-9a-f-]{36})$`;
 
+/** The setup wizard is drawn in the `focus` layout (D229): one step at a time, nothing of the store's navigation beside it. */
+const SETUP = String.raw`^/admin/[^/]+/setup(/|$)`;
+
 /**
  * A store's admin (D39, D107, D147): the shared admin shell, with the store's
  * sections as tabs with icons, each section's own pages in its sidebar (the
@@ -121,6 +124,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         </>
       }
       fullWidth={FULL_WIDTH}
+      focus={{ pattern: SETUP, back: { href: base, label: "Leave setup" }, title: `Setting up ${store.name}` }}
     >
       {store.starter && (
         <div role="status" className="mb-4 rounded-lg border border-line bg-sunken p-4 text-sm">
