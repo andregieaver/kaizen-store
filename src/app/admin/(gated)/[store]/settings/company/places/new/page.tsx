@@ -6,7 +6,7 @@ import { PlaceFields } from "@/components/admin/place-fields";
 import { requirePermission } from "@/server/permissions";
 import { KIND_LABELS } from "@/server/company";
 import { listCountries } from "@/server/stores";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { savePlaceAction } from "../../actions";
 
@@ -29,7 +29,7 @@ export default async function NewPlacePage({ params, searchParams }: PageProps<"
         title={<>Add a {what}</>}
         description={<>{kind === "shop" ? "A place where shoppers can visit you." : "A place where shoppers can collect their orders."}</>}
       />
-      <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
+      <ActionForm action={savePlaceAction.bind(null, store.slug, null)} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
         <input type="hidden" name="kind" value={kind} />
         <div className={field}>
           <label htmlFor="place-name">Name</label>

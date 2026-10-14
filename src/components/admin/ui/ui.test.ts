@@ -91,6 +91,12 @@ describe("cards and tiles", () => {
     expect(out).toContain("3 customers");
   });
 
+  it("says what a card is for under its title, on a line of its own", () => {
+    const out = html(h(Card, { title: "Calendar sync", description: "Give each site this calendar." }, "body"));
+    expect(out).toContain('<div class="max-w-[75ch] basis-full text-body text-muted">Give each site this calendar.</div>');
+    expect(out.indexOf("Calendar sync")).toBeLessThan(out.indexOf("Give each site"));
+  });
+
   it("is a section without a name when it has no title", () => {
     expect(html(h(Card, {}, "body"))).not.toContain("aria-labelledby");
   });

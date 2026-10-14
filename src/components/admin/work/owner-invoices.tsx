@@ -13,7 +13,7 @@ import {
 import { WORK_LOCALE, withStore, type WorkStore } from "@/lib/work-owner";
 import { WORK_ROOT, workBase } from "@/lib/work-paths";
 import type { OwnerInvoiceList, OwnerInvoiceRow } from "@/server/work-owner";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { InvoiceStatusChip } from "./invoice-status";
 import { CurrencyNote, StoreFilter } from "./owner-common";
@@ -152,7 +152,7 @@ export function OwnerInvoicesView({
       )}
 
       {list.rows.length === 0 ? (
-        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
+        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           {empty
             ? "No invoices yet. Start one with New invoice, or from a client's unbilled time."
             : "No invoice matches. Try another tab or clear the filters."}

@@ -11,7 +11,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { isSlugTaken, listAccessRequests, type AccessRequest } from "@/server/platform";
 import { listOfferedDesigns } from "@/server/design-presets";
 import { listOfferedStarters } from "@/server/store-starters";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { decideAction } from "../actions";
 
@@ -92,7 +92,7 @@ async function PendingRequest({ request, starters, designs }: { request: AccessR
   return (
     <article
       aria-labelledby={`request-${request.id}`}
-      className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
+      className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
     >
       <div>
         <h3 id={`request-${request.id}`} className="font-medium">

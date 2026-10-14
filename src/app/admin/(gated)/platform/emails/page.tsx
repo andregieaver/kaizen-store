@@ -5,7 +5,7 @@ import { EmailLog } from "@/components/admin/email-log";
 import { emailEventsSetup } from "@/lib/email-settings";
 import { emailSettings, listEmails } from "@/server/email";
 import { requirePlatformAdmin } from "@/server/auth";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Emails" };
 
@@ -19,8 +19,7 @@ export default async function PlatformEmailsPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader title="Emails" />
-      <section className="rounded-card border border-line bg-card p-5 text-sm">
-        <h2 className="mb-2 font-medium">Sending</h2>
+      <Card title="Sending" className="text-sm" compact>
         {settings ? (
           <div className="flex flex-col gap-2">
             <p>
@@ -52,10 +51,10 @@ export default async function PlatformEmailsPage() {
             </p>
           </div>
         )}
-      </section>
-      <section className="rounded-card border border-line bg-card p-5">
+      </Card>
+      <Card compact>
         <EmailLog emails={emails} base="/admin/platform/emails" showStore />
-      </section>
+      </Card>
     </div>
   );
 }

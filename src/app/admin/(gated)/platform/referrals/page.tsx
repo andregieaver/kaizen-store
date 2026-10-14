@@ -10,7 +10,7 @@ import { money } from "@/lib/control-center";
 import { bpsText, type AdminReferrer } from "@/lib/referrals";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getReferralSettings, listReferrals, listReferrers, referralTotals } from "@/server/referrals";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import {
   adjustReferralCreditAction,
@@ -96,7 +96,7 @@ export default async function PlatformReferralsPage() {
       />
 
       <Section id="settings-heading" title="The program">
-        <ActionForm action={saveReferralSettingsAction} className="flex max-w-xl flex-col gap-4 rounded-card border border-line bg-card p-5" successMessage="Saved.">
+        <ActionForm action={saveReferralSettingsAction} className={`flex max-w-xl flex-col gap-4 p-5 ${CARD_CLASS}`} successMessage="Saved.">
           <label className="flex items-center gap-2 text-sm font-medium">
             <input type="checkbox" name="enabled" defaultChecked={settings.enabled} className="size-4" />
             The program is on

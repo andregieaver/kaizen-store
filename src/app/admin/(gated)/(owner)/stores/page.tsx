@@ -13,7 +13,7 @@ import { MAX_STORES_PER_OWNER } from "@/server/platform";
 import { listStoreCopies } from "@/server/store-copy";
 import { designChoices } from "@/server/design-presets";
 import { starterCards } from "@/server/store-starters";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { createStoreAction } from "./actions";
 
@@ -46,17 +46,7 @@ export default async function AllStoresPage() {
       )}
 
       {canCreate && (
-        <section aria-labelledby="new-store" className="flex max-w-3xl flex-col gap-3 rounded-card border border-line bg-card p-5">
-          <div>
-            <h2 id="new-store" className="font-medium">
-              Create a store
-            </h2>
-            <p className="text-sm text-muted">
-              It starts as a copy of the store template you choose, with you as owner: its products and services, staff,
-              pages, menus and settings, ready to change. You then add your business details, set up payments and choose
-              its plan.
-            </p>
-          </div>
+        <Card title="Create a store" description="It starts as a copy of the store template you choose, with you as owner: its products and services, staff, pages, menus and settings, ready to change. You then add your business details, set up payments and choose its plan." className="flex max-w-3xl flex-col gap-3" compact>
           <ActionForm action={createStoreAction} className="flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-sm font-medium">
               Store name
@@ -90,7 +80,7 @@ export default async function AllStoresPage() {
               <SubmitButton>Create store</SubmitButton>
             </div>
           </ActionForm>
-        </section>
+        </Card>
       )}
       {closed.length > 0 && (
         <section aria-labelledby="closed-heading" className="flex flex-col gap-2">

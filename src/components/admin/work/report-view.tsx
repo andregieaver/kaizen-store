@@ -15,7 +15,7 @@ import { ReportTable } from "./report-table";
 import { ReportTotalsView } from "./report-totals";
 import { secondaryButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export type ReportViewProps = {
   storeSlug: string;
@@ -68,7 +68,7 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
       <ReportTotalsView report={report} locale={locale} />
 
       {empty ? (
-        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
+        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
         </p>
       ) : (

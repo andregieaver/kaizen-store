@@ -20,7 +20,7 @@ import {
 } from "@/lib/invoice-admin";
 import { formatMoney } from "@/lib/money";
 import type { DocumentListRow, DocumentPage, FailingPdf, InvoiceCounts, WaitingCreditNote, WaitingInvoice } from "@/server/invoices";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { CheckAgainForm, RetryPdfForm } from "./waiting-actions";
 
@@ -210,7 +210,7 @@ function ListTab({
       </p>
 
       {documents.rows.length === 0 ? (
-        <p className="rounded-card border border-line bg-card p-8 text-center text-sm">
+        <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>
           {filtered
             ? `No ${noun} match. Change the period or the search.`
             : credit
@@ -368,7 +368,7 @@ function WaitingTab({
   const nothing = waiting.length === 0 && waitingNotes.length === 0 && failing.length === 0;
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
+      <div className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <p className="max-w-3xl text-sm text-muted">
           A paid order waits for its invoice when something the invoice must state is missing, for example the business details or the VAT registration. The
           payment is never held back. Once the cause is put right the invoice is made within five minutes, dated that day, and still says the payment day as
@@ -377,7 +377,7 @@ function WaitingTab({
         {canWrite ? <CheckAgainForm action={actions.checkAgain} /> : <p className="text-sm text-muted">Members who may change orders can press Check again.</p>}
       </div>
 
-      {nothing && <p className="rounded-card border border-line bg-card p-8 text-center text-sm">Nothing is waiting. Every paid order has its invoice and every refund its credit note.</p>}
+      {nothing && <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>Nothing is waiting. Every paid order has its invoice and every refund its credit note.</p>}
 
       {waiting.length > 0 && (
         <section aria-labelledby="waiting-invoices" className="flex flex-col gap-2">

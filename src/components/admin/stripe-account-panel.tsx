@@ -5,6 +5,7 @@ import { platformPublishableKey } from "@/server/stripe";
 
 import { ActionForm, SubmitButton } from "./action-form";
 import { StripeConnect } from "./stripe-connect";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 const STAGE_TEXT: Record<AccountStage, string> = {
   not_started: "Not set up yet.",
@@ -35,7 +36,7 @@ export function StripeAccountPanel({
   return (
     <section
       aria-labelledby={`stripe-${mode}-heading`}
-      className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
+      className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
     >
       <div>
         <h2 id={`stripe-${mode}-heading`} className="font-medium">

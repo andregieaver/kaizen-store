@@ -1,5 +1,6 @@
 import { BONUS_ACCOUNTING_NOTE, moneyIn, overviewRows } from "@/lib/bonus-admin";
 import type { BonusOverview } from "@/lib/bonus";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * What the bonus program owes and did lately (D130), as the store's own figures: credits that can be used now are a
@@ -10,7 +11,7 @@ export function BonusOverviewCard({ overview, locale }: { overview: BonusOvervie
   return (
     <section
       aria-labelledby="bonus-overview-heading"
-      className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
+      className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
     >
       <h2 id="bonus-overview-heading" className="font-medium">
         Credits at a glance

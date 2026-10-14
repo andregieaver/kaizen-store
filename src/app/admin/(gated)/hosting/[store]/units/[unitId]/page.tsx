@@ -7,7 +7,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { getResource } from "@/server/bookings";
 import { getUnitProperty } from "@/server/dac7";
 import { requireHost } from "@/server/hosts";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import { ResourceCalendar, type CalendarActions } from "../../../../[store]/bookings/resource-calendar";
 import {
@@ -51,15 +51,7 @@ export default async function HostUnitPage({ params }: PageProps<"/admin/hosting
         </div>
       <ResourceCalendar storeId={store.id} timeZone={store.timeZone} resource={unit} actions={actions} />
       {property && (
-        <section aria-labelledby="property-heading" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-          <div>
-            <h2 id="property-heading" className="font-medium">
-              Where it is
-            </h2>
-            <p className="text-sm text-muted">
-              The store reports each rented home&apos;s address to the tax authority once a year (DAC7). Guests do not see it here.
-            </p>
-          </div>
+        <Card title="Where it is" description={<>The store reports each rented home&apos;s address to the tax authority once a year (DAC7). Guests do not see it here.</>} className="flex flex-col gap-3" compact>
           <ActionForm action={hostSavePropertyAction.bind(null, store.slug, unit.id)} className="flex flex-col gap-3">
             <label className={field}>
               Address
@@ -75,7 +67,7 @@ export default async function HostUnitPage({ params }: PageProps<"/admin/hosting
               <SubmitButton>Save address</SubmitButton>
             </div>
           </ActionForm>
-        </section>
+        </Card>
       )}
     </div>
   );

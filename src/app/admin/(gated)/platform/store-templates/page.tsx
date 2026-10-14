@@ -9,7 +9,7 @@ import { listFilterOf } from "@/lib/lifecycle";
 import { STARTER_CATEGORIES, STARTER_CATEGORY_LABELS, STARTER_LIMITS, type StarterRow } from "@/lib/store-starters";
 import { requirePlatformAdmin } from "@/server/auth";
 import { listStarters, shownDetails, starterLifecycle, starterPreviewHref } from "@/server/store-starters";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import {
   archiveStarterAction,
@@ -83,16 +83,7 @@ export default async function StoreTemplatesPage({ searchParams }: PageProps<"/a
       )}
 
       {filter === "current" && (
-        <section aria-labelledby="new-starter" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-          <div>
-            <h2 id="new-starter" className="font-medium">
-              New store template
-            </h2>
-            <p className="text-sm text-muted">
-              It starts as a copy of the demo template, with you as its owner, unpublished. Set it up in its admin like any
-              store, then publish it.
-            </p>
-          </div>
+        <Card title="New store template" description="It starts as a copy of the demo template, with you as its owner, unpublished. Set it up in its admin like any store, then publish it." className="flex flex-col gap-3" compact>
           <ActionForm action={createStarterAction} className="flex max-w-3xl flex-col gap-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className={field}>
@@ -139,7 +130,7 @@ export default async function StoreTemplatesPage({ searchParams }: PageProps<"/a
               <SubmitButton>Make the store template</SubmitButton>
             </div>
           </ActionForm>
-        </section>
+        </Card>
       )}
     </div>
   );

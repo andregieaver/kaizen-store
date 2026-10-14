@@ -107,14 +107,12 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
         </div>
       </Card>
 
-      <section aria-labelledby="features" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <h2 id="features" className="font-medium">
-          Features
-        </h2>
-        <p className="text-sm text-muted">
-          What a store made from this template starts with switched on (its store&apos;s Settings, Features). The owner&apos;s setup asks what
-          they will sell with these chosen, and they can change everything after. New stores get them once you publish.
-        </p>
+      <Card
+        title="Features"
+        description={<>What a store made from this template starts with switched on (its store&apos;s Settings, Features). The owner&apos;s setup asks what they will sell with these chosen, and they can change everything after. New stores get them once you publish.</>}
+        className="flex flex-col gap-3"
+        compact
+      >
         <p className="text-sm">
           Now: {featureSummary(starter.features)}.
           {starter.publishedFeatures && ` As published: ${featureSummary(starter.publishedFeatures)}.`}
@@ -155,7 +153,7 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
             <SubmitButton>Save features</SubmitButton>
           </div>
         </ActionForm>
-      </section>
+      </Card>
 
       <ActionForm action={saveStarterDraftAction.bind(null, starter.id)} className="flex max-w-3xl flex-col gap-4">
         <h2 className="font-medium">Details</h2>

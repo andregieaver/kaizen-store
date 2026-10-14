@@ -9,7 +9,7 @@ import { DESIGN_LIMITS, designPreviewPath, designTabHref, type DesignRow } from 
 import { listFilterOf, type LifecycleFacts } from "@/lib/lifecycle";
 import { requirePlatformAdmin } from "@/server/auth";
 import { designLifecycle, listDesigns, shownDesignDetails, snapshotSources } from "@/server/design-presets";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, PageHeader } from "@/components/admin/ui";
 
 import {
   archiveDesignAction,
@@ -84,16 +84,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
       )}
 
       {filter === "current" && (
-        <section aria-labelledby="new-design" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-          <div>
-            <h2 id="new-design" className="font-medium">
-              New design profile
-            </h2>
-            <p className="text-sm text-muted">
-              Start from a store&apos;s look as it is now, or from Kaizen&apos;s standard look, then set it up on the profile&apos;s own pages
-              (theme, header, footer, product page and CSS). It stays unpublished until you publish it.
-            </p>
-          </div>
+        <Card title="New design profile" description={<>Start from a store&apos;s look as it is now, or from Kaizen&apos;s standard look, then set it up on the profile&apos;s own pages (theme, header, footer, product page and CSS). It stays unpublished until you publish it.</>} className="flex flex-col gap-3" compact>
           <ActionForm action={createDesignAction} className="flex max-w-3xl flex-col gap-3">
             <label className={field}>
               Title
@@ -144,7 +135,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
               <SubmitButton>Make the design profile</SubmitButton>
             </div>
           </ActionForm>
-        </section>
+        </Card>
       )}
     </div>
   );

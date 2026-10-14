@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { FeatureOffNote } from "@/components/admin/feature-off";
+import { Card, CARD_CLASS } from "@/components/admin/ui";
 import { TERMS_MODES, TERMS_MODE_WORDS, termsSettingNotice, type TermsMode } from "@/lib/checkout-terms";
 import { LEGAL_ROLE_COPY, isLegalRole } from "@/lib/legal-roles";
 import type { LegalOverview } from "@/server/legal-starters";
@@ -63,7 +64,7 @@ export function LegalPagesPanel({
 
       <ul className="flex flex-col gap-4">
         {overview.roles.map((entry) => (
-          <li key={entry.role} className="rounded-card border border-line bg-card p-5">
+          <li key={entry.role} className={`p-5 ${CARD_CLASS}`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="font-medium">{entry.name}</h2>
               <span className="text-sm text-muted">{entry.page ? `Chosen: ${entry.page.title}` : "No page chosen"}</span>
@@ -125,21 +126,15 @@ export function LegalPagesPanel({
       </ul>
 
       {!overview.shopOn ? (
-        <section aria-labelledby="checkout-heading" className="rounded-card border border-line bg-card p-5">
-          <h2 id="checkout-heading" className="mb-1 font-medium">
-            At checkout
-          </h2>
+        <Card title="At checkout" compact>
           <FeatureOffNote storeSlug={storeSlug} feature="shop" owner what="What checkout says about the terms" />
-        </section>
+        </Card>
       ) : (
-      <section aria-labelledby="checkout-heading" className="rounded-card border border-line bg-card p-5">
-        <h2 id="checkout-heading" className="mb-1 font-medium">
-          At checkout
-        </h2>
-        <p className="mb-4 text-sm text-muted">
-          What shoppers are shown next to the pay button, using the pages chosen above for the terms and the privacy statement. Whatever is shown is kept
-          with the order: the pages as they were when the shopper pressed pay. A tick box guards and records; it cannot stop a shopper who bypasses the page.
-        </p>
+      <Card
+        title="At checkout"
+        description="What shoppers are shown next to the pay button, using the pages chosen above for the terms and the privacy statement. Whatever is shown is kept with the order: the pages as they were when the shopper pressed pay. A tick box guards and records; it cannot stop a shopper who bypasses the page."
+        compact
+      >
         <ActionForm action={actions.setTerms} className="flex flex-col gap-4">
           <fieldset className="flex flex-col gap-3">
             <legend className="sr-only">What checkout shows about the terms</legend>
@@ -162,7 +157,7 @@ export function LegalPagesPanel({
             <SubmitButton>Save</SubmitButton>
           </div>
         </ActionForm>
-      </section>
+      </Card>
       )}
     </div>
   );

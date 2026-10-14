@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 
 import { groupIssues, type PageIssue } from "@/lib/page-a11y";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * Takes the person to a row, column or component on the builder's canvas: scrolls it into view and focuses it, so a keyboard user lands on
@@ -98,7 +99,7 @@ export function PublishWithIssuesDialog({
         event.preventDefault();
         onFixFirst();
       }}
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-card border border-line bg-card p-5 text-ink backdrop:bg-black/40"
+      className={`m-auto w-[min(32rem,calc(100vw-2rem))] p-5 text-ink backdrop:bg-black/40 ${CARD_CLASS}`}
     >
       <h2 id="publish-issues-title" className="mb-2 text-lg font-medium">
         This page has {issues.length === 1 ? "a problem" : `${issues.length} problems`} to look at

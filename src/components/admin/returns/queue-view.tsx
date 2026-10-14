@@ -5,7 +5,7 @@ import { formatMoney } from "@/lib/money";
 import { countsSentence, dayText, KIND_FILTERS, queueHref, STATUS_FILTERS } from "@/lib/return-admin";
 import type { ReturnQueueFilter } from "@/lib/return-input";
 import type { Queue, ReturnCounts } from "@/server/returns";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { DueMark, KindBadge, StatusBadge } from "./ui";
 
@@ -97,7 +97,7 @@ export function ReturnsQueueView({
       </form>
 
       {queue.rows.length === 0 ? (
-        <p className="rounded-card border border-line bg-card p-8 text-center text-sm">
+        <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>
           {filtered
             ? "No returns match. Change the filter or clear it."
             : "No returns are open. Withdrawals and return requests appear here as customers make them: they use the Withdraw from the contract link in the order emails and the store's withdrawal page."}

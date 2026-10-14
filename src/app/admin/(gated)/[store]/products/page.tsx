@@ -10,7 +10,7 @@ import { listJobs } from "@/server/data-jobs";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { getEditorContext, listAdminProducts } from "@/server/products";
 import { productsNeedingMeasure } from "@/server/unit-price-gaps";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { continueBulkAction, matchingAction, previewBulkAction, startBulkAction, undoBatchAction } from "./bulk/actions";
 
@@ -142,7 +142,7 @@ async function ProductList({
       {needsFilter ? (
         <NeedsContentList products={needing} base={base} />
       ) : products.length === 0 ? (
-        <div className="rounded-card border border-line bg-card p-8 text-center">
+        <div className={`p-8 text-center ${CARD_CLASS}`}>
           <p className="mb-3">{archived ? "No archived products." : "No products yet."}</p>
           {!archived && (
             <Link href={`${base}/new`} className="underline">

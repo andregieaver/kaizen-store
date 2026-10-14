@@ -52,6 +52,11 @@ describe("the admin's type and shapes", () => {
     expect(square).toEqual([]);
   });
 
+  it("draws a card as Card or CARD_CLASS, never as a bordered box of its own", () => {
+    const own = admin.filter((path) => /\brounded-card border border-line bg-card\b/.test(readFileSync(join(ROOT, path), "utf8")));
+    expect(own).toEqual([]);
+  });
+
   it.each(admin.filter((path) => !OWN_COLOURS.some((part) => path.includes(part))))("%s draws in the scheme's roles only", (path) => {
     const source = readFileSync(join(ROOT, path), "utf8");
     // The older names (`admin.css` still maps them for what draws a store's look).

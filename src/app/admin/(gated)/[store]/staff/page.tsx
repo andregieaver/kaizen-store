@@ -6,7 +6,7 @@ import { requireOwnerRole } from "@/server/permissions";
 import { listStaff } from "@/server/settings";
 import { ensureStoreRoles, listStoreRoles } from "@/server/store-roles";
 import { twoStepRequired } from "@/server/team";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import {
   assignRoleAction,
@@ -48,7 +48,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/st
         </div>
       </div>
 
-      <section aria-labelledby="members-heading" className="rounded-card border border-line bg-card p-5">
+      <section aria-labelledby="members-heading" className={`p-5 ${CARD_CLASS}`}>
         <h2 id="members-heading" className="sr-only">
           Members
         </h2>

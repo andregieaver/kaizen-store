@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { needsContentNotice } from "@/lib/unit-price-editor";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The products page's part of the unit price (D160, `docs/wave-1d-unit-price.md` 2.2): a notice with the count of active products
@@ -38,7 +39,7 @@ export function NeedsContentNotice({ count, href }: { count: number; href: strin
 export function NeedsContentList({ products, base }: { products: NeedsContent[]; base: string }) {
   if (products.length === 0) {
     return (
-      <div className="rounded-card border border-line bg-card p-8 text-center">
+      <div className={`p-8 text-center ${CARD_CLASS}`}>
         <p>No product needs content for the unit price.</p>
       </div>
     );

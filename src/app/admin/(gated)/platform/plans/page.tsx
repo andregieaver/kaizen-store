@@ -10,7 +10,7 @@ import { platformModes } from "@/server/stripe";
 
 import { savePlanAction, syncPlansAction } from "../actions";
 import { requirePlatformAdmin } from "@/server/auth";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Plans" };
 
@@ -55,7 +55,7 @@ export default async function PlansPage() {
         <section
           key={plan.id}
           aria-labelledby={`plan-${plan.id}`}
-          className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
+          className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id={`plan-${plan.id}`} className="font-medium">

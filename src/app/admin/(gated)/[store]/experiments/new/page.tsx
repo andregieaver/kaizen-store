@@ -4,7 +4,7 @@ import { ExperimentForm } from "@/components/admin/experiment-form";
 import { requirePermission } from "@/server/permissions";
 import { describePart, testablePart, type PartKind } from "@/lib/experiment-parts";
 import { buttonsOf, formsOf, publishedContentOf, testablePages } from "@/server/experiment-admin";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { createExperimentAction } from "../actions";
 
@@ -39,12 +39,12 @@ export default async function NewExperimentPage({ params, searchParams }: PagePr
     <div className="flex flex-col gap-6">
       <PageHeader back={{ href: base, label: "A/B tests" }} title="New A/B test" />
       {asked("page") && pages.length === 0 ? (
-        <p role="alert" className="rounded-card border border-line bg-card p-5 text-sm">
+        <p role="alert" className={`p-5 text-sm ${CARD_CLASS}`}>
           This page cannot be tested now: it is in a running test, it is not published, or it is a page with a place of
           its own that cannot be tested yet (the cookies page, the blog …). A working page such as the cart is tested by a part of it: choose the part in the page builder.
         </p>
       ) : partTarget && !part ? (
-        <p role="alert" className="rounded-card border border-line bg-card p-5 text-sm">
+        <p role="alert" className={`p-5 text-sm ${CARD_CLASS}`}>
           That part of the page cannot be tested: it is not in the published page (publish your changes first), or it is a working part of the shop. Go back to
           the page and choose another.
         </p>

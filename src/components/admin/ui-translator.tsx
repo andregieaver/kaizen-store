@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import type { ChunkResult } from "@/server/ui-text";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 const button = "min-h-10 rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40";
 const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
@@ -61,7 +62,7 @@ export function UiTranslator({
     });
 
   return (
-    <div className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
+    <div className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
       <h2 className="font-medium">Translate with AI</h2>
       <p className="text-sm text-muted">
         Kaizen&apos;s AI translates the storefront&apos;s and the emails&apos; text from English. Every text is checked for its placeholders

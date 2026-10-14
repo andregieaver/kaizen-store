@@ -18,7 +18,7 @@ import { InvoiceExportSlot } from "./invoice-export-slot";
 import { InvoiceStatusChip } from "./invoice-status";
 import { control, secondaryButton, smallButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 const th = "px-3 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
 
@@ -152,7 +152,7 @@ export function InvoicesListView({
       </form>
 
       {list.rows.length === 0 ? (
-        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
+        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           {empty
             ? "No invoices yet. Start one with New invoice, or from a client's unbilled time."
             : "No invoice matches. Try another tab or clear the filters."}

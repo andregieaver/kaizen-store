@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { copiedStoreAdminPath, copiedStoreSetupPath, copyWizardPath } from "@/lib/store-copy-paths";
 import { PHASE_STATE_WORDS, countRows, countText, leftOutText, phaseSteps, pollDelay } from "@/lib/store-copy-progress";
 import { COPY_PHASE_LABELS, type StoreCopyActions, type StoreCopyProgress as Progress } from "@/lib/store-copy";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 const linkButton = "inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium";
 const MARKS = { done: "✓", current: "→", waiting: "○", stopped: "✕" } as const;
@@ -68,7 +68,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       {status === "done" && (
         <section
           aria-labelledby="copy-next"
-          className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
+          className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
         >
           <h2 id="copy-next" className="font-medium">
             What next

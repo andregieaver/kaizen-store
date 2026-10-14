@@ -1,4 +1,5 @@
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
+import { Card } from "@/components/admin/ui";
 
 type Action = (state: never, form: FormData) => Promise<never>;
 
@@ -8,7 +9,6 @@ type Action = (state: never, form: FormData) => Promise<never>;
  * The actions are bound to the place by the page that draws the form.
  */
 export function PagePlaceForm({
-  id,
   name,
   hint,
   standard,
@@ -17,7 +17,6 @@ export function PagePlaceForm({
   choose,
   start,
 }: {
-  id: string;
   name: string;
   hint: string;
   standard: string;
@@ -28,11 +27,7 @@ export function PagePlaceForm({
 }) {
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
   return (
-    <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby={`place-${id}`}>
-      <h3 id={`place-${id}`} className="font-medium">
-        {name}
-      </h3>
-      <p className="max-w-2xl text-sm text-muted">{hint}</p>
+    <Card title={name} description={hint} level={3} className="flex flex-col gap-3" compact>
       <ActionForm action={choose as never} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           {name} shows
@@ -53,6 +48,6 @@ export function PagePlaceForm({
         <span className="text-sm text-muted">Makes a page like the standard one, publishes it here and opens it in the builder.</span>
       </ActionForm>
       {unpublished && <p className="text-sm text-muted">This page is not published, so visitors see {standard.toLowerCase()} until you publish it again.</p>}
-    </section>
+    </Card>
   );
 }

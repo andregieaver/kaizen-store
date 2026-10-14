@@ -7,7 +7,7 @@ import { CARRIERS } from "@/lib/shipping-carriers";
 import { requirePermission } from "@/server/permissions";
 import { listIntegrations } from "@/server/integrations";
 import { listCarriers } from "@/server/shipping-carriers";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Integrations" };
 
@@ -36,7 +36,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                   : { text: "On", tone: "bg-positive-soft text-positive-text" }
                 : { text: "Off", tone: "bg-sunken text-muted" };
           return (
-            <li key={info.id} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
+            <li key={info.id} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
               <div className="flex items-start gap-3">
                 <IntegrationMark id={info.id} />
                 <div className="min-w-0 flex-1">
@@ -88,7 +88,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                   : { text: "Details saved", tone: "bg-positive-soft text-positive-text" }
                 : { text: "Needs details", tone: "bg-warning-soft text-warning-text" };
             return (
-              <li key={info.id} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
+              <li key={info.id} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
                 <div className="flex items-start gap-3">
                   <IntegrationMark id={info.id} />
                   <div className="min-w-0 flex-1">
@@ -114,17 +114,11 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
           })}
         </ul>
       </section>
-      <section aria-labelledby="google-reviews" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <div>
-          <h2 id="google-reviews" className="font-medium">
-            Google reviews
-          </h2>
-          <p className="text-sm text-muted">Show your rating and reviews on Google in Testimonials components on your pages.</p>
-        </div>
+      <Card title="Google reviews" description="Show your rating and reviews on Google in Testimonials components on your pages." className="flex flex-col gap-3" compact>
         <Link href={`${base}/google-reviews`} className="inline-flex min-h-10 w-fit items-center rounded-pill border border-edge px-4 text-sm font-medium hover:bg-sunken">
           Set up Google reviews
         </Link>
-      </section>
+      </Card>
     </div>
   );
 }

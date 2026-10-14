@@ -6,7 +6,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { featureGroups, NEW_FEATURE_ROWS } from "@/lib/plan-features";
 import { requirePlatformAdmin } from "@/server/auth";
 import { getFeatureMatrix } from "@/server/plan-features";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { saveFeaturesAction } from "./actions";
 
@@ -35,7 +35,7 @@ export default async function PlanFeaturesPage() {
       />
 
       {columns.length === 0 ? (
-        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
+        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           There is no active plan yet. Make one under <Link href="/admin/platform/plans" className="underline">Plans</Link>,
           then come back to say what it includes.
         </p>

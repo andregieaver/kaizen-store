@@ -9,7 +9,7 @@ import type { CurrencyFigures } from "@/lib/work-overview";
 import { WORK_ROOT, workBase } from "@/lib/work-paths";
 import { formatDuration } from "@/lib/work-time";
 import type { OwnerOverviewView } from "@/server/work-owner";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { CurrencyNote, StoreTag } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
@@ -113,7 +113,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
       {noClients ? (
         <section
           aria-labelledby="start-heading"
-          className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
+          className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
         >
           <h2 id="start-heading" className="font-medium">
             Add your first client

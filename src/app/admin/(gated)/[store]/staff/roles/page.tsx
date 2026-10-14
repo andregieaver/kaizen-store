@@ -7,7 +7,7 @@ import { ROLE_TEMPLATES } from "@/lib/permissions";
 import { roleSummary } from "@/lib/role-form";
 import { requireOwnerRole } from "@/server/permissions";
 import { ensureStoreRoles, listStoreRoles, roleHolders } from "@/server/store-roles";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { createRoleAction, deleteRoleAction, updateRoleAction } from "../actions";
 
@@ -43,7 +43,7 @@ export default async function RolesPage({ params }: PageProps<"/admin/[store]/st
           const who = holders.get(role.id) ?? [];
           const template = role.template ? ROLE_TEMPLATES[role.template] : null;
           return (
-            <li key={role.id} className="rounded-card border border-line bg-card p-5">
+            <li key={role.id} className={`p-5 ${CARD_CLASS}`}>
               <details>
                 <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2">
                   <span className="font-medium">{role.name}</span>

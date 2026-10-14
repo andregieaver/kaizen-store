@@ -150,22 +150,25 @@ export default async function SubscriptionPage({
         </div>
 
         <div className="flex flex-col gap-6">
-          <section aria-labelledby="customer" className="rounded-card border border-line bg-card p-5 text-sm">
-            <h2 id="customer" className="mb-2 font-medium">
-              {customer ? (
+          <Card
+            title={
+              customer ? (
                 <Link href={`/admin/${store.slug}/customers/${customer.key}`} className="underline">
                   {customer.name || "Customer"}
                 </Link>
               ) : (
                 "Customer"
-              )}
-            </h2>
+              )
+            }
+            className="text-sm"
+            compact
+          >
             {subscription.email ? (
               <a href={`mailto:${subscription.email}`} className="underline">{subscription.email}</a>
             ) : (
               <p className="text-muted">Not known until payment.</p>
             )}
-          </section>
+          </Card>
           <Card title="Renewal" className="text-sm" compact>
             <ul className="mb-3 flex flex-col gap-1">
               <li>

@@ -1,6 +1,7 @@
 import { overviewRows } from "@/lib/affiliate-admin";
 import type { AffiliateOverview } from "@/lib/affiliates";
 import { moneyIn } from "@/lib/bonus-admin";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * What the referral program did lately (D131), as the store's own figures. Referral credits are part of what the bonus
@@ -11,7 +12,7 @@ export function AffiliateOverviewCard({ overview, locale }: { overview: Affiliat
   return (
     <section
       aria-labelledby="affiliate-overview-heading"
-      className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
+      className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
     >
       <h2 id="affiliate-overview-heading" className="font-medium">
         Referrals at a glance

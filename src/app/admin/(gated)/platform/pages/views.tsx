@@ -22,7 +22,7 @@ import { getPlatformPageRoles } from "@/server/platform-roles";
 import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { choosePlatformSiteLayoutAction, createPageTermAction, createPlatformRolePageAction, setPlatformPageRoleAction, deletePageTermAction, updatePageTermAction } from "./actions";
 import { platformPageContext } from "./context";
@@ -90,7 +90,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
       )}
 
       {pages.length === 0 ? (
-        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
+        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           No {copy.many} yet. Make the first one with New {copy.one}.
         </p>
       ) : type === "header" || type === "footer" ? (
@@ -116,7 +116,6 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
           {PLATFORM_ROLES.map((role) => (
             <PagePlaceForm
               key={role}
-              id={role}
               name={PLATFORM_ROLE_COPY[role].name}
               hint={PLATFORM_ROLE_COPY[role].hint}
               standard={PLATFORM_ROLE_COPY[role].standard}

@@ -1,5 +1,6 @@
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import type { Host } from "@/server/hosts";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 const field = "flex flex-col gap-1 text-sm font-medium";
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
@@ -7,7 +8,7 @@ const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal
 /** A host's details (D71): who they are, the store's commission, and whether they charge VAT. */
 export function HostForm({ host, action }: { host: Host | null; action: (state: FormState, formData: FormData) => Promise<FormState> }) {
   return (
-    <ActionForm action={action} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
+    <ActionForm action={action} className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}>
       <label className={field}>
         Name
         <input name="name" required maxLength={120} defaultValue={host?.name ?? ""} className={control} />

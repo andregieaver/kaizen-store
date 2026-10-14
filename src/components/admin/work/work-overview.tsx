@@ -7,7 +7,7 @@ import { formatDay } from "@/lib/work-dates";
 import { formatDuration } from "@/lib/work-time";
 import type { CurrencyFigures, WorkOverview } from "@/lib/work-overview";
 import type { ReadinessProblem } from "@/lib/work-vat";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 /** What the overview shows, from the reader's rows and the names to put on them (`getWorkOverview`). */
 export type OverviewProps = {
@@ -105,7 +105,7 @@ export function OverviewBody(props: OverviewProps) {
       {start ? (
         <section
           aria-labelledby="start-heading"
-          className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
+          className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
         >
           <h2 id="start-heading" className="font-medium">
             Add your first client

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { SetupStep, SetupStepId } from "@/lib/setup-steps";
 import type { SetupProgress } from "@/server/setup";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The frame around every setup step: where you are, what is done, and a way
@@ -66,7 +67,7 @@ export function SetupFrame({
         </ol>
       </nav>
 
-      <section aria-labelledby="step-title" className="rounded-card border border-line bg-card p-6">
+      <section aria-labelledby="step-title" className={`p-6 ${CARD_CLASS}`}>
         <h1 id="step-title" className="mb-2 text-2xl font-medium">
           {title}
         </h1>

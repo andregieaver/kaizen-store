@@ -5,6 +5,7 @@ import { AUDIT_AREA_LABELS, actionLabel, activityQuery, changeLine } from "@/lib
 import type { AuditArea } from "@/lib/audit";
 import { avatarFor } from "@/server/avatars";
 import type { ActivityEntry } from "@/server/activity";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 const field = "min-h-10 rounded-md border border-line bg-card px-3 text-sm font-normal";
 
@@ -133,7 +134,7 @@ export function ActivityList({
   older?: string | null;
   empty?: string;
 }) {
-  if (entries.length === 0) return <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">{empty}</p>;
+  if (entries.length === 0) return <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>{empty}</p>;
   return (
     <div className="flex flex-col gap-4">
       <ol className="divide-y divide-line rounded-lg border border-line bg-card">

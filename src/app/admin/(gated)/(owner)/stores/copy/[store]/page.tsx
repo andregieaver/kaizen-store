@@ -6,7 +6,7 @@ import { StoreCopyWizard } from "@/components/admin/store-copy-wizard";
 import { listStores } from "@/server/auth";
 import { memberCan, requireMemberAny } from "@/server/permissions";
 import { MAX_STORES_PER_OWNER } from "@/server/platform";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { copyChoicesAction, startStoreCopyAction } from "../../copy-actions";
 
@@ -43,7 +43,7 @@ export default async function DuplicateStorePage({ params }: PageProps<"/admin/s
       {result?.ok ? (
         <StoreCopyWizard choices={result.choices} start={startStoreCopyAction} />
       ) : (
-        <p role="status" className="max-w-xl rounded-card border border-line bg-card p-5 text-sm">
+        <p role="status" className={`max-w-xl p-5 text-sm ${CARD_CLASS}`}>
           You can own up to {MAX_STORES_PER_OWNER} stores. Contact Kaizen for more.
         </p>
       )}

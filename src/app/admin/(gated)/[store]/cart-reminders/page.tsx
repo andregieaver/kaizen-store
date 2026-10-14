@@ -13,7 +13,7 @@ import {
   type AbandonedCheckoutRow,
 } from "@/server/cart-reminders";
 import { listDiscounts } from "@/server/discounts";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Button, Card, PageHeader } from "@/components/admin/ui";
 
 import { setCartRemindersAction } from "./actions";
 
@@ -63,11 +63,18 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
         description={<>Emails to shoppers who typed their email at checkout but did not pay, with a link back to the same cart.</>}
       />
 
-      <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-card border border-line bg-card p-5">
-        <div className="flex flex-col gap-2 text-sm">
-          <h2 id="switch-heading" className="text-base font-medium">
-            {settings.enabled ? (active > 0 ? "Reminders are on" : "On, but every reminder is switched off") : "Reminders are off"}
-          </h2>
+      <Card
+        title={<>{settings.enabled ? (active > 0 ? "Reminders are on" : "On, but every reminder is switched off") : "Reminders are off"}</>}
+        aside={
+          <form action={setCartRemindersAction.bind(null, store.slug, !settings.enabled)}>
+            <Button type="submit" kind={settings.enabled ? "secondary" : "main"}>
+              {settings.enabled ? "Turn off" : "Turn on"}
+            </Button>
+          </form>
+        }
+        compact
+      >
+        <div className="text-body text-ink-2">
           {settings.enabled ? (
             <p>
               Checkout keeps the email of shoppers who are not signed in as soon as they type it, and says under the email
@@ -81,19 +88,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
             </p>
           )}
         </div>
-        <form action={setCartRemindersAction.bind(null, store.slug, !settings.enabled)}>
-          <button
-            type="submit"
-            className={
-              settings.enabled
-                ? "min-h-10 rounded-md border border-line px-4 text-sm"
-                : "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink"
-            }
-          >
-            {settings.enabled ? "Turn off" : "Turn on"}
-          </button>
-        </form>
-      </section>
+      </Card>
 
       <section aria-labelledby="stats-heading" className="flex flex-col gap-3">
         <h2 id="stats-heading" className="font-medium">

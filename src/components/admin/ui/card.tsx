@@ -21,21 +21,23 @@ export type CardProps = {
   countLabel?: string;
   /** On the header's right: a muted note or a `link` button. */
   aside?: ReactNode;
+  /** A sentence under the title saying what the card is for, in the muted ink. */
+  description?: ReactNode;
   /** The title's level; a card's is a section's (`h2`) unless it sits under one. */
-  level?: 2 | 3;
+  level?: 2 | 3 | 4;
   /** Less room inside (20 px, as a KPI tile) for a card in a dense grid. */
   compact?: boolean;
   className?: string;
   children?: ReactNode;
 };
 
-export function Card({ title, icon, count, countLabel, aside, level = 2, compact = false, className, children }: CardProps) {
+export function Card({ title, icon, count, countLabel, aside, description, level = 2, compact = false, className, children }: CardProps) {
   const id = useId();
-  const Heading = level === 2 ? "h2" : "h3";
+  const Heading = (["h2", "h3", "h4"] as const)[level - 2];
   return (
     <section aria-labelledby={title ? id : undefined} className={[CARD_CLASS, compact ? "p-5" : "p-6", className].filter(Boolean).join(" ")}>
-      {(title || aside) && (
-        <header className="mb-4 flex min-h-9 flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      {(title || aside || description) && (
+        <header className="mb-4 flex [.flex>&]:mb-1 min-h-9 flex-wrap items-center justify-between gap-x-4 gap-y-1">
           {title && (
             <div className="flex min-w-0 items-center gap-2">
               {icon && (
@@ -50,6 +52,7 @@ export function Card({ title, icon, count, countLabel, aside, level = 2, compact
             </div>
           )}
           {aside && <div className="text-body text-muted">{aside}</div>}
+          {description && <div className="max-w-[75ch] basis-full text-body text-muted">{description}</div>}
         </header>
       )}
       {children}

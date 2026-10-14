@@ -22,7 +22,7 @@ import { listSavedParts } from "@/server/saved-parts";
 import { siteLayoutChoice } from "@/server/site-layouts";
 import { bothTerms, listTerms } from "@/server/taxonomy";
 import { getFieldData } from "@/server/custom-fields";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import {
   chooseStoreSiteLayoutAction,
@@ -101,7 +101,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         </p>
       )}
       {pages.length === 0 ? (
-        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
+        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           No {copy.many} yet. Make the first one with New {copy.one}.
         </p>
       ) : type === "product_layout" ? (
@@ -372,7 +372,7 @@ function FrontPageForm({
   return (
     <ActionForm
       action={setFrontPageAction.bind(null, storeSlug)}
-      className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
+      className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
     >
       <h2 className="font-medium">Front page</h2>
       <p className="max-w-2xl text-sm text-muted">
@@ -417,7 +417,7 @@ function ProductsPageForm({
   return (
     <ActionForm
       action={setProductsPageAction.bind(null, storeSlug)}
-      className="flex flex-col gap-3 rounded-card border border-line bg-card p-5"
+      className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
     >
       <h2 className="font-medium">All products page</h2>
       <p className="max-w-2xl text-sm text-muted">
@@ -465,9 +465,7 @@ function PageRoleForm({
   const copy = ROLE_COPY[role];
   const unpublished = pages.find((p) => p.id === current)?.state === "draft";
   return (
-    <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby={`role-${role}`}>
-      <h4 id={`role-${role}`} className="font-medium">{copy.name}</h4>
-      <p className="max-w-2xl text-sm text-muted">{copy.hint}</p>
+    <Card title={copy.name} description={copy.hint} level={4} className="flex flex-col gap-3" compact>
       <ActionForm action={setPageRoleAction.bind(null, storeSlug, role)} className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-64 flex-col gap-1 text-sm font-medium">
           {copy.name} shows
@@ -488,7 +486,7 @@ function PageRoleForm({
         <span className="text-sm text-muted">Makes a page like the standard one, publishes it here and opens it in the builder.</span>
       </ActionForm>
       {unpublished && <p className="text-sm text-muted">This page is not published, so shoppers see {copy.standard.toLowerCase()} until you publish it again.</p>}
-    </section>
+    </Card>
   );
 }
 

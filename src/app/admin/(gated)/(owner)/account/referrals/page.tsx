@@ -9,7 +9,7 @@ import { bpsText, referralUrl, REFERRAL_KIND_LABELS } from "@/lib/referrals";
 import { siteUrl } from "@/lib/site";
 import { requireAccount } from "@/server/auth";
 import { referrerOverview } from "@/server/referrals";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Referrals" };
 
@@ -49,7 +49,7 @@ export default async function ReferralsPage() {
               The referral program is paused: stores that open now do not earn you anything. Credit you have can still be used.
             </p>
           )}
-          <section aria-labelledby="link-heading" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
+          <section aria-labelledby="link-heading" className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
             <h2 id="link-heading" className="sr-only">
               Your link
             </h2>

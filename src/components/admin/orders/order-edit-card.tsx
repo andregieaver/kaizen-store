@@ -1,8 +1,7 @@
-import Link from "next/link";
-
 import { ORDER_EDIT_REASON_LABELS, ORDER_EDIT_STATUS_LABELS, type OrderEditReason, type OrderEditStatus } from "@/lib/order-edit-status";
 
 import { AwaitingEditControls, type AwaitingEditActions } from "./order-edit-parts";
+import { ButtonLink, Card } from "@/components/admin/ui";
 
 /** A change as the order page lists it (`OrderEditSummary` of `getOrderAdmin()`, structurally). */
 export type EditListItem = {
@@ -62,17 +61,19 @@ export function OrderEditCard({
   const awaiting = edits.find((e) => e.status === "awaiting_payment") ?? null;
   const owed = edits.filter((e) => (e.refundOwedMinor ?? 0) > 0);
   return (
-    <section aria-labelledby="order-changes" className="rounded-card border border-line bg-card p-5 text-sm">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h2 id="order-changes" className="font-medium">
-          Change the items
-        </h2>
-        {canWrite && !blockText && (
-          <Link href={editHref} className="inline-flex min-h-10 items-center rounded-pill bg-brand px-4 font-medium text-brand-ink">
+    <Card
+      title="Change the items"
+      aside={
+        canWrite &&
+        !blockText && (
+          <ButtonLink href={editHref} kind="main">
             Edit items
-          </Link>
-        )}
-      </div>
+          </ButtonLink>
+        )
+      }
+      className="text-sm"
+      compact
+    >
       {blockText ? (
         <p className="text-muted">{blockText}</p>
       ) : (
@@ -114,6 +115,6 @@ export function OrderEditCard({
           ))}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }

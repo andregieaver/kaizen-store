@@ -3,6 +3,7 @@ import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import type { OfferedDesign } from "@/lib/design-presets";
 
 import { DesignPreviewLink } from "./design-cards";
+import { Card } from "@/components/admin/ui";
 
 /** A design profile offered to a store, with where its preview is. */
 export type PanelDesign = OfferedDesign & { previewHref: string; published?: boolean };
@@ -30,17 +31,7 @@ export function DesignProfilePanel({
   closedNote?: string;
 }) {
   return (
-    <section aria-labelledby="design-profiles-heading" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
-      <div>
-        <h2 id="design-profiles-heading" className="font-medium">
-          Design profiles
-        </h2>
-        <p className="max-w-3xl text-sm text-muted">
-          A whole look made by Kaizen: the theme (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page
-          layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business
-          details, and your look from before is kept so you can put it back.
-        </p>
-      </div>
+    <Card title="Design profiles" description={<>A whole look made by Kaizen: the theme (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before is kept so you can put it back.</>} className="flex flex-col gap-4" compact>
       {!canChange && closedNote && <p className="text-sm">{closedNote}</p>}
       {latest && (
         <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
@@ -98,6 +89,6 @@ export function DesignProfilePanel({
           ))}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }

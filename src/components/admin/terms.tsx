@@ -20,6 +20,7 @@ import type { TermSeo } from "@/lib/term-seo";
 
 import { TermFieldsButton, type TermFieldsSetup } from "./term-fields";
 import { TermSeoFields, seoLanguagesOf, type TermSeoSetup } from "./term-seo-fields";
+import { Card } from "@/components/admin/ui";
 
 /**
  * Categories and tags in the admin (D50): `TermPicker` chooses an item's
@@ -236,17 +237,17 @@ export function TermsManager({
       {(["category", "tag"] as const).map((kind) => {
         const list = kind === "category" ? tree : tags.map((t) => ({ ...t, depth: 0 }));
         return (
-          <section key={kind} aria-labelledby={`${kind}-heading`} className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
-            <div className="flex flex-col gap-1">
-              <h2 id={`${kind}-heading`} className="font-medium">
-                {TERM_LABELS[kind].many}
-              </h2>
-              <p className="text-sm text-muted">
-                {kind === "category"
-                  ? `Group ${usedBy}; a category can hold subcategories. A grid showing a category shows its subcategories' ${usedBy} too.`
-                  : `Label ${usedBy} across categories. Tags are one flat list.`}
-              </p>
-            </div>
+          <Card
+            key={kind}
+            title={TERM_LABELS[kind].many}
+            description={
+              kind === "category"
+                ? `Group ${usedBy}; a category can hold subcategories. A grid showing a category shows its subcategories' ${usedBy} too.`
+                : `Label ${usedBy} across categories. Tags are one flat list.`
+            }
+            className="flex flex-col gap-4"
+            compact
+          >
             <NewTerm kind={kind} terms={terms} actions={actions} onTerms={setTerms} unitPrice={kind === "category" && unitPrice !== undefined} />
             {list.length === 0 ? (
               <p className="text-sm text-muted">No {TERM_LABELS[kind].many.toLowerCase()} yet.</p>
@@ -257,7 +258,7 @@ export function TermsManager({
                 ))}
               </ul>
             )}
-          </section>
+          </Card>
         );
       })}
     </div>

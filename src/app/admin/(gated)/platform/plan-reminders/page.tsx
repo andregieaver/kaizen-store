@@ -14,7 +14,7 @@ import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { setPlanRemindersAction } from "./actions";
 import { requirePlatformAdmin } from "@/server/auth";
-import { PageHeader } from "@/components/admin/ui";
+import { Button, Card, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Plan reminders" };
 
@@ -55,30 +55,25 @@ export default async function PlanRemindersPage() {
         description={<>Emails to store owners who went to pay for a plan and did not finish, with a link straight back to paying.</>}
       />
 
-      <section aria-labelledby="switch-heading" className="flex flex-wrap items-start justify-between gap-4 rounded-card border border-line bg-card p-5">
-        <div className="flex max-w-2xl flex-col gap-2 text-sm">
-          <h2 id="switch-heading" className="text-base font-medium">
-            {settings.enabled ? (active > 0 ? "Reminders are on" : "On, but every reminder is switched off") : "Reminders are off"}
-          </h2>
+      <Card
+        title={<>{settings.enabled ? (active > 0 ? "Reminders are on" : "On, but every reminder is switched off") : "Reminders are off"}</>}
+        aside={
+          <form action={setPlanRemindersAction.bind(null, !settings.enabled)}>
+            <Button type="submit" kind={settings.enabled ? "secondary" : "main"}>
+              {settings.enabled ? "Turn off" : "Turn on"}
+            </Button>
+          </form>
+        }
+        compact
+      >
+        <div className="max-w-2xl text-body text-ink-2">
           <p>
             {settings.enabled
               ? "When an owner goes to Stripe to pay for a plan, Kaizen keeps their email and the plan. The owner's Billing page and Stripe's page say a reminder may come; the Billing page and every reminder let the owner say no. Reminders stop once the store is on a plan, and emails are erased after 60 days."
               : "Turn them on to start with three reminders, after an hour, a day and three days, which you can change."}
           </p>
         </div>
-        <form action={setPlanRemindersAction.bind(null, !settings.enabled)}>
-          <button
-            type="submit"
-            className={
-              settings.enabled
-                ? "min-h-10 rounded-md border border-line px-4 text-sm"
-                : "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink"
-            }
-          >
-            {settings.enabled ? "Turn off" : "Turn on"}
-          </button>
-        </form>
-      </section>
+      </Card>
 
       <section aria-labelledby="stats-heading" className="flex flex-col gap-3">
         <h2 id="stats-heading" className="font-medium">

@@ -4,6 +4,7 @@ import { exportDates } from "@/lib/calendar-sync";
 import { siteUrl } from "@/lib/site";
 import type { ResourceKind } from "@/server/bookings";
 import { calendarPath, listBlocks, listFeeds } from "@/server/calendar-sync";
+import { Card } from "@/components/admin/ui";
 
 /**
  * What the panel does, as server actions already bound to the store and
@@ -56,19 +57,7 @@ export async function ResourceCalendar({
 
   return (
     <>
-      <section aria-labelledby="blocks-heading" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <div>
-          <h2 id="blocks-heading" className="font-medium">
-            {staff ? "Time off" : "Blocked dates"}
-          </h2>
-          <p className="text-sm text-muted">
-            {staff
-              ? "Days they take no appointments, such as holidays."
-              : unit
-                ? "Nights it cannot be booked here: your own use, repairs, or bookings made elsewhere."
-                : "Days it cannot be rented here: repairs, or rentals made elsewhere."}
-          </p>
-        </div>
+      <Card title={<>{staff ? "Time off" : "Blocked dates"}</>} description={<>{staff ? "Days they take no appointments, such as holidays." : unit ? "Nights it cannot be booked here: your own use, repairs, or bookings made elsewhere." : "Days it cannot be rented here: repairs, or rentals made elsewhere."}</>} className="flex flex-col gap-3" compact>
         {blocks.length > 0 && (
           <ul className="divide-y divide-line rounded-md border border-line text-sm">
             {blocks.map((b) => (
@@ -114,21 +103,10 @@ export async function ResourceCalendar({
             <SubmitButton>Block</SubmitButton>
           </div>
         </ActionForm>
-      </section>
+      </Card>
 
       {!staff && (
-        <section aria-labelledby="sync-heading" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
-          <div>
-            <h2 id="sync-heading" className="font-medium">
-              Calendar sync
-            </h2>
-            <p className="text-sm text-muted">
-              Listed on Airbnb, Booking.com or another site too? Give each site this {unit ? "room's" : "item's"} calendar
-              address, and add theirs below, so a booking made on one closes the dates on the others. Other sites are read
-              every 15 minutes.
-            </p>
-          </div>
-
+        <Card title="Calendar sync" description={<>Listed on Airbnb, Booking.com or another site too? Give each site this {unit ? "room's" : "item's"} calendar address, and add theirs below, so a booking made on one closes the dates on the others. Other sites are read every 15 minutes.</>} className="flex flex-col gap-4" compact>
           <div className="flex flex-col gap-2 text-sm">
             <h3 className="font-medium">This {unit ? "room's" : "item's"} calendar</h3>
             {address ? (
@@ -207,7 +185,7 @@ export async function ResourceCalendar({
               </div>
             </ActionForm>
           </div>
-        </section>
+        </Card>
       )}
     </>
   );

@@ -40,6 +40,7 @@ import {
   type WizardProblem,
   type WizardState,
 } from "@/lib/store-copy-wizard";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const errorText = "text-sm text-danger-text";
@@ -253,7 +254,7 @@ function KindChoice({
   const mode = state.options[kind].mode;
   const errorId = `copy-${kind}-error`;
   return (
-    <fieldset className="flex min-w-0 flex-col gap-2 rounded-card border border-line bg-card p-5">
+    <fieldset className={`flex min-w-0 flex-col gap-2 p-5 ${CARD_CLASS}`}>
       <legend className="px-1 text-base font-medium">{words.title}</legend>
       <p className="text-sm text-muted">{hint}</p>
       {rows.length === 0 ? (
@@ -394,7 +395,7 @@ export function StoreCopyWizard({
         </div>
       )}
 
-      <fieldset className="flex min-w-0 flex-col gap-3 rounded-card border border-line bg-card p-5">
+      <fieldset className={`flex min-w-0 flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <legend className="px-1 text-base font-medium">The new store</legend>
         <label className="flex flex-col gap-1 text-sm font-medium">
           Store name
@@ -467,7 +468,7 @@ export function StoreCopyWizard({
         />
       ))}
 
-      <fieldset className="flex min-w-0 flex-col gap-3 rounded-card border border-line bg-card p-5">
+      <fieldset className={`flex min-w-0 flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <legend className="px-1 text-base font-medium">People and orders</legend>
         <div className="flex flex-col gap-1">
           <label className="flex min-h-10 items-center gap-2 text-sm font-medium">
@@ -559,7 +560,7 @@ export function StoreCopyWizard({
         </ul>
       </Details>
 
-      <section aria-label="Summary" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
+      <section aria-label="Summary" className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
         <p id={hintId} className="text-sm">
           {sentence}
         </p>

@@ -6,6 +6,7 @@ import type { HostEarning, HostStripeAccount } from "@/server/host-payments";
 import { platformPublishableKey } from "@/server/stripe";
 
 import { hostAccountSessionAction, hostCreateStripeAccountAction, hostRefreshStripeAccountAction } from "./actions";
+import { Card } from "@/components/admin/ui";
 
 const STAGE_TEXT: Record<AccountStage, string> = {
   not_started: "Not set up yet: guests cannot pay for your listings until it is.",
@@ -38,21 +39,22 @@ export function HostPayouts({
   const publishableKey = platformPublishableKey(mode);
   const date = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" });
   return (
-    <section aria-labelledby="payouts-heading" className="flex flex-col gap-4 rounded-card border border-line bg-card p-5">
-      <div>
-        <h2 id="payouts-heading" className="font-medium">
-          {mode === "live" ? "Getting paid" : "Getting paid (test mode)"}
-        </h2>
-        <p className="text-sm">
-          <span className="sr-only">Status: </span>
-          {STAGE_TEXT[stage]}
-        </p>
-        <p className="text-sm text-muted">
-          Guests pay your own Stripe account: you are the seller, and refunds come from it. The store keeps{" "}
-          {commissionPercent} % of each payment as its commission, no-show fees included.
+    <Card
+      title={mode === "live" ? "Getting paid" : "Getting paid (test mode)"}
+      description={
+        <>
+          Guests pay your own Stripe account: you are the seller, and refunds come from it. The store keeps {commissionPercent} % of each payment as its
+          commission, no-show fees included.
           {mode === "test" && " The store is in test mode, so no real money moves: Kaizen set up a test account for you."}
-        </p>
-      </div>
+        </>
+      }
+      className="flex flex-col gap-4"
+      compact
+    >
+      <p className="text-body text-ink">
+        <span className="sr-only">Status: </span>
+        {STAGE_TEXT[stage]}
+      </p>
 
       {stage === "not_started" && mode === "live" ? (
         <ActionForm action={hostCreateStripeAccountAction.bind(null, storeSlug)} successMessage="Account created.">
@@ -114,6 +116,6 @@ export function HostPayouts({
         )}
         <p className="text-xs text-muted">The commission and Kaizen&apos;s fee come off each payment, and are given back in part with refunds. &quot;You get&quot; is before Stripe&apos;s own fees, which also come off what you are paid; see them in your Stripe Dashboard.</p>
       </div>
-    </section>
+    </Card>
   );
 }

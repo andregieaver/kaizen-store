@@ -8,6 +8,7 @@ import { isTestedPlace, KIND_WORDS, ROLE_NAMES, type TargetKind } from "@/lib/ab
 import type { PartInfo } from "@/lib/experiment-parts";
 
 import { RuntimeEstimate } from "./runtime-estimate";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
@@ -88,7 +89,7 @@ export function ExperimentForm({
 
   if (pages.length === 0) {
     return (
-      <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
+      <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
         There is no page to test yet. A page can be tested when it is published and is not a page with a place of
         its own, and is not in a running test already. The cart, the checkout and the other working pages are tested by a part of them: open one in the page
         builder and use “A/B test this” on a row around the shop&apos;s own component.

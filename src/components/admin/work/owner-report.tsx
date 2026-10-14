@@ -13,7 +13,7 @@ import {
   type ReportParams,
   type ReportPreset,
 } from "@/lib/work-reports";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { REPORT_HEADINGS, REPORT_NOTES, reportCells } from "./report-columns";
 import { ReportTotalsView } from "./report-totals";
@@ -124,7 +124,7 @@ export function OwnerReportView({
       {(many || manyCurrencies) && <CurrencyNote />}
 
       {report.rows.length === 0 ? (
-        <p className="rounded-card border border-line bg-card p-5 text-sm text-muted">
+        <p className={`p-5 text-sm text-muted ${CARD_CLASS}`}>
           Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
         </p>
       ) : (

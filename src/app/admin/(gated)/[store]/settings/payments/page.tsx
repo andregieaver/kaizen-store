@@ -47,18 +47,19 @@ export default async function PaymentSettingsPage({
       />
 
       {modes.length === 0 && (
-        <section role="status" className="rounded-card border border-line bg-card p-5 text-sm">
-          <h2 className="mb-2 font-medium">Payments are not available yet</h2>
-          {account.platformAdmin ? (
-            <p>
-              Add Kaizen&apos;s Stripe keys in Vercel (<code>STRIPE_SECRET_KEY_TEST</code> and{" "}
-              <code>STRIPE_PUBLISHABLE_KEY_TEST</code>, and the <code>_LIVE</code> pair when going
-              live), redeploy, then connect the webhooks under Platform → Stripe.
-            </p>
-          ) : (
-            <p>Kaizen is switching payments on shortly. Your other settings already work.</p>
-          )}
-        </section>
+        <div role="status">
+          <Card title="Payments are not available yet" className="text-sm" compact>
+            {account.platformAdmin ? (
+              <p>
+                Add Kaizen&apos;s Stripe keys in Vercel (<code>STRIPE_SECRET_KEY_TEST</code> and{" "}
+                <code>STRIPE_PUBLISHABLE_KEY_TEST</code>, and the <code>_LIVE</code> pair when going
+                live), redeploy, then connect the webhooks under Platform → Stripe.
+              </p>
+            ) : (
+              <p>Kaizen is switching payments on shortly. Your other settings already work.</p>
+            )}
+          </Card>
+        </div>
       )}
 
       {modes.includes("test") && (

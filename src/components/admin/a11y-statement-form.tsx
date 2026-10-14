@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { ActionForm, SubmitButton, type FormState } from "@/components/admin/action-form";
 import { A11Y_STATUSES, A11Y_STATUS_WORDS, type A11yFacts, type A11ySettings, type EnforcementBody } from "@/lib/a11y-statement";
-import { Card } from "@/components/admin/ui";
+import { Card, CARD_CLASS } from "@/components/admin/ui";
 
 type Action = (state: FormState, formData: FormData) => Promise<FormState>;
 
@@ -72,7 +72,7 @@ export function AccessibilityForm({
       </Card>
 
       <ActionForm action={actions.save} className="flex flex-col gap-6">
-        <fieldset className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
+        <fieldset className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
           <legend className="px-1 font-medium">Assessment</legend>
           {A11Y_STATUSES.map((status) => (
             <label key={status} className="flex items-start gap-2 text-sm">
@@ -103,7 +103,7 @@ export function AccessibilityForm({
           </div>
         </fieldset>
 
-        <fieldset className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
+        <fieldset className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
           <legend className="px-1 font-medium">The statement</legend>
           <label className="flex flex-col gap-1 text-sm font-medium">
             Known issues

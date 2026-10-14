@@ -7,7 +7,7 @@ import { formatMoney } from "@/lib/money";
 import { planSummary, renewalState, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requirePermission } from "@/server/permissions";
 import { listSubscriptions } from "@/server/subscriptions";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Subscriptions" };
 
@@ -37,7 +37,7 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
 
   if (subscriptions.length === 0) {
     return (
-      <p className="rounded-card border border-line bg-card p-8 text-center text-sm">
+      <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>
         No subscriptions yet. Offer one under a product&apos;s Subscriptions section; each shopper who
         subscribes appears here.
       </p>

@@ -19,7 +19,7 @@ import {
 } from "@/app/admin/(gated)/[store]/experiments/actions";
 import { DEVICES, MAX_VARIANTS, type Device } from "@/lib/experiments";
 import type { ExperimentInfo } from "@/server/experiment-admin";
-import { Card } from "@/components/admin/ui";
+import { Button, Card } from "@/components/admin/ui";
 
 import { PAGE_TYPE_COPY } from "./page-type-copy";
 import { RuntimeEstimate } from "./runtime-estimate";
@@ -95,15 +95,18 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
 
   return (
     <div className="flex flex-col gap-6">
-      <section aria-labelledby="ab-versions" className="flex flex-col gap-3 rounded-card border border-line bg-card p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="ab-versions" className="text-lg font-medium">1. Change a version</h2>
-          {test.variants.length < MAX_VARIANTS && (
-            <button type="button" disabled={pending} onClick={() => run(() => addVariantAction(store, test.id))} className={button}>
+      <Card
+        title="1. Change a version"
+        aside={
+          test.variants.length < MAX_VARIANTS && (
+            <Button type="button" disabled={pending} onClick={() => run(() => addVariantAction(store, test.id))}>
               Add another version
-            </button>
-          )}
-        </div>
+            </Button>
+          )
+        }
+        className="flex flex-col gap-3"
+        compact
+      >
         <p className="text-sm text-muted">
           {test.part
             ? `The original is your page as it is. Each other version starts as a copy of it: open it in the page builder and change ${test.part.label}, then publish it there. Everything else on the page has to stay as it is, so the test is about that part only.${
@@ -165,7 +168,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
             </li>
           ))}
         </ul>
-      </section>
+      </Card>
 
       <Card title="2. Check the settings" className="flex flex-col gap-4" compact>
         <label className={label}>
@@ -286,14 +289,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
     <div className="flex flex-col gap-4">
       <Problems problems={problems} />
       {test.status === "scheduled" && test.scheduledStart && (
-        <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby="ab-scheduled">
-          <h2 id="ab-scheduled" className="text-lg font-medium">
-            Starts {new Date(test.scheduledStart).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
-          </h2>
-          <p className="text-sm text-muted">
-            The test starts by itself then, if everything is still in order; if not, it goes back to a draft and says why. Until then visitors see your page as it
-            is, and the versions are locked. To change anything, take it back to a draft.
-          </p>
+        <Card title={<>Starts {new Date(test.scheduledStart).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</>} description="The test starts by itself then, if everything is still in order; if not, it goes back to a draft and says why. Until then visitors see your page as it is, and the versions are locked. To change anything, take it back to a draft." className="flex flex-col gap-3" compact>
           <div className="flex flex-wrap gap-3">
             <button type="button" disabled={pending} onClick={() => run(() => startExperimentAction(store, test.id))} className={primary}>
               Start now
@@ -302,15 +298,10 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
               Back to a draft
             </button>
           </div>
-        </section>
+        </Card>
       )}
       {test.status === "running" && (
-        <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby="ab-stop">
-          <h2 id="ab-stop" className="text-lg font-medium">Running</h2>
-          <p className="text-sm text-muted">
-            Stopping ends the test for everyone: they see your page as it is again, and what was counted is kept. Only stop when you want to decide.
-            {test.plannedEnd && ` It is planned to run until ${new Date(test.plannedEnd).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" })}.`}
-          </p>
+        <Card title="Running" description={<>Stopping ends the test for everyone: they see your page as it is again, and what was counted is kept. Only stop when you want to decide.{test.plannedEnd && ` It is planned to run until ${new Date(test.plannedEnd).toLocaleDateString("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" })}.`}</>} className="flex flex-col gap-3" compact>
           {confirm === "stop" ? (
             <div className="flex flex-wrap items-center gap-3 text-sm">
               Stop the test now?
@@ -328,19 +319,10 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
               </button>
             </div>
           )}
-        </section>
+        </Card>
       )}
       {test.status === "stopped" && (
-        <section className="flex flex-col gap-3 rounded-card border border-line bg-card p-5" aria-labelledby="ab-decide">
-          <h2 id="ab-decide" className="text-lg font-medium">Decide</h2>
-          <p className="text-sm text-muted">
-            The test is stopped and visitors see your page as it was. Choose a version to make it your page, or keep the original.{" "}
-            {test.part
-              ? `A version replaces ${test.part.label} in the page at once, and nothing else: anything you changed on the page since stays.`
-              : "A version replaces the page's content at once; the address stays."}
-            {test.stopReason === "guardrail" && " Kaizen stopped it because a version was clearly selling less."}
-            {test.stopReason === "planned_end" && " It stopped itself at its planned end."}
-          </p>
+        <Card title="Decide" description={<>The test is stopped and visitors see your page as it was. Choose a version to make it your page, or keep the original.{" "}{test.part ? `A version replaces ${test.part.label} in the page at once, and nothing else: anything you changed on the page since stays.` : "A version replaces the page's content at once; the address stays."}{test.stopReason === "guardrail" && " Kaizen stopped it because a version was clearly selling less."}{test.stopReason === "planned_end" && " It stopped itself at its planned end."}</>} className="flex flex-col gap-3" compact>
           <div className="flex flex-wrap gap-3">
             {test.variants
               .filter((v) => v.key !== "a")
@@ -365,7 +347,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
               Keep the original
             </button>
           </div>
-        </section>
+        </Card>
       )}
       {(test.status === "applied" || test.status === "discarded") && (
         <p className="rounded-lg border border-line bg-card p-4 text-sm">

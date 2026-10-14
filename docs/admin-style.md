@@ -574,6 +574,12 @@ notices (the setup wizard, the support inbox, the product editor, the switched-o
 screen-reader titles; the sign-in, two-step and OAuth pages keep theirs until the `focus` layout. Next: the 35 cards with an
 action beside their title (to `Card`'s `aside`), tables to a list in a card where they are lists, and the `focus` layout.
 
+Step 10, the remaining cards (D226): `Card` gained `description` (a muted sentence under the title) and `level={4}`. The 35
+cards left moved: title and hint to `title` and `description`, an action beside the title (a switch, *Edit items*, *Add another
+version*) to `aside`, and a box named another way (an `aria-label`, a screen-reader title, a fieldset, a form, a list item, a
+notice) keeps its element with `CARD_CLASS`. No card is a bordered box of its own any more, and the scan test keeps it so. Next:
+tables to a list in a card where they are lists, and the `focus` layout.
+
 ---
 
 ## 9. Do and don't

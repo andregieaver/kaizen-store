@@ -9,7 +9,7 @@ import { PlaceFields } from "@/components/admin/place-fields";
 import { requirePermission } from "@/server/permissions";
 import { getLocation, KIND_LABELS } from "@/server/company";
 import { listCountries } from "@/server/stores";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { deletePlaceAction, savePlaceAction } from "../../actions";
 
@@ -36,7 +36,7 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
       />
       <ActionForm
         action={savePlaceAction.bind(null, store.slug, place.id)}
-        className="flex flex-col gap-4 rounded-card border border-line bg-card p-5"
+        className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
       >
         <input type="hidden" name="kind" value={place.kind} />
         <label className={field}>

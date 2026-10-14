@@ -10,6 +10,7 @@ import { workspacePageContext } from "./context";
 import { designWorkspacePage } from "./data";
 import { DesignShell } from "./shell";
 import { chooseWorkspaceLayoutAction } from "./workspace-actions";
+import { Card } from "@/components/admin/ui";
 
 const WORDS: Record<DesignLayoutKind, { one: string; tab: "header" | "footer" | "productLayout"; standard: string; intro: string }> = {
   header: {
@@ -52,7 +53,7 @@ export async function LayoutTab({ presetId, kind }: { presetId: string; kind: De
   if (!pageId) {
     return (
       <DesignShell design={page.design} facts={page.facts} tab={words.tab}>
-        <section className="flex max-w-3xl flex-col gap-3 rounded-card border border-line bg-card p-5">
+        <Card className="flex max-w-3xl flex-col gap-3" compact>
           <p className="text-sm text-muted">{words.intro}</p>
           <p className="text-sm">
             The profile uses <strong>{words.standard}</strong>: a store that applies it shows the standard {words.one}.
@@ -60,7 +61,7 @@ export async function LayoutTab({ presetId, kind }: { presetId: string; kind: De
           <ActionForm action={choose("build")}>
             <SubmitButton>Build the profile&apos;s own {words.one}</SubmitButton>
           </ActionForm>
-        </section>
+        </Card>
       </DesignShell>
     );
   }

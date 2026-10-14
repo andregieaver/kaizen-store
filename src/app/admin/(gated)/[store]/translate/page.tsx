@@ -7,7 +7,7 @@ import { featureOn } from "@/lib/store-features";
 import { aiFor } from "@/server/ai";
 import { requirePermission } from "@/server/permissions";
 import { translationCoverage } from "@/server/store-translate";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { translateStorePageAction } from "../pages/actions";
 import { applyAction, worklistAction } from "./actions";
@@ -26,7 +26,7 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
         description={<>Products, menus, pages, articles, categories and tags, custom fields and the return instructions into another of the store&apos;s languages in one go, with AI. The AI suggests; you read each text and keep the ones that are right, and nothing is written before you save. Pages are saved as drafts, so nothing is published for you.</>}
       />
       {languages.length < 2 ? (
-        <p className="rounded-card border border-line bg-card p-5 text-sm">
+        <p className={`p-5 text-sm ${CARD_CLASS}`}>
           {featureOn(store, "languages") ? (
             <>
               The store has only one language. Add another under{" "}
@@ -41,7 +41,7 @@ export default async function TranslatePage({ params }: PageProps<"/admin/[store
           )}
         </p>
       ) : !connection?.textModel ? (
-        <p className="rounded-card border border-line bg-card p-5 text-sm">
+        <p className={`p-5 text-sm ${CARD_CLASS}`}>
           The store has no AI text model. Choose one under{" "}
           <Link href={`/admin/${store.slug}/settings/ai`} className="underline">Settings → AI</Link>.
         </p>

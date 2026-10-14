@@ -9,7 +9,7 @@ import { requirePermission } from "@/server/permissions";
 import { getPageForEdit } from "@/server/pages";
 import { layoutUses } from "@/server/product-layouts";
 import { listTerms } from "@/server/taxonomy";
-import { PageHeader } from "@/components/admin/ui";
+import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
 
 import { assignLayoutAction } from "../../actions";
 
@@ -62,7 +62,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
         )}
       </div>
       <ActionForm action={assignLayoutAction.bind(null, store.slug, layout.id)} className="flex flex-col gap-6">
-        <fieldset className="flex flex-col gap-2 rounded-card border border-line bg-card p-5">
+        <fieldset className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
           <legend className="px-1 font-medium">The whole store</legend>
           <label className="flex items-center gap-3 text-sm">
             <input type="checkbox" name="standard" defaultChecked={use.standard} className="size-4" />
@@ -72,7 +72,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
             </span>
           </label>
         </fieldset>
-        <fieldset className="flex flex-col gap-2 rounded-card border border-line bg-card p-5">
+        <fieldset className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
           <legend className="px-1 font-medium">Product categories</legend>
           {categories.length === 0 ? (
             <p className="text-sm text-muted">The store has no product categories yet.</p>
@@ -81,7 +81,7 @@ export default async function AssignLayoutPage({ params }: PageProps<"/admin/[st
           )}
           <p className="text-xs text-muted">A category&apos;s layout is also used for the categories below it that have none of their own.</p>
         </fieldset>
-        <fieldset className="flex flex-col gap-2 rounded-card border border-line bg-card p-5">
+        <fieldset className={`flex flex-col gap-2 p-5 ${CARD_CLASS}`}>
           <legend className="px-1 font-medium">Product tags</legend>
           {tags.length === 0 ? <p className="text-sm text-muted">The store has no product tags yet.</p> : tags.map((tag) => check(tag.id, tag.name))}
         </fieldset>

@@ -5,6 +5,7 @@ import { useId, useState, useTransition } from "react";
 import type { ArchiveActionState, TagsActionState } from "@/app/admin/(gated)/[store]/orders/ops-actions";
 import { field, hint, primary, secondary } from "@/components/admin/data/ui";
 import { TAGS_PER_ORDER, TAG_MAX_LENGTH, type Tag } from "@/lib/order-tags";
+import { Card } from "@/components/admin/ui";
 
 /**
  * The order page's tags (wave 3, D173, `docs/wave-3-orders.md` 2.3): the tags as chips with a remove cross, and a field to add (several with commas), with the store's tags in use as
@@ -38,10 +39,7 @@ export function TagsCard({
   };
 
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-card border border-line bg-card p-5 text-sm">
-      <h2 id={`${id}-h`} className="font-medium">
-        Tags
-      </h2>
+    <Card title="Tags" className="flex flex-col gap-3 text-sm" compact>
       {tags.length === 0 ? (
         <p className="text-muted">No tags.</p>
       ) : (
@@ -98,7 +96,7 @@ export function TagsCard({
           {message.text}
         </p>
       )}
-    </section>
+    </Card>
   );
 }
 
