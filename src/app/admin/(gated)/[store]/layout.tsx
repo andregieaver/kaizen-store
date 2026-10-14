@@ -28,8 +28,12 @@ import {
   startAssistantAction,
 } from "./assistant/actions";
 
-/** The page editor (a page's own address, or a new page) uses the whole width, without the section's sidebar (D53). */
-const FULL_WIDTH = String.raw`^/admin/[^/]+/(pages|articles|product-layouts|headers|footers)/(new|[0-9a-f-]{36})$`;
+/**
+ * Tools drawn in the `workspace` layout (D230): the page editor (a page's own address, or a new page, D53) and the media library use the
+ * whole width beside a narrowed rail, without the section's sidebar; the support inbox too, with its section's pages in the top bar.
+ */
+const FULL_WIDTH = String.raw`^/admin/[^/]+/((pages|articles|product-layouts|headers|footers)/(new|[0-9a-f-]{36})|media)$`;
+const INBOX = String.raw`^/admin/[^/]+/support$`;
 
 /** The setup wizard is drawn in the `focus` layout (D229): one step at a time, nothing of the store's navigation beside it. */
 const SETUP = String.raw`^/admin/[^/]+/setup(/|$)`;
@@ -124,6 +128,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         </>
       }
       fullWidth={FULL_WIDTH}
+      workspaceLinks={INBOX}
       focus={{ pattern: SETUP, back: { href: base, label: "Leave setup" }, title: `Setting up ${store.name}` }}
     >
       {store.starter && (

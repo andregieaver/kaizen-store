@@ -41,8 +41,9 @@ export function AdminMain({
     );
   }
   if (new RegExp(fullWidth).test(path)) {
+    // The `workspace` layout (docs/admin-style.md 6.3): the tool's own columns take the width; beside the narrowed rail, less room at the sides.
     return (
-      <main className={`flex w-full min-w-0 flex-1 flex-col ${pad} ${y}`}>
+      <main data-admin-layout={railed ? "workspace" : undefined} className={`flex w-full min-w-0 flex-1 flex-col ${railed ? "px-4 md:px-6" : pad} ${y}`}>
         {children}
       </main>
     );

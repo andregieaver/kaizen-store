@@ -21,7 +21,9 @@ import {
 } from "./assistant/actions";
 
 /** The page editor (a page's own address, or a new page) uses the whole width; the rest of the platform admin has its sidebar. */
-const FULL_WIDTH = String.raw`^/admin/platform/(pages|articles|headers|footers)/(new|[0-9a-f-]{36})$`;
+const FULL_WIDTH = String.raw`^/admin/platform/((pages|articles|headers|footers)/(new|[0-9a-f-]{36})|media)$`;
+/** The support inbox is drawn in the `workspace` layout with its section's pages in the top bar (D230). */
+const INBOX = String.raw`^/admin/platform/support$`;
 
 const base = PLATFORM_BASE;
 
@@ -95,6 +97,7 @@ export default async function PlatformLayout({ children }: LayoutProps<"/admin/p
         </>
       }
       fullWidth={FULL_WIDTH}
+      workspaceLinks={INBOX}
     >
       {children}
     </AdminFrame>

@@ -9,6 +9,9 @@ import { requireAccount } from "@/server/auth";
 import { waitingCount } from "@/server/support";
 import { ownerDesks } from "@/server/support-desk";
 
+/** The combined support inbox is drawn in the `workspace` layout (D230): its own columns across the width, beside a narrowed rail. */
+const INBOX = String.raw`^/admin/account/support$`;
+
 /**
  * The store owner's level (D107, D147): the control center over all their
  * stores, their stores, Work (D123) and their account, as tabs with icons in
@@ -43,6 +46,7 @@ export default async function OwnerLayout({ children }: LayoutProps<"/admin">) {
       areas={areas}
       wide
       tabsLabel="Control center sections"
+      fullWidth={INBOX}
       menuTitle={<span className="font-medium">{owner ? "Control center" : "Your stores"}</span>}
     >
       {children}

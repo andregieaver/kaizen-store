@@ -17,6 +17,7 @@ import { ConversationList } from "./conversation-list";
 import { ConversationContext, ConversationView } from "./conversation-view";
 import { PartnerPanel } from "./partner-panel";
 import { conversationHref, runAct, type SupportDeskContext } from "./desk-context";
+import { CARD_CLASS } from "@/components/admin/ui";
 
 /**
  * The support inbox (D216, `docs/support.md` 2.4, 5.4), the same at every level: the list on the left, the conversation in the middle
@@ -258,7 +259,7 @@ export function Inbox({
 
   const showing = open !== null;
   return (
-    <div className="flex h-[calc(100dvh-10rem)] min-h-[28rem] flex-col overflow-hidden rounded-lg border border-line bg-card">
+    <div className={`flex h-[calc(100dvh-7rem)] min-h-[28rem] flex-col overflow-hidden ${CARD_CLASS}`}>
       <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2">
         <h1 className="text-lg font-medium">Inbox</h1>
         <p className="text-sm text-muted" role="status">

@@ -72,6 +72,47 @@ describe("the frame in each layout", () => {
     expect(out.match(/aria-label="Main sections"/g)).toHaveLength(1);
   });
 
+  it("draws a tool in the workspace layout: a narrowed rail, the whole width, the inbox's section pages in the top bar", () => {
+    const supportAreas: NavArea[] = [
+      { prefixes: ["/admin/s/support"], groups: [{ heading: "Support", items: [{ href: "/admin/s/support", label: "Inbox", exact: true }, { href: "/admin/s/support/reports", label: "Reports" }] }] },
+      ...areas,
+    ];
+    const workspace = () =>
+      renderToStaticMarkup(
+        h(AdminFrame, {
+          layout: "rail",
+          switcher: "Store",
+          account: "Me",
+          tabs,
+          groups: [],
+          areas: supportAreas,
+          tabsLabel: "Main sections",
+          menuTitle: "Store",
+          fullWidth: "^/admin/[^/]+/media$",
+          workspaceLinks: "^/admin/[^/]+/support$",
+          children: h("p", null, "Tool"),
+        }),
+      );
+    path.current = "/admin/s/support";
+    const inbox = workspace();
+    expect(inbox).toContain('data-admin-layout="workspace"');
+    expect(inbox).toContain("data-collapsed");
+    expect(inbox).toContain("w-16");
+    expect(inbox).toContain('aria-label="This section"');
+    expect(inbox).toContain(">Reports<");
+    // Its pages are in the top bar, not in a sidebar beside it.
+    expect(inbox).not.toContain("<aside");
+    path.current = "/admin/s/media";
+    const media = workspace();
+    expect(media).toContain("data-collapsed");
+    expect(media).not.toContain('aria-label="This section"');
+    // The inbox's other pages keep the full rail and their sidebar.
+    path.current = "/admin/s/support/reports";
+    const reports = workspace();
+    expect(reports).not.toContain("data-collapsed");
+    expect(reports).toContain("<aside");
+  });
+
   it("draws the setup wizard in the focus layout: a way back and what is being done, no rail, sidebar, menu or actions", () => {
     const focused = () =>
       renderToStaticMarkup(

@@ -595,6 +595,11 @@ Step 13, the setup wizard (D229): a level's `AdminFrame` takes `focus` (the addr
 those pages without the rail, the sidebar, the menu and the level's actions, the top bar holding the way back and what is being
 done, the page in one 760 px column. The store's level asks it for its setup wizard. Next: the `workspace` layout.
 
+Step 14, workspace (D230): a level's `fullWidth` and `workspaceLinks` addresses are drawn beside a rail narrowed to 64 px, without
+the sidebar, at the whole width: the page editors, the media library and the support inbox at every level. The inbox's section
+pages move to a row of links in the top bar (`AreaLinks`). Every layout of 6.3 is now built: `rail` (and its sidebar), `focus`,
+`workspace` and `classic` (hosting).
+
 ---
 
 ## 9. Do and don't

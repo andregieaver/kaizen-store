@@ -8,7 +8,7 @@ import type { AdminLayoutId } from "@/lib/admin-layouts";
 import { AdminMain } from "./admin-main";
 import { ByPath } from "./by-path";
 import { AdminRail } from "./admin-rail";
-import { AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
+import { AreaLinks, AreaMenu, AreaSidebar, StoreSidebar, StoreTabs, type NavArea, type NavGroup, type NavItem } from "./store-admin-nav";
 
 /**
  * The shell every level of the admin is drawn in (D107, docs/admin-navigation.md):
@@ -33,6 +33,7 @@ export function AdminFrame({
   menuTitle,
   menuFooter,
   fullWidth = "^$",
+  workspaceLinks,
   before,
   layout = "classic",
   focus,
@@ -57,8 +58,13 @@ export function AdminFrame({
   menuTitle: ReactNode;
   /** Links at the foot of the slide-out menu. */
   menuFooter?: ReactNode;
-  /** Addresses (a regular expression's source) whose page uses the whole width, without the sidebar. */
+  /**
+   * Addresses (a regular expression's source) drawn in the `workspace` layout (docs/admin-style.md 6.3): a tool with columns of its own
+   * (the page builder, the media library) that uses the whole width, without the sidebar, beside a rail narrowed to 64 px.
+   */
   fullWidth?: string;
+  /** Workspace pages that also show their section's pages in the top bar, having no sidebar for them (the support inbox). */
+  workspaceLinks?: string;
   /** Something rendered before the header (scripts that only listen). */
   before?: ReactNode;
   layout?: AdminLayoutId;
@@ -71,6 +77,7 @@ export function AdminFrame({
   home?: { href: string; label: string };
   children: ReactNode;
 }) {
+  const workspace = workspaceLinks ? `(?:${fullWidth})|(?:${workspaceLinks})` : fullWidth;
   const hasMenu = tabs.length > 0 || groups.length > 0 || (areas?.length ?? 0) > 0 || Boolean(menuFooter);
   const bar = wide ? "" : "max-w-7xl";
   // Under `lg` a section's sidebar is not drawn (beside the rail too), so its pages are in the slide-out menu.
@@ -138,13 +145,16 @@ export function AdminFrame({
       <>
         {before}
         <div data-admin-layout="rail" className="flex min-h-dvh w-full flex-1">
-          {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizen" }} label={tabsLabel} />, null)}
+          {focused(<AdminRail items={tabs} home={home ?? { href: "/admin", label: "Kaizen" }} label={tabsLabel} collapseOn={workspace} />, null)}
           <div className="flex min-w-0 flex-1 flex-col">
             <header data-admin-topbar className="flex h-16 shrink-0 items-center gap-2 px-4 md:px-8">
               {focused(
                 <>
                   {menuButton}
                   {switcher}
+                  {workspaceLinks && (
+                    <ByPath pattern={workspaceLinks} match={<AreaLinks areas={areas ?? []} fallback={groups} label="This section" />} otherwise={null} />
+                  )}
                 </>,
                 focusStart,
               )}
@@ -153,7 +163,7 @@ export function AdminFrame({
                 {account}
               </div>
             </header>
-            <AdminMain fullWidth={fullWidth} focus={focus?.pattern} wide={wide} railed sidebar={sidebar(true)}>
+            <AdminMain fullWidth={workspace} focus={focus?.pattern} wide={wide} railed sidebar={sidebar(true)}>
               {children}
             </AdminMain>
           </div>

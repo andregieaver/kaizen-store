@@ -63,6 +63,35 @@ export function AreaSidebar({ areas, fallback, label, railed = false }: { areas:
   );
 }
 
+/**
+ * The section's pages as a row in the top bar, for a tool drawn in the `workspace` layout (docs/admin-style.md 6.3), which has no
+ * room for the sidebar beside it: the support inbox's Requests, Reports, Saved replies and Settings. From `lg` up; the slide-out menu
+ * has them on smaller screens.
+ */
+export function AreaLinks({ areas, fallback, label }: { areas: NavArea[]; fallback: NavGroup[]; label: string }) {
+  const items = useAreaGroups(areas, fallback).flatMap((group) => group.items);
+  const isCurrent = useIsCurrent();
+  if (items.length === 0) return null;
+  return (
+    <nav aria-label={label} className="hidden min-w-0 overflow-x-auto [scrollbar-width:none] lg:block [&::-webkit-scrollbar]:hidden">
+      <ul className="flex min-w-max gap-1">
+        {items.map((item) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              aria-current={isCurrent(item) ? "page" : undefined}
+              className="flex h-9 items-center rounded-pill px-3 text-body text-ink-2 hover:bg-card hover:text-ink aria-[current=page]:bg-card aria-[current=page]:text-body-strong aria-[current=page]:text-ink"
+            >
+              {item.label}
+              <Badge count={item.badge} />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
 /** The slide-out menu on phones: the tabs, and the sidebar of the section being viewed. */
 export function AreaMenu({ tabs, areas, fallback, label, footer }: { tabs: NavItem[]; areas: NavArea[]; fallback: NavGroup[]; label: string; footer?: ReactNode }) {
   const groups = useAreaGroups(areas, fallback);

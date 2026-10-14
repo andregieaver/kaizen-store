@@ -31,6 +31,13 @@ export const ADMIN_LAYOUTS = [
     for: "The reference: the sections as icons in a dark rail, a plain top bar with the switcher and the account, a section's pages beside.",
   },
   {
+    id: "workspace",
+    name: "Workspace",
+    // Drawn by `AdminFrame` for a level's `fullWidth` and `workspaceLinks` pages: the rail narrowed to 64 px, no sidebar; an inbox's section pages in the top bar.
+    regions: ["rail", "topbar", "main", "panel"],
+    for: "A tool with columns of its own across the whole width: the page builder, the support inbox, the media library.",
+  },
+  {
     id: "focus",
     name: "Focus",
     // Drawn by `FocusFrame`, not `AdminFrame`: the pages before a person is let in, where no level's sections exist yet.
