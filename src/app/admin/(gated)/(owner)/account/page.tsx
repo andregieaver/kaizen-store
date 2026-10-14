@@ -88,6 +88,9 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
         </h2>
         <p className="text-sm text-muted">The admin&apos;s colours, in light and in dark. Your stores keep the colours set under Design.</p>
         <SchemeField saved={account.adminScheme ?? "meadow"} save={adminSchemeAction} />
+        <Link href="/admin/account/appearance" className="w-fit text-sm underline underline-offset-2">
+          See every scheme side by side
+        </Link>
       </section>
 
       {owner && (

@@ -686,6 +686,10 @@ const PAGES: readonly AdminPage[] = [
   account("account.billing", "/account/billing", "Billing", "The plan of each store you own, what it costs, when it renews and Kaizen's fee.", {
     keywords: ["plan", "subscription", "invoice", "renews", "fee", "cost"],
   }),
+  account("account.appearance", "/account/appearance", "Appearance", "How the admin looks for you: light or dark, and the colour scheme, with every scheme drawn in light and dark with the admin's buttons, cards, figures and lists so you can compare them. Your stores keep their own colours.", {
+    keywords: ["appearance", "colours", "colors", "theme", "scheme", "dark", "light", "meadow", "indigo", "look"],
+    tasks: ["Choose light or dark", "Choose the admin's colour scheme", "Compare the schemes side by side"],
+  }),
   account("account.usage", "/account/usage", "AI usage", "What the AI used for the stores you own, per provider and model and per store.", {
     keywords: ["tokens", "cost", "spend", "requests", "usage", "consumption", "ai", "provider", "model"],
     tasks: ["See your total AI usage per provider and model", "See usage per store", "Choose the period"],

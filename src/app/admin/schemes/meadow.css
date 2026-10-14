@@ -5,11 +5,15 @@
  * It is the default scheme: it applies when <html> names no scheme (`data-admin-scheme`) or names this one. Values are written as
  * plain hex so `admin-schemes.test.ts` can read them and hold every text pair to WCAG's 4.5:1 (section 7.1). A role's value in dark is
  * the same role's meaning, not its colour inverted: the rail stays the darkest place, `-text` becomes the light version of a signal.
+ *
+ * The same values also apply to an element marked `data-scheme-preview` (and `data-preview-mode="dark"`), so the Appearance page
+ * (`/admin/account/appearance`, D222) can draw every scheme in light and in dark side by side.
  */
 
 /* ------------------------------------------------------------------ light */
 
-html[data-admin]:is(:not([data-admin-scheme]), [data-admin-scheme="meadow"]) {
+html[data-admin]:is(:not([data-admin-scheme]), [data-admin-scheme="meadow"]),
+[data-scheme-preview="meadow"] {
   /* Surfaces and text */
   --canvas: #f0f1eb;
   --card: #ffffff;
@@ -179,7 +183,8 @@ html[data-admin]:is(:not([data-admin-scheme]), [data-admin-scheme="meadow"]) {
   }
 }
 
-html[data-admin]:is(:not([data-admin-scheme]), [data-admin-scheme="meadow"])[data-color-mode="dark"] {
+html[data-admin]:is(:not([data-admin-scheme]), [data-admin-scheme="meadow"])[data-color-mode="dark"],
+[data-scheme-preview="meadow"][data-preview-mode="dark"] {
   --canvas: #0c100f;
   --card: #151a19;
   --sunken: #1b2120;

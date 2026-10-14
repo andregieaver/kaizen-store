@@ -471,7 +471,7 @@ and no sidebar, the topbar with a menu button that opens the rail's areas and th
      always comes with its words (section 1.2), and a test reads the page's markup for that instead (`signal-words.test.ts`);
    - `--focus` reaches 3:1 on `card` and `canvas`;
    - every role is set, in light and in dark.
-4. **Look at it** on the scheme preview page (`/admin/account/appearance`, when built): one screen with every component of
+4. **Look at it** on the scheme preview page (`/admin/account/appearance`, D222): one screen with every component of
    section 5 in each mode.
 
 The second scheme to make is **`indigo`**: today's D149 colours expressed as roles. It proves the mechanism and lets anyone who
@@ -540,7 +540,13 @@ as roles, white words on its brand) is the second scheme, and the picker is the 
 (`SchemeField` in `src/components/admin/admin-scheme.tsx`): kept on the account (`accounts.admin_scheme`, a check listing every
 scheme, held to `ADMIN_SCHEMES` by a test) and in the browser (`kaizen_admin_scheme`), put on `<html>` before the page is drawn
 by `adminSchemeScript()`, and brought in line on another device by `AdminSchemeSync`. A new scheme widens the check in a
-migration. The scheme preview page of 7.1 and a default for new accounts are not built.
+migration. A default for new accounts is not built.
+Step 6 (D222): the scheme preview page is `/admin/account/appearance` (Account's sidebar, linked from Your account): light or
+dark, the scheme, and every offered scheme in light and in dark side by side (`SchemePreview` in
+`src/components/admin/scheme-preview.tsx`: every component of section 5 and a still rail on a sample page, `inert`, named by its
+figure). A scheme's file also applies to an element marked `data-scheme-preview="{id}"` (and `data-preview-mode="dark"`), which is
+what lets a page show a scheme it is not drawn in; a preview only reads roles, so the older names that `admin.css` maps on `<html>`
+do not follow it, and a component meant for the preview uses the role names.
 
 ---
 

@@ -3,11 +3,15 @@
  * indigo), as roles, for anyone who prefers it. It applies only when <html> names it (`data-admin-scheme`, the account's choice,
  * D221). White words read on this darker brand, so `--brand-ink` is white here. Values are plain hex so `admin-schemes.test.ts`
  * can read them and hold every pair of `CONTRAST_RULES`.
+ *
+ * The same values also apply to an element marked `data-scheme-preview` (and `data-preview-mode="dark"`), so the Appearance page
+ * (`/admin/account/appearance`, D222) can draw every scheme in light and in dark side by side.
  */
 
 /* ------------------------------------------------------------------ light */
 
-html[data-admin][data-admin-scheme="indigo"] {
+html[data-admin][data-admin-scheme="indigo"],
+[data-scheme-preview="indigo"] {
   --canvas: #eef1f7;
   --card: #ffffff;
   --sunken: #f5f7fb;
@@ -171,7 +175,8 @@ html[data-admin][data-admin-scheme="indigo"] {
   }
 }
 
-html[data-admin][data-admin-scheme="indigo"][data-color-mode="dark"] {
+html[data-admin][data-admin-scheme="indigo"][data-color-mode="dark"],
+[data-scheme-preview="indigo"][data-preview-mode="dark"] {
   --canvas: #0b0e18;
   --card: #141927;
   --sunken: #1d2437;

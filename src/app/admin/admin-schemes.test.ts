@@ -80,6 +80,13 @@ describe.each(ADMIN_SCHEMES.map((s) => [s.id, s] as const))("the admin's colour 
     expect(Object.fromEntries(dark[0].props)).toEqual(Object.fromEntries(dark[1].props));
   });
 
+  it("also applies to a preview element, in light and in dark, so the Appearance page can draw it (D222)", () => {
+    expect(light[0].selector).toContain(`[data-scheme-preview="${id}"]`);
+    expect(dark.some((b) => b.selector.includes(`[data-scheme-preview="${id}"][data-preview-mode="dark"]`))).toBe(true);
+    // The device's dark never reaches a preview: a preview is light or dark by its own mark only.
+    expect(dark.find((b) => b.selector.includes("@media") || !b.selector.includes("[data-color-mode=\"dark\"]"))?.selector ?? "").not.toContain("data-scheme-preview");
+  });
+
   it.each([
     ["light", () => light[0]],
     ["dark", () => dark[0]],

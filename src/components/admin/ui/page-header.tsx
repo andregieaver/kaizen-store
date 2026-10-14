@@ -10,12 +10,15 @@ export function PageHeader({
   title,
   meta = [],
   actions,
+  as: Title = "h1",
 }: {
   eyebrow?: ReactNode;
   status?: ReactNode;
   title: ReactNode;
   meta?: readonly ReactNode[];
   actions?: ReactNode;
+  /** The title's element: the page's `h1`, or a `p` where the header is a sample (the Appearance page's previews). */
+  as?: "h1" | "p";
 }) {
   const facts = meta.filter((fact) => fact !== null && fact !== undefined && fact !== false && fact !== "");
   return (
@@ -27,7 +30,7 @@ export function PageHeader({
             {status}
           </div>
         )}
-        <h1 className="text-display text-ink [overflow-wrap:anywhere]">{title}</h1>
+        <Title className="text-display text-ink [overflow-wrap:anywhere]">{title}</Title>
         {facts.length > 0 && (
           <p className="mt-2 text-body-lg text-ink-2">
             {facts.map((fact, i) => (
