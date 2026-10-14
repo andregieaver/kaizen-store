@@ -704,7 +704,7 @@
       "rechecked": true,
       "was": "missing"
     },
-    "gap": "Built and held below the screen, not through it. The server side is complete and tested: previewBulk/startBulk/continueBulk for status, archive, unarchive, categories and tags, price (percentage half up, or amount per market) and stock, applyGrid/previewGrid/undoBatch with conflicts, 500/50 limits, one products.bulk_edited entry per batch and failures with reasons, all through getProductForEdit() and saveProduct() so commerce.set_price keeps the price history (src/server/bulk-edit.int.test.ts, src/lib/bulk-edit.test.ts, passed). What the criteria name is the merchant's screen: tick boxes in the products list, one confirmation step, a grid with a preview of changed cells and an undo. That state machine (src/components/admin/products-bulk.tsx, products-grid.tsx, bulk-recent.tsx) is held only by renderToString view tests (src/components/admin/bulk-views.test.ts, which render the states but never click), and the e2e the spec named for criterion 1 (tick two rows, Change price, confirm) was not written: e2e/data-export.spec.ts only holds that a visitor without a session gets nothing, because the repo has no signed-in admin fixture (D158). The server actions in products/bulk/actions.ts are thin wrappers that cannot be called outside Next's request context, so they are untested too. Also unbuilt by design: the products list is not paged until wave 3, so 'select all matching' and 'select the page' choose the same rows.",
+    "gap": "Built and held below the screen, not through it. The server side is complete and tested: previewBulk/startBulk/continueBulk for status, archive, unarchive, categories and tags, price (percentage half up, or amount per market) and stock, applyGrid/previewGrid/undoBatch with conflicts, 500/50 limits, one products.bulk_edited entry per batch and failures with reasons, all through getProductForEdit() and saveProduct() so commerce.set_price keeps the price history (src/server/bulk-edit.int.test.ts, src/lib/bulk-edit.test.ts, passed). What the criteria name is the merchant's screen: tick boxes in the products list, one confirmation step, a grid with a preview of changed cells and an undo. That state machine (src/components/admin/products-bulk.tsx, products-grid.tsx, bulk-recent.tsx) is held only by renderToString view tests (src/components/admin/bulk-views.test.ts, which render the states but never click), and, since D234, e2e/signed-in/products-bulk.spec.ts drives criterion 1 as the owner does it (tick two products, Change price by -10 %, review, apply in one confirmed step, check the prices, undo and check them back). Still not driven in a browser: the grid's preview of changed cells and its undo (criterion 2). The server actions in products/bulk/actions.ts are thin wrappers that cannot be called outside Next's request context, so they are untested too. Also unbuilt by design: the products list is not paged until wave 3, so 'select all matching' and 'select the page' choose the same rows.",
     "bucket": "A",
     "wave": 2,
     "criteria": [
@@ -733,7 +733,8 @@
         "src/server/bulk-edit.int.test.ts",
         "src/server/money-review.int.test.ts",
         "src/lib/product-import-writers.test.ts",
-        "src/server/audit-coverage.int.test.ts"
+        "src/server/audit-coverage.int.test.ts",
+        "e2e/signed-in/products-bulk.spec.ts"
       ],
       "untested": false
     },

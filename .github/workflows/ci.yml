@@ -149,6 +149,44 @@ jobs:
         env:
           E2E_CUSTOM_HOSTS: "1"
 
+  # The admin as signed-in people see it (e2e/signed-in/): the app is built against a stand-in for Supabase Auth
+  # (e2e/fixtures/auth-stub.mjs), so its own sign-in form, session check and permissions run unchanged; an owner and a
+  # Read-only member are signed in by e2e/signed-in/auth.setup.ts.
+  signed-in:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:3912
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: e2e-publishable-key
+      E2E_SIGNED_IN: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Create the database with the demo catalogue
+        run: node scripts/db-setup.mjs --seed
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright test --project=signed-in
+
   # Production's migrations and deploy (docs/ci-migrations.md). Vercel's own build of main is switched off in
   # vercel.json, so production gets new code only here. Whether a push has migrations is read from production's
   # ledger: files in this commit it has not recorded. Off until the repository variables AUTO_MIGRATE and
