@@ -26,6 +26,16 @@ export const STATUS_WORDS: Record<ExperimentStatus, string> = {
   discarded: "Discarded",
 };
 
+/** The signal of a status's chip in the admin's lists (docs/admin-style.md 5.7). */
+export const STATUS_SIGNAL = {
+  draft: "neutral",
+  scheduled: "insight",
+  running: "positive",
+  stopped: "warning",
+  applied: "positive",
+  discarded: "neutral",
+} as const satisfies Record<ExperimentStatus, "positive" | "warning" | "danger" | "neutral" | "insight">;
+
 export const MAX_RUNNING_PER_STORE = 5;
 export const MAX_VARIANTS = 4;
 export const MAX_RUN_DAYS = 90;

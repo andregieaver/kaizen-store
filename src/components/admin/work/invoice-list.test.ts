@@ -105,9 +105,10 @@ describe("the invoices list", () => {
     // Outstanding only for issued ones; a credited one says so.
     expect(html).toContain("NOK 2,000.00");
     expect(html).toContain("NOK 3,250.00 credited");
-    // A table for larger screens, cards for phones.
-    expect(html).toContain("<table");
+    // One list in a card at every size (docs/admin-style.md 5.8), each row naming its own facts.
+    expect(html).not.toContain("<table");
     expect(html).toContain('aria-label="Invoices"');
+    expect(html).toContain("NOK 2,000.00 outstanding");
   });
 
   it("keeps the filters in a labelled form that searches by address, and offers to clear them", () => {

@@ -87,7 +87,7 @@ describe("a finished export", () => {
 
   it("lists the recent exports, Download only for one that can still be downloaded", () => {
     const out = html(createElement(ExportJobList, { jobs: [exportJob(), exportJob({ id: "22222222-2222-4222-8222-222222222222", status: "expired", purged: true, files: [] })], pageHref: "/admin/shop/orders/export", timeZone: "UTC", now }));
-    expect(out).toContain("<caption");
+    expect(out).toContain('aria-label="Recent exports of this store, newest first"');
     expect(out).toContain("Recent exports");
     expect(out).toContain('href="/admin/shop/orders/export?job=11111111-1111-4111-8111-111111111111"');
     expect(out).toContain(">Download<");

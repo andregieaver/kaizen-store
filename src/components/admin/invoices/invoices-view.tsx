@@ -20,7 +20,7 @@ import {
 } from "@/lib/invoice-admin";
 import { formatMoney } from "@/lib/money";
 import type { DocumentListRow, DocumentPage, FailingPdf, InvoiceCounts, WaitingCreditNote, WaitingInvoice } from "@/server/invoices";
-import { Card, CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, List, ListRow, PageHeader, RowActions, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 import { CheckAgainForm, RetryPdfForm } from "./waiting-actions";
 
@@ -380,138 +380,98 @@ function WaitingTab({
       {nothing && <p className={`p-8 text-center text-sm ${CARD_CLASS}`}>Nothing is waiting. Every paid order has its invoice and every refund its credit note.</p>}
 
       {waiting.length > 0 && (
-        <section aria-labelledby="waiting-invoices" className="flex flex-col gap-2">
-          <h2 id="waiting-invoices" className="font-medium">
-            Orders waiting for an invoice
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[44rem] rounded-lg border border-line bg-card text-left text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className={th}>Order</th>
-                  <th scope="col" className={th}>Paid</th>
-                  <th scope="col" className={`${th} text-right`}>Total</th>
-                  <th scope="col" className={th}>Why it waits</th>
-                </tr>
-              </thead>
-              <tbody>
-                {waiting.map((w) => (
-                  <tr key={w.orderId} className="border-b border-line align-top last:border-0">
-                    <td className={td}>
-                      <Link href={`${orders}/${w.orderId}`} className="font-medium underline-offset-2 hover:underline">
-                        #{w.orderNumber}
-                      </Link>
-                      <span className="block text-xs text-muted">{vatKindLabel(w.vatKind)}</span>
-                    </td>
-                    <td className={td}>
-                      <time dateTime={w.paidOn}>{dayLabel(w.paidOn)}</time>
-                    </td>
-                    <td className={`${td} text-right tabular-nums`}>{money(w.totalMinor, w.currency)}</td>
-                    <td className={td}>
-                      <span className="block font-medium">{WAITING_TITLES[w.reason]}</span>
-                      <span className="block text-muted">{w.words}</span>
+        <Card title="Orders waiting for an invoice" count={waiting.length} compact>
+          <List label="Orders waiting for an invoice">
+            {waiting.map((w) => (
+              <ListRow key={w.orderId}>
+                <RowLead
+                  title={`#${w.orderNumber}`}
+                  href={`${orders}/${w.orderId}`}
+                  sub={
+                    <>
+                      <span className="text-ink-2">{WAITING_TITLES[w.reason]}</span> · {w.words}
                       {w.overdue && w.deadline && (
-                        <span className="mt-1 block font-medium text-danger-text">
+                        <span className="block text-danger-text">
                           Past the deadline: a reverse-charge invoice is due by {dayLabel(w.deadline)}. Today is {dayLabel(today)}.
                         </span>
                       )}
                       {w.fixAt && (
-                        <Link href={`${base}${w.fixAt}`} className="mt-1 inline-block underline">
+                        <Link href={`${base}${w.fixAt}`} className="block underline">
                           Fix it
                         </Link>
                       )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                    </>
+                  }
+                />
+                <RowFact className="hidden sm:block" sub={vatKindLabel(w.vatKind)}>
+                  Paid <time dateTime={w.paidOn}>{dayLabel(w.paidOn)}</time>
+                </RowFact>
+                <RowAmount>{money(w.totalMinor, w.currency)}</RowAmount>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
 
       {waitingNotes.length > 0 && (
-        <section aria-labelledby="waiting-notes" className="flex flex-col gap-2">
-          <h2 id="waiting-notes" className="font-medium">
-            Refunds with no or only a partial credit note
-          </h2>
-          <p className="max-w-3xl text-sm text-muted">
-            A credit note never goes above what its invoice has left, per VAT rate. A refund with no credit note yet is tried again every five minutes. A
-            refund larger than what was left on the invoice, such as a fee charged after the sale, is credited in part; the rest is not an invoiced amount.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] rounded-lg border border-line bg-card text-left text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className={th}>Order</th>
-                  <th scope="col" className={th}>State</th>
-                  <th scope="col" className={`${th} text-right`}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {waitingNotes.map((n) => (
-                  <tr key={`${n.refundId ?? n.returnId}-${n.state}`} className="border-b border-line last:border-0">
-                    <td className={td}>
-                      <Link href={`${orders}/${n.orderId}`} className="font-medium underline-offset-2 hover:underline">
-                        #{n.orderNumber}
-                      </Link>
-                    </td>
-                    <td className={td}>{n.state === "missing" ? "No credit note yet" : "Credited in part: the invoice had less left"}</td>
-                    <td className={`${td} text-right tabular-nums`}>
-                      {money(n.amountMinor, n.currency)}
-                      <span className="block text-xs text-muted">{n.state === "missing" ? "the refund" : "left uncredited"}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <Card
+          title="Refunds with no or only a partial credit note"
+          count={waitingNotes.length}
+          description="A credit note never goes above what its invoice has left, per VAT rate. A refund with no credit note yet is tried again every five minutes. A refund larger than what was left on the invoice, such as a fee charged after the sale, is credited in part; the rest is not an invoiced amount."
+          compact
+        >
+          <List label="Refunds with no or only a partial credit note">
+            {waitingNotes.map((n) => (
+              <ListRow key={`${n.refundId ?? n.returnId}-${n.state}`}>
+                <RowLead
+                  title={`#${n.orderNumber}`}
+                  href={`${orders}/${n.orderId}`}
+                  sub={n.state === "missing" ? "No credit note yet" : "Credited in part: the invoice had less left"}
+                />
+                <RowAmount>
+                  {money(n.amountMinor, n.currency)}
+                  <span className="block text-caption text-muted">{n.state === "missing" ? "the refund" : "left uncredited"}</span>
+                </RowAmount>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
 
       {failing.length > 0 && (
-        <section aria-labelledby="failing-pdfs" className="flex flex-col gap-2">
-          <h2 id="failing-pdfs" className="font-medium">
-            PDF not made
-          </h2>
-          <p className="max-w-3xl text-sm text-muted">
-            The document exists and is correct; only its PDF file could not be made after several tries. The hosted page and the print view still work, and
-            the browser can save a PDF from them.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] rounded-lg border border-line bg-card text-left text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className={th}>Document</th>
-                  <th scope="col" className={th}>Order</th>
-                  <th scope="col" className={th}>Tries</th>
-                  <th scope="col" className={th}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {failing.map((f) => (
-                  <tr key={`${f.type}-${f.id}`} className="border-b border-line align-top last:border-0">
-                    <td className={td}>
-                      <span className="font-medium">{f.documentNumber}</span>
-                      <Link href={documentPrintHref(base, f.type, f.id)} className="block text-xs underline" prefetch={false}>
+        <Card
+          title="PDF not made"
+          count={failing.length}
+          description="The document exists and is correct; only its PDF file could not be made after several tries. The hosted page and the print view still work, and the browser can save a PDF from them."
+          compact
+        >
+          <List label="PDF not made">
+            {failing.map((f) => (
+              <ListRow key={`${f.type}-${f.id}`}>
+                <RowLead
+                  title={f.documentNumber}
+                  sub={
+                    <>
+                      <Link href={documentPrintHref(base, f.type, f.id)} className="underline" prefetch={false}>
                         View
                       </Link>
-                    </td>
-                    <td className={td}>
+                      {" · "}
                       <Link href={`${orders}/${f.orderId}`} className="underline-offset-2 hover:underline">
-                        #{f.orderNumber}
+                        Order #{f.orderNumber}
                       </Link>
-                    </td>
-                    <td className={`${td} tabular-nums`}>
-                      {f.attempts}
-                      {f.lastError && <span className="block max-w-xs text-xs text-muted [overflow-wrap:anywhere]">{f.lastError}</span>}
-                    </td>
-                    <td className={td}>{canWrite ? <RetryPdfForm action={actions.retryPdf} type={f.type} id={f.id} /> : <span className="text-muted">Needs a member who may change orders</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                      {" · "}
+                      {f.attempts === 1 ? "1 try" : `${f.attempts} tries`}
+                      {f.lastError && <span className="block [overflow-wrap:anywhere]">{f.lastError}</span>}
+                    </>
+                  }
+                />
+                <RowActions>
+                  {canWrite ? <RetryPdfForm action={actions.retryPdf} type={f.type} id={f.id} /> : <span className="text-body text-muted">Needs a member who may change orders</span>}
+                </RowActions>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
     </div>
   );

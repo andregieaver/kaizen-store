@@ -11,17 +11,17 @@ import { featureOn } from "@/lib/store-features";
 import { memberCan, requirePermission } from "@/server/permissions";
 import { DEFAULT_EVENTS, getIntegration, listDeliveries, type DeliveryRow } from "@/server/integrations";
 import { slackAppOn } from "@/server/slack";
-import { PageHeader } from "@/components/admin/ui";
+import { Chip, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 
 import { connectSlackAction, removeIntegrationAction, saveIntegrationAction, sendTestAction } from "../actions";
 
 export const metadata: Metadata = { title: "Integration" };
 
 const card = "rounded-lg border border-line bg-card p-5";
-const STATUS: Record<DeliveryRow["status"], { text: string; tone: string }> = {
-  delivered: { text: "Delivered", tone: "bg-positive-soft text-positive-text" },
-  pending: { text: "Trying again", tone: "bg-warning-soft text-warning-text" },
-  failed: { text: "Failed", tone: "bg-danger-soft text-danger-text" },
+const STATUS: Record<DeliveryRow["status"], { text: string; signal: "positive" | "warning" | "danger" }> = {
+  delivered: { text: "Delivered", signal: "positive" },
+  pending: { text: "Trying again", signal: "warning" },
+  failed: { text: "Failed", signal: "danger" },
 };
 
 /** What came back from "Add to Slack" (D101). */
@@ -181,35 +181,28 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
           {deliveries.length === 0 ? (
             <p className="text-sm text-muted">Nothing sent yet.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-line">
-                    <th scope="col" className="py-2 pr-4 font-medium">Event</th>
-                    <th scope="col" className="py-2 pr-4 font-medium">When</th>
-                    <th scope="col" className="py-2 font-medium">Result</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deliveries.map((d) => (
-                    <tr key={d.id} className="border-b border-line align-top last:border-0">
-                      <td className="py-2 pr-4">{eventLabel(d.event)}</td>
-                      <td className="py-2 pr-4 whitespace-nowrap">{when(d.createdAt)}</td>
-                      <td className="py-2">
-                        <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS[d.status].tone}`}>{STATUS[d.status].text}</span>
-                        {d.status !== "delivered" && d.lastError && (
-                          <span className="block text-xs text-muted">
-                            {d.lastStatus ? `${d.lastStatus}: ` : ""}
-                            {d.lastError}
-                            {d.status === "pending" && d.attempts > 0 && ` · next try ${when(d.nextAttemptAt)}`}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <List label="Events sent">
+              {deliveries.map((d) => (
+                <ListRow key={d.id}>
+                  <RowLead
+                    title={eventLabel(d.event)}
+                    sub={
+                      d.status !== "delivered" && d.lastError ? (
+                        <>
+                          {d.lastStatus ? `${d.lastStatus}: ` : ""}
+                          {d.lastError}
+                          {d.status === "pending" && d.attempts > 0 && ` · next try ${when(d.nextAttemptAt)}`}
+                        </>
+                      ) : undefined
+                    }
+                  />
+                  <RowDate>{when(d.createdAt)}</RowDate>
+                  <Chip signal={STATUS[d.status].signal} dot>
+                    {STATUS[d.status].text}
+                  </Chip>
+                </ListRow>
+              ))}
+            </List>
           )}
         </section>
       )}

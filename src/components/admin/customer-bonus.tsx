@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BonusAdjustForm } from "@/components/admin/bonus-adjust-form";
 import { entryLabel, isUsableNow, moneyIn, signedMoney } from "@/lib/bonus-admin";
 import type { BonusBalance, BonusEntry, BonusResult } from "@/lib/bonus";
-import { Card } from "@/components/admin/ui";
+import { Card, List, ListRow, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
 
 /** Whether a customer's page shows credits: the program is on, or the customer has some history from before. */
 export const showsBonus = (enabled: boolean, entries: readonly unknown[]): boolean => enabled || entries.length > 0;
@@ -86,67 +86,45 @@ export function CustomerBonus({
       {entries.length === 0 ? (
         <p className="mb-4 text-sm text-muted">No credits yet.</p>
       ) : (
-        <div className="mb-4 overflow-x-auto">
-          <table className="w-full min-w-[26rem] text-left text-sm">
-            <caption className="sr-only">Every change to this customer&apos;s credits</caption>
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className="py-2 pr-4 font-medium">
-                  Date
-                </th>
-                <th scope="col" className="py-2 pr-4 font-medium">
-                  What
-                </th>
-                <th scope="col" className="py-2 pr-4 font-medium">
-                  Order
-                </th>
-                <th scope="col" className="py-2 text-right font-medium">
-                  Credits
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry) => {
-                const orderId = entry.orderNumber ? orderIds[entry.orderNumber] : undefined;
-                const usable = isUsableNow(entry, now);
-                return (
-                  <tr key={entry.id} className="border-b border-line last:border-0 align-top">
-                    <td className="py-2 pr-4 whitespace-nowrap">
-                      <time dateTime={entry.at}>{date(entry.at)}</time>
-                    </td>
-                    <td className="py-2 pr-4">
-                      {entryLabel(entry)}
-                      {entry.note && <span className="block text-xs text-muted">{entry.note}</span>}
-                      {usable !== null && entry.availableAt && (
-                        <span className="block text-xs text-muted">
-                          {usable ? "Usable" : `Usable from ${date(entry.availableAt)}`}
-                        </span>
-                      )}
-                      {entry.expiresAt && (
-                        <span className="block text-xs text-muted">Expires {date(entry.expiresAt)}</span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4">
-                      {entry.orderNumber ? (
-                        orderId ? (
-                          <Link href={`${adminBase}/orders/${orderId}`} className="underline">
-                            #{entry.orderNumber}
-                          </Link>
-                        ) : (
-                          `#${entry.orderNumber}`
-                        )
-                      ) : (
-                        <span className="text-muted">–</span>
-                      )}
-                    </td>
-                    <td className="py-2 text-right whitespace-nowrap">
-                      {signedMoney(entry.amountMinor, balance.currency, locale)}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="mb-4">
+          <List label="Every change to this customer's credits">
+            {entries.map((entry) => {
+              const orderId = entry.orderNumber ? orderIds[entry.orderNumber] : undefined;
+              const usable = isUsableNow(entry, now);
+              const notes = [
+                entry.note,
+                usable !== null && entry.availableAt ? (usable ? "Usable" : `Usable from ${date(entry.availableAt)}`) : null,
+                entry.expiresAt ? `Expires ${date(entry.expiresAt)}` : null,
+              ].filter(Boolean);
+              return (
+                <ListRow key={entry.id}>
+                  <RowDate>
+                    <time dateTime={entry.at}>{date(entry.at)}</time>
+                  </RowDate>
+                  <RowLead
+                    title={entryLabel(entry)}
+                    sub={
+                      notes.length > 0 || entry.orderNumber ? (
+                        <>
+                          {entry.orderNumber &&
+                            (orderId ? (
+                              <Link href={`${adminBase}/orders/${orderId}`} className="underline">
+                                Order #{entry.orderNumber}
+                              </Link>
+                            ) : (
+                              `Order #${entry.orderNumber}`
+                            ))}
+                          {entry.orderNumber && notes.length > 0 && " · "}
+                          {notes.join(" · ")}
+                        </>
+                      ) : undefined
+                    }
+                  />
+                  <RowAmount>{signedMoney(entry.amountMinor, balance.currency, locale)}</RowAmount>
+                </ListRow>
+              );
+            })}
+          </List>
         </div>
       )}
 

@@ -15,7 +15,7 @@ import { getStore } from "@/server/stores";
 import { requirePlatformAdmin } from "@/server/auth";
 import { twoStepOfAccount } from "@/server/team";
 import { avatarFor } from "@/server/avatars";
-import { PageHeader } from "@/components/admin/ui";
+import { List, ListRow, PageHeader, RowDate, RowFact, RowLead } from "@/components/admin/ui";
 
 import { resetTwoStepAction } from "./actions";
 
@@ -109,52 +109,36 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
         {customer.stores.length === 0 ? (
           <p className="text-sm text-muted">Works in no store.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className="py-2 pr-4 font-medium">Store</th>
-                  <th scope="col" className="py-2 pr-4 font-medium">Role</th>
-                  <th scope="col" className="py-2 pr-4 font-medium">Plan</th>
-                  <th scope="col" className="py-2 font-medium">Next invoice</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customer.stores.map((s) => (
-                  <tr key={s.slug} className="border-b border-line last:border-0">
-                    <td className="py-2 pr-4">
-                      <Link href={`/admin/platform/stores/${s.slug}`} className="font-medium underline">
-                        {s.name}
+          <List label="Stores">
+            {customer.stores.map((s) => (
+              <ListRow key={s.slug}>
+                <RowLead
+                  title={s.name}
+                  href={`/admin/platform/stores/${s.slug}`}
+                  sub={
+                    <>
+                      <span className="capitalize">{s.role}</span> ·{" "}
+                      <Link href={`/admin/${s.slug}`} className="underline">
+                        Store admin
                       </Link>
-                      <span className="block text-xs text-muted">
-                        <Link href={`/admin/${s.slug}`} className="underline">
-                          Store admin
-                        </Link>
-                      </span>
-                    </td>
-                    <td className="py-2 pr-4 capitalize">{s.role}</td>
-                    <td className="py-2 pr-4">
-                      {s.planName && s.status ? (
-                        <>
-                          {s.planName}
-                          <span className="block text-xs text-muted">
-                            {SUBSCRIPTION_LABELS[s.status] ?? s.status}
-                            {s.cancelAtPeriodEnd && " · ends with the period"}
-                            {s.mode === "test" && " · test mode"}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-muted">No plan</span>
-                      )}
-                    </td>
-                    <td className="py-2">
-                      {s.currentPeriodEnd && s.status !== "canceled" ? date(s.currentPeriodEnd) : "–"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </>
+                  }
+                />
+                <RowFact
+                  sub={
+                    s.planName && s.status
+                      ? [SUBSCRIPTION_LABELS[s.status] ?? s.status, s.cancelAtPeriodEnd && "ends with the period", s.mode === "test" && "test mode"]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : undefined
+                  }
+                >
+                  {s.planName && s.status ? s.planName : "No plan"}
+                </RowFact>
+                <RowDate>{s.currentPeriodEnd && s.status !== "canceled" ? `Next invoice ${date(s.currentPeriodEnd)}` : "No invoice due"}</RowDate>
+              </ListRow>
+            ))}
+          </List>
         )}
       </section>
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PRIVACY_KIND_LABELS, PRIVACY_STATUS_LABELS } from "@/lib/privacy-request";
 import { STAFF_TEXT } from "@/lib/privacy-text";
 import type { RequestView } from "@/server/privacy-requests";
-import { PageHeader } from "@/components/admin/ui";
+import { Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 import { alertText, buttonPrimary, card, clockWords, dayText } from "./styles";
 
@@ -83,48 +83,35 @@ export function RequestsView({
         {shown.length === 0 ? (
           <p className="text-sm text-muted">{filter === "open" ? "No request is open." : "Nothing here yet."}</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[40rem] text-left text-sm">
-              <caption className="sr-only">Privacy requests</caption>
-              <thead className="text-muted">
-                <tr>
-                  <th scope="col" className="py-2 pr-3 font-medium">Request</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">Person</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">Received</th>
-                  <th scope="col" className="py-2 pr-3 font-medium">Due</th>
-                  <th scope="col" className="py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {shown.map((r) => (
-                  <tr key={r.id} className="border-t border-line align-top">
-                    <td className="py-2 pr-3">
-                      <Link href={`${base}/privacy/${r.id}`} className="font-medium underline">
-                        {PRIVACY_KIND_LABELS[r.kind]}
-                      </Link>
-                      <span className="block text-xs text-muted">{r.channel === "shopper" ? "Asked on the site" : "Logged by staff"}</span>
-                    </td>
-                    <td className="py-2 pr-3 break-all">{person(r)}</td>
-                    <td className="py-2 pr-3 whitespace-nowrap">{dayText(r.receivedAt, timeZone)}</td>
-                    <td className="py-2 pr-3 whitespace-nowrap">
-                      {r.status === "open" ? (
-                        <>
-                          {dayText(r.extendedUntil ?? r.dueAt, timeZone)}
-                          <span className={`block text-xs ${r.overdue ? `font-medium ${alertText}` : "text-muted"}`}>{clockWords(r.daysLeft, r.overdue)}</span>
-                        </>
-                      ) : (
-                        <span className="text-muted">Answered {dayText(r.completedAt, timeZone)}</span>
-                      )}
-                    </td>
-                    <td className="py-2">
-                      {PRIVACY_STATUS_LABELS[r.status]}
-                      {r.extendedUntil && r.status === "open" && <span className="block text-xs text-muted">Extended</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <List label="Privacy requests">
+            {shown.map((r) => (
+              <ListRow key={r.id}>
+                <RowLead
+                  title={PRIVACY_KIND_LABELS[r.kind]}
+                  href={`${base}/privacy/${r.id}`}
+                  sub={
+                    <>
+                      <span className="break-all">{person(r)}</span> · {r.channel === "shopper" ? "Asked on the site" : "Logged by staff"} · received{" "}
+                      {dayText(r.receivedAt, timeZone)}
+                    </>
+                  }
+                />
+                {r.status === "open" ? (
+                  <RowFact
+                    sub={<span className={r.overdue ? `font-medium ${alertText}` : undefined}>{clockWords(r.daysLeft, r.overdue)}</span>}
+                  >
+                    Due {dayText(r.extendedUntil ?? r.dueAt, timeZone)}
+                    {r.extendedUntil && " (extended)"}
+                  </RowFact>
+                ) : (
+                  <RowFact>Answered {dayText(r.completedAt, timeZone)}</RowFact>
+                )}
+                <Chip signal={r.status === "open" ? (r.overdue ? "danger" : "warning") : r.status === "done" ? "positive" : "neutral"} dot>
+                  {PRIVACY_STATUS_LABELS[r.status]}
+                </Chip>
+              </ListRow>
+            ))}
+          </List>
         )}
       </section>
       <p className="max-w-2xl text-sm text-muted">{STAFF_TEXT.clock}</p>

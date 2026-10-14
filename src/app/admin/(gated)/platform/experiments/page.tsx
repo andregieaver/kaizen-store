@@ -2,25 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 
-import { GOAL_WORDS, STATUS_WORDS, type ExperimentStatus } from "@/lib/experiments";
+import { GOAL_WORDS, STATUS_SIGNAL, STATUS_WORDS } from "@/lib/experiments";
 import { daysBetween } from "@/lib/platform-experiments";
 import { requirePlatformAdmin } from "@/server/auth";
 import { platformExperiments } from "@/server/platform-experiments";
 import { platformUnitTests } from "@/server/platform-unit-tests";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "A/B tests" };
 
 const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "Europe/Oslo" });
-
-const BADGE: Record<ExperimentStatus, string> = {
-  draft: "border border-line text-muted",
-  scheduled: "bg-insight-soft text-insight-text",
-  running: "bg-positive-soft text-positive-text",
-  stopped: "bg-warning-soft text-warning-text",
-  applied: "bg-brand text-brand-ink",
-  discarded: "border border-line text-muted",
-};
 
 const KIND_WORDS: Record<string, string> = { page: "Page", layout: "Product layout", header: "Header", footer: "Footer" };
 
@@ -72,63 +63,44 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           {everything ? "No store has made a test yet." : "No test is running, scheduled or waiting for a decision."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-muted">
-                <th scope="col" className="px-4 py-2 font-normal">Store</th>
-                <th scope="col" className="px-4 py-2 font-normal">Test</th>
-                <th scope="col" className="hidden px-4 py-2 font-normal md:table-cell">Goal</th>
-                <th scope="col" className="hidden px-4 py-2 font-normal sm:table-cell">Age</th>
-                <th scope="col" className="hidden px-4 py-2 font-normal sm:table-cell">Visitors</th>
-                <th scope="col" className="px-4 py-2 font-normal">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tests.map((t) => (
-                <tr key={t.id} className="border-b border-line align-top last:border-0">
-                  <td className="px-4 py-2">
-                    <Link href={`/admin/platform/stores/${t.store.slug}`} className="font-medium underline-offset-2 hover:underline">
-                      {t.store.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className="font-medium">{t.name}</span>
-                    <span className="block text-xs text-muted">
+        <Card compact>
+          <List label="A/B tests">
+            {tests.map((t) => (
+              <ListRow key={t.id}>
+                <RowLead
+                  title={t.name}
+                  sub={
+                    <>
+                      <Link href={`/admin/platform/stores/${t.store.slug}`} className="underline-offset-2 hover:underline">
+                        {t.store.name}
+                      </Link>
+                      {" · "}
                       {KIND_WORDS[t.target.type] ?? "Page"}
-                      {t.target.type === "page" ? ` /${t.target.slug}` : ""} · {t.versions} versions
-                    </span>
-                    {t.headline && <span className="mt-1 block text-xs">{t.headline}</span>}
-                    {t.flags.length > 0 && (
-                      <ul className="mt-1 list-disc pl-4 text-xs text-danger-text">
-                        {t.flags.map((f) => (
-                          <li key={f.kind}>{f.words}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </td>
-                  <td className="hidden px-4 py-2 md:table-cell">{GOAL_WORDS[t.goal].label}</td>
-                  <td className="hidden px-4 py-2 sm:table-cell">
-                    {t.startedAt ? `${daysBetween(t.startedAt, t.stoppedAt ?? now)} days` : t.scheduledStart ? `Starts ${date.format(t.scheduledStart)}` : "—"}
-                  </td>
-                  <td className="hidden px-4 py-2 sm:table-cell">
-                    {t.exposed.toLocaleString("en-GB")}
-                    {t.split && (
-                      <span className="block text-xs text-muted">{t.split.map((s) => `${s.key.toUpperCase()} ${s.visitors.toLocaleString("en-GB")}`).join(" · ")}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${BADGE[t.status]}`}>
-                      {STATUS_WORDS[t.status]}
-                      {t.status === "applied" && t.appliedVariant ? `: ${t.appliedVariant.toUpperCase()}` : ""}
-                    </span>
-                    {t.stopReason === "guardrail" && t.status === "stopped" && <span className="mt-1 block text-xs text-muted">Guardrail</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      {t.target.type === "page" ? ` /${t.target.slug}` : ""} · {t.versions} versions · {GOAL_WORDS[t.goal].label}
+                      {t.headline && <span className="block text-ink-2">{t.headline}</span>}
+                      {t.flags.map((f) => (
+                        <span key={f.kind} className="block text-danger-text">
+                          {f.words}
+                        </span>
+                      ))}
+                    </>
+                  }
+                />
+                <RowFact className="hidden sm:block">
+                  {t.startedAt ? `${daysBetween(t.startedAt, t.stoppedAt ?? now)} days` : t.scheduledStart ? `Starts ${date.format(t.scheduledStart)}` : "Not started"}
+                </RowFact>
+                <RowFact className="hidden sm:block" sub={t.split ? t.split.map((s) => `${s.key.toUpperCase()} ${s.visitors.toLocaleString("en-GB")}`).join(" · ") : undefined}>
+                  {t.exposed === 1 ? "1 visitor" : `${t.exposed.toLocaleString("en-GB")} visitors`}
+                </RowFact>
+                <Chip signal={STATUS_SIGNAL[t.status]} dot>
+                  {STATUS_WORDS[t.status]}
+                  {t.status === "applied" && t.appliedVariant ? `: ${t.appliedVariant.toUpperCase()}` : ""}
+                  {t.stopReason === "guardrail" && t.status === "stopped" && " (guardrail)"}
+                </Chip>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
       {truncated && <p className="text-sm text-muted">Only the newest 300 tests are shown.</p>}
 

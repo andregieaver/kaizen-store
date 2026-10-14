@@ -18,9 +18,8 @@ import { InvoiceExportSlot } from "./invoice-export-slot";
 import { InvoiceStatusChip } from "./invoice-status";
 import { control, secondaryButton, smallButton } from "./work-parts";
 import { workBase } from "@/lib/work-paths";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
-const th = "px-3 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
 
 export type InvoicesListProps = {
   storeSlug: string;
@@ -158,75 +157,13 @@ export function InvoicesListView({
             : "No invoice matches. Try another tab or clear the filters."}
         </p>
       ) : (
-        <>
-          <ul className="flex flex-col gap-3 md:hidden" aria-label="Invoices">
+        <Card compact>
+          <List label="Invoices">
             {list.rows.map((row) => (
-              <InvoiceCard key={row.id} row={row} base={base} locale={locale} today={list.today} />
+              <InvoiceRow key={row.id} row={row} base={base} locale={locale} today={list.today} />
             ))}
-          </ul>
-          <div className="hidden overflow-x-auto rounded-lg border border-line bg-card md:block">
-            <table className="w-full text-sm">
-              <caption className="sr-only">Invoices</caption>
-              <thead>
-                <tr>
-                  <th scope="col" className={th}>
-                    Number
-                  </th>
-                  <th scope="col" className={th}>
-                    Client
-                  </th>
-                  <th scope="col" className={th}>
-                    Issued
-                  </th>
-                  <th scope="col" className={th}>
-                    Due
-                  </th>
-                  <th scope="col" className={`${th} text-right`}>
-                    Total
-                  </th>
-                  <th scope="col" className={`${th} text-right`}>
-                    Outstanding
-                  </th>
-                  <th scope="col" className={th}>
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.rows.map((row) => {
-                  const money = (minor: number) => formatMoney(minor, row.currency, locale);
-                  return (
-                    <tr key={row.id} className="border-t border-line align-top">
-                      <td className="px-3 py-3 font-medium">
-                        <Link href={`${base}/${row.id}`} className="underline">
-                          {row.documentNumber ?? "Draft"}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-3">
-                        {row.clientName}
-                        {row.assignmentName && <span className="block text-xs text-muted">{row.assignmentName}</span>}
-                      </td>
-                      <td className="px-3 py-3 tabular-nums">{row.issuedOn ? formatDay(row.issuedOn, locale) : "–"}</td>
-                      <td className="px-3 py-3 tabular-nums">{row.dueOn ? formatDay(row.dueOn, locale) : "–"}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">
-                        {money(row.totalMinor)}
-                        {row.creditedMinor > 0 && (
-                          <span className="block text-xs text-muted">{money(row.creditedMinor)} credited</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums">
-                        {row.status === "sent" ? money(row.outstandingMinor) : "–"}
-                      </td>
-                      <td className="px-3 py-3">
-                        <InvoiceStatusChip status={row.status} dueOn={row.dueOn} today={list.today} showNote />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+          </List>
+        </Card>
       )}
 
       {pages > 1 && (
@@ -252,41 +189,29 @@ export function InvoicesListView({
   );
 }
 
-function InvoiceCard({
-  row,
-  base,
-  locale,
-  today,
-}: {
-  row: InvoiceListRow;
-  base: string;
-  locale: string;
-  today: string;
-}) {
+function InvoiceRow({ row, base, locale, today }: { row: InvoiceListRow; base: string; locale: string; today: string }) {
   const money = (minor: number) => formatMoney(minor, row.currency, locale);
   return (
-    <li className="rounded-lg border border-line bg-card p-3 text-sm">
-      <div className="flex items-start justify-between gap-2">
-        <Link href={`${base}/${row.id}`} className="font-medium underline">
-          {row.documentNumber ?? "Draft"}
-        </Link>
-        <InvoiceStatusChip status={row.status} dueOn={row.dueOn} today={today} />
-      </div>
-      <p className="mt-1">{row.clientName}</p>
-      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-        <dt className="text-muted">Issued</dt>
-        <dd className="text-right tabular-nums">{row.issuedOn ? formatDay(row.issuedOn, locale) : "–"}</dd>
-        <dt className="text-muted">Due</dt>
-        <dd className="text-right tabular-nums">{row.dueOn ? formatDay(row.dueOn, locale) : "–"}</dd>
-        <dt className="text-muted">Total</dt>
-        <dd className="text-right font-medium tabular-nums">{money(row.totalMinor)}</dd>
-        {row.status === "sent" && (
+    <ListRow>
+      <RowLead
+        title={row.documentNumber ?? "Draft"}
+        href={`${base}/${row.id}`}
+        sub={
           <>
-            <dt className="text-muted">Outstanding</dt>
-            <dd className="text-right tabular-nums">{money(row.outstandingMinor)}</dd>
+            {row.clientName}
+            {row.assignmentName && ` · ${row.assignmentName}`}
           </>
-        )}
-      </dl>
-    </li>
+        }
+      />
+      <RowFact className="hidden sm:block" sub={row.dueOn ? `Due ${formatDay(row.dueOn, locale)}` : undefined}>
+        {row.issuedOn ? `Issued ${formatDay(row.issuedOn, locale)}` : "Not issued"}
+      </RowFact>
+      <InvoiceStatusChip status={row.status} dueOn={row.dueOn} today={today} showNote />
+      <RowAmount>
+        {money(row.totalMinor)}
+        {row.creditedMinor > 0 && <span className="block text-caption text-muted">{money(row.creditedMinor)} credited</span>}
+        {row.status === "sent" && <span className="block text-caption text-muted">{money(row.outstandingMinor)} outstanding</span>}
+      </RowAmount>
+    </ListRow>
   );
 }

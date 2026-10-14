@@ -9,7 +9,7 @@ import { bpsText, referralUrl, REFERRAL_KIND_LABELS } from "@/lib/referrals";
 import { siteUrl } from "@/lib/site";
 import { requireAccount } from "@/server/auth";
 import { referrerOverview } from "@/server/referrals";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Referrals" };
 
@@ -93,33 +93,26 @@ export default async function ReferralsPage() {
                 No store has opened through your link yet.
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-line bg-card">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-line">
-                      <th scope="col" className="px-4 py-2 font-medium">Store</th>
-                      <th scope="col" className="px-4 py-2 font-medium">Opened</th>
-                      <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Earns you credit until</th>
-                      <th scope="col" className="px-4 py-2 text-right font-medium">You earned</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {overview.stores.map((store) => (
-                      <tr key={`${store.storeName}-${store.since}`} className="border-b border-line last:border-0">
-                        <td className="px-4 py-2">
-                          {store.storeName}
-                          {store.status === "void" && <span className="block text-muted">Not counted</span>}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-2">{date(store.since)}</td>
-                        <td className="hidden whitespace-nowrap px-4 py-2 sm:table-cell">{date(store.until)}</td>
-                        <td className="px-4 py-2 text-right tabular-nums">
-                          {store.earned.length === 0 ? "—" : store.earned.map((e) => <span key={e.currency} className="block">{money(e.minor, e.currency)}</span>)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Card compact>
+                <List label="Stores you referred">
+                  {overview.stores.map((store) => (
+                    <ListRow key={`${store.storeName}-${store.since}`}>
+                      <RowLead
+                        title={store.storeName}
+                        sub={
+                          <>
+                            Opened {date(store.since)} · earns you credit until {date(store.until)}
+                            {store.status === "void" && " · not counted"}
+                          </>
+                        }
+                      />
+                      <RowAmount>
+                        {store.earned.length === 0 ? "—" : store.earned.map((e) => <span key={e.currency} className="block">{money(e.minor, e.currency)}</span>)}
+                      </RowAmount>
+                    </ListRow>
+                  ))}
+                </List>
+              </Card>
             )}
           </Section>
 
@@ -129,31 +122,20 @@ export default async function ReferralsPage() {
                 Nothing yet. Credit shows here when a store you referred pays Kaizen.
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-line bg-card">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-line">
-                      <th scope="col" className="px-4 py-2 font-medium">Date</th>
-                      <th scope="col" className="px-4 py-2 font-medium">What</th>
-                      <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Detail</th>
-                      <th scope="col" className="px-4 py-2 text-right font-medium">Credit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {overview.entries.map((entry) => (
-                      <tr key={entry.id} className="border-b border-line last:border-0">
-                        <td className="whitespace-nowrap px-4 py-2">{date(entry.createdAt)}</td>
-                        <td className="px-4 py-2">{REFERRAL_KIND_LABELS[entry.kind]}</td>
-                        <td className="hidden px-4 py-2 text-muted sm:table-cell">{entry.note}</td>
-                        <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums">
-                          {entry.amountMinor > 0 ? "+" : ""}
-                          {money(entry.amountMinor, entry.currency)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Card compact>
+                <List label="Credit">
+                  {overview.entries.map((entry) => (
+                    <ListRow key={entry.id}>
+                      <RowDate>{date(entry.createdAt)}</RowDate>
+                      <RowLead title={REFERRAL_KIND_LABELS[entry.kind]} sub={entry.note || undefined} />
+                      <RowAmount>
+                        {entry.amountMinor > 0 ? "+" : ""}
+                        {money(entry.amountMinor, entry.currency)}
+                      </RowAmount>
+                    </ListRow>
+                  ))}
+                </List>
+              </Card>
             )}
           </Section>
 

@@ -8,7 +8,7 @@ import { memberCan, requirePermission } from "@/server/permissions";
 import { avatarFor } from "@/server/avatars";
 import { listCustomers } from "@/server/customer-admin";
 import { featureOn } from "@/lib/store-features";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -67,50 +67,39 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
           {q ? "No customer matches the search." : "No customers yet. They show here once someone signs up or buys."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className="px-4 py-2 font-medium">Customer</th>
-                <th scope="col" className="px-4 py-2 font-medium">Orders</th>
-                <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">Spent</th>
-                <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Last order</th>
-                <th scope="col" className="hidden px-4 py-2 font-medium lg:table-cell">Customer since</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map((c) => (
-                <tr key={c.key} className="border-b border-line last:border-0">
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-3">
-                      <Avatar avatar={avatarFor(c)} size={32} />
-                      <div className="min-w-0">
-                        <Link href={`${base}/${c.key}`} className="font-medium underline-offset-2 hover:underline">
-                          {c.name || c.email}
-                        </Link>
-                        <span className="block text-xs text-muted">
-                          {c.name && `${c.email} · `}
-                          {accountLabel(c.account)}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2">
-                    {c.orders}
-                    {c.liveSubscriptions > 0 && featureOn(store, "subscriptions") && (
-                      <span className="block text-xs text-muted">
-                        {c.liveSubscriptions === 1 ? "1 subscription" : `${c.liveSubscriptions} subscriptions`}
-                      </span>
-                    )}
-                  </td>
-                  <td className="hidden px-4 py-2 md:table-cell">{moneyByCurrency(c.spentMinor, locale) || "–"}</td>
-                  <td className="hidden px-4 py-2 sm:table-cell">{c.lastOrderAt ? date(c.lastOrderAt) : "–"}</td>
-                  <td className="hidden px-4 py-2 lg:table-cell">{date(c.since)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Card compact>
+          <List label="Customers">
+            {customers.map((c) => (
+              <ListRow key={c.key} href={`${base}/${c.key}`}>
+                <RowLead
+                  avatar={<Avatar avatar={avatarFor(c)} size={32} />}
+                  title={c.name || c.email}
+                  sub={
+                    <>
+                      {c.name && `${c.email} · `}
+                      {accountLabel(c.account)}
+                    </>
+                  }
+                />
+                <RowFact
+                  sub={
+                    c.liveSubscriptions > 0 && featureOn(store, "subscriptions")
+                      ? c.liveSubscriptions === 1
+                        ? "1 subscription"
+                        : `${c.liveSubscriptions} subscriptions`
+                      : undefined
+                  }
+                >
+                  {c.orders === 1 ? "1 order" : `${c.orders} orders`}
+                </RowFact>
+                <RowFact className="hidden sm:block" sub={`Customer since ${date(c.since)}`}>
+                  {c.lastOrderAt ? `Last order ${date(c.lastOrderAt)}` : "No order yet"}
+                </RowFact>
+                <RowAmount>{moneyByCurrency(c.spentMinor, locale) || "–"}</RowAmount>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
     </div>
   );

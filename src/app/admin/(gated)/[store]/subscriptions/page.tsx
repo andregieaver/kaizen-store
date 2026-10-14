@@ -7,9 +7,11 @@ import { formatMoney } from "@/lib/money";
 import { planSummary, renewalState, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { requirePermission } from "@/server/permissions";
 import { listSubscriptions } from "@/server/subscriptions";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Subscriptions" };
+
+const SUBSCRIPTION_SIGNAL = { pending: "insight", active: "positive", past_due: "danger", paused: "warning", cancelled: "neutral", expired: "neutral" } as const;
 
 type Props = PageProps<"/admin/[store]/subscriptions">;
 
@@ -44,52 +46,45 @@ async function SubscriptionList({ storeSlug }: { storeSlug: string }) {
     );
   }
   return (
-    <table className="w-full rounded-lg border border-line bg-card text-left text-sm">
-      <thead>
-        <tr className="border-b border-line">
-          <th scope="col" className="px-4 py-2 font-medium">Subscription</th>
-          <th scope="col" className="px-4 py-2 font-medium">Customer</th>
-          <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Next renewal</th>
-          <th scope="col" className="px-4 py-2 font-medium">Status</th>
-          <th scope="col" className="px-4 py-2 text-right font-medium">Each renewal</th>
-        </tr>
-      </thead>
-      <tbody>
-        {subscriptions.map((s) => (
-          <tr key={s.id} className="border-b border-line last:border-0">
-            <td className="px-4 py-2">
-              <Link href={`${base}/${s.id}`} className="font-medium underline-offset-2 hover:underline">
-                #{s.number}
-              </Link>
-              <span className="block text-xs text-muted">
-                {planSummary({ interval: s.interval, intervalCount: s.intervalCount, discountPercent: 0 })} ·{" "}
-                {s.items} {s.items === 1 ? "item" : "items"}
-              </span>
-            </td>
-            <td className="px-4 py-2">
-              {s.email ? (
-                <Link href={`/admin/${store.slug}/customers/${s.id}`} className="underline-offset-2 hover:underline">
-                  {s.name || s.email}
-                </Link>
-              ) : (
-                "–"
+    <Card compact>
+      <List label="Subscriptions">
+        {subscriptions.map((s) => {
+          const state = s.status === "cancelled" ? null : renewalState(s);
+          const when = state ? date(state.date.toISOString()) : null;
+          return (
+            <ListRow key={s.id}>
+              <RowLead
+                title={`#${s.number}`}
+                href={`${base}/${s.id}`}
+                sub={
+                  <>
+                    {planSummary({ interval: s.interval, intervalCount: s.intervalCount, discountPercent: 0 })} · {s.items}{" "}
+                    {s.items === 1 ? "item" : "items"}
+                  </>
+                }
+              />
+              <RowFact className="hidden sm:block" sub={s.email && s.name ? s.email : undefined}>
+                {s.email ? (
+                  <Link href={`/admin/${store.slug}/customers/${s.id}`} className="underline-offset-2 hover:underline">
+                    {s.name || s.email}
+                  </Link>
+                ) : (
+                  "No customer yet"
+                )}
+              </RowFact>
+              {state && when && (
+                <RowFact className="hidden md:block">
+                  {{ ends: `Ends ${when}`, paused: `Paused, then ${when}`, trial: `Trial, then ${when}`, renews: `Renews ${when}` }[state.kind]}
+                </RowFact>
               )}
-            </td>
-            <td className="hidden px-4 py-2 sm:table-cell">
-              {(() => {
-                const state = s.status === "cancelled" ? null : renewalState(s);
-                if (!state) return "–";
-                const when = date(state.date.toISOString());
-                return { ends: `Ends ${when}`, paused: `Paused, then ${when}`, trial: `Trial, then ${when}`, renews: when }[
-                  state.kind
-                ];
-              })()}
-            </td>
-            <td className="px-4 py-2">{SUBSCRIPTION_STATUS_LABELS[s.status]}</td>
-            <td className="px-4 py-2 text-right">{formatMoney(s.totalMinor, s.currency, locale)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+              <Chip signal={SUBSCRIPTION_SIGNAL[s.status]} dot>
+                {SUBSCRIPTION_STATUS_LABELS[s.status]}
+              </Chip>
+              <RowAmount>{formatMoney(s.totalMinor, s.currency, locale)}</RowAmount>
+            </ListRow>
+          );
+        })}
+      </List>
+    </Card>
   );
 }

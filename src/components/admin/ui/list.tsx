@@ -5,6 +5,9 @@ import type { ReactNode } from "react";
  * A list in a card (docs/admin-style.md 5.8): 64 px rows divided by hairlines, no header, no zebra and no hover colour unless the
  * row is a link. A row's parts are `RowId` (the id or name), `RowText` (a description), `RowDate`, a chip and `RowAmount` (right,
  * tabular). A highlighted row (the primary contact) is sunken and rounded, with a chip that says why.
+ *
+ * A row that has buttons of its own is not a link: its `RowLead` is (its title links to the thing), and `RowActions` holds the
+ * buttons on the right. `RowFact` is a short fact that names itself ("4 orders", "Used 3 of 10"), since a list has no header row.
  */
 
 export function List({ label, children }: { label?: string; children: ReactNode }) {
@@ -37,3 +40,37 @@ export const RowDate = ({ children }: { children: ReactNode }) => <span classNam
 export const RowAmount = ({ children }: { children: ReactNode }) => (
   <span className="ml-auto shrink-0 text-right text-body-strong text-ink tabular-nums">{children}</span>
 );
+
+/** The row's main part: its title (a link to the thing when `href` is given), a sub line or two under it, and an avatar before. */
+export function RowLead({ title, href, sub, avatar }: { title: ReactNode; href?: string; sub?: ReactNode; avatar?: ReactNode }) {
+  return (
+    <span className="flex min-w-0 flex-1 basis-56 items-center gap-3">
+      {avatar}
+      <span className="min-w-0">
+        {href ? (
+          <Link href={href} className="text-body-strong text-ink underline-offset-2 hover:underline">
+            {title}
+          </Link>
+        ) : (
+          <span className="text-body-strong text-ink">{title}</span>
+        )}
+        {sub && <span className="block text-caption text-muted">{sub}</span>}
+      </span>
+    </span>
+  );
+}
+
+/** A short fact that names itself, with an optional muted line under it; `className` hides it on small screens where it can wait. */
+export function RowFact({ sub, className, children }: { sub?: ReactNode; className?: string; children: ReactNode }) {
+  return (
+    <span className={["shrink-0 text-body text-ink-2 tabular-nums", className].filter(Boolean).join(" ")}>
+      {children}
+      {sub && <span className="block text-caption text-muted">{sub}</span>}
+    </span>
+  );
+}
+
+/** The row's own buttons, on the right. */
+export function RowActions({ children }: { children: ReactNode }) {
+  return <span className="ml-auto flex shrink-0 items-center gap-1">{children}</span>;
+}

@@ -13,7 +13,7 @@ import {
   type AbandonedCheckoutRow,
 } from "@/server/cart-reminders";
 import { listDiscounts } from "@/server/discounts";
-import { Button, Card, PageHeader } from "@/components/admin/ui";
+import { Button, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 import { setCartRemindersAction } from "./actions";
 
@@ -27,6 +27,8 @@ const STATUS: Record<AbandonedCheckoutRow["status"], string> = {
   opted_out: "Opted out",
   expired: "No more reminders",
 };
+
+const STATUS_SIGNAL = { waiting: "insight", reminded: "warning", recovered: "positive", bought: "positive", opted_out: "neutral", expired: "neutral" } as const;
 
 const tile = "flex flex-col gap-1 rounded-lg border border-line bg-card p-4";
 
@@ -128,38 +130,32 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
             No reminders yet. Turn reminders on to start with three, or make one.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className="px-4 py-2 font-medium">Sent after</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Subject</th>
-                  <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Code</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Status</th>
-                  <th scope="col" className="px-4 py-2 font-medium">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {settings.steps.map((step) => (
-                  <tr key={step.id} className="border-b border-line last:border-0">
-                    <td className="whitespace-nowrap px-4 py-2">{describeDelay(step.delayMinutes)}</td>
-                    <td className="px-4 py-2">
-                      {(step.content[firstLocale]?.subject ?? Object.values(step.content)[0]?.subject ?? "").replaceAll("{store}", store.name)}
-                    </td>
-                    <td className="hidden px-4 py-2 font-mono sm:table-cell">{codeOf(step.discountCodeId) ?? "—"}</td>
-                    <td className="px-4 py-2">{step.active ? "On" : "Switched off"}</td>
-                    <td className="px-4 py-2 text-right">
-                      <Link href={`${base}/${step.id}`} className="underline">
-                        Edit<span className="sr-only"> the reminder after {describeDelay(step.delayMinutes)}</span>
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Card compact>
+            <List label="Reminders">
+              {settings.steps.map((step) => (
+                <ListRow key={step.id}>
+                  <RowLead
+                    title={`After ${describeDelay(step.delayMinutes)}`}
+                    href={`${base}/${step.id}`}
+                    sub={
+                      <>
+                        {(step.content[firstLocale]?.subject ?? Object.values(step.content)[0]?.subject ?? "").replaceAll("{store}", store.name)}
+                        {codeOf(step.discountCodeId) && (
+                          <>
+                            {" · code "}
+                            <span className="font-mono">{codeOf(step.discountCodeId)}</span>
+                          </>
+                        )}
+                      </>
+                    }
+                  />
+                  <Chip signal={step.active ? "positive" : "neutral"} dot>
+                    {step.active ? "On" : "Switched off"}
+                  </Chip>
+                </ListRow>
+              ))}
+            </List>
+          </Card>
         )}
       </section>
 
@@ -172,45 +168,37 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
             No carts yet. They show here once a shopper types their email at checkout.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className="px-4 py-2 font-medium">Email</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Cart</th>
-                  <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">Typed</th>
-                  <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Reminders</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {carts.map((cart) => (
-                  <tr key={cart.id} className="border-b border-line last:border-0">
-                    <td className="max-w-56 truncate px-4 py-2">{cart.email ?? <span className="text-muted">Erased</span>}</td>
-                    <td className="whitespace-nowrap px-4 py-2">
-                      {cart.items > 0
-                        ? `${cart.items} ${cart.items === 1 ? "item" : "items"} · ${formatMoney(cart.subtotalMinor, cart.currency, locale)}`
-                        : "—"}
-                    </td>
-                    <td className="hidden whitespace-nowrap px-4 py-2 md:table-cell">{cart.capturedAt ? date(cart.capturedAt) : "—"}</td>
-                    <td className="hidden px-4 py-2 sm:table-cell">
-                      {cart.remindersSent}
-                      {cart.clickedAt && <span className="text-muted"> · opened the link</span>}
-                    </td>
-                    <td className="px-4 py-2">
-                      {cart.recoveredOrderId ? (
-                        <Link href={`/admin/${store.slug}/orders/${cart.recoveredOrderId}`} className="underline">
-                          {STATUS[cart.status]}
-                        </Link>
-                      ) : (
-                        STATUS[cart.status]
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Card compact>
+            <List label="Carts">
+              {carts.map((cart) => (
+                <ListRow key={cart.id}>
+                  <RowLead
+                    title={<span className="block max-w-72 truncate">{cart.email ?? "Erased"}</span>}
+                    sub={
+                      <>
+                        {cart.items > 0 ? `${cart.items} ${cart.items === 1 ? "item" : "items"} · ${formatMoney(cart.subtotalMinor, cart.currency, locale)}` : "Empty cart"}
+                        {cart.capturedAt && ` · typed ${date(cart.capturedAt)}`}
+                      </>
+                    }
+                  />
+                  <RowFact className="hidden sm:block" sub={cart.clickedAt ? "opened the link" : undefined}>
+                    {cart.remindersSent === 1 ? "1 reminder" : `${cart.remindersSent} reminders`}
+                  </RowFact>
+                  {cart.recoveredOrderId ? (
+                    <Link href={`/admin/${store.slug}/orders/${cart.recoveredOrderId}`} className="underline-offset-2 hover:underline">
+                      <Chip signal={STATUS_SIGNAL[cart.status]} dot>
+                        {STATUS[cart.status]}
+                      </Chip>
+                    </Link>
+                  ) : (
+                    <Chip signal={STATUS_SIGNAL[cart.status]} dot>
+                      {STATUS[cart.status]}
+                    </Chip>
+                  )}
+                </ListRow>
+              ))}
+            </List>
+          </Card>
         )}
       </section>
 

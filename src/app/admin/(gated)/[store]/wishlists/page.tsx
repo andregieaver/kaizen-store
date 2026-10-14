@@ -7,7 +7,7 @@ import { moneyByCurrency } from "@/components/admin/customer-bar";
 import { WishlistTabs } from "@/components/admin/wishlist-admin";
 import { requirePermission } from "@/server/permissions";
 import { listStoreWishlists, mostWishedProducts, wishlistFigures } from "@/server/wishlist-admin";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { Card, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Wishlists" };
 
@@ -95,47 +95,32 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
               {q || customerId ? "No list matches." : "No wishlists yet. They show here once a shopper taps a heart."}
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-line bg-card">
-              <table className="w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-line">
-                    <th scope="col" className="px-4 py-2 font-medium">List</th>
-                    <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Shopper</th>
-                    <th scope="col" className="px-4 py-2 text-right font-medium">Items</th>
-                    <th scope="col" className="hidden px-4 py-2 text-right font-medium md:table-cell">To cart</th>
-                    <th scope="col" className="hidden px-4 py-2 text-right font-medium md:table-cell">Bought</th>
-                    <th scope="col" className="hidden px-4 py-2 font-medium lg:table-cell">Changed</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {lists.map((list) => (
-                    <tr key={list.id} className="border-b border-line last:border-0">
-                      <td className="px-4 py-2">
-                        <Link href={`${base}/wishlists/${list.id}`} className="font-medium underline-offset-2 hover:underline">
-                          {list.name}
-                        </Link>
-                        <span className="block text-xs text-muted sm:hidden">
-                          {list.owner ? list.owner.name || list.owner.email : "Guest"}
-                        </span>
-                      </td>
-                      <td className="hidden px-4 py-2 sm:table-cell">
-                        {list.owner ? (
-                          <Link href={`${base}/customers/${list.owner.customerId}`} className="underline">
+            <Card compact>
+              <List label="Wish lists">
+                {lists.map((list) => (
+                  <ListRow key={list.id}>
+                    <RowLead
+                      title={list.name}
+                      href={`${base}/wishlists/${list.id}`}
+                      sub={
+                        list.owner ? (
+                          <Link href={`${base}/customers/${list.owner.customerId}`} className="underline-offset-2 hover:underline">
                             {list.owner.name || list.owner.email}
                           </Link>
                         ) : (
-                          <span className="text-muted">Guest, not signed in</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-right">{list.items}</td>
-                      <td className="hidden px-4 py-2 text-right md:table-cell">{list.toCart}</td>
-                      <td className="hidden px-4 py-2 text-right md:table-cell">{list.bought}</td>
-                      <td className="hidden px-4 py-2 whitespace-nowrap lg:table-cell">{date(list.updatedAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          "Guest, not signed in"
+                        )
+                      }
+                    />
+                    <RowFact className="hidden md:block">
+                      {list.toCart} to cart · {list.bought} bought
+                    </RowFact>
+                    <RowFact className="hidden lg:block">Changed {date(list.updatedAt)}</RowFact>
+                    <RowAmount>{list.items === 1 ? "1 item" : `${list.items} items`}</RowAmount>
+                  </ListRow>
+                ))}
+              </List>
+            </Card>
           )}
         </div>
 

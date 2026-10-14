@@ -14,7 +14,7 @@ import { listPlatformDiscounts } from "@/server/platform-discounts";
 
 import { setPlanRemindersAction } from "./actions";
 import { requirePlatformAdmin } from "@/server/auth";
-import { Button, Card, PageHeader } from "@/components/admin/ui";
+import { Button, Card, Chip, List, ListRow, PageHeader, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Plan reminders" };
 
@@ -26,6 +26,8 @@ const STATUS: Record<AbandonedPlanRow["status"], string> = {
   opted_out: "Opted out",
   expired: "No more reminders",
 };
+
+const STATUS_SIGNAL = { waiting: "insight", reminded: "warning", recovered: "positive", bought: "positive", opted_out: "neutral", expired: "neutral" } as const;
 
 const tile = "flex flex-col gap-1 rounded-lg border border-line bg-card p-4";
 
@@ -109,36 +111,32 @@ export default async function PlanRemindersPage() {
             No reminders yet. Turn reminders on to start with three, or make one.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className="px-4 py-2 font-medium">Sent after</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Subject</th>
-                  <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Code</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Status</th>
-                  <th scope="col" className="px-4 py-2 font-medium">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {settings.steps.map((step) => (
-                  <tr key={step.id} className="border-b border-line last:border-0">
-                    <td className="whitespace-nowrap px-4 py-2">{describeDelay(step.delayMinutes)}</td>
-                    <td className="px-4 py-2">{step.content.en?.subject ?? Object.values(step.content)[0]?.subject}</td>
-                    <td className="hidden px-4 py-2 font-mono sm:table-cell">{codeOf(step.discountCodeId) ?? "—"}</td>
-                    <td className="px-4 py-2">{step.active ? "On" : "Switched off"}</td>
-                    <td className="px-4 py-2 text-right">
-                      <Link href={`${base}/${step.id}`} className="underline">
-                        Edit<span className="sr-only"> the reminder after {describeDelay(step.delayMinutes)}</span>
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Card compact>
+            <List label="Reminders">
+              {settings.steps.map((step) => (
+                <ListRow key={step.id}>
+                  <RowLead
+                    title={`After ${describeDelay(step.delayMinutes)}`}
+                    href={`${base}/${step.id}`}
+                    sub={
+                      <>
+                        {step.content.en?.subject ?? Object.values(step.content)[0]?.subject}
+                        {codeOf(step.discountCodeId) && (
+                          <>
+                            {" · code "}
+                            <span className="font-mono">{codeOf(step.discountCodeId)}</span>
+                          </>
+                        )}
+                      </>
+                    }
+                  />
+                  <Chip signal={step.active ? "positive" : "neutral"} dot>
+                    {step.active ? "On" : "Switched off"}
+                  </Chip>
+                </ListRow>
+              ))}
+            </List>
+          </Card>
         )}
       </section>
 
@@ -151,40 +149,31 @@ export default async function PlanRemindersPage() {
             Nothing yet. Owners show here once they go to pay for a plan.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-line">
-                  <th scope="col" className="px-4 py-2 font-medium">Store</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Plan</th>
-                  <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">Went to pay</th>
-                  <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Reminders</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {checkouts.map((row) => (
-                  <tr key={row.id} className="border-b border-line last:border-0">
-                    <td className="px-4 py-2">
-                      <Link href={`/admin/platform/stores`} className="underline">
-                        {row.storeName}
-                      </Link>
-                      <span className="block max-w-56 truncate text-muted">{row.email ?? "Email erased"}</span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-2">
-                      {row.planName} · {formatMoney(row.amountMinor, row.currency, "nb-NO")} / {row.interval}
-                    </td>
-                    <td className="hidden whitespace-nowrap px-4 py-2 md:table-cell">{date(row.capturedAt)}</td>
-                    <td className="hidden px-4 py-2 sm:table-cell">
-                      {row.remindersSent}
-                      {row.clickedAt && <span className="text-muted"> · opened the link</span>}
-                    </td>
-                    <td className="px-4 py-2">{STATUS[row.status]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Card compact>
+            <List label="Checkouts">
+              {checkouts.map((row) => (
+                <ListRow key={row.id}>
+                  <RowLead
+                    title={row.storeName}
+                    href="/admin/platform/stores"
+                    sub={
+                      <>
+                        <span className="inline-block max-w-56 truncate align-bottom">{row.email ?? "Email erased"}</span> · {row.planName} ·{" "}
+                        {formatMoney(row.amountMinor, row.currency, "nb-NO")} / {row.interval}
+                      </>
+                    }
+                  />
+                  <RowFact className="hidden md:block">Went to pay {date(row.capturedAt)}</RowFact>
+                  <RowFact className="hidden sm:block" sub={row.clickedAt ? "opened the link" : undefined}>
+                    {row.remindersSent === 1 ? "1 reminder" : `${row.remindersSent} reminders`}
+                  </RowFact>
+                  <Chip signal={STATUS_SIGNAL[row.status]} dot>
+                    {STATUS[row.status]}
+                  </Chip>
+                </ListRow>
+              ))}
+            </List>
+          </Card>
         )}
       </section>
     </div>

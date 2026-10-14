@@ -4,6 +4,7 @@ import { AffiliateBlockForm } from "@/components/admin/affiliate-block-form";
 import { attributionStatus, personLabel } from "@/lib/affiliate-admin";
 import type { AffiliateAttributionRow, AffiliateResult, AffiliateRow } from "@/lib/affiliates";
 import { formatMoney } from "@/lib/money";
+import { Chip, List, ListRow, RowAmount, RowLead } from "@/components/admin/ui";
 
 /**
  * The store's referrers (D131): name and email (staff may see them), their code, how many friends ordered, what they
@@ -28,47 +29,29 @@ export function ReferrersTable({
     return <p className="text-sm text-muted">Nobody has a link yet. Customers get theirs when they open Refer a friend in My account.</p>;
   }
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[40rem] text-left text-sm">
-        <caption className="sr-only">Customers with a referral link</caption>
-        <thead>
-          <tr className="border-b border-line">
-            <th scope="col" className="py-2 pr-4 font-medium">Customer</th>
-            <th scope="col" className="py-2 pr-4 font-medium">Code</th>
-            <th scope="col" className="py-2 pr-4 text-right font-medium">Friends</th>
-            <th scope="col" className="py-2 pr-4 text-right font-medium">Earned</th>
-            <th scope="col" className="py-2 font-medium">{canBlock ? "Block" : "Status"}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.customerId} className="border-b border-line align-top last:border-0">
-              <td className="py-2 pr-4">
-                <Link href={`/admin/${storeSlug}/customers/${row.customerId}`} className="underline">
-                  {personLabel(row.name, row.email)}
-                </Link>
-              </td>
-              <td className="py-2 pr-4 font-mono text-xs">{row.code}</td>
-              <td className="py-2 pr-4 text-right">{row.friends}</td>
-              <td className="py-2 pr-4 text-right whitespace-nowrap">{formatMoney(row.earnedMinor, currency, locale)}</td>
-              <td className="py-2">
-                {canBlock ? (
-                  <AffiliateBlockForm
-                    blocked={row.blocked}
-                    who={row.name.trim().split(/\s+/)[0] || row.email}
-                    act={block.bind(null, row.customerId)}
-                  />
-                ) : row.blocked ? (
-                  "Blocked"
-                ) : (
-                  "Earning"
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <List label="Customers with a referral link">
+      {rows.map((row) => (
+        <ListRow key={row.customerId}>
+          <RowLead
+            title={personLabel(row.name, row.email)}
+            href={`/admin/${storeSlug}/customers/${row.customerId}`}
+            sub={
+              <>
+                <span className="font-mono">{row.code}</span> · {row.friends === 1 ? "1 friend" : `${row.friends} friends`}
+              </>
+            }
+          />
+          {canBlock ? (
+            <AffiliateBlockForm blocked={row.blocked} who={row.name.trim().split(/\s+/)[0] || row.email} act={block.bind(null, row.customerId)} />
+          ) : (
+            <Chip signal={row.blocked ? "danger" : "positive"} dot>
+              {row.blocked ? "Blocked" : "Earning"}
+            </Chip>
+          )}
+          <RowAmount>{formatMoney(row.earnedMinor, currency, locale)}</RowAmount>
+        </ListRow>
+      ))}
+    </List>
   );
 }
 

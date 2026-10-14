@@ -5,7 +5,7 @@ import { createElement as h } from "react";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, fillWidth, InsightPanel, KpiTile, List, ListRow, PageHeader, RowAmount, RowId, ScoreBar, ShareBar, TrendChip } from "./index";
+import { BUTTON_KINDS, BUTTON_SIZES, Button, ButtonLink, buttonClass, Card, Chip, CountBadge, fillWidth, InsightPanel, KpiTile, List, ListRow, PageHeader, RowActions, RowAmount, RowFact, RowId, RowLead, ScoreBar, ShareBar, TrendChip } from "./index";
 
 const html = (element: Parameters<typeof renderToString>[0]) => renderToString(element).replace(/<!-- -->/g, "").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 
@@ -144,6 +144,26 @@ describe("lists", () => {
     const linked = html(h(List, { children: h(ListRow, { href: "/admin/s/invoices/1", children: h(RowId, { children: "INV-1" }) }) }));
     expect(linked).toContain('href="/admin/s/invoices/1"');
     expect(linked).toContain("hover:bg-sunken");
+  });
+
+  it("links a row with buttons of its own by its title, and lets a fact name itself with a line under it", () => {
+    const out = html(
+      h(List, {
+        children: h(ListRow, {
+          children: [
+            h(RowLead, { key: 1, title: "SUMMER10", href: "/admin/s/discounts/1", sub: "10 % off" }),
+            h(RowFact, { key: 2, sub: "1 200 kr given", className: "hidden sm:block", children: "Used 3 of 10" }),
+            h(RowActions, { key: 3, children: h(Button, { kind: "quiet", children: "Edit" }) }),
+          ],
+        }),
+      }),
+    );
+    expect(out).toContain('<a class="text-body-strong text-ink underline-offset-2 hover:underline" href="/admin/s/discounts/1">SUMMER10</a>');
+    expect(out).toContain('<span class="block text-caption text-muted">10 % off</span>');
+    expect(out).toContain("hidden sm:block");
+    expect(out).toContain("Used 3 of 10");
+    expect(out.match(/<a /g)).toHaveLength(1);
+    expect(out).toContain('class="ml-auto flex shrink-0 items-center gap-1"');
   });
 });
 

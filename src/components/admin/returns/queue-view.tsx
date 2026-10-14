@@ -5,7 +5,7 @@ import { formatMoney } from "@/lib/money";
 import { countsSentence, dayText, KIND_FILTERS, queueHref, STATUS_FILTERS } from "@/lib/return-admin";
 import type { ReturnQueueFilter } from "@/lib/return-input";
 import type { Queue, ReturnCounts } from "@/server/returns";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowLead } from "@/components/admin/ui";
 
 import { DueMark, KindBadge, StatusBadge } from "./ui";
 
@@ -103,56 +103,41 @@ export function ReturnsQueueView({
             : "No returns are open. Withdrawals and return requests appear here as customers make them: they use the Withdraw from the contract link in the order emails and the store's withdrawal page."}
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[44rem] rounded-lg border border-line bg-card text-left text-sm">
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className="px-4 py-2 font-medium">Return</th>
-                <th scope="col" className="px-4 py-2 font-medium">Customer</th>
-                <th scope="col" className="px-4 py-2 text-right font-medium">Units</th>
-                <th scope="col" className="px-4 py-2 font-medium">Made</th>
-                <th scope="col" className="px-4 py-2 font-medium">Status</th>
-                <th scope="col" className="px-4 py-2 font-medium">Refund</th>
-              </tr>
-            </thead>
-            <tbody>
-              {queue.rows.map((row) => (
-                <tr key={row.id} className="border-b border-line last:border-0 align-top">
-                  <td className="px-4 py-2">
-                    <Link href={`${base}/${row.id}`} className="font-medium underline-offset-2 hover:underline">
-                      {row.number}
-                    </Link>
-                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <KindBadge kind={row.kind} />
-                      {row.acknowledgementPending && <span className="text-xs font-medium text-danger-text">Acknowledgement not sent</span>}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className="block">{row.name || row.email || "–"}</span>
-                    <Link href={`${orders}/${row.orderId}`} className="text-xs text-muted underline-offset-2 hover:underline">
-                      Order #{row.orderNumber}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{row.units}</td>
-                  <td className="px-4 py-2">
-                    <time dateTime={row.createdAt}>{dayText(row.createdAt, timeZone)}</time>
-                  </td>
-                  <td className="px-4 py-2">
-                    <StatusBadge status={row.status} />
-                  </td>
-                  <td className="px-4 py-2">
-                    {row.refundMinor !== null ? (
-                      <span className="tabular-nums">{formatMoney(row.refundMinor, row.currency, locale)}</span>
-                    ) : (
+        <Card compact>
+          <List label="Returns">
+            {queue.rows.map((row) => (
+              <ListRow key={row.id}>
+                <RowLead
+                  title={row.number}
+                  href={`${base}/${row.id}`}
+                  sub={
+                    <>
+                      {row.name || row.email || "–"} ·{" "}
+                      <Link href={`${orders}/${row.orderId}`} className="underline-offset-2 hover:underline">
+                        Order #{row.orderNumber}
+                      </Link>
+                      {" · "}
+                      {row.units === 1 ? "1 unit" : `${row.units} units`} · made <time dateTime={row.createdAt}>{dayText(row.createdAt, timeZone)}</time>
+                      {row.acknowledgementPending && <span className="block text-danger-text">Acknowledgement not sent</span>}
+                    </>
+                  }
+                />
+                <KindBadge kind={row.kind} />
+                <StatusBadge status={row.status} />
+                <RowAmount>
+                  {row.refundMinor !== null ? (
+                    formatMoney(row.refundMinor, row.currency, locale)
+                  ) : (
+                    <>
                       <DueMark due={row.due} timeZone={timeZone} />
-                    )}
-                    {row.refundMinor === null && row.status === "requested" && <span className="text-sm text-muted">Waiting for your answer</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      {row.status === "requested" && <span className="block text-body text-muted">Waiting for your answer</span>}
+                    </>
+                  )}
+                </RowAmount>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
 
       {pages > 1 && (

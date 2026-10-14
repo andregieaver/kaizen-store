@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
-import Link from "next/link";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DeleteDiscountButton } from "@/components/admin/delete-discount-button";
@@ -14,7 +13,7 @@ import { platformModes } from "@/server/stripe";
 import { createPlatformDiscountAction, deletePlatformDiscountAction, setPlatformDiscountActiveAction } from "../actions";
 import { deleteQuestion, PlatformDiscountFields } from "./discount-fields";
 import { requirePlatformAdmin } from "@/server/auth";
-import { Card, PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Discounts" };
 
@@ -39,61 +38,41 @@ export default async function PlatformDiscountsPage() {
       />
 
       {discounts.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className="px-4 py-2 font-medium">Code</th>
-                <th scope="col" className="px-4 py-2 font-medium">Gives</th>
-                <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">Limits</th>
-                <th scope="col" className="px-4 py-2 font-medium">Stores</th>
-                <th scope="col" className="px-4 py-2 font-medium">
-                  <span className="sr-only">Switch</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {discounts.map((d) => (
-                <tr key={d.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-2">
-                    <span className="font-mono font-medium">{d.code}</span>
-                    <span className="block text-xs text-muted">
-                      {d.active ? "On" : "Off"}
+        <Card compact>
+          <List label="Coupons">
+            {discounts.map((d) => (
+              <ListRow key={d.id}>
+                <RowLead
+                  title={<span className="font-mono">{d.code}</span>}
+                  href={`/admin/platform/discounts/${d.id}`}
+                  sub={
+                    <>
+                      {platformDiscountSummary(d, money)}
                       {d.syncedModes.length > 0 ? ` · in Stripe (${d.syncedModes.join(", ")})` : " · not in Stripe yet"}
-                    </span>
-                    {d.syncError && <span className="block text-xs text-danger-text">{d.syncError}</span>}
-                  </td>
-                  <td className="px-4 py-2">{platformDiscountSummary(d, money)}</td>
-                  <td className="hidden px-4 py-2 md:table-cell">
-                    {[d.expiresAt && `until ${d.expiresAt.slice(0, 10)}`, d.maxRedemptions && `${d.maxRedemptions} uses`]
-                      .filter(Boolean)
-                      .join(" · ") || "None"}
-                  </td>
-                  <td className="px-4 py-2">{d.stores}</td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center justify-end gap-1">
-                      <ActionForm action={setPlatformDiscountActiveAction.bind(null, d.id, !d.active)}>
-                        <SubmitButton variant="secondary">{d.active ? "Switch off" : "Switch on"}</SubmitButton>
-                      </ActionForm>
-                      <Link
-                        href={`/admin/platform/discounts/${d.id}`}
-                        className="flex min-h-10 items-center rounded-md px-3 hover:bg-sunken"
-                      >
-                        Edit<span className="sr-only"> {d.code}</span>
-                      </Link>
-                      <DeleteDiscountButton
-                        action={deletePlatformDiscountAction.bind(null, d.id)}
-                        code={d.code}
-                        compact
-                        question={deleteQuestion(d.code, d.stores)}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                      {d.syncError && <span className="block text-danger-text">{d.syncError}</span>}
+                    </>
+                  }
+                />
+                <RowFact className="hidden md:block">
+                  {[d.expiresAt && `Until ${d.expiresAt.slice(0, 10)}`, d.maxRedemptions && `${d.maxRedemptions} uses`].filter(Boolean).join(" · ") || "No limits"}
+                </RowFact>
+                <RowFact>{d.stores === 1 ? "1 store" : `${d.stores} stores`}</RowFact>
+                <Chip signal={d.active ? "positive" : "neutral"} dot>
+                  {d.active ? "On" : "Off"}
+                </Chip>
+                <RowActions>
+                  <ActionForm action={setPlatformDiscountActiveAction.bind(null, d.id, !d.active)}>
+                    <SubmitButton variant="secondary">{d.active ? "Switch off" : "Switch on"}</SubmitButton>
+                  </ActionForm>
+                  <ButtonLink href={`/admin/platform/discounts/${d.id}`} kind="quiet" size="dense">
+                    Edit<span className="sr-only"> {d.code}</span>
+                  </ButtonLink>
+                  <DeleteDiscountButton action={deletePlatformDiscountAction.bind(null, d.id)} code={d.code} compact question={deleteQuestion(d.code, d.stores)} />
+                </RowActions>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
 
       <Card title="New code" compact>

@@ -296,7 +296,7 @@ describe("a customer's credits", () => {
     expect(out).not.toContain("/orders/id-1001");
     expect(out).toContain("Usable from 12 Oct 2026");
     expect(out).toContain("Expires 15 Jan 2027");
-    expect(out).toContain('scope="col"');
+    expect(out).toContain("aria-label=\"Every change to this customer's credits\"");
   });
 
   it("has the adjust form behind a disclosure", () => {

@@ -8,7 +8,7 @@ import { mainCurrency } from "@/lib/markets";
 import { formatMoney } from "@/lib/money";
 import { requirePermission } from "@/server/permissions";
 import { listCampaigns } from "@/server/campaigns";
-import { PageHeader } from "@/components/admin/ui";
+import { Button, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 
 import { deleteCampaignAction, setCampaignActiveAction } from "./actions";
 
@@ -20,6 +20,8 @@ const STATUS = {
   scheduled: "Starts later",
   ended: "Ended",
 } as const;
+
+const STATUS_SIGNAL = { active: "positive", off: "neutral", scheduled: "insight", ended: "neutral" } as const;
 
 const KIND_WORD = { percent: "Percentage off", multi_buy: "Buy more, pay for fewer", gift: "Free product" } as const;
 
@@ -53,41 +55,28 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
           No campaigns yet. Try 3 for 2 on a category, or a free product above a basket amount.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className="px-4 py-2 font-medium">Campaign</th>
-                <th scope="col" className="px-4 py-2 font-medium">Gives</th>
-                <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">When</th>
-                <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Orders</th>
-                <th scope="col" className="px-4 py-2 font-medium">Status</th>
-                <th scope="col" className="px-4 py-2 font-medium">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((c) => {
-                const status = campaignStatus(c);
-                const reach = c.productIds.length + c.termIds.length;
-                return (
-                  <tr key={c.id} className="border-b border-line last:border-0">
-                    <td className="px-4 py-2">
-                      <Link href={`${base}/${c.id}`} className="font-medium underline-offset-2 hover:underline">
-                        {c.name}
-                      </Link>
-                      <span className="block text-xs text-muted">{KIND_WORD[c.kind]}</span>
-                    </td>
-                    <td className="px-4 py-2">
-                      {describeCampaign(c, money)}
-                      {c.kind === "gift" && c.giftTitle && (
-                        <span className="block text-xs text-muted">
-                          {c.giftQuantity > 1 && `${c.giftQuantity} × `}
-                          {c.giftTitle}
-                        </span>
-                      )}
-                      <span className="block text-xs text-muted">
+        <Card compact>
+          <List label="Campaigns">
+            {campaigns.map((c) => {
+              const status = campaignStatus(c);
+              const usedUp = c.usageLimit !== null && c.orders >= c.usageLimit && status === "active";
+              const reach = c.productIds.length + c.termIds.length;
+              const limits = [
+                c.markets.length > 0 && `Only in ${c.markets.map((code) => store.markets.find((m) => m.code === code)?.name ?? code).join(", ")}`,
+                c.perCustomerLimit !== null && `${c.perCustomerLimit === 1 ? "Once" : `${c.perCustomerLimit} orders`} per customer`,
+                c.tierIds.length > 0 && `For ${c.tierIds.length === 1 ? "a customer group" : `${c.tierIds.length} customer groups`}`,
+                c.stacks && "Adds on top",
+              ].filter(Boolean);
+              return (
+                <ListRow key={c.id}>
+                  <RowLead
+                    title={c.name}
+                    href={`${base}/${c.id}`}
+                    sub={
+                      <>
+                        {KIND_WORD[c.kind]} · {describeCampaign(c, money)}
+                        {c.kind === "gift" && c.giftTitle && ` (${c.giftQuantity > 1 ? `${c.giftQuantity} × ` : ""}${c.giftTitle})`}
+                        {" · "}
                         {reach === 0
                           ? c.kind === "gift"
                             ? "Counts everything"
@@ -98,59 +87,47 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
                             ]
                               .filter(Boolean)
                               .join(", ")}
-                      </span>
-                    </td>
-                    <td className="hidden px-4 py-2 md:table-cell">
-                      {c.startsAt || c.endsAt ? (
-                        <>
-                          {c.startsAt ? when.format(new Date(c.startsAt)) : "Now"}
-                          <span className="block text-xs text-muted">to {c.endsAt ? when.format(new Date(c.endsAt)) : "no end"}</span>
-                        </>
-                      ) : (
-                        <span className="text-muted">No dates</span>
-                      )}
-                    </td>
-                    <td className="hidden px-4 py-2 sm:table-cell">
-                      {c.orders}
-                      {c.usageLimit !== null && ` of ${c.usageLimit}`}
-                      {Object.entries(c.given).map(([currency, minor]) => (
-                        <span key={currency} className="block text-xs text-muted">
-                          {formatMoney(minor, currency, locale)} given
-                        </span>
-                      ))}
-                    </td>
-                    <td className="px-4 py-2">
-                      {c.usageLimit !== null && c.orders >= c.usageLimit && status === "active" ? "Used up" : STATUS[status]}
-                      {c.markets.length > 0 && <span className="block text-xs text-muted">Only in {c.markets.map((code) => store.markets.find((m) => m.code === code)?.name ?? code).join(", ")}</span>}
-                      {c.perCustomerLimit !== null && <span className="block text-xs text-muted">{c.perCustomerLimit === 1 ? "Once" : `${c.perCustomerLimit} orders`} per customer</span>}
-                      {c.tierIds.length > 0 && <span className="block text-xs text-muted">For {c.tierIds.length === 1 ? "a customer group" : `${c.tierIds.length} customer groups`}</span>}
-                      {c.stacks && <span className="block text-xs text-muted">Adds on top</span>}
-                    </td>
-                    <td className="px-4 py-2">
-                      <div className="flex items-center justify-end gap-1">
-                        <form action={setCampaignActiveAction.bind(null, store.slug, c.id, !c.active)}>
-                          <button type="submit" className="flex min-h-10 items-center rounded-md px-3 hover:bg-sunken">
-                            {c.active ? "Switch off" : "Switch on"}
-                            <span className="sr-only"> {c.name}</span>
-                          </button>
-                        </form>
-                        <Link href={`${base}/${c.id}`} className="flex min-h-10 items-center rounded-md px-3 hover:bg-sunken">
-                          Edit<span className="sr-only"> {c.name}</span>
-                        </Link>
-                        <DeleteDiscountButton
-                          action={deleteCampaignAction.bind(null, store.slug, c.id)}
-                          code={c.name}
-                          compact
-                          question={`Delete the campaign ${c.name}? Shoppers no longer get it.${c.orders > 0 ? ` The ${c.orders} ${c.orders === 1 ? "order" : "orders"} that got something from it keep it.` : ""}`}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        {limits.length > 0 && <span className="block">{limits.join(" · ")}</span>}
+                      </>
+                    }
+                  />
+                  <RowFact className="hidden md:block" sub={c.startsAt || c.endsAt ? `to ${c.endsAt ? when.format(new Date(c.endsAt)) : "no end"}` : undefined}>
+                    {c.startsAt || c.endsAt ? (c.startsAt ? `From ${when.format(new Date(c.startsAt))}` : "From now") : "No dates"}
+                  </RowFact>
+                  <RowFact
+                    className="hidden sm:block"
+                    sub={Object.entries(c.given)
+                      .map(([currency, minor]) => `${formatMoney(minor, currency, locale)} given`)
+                      .join(", ")}
+                  >
+                    {c.orders === 1 ? "1 order" : `${c.orders} orders`}
+                    {c.usageLimit !== null && ` of ${c.usageLimit}`}
+                  </RowFact>
+                  <Chip signal={usedUp ? "warning" : STATUS_SIGNAL[status]} dot>
+                    {usedUp ? "Used up" : STATUS[status]}
+                  </Chip>
+                  <RowActions>
+                    <form action={setCampaignActiveAction.bind(null, store.slug, c.id, !c.active)}>
+                      <Button type="submit" kind="quiet" size="dense">
+                        {c.active ? "Switch off" : "Switch on"}
+                        <span className="sr-only"> {c.name}</span>
+                      </Button>
+                    </form>
+                    <ButtonLink href={`${base}/${c.id}`} kind="quiet" size="dense">
+                      Edit<span className="sr-only"> {c.name}</span>
+                    </ButtonLink>
+                    <DeleteDiscountButton
+                      action={deleteCampaignAction.bind(null, store.slug, c.id)}
+                      code={c.name}
+                      compact
+                      question={`Delete the campaign ${c.name}? Shoppers no longer get it.${c.orders > 0 ? ` The ${c.orders} ${c.orders === 1 ? "order" : "orders"} that got something from it keep it.` : ""}`}
+                    />
+                  </RowActions>
+                </ListRow>
+              );
+            })}
+          </List>
+        </Card>
       )}
     </div>
   );

@@ -508,8 +508,10 @@ describe("the client list", () => {
     expect(out).toContain("Beta AS");
     expect(out).toContain("Archived");
     expect(out).toContain("No active assignments · nothing unbilled");
-    expect(out).toContain("None");
-    expect(out).toContain("<caption");
+    expect(out).toContain("All invoiced");
+    expect(out).toContain("5h not invoiced");
+    expect(out).toContain('aria-label="All clients"');
+    expect(out).not.toContain("<table");
   });
 });
 

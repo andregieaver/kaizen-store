@@ -13,7 +13,7 @@ import { PrivacyBanner, PrivacyCard } from "@/components/admin/privacy/privacy-c
 import { Avatar } from "@/components/avatar";
 import { formatMoney } from "@/lib/money";
 import { exportProblemOf } from "@/lib/privacy-admin";
-import { ORDER_STATUS_LABELS } from "@/lib/order-status";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_SIGNAL } from "@/lib/order-status";
 import { featureOn } from "@/lib/store-features";
 import { planSummary, SUBSCRIPTION_STATUS_LABELS } from "@/lib/subscriptions";
 import { customerAffiliate } from "@/server/affiliates";
@@ -24,7 +24,7 @@ import { findCustomer, getCustomerDetail } from "@/server/customer-admin";
 import { customerAccess, listTiers } from "@/server/customer-tiers";
 import { listEmails } from "@/server/email";
 import { privacyCard } from "@/server/privacy-admin";
-import { PageHeader } from "@/components/admin/ui";
+import { Chip, List, ListRow, PageHeader, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
 
 import { blockAffiliateAction } from "../../affiliates/actions";
 import { setCustomerGroupAction } from "../../customer-groups/actions";
@@ -121,46 +121,35 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             {customer.orderList.length === 0 ? (
               <p className="text-sm text-muted">No orders yet.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-line">
-                      <th scope="col" className="py-2 pr-4 font-medium">Order</th>
-                      <th scope="col" className="py-2 pr-4 font-medium">Placed</th>
-                      <th scope="col" className="py-2 pr-4 font-medium">Status</th>
-                      <th scope="col" className="py-2 text-right font-medium">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customer.orderList.map((order) => (
-                      <tr key={order.id} className="border-b border-line last:border-0">
-                        <td className="py-2 pr-4">
-                          <Link href={`${base}/orders/${order.id}`} className="font-medium underline">
-                            #{order.number}
-                          </Link>
-                          <span className="block text-xs text-muted">
-                            {order.items === 1 ? "1 item" : `${order.items} items`}
-                            {order.subscriptionId && (
-                              <>
-                                {" · "}
-                                <Link href={`${base}/subscriptions/${order.subscriptionId}`} className="underline">
-                                  subscription
-                                </Link>
-                              </>
-                            )}
-                          </span>
-                        </td>
-                        <td className="py-2 pr-4 whitespace-nowrap">{date(order.placedAt)}</td>
-                        <td className="py-2 pr-4">
-                          {order.status === "cancelled" ? "Cancelled and refunded" : ORDER_STATUS_LABELS[order.status]}
-                          {order.refunded && order.status !== "cancelled" && <span className="block text-xs text-muted">Refunded in part</span>}
-                        </td>
-                        <td className="py-2 text-right whitespace-nowrap">{formatMoney(order.totalMinor, order.currency, locale)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <List label="Orders">
+                {customer.orderList.map((order) => (
+                  <ListRow key={order.id}>
+                    <RowLead
+                      title={`#${order.number}`}
+                      href={`${base}/orders/${order.id}`}
+                      sub={
+                        <>
+                          {order.items === 1 ? "1 item" : `${order.items} items`}
+                          {order.subscriptionId && (
+                            <>
+                              {" · "}
+                              <Link href={`${base}/subscriptions/${order.subscriptionId}`} className="underline">
+                                subscription
+                              </Link>
+                            </>
+                          )}
+                          {order.refunded && order.status !== "cancelled" && " · refunded in part"}
+                        </>
+                      }
+                    />
+                    <RowDate>{date(order.placedAt)}</RowDate>
+                    <Chip signal={ORDER_STATUS_SIGNAL[order.status]} dot>
+                      {order.status === "cancelled" ? "Cancelled and refunded" : ORDER_STATUS_LABELS[order.status]}
+                    </Chip>
+                    <RowAmount>{formatMoney(order.totalMinor, order.currency, locale)}</RowAmount>
+                  </ListRow>
+                ))}
+              </List>
             )}
           </section>
 

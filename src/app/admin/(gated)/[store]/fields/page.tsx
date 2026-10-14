@@ -6,7 +6,7 @@ import { FieldsToolbar } from "@/components/admin/fields-toolbar";
 import { describeLocation, entitiesText } from "@/lib/field-group-editor";
 import { requirePermission } from "@/server/permissions";
 import { listFieldGroups } from "@/server/custom-fields";
-import { PageHeader } from "@/components/admin/ui";
+import { Button, buttonClass, ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 
 import {
   createFromPresetAction,
@@ -19,7 +19,6 @@ import { editorTerms, roleOptions } from "./data";
 
 export const metadata: Metadata = { title: "Custom fields" };
 
-const small = "flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-sunken disabled:opacity-40";
 
 /** A store's groups of custom fields (D118): what each is on, whether it is on, and their order in the editors. */
 export default async function FieldsPage({ params }: PageProps<"/admin/[store]/fields">) {
@@ -58,87 +57,60 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
           No groups yet. Start from a preset such as Specifications or Size guide, or make your own.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-left text-sm">
-            <caption className="sr-only">Groups of custom fields, in the order editors show them</caption>
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className="px-4 py-2 font-medium">
-                  Group
-                </th>
-                <th scope="col" className="px-4 py-2 font-medium">
-                  On
-                </th>
-                <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">
-                  Fields
-                </th>
-                <th scope="col" className="px-4 py-2 font-medium">
-                  Status
-                </th>
-                <th scope="col" className="px-4 py-2 font-medium">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {groups.map((group, index) => (
-                <tr key={group.id} className="border-b border-line align-top last:border-0">
-                  <td className="px-4 py-2">
-                    <Link href={`${base}/${group.id}`} className="font-medium underline-offset-2 hover:underline">
-                      {group.name}
-                    </Link>
-                    <span className="block font-mono text-xs text-muted">{group.slug}</span>
-                  </td>
-                  <td className="px-4 py-2">
-                    {entitiesText(group.entities)}
-                    <span className="block max-w-sm text-xs text-muted">
+        <Card compact>
+          <List label="Groups of custom fields, in the order editors show them">
+            {groups.map((group, index) => (
+              <ListRow key={group.id}>
+                <RowLead
+                  title={group.name}
+                  href={`${base}/${group.id}`}
+                  sub={
+                    <>
+                      <span className="font-mono">{group.slug}</span> · {entitiesText(group.entities)} ·{" "}
                       {group.location.length === 0 ? "Everywhere" : describeLocation(group.location, lookup)}
-                    </span>
-                  </td>
-                  <td className="hidden px-4 py-2 sm:table-cell">{group.fields.length}</td>
-                  <td className="px-4 py-2">
-                    {group.active ? "On" : "Off"}
-                    <span className="block text-xs text-muted">
-                      {group.position === "side" ? "Side column" : "Main column"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex flex-wrap items-center justify-end gap-1">
-                      <form action={moveFieldGroupAction.bind(null, store.slug, group.id, "up")}>
-                        <button type="submit" disabled={index === 0} className={small}>
-                          Move up<span className="sr-only"> {group.name}</span>
-                        </button>
-                      </form>
-                      <form action={moveFieldGroupAction.bind(null, store.slug, group.id, "down")}>
-                        <button type="submit" disabled={index === groups.length - 1} className={small}>
-                          Move down<span className="sr-only"> {group.name}</span>
-                        </button>
-                      </form>
-                      <form action={setFieldGroupActiveAction.bind(null, store.slug, group.id, !group.active)}>
-                        <button type="submit" className={small}>
-                          {group.active ? "Switch off" : "Switch on"}
-                          <span className="sr-only"> {group.name}</span>
-                        </button>
-                      </form>
-                      <Link href={`${base}/${group.id}`} className={small}>
-                        Edit<span className="sr-only"> {group.name}</span>
-                      </Link>
-                      <a href={`${base}/export?group=${group.id}`} download className={small}>
-                        Export<span className="sr-only"> {group.name}</span>
-                      </a>
-                      <DeleteDiscountButton
-                        action={deleteFieldGroupAction.bind(null, store.slug, group.id)}
-                        code={group.name}
-                        compact
-                        question={`Delete the group ${group.name}? What was entered in its ${group.fields.length === 1 ? "field" : "fields"} is deleted too, for every product, page and article. This cannot be undone.`}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </>
+                  }
+                />
+                <RowFact className="hidden sm:block" sub={group.position === "side" ? "Side column" : "Main column"}>
+                  {group.fields.length === 1 ? "1 field" : `${group.fields.length} fields`}
+                </RowFact>
+                <Chip signal={group.active ? "positive" : "neutral"} dot>
+                  {group.active ? "On" : "Off"}
+                </Chip>
+                <RowActions>
+                  <form action={moveFieldGroupAction.bind(null, store.slug, group.id, "up")}>
+                    <Button type="submit" kind="quiet" size="dense" disabled={index === 0}>
+                      Move up<span className="sr-only"> {group.name}</span>
+                    </Button>
+                  </form>
+                  <form action={moveFieldGroupAction.bind(null, store.slug, group.id, "down")}>
+                    <Button type="submit" kind="quiet" size="dense" disabled={index === groups.length - 1}>
+                      Move down<span className="sr-only"> {group.name}</span>
+                    </Button>
+                  </form>
+                  <form action={setFieldGroupActiveAction.bind(null, store.slug, group.id, !group.active)}>
+                    <Button type="submit" kind="quiet" size="dense">
+                      {group.active ? "Switch off" : "Switch on"}
+                      <span className="sr-only"> {group.name}</span>
+                    </Button>
+                  </form>
+                  <ButtonLink href={`${base}/${group.id}`} kind="quiet" size="dense">
+                    Edit<span className="sr-only"> {group.name}</span>
+                  </ButtonLink>
+                  <a href={`${base}/export?group=${group.id}`} download className={buttonClass("quiet", "dense")}>
+                    Export<span className="sr-only"> {group.name}</span>
+                  </a>
+                  <DeleteDiscountButton
+                    action={deleteFieldGroupAction.bind(null, store.slug, group.id)}
+                    code={group.name}
+                    compact
+                    question={`Delete the group ${group.name}? What was entered in its ${group.fields.length === 1 ? "field" : "fields"} is deleted too, for every product, page and article. This cannot be undone.`}
+                  />
+                </RowActions>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
     </div>
   );

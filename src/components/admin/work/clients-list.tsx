@@ -5,8 +5,8 @@ import { clientFigures, type ClientShow } from "@/lib/work-ui";
 import type { WorkClientItem } from "@/server/work";
 
 import { Badge, card, control, secondaryButton } from "./work-parts";
+import { Card, List, ListRow, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
-const th = "px-4 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
 
 const SHOW_LABELS: Record<ClientShow, string> = {
   active: "Active clients",
@@ -75,56 +75,31 @@ export function ClientsList({
             : "You have no clients yet. Add one, then log the hours you work for them."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-sm">
-            <caption className="sr-only">{SHOW_LABELS[show]}</caption>
-            <thead>
-              <tr>
-                <th scope="col" className={th}>
-                  Client
-                </th>
-                <th scope="col" className={`${th} text-right`}>
-                  Active assignments
-                </th>
-                <th scope="col" className={`${th} text-right`}>
-                  Logged
-                </th>
-                <th scope="col" className={`${th} text-right`}>
-                  Not invoiced
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {clients.map((client) => (
-                <tr key={client.id}>
-                  <th scope="row" className="min-w-48 px-4 py-3 text-left font-normal">
-                    <Link href={`${base}/clients/${client.id}`} className="font-medium underline">
-                      {client.name}
-                    </Link>
-                    {client.archivedAt && (
-                      <>
-                        {" "}
-                        <Badge>Archived</Badge>
-                      </>
-                    )}
-                    <span className="block text-xs text-muted">
+        <Card compact>
+          <List label={SHOW_LABELS[show]}>
+            {clients.map((client) => (
+              <ListRow key={client.id}>
+                <RowLead
+                  title={client.name}
+                  href={`${base}/clients/${client.id}`}
+                  sub={
+                    <>
                       {[client.contactName, client.billingEmail].filter(Boolean).join(" · ") || clientFigures(client)}
-                    </span>
-                  </th>
-                  <td className="px-4 py-3 text-right tabular-nums">{client.activeAssignments}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{formatDuration(client.loggedMinutes)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {client.unbilledMinutes > 0 ? (
-                      formatDuration(client.unbilledMinutes)
-                    ) : (
-                      <span className="text-muted">None</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </>
+                  }
+                />
+                {client.archivedAt && <Badge>Archived</Badge>}
+                <RowFact className="hidden sm:block">
+                  {client.activeAssignments === 1 ? "1 active assignment" : `${client.activeAssignments} active assignments`}
+                </RowFact>
+                <RowFact className="hidden sm:block">{formatDuration(client.loggedMinutes)} logged</RowFact>
+                <RowAmount>
+                  {client.unbilledMinutes > 0 ? `${formatDuration(client.unbilledMinutes)} not invoiced` : <span className="text-muted">All invoiced</span>}
+                </RowAmount>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
     </div>
   );

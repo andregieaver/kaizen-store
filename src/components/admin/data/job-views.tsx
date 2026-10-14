@@ -3,7 +3,8 @@ import Link from "next/link";
 import { progressPercent, STATUS_WORDS, type JobKind, type JobPhase, type JobStatus } from "@/lib/data-job";
 import { doneOfTotal, expiryWords, formatBytes, KIND_TITLES, momentText, wholeNumber, workingWords } from "@/lib/data-admin";
 
-import { card, hint, secondary, tableShell, td, th } from "./ui";
+import { card, hint, secondary } from "./ui";
+import { ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 
 /** What a job page draws of a job: a state with no path, no input name's folder and nothing of a person (`JobState` of `data-routes.ts`, and the job as the page read it). */
 export type JobView = {
@@ -109,49 +110,39 @@ export function ExportFiles({ job, action, timeZone, now }: { job: ExportJobRow;
 export function ExportJobList({ jobs, pageHref, timeZone, now }: { jobs: ExportJobRow[]; pageHref: string; timeZone: string; now: Date }) {
   if (jobs.length === 0) return null;
   return (
-    <section aria-labelledby="recent-exports" className="flex flex-col gap-2">
-      <h2 id="recent-exports" className="text-base font-medium">
-        Recent exports
-      </h2>
-      <div className={tableShell}>
-        <table className="w-full text-sm">
-          <caption className="sr-only">Recent exports of this store, newest first</caption>
-          <thead>
-            <tr className="border-b border-line">
-              <th scope="col" className={th}>
-                Started
-              </th>
-              <th scope="col" className={th}>
-                State
-              </th>
-              <th scope="col" className={`${th} hidden sm:table-cell`}>
-                Rows
-              </th>
-              <th scope="col" className={th}>
-                <span className="sr-only">Open</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.map((job) => (
-              <tr key={job.id} className="border-b border-line last:border-0">
-                <td className={td}>{momentText(job.createdAt, timeZone)}</td>
-                <td className={td}>
-                  {STATUS_WORDS[job.status]}
-                  {job.status === "done" && !job.purged && job.expiresAt && <span className={`${hint} block`}>{expiryWords(job.expiresAt, now)}</span>}
-                  {job.status === "failed" && job.problem && <span className={`${hint} block`}>{job.problem}</span>}
-                </td>
-                <td className={`${td} hidden sm:table-cell`}>{job.files.length > 0 ? wholeNumber(job.files.reduce((n, f) => n + f.rows, 0)) : job.rowsTotal !== null ? wholeNumber(job.rowsTotal) : ""}</td>
-                <td className={`${td} text-right`}>
-                  <Link href={`${pageHref}?job=${job.id}`} className="underline underline-offset-2">
-                    {job.status === "done" && !job.purged ? "Download" : "Open"}
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <Card title="Recent exports" compact>
+      <List label="Recent exports of this store, newest first">
+        {jobs.map((job) => (
+          <ListRow key={job.id}>
+            <RowLead
+              title={momentText(job.createdAt, timeZone)}
+              href={`${pageHref}?job=${job.id}`}
+              sub={
+                job.status === "done" && !job.purged && job.expiresAt
+                  ? expiryWords(job.expiresAt, now)
+                  : job.status === "failed" && job.problem
+                    ? job.problem
+                    : undefined
+              }
+            />
+            <RowFact className="hidden sm:block">
+              {job.files.length > 0
+                ? `${wholeNumber(job.files.reduce((n, f) => n + f.rows, 0))} rows`
+                : job.rowsTotal !== null
+                  ? `${wholeNumber(job.rowsTotal)} rows`
+                  : "No rows yet"}
+            </RowFact>
+            <Chip signal={job.status === "done" ? "positive" : job.status === "failed" ? "danger" : job.status === "cancelled" ? "neutral" : "insight"} dot>
+              {STATUS_WORDS[job.status]}
+            </Chip>
+            <RowActions>
+              <ButtonLink href={`${pageHref}?job=${job.id}`} kind="quiet" size="dense">
+                {job.status === "done" && !job.purged ? "Download" : "Open"}
+              </ButtonLink>
+            </RowActions>
+          </ListRow>
+        ))}
+      </List>
+    </Card>
   );
 }

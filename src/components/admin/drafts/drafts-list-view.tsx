@@ -1,10 +1,14 @@
 import Link from "next/link";
 
-import { hint, primary, secondary, tableShell, td, th } from "@/components/admin/data/ui";
+import { hint, primary, secondary } from "@/components/admin/data/ui";
 import { DRAFTS_OPEN_MAX } from "@/lib/order-limits";
 import { DRAFT_STATUSES, DRAFT_STATUS_LABELS, type DraftStatus } from "@/lib/draft-status";
 import { formatMoney } from "@/lib/money";
 import type { DraftListRow } from "@/server/draft-orders";
+import { Card, Chip, List, ListRow, RowAmount, RowDate, RowLead } from "@/components/admin/ui";
+
+
+const DRAFT_SIGNAL = { open: "insight", sent: "warning", paid: "positive", expired: "neutral", cancelled: "neutral" } as const;
 
 /** What the drafts list says under a draft's status, in words. */
 function statusNote(row: DraftListRow, when: (iso: string) => string): string | null {
@@ -89,60 +93,42 @@ export function DraftsListView({
           )}
         </div>
       ) : (
-        <div className={tableShell}>
-          <table className="w-full min-w-[40rem] text-left text-sm">
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className={th}>
-                  Draft
-                </th>
-                <th scope="col" className={th}>
-                  Customer
-                </th>
-                <th scope="col" className={th}>
-                  Status
-                </th>
-                <th scope="col" className={`${th} hidden sm:table-cell`}>
-                  Made
-                </th>
-                <th scope="col" className={`${th} text-right`}>
-                  Total
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const note = statusNote(row, when);
-                return (
-                  <tr key={row.id} className="border-b border-line last:border-0">
-                    <td className={td}>
-                      <Link href={`${base}/${row.id}`} className="font-medium underline-offset-2 hover:underline">
-                        {row.number}
-                      </Link>
-                      <span className="block text-xs text-muted">
-                        {row.lineCount} {row.lineCount === 1 ? "line" : "lines"}
-                      </span>
-                    </td>
-                    <td className={td}>{row.customer ?? row.email ?? <span className="text-muted">No customer yet</span>}</td>
-                    <td className={td}>
-                      {DRAFT_STATUS_LABELS[row.status]}
-                      {note && <span className="block text-xs text-muted">{note}</span>}
-                      {row.orderId && row.orderNumber && (row.status === "sent" || row.status === "paid") && (
-                        <Link href={`/admin/${slug}/orders/${row.orderId}`} className="block text-xs underline underline-offset-2">
-                          Order #{row.orderNumber}
-                        </Link>
-                      )}
-                    </td>
-                    <td className={`${td} hidden sm:table-cell`}>
-                      <time dateTime={row.createdAt}>{when(row.createdAt)}</time>
-                    </td>
-                    <td className={`${td} text-right tabular-nums`}>{row.totalMinor === null ? <span className="text-muted">–</span> : formatMoney(row.totalMinor, row.currency, locale)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Card compact>
+          <List label="Draft orders">
+            {rows.map((row) => {
+              const note = statusNote(row, when);
+              return (
+                <ListRow key={row.id}>
+                  <RowLead
+                    title={row.number}
+                    href={`${base}/${row.id}`}
+                    sub={
+                      <>
+                        {row.customer ?? row.email ?? "No customer yet"} · {row.lineCount} {row.lineCount === 1 ? "line" : "lines"}
+                        {note && ` · ${note}`}
+                        {row.orderId && row.orderNumber && (row.status === "sent" || row.status === "paid") && (
+                          <>
+                            {" · "}
+                            <Link href={`/admin/${slug}/orders/${row.orderId}`} className="underline underline-offset-2">
+                              Order #{row.orderNumber}
+                            </Link>
+                          </>
+                        )}
+                      </>
+                    }
+                  />
+                  <RowDate>
+                    <time dateTime={row.createdAt}>{when(row.createdAt)}</time>
+                  </RowDate>
+                  <Chip signal={DRAFT_SIGNAL[row.status]} dot>
+                    {DRAFT_STATUS_LABELS[row.status]}
+                  </Chip>
+                  <RowAmount>{row.totalMinor === null ? <span className="text-muted">–</span> : formatMoney(row.totalMinor, row.currency, locale)}</RowAmount>
+                </ListRow>
+              );
+            })}
+          </List>
+        </Card>
       )}
 
       {(hasCursor || nextCursor) && (

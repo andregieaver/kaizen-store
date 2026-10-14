@@ -1,10 +1,10 @@
-import Link from "next/link";
 
 import type { PageState, PageSummary } from "@/server/pages";
 import type { DuplicateResult } from "@/lib/page-duplicate";
 import { ROLE_COPY, type PageRole } from "@/lib/page-roles";
 
 import { DuplicateButton } from "./duplicate-button";
+import { buttonClass, ButtonLink, Card, Chip, List, ListRow, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 
 const STATE_LABELS: Record<PageState, string> = {
   draft: "Draft",
@@ -46,89 +46,55 @@ export function PagesTable({
   duplicate?: (id: string) => Promise<DuplicateResult>;
 }) {
   return (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line text-muted">
-                <th scope="col" className="px-4 py-2 font-normal">
-                  Page
-                </th>
-                <th scope="col" className="px-4 py-2 font-normal">
-                  Status
-                </th>
-                <th scope="col" className="px-4 py-2 font-normal">
-                  Search · AI
-                </th>
-                <th scope="col" className="px-4 py-2 font-normal">
-                  Changed
-                </th>
-                <th scope="col" className="px-4 py-2 font-normal">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {pages.map((page) => (
-                <tr key={page.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-3">
-                      {page.thumbnail ? (
-                        // eslint-disable-next-line @next/next/no-img-element -- a small admin thumbnail
-                        <img src={page.thumbnail} alt="" className="size-10 shrink-0 rounded object-cover" />
-                      ) : (
-                        <span aria-hidden className="size-10 shrink-0 rounded bg-sunken" />
-                      )}
-                      <span className="min-w-0">
-                        <Link href={`${adminBase}/${page.id}`} className="font-medium underline">
-                          {page.title || "Untitled"}
-                        </Link>
-                        <span className="block truncate text-muted">
-                          {page.id === frontPageId
-                            ? `Front page · ${siteBase}`
-                            : page.id === productsPageId
-                              ? `All products page · ${siteBase}/products`
-                              : placed[page.id]
-                                ? `${placed[page.id].name}${placed[page.id].address ? ` · ${siteBase}${placed[page.id].address}` : ""}`
-                                : roles[page.id]
-                                ? `${ROLE_COPY[roles[page.id]].name}${ROLE_COPY[roles[page.id]].address ? ` · ${siteBase}${ROLE_COPY[roles[page.id]].address}` : ""}`
-                                : `${siteBase}/${page.slug}`}
-                        </span>
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2">
-                    {STATE_LABELS[page.state]}
-                    {page.publishedAt && (
-                      <span className="block text-muted">Published {date.format(new Date(page.publishedAt))}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-2">
-                    {page.searchEngines ? "Listed" : "Not listed"} · {page.aiAssistants ? "Open" : "Closed"}
-                  </td>
-                  <td className="px-4 py-2 text-muted">{date.format(new Date(page.updatedAt))}</td>
-                  <td className="px-4 py-2 text-right whitespace-nowrap">
-                    <Link href={`${adminBase}/${page.id}`} className="underline">
-                      Edit<span className="sr-only"> {page.title}</span>
-                    </Link>
-                    {page.state !== "draft" && viewPath(page.slug, placed[page.id]) !== "" && (
-                      <>
-                        {" · "}
-                        <a href={`${siteBase}${viewPath(page.slug, placed[page.id])}`} target="_blank" rel="noopener" className="underline">
-                          View<span className="sr-only"> {page.title}</span>
-                        </a>
-                      </>
-                    )}
-                    {duplicate && (
-                      <>
-                        {" · "}
-                        <DuplicateButton id={page.id} title={page.title} adminBase={adminBase} duplicate={duplicate} />
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Card compact>
+          <List label="Pages">
+            {pages.map((page) => (
+              <ListRow key={page.id}>
+                <RowLead
+                  avatar={
+                    page.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- a small admin thumbnail
+                      <img src={page.thumbnail} alt="" className="size-10 shrink-0 rounded object-cover" />
+                    ) : (
+                      <span aria-hidden className="size-10 shrink-0 rounded bg-sunken" />
+                    )
+                  }
+                  title={page.title || "Untitled"}
+                  href={`${adminBase}/${page.id}`}
+                  sub={
+                    <span className="block truncate">
+                      {page.id === frontPageId
+                        ? `Front page · ${siteBase}`
+                        : page.id === productsPageId
+                          ? `All products page · ${siteBase}/products`
+                          : placed[page.id]
+                            ? `${placed[page.id].name}${placed[page.id].address ? ` · ${siteBase}${placed[page.id].address}` : ""}`
+                            : roles[page.id]
+                              ? `${ROLE_COPY[roles[page.id]].name}${ROLE_COPY[roles[page.id]].address ? ` · ${siteBase}${ROLE_COPY[roles[page.id]].address}` : ""}`
+                              : `${siteBase}/${page.slug}`}
+                    </span>
+                  }
+                />
+                <RowFact className="hidden md:block" sub={`Search ${page.searchEngines ? "listed" : "not listed"} · AI ${page.aiAssistants ? "open" : "closed"}`}>
+                  Changed {date.format(new Date(page.updatedAt))}
+                </RowFact>
+                <Chip signal={page.state === "draft" ? "neutral" : page.state === "changed" ? "warning" : "positive"} dot>
+                  {STATE_LABELS[page.state]}
+                </Chip>
+                <RowActions>
+                  <ButtonLink href={`${adminBase}/${page.id}`} kind="quiet" size="dense">
+                    Edit<span className="sr-only"> {page.title}</span>
+                  </ButtonLink>
+                  {page.state !== "draft" && viewPath(page.slug, placed[page.id]) !== "" && (
+                    <a href={`${siteBase}${viewPath(page.slug, placed[page.id])}`} target="_blank" rel="noopener" className={buttonClass("quiet", "dense")}>
+                      View<span className="sr-only"> {page.title}</span>
+                    </a>
+                  )}
+                  {duplicate && <DuplicateButton id={page.id} title={page.title} adminBase={adminBase} duplicate={duplicate} />}
+                </RowActions>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
   );
 }

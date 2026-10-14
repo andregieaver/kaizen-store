@@ -7,7 +7,7 @@ import { SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listPlatformCustomers } from "@/server/platform-customers";
 import { requirePlatformAdmin } from "@/server/auth";
 import { avatarFor } from "@/server/avatars";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, List, ListRow, PageHeader, RowDate, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -50,52 +50,38 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
           {q ? "No customer matches the search." : "No customers yet."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className="px-4 py-2 font-medium">Customer</th>
-                <th scope="col" className="px-4 py-2 font-medium">Stores and plans</th>
-                <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Since</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map((c) => (
-                <tr key={c.id} className="border-b border-line align-top last:border-0">
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-3">
-                      <Avatar avatar={avatarFor(c)} size={32} />
-                      <div className="min-w-0">
-                        <Link href={`/admin/platform/customers/${c.id}`} className="font-medium underline-offset-2 hover:underline">
-                          {c.name || c.email}
-                        </Link>
-                        <span className="block text-xs text-muted">
-                          {c.name && `${c.email}`}
-                          {c.disabled && " · disabled"}
-                        </span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2">
-                    <ul className="flex flex-col gap-0.5">
-                      {c.stores.map((s) => (
-                        <li key={s.slug}>
-                          <Link href={`/admin/platform/stores/${s.slug}`} className="underline">
-                            {s.name}
-                          </Link>{" "}
-                          <span className="text-xs text-muted">
-                            {s.role} · {s.planName && s.status ? `${s.planName}, ${SUBSCRIPTION_LABELS[s.status] ?? s.status}` : "no plan"}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </td>
-                  <td className="hidden px-4 py-2 sm:table-cell">{date(c.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Card compact>
+          <List label="Customers">
+            {customers.map((c) => (
+              <ListRow key={c.id}>
+                <RowLead
+                  avatar={<Avatar avatar={avatarFor(c)} size={32} />}
+                  title={c.name || c.email}
+                  href={`/admin/platform/customers/${c.id}`}
+                  sub={
+                    <>
+                      {c.name && `${c.email}`}
+                      {c.disabled && " · disabled"}
+                    </>
+                  }
+                />
+                <span className="flex min-w-0 flex-1 basis-56 flex-col gap-0.5 text-body">
+                  {c.stores.map((s) => (
+                    <span key={s.slug}>
+                      <Link href={`/admin/platform/stores/${s.slug}`} className="text-ink underline-offset-2 hover:underline">
+                        {s.name}
+                      </Link>{" "}
+                      <span className="text-caption text-muted">
+                        {s.role} · {s.planName && s.status ? `${s.planName}, ${SUBSCRIPTION_LABELS[s.status] ?? s.status}` : "no plan"}
+                      </span>
+                    </span>
+                  ))}
+                </span>
+                <RowDate>Since {date(c.createdAt)}</RowDate>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
     </div>
   );

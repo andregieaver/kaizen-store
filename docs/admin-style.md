@@ -580,6 +580,12 @@ version*) to `aside`, and a box named another way (an `aria-label`, a screen-rea
 notice) keeps its element with `CARD_CLASS`. No card is a bordered box of its own any more, and the scan test keeps it so. Next:
 tables to a list in a card where they are lists, and the `focus` layout.
 
+Step 11, lists (D227): a table whose rows are things you open, each with a few facts of its own, is a `List` in a `Card`. The
+list parts gained `RowLead` (title, a link when the row has buttons of its own, a sub line, an avatar), `RowFact` (a fact that
+names itself, since there is no header row) and `RowActions` (the row's buttons, quiet and dense, on the right); a status is a
+`Chip`. Tables stay where figures are compared down a column, where rows are edited or selected, where a document's lines are
+listed and where values are to be copied. Next: the `focus` layout for the signed-out pages.
+
 ---
 
 ## 9. Do and don't

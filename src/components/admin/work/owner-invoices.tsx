@@ -13,14 +13,13 @@ import {
 import { WORK_LOCALE, withStore, type WorkStore } from "@/lib/work-owner";
 import { WORK_ROOT, workBase } from "@/lib/work-paths";
 import type { OwnerInvoiceList, OwnerInvoiceRow } from "@/server/work-owner";
-import { CARD_CLASS, PageHeader } from "@/components/admin/ui";
+import { Card, CARD_CLASS, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 import { InvoiceStatusChip } from "./invoice-status";
 import { CurrencyNote, StoreFilter } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
 import { control, secondaryButton, smallButton } from "./work-parts";
 
-const th = "px-3 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
 
 function tabCount(show: InvoiceShow, counts: OwnerInvoiceList["counts"]): number {
   switch (show) {
@@ -158,87 +157,13 @@ export function OwnerInvoicesView({
             : "No invoice matches. Try another tab or clear the filters."}
         </p>
       ) : (
-        <>
-          <ul className="flex flex-col gap-3 md:hidden" aria-label="Invoices">
+        <Card compact>
+          <List label="Invoices">
             {list.rows.map((row) => (
-              <InvoiceCard key={`${row.storeId}:${row.id}`} row={row} many={many} />
+              <InvoiceRow key={`${row.storeId}:${row.id}`} row={row} many={many} />
             ))}
-          </ul>
-          <div className="hidden overflow-x-auto rounded-lg border border-line bg-card md:block">
-            <table className="w-full text-sm">
-              <caption className="sr-only">Invoices</caption>
-              <thead>
-                <tr>
-                  <th scope="col" className={th}>
-                    Number
-                  </th>
-                  {many && (
-                    <th scope="col" className={th}>
-                      Store
-                    </th>
-                  )}
-                  <th scope="col" className={th}>
-                    Client
-                  </th>
-                  <th scope="col" className={th}>
-                    Issued
-                  </th>
-                  <th scope="col" className={th}>
-                    Due
-                  </th>
-                  <th scope="col" className={`${th} text-right`}>
-                    Total
-                  </th>
-                  <th scope="col" className={`${th} text-right`}>
-                    Outstanding
-                  </th>
-                  <th scope="col" className={th}>
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.rows.map((row) => {
-                  const money = (minor: number) => formatMoney(minor, row.currency, WORK_LOCALE);
-                  return (
-                    <tr key={`${row.storeId}:${row.id}`} className="border-t border-line align-top">
-                      <td className="px-3 py-3 font-medium">
-                        <Link href={`${workBase(row.storeSlug)}/invoices/${row.id}`} className="underline">
-                          {row.documentNumber ?? "Draft"}
-                        </Link>
-                      </td>
-                      {many && (
-                        <td className="px-3 py-3">
-                          <Link href={workBase(row.storeSlug)} className="underline">
-                            {row.storeName}
-                          </Link>
-                        </td>
-                      )}
-                      <td className="px-3 py-3">
-                        {row.clientName}
-                        {row.assignmentName && <span className="block text-xs text-muted">{row.assignmentName}</span>}
-                      </td>
-                      <td className="px-3 py-3 tabular-nums">{row.issuedOn ? formatDay(row.issuedOn, WORK_LOCALE) : "–"}</td>
-                      <td className="px-3 py-3 tabular-nums">{row.dueOn ? formatDay(row.dueOn, WORK_LOCALE) : "–"}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">
-                        {money(row.totalMinor)}
-                        {row.creditedMinor > 0 && (
-                          <span className="block text-xs text-muted">{money(row.creditedMinor)} credited</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums">
-                        {row.status === "sent" ? money(row.outstandingMinor) : "–"}
-                      </td>
-                      <td className="px-3 py-3">
-                        <InvoiceStatusChip status={row.status} dueOn={row.dueOn} today={row.today} showNote />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
+          </List>
+        </Card>
       )}
 
       {pages > 1 && (
@@ -264,32 +189,37 @@ export function OwnerInvoicesView({
   );
 }
 
-function InvoiceCard({ row, many }: { row: OwnerInvoiceRow; many: boolean }) {
+function InvoiceRow({ row, many }: { row: OwnerInvoiceRow; many: boolean }) {
   const money = (minor: number) => formatMoney(minor, row.currency, WORK_LOCALE);
   return (
-    <li className="rounded-lg border border-line bg-card p-3 text-sm">
-      <div className="flex items-start justify-between gap-2">
-        <Link href={`${workBase(row.storeSlug)}/invoices/${row.id}`} className="font-medium underline">
-          {row.documentNumber ?? "Draft"}
-        </Link>
-        <InvoiceStatusChip status={row.status} dueOn={row.dueOn} today={row.today} />
-      </div>
-      <p className="mt-1">{row.clientName}</p>
-      {many && <p className="text-xs text-muted">{row.storeName}</p>}
-      <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1">
-        <dt className="text-muted">Issued</dt>
-        <dd className="text-right tabular-nums">{row.issuedOn ? formatDay(row.issuedOn, WORK_LOCALE) : "–"}</dd>
-        <dt className="text-muted">Due</dt>
-        <dd className="text-right tabular-nums">{row.dueOn ? formatDay(row.dueOn, WORK_LOCALE) : "–"}</dd>
-        <dt className="text-muted">Total</dt>
-        <dd className="text-right font-medium tabular-nums">{money(row.totalMinor)}</dd>
-        {row.status === "sent" && (
+    <ListRow>
+      <RowLead
+        title={row.documentNumber ?? "Draft"}
+        href={`${workBase(row.storeSlug)}/invoices/${row.id}`}
+        sub={
           <>
-            <dt className="text-muted">Outstanding</dt>
-            <dd className="text-right tabular-nums">{money(row.outstandingMinor)}</dd>
+            {many && (
+              <>
+                <Link href={workBase(row.storeSlug)} className="underline-offset-2 hover:underline">
+                  {row.storeName}
+                </Link>
+                {" · "}
+              </>
+            )}
+            {row.clientName}
+            {row.assignmentName && ` · ${row.assignmentName}`}
           </>
-        )}
-      </dl>
-    </li>
+        }
+      />
+      <RowFact className="hidden sm:block" sub={row.dueOn ? `Due ${formatDay(row.dueOn, WORK_LOCALE)}` : undefined}>
+        {row.issuedOn ? `Issued ${formatDay(row.issuedOn, WORK_LOCALE)}` : "Not issued"}
+      </RowFact>
+      <InvoiceStatusChip status={row.status} dueOn={row.dueOn} today={row.today} showNote />
+      <RowAmount>
+        {money(row.totalMinor)}
+        {row.creditedMinor > 0 && <span className="block text-caption text-muted">{money(row.creditedMinor)} credited</span>}
+        {row.status === "sent" && <span className="block text-caption text-muted">{money(row.outstandingMinor)} outstanding</span>}
+      </RowAmount>
+    </ListRow>
   );
 }

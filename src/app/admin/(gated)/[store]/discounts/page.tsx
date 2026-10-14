@@ -8,7 +8,7 @@ import { formatMoney } from "@/lib/money";
 import { mainCurrency } from "@/lib/markets";
 import { requirePermission } from "@/server/permissions";
 import { listDiscounts } from "@/server/discounts";
-import { PageHeader } from "@/components/admin/ui";
+import { ButtonLink, Card, Chip, List, ListRow, PageHeader, RowActions, RowFact, RowLead } from "@/components/admin/ui";
 
 import { deleteDiscountAction } from "./actions";
 
@@ -21,6 +21,8 @@ const STATUS = {
   ended: "Ended",
   used_up: "Used up",
 } as const;
+
+const STATUS_SIGNAL = { active: "positive", off: "neutral", scheduled: "insight", ended: "neutral", used_up: "warning" } as const;
 
 /** The store's discount codes (D31), newest first, with how often each was used. */
 export default async function DiscountsPage({ params }: PageProps<"/admin/[store]/discounts">) {
@@ -48,63 +50,45 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
           No codes yet. Make one for a campaign, a newsletter or a loyal customer.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-line">
-                <th scope="col" className="px-4 py-2 font-medium">Code</th>
-                <th scope="col" className="px-4 py-2 font-medium">Gives</th>
-                <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Used</th>
-                <th scope="col" className="px-4 py-2 font-medium">Status</th>
-                <th scope="col" className="px-4 py-2 font-medium">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {discounts.map((d) => (
-                <tr key={d.id} className="border-b border-line last:border-0">
-                  <td className="px-4 py-2">
-                    <Link href={`${base}/${d.id}`} className="font-mono font-medium underline-offset-2 hover:underline">
-                      {d.code}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-2">
-                    {describeDiscount(d, money)}
-                    {d.productIds && (
-                      <span className="block text-xs text-muted">
-                        {d.productIds.length} {d.productIds.length === 1 ? "product" : "products"}
-                      </span>
-                    )}
-                  </td>
-                  <td className="hidden px-4 py-2 sm:table-cell">
-                    {d.used}
+        <Card compact>
+          <List label="Coupons">
+            {discounts.map((d) => {
+              const status = discountStatus(d, d.used);
+              return (
+                <ListRow key={d.id}>
+                  <RowLead
+                    title={<span className="font-mono">{d.code}</span>}
+                    href={`${base}/${d.id}`}
+                    sub={
+                      <>
+                        {describeDiscount(d, money)}
+                        {d.productIds && ` · ${d.productIds.length} ${d.productIds.length === 1 ? "product" : "products"}`}
+                      </>
+                    }
+                  />
+                  <RowFact
+                    className="hidden sm:block"
+                    sub={Object.entries(d.given)
+                      .map(([currency, minor]) => `${formatMoney(minor, currency, locale)} given`)
+                      .join(", ")}
+                  >
+                    Used {d.used}
                     {d.usageLimit !== null && ` of ${d.usageLimit}`}
-                    {Object.entries(d.given).map(([currency, minor]) => (
-                      <span key={currency} className="block text-xs text-muted">
-                        {formatMoney(minor, currency, locale)} given
-                      </span>
-                    ))}
-                  </td>
-                  <td className="px-4 py-2">{STATUS[discountStatus(d, d.used)]}</td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link href={`${base}/${d.id}`} className="flex min-h-10 items-center rounded-md px-3 hover:bg-sunken">
-                        Edit<span className="sr-only"> {d.code}</span>
-                      </Link>
-                      <DeleteDiscountButton
-                        action={deleteDiscountAction.bind(null, store.slug, d.id)}
-                        code={d.code}
-                        used={d.used}
-                        compact
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </RowFact>
+                  <Chip signal={STATUS_SIGNAL[status]} dot>
+                    {STATUS[status]}
+                  </Chip>
+                  <RowActions>
+                    <ButtonLink href={`${base}/${d.id}`} kind="quiet" size="dense">
+                      Edit<span className="sr-only"> {d.code}</span>
+                    </ButtonLink>
+                    <DeleteDiscountButton action={deleteDiscountAction.bind(null, store.slug, d.id)} code={d.code} used={d.used} compact />
+                  </RowActions>
+                </ListRow>
+              );
+            })}
+          </List>
+        </Card>
       )}
     </div>
   );

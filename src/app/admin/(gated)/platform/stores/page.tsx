@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { connection } from "next/server";
 
 import { formatBps, priceLabel, SUBSCRIPTION_LABELS } from "@/lib/plans";
 import { listStoreBilling } from "@/server/billing";
 import { requirePlatformAdmin } from "@/server/auth";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, Chip, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 export const metadata: Metadata = { title: "Stores" };
 
@@ -21,67 +20,44 @@ export default async function PlatformStoresPage() {
         title="Stores"
         description={<>Each store&apos;s plan with Kaizen and its fee per sale. Open a store to start, change or cancel its plan, or give it its own fee.</>}
       />
-      <div className="overflow-x-auto rounded-lg border border-line bg-card">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-line text-muted">
-              <th scope="col" className="px-4 py-2 font-normal">Store</th>
-              <th scope="col" className="px-4 py-2 font-normal">Owner</th>
-              <th scope="col" className="px-4 py-2 font-normal">Plan</th>
-              <th scope="col" className="px-4 py-2 font-normal">Status</th>
-              <th scope="col" className="px-4 py-2 font-normal">Next invoice</th>
-              <th scope="col" className="px-4 py-2 text-right font-normal">Fee per sale</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stores.map((store) => (
-              <tr key={store.storeId} className="border-b border-line last:border-0">
-                <td className="px-4 py-2">
-                  <Link href={`/admin/platform/stores/${store.slug}`} className="font-medium underline">
-                    {store.name}
-                  </Link>
-                  <span className="block text-muted">
-                    {store.slug}
-                    {store.storeStatus !== "active" && <strong className="ml-2 font-medium text-ink">{store.storeStatus === "closed" ? "Closed" : "Suspended"}</strong>}
-                  </span>
-                </td>
-                <td className="px-4 py-2">
-                  {store.ownerEmail ? (
-                    <>
-                      {store.ownerName && <span className="block">{store.ownerName}</span>}
-                      <span className={store.ownerName ? "block text-muted" : undefined}>{store.ownerEmail}</span>
-                    </>
-                  ) : (
-                    <span className="text-muted">No owner yet</span>
-                  )}
-                </td>
-                <td className="px-4 py-2">
-                  {store.planName ?? <span className="text-muted">No plan</span>}
-                  {store.price && (
-                    <span className="block text-muted">
-                      {priceLabel(store.price.amountMinor, store.price.currency, store.price.interval)}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-2">
-                  {store.status ? (SUBSCRIPTION_LABELS[store.status] ?? store.status) : "–"}
-                  {store.cancelAtPeriodEnd && <span className="block text-muted">Ends at period end</span>}
-                  {store.mode === "test" && <span className="block text-muted">Test mode</span>}
-                </td>
-                <td className="px-4 py-2">
-                  {store.currentPeriodEnd && !store.cancelAtPeriodEnd && store.status !== "canceled"
-                    ? store.currentPeriodEnd.slice(0, 10)
-                    : "–"}
-                </td>
-                <td className="px-4 py-2 text-right">
-                  {formatBps(store.feeBps)}
-                  {store.saleFeeBpsOverride !== null && <span className="block text-muted">own fee</span>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <Card compact>
+        <List label="Stores">
+          {stores.map((store) => (
+            <ListRow key={store.storeId}>
+              <RowLead
+                title={store.name}
+                href={`/admin/platform/stores/${store.slug}`}
+                sub={
+                  <>
+                    {store.slug} · {store.ownerEmail ? (store.ownerName ? `${store.ownerName}, ${store.ownerEmail}` : store.ownerEmail) : "No owner yet"}
+                  </>
+                }
+              />
+              <RowFact
+                sub={[
+                  store.status ? (SUBSCRIPTION_LABELS[store.status] ?? store.status) : null,
+                  store.cancelAtPeriodEnd && "ends at period end",
+                  store.mode === "test" && "test mode",
+                  store.currentPeriodEnd && !store.cancelAtPeriodEnd && store.status !== "canceled" && `next invoice ${store.currentPeriodEnd.slice(0, 10)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              >
+                {store.planName ? `${store.planName}${store.price ? `, ${priceLabel(store.price.amountMinor, store.price.currency, store.price.interval)}` : ""}` : "No plan"}
+              </RowFact>
+              {store.storeStatus !== "active" && (
+                <Chip signal={store.storeStatus === "closed" ? "neutral" : "danger"} dot>
+                  {store.storeStatus === "closed" ? "Closed" : "Suspended"}
+                </Chip>
+              )}
+              <RowAmount>
+                {formatBps(store.feeBps)} a sale
+                {store.saleFeeBpsOverride !== null && <span className="block text-caption text-muted">own fee</span>}
+              </RowAmount>
+            </ListRow>
+          ))}
+        </List>
+      </Card>
     </>
   );
 }

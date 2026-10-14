@@ -5,13 +5,12 @@ import { WORK_ROOT, workBase } from "@/lib/work-paths";
 import { formatDuration } from "@/lib/work-time";
 import { clientFigures, type ClientShow } from "@/lib/work-ui";
 import type { OwnerClient } from "@/server/work-owner";
-import { PageHeader } from "@/components/admin/ui";
+import { Card, List, ListRow, PageHeader, RowAmount, RowFact, RowLead } from "@/components/admin/ui";
 
 import { StoreFilter } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
 import { Badge, card, control, secondaryButton } from "./work-parts";
 
-const th = "px-4 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
 
 const SHOW_LABELS: Record<ClientShow, string> = {
   active: "Active clients",
@@ -104,69 +103,39 @@ export function OwnerClientsList({
             : "You have no clients yet. Add one, then log the hours you work for them."}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
-          <table className="w-full text-sm">
-            <caption className="sr-only">{SHOW_LABELS[show]}</caption>
-            <thead>
-              <tr>
-                <th scope="col" className={th}>
-                  Client
-                </th>
-                {many && (
-                  <th scope="col" className={th}>
-                    Store
-                  </th>
-                )}
-                <th scope="col" className={`${th} text-right`}>
-                  Active assignments
-                </th>
-                <th scope="col" className={`${th} text-right`}>
-                  Logged
-                </th>
-                <th scope="col" className={`${th} text-right`}>
-                  Not invoiced
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line">
-              {clients.map((client) => (
-                <tr key={`${client.storeId}:${client.id}`}>
-                  <th scope="row" className="min-w-48 px-4 py-3 text-left font-normal">
-                    <Link href={`${workBase(client.storeSlug)}/clients/${client.id}`} className="font-medium underline">
-                      {client.name}
-                    </Link>
-                    {client.archivedAt && (
+        <Card compact>
+          <List label={SHOW_LABELS[show]}>
+            {clients.map((client) => (
+              <ListRow key={`${client.storeId}:${client.id}`}>
+                <RowLead
+                  title={client.name}
+                  href={`${workBase(client.storeSlug)}/clients/${client.id}`}
+                  sub={
+                    <>
+                    {many && (
                       <>
-                        {" "}
-                        <Badge>Archived</Badge>
+                        <Link href={workBase(client.storeSlug)} className="underline-offset-2 hover:underline">
+                          {client.storeName}
+                        </Link>
+                        {` (${client.currency}) · `}
                       </>
                     )}
-                    <span className="block text-xs text-muted">
                       {[client.contactName, client.billingEmail].filter(Boolean).join(" · ") || clientFigures(client)}
-                    </span>
-                  </th>
-                  {many && (
-                    <td className="px-4 py-3">
-                      <Link href={workBase(client.storeSlug)} className="underline">
-                        {client.storeName}
-                      </Link>
-                      <span className="block text-xs text-muted">{client.currency}</span>
-                    </td>
-                  )}
-                  <td className="px-4 py-3 text-right tabular-nums">{client.activeAssignments}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{formatDuration(client.loggedMinutes)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {client.unbilledMinutes > 0 ? (
-                      formatDuration(client.unbilledMinutes)
-                    ) : (
-                      <span className="text-muted">None</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    </>
+                  }
+                />
+                {client.archivedAt && <Badge>Archived</Badge>}
+                <RowFact className="hidden sm:block">
+                  {client.activeAssignments === 1 ? "1 active assignment" : `${client.activeAssignments} active assignments`}
+                </RowFact>
+                <RowFact className="hidden sm:block">{formatDuration(client.loggedMinutes)} logged</RowFact>
+                <RowAmount>
+                  {client.unbilledMinutes > 0 ? `${formatDuration(client.unbilledMinutes)} not invoiced` : <span className="text-muted">All invoiced</span>}
+                </RowAmount>
+              </ListRow>
+            ))}
+          </List>
+        </Card>
       )}
     </div>
   );

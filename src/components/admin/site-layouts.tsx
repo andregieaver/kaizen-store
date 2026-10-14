@@ -1,10 +1,8 @@
-import Link from "next/link";
-
 import type { SiteLayoutType } from "@/server/site-layouts";
 import type { PageSummary } from "@/server/pages";
 
 import { ActionForm, SubmitButton, type FormState } from "./action-form";
-import { CARD_CLASS } from "@/components/admin/ui";
+import { Card, CARD_CLASS, Chip, List, ListRow, RowLead } from "@/components/admin/ui";
 
 /**
  * A site's headers or footers (D80), Kaizen's or a store's: which one it
@@ -64,38 +62,23 @@ export function SiteLayoutChoice({
 export function SiteLayoutsTable({ layouts, adminBase, current }: { layouts: PageSummary[]; adminBase: string; current: string | null }) {
   const date = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium" });
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-card">
-      <table className="w-full text-left text-sm">
-        <thead>
-          <tr className="border-b border-line">
-            <th scope="col" className="px-4 py-2 font-medium">
-              Name
-            </th>
-            <th scope="col" className="px-4 py-2 font-medium">
-              State
-            </th>
-            <th scope="col" className="px-4 py-2 font-medium">
-              In use
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {layouts.map((layout) => (
-            <tr key={layout.id} className="border-b border-line last:border-0">
-              <td className="px-4 py-2">
-                <Link href={`${adminBase}/${layout.id}`} className="font-medium underline">
-                  {layout.title || "Untitled"}
-                </Link>
-              </td>
-              <td className="px-4 py-2">
-                {STATES[layout.state]}
-                {layout.publishedAt && <span className="block text-muted">Published {date.format(new Date(layout.publishedAt))}</span>}
-              </td>
-              <td className="px-4 py-2">{layout.id === current ? "In use" : ""}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <Card compact>
+      <List>
+        {layouts.map((layout) => (
+          <ListRow key={layout.id} href={`${adminBase}/${layout.id}`}>
+            <RowLead
+              title={layout.title || "Untitled"}
+              sub={layout.publishedAt ? `Published ${date.format(new Date(layout.publishedAt))}` : undefined}
+            />
+            {layout.id === current && (
+              <Chip signal="positive" dot>
+                In use
+              </Chip>
+            )}
+            <Chip signal={layout.state === "draft" ? "neutral" : layout.state === "changed" ? "warning" : "positive"}>{STATES[layout.state]}</Chip>
+          </ListRow>
+        ))}
+      </List>
+    </Card>
   );
 }
