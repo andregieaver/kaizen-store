@@ -1,0 +1,260 @@
+/*
+ * The admin's colour scheme `meadow` (docs/admin-style.md, section 4): the reference screen's warm neutrals, green-black rail and one
+ * green. It sets every colour role in light and in dark; components and `admin.css` read the roles, never these values.
+ *
+ * It is the default scheme: it applies when <html> names no scheme (`data-admin-scheme`) or names this one. Values are written as
+ * plain hex so `admin-schemes.test.ts` can read them and hold every text pair to WCAG's 4.5:1 (section 7.1). A role's value in dark is
+ * the same role's meaning, not its colour inverted: the rail stays the darkest place, `-text` becomes the light version of a signal.
+ */
+
+/* ------------------------------------------------------------------ light */
+
+html[data-admin]:is(:not([data-admin-scheme]), [data-admin-scheme="meadow"]) {
+  /* Surfaces and text */
+  --canvas: #f0f1eb;
+  --card: #ffffff;
+  --sunken: #f6f7f2;
+  --rail: #101614;
+  --rail-icon: #a7abaa;
+  --ink: #101614;
+  --ink-2: #464a46;
+  --muted: #676c68;
+  --faint: #9d9f9c;
+  --line: #ecede7;
+  --edge: #d9dbd2;
+  --inverse: #101614;
+  --inverse-ink: #ffffff;
+
+  /* Brand and actions */
+  --brand: #3bd968;
+  --brand-ink: #101614;
+  --brand-hover: #33c95d;
+  --brand-text: #0b6630;
+  --brand-soft: #e6f6ec;
+  --focus: #0d944b;
+
+  /* Signals: a bright fill, its dark words, a tint for chips and panels, a tinted edge */
+  --positive-solid: #3bd968;
+  --positive-text: #0b6630;
+  --positive-soft: #ecf7ef;
+  --positive-line: #bfe8cc;
+  --warning-solid: #f0bf2e;
+  --warning-text: #7a5d00;
+  --warning-soft: #f9f1de;
+  --warning-line: #ecdcae;
+  --danger-solid: #e4554f;
+  --danger-text: #9f2719;
+  --danger-soft: #fae8e5;
+  --danger-line: #f2c7c1;
+  --neutral-solid: #97a29a;
+  --neutral-text: #464a46;
+  --neutral-soft: #f6f8f3;
+  --neutral-line: #e2e4dc;
+  --insight-solid: #11a356;
+  --insight-text: #0b6630;
+  --insight-soft: #e2f3e9;
+  --insight-line: #c4e6d1;
+
+  /* Elevation: only what floats over the page has a shadow */
+  --shadow-float: 0 12px 32px -8px rgb(16 22 20 / 0.18), 0 2px 6px rgb(16 22 20 / 0.06);
+  --shadow-modal: 0 24px 64px -12px rgb(16 22 20 / 0.28);
+
+  /* Charts (D152): categorical, a one-hue ramp with the ink that reads on each step, good and bad news, grid and axis */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-seq-0: #eef3fb;
+  --chart-seq-1: #cde2fb;
+  --chart-seq-2: #9ec5f4;
+  --chart-seq-3: #6da7ec;
+  --chart-seq-4: #3987e5;
+  --chart-seq-5: #1c5cab;
+  --chart-seq-6: #0d366b;
+  --chart-seq-0-ink: #101614;
+  --chart-seq-1-ink: #101614;
+  --chart-seq-2-ink: #101614;
+  --chart-seq-3-ink: #101614;
+  --chart-seq-4-ink: #101614;
+  --chart-seq-5-ink: #ffffff;
+  --chart-seq-6-ink: #ffffff;
+  --chart-good: #0b6630;
+  --chart-bad: #9f2719;
+  --chart-warn: #7a5d00;
+  --chart-grid: #ecede7;
+  --chart-axis: #c9ccc4;
+  --chart-compare: #8a8f8b;
+
+  /* Support's tone bands (D216), very bad to very good; never shown by colour alone */
+  --tone-1: #9f2719;
+  --tone-2: #b4530a;
+  --tone-3: #8a8f8b;
+  --tone-4: #2f8f4e;
+  --tone-5: #0b6630;
+}
+
+/* ------------------------------------------------------------------- dark */
+
+@media (prefers-color-scheme: dark) {
+  html[data-admin]:is(:not([data-admin-scheme]), [data-admin-scheme="meadow"]):not([data-color-mode="light"]) {
+    --canvas: #0c100f;
+    --card: #151a19;
+    --sunken: #1b2120;
+    --rail: #070a09;
+    --rail-icon: #9aa09d;
+    --ink: #eef0ea;
+    --ink-2: #b7bcb8;
+    --muted: #8f9591;
+    --faint: #5f6562;
+    --line: #262c2a;
+    --edge: #333a37;
+    --inverse: #eef0ea;
+    --inverse-ink: #101614;
+
+    --brand: #3bd968;
+    --brand-ink: #0c100f;
+    --brand-hover: #52e07b;
+    --brand-text: #5fe08a;
+    --brand-soft: #1a3524;
+    --focus: #5fe08a;
+
+    --positive-solid: #3bd968;
+    --positive-text: #5fe08a;
+    --positive-soft: #1a3524;
+    --positive-line: #27553a;
+    --warning-solid: #f0bf2e;
+    --warning-text: #f2c94c;
+    --warning-soft: #34311c;
+    --warning-line: #5a4f22;
+    --danger-solid: #e4554f;
+    --danger-text: #ff8a80;
+    --danger-soft: #322221;
+    --danger-line: #5c3330;
+    --neutral-solid: #97a29a;
+    --neutral-text: #b7bcb8;
+    --neutral-soft: #272d2b;
+    --neutral-line: #3a413e;
+    --insight-solid: #11a356;
+    --insight-text: #5fe08a;
+    --insight-soft: #142d22;
+    --insight-line: #22503a;
+
+    --shadow-float: 0 12px 32px -8px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.35);
+    --shadow-modal: 0 24px 64px -12px rgb(0 0 0 / 0.7);
+
+    --chart-1: #3987e5;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    --chart-6: #008300;
+    --chart-seq-0: #1b2120;
+    --chart-seq-1: #104281;
+    --chart-seq-2: #256abf;
+    --chart-seq-3: #3987e5;
+    --chart-seq-4: #6da7ec;
+    --chart-seq-5: #9ec5f4;
+    --chart-seq-6: #cde2fb;
+    --chart-seq-0-ink: #eef0ea;
+    --chart-seq-1-ink: #ffffff;
+    --chart-seq-2-ink: #ffffff;
+    --chart-seq-3-ink: #101614;
+    --chart-seq-4-ink: #101614;
+    --chart-seq-5-ink: #101614;
+    --chart-seq-6-ink: #101614;
+    --chart-good: #5fe08a;
+    --chart-bad: #ff8a80;
+    --chart-warn: #f2c94c;
+    --chart-grid: #262c2a;
+    --chart-axis: #3a413e;
+    --chart-compare: #7d837f;
+
+    --tone-1: #ff8a80;
+    --tone-2: #fb923c;
+    --tone-3: #7d837f;
+    --tone-4: #4ade80;
+    --tone-5: #5fe08a;
+  }
+}
+
+html[data-admin]:is(:not([data-admin-scheme]), [data-admin-scheme="meadow"])[data-color-mode="dark"] {
+  --canvas: #0c100f;
+  --card: #151a19;
+  --sunken: #1b2120;
+  --rail: #070a09;
+  --rail-icon: #9aa09d;
+  --ink: #eef0ea;
+  --ink-2: #b7bcb8;
+  --muted: #8f9591;
+  --faint: #5f6562;
+  --line: #262c2a;
+  --edge: #333a37;
+  --inverse: #eef0ea;
+  --inverse-ink: #101614;
+
+  --brand: #3bd968;
+  --brand-ink: #0c100f;
+  --brand-hover: #52e07b;
+  --brand-text: #5fe08a;
+  --brand-soft: #1a3524;
+  --focus: #5fe08a;
+
+  --positive-solid: #3bd968;
+  --positive-text: #5fe08a;
+  --positive-soft: #1a3524;
+  --positive-line: #27553a;
+  --warning-solid: #f0bf2e;
+  --warning-text: #f2c94c;
+  --warning-soft: #34311c;
+  --warning-line: #5a4f22;
+  --danger-solid: #e4554f;
+  --danger-text: #ff8a80;
+  --danger-soft: #322221;
+  --danger-line: #5c3330;
+  --neutral-solid: #97a29a;
+  --neutral-text: #b7bcb8;
+  --neutral-soft: #272d2b;
+  --neutral-line: #3a413e;
+  --insight-solid: #11a356;
+  --insight-text: #5fe08a;
+  --insight-soft: #142d22;
+  --insight-line: #22503a;
+
+  --shadow-float: 0 12px 32px -8px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.35);
+  --shadow-modal: 0 24px 64px -12px rgb(0 0 0 / 0.7);
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-seq-0: #1b2120;
+  --chart-seq-1: #104281;
+  --chart-seq-2: #256abf;
+  --chart-seq-3: #3987e5;
+  --chart-seq-4: #6da7ec;
+  --chart-seq-5: #9ec5f4;
+  --chart-seq-6: #cde2fb;
+  --chart-seq-0-ink: #eef0ea;
+  --chart-seq-1-ink: #ffffff;
+  --chart-seq-2-ink: #ffffff;
+  --chart-seq-3-ink: #101614;
+  --chart-seq-4-ink: #101614;
+  --chart-seq-5-ink: #101614;
+  --chart-seq-6-ink: #101614;
+  --chart-good: #5fe08a;
+  --chart-bad: #ff8a80;
+  --chart-warn: #f2c94c;
+  --chart-grid: #262c2a;
+  --chart-axis: #3a413e;
+  --chart-compare: #7d837f;
+
+  --tone-1: #ff8a80;
+  --tone-2: #fb923c;
+  --tone-3: #7d837f;
+  --tone-4: #4ade80;
+  --tone-5: #5fe08a;
+}

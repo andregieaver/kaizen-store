@@ -7,6 +7,8 @@ import { siteIcons } from "@/lib/site-icons";
 import { getPlatformFavicon } from "@/server/platform-navigation";
 
 import "../globals.css";
+// The colour schemes (docs/admin-style.md section 4), each setting the colour roles; `admin.css` reads only the roles.
+import "./schemes/meadow.css";
 import "./admin.css";
 
 export async function generateMetadata(): Promise<Metadata> {

@@ -217,7 +217,7 @@ The roles are the admin's existing tokens (`--background`, `--foreground`, `--su
 | `--muted` | `text-muted` | Labels, descriptions, context lines, eyebrows, captions | `#676c68` | `#8f9591` |
 | `--faint` | `text-faint` | Decoration only: an axis tick, a disabled control | `#9d9f9c` | `#5f6562` |
 | `--line` | `border-line` | Hairlines: a list's rows, a card's sections | `#ecede7` | `#262c2a` |
-| `--edge` | `border-edge` | A control's border: the secondary button, a field | `#e2e4dc` | `#2f3633` |
+| `--edge` | `border-edge` | A control's border: the secondary button, a field | `#d9dbd2` | `#333a37` |
 | `--inverse` | `bg-inverse` | The active tab, a card's black button | `#101614` | `#eef0ea` |
 | `--inverse-ink` | `text-inverse-ink` | Words on `--inverse` | `#ffffff` | `#101614` |
 
@@ -507,8 +507,8 @@ directions are right.
   same class draws `bg-brand text-brand-ink`, so the words turn ink automatically. The rule "white words on the brand" is gone:
   the scheme decides.
 - **Headings drop to 400–500** (today `h1` is 650), and the large title uses `display`.
-- **Cards lose their shadow and border** in light mode (today `.border.bg-background` gets `--shadow-sm`), and keep a line in
-  dark mode.
+- **Cards lose their shadow** (today `.border.bg-background` gets `--shadow-sm`). Until the `Card` component lands they keep a
+  hairline `--line` border in light mode too, because many pages nest bordered boxes inside a card and rely on it.
 - **The header's gradient line goes.** The top bar has no bar in `rail`, and a plain `--line` under it in `classic`.
 - **Red** (`text-red-700` etc., D149's `--danger`) becomes `danger-text`, and the soft reds become `danger-soft`.
 - **New Tailwind names** (`bg-canvas`, `bg-card`, `bg-sunken`, `text-ink`, `text-ink-2`, `text-faint`, `bg-brand`,
@@ -517,6 +517,11 @@ directions are right.
 - **Order of work**: roles and `meadow` in `admin.css` (light and dark), then the components of section 5 (`Button`, `Chip`,
   `Card`, `KpiTile`, `ShareBar`, `InsightPanel`, `ListRow`), then the `rail` layout for the store level, then the other
   levels, then `indigo` and the scheme picker.
+
+**Built so far.** Step 1, the roles and `meadow` (D217): `src/app/admin/schemes/meadow.css` sets every role in light and dark,
+`admin.css` maps the older names onto them and reads roles only (no colour of its own), the role names are in the `@theme`
+of `globals.css`, the registry is `src/lib/admin-schemes.ts` (`ADMIN_SCHEMES`, `ADMIN_ROLES`, `CONTRAST_RULES`) and
+`src/app/admin/admin-schemes.test.ts` holds every scheme to it. The components, layouts, `indigo` and the picker are next.
 
 ---
 
