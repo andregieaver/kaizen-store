@@ -15,7 +15,7 @@ export function TaxSkeleton() {
         <div className={`${block} h-9 w-full max-w-3xl`} />
       </div>
       <div className={`${block} h-9 w-full max-w-md`} />
-      <div className="rounded-lg border border-line bg-sunken px-3 py-2 text-sm text-muted">Your own figures, for you and your accountant. Not a tax return.</div>
+      <div className="rounded-panel bg-sunken px-3 py-2 text-sm text-muted">Your own figures, for you and your accountant. Not a tax return.</div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, i) => (
           <div key={i} className={`${block} h-28`} />

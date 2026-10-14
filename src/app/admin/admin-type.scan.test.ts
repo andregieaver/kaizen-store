@@ -52,6 +52,32 @@ describe("the admin's type and shapes", () => {
     expect(square).toEqual([]);
   });
 
+  it("draws every button and button-like link as a pill (D231)", () => {
+    const control = /<(?:button|Link|a)\b[^<>]*?className=(?:"([^"]*)"|\{`([^`]*)`\})/g;
+    const squareControl = (cls: string) =>
+      /(?<![\w-])rounded-md(?![\w-])/.test(cls) && /(?<![\w-])(min-h-(9|10|11)|h-(9|10|11)|py-2)(?![\w-])/.test(cls) && /(?<![\w-])(bg-brand|border)(?![\w-])/.test(cls);
+    // A button or a link drawn as one is a pill whatever its kind (docs/admin-style.md 5.2); a shared constant of a filled or bordered one too.
+    const square = (cls: string, onControl = true) => (onControl ? /(?<![\w:-])rounded-md(?![\w-])/.test(cls) : squareControl(cls));
+    const own = admin.filter((path) => {
+      const source = readFileSync(join(ROOT, path), "utf8");
+      const constants = [...source.matchAll(/const \w*(?:[Bb]utton|[Bb]tn|primary|secondary|small|action|Action|Primary|Secondary|Small)\w* = \s*"([^"]*)"/g)].map((m) => m[1]);
+      return [...source.matchAll(control)].some((m) => square(m[1] ?? m[2])) || constants.some((cls) => square(cls, false));
+    });
+    expect(own).toEqual([]);
+  });
+
+  it("writes a section's title, a figure and an eyebrow in the type scale (D231)", () => {
+    const own = admin.filter((path) => {
+      const source = readFileSync(join(ROOT, path), "utf8");
+      return (
+        /<h2\b[^<>]*className="(?![^"]*sr-only)[^"]*(?<![\w-])font-medium(?![\w-])/.test(source) ||
+        /(?<![\w-])text-2xl font-medium(?![\w-])/.test(source) ||
+        /text-xs font-medium tracking-wide text-muted uppercase/.test(source)
+      );
+    });
+    expect(own).toEqual([]);
+  });
+
   it("draws a card as Card or CARD_CLASS, never as a bordered box of its own", () => {
     const own = admin.filter((path) => /\brounded-card border border-line bg-card\b/.test(readFileSync(join(ROOT, path), "utf8")));
     expect(own).toEqual([]);

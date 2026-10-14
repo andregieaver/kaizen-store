@@ -16,7 +16,7 @@ type Action = (state: FormState, form: FormData) => Promise<FormState>;
 export function LogRequestForm({ action, today }: { action: Action; today: string }) {
   return (
     <section aria-labelledby="log-request" className={card}>
-      <h2 id="log-request" className="font-medium">
+      <h2 id="log-request" className="text-title text-ink">
         Log a request
       </h2>
       <ActionForm action={action} className="flex flex-col gap-4">

@@ -329,7 +329,7 @@ export function RefundPanel({
             <p className="text-sm text-muted">You pay for return shipping, so nothing is taken off for it.</p>
           )}
           {whoPays === "shopper" && (
-            <button type="button" onClick={again} disabled={working} className="min-h-10 rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40">
+            <button type="button" onClick={again} disabled={working} className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40">
               {working ? "Working …" : "Work it out again"}
             </button>
           )}

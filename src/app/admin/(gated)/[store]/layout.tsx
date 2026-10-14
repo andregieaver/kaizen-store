@@ -132,7 +132,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
       focus={{ pattern: SETUP, back: { href: base, label: "Leave setup" }, title: `Setting up ${store.name}` }}
     >
       {store.starter && (
-        <div role="status" className="mb-4 rounded-lg border border-line bg-sunken p-4 text-sm">
+        <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
           <p className="font-medium">This store is a store template.</p>
           <p className="text-muted">
             New stores made from it start with its products, services, staff, pages, menus, settings and page drafts, as they were when it was
@@ -150,7 +150,7 @@ export default async function StoreAdminLayout({ children, params }: LayoutProps
         </div>
       )}
       {!open && (
-        <div role="status" className="mb-4 rounded-lg border border-line bg-sunken p-4 text-sm">
+        <div role="status" className="mb-4 rounded-panel bg-sunken p-4 text-sm">
           <p className="font-medium">{store.status === "suspended" ? "This store is suspended." : "This store is closed."}</p>
           <p className="text-muted">
             {store.status === "suspended"

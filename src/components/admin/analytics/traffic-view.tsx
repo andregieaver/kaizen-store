@@ -243,7 +243,7 @@ function CountingState({ base, traffic }: { base: string; traffic: TrafficReport
 
 function NeedsCounting({ traffic, base, what }: { traffic: TrafficReport; base: string; what: string }) {
   return (
-    <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
+    <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
       <p>{`${what} ${countingReason(traffic)}`}</p>
       {!traffic.counting ? (
         <p className="mt-1">
@@ -298,7 +298,7 @@ function FunnelSection({ base, traffic, orders }: { base: string; traffic: Traff
       {known ? (
         <>
           <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-            <div className="min-w-0 rounded-lg border border-line bg-card p-4">
+            <div className="min-w-0 rounded-panel border border-line bg-card p-4">
               <Funnel
                 label="Visits, product views, carts, checkouts and purchases"
                 stages={traffic.funnel.stages.map((s) => ({
@@ -462,7 +462,7 @@ function GeographySection({ base, geo, traffic, money }: { base: string; geo: Ge
       ) : null}
       {geo.cities.length > 0 || none.orders > 0 ? (
         <div className="space-y-2">
-          <h3 className="text-base font-medium">Top cities</h3>
+          <h3 className="text-body-strong text-ink">Top cities</h3>
           <DataTable caption="The cities with most revenue, with orders, share of revenue and average order" columns={cityColumns} rows={geo.cities} rowKey={(c) => c.key} footer={cityFooter} empty="No order has a delivery city." exportId="traffic.cities" exportLeftOut={{ orders: geo.unconverted, currencies: geo.missingCurrencies }} />
           {geo.truncated ? <p className="text-xs text-muted">There are very many cities, so the smallest were not read and &quot;Other cities&quot; is a little low.</p> : null}
         </div>
@@ -547,18 +547,18 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
         </Note>
       ) : null}
       {none ? (
-        <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
+        <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
           {search.period.days === 0 ? "There are no searches to show for this period." : "No one used the store's search in this period."}
         </div>
       ) : (
         <>
           <div className="space-y-2">
-            <h3 className="text-base font-medium">Searches that found nothing: products your customers want</h3>
+            <h3 className="text-body-strong text-ink">Searches that found nothing: products your customers want</h3>
             <p className="max-w-prose text-sm text-muted">
               Each of these is a shopper telling you what they could not find. If you sell it, add the words they used to the product. If you do not, it may be a product worth adding.
             </p>
             {search.zeroTerms.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-line px-4 py-4 text-sm text-muted">Every search in this period showed at least one product. Nothing is being missed.</div>
+              <div className="rounded-panel border border-dashed border-line px-4 py-4 text-sm text-muted">Every search in this period showed at least one product. Nothing is being missed.</div>
             ) : (
               <>
                 <DataTable caption="Searches that found nothing, with how many times and when last" columns={zeroColumns} rows={search.zeroTerms} rowKey={(r) => r.term} exportId="traffic.zero_terms" />
@@ -574,7 +574,7 @@ function SearchSection({ search, timeZone }: { search: SearchReport; timeZone: s
             ))}
           </div>
           <div className="space-y-2">
-            <h3 className="text-base font-medium">Most searched</h3>
+            <h3 className="text-body-strong text-ink">Most searched</h3>
             <DataTable caption="The most searched terms with searches, results shown, searches that found nothing and click-through" columns={topColumns} rows={search.topTerms} rowKey={(r) => r.term} exportId="traffic.top_terms" />
           </div>
         </>
@@ -618,13 +618,13 @@ function WhenSection({ time, timeZone, money }: { time: TimeReport; timeZone: st
         </ul>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div className="min-w-0 rounded-lg border border-line bg-card p-4">
-          <h3 className="mb-3 text-sm font-medium">Orders by weekday and time of day</h3>
+        <div className="min-w-0 rounded-panel border border-line bg-card p-4">
+          <h3 className="mb-3 text-body-strong text-ink">Orders by weekday and time of day</h3>
           <Heatmap label="Paid orders by weekday and two-hour band" columns={[...WEEKDAY_LABELS]} rows={rows} format={formatCount} emptyText="No paid orders in this period yet." exportId="traffic.heatmap" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
         </div>
         {orders > 0 ? (
-          <div className="min-w-0 rounded-lg border border-line bg-card p-4">
-            <h3 className="mb-3 text-sm font-medium">Orders by weekday</h3>
+          <div className="min-w-0 rounded-panel border border-line bg-card p-4">
+            <h3 className="mb-3 text-body-strong text-ink">Orders by weekday</h3>
             <HorizontalBars label="Paid orders for each weekday" rows={weekdays} exportId="traffic.weekdays" exportLeftOut={{ orders: time.unconverted, currencies: time.missingCurrencies }} />
           </div>
         ) : null}
@@ -654,7 +654,7 @@ export function TrafficView(props: TrafficViewProps) {
 
   return (
     <>
-      <nav aria-label="Questions this page answers" className="max-w-3xl rounded-lg border border-line bg-sunken px-4 py-3 text-sm">
+      <nav aria-label="Questions this page answers" className="max-w-3xl rounded-panel bg-sunken px-4 py-3 text-sm">
         <p className="font-medium">This page answers three things</p>
         <ol aria-label="The three questions" className="mt-1 list-decimal space-y-0.5 pl-5">
           {QUESTIONS.map((q) => (

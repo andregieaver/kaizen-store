@@ -361,7 +361,7 @@ export function ResponsiveBar({
       role="toolbar"
       aria-label="Responsive editing"
       data-responsive-bar=""
-      className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-card px-3 py-2 shadow-sm"
+      className="sticky top-0 z-30 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-panel border border-line bg-card px-3 py-2 shadow-sm"
     >
       <label className="flex items-center gap-2 text-sm font-medium">
         <DeviceIcon size={view.size} />
@@ -420,7 +420,7 @@ export function ResponsiveToggle({ on, onToggle }: { on: boolean; onToggle: () =
       onClick={onToggle}
       aria-keyshortcuts="Control+Shift+R Meta+Shift+R"
       title="Responsive editing (Ctrl or ⌘ + Shift + R)"
-      className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-sm aria-pressed:border-brand aria-pressed:bg-sunken aria-pressed:font-medium"
+      className="flex min-h-9 items-center gap-2 rounded-pill border border-edge px-3 text-sm aria-pressed:border-brand aria-pressed:bg-sunken aria-pressed:font-medium"
     >
       <span aria-hidden className="flex items-center gap-0.5">
         <Monitor className="size-4" strokeWidth={1.75} />
@@ -440,7 +440,7 @@ export function HiddenPartsToggle({ hide, onChange }: { hide: boolean; onChange:
       aria-checked={hide}
       onClick={() => onChange(!hide)}
       title="Parts hidden at the size shown, never shown, or shown only to some visitors (by sign-in or conditions)"
-      className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-sm aria-checked:border-brand aria-checked:bg-sunken aria-checked:font-medium"
+      className="flex min-h-9 items-center gap-2 rounded-pill border border-edge px-3 text-sm aria-checked:border-brand aria-checked:bg-sunken aria-checked:font-medium"
     >
       <Eye aria-hidden className="size-4" strokeWidth={1.75} />
       {hide ? "Hidden parts left out" : "Hidden parts shown faded"}

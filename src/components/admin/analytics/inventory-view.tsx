@@ -338,7 +338,7 @@ export function InventoryView({
           title="No stock to follow yet"
           description="This page follows physical products whose stock the store counts."
         >
-          <div className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
+          <div className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
             <p className="font-medium text-ink">No stocked products.</p>
             <p className="mx-auto mt-1 max-w-prose">
               Once the store has a physical product with its stock set, this
@@ -739,7 +739,7 @@ export function InventoryView({
         key={target ?? "all"}
         href={inventoryHref(path, { status: target, sort, showAll: false })}
         aria-current={active ? "true" : undefined}
-        className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm ${active ? "border-brand bg-sunken font-medium" : "border-line"}`}
+        className={`inline-flex h-9 items-center gap-1.5 rounded-panel border px-3 text-sm ${active ? "border-brand bg-sunken font-medium" : "border-line"}`}
       >
         <span>{label}</span>
         <span className="tabular-nums text-muted">{formatCount(count)}</span>
@@ -757,13 +757,13 @@ export function InventoryView({
         description={`Variants that sell and are gone, or are estimated to run out within ${STOCKOUT_ALERT_DAYS} days at the pace of the last 7 and 30 days. Needs at least ${MIN_SOLD_30D} sold in 30 days, so a single sale raises nothing.`}
       >
         {report.alerts.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-line px-4 py-5 text-sm text-muted">
+          <div className="rounded-panel border border-dashed border-line px-4 py-5 text-sm text-muted">
             {noSales30
               ? "Nothing has sold in the last 30 days, so there is nothing to say about what will run out."
               : `Nothing that sells is out, or estimated to run out within ${STOCKOUT_ALERT_DAYS} days.`}
           </div>
         ) : (
-          <div className="rounded-lg border border-line bg-card p-4">
+          <div className="rounded-panel border border-line bg-card p-4">
             <ul className="space-y-3 text-sm">{shownAlerts.map(alertItem)}</ul>
             {foldedAlerts.length > 0 ? (
               <details className="mt-3 text-sm">

@@ -48,10 +48,10 @@ export function SupportSettingsForm({
   const body = (
     <fieldset disabled={disabled} className="flex flex-col gap-8">
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Who answers your customers</h2>
+        <h2 className="text-title text-ink">Who answers your customers</h2>
         <div role="radiogroup" aria-label="Who answers your customers" className="flex flex-col gap-2">
           {MODE_CHOICES.map((choice) => (
-            <label key={choice.mode} className="flex gap-3 rounded-lg border border-line bg-sunken p-3">
+            <label key={choice.mode} className="flex gap-3 rounded-panel bg-sunken p-3">
               <input type="radio" name="mode" value={choice.mode} checked={mode === choice.mode} onChange={() => setMode(choice.mode)} className="mt-1 size-4" />
               <span className="flex flex-col gap-1">
                 <span className="font-medium">{choice.title}</span>
@@ -83,7 +83,7 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">When nobody is there</h2>
+        <h2 className="text-title text-ink">When nobody is there</h2>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="emailFollowup" defaultChecked={settings.emailFollowup} className="mt-0.5 size-4" />
           <span>
@@ -99,7 +99,7 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Opening hours</h2>
+        <h2 className="text-title text-ink">Opening hours</h2>
         <p className="text-sm text-muted">
           Outside these hours customers are told nobody can answer now (and may leave their email). Without hours, someone can answer whenever one of your
           people is online. In {deskName}&apos;s time zone.
@@ -108,7 +108,7 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">What the AI may do for customers</h2>
+        <h2 className="text-title text-ink">What the AI may do for customers</h2>
         <p className="text-sm text-muted">
           With the AI first, the assistant may propose these to a signed-in customer. Nothing happens until the customer presses Confirm in the chat, and it runs
           with the same checks as on their own pages. Anything else (a refund, cancelling a paid order, a new address) it passes to your team as a request.
@@ -132,7 +132,7 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Silent partner</h2>
+        <h2 className="text-title text-ink">Silent partner</h2>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="partner" defaultChecked={settings.partner} className="mt-0.5 size-4" />
           <span>
@@ -144,7 +144,7 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">The customer&apos;s tone</h2>
+        <h2 className="text-title text-ink">The customer&apos;s tone</h2>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="toneOn" defaultChecked={settings.toneOn} className="mt-0.5 size-4" />
           <span>
@@ -164,7 +164,7 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Summaries</h2>
+        <h2 className="text-title text-ink">Summaries</h2>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="summariesOn" defaultChecked={settings.summariesOn} className="mt-0.5 size-4" />
           <span>
@@ -175,7 +175,7 @@ export function SupportSettingsForm({
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-lg font-medium">Conversations</h2>
+        <h2 className="text-title text-ink">Conversations</h2>
         <label className="flex flex-wrap items-center gap-2 text-sm">
           End a conversation with the assistant after
           <input type="number" name="endAfterMinutes" min={END_AFTER_MINUTES.min} max={END_AFTER_MINUTES.max} defaultValue={settings.endAfterMinutes} className={`${field} w-20`} />

@@ -15,8 +15,8 @@ import {
 const initial: OrderActionState = { ok: false, message: null };
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const label = "flex flex-col gap-1 text-sm font-medium";
-const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
-const secondary = "min-h-10 rounded-md border border-line px-4 text-sm disabled:opacity-50";
+const primary = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
+const secondary = "min-h-10 rounded-pill border border-edge px-4 text-sm disabled:opacity-50";
 
 type Ids = { storeSlug: string; orderId: string };
 

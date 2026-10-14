@@ -149,7 +149,7 @@ export default async function WorkAssignmentPage({
       />
 
       <section aria-labelledby="delete-heading" className="flex flex-col gap-2 border-t border-line pt-4">
-        <h2 id="delete-heading" className="text-sm font-medium">
+        <h2 id="delete-heading" className="text-title text-ink">
           Delete this assignment
         </h2>
         <p className="text-sm text-muted">

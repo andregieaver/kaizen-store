@@ -40,7 +40,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
     return (
       <div className="flex flex-col gap-3">
         <PageHeader title="Pick list" />
-        <p role="alert" className="rounded-lg border border-line bg-sunken p-4 text-sm">
+        <p role="alert" className="rounded-panel bg-sunken p-4 text-sm">
           {parsed.problem === "none" ? "Tick the orders to pick on the orders page, then choose Print pick list." : `A pick list takes at most ${PICK_LIST_MAX} orders. Tick fewer.`}
         </p>
         {back}
@@ -52,7 +52,7 @@ export default async function PickListPage({ params, searchParams }: PageProps<"
     return (
       <div className="flex flex-col gap-3">
         <PageHeader title="Pick list" />
-        <p role="alert" className="rounded-lg border border-line bg-sunken p-4 text-sm">
+        <p role="alert" className="rounded-panel bg-sunken p-4 text-sm">
           {data.problem === "too_many" ? `A pick list takes at most ${PICK_LIST_MAX} orders. Tick fewer.` : "Tick the orders to pick on the orders page."}
         </p>
         {back}

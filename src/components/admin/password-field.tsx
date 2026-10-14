@@ -52,7 +52,7 @@ export function PasswordField({
           onClick={() => setShown((value) => !value)}
           aria-pressed={shown}
           aria-controls={id}
-          className="min-h-10 rounded-md border border-line bg-card px-3"
+          className="min-h-10 rounded-pill border border-edge bg-card px-3"
         >
           {shown ? "Hide" : "Show"}
         </button>

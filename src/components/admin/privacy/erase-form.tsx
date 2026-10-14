@@ -14,7 +14,7 @@ type Action = (state: FormState, form: FormData) => Promise<FormState>;
 export function EraseForm({ email, action }: { email: string | null; action: Action }) {
   return (
     <section aria-labelledby="erase-confirm" className={card}>
-      <h2 id="erase-confirm" className="font-medium">
+      <h2 id="erase-confirm" className="text-title text-ink">
         Confirm
       </h2>
       <ActionForm action={action} className="flex flex-col gap-3" successMessage="Done.">

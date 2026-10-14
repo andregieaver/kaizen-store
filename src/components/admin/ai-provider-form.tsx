@@ -493,7 +493,7 @@ function VisionField({
   // Empty checks the text model, which is what would be used.
   const checked = () => value.trim() || (document.getElementById(textId) as HTMLInputElement | null)?.value.trim() || "";
   return (
-    <div id="vision" className="flex scroll-mt-20 flex-col gap-2 rounded-lg border border-line p-4 text-sm">
+    <div id="vision" className="flex scroll-mt-20 flex-col gap-2 rounded-panel border border-line p-4 text-sm">
       <label htmlFor={id} className="font-medium">
         Model that sees pictures
       </label>
@@ -519,7 +519,7 @@ function VisionField({
               type="button"
               aria-pressed={value === s.model}
               onClick={() => change(s.model)}
-              className={`min-h-9 rounded-md border px-3 text-left ${value === s.model ? "border-brand bg-sunken" : "border-edge hover:bg-sunken"}`}
+              className={`min-h-9 rounded-pill border px-3 text-left ${value === s.model ? "border-brand bg-sunken" : "border-edge hover:bg-sunken"}`}
             >
               <span className="font-mono text-xs">{s.model}</span>
               <span className="ml-2 text-muted">{s.note}</span>

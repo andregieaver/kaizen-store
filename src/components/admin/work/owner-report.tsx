@@ -24,7 +24,7 @@ const chip = (current: boolean) =>
   `inline-flex min-h-9 items-center rounded-full border border-edge px-3 text-sm ${
     current ? "bg-brand text-brand-ink" : "bg-card"
   }`;
-const th = "px-3 py-2 text-right text-xs font-medium tracking-wide text-muted uppercase";
+const th = "px-3 py-2 text-right text-eyebrow text-muted uppercase";
 const td = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
 
 /**
@@ -64,7 +64,7 @@ export function OwnerReportView({
       </div>
 
       {params.problem && (
-        <p role="alert" className="rounded-lg border border-line bg-card p-4 text-sm text-danger-text">
+        <p role="alert" className="rounded-panel border border-line bg-card p-4 text-sm text-danger-text">
           {params.problem} Showing this month instead.
         </p>
       )}
@@ -128,7 +128,7 @@ export function OwnerReportView({
           Nothing to report in these days: no time was logged, no invoice was issued and no draft was made.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
+        <div className="overflow-x-auto rounded-panel border border-line bg-card">
           <table className="w-full text-sm">
             <caption className="sr-only">
               Work report from {report.from} to {report.to}, by {report.by}

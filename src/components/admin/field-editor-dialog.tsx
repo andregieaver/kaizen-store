@@ -63,7 +63,7 @@ export type FieldLanguage = { locale: string; name: string };
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
-const small = "min-h-9 rounded-md border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-40";
+const small = "min-h-9 rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-40";
 
 const PLACEHOLDER_TYPES: readonly FieldType[] = ["text", "textarea", "email", "url", "phone", "number", "measurement", "money"];
 

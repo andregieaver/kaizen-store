@@ -41,7 +41,7 @@ function useMenu() {
 export type SwitcherStore = { slug: string; name: string; role: "owner" | "admin"; suspended?: boolean };
 
 const item = "flex min-h-10 items-center gap-2 rounded-md px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium";
-const heading = "px-3 pb-1 pt-1 text-xs font-medium tracking-wide text-muted uppercase";
+const heading = "px-3 pb-1 pt-1 text-eyebrow text-muted uppercase";
 /** The links of a section sit a step in from its heading, with a rule down their side. */
 const indented = "ml-3 flex flex-col gap-0.5 border-l border-line pl-1";
 
@@ -107,7 +107,7 @@ export function AdminSwitcher({
         onClick={toggle}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex min-h-10 max-w-full items-center gap-2 rounded-md px-2 hover:bg-sunken"
+        className="flex min-h-10 max-w-full items-center gap-2 rounded-pill px-2 hover:bg-sunken"
       >
         <span className="hidden font-medium sm:inline">Kaizen</span>
         <span aria-hidden="true" className="hidden text-muted sm:inline">
@@ -117,7 +117,7 @@ export function AdminSwitcher({
         <Chevron />
       </button>
       {open && (
-        <div role="menu" aria-label="Go to" className="absolute left-0 top-full z-50 mt-1 flex max-h-[80dvh] w-72 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto rounded-lg border border-line bg-card p-2 shadow-xl">
+        <div role="menu" aria-label="Go to" className="absolute left-0 top-full z-50 mt-1 flex max-h-[80dvh] w-72 max-w-[calc(100vw-2rem)] flex-col gap-2 overflow-y-auto rounded-panel border border-line bg-card p-2 shadow-xl">
           {owner && (
             <Link role="menuitem" href="/admin" aria-current={level === "control" ? "page" : undefined} className={`${item} font-medium`}>
               Control center
@@ -192,7 +192,7 @@ export function AccountMenu({ avatar, name, email, children }: { avatar: ReactNo
         {avatar}
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-1 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-lg border border-line bg-card p-2 shadow-xl">
+        <div role="menu" className="absolute right-0 top-full z-50 mt-1 flex w-72 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-panel border border-line bg-card p-2 shadow-xl">
           <div className="px-3 py-2">
             {name && <p className="truncate text-sm font-medium">{name}</p>}
             <p className="truncate text-sm text-muted">{email}</p>

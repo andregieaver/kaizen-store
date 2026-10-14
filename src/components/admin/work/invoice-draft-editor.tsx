@@ -420,7 +420,7 @@ export function DraftEditor(props: DraftEditorProps) {
       <Problems messages={actionProblems} />
 
       <section aria-labelledby="details-heading" className={card}>
-        <h2 id="details-heading" className="font-medium">
+        <h2 id="details-heading" className="text-title text-ink">
           <button
             type="button"
             onClick={() => setDetailsOpen(!detailsShown)}
@@ -606,7 +606,7 @@ export function DraftEditor(props: DraftEditorProps) {
 
       <section id="invoice-lines" aria-labelledby="lines-heading" className={card}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 id="lines-heading" className="font-medium">
+          <h2 id="lines-heading" className="text-title text-ink">
             Lines
           </h2>
           <div className="flex flex-wrap items-center gap-2">
@@ -674,7 +674,7 @@ export function DraftEditor(props: DraftEditorProps) {
       </section>
 
       <section aria-labelledby="ready-heading" className={card}>
-        <h2 id="ready-heading" className="mb-3 font-medium">
+        <h2 id="ready-heading" className="mb-3 text-title text-ink">
           Before you issue
         </h2>
         {readiness ? (

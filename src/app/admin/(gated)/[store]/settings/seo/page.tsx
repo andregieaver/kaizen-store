@@ -44,7 +44,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
       />
 
       <section aria-labelledby="status-heading" className={card}>
-        <h2 id="status-heading" className="font-medium">
+        <h2 id="status-heading" className="text-title text-ink">
           {findable ? "Search engines can find your store" : "Search engines are asked to leave your store out"}
         </h2>
         <p className="text-sm">
@@ -94,7 +94,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
       >
         <section aria-labelledby="home-heading" className={card}>
           <div>
-            <h2 id="home-heading" className="font-medium">
+            <h2 id="home-heading" className="text-title text-ink">
               Your front page in search results
             </h2>
             <p className={hint}>Empty fields use the store&apos;s name and a line Kaizen writes.</p>
@@ -116,7 +116,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
 
         <section aria-labelledby="share-heading" className={card}>
           <div>
-            <h2 id="share-heading" className="font-medium">
+            <h2 id="share-heading" className="text-title text-ink">
               Share picture
             </h2>
             <p className={hint}>
@@ -134,7 +134,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
         </section>
 
         <section aria-labelledby="profiles-heading" className={card}>
-          <h2 id="profiles-heading" className="font-medium">
+          <h2 id="profiles-heading" className="text-title text-ink">
             Your business elsewhere
           </h2>
           <label className={label}>
@@ -155,7 +155,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
 
         <section aria-labelledby="ai-heading" className={card}>
           <div>
-            <h2 id="ai-heading" className="font-medium">
+            <h2 id="ai-heading" className="text-title text-ink">
               AI assistants
             </h2>
             <p className={hint}>
@@ -201,7 +201,7 @@ export default async function SeoPage({ params }: PageProps<"/admin/[store]/sett
         </section>
 
         <section aria-labelledby="advanced-heading" className={card}>
-          <h2 id="advanced-heading" className="font-medium">
+          <h2 id="advanced-heading" className="text-title text-ink">
             Advanced
           </h2>
           <label className="flex items-start gap-2 text-sm">

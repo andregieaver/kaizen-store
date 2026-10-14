@@ -35,7 +35,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
         />
         {/* The customer file (D165) holds personal data, so only the owner is offered it. */}
         {memberCan(member, "owner") && (
-          <Link href={`${base}/export`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium">
+          <Link href={`${base}/export`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
             Export
           </Link>
         )}
@@ -63,7 +63,7 @@ export default async function CustomersPage({ params, searchParams }: PageProps<
       </form>
 
       {customers.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           {q ? "No customer matches the search." : "No customers yet. They show here once someone signs up or buys."}
         </p>
       ) : (

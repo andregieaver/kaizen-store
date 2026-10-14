@@ -36,7 +36,7 @@ function ReferrerActions({ referrer }: { referrer: AdminReferrer }) {
     <div className="flex flex-col gap-2">
       {referrer.blockedAt ? (
         <form action={unblockReferrerAction.bind(null, referrer.accountId)}>
-          <button type="submit" className="min-h-9 rounded-md border border-line px-3 text-sm">
+          <button type="submit" className="min-h-9 rounded-pill border border-edge px-3 text-sm">
             Unblock<span className="sr-only"> {referrer.email}</span>
           </button>
         </form>
@@ -138,11 +138,11 @@ export default async function PlatformReferralsPage() {
 
       <Section id="referrers-heading" title="Referrers">
         {referrers.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
             No one has opened Referrals yet.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
+          <div className="overflow-x-auto rounded-panel border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
@@ -198,11 +198,11 @@ export default async function PlatformReferralsPage() {
 
       <Section id="referred-heading" title="Referred stores">
         {referrals.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
             No store has opened through a referral yet.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
+          <div className="overflow-x-auto rounded-panel border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
@@ -245,7 +245,7 @@ export default async function PlatformReferralsPage() {
                     <td className="px-4 py-2">
                       {r.status === "void" ? (
                         <form action={restoreReferralAction.bind(null, r.id)}>
-                          <button type="submit" className="min-h-9 rounded-md border border-line px-3 text-sm">
+                          <button type="submit" className="min-h-9 rounded-pill border border-edge px-3 text-sm">
                             Count again<span className="sr-only"> {r.storeName}</span>
                           </button>
                         </form>

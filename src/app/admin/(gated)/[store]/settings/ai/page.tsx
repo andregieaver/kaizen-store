@@ -56,7 +56,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
       </div>
 
       <section aria-labelledby="about" className={card}>
-        <h2 id="about" className="mb-1 font-medium">What the store uses AI for</h2>
+        <h2 id="about" className="mb-1 text-title text-ink">What the store uses AI for</h2>
         <p className="text-sm">
           Search by meaning, so shoppers find products described in other words than theirs. Search still works by the words
           alone whenever the AI does not answer. Kaizen&apos;s AI is included in your plan; you can use your own provider instead,
@@ -65,7 +65,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
       </section>
 
       <section aria-labelledby="own" className={card}>
-        <h2 id="own" className="mb-1 font-medium">Your own AI provider</h2>
+        <h2 id="own" className="mb-1 text-title text-ink">Your own AI provider</h2>
         {owner ? (
           <>
             <p className="mb-4 text-sm text-muted">
@@ -86,7 +86,7 @@ export default async function StoreAiPage({ params }: PageProps<"/admin/[store]/
 
       {own && owner && (
         <section aria-labelledby="test" className={card}>
-          <h2 id="test" className="mb-1 font-medium">Test</h2>
+          <h2 id="test" className="mb-1 text-title text-ink">Test</h2>
           <p className="mb-3 text-sm text-muted">Tries your saved models now, even while off.</p>
           <AiTestButton action={testStoreAiAction.bind(null, store.slug)} />
           <div className="mt-4 border-t border-line pt-4">

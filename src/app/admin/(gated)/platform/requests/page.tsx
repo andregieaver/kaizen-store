@@ -36,7 +36,7 @@ export default async function PlatformPage() {
       />
 
       <section aria-labelledby="pending-heading" className="flex flex-col gap-4">
-        <h2 id="pending-heading" className="font-medium">
+        <h2 id="pending-heading" className="text-title text-ink">
           Waiting ({pending.length})
         </h2>
         {pending.length === 0 ? (
@@ -48,10 +48,10 @@ export default async function PlatformPage() {
 
       {decided.length > 0 && (
         <section aria-labelledby="decided-heading">
-          <h2 id="decided-heading" className="mb-3 font-medium">
+          <h2 id="decided-heading" className="mb-3 text-title text-ink">
             Recently decided
           </h2>
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {decided.map((request) => (
               <li key={request.id} className="flex flex-wrap justify-between gap-2 px-4 py-2">
                 <span>
@@ -95,7 +95,7 @@ async function PendingRequest({ request, starters, designs }: { request: AccessR
       className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
     >
       <div>
-        <h3 id={`request-${request.id}`} className="font-medium">
+        <h3 id={`request-${request.id}`} className="text-body-strong text-ink">
           {request.storeName}
         </h3>
         <p className="text-sm">

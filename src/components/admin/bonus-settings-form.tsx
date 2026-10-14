@@ -153,7 +153,7 @@ export function BonusSettingsView({
     <form onSubmit={onSubmit} noValidate aria-busy={pending} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="flex min-w-0 flex-col gap-6 border-0 p-0">
         <div className={card} role="group" aria-labelledby="bonus-switch-heading">
-          <h2 id="bonus-switch-heading" className="font-medium">
+          <h2 id="bonus-switch-heading" className="text-title text-ink">
             Bonus program
           </h2>
           <p className="text-sm text-muted">{BONUS_EXPLANATION}</p>
@@ -316,7 +316,7 @@ export function BonusSettingsView({
       </fieldset>
 
       <section aria-labelledby="bonus-summary-heading" className={card}>
-        <h2 id="bonus-summary-heading" className="font-medium">
+        <h2 id="bonus-summary-heading" className="text-title text-ink">
           What shoppers will read
         </h2>
         <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">

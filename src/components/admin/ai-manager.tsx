@@ -331,7 +331,7 @@ export function AiManagerChat({
 
   if (!abilities.text) {
     return (
-      <p className="m-4 rounded-lg border border-line p-4 text-sm">
+      <p className="m-4 rounded-panel border border-line p-4 text-sm">
         The AI manager uses {area === "store" ? "the store's" : "Kaizen's"} AI and needs a text model.{" "}
         <Link href={settingsHref} className="underline" onClick={onNavigate}>
           Set one up under AI
@@ -404,7 +404,7 @@ export function AiManagerChat({
       ) : (
         <div ref={scrollRef} className={`flex flex-1 flex-col gap-3 ${panel ? "overflow-y-auto p-4" : ""}`} aria-live="polite">
           {thread.length === 0 && !busy && (
-            <div className="flex flex-col gap-3 rounded-lg border border-line p-4">
+            <div className="flex flex-col gap-3 rounded-panel border border-line p-4">
               <p className="text-sm">
                 {area === "store"
                   ? `I know every part of ${siteName}'s admin, can look at orders, products, customers and sales, and can take you to the right page. Changes that email customers, change the site or cost money wait for your yes.`
@@ -588,7 +588,7 @@ function VoiceBar({
   const words = muted && (status === "listening" || status === "hearing") ? { label: "Muted", hint: "Unmute to talk." } : VOICE_WORDS[status];
   const busy = status === "thinking" || status === "starting";
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-line p-2" aria-label="Voice mode">
+    <div className="flex items-center gap-3 rounded-panel border border-line p-2" aria-label="Voice mode">
       <span aria-hidden="true" className="relative flex size-11 shrink-0 items-center justify-center">
         <span
           className="absolute inset-0 rounded-full bg-inverse/15 transition-transform duration-75"
@@ -601,11 +601,11 @@ function VoiceBar({
         <p className="truncate text-xs text-muted">{words.hint}</p>
       </div>
       {status === "speaking" && (
-        <button type="button" onClick={onInterrupt} className="rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken">
+        <button type="button" onClick={onInterrupt} className="rounded-pill border border-edge px-2 py-1 text-xs hover:bg-sunken">
           Interrupt
         </button>
       )}
-      <button type="button" onClick={onMute} aria-pressed={muted} className="rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken">
+      <button type="button" onClick={onMute} aria-pressed={muted} className="rounded-pill border border-edge px-2 py-1 text-xs hover:bg-sunken">
         {muted ? "Unmute" : "Mute"}
       </button>
       <button type="button" onClick={onEnd} className="rounded-pill bg-brand px-2 py-1 text-xs text-brand-ink" title="End voice mode (Esc)">
@@ -619,7 +619,7 @@ function VoiceBar({
 function CallBar({ state, working, muted, onMute, onEnd }: { state: LiveState; working: boolean; muted: boolean; onMute: () => void; onEnd: () => void }) {
   const on = state === "live";
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-line p-2" aria-label="Voice call">
+    <div className="flex items-center gap-3 rounded-panel border border-line p-2" aria-label="Voice call">
       <span aria-hidden="true" className="relative flex size-11 shrink-0 items-center justify-center">
         <span className={`absolute inset-0 rounded-full bg-inverse/15 ${on && !muted ? "animate-ping [animation-duration:2s]" : ""}`} />
         <span className={`size-6 rounded-full bg-brand ${working || !on ? "animate-pulse" : ""} ${muted ? "opacity-30" : ""}`} />
@@ -628,7 +628,7 @@ function CallBar({ state, working, muted, onMute, onEnd }: { state: LiveState; w
         <p className="text-sm font-medium">{!on ? "Connecting …" : muted ? "Muted" : working ? "Looking into it …" : "On a call: just talk"}</p>
         <p className="truncate text-xs text-muted">{on ? "It hears you while it speaks; talk over it any time." : "Allow the microphone if the browser asks."}</p>
       </div>
-      <button type="button" onClick={onMute} aria-pressed={muted} disabled={!on} className="rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken disabled:opacity-50">
+      <button type="button" onClick={onMute} aria-pressed={muted} disabled={!on} className="rounded-pill border border-edge px-2 py-1 text-xs hover:bg-sunken disabled:opacity-50">
         {muted ? "Unmute" : "Mute"}
       </button>
       <button type="button" onClick={onEnd} className="rounded-pill bg-brand px-2 py-1 text-xs text-brand-ink" title="End the call (Esc)">
@@ -686,8 +686,8 @@ function Bubble({ message, onRate, onOpen }: { message: AssistantMessage; onRate
 
 function ApprovalCard({ approval, onDecide }: { approval: Approval; onDecide: (approval: Approval, approve: boolean) => void }) {
   return (
-    <div className="flex max-w-[46rem] flex-col gap-2 rounded-lg border border-line p-3" role="group" aria-label="Waiting for your approval">
-      <p className="text-xs font-medium tracking-wide text-muted uppercase">{GATE_WORDS[approval.category]}</p>
+    <div className="flex max-w-[46rem] flex-col gap-2 rounded-panel border border-line p-3" role="group" aria-label="Waiting for your approval">
+      <p className="text-eyebrow text-muted uppercase">{GATE_WORDS[approval.category]}</p>
       <p className="text-sm whitespace-pre-wrap wrap-anywhere">{approval.summary}</p>
       {approval.status === "pending" ? (
         <div className="flex gap-2">

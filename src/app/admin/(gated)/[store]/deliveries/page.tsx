@@ -51,7 +51,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
       {rounds.map(({ schedule, current, next }) => (
         <section key={schedule.id} aria-label={schedule.name} className={card}>
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-medium">
+            <h2 className="text-title text-ink">
               {schedule.name} <span className="font-normal text-muted">· {schedule.marketCode}</span>
               {!schedule.active && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs text-muted">Off</span>}
             </h2>
@@ -61,7 +61,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
           </div>
           {current ? (
             <>
-              <h3 className="mb-2 text-sm font-medium">
+              <h3 className="mb-2 text-body-strong text-ink">
                 {day(current.date)}: {current.orders.length} {current.orders.length === 1 ? "order" : "orders"}
                 {current.skipped > 0 && <span className="font-normal text-muted"> · {current.skipped} without a delivery (skipped, paused or empty)</span>}
               </h3>
@@ -114,7 +114,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
 
       {owner && (
         <section aria-labelledby="add-day" className={card}>
-          <h2 id="add-day" className="mb-1 font-medium">
+          <h2 id="add-day" className="mb-1 text-title text-ink">
             {rounds.length === 0 ? "Add your first delivery day" : "Add a delivery day"}
           </h2>
           <p className="mb-4 text-sm text-muted">
@@ -125,7 +125,7 @@ export default async function DeliveriesPage({ params }: PageProps<"/admin/[stor
       )}
 
       <section aria-labelledby="lists" className={card}>
-        <h2 id="lists" className="mb-3 font-medium">
+        <h2 id="lists" className="mb-3 text-title text-ink">
           Lists
         </h2>
         {lists.length === 0 ? (

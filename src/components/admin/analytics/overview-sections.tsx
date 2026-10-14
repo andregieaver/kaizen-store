@@ -116,7 +116,7 @@ export function SectionUnavailable({ id, title }: { id: string; title: string })
 /** What a figure or panel that needs visit counting says: what it gives, that it sets no cookie, and (for an owner) where to switch it on. */
 function VisitCountingOff({ base, isOwner, gives }: { base: string; isOwner: boolean; gives: string }) {
   return (
-    <div className="space-y-2 rounded-lg border border-dashed border-line px-4 py-5 text-sm">
+    <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-5 text-sm">
       <p className="font-medium">Turn on visit counting</p>
       <p className="text-muted">
         {gives} Visit counting sets no cookies and needs no consent banner. It only counts from the day it is switched on.
@@ -134,7 +134,7 @@ function VisitCountingOff({ base, isOwner, gives }: { base: string; isOwner: boo
 
 function Stat({ label, caption, value, reason }: { label: string; caption: string; value: string | null; reason: string }) {
   return (
-    <div className="min-w-0 rounded-lg border border-line bg-card p-3">
+    <div className="min-w-0 rounded-panel border border-line bg-card p-3">
       <dt className="text-xs font-medium text-muted" title={caption}>
         {label}
       </dt>
@@ -224,7 +224,7 @@ export function AnswerSection({ frame, data, visitCounting }: { frame: OverviewF
   return (
     <>
       <AnalyticsSection id="overview-making-money" title="Are we making money?" description={`${params.period.label}, in ${currency} without VAT. Each figure links to the page that explains it.`}>
-        <div className="space-y-1 rounded-lg border border-line bg-sunken p-4 text-sm">
+        <div className="space-y-1 rounded-panel bg-sunken p-4 text-sm">
           {moneyLines(data, money).map((line, i) => (
             <p key={i} className={i === 0 ? "text-base font-medium" : "text-muted"}>
               {line}
@@ -290,12 +290,12 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
               exportLeftOut={{ orders: data.unconverted, currencies: data.missingCurrencies }}
             />
           ) : (
-            <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-muted">No sales in this period yet. Net revenue by {per} shows here once orders are paid.</p>
+            <p className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">No sales in this period yet. Net revenue by {per} shows here once orders are paid.</p>
           )}
         </ChartCard>
         {costsMissing ? (
           <ChartCard title="Contribution profit" description="What is left of net revenue after what the sales cost.">
-            <div className="space-y-2 rounded-lg border border-dashed border-line px-4 py-6 text-sm">
+            <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-6 text-sm">
               <p className="font-medium">Add what your products cost to see profit</p>
               <p className="text-muted">Until costs are entered for enough of your sales, profit would only be revenue under another name, so none is shown.</p>
               {isOwner ? (
@@ -324,7 +324,7 @@ export function ChartsSection({ frame, data }: { frame: OverviewFrame; data: Ove
                 exportLeftOut={{ orders: data.unconverted, currencies: data.missingCurrencies }}
               />
             ) : (
-              <p className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-muted">No sales in this period yet, so there is no profit to show.</p>
+              <p className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">No sales in this period yet, so there is no profit to show.</p>
             )}
           </ChartCard>
         )}
@@ -355,13 +355,13 @@ export function DiagnosisSection({ frame, diagnosis }: { frame: OverviewFrame; d
       }
     >
       {diagnosis.explanation.direction === "unknown" ? (
-        <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{diagnosis.explanation.reason ?? diagnosis.explanation.sentences[0]}</p>
+        <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">{diagnosis.explanation.reason ?? diagnosis.explanation.sentences[0]}</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard title="What moved revenue" description="Each factor's own change. Together they make the change in revenue.">
             <HorizontalBars label="Change in each factor" rows={factorRows(diagnosis.explanation)} exportId="overview.factors" />
           </ChartCard>
-          <div className="min-w-0 space-y-2 rounded-lg border border-line bg-card p-4 text-sm">
+          <div className="min-w-0 space-y-2 rounded-panel border border-line bg-card p-4 text-sm">
             {diagnosis.explanation.sentences.map((line, i) => (
               <p key={i} className={i === 0 ? "text-base font-medium" : "text-muted"}>
                 {line}
@@ -411,7 +411,7 @@ export function FunnelSection({ frame, traffic }: { frame: OverviewFrame; traffi
     >
       {traffic.sessions === null ? (
         countingOn ? (
-          <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">No visits were counted in this period, so there is no funnel to show yet.</p>
+          <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">No visits were counted in this period, so there is no funnel to show yet.</p>
         ) : (
           <VisitCountingOff base={frame.base} isOwner={frame.isOwner} gives="It shows how many people visit, look at a product, add to the cart and check out, and where they leave." />
         )
@@ -474,7 +474,7 @@ export function ProductsSection({ frame, top }: { frame: OverviewFrame; top: Top
         </ChartCard>
         <ChartCard title="By profit" description="Revenue less the cost of what was sold, before refunds.">
           {revenueRows.length > 0 && profitRows.length === 0 ? (
-            <div className="space-y-2 rounded-lg border border-dashed border-line px-4 py-6 text-sm">
+            <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-6 text-sm">
               <p className="font-medium">Add what your products cost to rank them by profit</p>
               {frame.isOwner ? (
                 <Link href={settingsHref} className={linkClass}>
@@ -522,7 +522,7 @@ export function ChannelsSection({ frame, marketing }: { frame: OverviewFrame; ma
     >
       {marketing.table === null ? (
         marketing.counting ? (
-          <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">No visits were counted in this period, so orders cannot be tied to a channel yet.</p>
+          <p className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">No visits were counted in this period, so orders cannot be tied to a channel yet.</p>
         ) : (
           <VisitCountingOff base={frame.base} isOwner={frame.isOwner} gives="It shows which channels (search, social, email and so on) your visits and orders come from." />
         )
@@ -550,7 +550,7 @@ export function TargetSection({ frame, target }: { frame: OverviewFrame; target:
   return (
     <AnalyticsSection id="overview-target" title={`Target for ${target.monthLabel}`} description="Net revenue so far this month against the month's target, whatever period is picked above.">
       {p.status === "no_target" ? (
-        <div className="space-y-2 rounded-lg border border-dashed border-line px-4 py-5 text-sm">
+        <div className="space-y-2 rounded-panel border border-dashed border-line px-4 py-5 text-sm">
           <p className="font-medium">No target is set for {target.monthLabel}</p>
           <p className="text-muted">
             A target shows whether the month is on pace. So far this month the store has {money(p.actualMinor)} in net revenue.
@@ -564,7 +564,7 @@ export function TargetSection({ frame, target }: { frame: OverviewFrame; target:
           )}
         </div>
       ) : (
-        <div className="space-y-3 rounded-lg border border-line bg-card p-4">
+        <div className="space-y-3 rounded-panel border border-line bg-card p-4">
           <Meter label={`Net revenue against the target for ${target.monthLabel}`} value={p.actualMinor} target={p.targetMinor} expected={p.tooEarly ? null : p.expectedByTodayMinor} format={money} />
           <ul className="space-y-1 text-sm text-muted">
             {lines.map((line, i) => (
@@ -588,7 +588,7 @@ export function ForecastSection({ frame, forecast }: { frame: OverviewFrame; for
       description="Where the month's net revenue is heading if the last weeks' pace holds. An estimate, not a promise."
       action={<StatusPill tone="neutral">Estimate</StatusPill>}
     >
-      <div className="space-y-2 rounded-lg border border-line bg-card p-4 text-sm">
+      <div className="space-y-2 rounded-panel border border-line bg-card p-4 text-sm">
         {forecastLines(forecast, money).map((line, i) => (
           <p key={i} className={i === 0 ? "text-base font-medium" : "text-muted"}>
             {line}

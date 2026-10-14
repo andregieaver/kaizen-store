@@ -92,7 +92,7 @@ export function RedirectTable({ rows, timeZone, actions, canWrite }: { rows: Tab
   return (
     <div className="flex flex-col gap-3" aria-busy={pending}>
       {canWrite && selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-sunken p-3 text-sm" role="group" aria-label="Selected redirects">
+        <div className="flex flex-wrap items-center gap-3 rounded-panel bg-sunken p-3 text-sm" role="group" aria-label="Selected redirects">
           {asking && asking.length > 1 ? (
             <>
               <span>Delete {asking.length} redirects? Browsers that have seen them may keep following them for a while.</span>

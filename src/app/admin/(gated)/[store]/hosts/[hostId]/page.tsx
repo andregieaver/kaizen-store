@@ -58,13 +58,13 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
         </p>
       )}
       <section aria-labelledby="listings-heading" className="flex flex-col gap-2">
-        <h2 id="listings-heading" className="font-medium">
+        <h2 id="listings-heading" className="text-title text-ink">
           Listings
         </h2>
         {listings.length === 0 ? (
           <p className="text-sm text-muted">None yet. Choose this host in a stay or rental.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {listings.map((l) => (
               <li key={l.id} className="flex justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/products/${l.id}`} className="underline-offset-2 hover:underline">
@@ -77,7 +77,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
         )}
       </section>
       <section aria-labelledby="payments-heading" className="flex flex-col gap-2">
-        <h2 id="payments-heading" className="font-medium">
+        <h2 id="payments-heading" className="text-title text-ink">
           Payments
         </h2>
         <p className="text-sm text-muted">
@@ -100,7 +100,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
           </p>
         )}
         {earnings.length > 0 && (
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {earnings.map((e) => (
               <li key={e.paymentId} className="flex flex-wrap justify-between gap-3 p-3">
                 <Link href={`/admin/${store.slug}/orders/${e.orderId}`} className="underline-offset-2 hover:underline">
@@ -124,7 +124,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
         )}
       </section>
       <section aria-labelledby="tax-heading" className="flex flex-col gap-1 text-sm">
-        <h2 id="tax-heading" className="font-medium">
+        <h2 id="tax-heading" className="text-title text-ink">
           Tax details (DAC7)
         </h2>
         {tax ? (
@@ -142,7 +142,7 @@ export default async function HostPage({ params }: PageProps<"/admin/[store]/hos
       </section>
       {owner && (
         <form action={setHostDisabledAction.bind(null, store.slug, host.id, !host.disabled)}>
-          <button type="submit" className="min-h-10 rounded-md border border-line px-3 text-sm">
+          <button type="submit" className="min-h-10 rounded-pill border border-edge px-3 text-sm">
             {host.disabled ? "Give access back" : "Take away access"}
           </button>
           <span className="ml-2 text-sm text-muted">

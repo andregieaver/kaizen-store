@@ -82,13 +82,13 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
       </Card>
 
       <section aria-labelledby="bookings-heading" className="flex flex-col gap-2">
-        <h2 id="bookings-heading" className="font-medium">
+        <h2 id="bookings-heading" className="text-title text-ink">
           Bookings, the next three months
         </h2>
         {bookings.length === 0 ? (
           <p className="text-sm text-muted">None yet.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {bookings.map((b) => (
               <li key={b.id} className="flex flex-wrap justify-between gap-2 p-3">
                 <span>
@@ -110,14 +110,14 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
       </section>
 
       <section aria-labelledby="calendars-heading" className="flex flex-col gap-2">
-        <h2 id="calendars-heading" className="font-medium">
+        <h2 id="calendars-heading" className="text-title text-ink">
           Your rooms and items
         </h2>
         <p className="text-sm text-muted">Block dates, and link your Airbnb or Booking.com calendars, so nothing is booked twice.</p>
         {resources.length === 0 ? (
           <p className="text-sm text-muted">The store has not given you any yet.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {resources.map((r) => (
               <li key={r.id} className="flex justify-between gap-3 p-3">
                 <span>{r.name}</span>
@@ -131,13 +131,13 @@ export default async function HostOverviewPage({ params }: PageProps<"/admin/hos
       </section>
 
       <section aria-labelledby="listings-heading" className="flex flex-col gap-2">
-        <h2 id="listings-heading" className="font-medium">
+        <h2 id="listings-heading" className="text-title text-ink">
           Your listings
         </h2>
         {listings.length === 0 ? (
           <p className="text-sm text-muted">The store has not listed anything for you yet.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {listings.map((l) => (
               <li key={l.id} className="flex justify-between gap-3 p-3">
                 <span>{l.title}</span>

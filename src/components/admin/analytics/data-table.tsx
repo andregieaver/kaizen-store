@@ -163,7 +163,7 @@ export function DataTable<R>({
 }) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
+      <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
         <span className="sr-only">{`${caption}: `}</span>
         {empty}
       </div>
@@ -173,7 +173,7 @@ export function DataTable<R>({
   // The more columns, the less room between them: a table of twelve has to fit a laptop's width without hiding its last columns.
   const pad = columns.length >= 10 ? "px-1" : columns.length >= 8 ? "px-1.5" : "px-3";
   const table = (
-    <div className={`relative overflow-x-auto rounded-lg border border-line bg-card ${sticky ? "max-h-[32rem] overflow-y-auto" : ""}`}>
+    <div className={`relative overflow-x-auto rounded-panel border border-line bg-card ${sticky ? "max-h-[32rem] overflow-y-auto" : ""}`}>
       <table className="w-full border-collapse text-[13px]">
         <caption className={showCaption ? "px-3 py-2 text-left text-xs font-medium text-muted" : "sr-only"}>{caption}</caption>
         <thead>

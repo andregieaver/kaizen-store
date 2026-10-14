@@ -62,7 +62,7 @@ export async function ChatAgentView({
       />
 
       <section aria-labelledby="about" className={card}>
-        <h2 id="about" className="mb-1 font-medium">How it works</h2>
+        <h2 id="about" className="mb-1 text-title text-ink">How it works</h2>
         <p className="text-sm">
           Visitors chat with an AI assistant in the corner of every page, in writing or aloud. It answers from the site&apos;s
           published pages and articles{storeId ? ", its products with their prices and stock, shipping" : ""} and the knowledge
@@ -73,7 +73,7 @@ export async function ChatAgentView({
       </section>
 
       <section aria-labelledby="agent" className={card}>
-        <h2 id="agent" className="mb-4 font-medium">The agent</h2>
+        <h2 id="agent" className="mb-4 text-title text-ink">The agent</h2>
         <ChatAgentForm
           agent={
             agent
@@ -97,7 +97,7 @@ export async function ChatAgentView({
       </section>
 
       <section aria-labelledby="knowledge" className={card}>
-        <h2 id="knowledge" className="mb-1 font-medium">Knowledge base</h2>
+        <h2 id="knowledge" className="mb-1 text-title text-ink">Knowledge base</h2>
         <p className="mb-4 text-sm text-muted">
           What the agent should know beyond the site&apos;s pages: delivery and returns in detail, care guides, sizes, opening hours,
           answers to common questions. It reads {status.passages} {status.passages === 1 ? "passage" : "passages"} from{" "}
@@ -133,7 +133,7 @@ export async function ChatAgentView({
 
         {documents.length < DOCUMENTS_MAX ? (
           <ActionForm action={addDocument} className="flex flex-col gap-3">
-            <h3 className="font-medium">Add a document</h3>
+            <h3 className="text-body-strong text-ink">Add a document</h3>
             <label className="flex flex-col gap-1">
               <span className="text-sm">Title</span>
               <input name="title" maxLength={200} className={field} placeholder="Returns and exchanges" />

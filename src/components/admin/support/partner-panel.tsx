@@ -132,7 +132,7 @@ export function PartnerPanel({
             className="rounded-md border border-dashed border-line bg-card px-2 py-1.5"
           />
         </label>
-        <button type="submit" disabled={busy || !question.trim() || conversation.status !== "open"} className="self-end rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken disabled:opacity-50">
+        <button type="submit" disabled={busy || !question.trim() || conversation.status !== "open"} className="self-end rounded-pill border border-edge px-2 py-1 text-xs hover:bg-sunken disabled:opacity-50">
           Ask
         </button>
       </form>
@@ -169,7 +169,7 @@ export function PartnerPanel({
                   <p className="text-xs text-muted">A reply you could send</p>
                   <p className="whitespace-pre-line rounded bg-sunken p-2">{data.draft}</p>
                   {mine && (
-                    <button type="button" onClick={() => onUse(data.draft!)} className="self-start rounded-md border border-edge px-2 py-1 text-xs hover:bg-sunken">
+                    <button type="button" onClick={() => onUse(data.draft!)} className="self-start rounded-pill border border-edge px-2 py-1 text-xs hover:bg-sunken">
                       Use
                     </button>
                   )}

@@ -14,7 +14,7 @@ export function CancelBookingForm({ storeSlug, bookingId }: { storeSlug: string;
           <input type="checkbox" name="notify" defaultChecked className="size-4" />
           Email the customer
         </label>
-        <button type="submit" className="min-h-10 rounded-md border border-line px-3 font-medium">
+        <button type="submit" className="min-h-10 rounded-pill border border-edge px-3 font-medium">
           Cancel this booking
         </button>
       </form>

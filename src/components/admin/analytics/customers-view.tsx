@@ -155,8 +155,8 @@ function PeriodGroup({
   money: (minor: number | null | undefined) => string;
 }) {
   return (
-    <div className="min-w-0 rounded-lg border border-line bg-card p-4">
-      <h3 className="text-base font-medium">{title}</h3>
+    <div className="min-w-0 rounded-panel border border-line bg-card p-4">
+      <h3 className="text-body-strong text-ink">{title}</h3>
       <p className="mb-3 text-xs text-muted">{caption}</p>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
         <Figure label="Customers">{formatCount(customers)}</Figure>
@@ -225,7 +225,7 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
       <div className="flex flex-col gap-8">
         {noteBlock}
         <AnalyticsSection id="cust-empty" title="No customers yet" description="A customer shows up here after their first paid order.">
-          <div className="rounded-lg border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
+          <div className="rounded-panel border border-dashed border-line px-4 py-8 text-center text-sm text-muted">
             <p className="font-medium text-ink">Nothing to show yet.</p>
             <p className="mx-auto mt-1 max-w-prose">
               Once people have paid for orders, this page shows how many of them come back, what an average customer is worth, which customers are your best, and how well each month&apos;s new customers stay.
@@ -401,7 +401,7 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
       >
         {hasPeriodCustomers ? (
           <div className="space-y-3">
-            <div className="rounded-lg border border-line bg-sunken p-4">
+            <div className="rounded-panel bg-sunken p-4">
               <p className="text-sm text-muted">Returning customers&apos; share of revenue</p>
               <p className="text-3xl font-medium tabular-nums">{formatPercent(nvr.returningRevenueShare, 1)}</p>
               <p className="text-sm text-muted">{`${countOf(nvr.returningCustomers, "returning customer")} brought in ${money(nvr.returningRevenueMinor)} of ${money(nvr.newRevenueMinor + nvr.returningRevenueMinor)} in this period.`}</p>
@@ -430,7 +430,7 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
             </div>
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">Nobody placed a paid order in this period, so there is nothing to split into new and returning. Try a longer period.</div>
+          <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">Nobody placed a paid order in this period, so there is nothing to split into new and returning. Try a longer period.</div>
         )}
       </AnalyticsSection>
 
@@ -496,9 +496,9 @@ export function CustomersView({ base, locale, timeZone, isOwner, report, bonusOn
             {segmentCards.map((s) => {
               const copy = SEGMENT_COPY[s.segment];
               return (
-                <li key={s.segment} data-segment={s.segment} className="flex min-w-0 flex-col gap-2 rounded-lg border border-line bg-card p-4">
+                <li key={s.segment} data-segment={s.segment} className="flex min-w-0 flex-col gap-2 rounded-panel border border-line bg-card p-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                    <h3 className="text-base font-medium">{s.segment}</h3>
+                    <h3 className="text-body-strong text-ink">{s.segment}</h3>
                     <p className="text-sm tabular-nums">
                       <span className="text-lg font-medium">{formatCount(s.customers)}</span>
                       <span className="text-muted">{` ${s.customers === 1 ? "customer" : "customers"}`}</span>

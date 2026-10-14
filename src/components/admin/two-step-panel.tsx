@@ -10,8 +10,8 @@ import { RecoveryCodesView } from "./recovery-codes-view";
 export type EnrolStarted = { ok: true; factorId: string; qrCode: string; secret: string; uri: string } | { ok: false; problem: string };
 export type EnrolFinished = { ok: true; codes: string[] } | { ok: false; problem: string; locked?: boolean };
 
-const button = "min-h-10 rounded-md border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken disabled:opacity-40";
-const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
+const button = "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken disabled:opacity-40";
+const primary = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
 const field = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 
 /** The secret in groups of four, so it can be typed by hand without losing the place. */
@@ -65,7 +65,7 @@ export function EnrolPanel({
 
   return (
     <div className="flex flex-col gap-4">
-      {why && <p className="rounded-lg border border-line bg-card p-3 text-sm">{why}</p>}
+      {why && <p className="rounded-panel border border-line bg-card p-3 text-sm">{why}</p>}
       {!started ? (
         <div className="flex flex-col gap-3 text-sm">
           <p className="text-muted">
@@ -192,7 +192,7 @@ export function ManageTwoStep({
       />
     );
   }
-  if (done) return <p role="status" className="rounded-lg border border-line bg-card p-3 text-sm">{done}</p>;
+  if (done) return <p role="status" className="rounded-panel border border-line bg-card p-3 text-sm">{done}</p>;
   if (!enrolled) {
     return (
       <div className="flex flex-col gap-3 text-sm">
@@ -239,7 +239,7 @@ export function ManageTwoStep({
       </div>
       <p className="text-muted">Making new codes ends the old ones.{platformAdmin ? " Platform admins cannot switch two-step sign-in off." : ""}</p>
       {confirming && (
-        <div className="flex flex-col gap-2 rounded-lg border border-line bg-card p-3">
+        <div className="flex flex-col gap-2 rounded-panel border border-line bg-card p-3">
           <p>
             Switch it off? Your account will be protected by your password or sign-in link alone. A store that requires two-step sign-in will ask you to set it up again.
           </p>

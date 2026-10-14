@@ -37,7 +37,7 @@ export function TimeFiltersForm({
       method="get"
       role="search"
       aria-label="Filter time"
-      className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4"
+      className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4"
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className="flex flex-col gap-1 text-sm font-medium">

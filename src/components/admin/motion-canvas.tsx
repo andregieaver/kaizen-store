@@ -82,7 +82,7 @@ export function MotionPreviewToggle({
         aria-checked={on}
         onClick={() => onChange(!on)}
         aria-describedby={help}
-        className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-sm aria-checked:border-brand aria-checked:bg-sunken aria-checked:font-medium"
+        className="flex min-h-9 items-center gap-2 rounded-pill border border-edge px-3 text-sm aria-checked:border-brand aria-checked:bg-sunken aria-checked:font-medium"
       >
         <span
           aria-hidden
@@ -93,7 +93,7 @@ export function MotionPreviewToggle({
         Preview motion
       </button>
       {on && (
-        <button type="button" onClick={onReplay} className="min-h-9 rounded-md border border-line px-3 text-sm">
+        <button type="button" onClick={onReplay} className="min-h-9 rounded-pill border border-edge px-3 text-sm">
           Replay
         </button>
       )}

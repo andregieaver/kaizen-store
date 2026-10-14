@@ -32,7 +32,7 @@ export function ViewTools({ views, query, actions }: { views: ViewTool[]; query:
 
   return (
     <div className="flex flex-col gap-3">
-      <details className="rounded-lg border border-line bg-sunken">
+      <details className="rounded-panel bg-sunken">
         <summary className="cursor-pointer px-4 py-2 text-sm font-medium">Save this list as a view</summary>
         <form
           className="flex flex-col gap-3 border-t border-line p-4"
@@ -84,7 +84,7 @@ export function ViewTools({ views, query, actions }: { views: ViewTool[]; query:
       </details>
 
       {views.length > 0 && (
-        <details className="rounded-lg border border-line bg-sunken">
+        <details className="rounded-panel bg-sunken">
           <summary className="cursor-pointer px-4 py-2 text-sm font-medium">Manage saved views</summary>
           <ul className="flex flex-col divide-y divide-line border-t border-line">
             {views.map((view, index) => (

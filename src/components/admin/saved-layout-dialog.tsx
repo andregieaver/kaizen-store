@@ -76,7 +76,7 @@ export function SavedLayoutDialog({
             <button
               type="button"
               onClick={() => setConfirmDelete(false)}
-              className="min-h-10 rounded-md border border-line px-4 text-sm"
+              className="min-h-10 rounded-pill border border-edge px-4 text-sm"
             >
               Keep it
             </button>
@@ -84,7 +84,7 @@ export function SavedLayoutDialog({
               type="button"
               onClick={remove}
               disabled={busy}
-              className="min-h-10 rounded-md bg-danger-soft px-4 text-sm font-medium text-danger-text disabled:opacity-50"
+              className="min-h-10 rounded-pill bg-danger-soft px-4 text-sm font-medium text-danger-text disabled:opacity-50"
             >
               Delete
             </button>
@@ -102,7 +102,7 @@ export function SavedLayoutDialog({
               type="button"
               onClick={onUse}
               disabled={!fits}
-              className="min-h-10 rounded-md border border-line px-4 text-sm disabled:opacity-40"
+              className="min-h-10 rounded-pill border border-edge px-4 text-sm disabled:opacity-40"
             >
               Use on this page
             </button>

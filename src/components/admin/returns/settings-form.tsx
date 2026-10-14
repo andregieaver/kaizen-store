@@ -42,7 +42,7 @@ export function ReturnSettingsForm({
     <ActionForm action={action} successMessage="Saved." className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
         <section aria-labelledby="window" className={card}>
-          <h2 id="window" className="font-medium">
+          <h2 id="window" className="text-title text-ink">
             How long customers have
           </h2>
           <p className="text-sm text-muted">
@@ -66,7 +66,7 @@ export function ReturnSettingsForm({
         </section>
 
         <section aria-labelledby="money" className={card}>
-          <h2 id="money" className="font-medium">
+          <h2 id="money" className="text-title text-ink">
             Who pays, and when
           </h2>
           <fieldset className="flex flex-col gap-2 text-sm">
@@ -97,7 +97,7 @@ export function ReturnSettingsForm({
         </section>
 
         <section aria-labelledby="scope" className={card}>
-          <h2 id="scope" className="font-medium">
+          <h2 id="scope" className="text-title text-ink">
             What can come back
           </h2>
           <label className="flex items-start gap-2 text-sm">
@@ -119,7 +119,7 @@ export function ReturnSettingsForm({
         </section>
 
         <section aria-labelledby="address" className={card}>
-          <h2 id="address" className="font-medium">
+          <h2 id="address" className="text-title text-ink">
             Where goods are sent back
           </h2>
           <p className="text-sm text-muted">Leave all of it empty to use the store&apos;s postal address, from its company details.</p>
@@ -148,7 +148,7 @@ export function ReturnSettingsForm({
         </section>
 
         <section aria-labelledby="instructions" className={card}>
-          <h2 id="instructions" className="font-medium">
+          <h2 id="instructions" className="text-title text-ink">
             Instructions for customers
           </h2>
           <p className="text-sm text-muted">

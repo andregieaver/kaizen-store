@@ -54,13 +54,13 @@ export default async function WishlistActivityPage({ params, searchParams }: Pag
       </nav>
 
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           {show === "all"
             ? "Nothing has gone from a wishlist to the cart yet. It shows here the moment a shopper adds items from a list."
             : "Nothing here."}
         </p>
       ) : (
-        <div className="rounded-lg border border-line bg-card px-4">
+        <div className="rounded-panel border border-line bg-card px-4">
           <CartAddTable rows={rows} storeSlug={store.slug} locale={locale} />
         </div>
       )}

@@ -52,7 +52,7 @@ export function DomainsPanel({
   return (
     <div className="flex flex-col gap-6">
       <section aria-labelledby="address-heading" className={card}>
-        <h2 id="address-heading" className="font-medium">
+        <h2 id="address-heading" className="text-title text-ink">
           Your store&apos;s address
         </h2>
         <p className="text-sm">
@@ -80,7 +80,7 @@ export function DomainsPanel({
 
       <section aria-labelledby="domains-heading" className={card}>
         <div>
-          <h2 id="domains-heading" className="font-medium">
+          <h2 id="domains-heading" className="text-title text-ink">
             Your own domains
           </h2>
           <p className="text-sm text-muted">

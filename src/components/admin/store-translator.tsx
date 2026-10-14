@@ -8,8 +8,8 @@ import type { PageLanguage } from "@/lib/page-translation";
 import type { ApplyResult } from "@/server/store-translate";
 
 const box = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
-const button = "min-h-10 rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40";
-const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
+const button = "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40";
+const primary = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
 
 type Actions = {
   worklist: (input: unknown) => Promise<{ ok: true; units: Unit[]; total: number } | { ok: false; problem: string }>;
@@ -142,7 +142,7 @@ export function StoreTranslator({
   return (
     <div className="flex flex-col gap-6">
       <section className={box} aria-labelledby="translate-what">
-        <h2 id="translate-what" className="font-medium">1. What to translate</h2>
+        <h2 id="translate-what" className="text-title text-ink">1. What to translate</h2>
         <label className="flex max-w-xs flex-col gap-1 text-sm font-medium">
           Into
           <select
@@ -195,7 +195,7 @@ export function StoreTranslator({
 
       {work && (
         <section className={box} aria-labelledby="translate-ai">
-          <h2 id="translate-ai" className="font-medium">2. Translate with AI</h2>
+          <h2 id="translate-ai" className="text-title text-ink">2. Translate with AI</h2>
           {work.units.length === 0 ? (
             <p className="text-sm">Nothing to translate: {target.name} has it all.</p>
           ) : (
@@ -219,12 +219,12 @@ export function StoreTranslator({
 
       {suggestions && (
         <section className={box} aria-labelledby="translate-review">
-          <h2 id="translate-review" className="font-medium">3. Read, and keep what is right</h2>
+          <h2 id="translate-review" className="text-title text-ink">3. Read, and keep what is right</h2>
           {groups.map(
             (group) =>
               group.units.length > 0 && (
                 <div key={group.title} className="flex flex-col gap-3">
-                  <h3 className="text-sm font-medium">{group.title}</h3>
+                  <h3 className="text-body-strong text-ink">{group.title}</h3>
                   {group.hint && <p className="text-xs text-muted">{group.hint}</p>}
                   <ul className="flex flex-col gap-3">
                     {group.units.map((unit) => (

@@ -169,7 +169,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
         )}
       </aside>
 
-      <section aria-label="Conversation with Kaizen" className="flex min-h-[28rem] flex-col rounded-lg border border-line bg-sunken">
+      <section aria-label="Conversation with Kaizen" className="flex min-h-[28rem] flex-col rounded-panel bg-sunken">
         <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-3 text-sm">
           <span className="font-medium">{person ? person.name : open ? "Kaizen support" : "A new request"}</span>
           {open && state?.status === "open" && (
@@ -202,7 +202,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
                       .filter((chip) => /^\/admin(?:\/|$)/.test(chip.href))
                       .map((chip) => (
                         <li key={chip.href}>
-                          <Link href={chip.href} className="rounded-lg border border-line px-3 py-1 text-sm hover:bg-card">
+                          <Link href={chip.href} className="rounded-panel border border-line px-3 py-1 text-sm hover:bg-card">
                             {chip.label} →
                           </Link>
                         </li>
@@ -230,7 +230,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
           {!open && stores.length > 0 && (
             <label className="flex flex-wrap items-center gap-2 text-sm">
               About
-              <select value={about} onChange={(event) => setAbout(event.target.value)} className="rounded-lg border border-line bg-card px-2 py-1">
+              <select value={about} onChange={(event) => setAbout(event.target.value)} className="rounded-panel border border-line bg-card px-2 py-1">
                 <option value="">My account, no store</option>
                 {stores.map((store) => (
                   <option key={store.slug} value={store.slug}>
@@ -253,7 +253,7 @@ export function KaizenRequests({ initial, stores, initialOpen }: { initial: Requ
             maxLength={1000}
             rows={3}
             placeholder="Your message to Kaizen"
-            className="rounded-lg border border-line bg-card px-3 py-2 text-sm"
+            className="rounded-panel border border-line bg-card px-3 py-2 text-sm"
           />
           {problem && <p role="alert" className="text-sm">{problem}</p>}
           <button type="submit" disabled={busy || !draft.trim()} className="self-end rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-brand-ink disabled:opacity-50">

@@ -73,7 +73,7 @@ import { SAVED_AS_TEMPLATE, SaveTemplateDialog, defaultTemplateName } from "./sa
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
-const small = "min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40";
+const small = "min-h-9 rounded-pill border border-edge px-3 text-sm disabled:opacity-40";
 const hint = "text-xs font-normal text-muted";
 
 const STATE_TEXT: Record<PageState, string> = {
@@ -568,8 +568,8 @@ export function PageEditor({
               )}
             </section>
             {!translating && context.type === "footer" && (
-              <section className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4">
-                <h2 className="font-medium">Reveal on scroll</h2>
+              <section className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4">
+                <h2 className="text-title text-ink">Reveal on scroll</h2>
                 <label className="flex items-start gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -602,7 +602,7 @@ export function PageEditor({
             <>
             {context.type === "article" && (
               <section aria-labelledby="author-heading" className={card}>
-                <h2 id="author-heading" className="font-medium">
+                <h2 id="author-heading" className="text-title text-ink">
                   Author
                 </h2>
                 <div className="flex flex-col gap-1">
@@ -625,7 +625,7 @@ export function PageEditor({
               </section>
             )}
             <section aria-labelledby="terms-heading" className={card}>
-              <h2 id="terms-heading" className="font-medium">
+              <h2 id="terms-heading" className="text-title text-ink">
                 Categories and tags
               </h2>
               <TermPicker
@@ -659,7 +659,7 @@ export function PageEditor({
               onChange={(thumbnail) => change({ thumbnail })}
             />
             <section aria-labelledby="visibility-heading" className={card}>
-              <h2 id="visibility-heading" className="font-medium">
+              <h2 id="visibility-heading" className="text-title text-ink">
                 Who may read it
               </h2>
               <Switch
@@ -679,7 +679,7 @@ export function PageEditor({
             )}
             {translating && view.thumbnail && (
               <section aria-labelledby="thumbnail-alt-heading" className={card}>
-                <h2 id="thumbnail-alt-heading" className="font-medium">
+                <h2 id="thumbnail-alt-heading" className="text-title text-ink">
                   Picture
                 </h2>
                 <label className={label}>
@@ -697,7 +697,7 @@ export function PageEditor({
             )}
             {!layout && (
             <section aria-labelledby="excerpt-heading" className={card}>
-              <h2 id="excerpt-heading" className="font-medium">
+              <h2 id="excerpt-heading" className="text-title text-ink">
                 Excerpt
               </h2>
               <label className={label}>
@@ -718,7 +718,7 @@ export function PageEditor({
             )}
             {!layout && (
             <section aria-labelledby="search-heading" className={card}>
-              <h2 id="search-heading" className="font-medium">
+              <h2 id="search-heading" className="text-title text-ink">
                 Search and sharing
               </h2>
               <SearchSnippetFields
@@ -807,7 +807,7 @@ export function PageEditor({
                 type="button"
                 onClick={() => submit(false)}
                 disabled={busy}
-                className="min-h-11 rounded-md border border-line px-4 font-medium disabled:opacity-50"
+                className="min-h-11 rounded-pill border border-edge px-4 font-medium disabled:opacity-50"
               >
                 Save draft
               </button>
@@ -836,7 +836,7 @@ export function PageEditor({
               onClick={() => setCoolOpen(true)}
               aria-label={MAKE_COOL_LABEL}
               title={MAKE_COOL_LABEL}
-              className="flex size-11 items-center justify-center rounded-md border border-edge hover:bg-sunken"
+              className="flex size-11 items-center justify-center rounded-pill border border-edge hover:bg-sunken"
             >
               <WandSparkles aria-hidden className="size-5" />
             </button>
@@ -906,7 +906,7 @@ export function PageEditor({
                     type="button"
                     onClick={remove}
                     disabled={busy}
-                    className="min-h-9 rounded-md bg-danger-soft px-3 text-danger-text disabled:opacity-50"
+                    className="min-h-9 rounded-pill bg-danger-soft px-3 text-danger-text disabled:opacity-50"
                   >
                     Delete {noun}
                   </button>
@@ -1098,7 +1098,7 @@ function ThumbnailField({
   return (
     <section aria-labelledby="thumbnail-heading" className={card}>
       <div>
-        <h2 id="thumbnail-heading" className="font-medium">
+        <h2 id="thumbnail-heading" className="text-title text-ink">
           Picture
         </h2>
         <p className="text-sm text-muted">Shown when the page is shared, and in lists. Wide pictures work best.</p>
@@ -1131,7 +1131,7 @@ function ThumbnailField({
         )}
         <LibraryButton onPicked={(picture) => onChange({ url: picture.url, width: picture.width, height: picture.height, alt: value?.alt || picture.alt })} />
         {value && (
-          <button type="button" onClick={() => onChange(null)} className="rounded-md px-3 py-2 underline">
+          <button type="button" onClick={() => onChange(null)} className="rounded-pill px-3 py-2 underline">
             Remove
           </button>
         )}
@@ -1177,7 +1177,7 @@ function LanguageField({
   const [main, ...others] = languages;
   return (
     <section aria-labelledby="language-heading" className={card}>
-      <h2 id="language-heading" className="font-medium">
+      <h2 id="language-heading" className="text-title text-ink">
         Language
       </h2>
       <div role="radiogroup" aria-labelledby="language-heading" className="flex flex-wrap gap-2">
@@ -1270,7 +1270,7 @@ function TranslateWithAi({
 
   return (
     <section aria-labelledby="translate-ai-heading" className={card}>
-      <h2 id="translate-ai-heading" className="font-medium">
+      <h2 id="translate-ai-heading" className="text-title text-ink">
         Translate with AI
       </h2>
       <label className={label}>
@@ -1349,8 +1349,8 @@ function HeaderOverlayFields({
         : { where: next as HeaderOverlay["where"], categories: value?.categories ?? [], tags: value?.tags ?? [], textColor: value?.textColor },
     );
   return (
-    <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4">
-      <h2 id={`${id}-heading`} className="font-medium">
+    <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4">
+      <h2 id={`${id}-heading`} className="text-title text-ink">
         Over the page
       </h2>
       <p className="text-xs text-muted">

@@ -28,7 +28,7 @@ export default async function ShippingPage({ params }: PageProps<"/admin/[store]
         description={<>One flat price per country, including VAT, shown in the cart and at checkout. Leave &quot;free from&quot; empty to always charge shipping. Shoppers cannot check out to a country without a shipping price.</>}
       />
       <ActionForm action={saveShippingAction.bind(null, store.slug)} className="flex flex-col gap-4">
-        <table className="w-full max-w-2xl rounded-lg border border-line bg-card text-left text-sm">
+        <table className="w-full max-w-2xl rounded-panel border border-line bg-card text-left text-sm">
           <thead>
             <tr className="border-b border-line">
               <th scope="col" className="px-4 py-2 font-medium">Country</th>

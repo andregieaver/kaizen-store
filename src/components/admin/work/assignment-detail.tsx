@@ -39,7 +39,7 @@ export function AssignmentSummaryCard({
   const period = [assignment.startDate, assignment.endDate].map((day) => (day ? formatDay(day, locale) : null));
   return (
     <section aria-labelledby="summary-heading" className={`${card} flex flex-col gap-4`}>
-      <h2 id="summary-heading" className="font-medium">
+      <h2 id="summary-heading" className="text-title text-ink">
         Progress
       </h2>
       <EstimateProgress

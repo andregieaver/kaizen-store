@@ -138,7 +138,7 @@ export function ReminderEditor({
         )}
 
         <section aria-labelledby={`${id}-when`} className={card}>
-          <h2 id={`${id}-when`} className="font-medium">
+          <h2 id={`${id}-when`} className="text-title text-ink">
             When it goes
           </h2>
           <fieldset className="flex flex-col gap-1">
@@ -173,7 +173,7 @@ export function ReminderEditor({
         </section>
 
         <section aria-labelledby={`${id}-code`} className={card}>
-          <h2 id={`${id}-code`} className="font-medium">
+          <h2 id={`${id}-code`} className="text-title text-ink">
             Discount code (optional)
           </h2>
           <label className={label}>
@@ -195,7 +195,7 @@ export function ReminderEditor({
         </section>
 
         <section aria-labelledby={`${id}-text`} className={card}>
-          <h2 id={`${id}-text`} className="font-medium">
+          <h2 id={`${id}-text`} className="text-title text-ink">
             The email
           </h2>
           {languages.length > 1 && (
@@ -260,7 +260,7 @@ export function ReminderEditor({
 
       <section aria-labelledby={`${id}-preview`} className="flex flex-col gap-3 lg:sticky lg:top-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id={`${id}-preview`} className="font-medium">
+          <h2 id={`${id}-preview`} className="text-title text-ink">
             Preview{languages.length > 1 && language ? `: ${language.label}` : ""}
           </h2>
           {sendTest && (
@@ -268,7 +268,7 @@ export function ReminderEditor({
               type="button"
               disabled={testing}
               onClick={() => startTesting(async () => setTestMessage(await sendTest(locale)))}
-              className="min-h-10 rounded-md border border-line px-3 text-sm disabled:opacity-50"
+              className="min-h-10 rounded-pill border border-edge px-3 text-sm disabled:opacity-50"
             >
               {testing ? "Sending …" : "Send a test to me"}
             </button>
@@ -281,7 +281,7 @@ export function ReminderEditor({
         )}
         {sendTest && <p className={hint}>The test sends the saved version, with a sample {purpose === "plan" ? "plan" : "cart"}.</p>}
         {preview && (
-          <div className="overflow-hidden rounded-lg border border-line bg-card">
+          <div className="overflow-hidden rounded-panel border border-line bg-card">
             <p className="border-b border-line px-4 py-2 text-sm">
               <span className="text-muted">Subject:</span> {preview.subject}
             </p>

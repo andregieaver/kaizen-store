@@ -33,7 +33,7 @@ export default async function CompaniesPage({ params }: PageProps<"/admin/[store
       />
 
       {companies.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">No companies yet.</p>
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">No companies yet.</p>
       ) : (
         <Card compact>
           <List label="Companies">

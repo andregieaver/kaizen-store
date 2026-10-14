@@ -50,7 +50,7 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
         save={saveAffiliateAction.bind(null, store.slug)}
       />
       <section aria-labelledby="referrers-heading" className="flex flex-col gap-3">
-        <h2 id="referrers-heading" className="text-lg font-medium">
+        <h2 id="referrers-heading" className="text-title text-ink">
           Referrers
         </h2>
         <ReferrersTable
@@ -63,7 +63,7 @@ export default async function AffiliatesPage({ params }: PageProps<"/admin/[stor
         />
       </section>
       <section aria-labelledby="attributions-heading" className="flex flex-col gap-3">
-        <h2 id="attributions-heading" className="text-lg font-medium">
+        <h2 id="attributions-heading" className="text-title text-ink">
           Orders through links
         </h2>
         <AttributionsTable rows={attributions} storeSlug={store.slug} locale={locale} />

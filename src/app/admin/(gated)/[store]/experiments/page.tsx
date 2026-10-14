@@ -29,7 +29,7 @@ export default async function ExperimentsPage({ params }: PageProps<"/admin/[sto
         </Link>
       </div>
       {tests.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No tests yet. Pick a page, say what you want more of, and change one thing: a heading, a picture, a button.
         </p>
       ) : (

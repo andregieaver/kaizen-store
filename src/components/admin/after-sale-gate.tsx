@@ -38,7 +38,7 @@ export async function AfterSaleNote({ store }: { store: { id: string; slug: stri
     after.openReturns > 0 && `${many(after.openReturns, "return is", "returns are")} still open`,
   ].filter(Boolean);
   return (
-    <p role="status" className="rounded-lg border border-line bg-sunken p-4 text-sm">
+    <p role="status" className="rounded-panel bg-sunken p-4 text-sm">
       The online shop is off. {parts.join(", and ")}, so Orders and Returns stay here until they are done, and the storefront keeps its
       withdrawal link.{" "}
       <Link href={`${base}/orders`} className="underline">

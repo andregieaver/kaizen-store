@@ -36,8 +36,8 @@ export default async function PlatformStripePage() {
           const hooks = webhooks.filter((hook) => hook.mode === mode);
           const connected = WEBHOOK_KINDS.every((kind) => hooks.some((hook) => hook.kind === kind));
           return (
-            <li key={mode} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
-              <h2 className="font-medium">{mode === "test" ? "Test mode" : "Live mode"}</h2>
+            <li key={mode} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+              <h2 className="text-title text-ink">{mode === "test" ? "Test mode" : "Live mode"}</h2>
               <p>{configured ? "Keys are set." : "Keys are not set."}</p>
               <p className={connected ? "" : "text-muted"}>
                 {connected
@@ -61,7 +61,7 @@ export default async function PlatformStripePage() {
       <ActionForm
         action={saveCheckoutUiAction}
         successMessage="Saved. New checkouts use it from now on."
-        className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4"
+        className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4"
       >
         <fieldset className="flex flex-col gap-2 text-sm">
           <legend className="mb-1 font-medium">Where shoppers pay</legend>
@@ -87,7 +87,7 @@ export default async function PlatformStripePage() {
           <SubmitButton>Save</SubmitButton>
         </div>
       </ActionForm>
-      <ActionForm action={saveSaleFeeAction} className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4">
+      <ActionForm action={saveSaleFeeAction} className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4">
         <label className="flex flex-col gap-1 text-sm font-medium">
           Default fee on each sale (%)
           <input

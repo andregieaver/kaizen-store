@@ -69,7 +69,7 @@ export function RequestsView({
             key={key}
             href={key === "open" ? `${base}/privacy` : `${base}/privacy?status=${key}`}
             aria-current={filter === key ? "page" : undefined}
-            className={`rounded-md border px-3 py-1.5 ${filter === key ? "border-brand font-medium" : "border-line"}`}
+            className={`rounded-pill border px-3 py-1.5 ${filter === key ? "border-brand font-medium" : "border-line"}`}
           >
             {FILTER_LABELS[key]}
           </Link>

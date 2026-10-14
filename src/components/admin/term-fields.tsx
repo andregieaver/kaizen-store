@@ -19,7 +19,7 @@ export type TermFieldsSetup = {
   startFile: Parameters<typeof fieldFileUploader>[0];
 };
 
-const button = "min-h-10 rounded-md border border-line px-3 text-sm disabled:opacity-50";
+const button = "min-h-10 rounded-pill border border-edge px-3 text-sm disabled:opacity-50";
 
 /**
  * The button and dialog for the custom fields of one category or tag: the

@@ -3,7 +3,7 @@ import { rowLabel } from "@/lib/work-reports";
 
 import { REPORT_HEADINGS, reportCells } from "./report-columns";
 
-const th = "px-3 py-2 text-right text-xs font-medium tracking-wide text-muted uppercase";
+const th = "px-3 py-2 text-right text-eyebrow text-muted uppercase";
 const td = "px-3 py-2 text-right tabular-nums whitespace-nowrap";
 
 function Head({ by }: { by: ReportGroupBy }) {
@@ -71,7 +71,7 @@ export function ReportTable({ report, locale }: { report: PeriodReport; locale: 
   const currencies = new Set(report.rows.map((r) => r.currency));
   const many = report.totals.length > 1 || currencies.size > 1;
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-card">
+    <div className="overflow-x-auto rounded-panel border border-line bg-card">
       <table className="w-full text-sm">
         <caption className="sr-only">
           Work report from {report.from} to {report.to}, by {report.by}

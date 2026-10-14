@@ -28,7 +28,7 @@ export function JobProgressView({ job }: { job: JobView }) {
   return (
     <section aria-label={KIND_TITLES[job.kind]} className={`${card} flex flex-col gap-3`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-medium">{words}</h2>
+        <h2 className="text-title text-ink">{words}</h2>
         {numbers && <p className={hint}>{numbers}</p>}
       </div>
       {working && (
@@ -83,7 +83,7 @@ export function ExportFiles({ job, action, timeZone, now }: { job: ExportJobRow;
   return (
     <section aria-label="Files" className={`${card} flex flex-col gap-3`}>
       <div>
-        <h2 className="text-base font-medium">{job.files.length === 1 ? "Your file is ready" : `Your ${job.files.length} files are ready`}</h2>
+        <h2 className="text-title text-ink">{job.files.length === 1 ? "Your file is ready" : `Your ${job.files.length} files are ready`}</h2>
         <p className={hint}>
           {wholeNumber(total)} rows
           {job.expiresAt ? `. ${expiryWords(job.expiresAt, now)} (${momentText(job.expiresAt, timeZone)}).` : "."} The download link is made when you press the button and works for a minute.

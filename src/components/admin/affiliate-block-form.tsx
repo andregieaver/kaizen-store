@@ -53,7 +53,7 @@ export function AffiliateBlockForm({
           type="button"
           disabled={pending}
           onClick={() => run(false)}
-          className="min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40"
+          className="min-h-9 rounded-pill border border-edge px-3 text-sm disabled:opacity-40"
         >
           {pending ? "Saving …" : `Unblock ${who}`}
         </button>
@@ -68,7 +68,7 @@ export function AffiliateBlockForm({
   return (
     <div className="flex flex-col items-start gap-2">
       {!open ? (
-        <button type="button" onClick={() => setOpen(true)} className="min-h-9 rounded-md border border-line px-3 text-sm">
+        <button type="button" onClick={() => setOpen(true)} className="min-h-9 rounded-pill border border-edge px-3 text-sm">
           Block {who}
         </button>
       ) : (
@@ -97,7 +97,7 @@ export function AffiliateBlockForm({
             >
               {pending ? "Saving …" : "Block"}
             </button>
-            <button type="button" onClick={() => setOpen(false)} className="min-h-9 rounded-md border border-line px-3 text-sm">
+            <button type="button" onClick={() => setOpen(false)} className="min-h-9 rounded-pill border border-edge px-3 text-sm">
               Cancel
             </button>
           </div>

@@ -71,7 +71,7 @@ export function EmailView({ email }: { email: EmailLogRow & { html: string } }) 
         title={`Email: ${email.subject}`}
         srcDoc={email.html}
         sandbox=""
-        className="h-[70vh] w-full rounded-lg border border-line bg-white"
+        className="h-[70vh] w-full rounded-panel border border-line bg-white"
       />
     </div>
   );

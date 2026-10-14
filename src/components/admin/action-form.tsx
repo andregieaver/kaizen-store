@@ -42,7 +42,7 @@ export function ActionForm({
   const [state, formAction, pending] = useActionState(action, idle);
   if (replaceOnSuccess && state.status === "ok") {
     return (
-      <p role="status" className="rounded-lg border border-line bg-card p-4">
+      <p role="status" className="rounded-panel border border-line bg-card p-4">
         {state.messages[0] ?? successMessage}
       </p>
     );

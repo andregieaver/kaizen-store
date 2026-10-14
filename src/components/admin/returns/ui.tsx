@@ -39,7 +39,7 @@ export function DueMark({ due, timeZone }: { due: RefundDue; timeZone: string })
 export function Card({ id, title, children, hint }: { id: string; title: string; children: ReactNode; hint?: ReactNode }) {
   return (
     <section aria-labelledby={id} className={CARD}>
-      <h2 id={id} className="mb-1 font-medium">
+      <h2 id={id} className="mb-1 text-title text-ink">
         {title}
       </h2>
       {hint && <p className="mb-3 text-sm text-muted">{hint}</p>}

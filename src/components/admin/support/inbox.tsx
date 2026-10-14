@@ -267,11 +267,11 @@ export function Inbox({
         </p>
         <span className="flex-1" />
         {alerts ? (
-          <button type="button" onClick={() => setAlerts(false)} className="rounded-md border border-edge px-2 py-1 text-sm hover:bg-sunken" aria-pressed>
+          <button type="button" onClick={() => setAlerts(false)} className="rounded-pill border border-edge px-2 py-1 text-sm hover:bg-sunken" aria-pressed>
             Alerts on
           </button>
         ) : (
-          <button type="button" onClick={() => void turnOnAlerts()} className="rounded-md border border-edge px-2 py-1 text-sm hover:bg-sunken" aria-pressed={false}>
+          <button type="button" onClick={() => void turnOnAlerts()} className="rounded-pill border border-edge px-2 py-1 text-sm hover:bg-sunken" aria-pressed={false}>
             Turn on alerts
           </button>
         )}
@@ -302,7 +302,7 @@ export function Inbox({
                   role="tab"
                   aria-selected={tab === key}
                   onClick={() => setTab(key)}
-                  className={`rounded-md px-2 py-1 text-sm ${tab === key ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}
+                  className={`rounded-pill px-2 py-1 text-sm ${tab === key ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}
                 >
                   {TAB_WORDS[key]}
                   {key === "waiting" && waiting > 0 ? ` (${waiting})` : ""}
@@ -393,7 +393,7 @@ export function Inbox({
                       role="tab"
                       aria-selected={shown === key}
                       onClick={() => setSide(key)}
-                      className={`rounded-md px-2 py-1 text-sm ${shown === key ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}
+                      className={`rounded-pill px-2 py-1 text-sm ${shown === key ? "bg-brand text-brand-ink" : "hover:bg-sunken"}`}
                     >
                       {key === "partner" ? "Partner" : "Context"}
                     </button>

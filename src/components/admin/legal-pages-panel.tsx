@@ -39,13 +39,13 @@ export function LegalPagesPanel({
 
   return (
     <div className="flex flex-col gap-8">
-      <p role="note" className="rounded-lg border border-line bg-card p-4 text-sm">
+      <p role="note" className="rounded-panel border border-line bg-card p-4 text-sm">
         <strong className="font-medium">Draft texts need a person&apos;s review.</strong> {LEGAL_STARTER_NOTICE}
       </p>
 
       {overview.missing.length > 0 && (
-        <section aria-labelledby="missing-heading" className="rounded-lg border border-line bg-card p-4 text-sm">
-          <h2 id="missing-heading" className="mb-1 font-medium">
+        <section aria-labelledby="missing-heading" className="rounded-panel border border-line bg-card p-4 text-sm">
+          <h2 id="missing-heading" className="mb-1 text-title text-ink">
             Details the starters need and the store has not given
           </h2>
           <p className="mb-2 text-muted">A starter shows a visible [[Add: …]] where a detail is missing. Fill these in first and the starters will carry them.</p>
@@ -66,7 +66,7 @@ export function LegalPagesPanel({
         {overview.roles.map((entry) => (
           <li key={entry.role} className={`p-5 ${CARD_CLASS}`}>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-medium">{entry.name}</h2>
+              <h2 className="text-title text-ink">{entry.name}</h2>
               <span className="text-sm text-muted">{entry.page ? `Chosen: ${entry.page.title}` : "No page chosen"}</span>
             </div>
             <p className="mb-4 text-sm text-muted">{entry.hint}</p>

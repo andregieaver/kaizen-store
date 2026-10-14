@@ -140,7 +140,7 @@ export function RuleBuilder({
       {rules.map((group, groupIndex) => (
         <div key={groupIndex} className="flex flex-col gap-2">
           {groupIndex > 0 && (
-            <p className="text-center text-xs font-medium tracking-wide text-muted uppercase" aria-hidden>
+            <p className="text-center text-eyebrow text-muted uppercase" aria-hidden>
               Or
             </p>
           )}
@@ -167,7 +167,7 @@ export function RuleBuilder({
             <button
               type="button"
               onClick={() => setGroup(groupIndex, [...group, newCondition(first, currency)])}
-              className="flex min-h-9 items-center gap-1 self-start rounded-md border border-line px-2 text-sm"
+              className="flex min-h-9 items-center gap-1 self-start rounded-pill border border-edge px-2 text-sm"
             >
               <Plus aria-hidden className="size-4" /> And
             </button>
@@ -177,7 +177,7 @@ export function RuleBuilder({
       <button
         type="button"
         onClick={() => onChange([...rules, [newCondition(first, currency)]])}
-        className="flex min-h-9 items-center gap-1 self-start rounded-md border border-line px-2 text-sm"
+        className="flex min-h-9 items-center gap-1 self-start rounded-pill border border-edge px-2 text-sm"
       >
         <Plus aria-hidden className="size-4" /> Or
       </button>
@@ -243,7 +243,7 @@ function ConditionRow({
             </option>
           ))}
         </select>
-        <button type="button" onClick={onRemove} aria-label={`Remove ${label.toLowerCase()}`} className="ml-auto flex size-9 items-center justify-center rounded-md hover:bg-sunken">
+        <button type="button" onClick={onRemove} aria-label={`Remove ${label.toLowerCase()}`} className="ml-auto flex size-9 items-center justify-center rounded-pill hover:bg-sunken">
           <X aria-hidden className="size-4" />
         </button>
       </div>
@@ -512,7 +512,7 @@ export function DisplayLegend({ parts, onOpen }: { parts: { id: string; name: st
         aria-expanded={open}
         aria-controls={id}
         onClick={() => setOpen(!open)}
-        className="flex min-h-9 items-center gap-2 rounded-md border border-line px-3 text-sm"
+        className="flex min-h-9 items-center gap-2 rounded-pill border border-edge px-3 text-sm"
       >
         <Eye aria-hidden className="size-4 text-(--chart-1)" strokeWidth={1.75} />
         Who sees what ({parts.length})

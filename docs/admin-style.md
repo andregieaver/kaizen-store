@@ -600,6 +600,11 @@ the sidebar, at the whole width: the page editors, the media library and the sup
 pages move to a row of links in the top bar (`AreaLinks`). Every layout of 6.3 is now built: `rail` (and its sidebar), `focus`,
 `workspace` and `classic` (hosting).
 
+Step 15, the rest (D231): every button and button-like link is a pill, section titles are `text-title`, sub-sections
+`text-body-strong`, figures `text-metric`, labels `text-eyebrow`, and boxes within a page `rounded-panel`, across the admin's
+pages and components; the scan test holds each. What is left is judgement rather than spelling: tables that should be lists
+(D227 did the clear ones), and white boxes on the canvas that are cards.
+
 ---
 
 ## 9. Do and don't

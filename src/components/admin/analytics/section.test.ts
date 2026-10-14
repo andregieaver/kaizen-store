@@ -28,7 +28,7 @@ describe("AnalyticsSection", () => {
 describe("ChartCard", () => {
   it("is a card with a title, an optional line and action, around its content", () => {
     const out = html(h(ChartCard, { title: "Net revenue", description: "per day", action: h("span", null, "act") }, h("div", null, "chart")));
-    expect(out).toContain("rounded-lg border border-line bg-card");
+    expect(out).toContain("rounded-card bg-card");
     expect(out).toContain("<h3");
     expect(out).toContain("Net revenue");
     expect(out).toContain("per day");

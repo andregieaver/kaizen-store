@@ -31,8 +31,8 @@ export function OrderAttributionCard({
   if (!attribution) return null;
   const credits = moneyIn(attribution.creditsCurrency, locale);
   return (
-    <section aria-labelledby="order-referral-heading" className="rounded-lg border border-line p-4">
-      <h2 id="order-referral-heading" className="mb-3 font-medium">
+    <section aria-labelledby="order-referral-heading" className="rounded-panel border border-line p-4">
+      <h2 id="order-referral-heading" className="mb-3 text-title text-ink">
         Referral
       </h2>
       <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">

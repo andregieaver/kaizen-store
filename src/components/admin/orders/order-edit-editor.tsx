@@ -155,8 +155,8 @@ export function OrderEditEditor({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="flex min-w-0 flex-col gap-6">
-        <section aria-labelledby={`${id}-lines`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
-          <h2 id={`${id}-lines`} className="font-medium">
+        <section aria-labelledby={`${id}-lines`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+          <h2 id={`${id}-lines`} className="text-title text-ink">
             Items on order #{number}
           </h2>
           <p className={hint}>A quantity can only go down (0 takes the item off). To sell more of an item, add it as a product below. Downloads, services and fees stay as they are.</p>
@@ -215,8 +215,8 @@ export function OrderEditEditor({
           </div>
         </section>
 
-        <section aria-labelledby={`${id}-add`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
-          <h2 id={`${id}-add`} className="font-medium">
+        <section aria-labelledby={`${id}-add`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+          <h2 id={`${id}-add`} className="text-title text-ink">
             Add a product
           </h2>
           <label className="flex flex-col gap-1 font-medium" htmlFor={`${id}-search`}>
@@ -286,8 +286,8 @@ export function OrderEditEditor({
           <p className={hint}>A price you type is the price charged, never shown as a &ldquo;was&rdquo; price. At most {EDIT_ADDED_LINES_MAX} products in one change.</p>
         </section>
 
-        <section aria-labelledby={`${id}-ship`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
-          <h2 id={`${id}-ship`} className="font-medium">
+        <section aria-labelledby={`${id}-ship`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+          <h2 id={`${id}-ship`} className="text-title text-ink">
             Shipping
           </h2>
           <fieldset className="flex flex-col gap-2">
@@ -321,8 +321,8 @@ export function OrderEditEditor({
           </fieldset>
         </section>
 
-        <section aria-labelledby={`${id}-how`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
-          <h2 id={`${id}-how`} className="font-medium">
+        <section aria-labelledby={`${id}-how`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+          <h2 id={`${id}-how`} className="text-title text-ink">
             Reason and stock
           </h2>
           <label className="flex items-center gap-2">
@@ -379,8 +379,8 @@ export function OrderEditEditor({
         {link ? (
           <LinkNotice link={link} onClose={() => router.push(orderHref)} />
         ) : (
-          <section aria-labelledby={`${id}-save`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
-            <h2 id={`${id}-save`} className="font-medium">
+          <section aria-labelledby={`${id}-save`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+            <h2 id={`${id}-save`} className="text-title text-ink">
               {summary?.money === "charge" ? "Ask the customer to pay" : "Save the change"}
             </h2>
             {summary?.money === "charge" ? (

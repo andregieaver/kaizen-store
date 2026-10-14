@@ -20,7 +20,7 @@ export function NewDraftForm({ options, action, defaultCountry }: { options: Dra
   const slug = current ? draftMarketSlug(options, { country, lang, currency }) : null;
 
   if (!current) {
-    return <p className="rounded-lg border border-line bg-sunken p-4 text-sm">The store has no market yet. Add one under Settings, Languages and currencies.</p>;
+    return <p className="rounded-panel bg-sunken p-4 text-sm">The store has no market yet. Add one under Settings, Languages and currencies.</p>;
   }
   return (
     <ActionForm action={action} className="flex max-w-xl flex-col gap-4">

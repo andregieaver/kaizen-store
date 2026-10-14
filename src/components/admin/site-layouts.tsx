@@ -34,7 +34,7 @@ export function SiteLayoutChoice({
   const unpublished = layouts.find((layout) => layout.id === current)?.state === "draft";
   return (
     <ActionForm action={action} className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}>
-      <h2 className="font-medium">The {type} in use</h2>
+      <h2 className="text-title text-ink">The {type} in use</h2>
       <p className="max-w-2xl text-sm text-muted">
         {siteName} shows this {type} on every page. Publish a {type} to choose it; the standard one looks as it always has.
       </p>

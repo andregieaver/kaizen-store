@@ -39,7 +39,7 @@ export default async function PlatformTemplatesPage() {
         {templates.map((template) => (
           <li
             key={template.id}
-            className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 sm:flex-row sm:items-start sm:justify-between"
+            className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 sm:flex-row sm:items-start sm:justify-between"
           >
             <div className="flex min-w-0 flex-col gap-1 text-sm">
               <span className="font-medium">

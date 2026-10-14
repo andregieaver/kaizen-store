@@ -77,7 +77,7 @@ export function FontPicker({
         aria-labelledby={labelId}
         aria-describedby={`${labelId}-value`}
         aria-haspopup="dialog"
-        className="flex min-h-11 items-center justify-between gap-3 rounded-md border border-line bg-card px-3 text-left"
+        className="flex min-h-11 items-center justify-between gap-3 rounded-pill border border-edge bg-card px-3 text-left"
       >
         <span id={`${labelId}-value`} className={value ? `${fontClass(value)} text-lg` : "text-sm text-muted"}>
           {value ?? defaultLabel}
@@ -201,7 +201,7 @@ function FontDialog({
           type="button"
           onClick={() => onChoose(undefined)}
           aria-pressed={value === undefined}
-          className="flex min-h-11 items-center rounded-md border border-line px-3 text-left text-sm aria-pressed:border-brand aria-pressed:font-medium"
+          className="flex min-h-11 items-center rounded-pill border border-edge px-3 text-left text-sm aria-pressed:border-brand aria-pressed:font-medium"
         >
           {defaultLabel}
         </button>
@@ -226,7 +226,7 @@ function FontDialog({
                     onClick={() => choose(f.family)}
                     disabled={busy !== null}
                     aria-pressed={value === f.family}
-                    className="flex min-h-14 w-full flex-col items-start justify-center rounded-md border border-edge px-3 py-2 text-left hover:bg-sunken disabled:opacity-60 aria-pressed:border-brand"
+                    className="flex min-h-14 w-full flex-col items-start justify-center rounded-pill border border-edge px-3 py-2 text-left hover:bg-sunken disabled:opacity-60 aria-pressed:border-brand"
                   >
                     <span className="text-xl leading-tight" style={{ fontFamily: `"kp-${fontSlug(f.family)}", ${fallback(f.category)}` }}>
                       {f.family}
@@ -242,7 +242,7 @@ function FontDialog({
               <button
                 type="button"
                 onClick={() => setShown((n) => n + SHOWN)}
-                className="min-h-10 self-center rounded-md border border-line px-4 text-sm"
+                className="min-h-10 self-center rounded-pill border border-edge px-4 text-sm"
               >
                 Show more
               </button>

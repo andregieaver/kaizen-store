@@ -28,7 +28,7 @@ export function alertHref(base: string, alert: Pick<Alert, "href">): string {
 /** The alerts as a list: the severity in words, the text, the evidence behind it (folded away) and a link to where to look. */
 export function AlertList({ alerts, base }: { alerts: readonly Alert[]; base: string }) {
   return (
-    <ul className="divide-y divide-line rounded-lg border border-line bg-card">
+    <ul className="divide-y divide-line rounded-panel border border-line bg-card">
       {alerts.map((a) => (
         <li key={a.id} data-alert={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3 text-sm">
           <StatusPill tone={SEVERITY[a.severity].tone}>{SEVERITY[a.severity].word}</StatusPill>

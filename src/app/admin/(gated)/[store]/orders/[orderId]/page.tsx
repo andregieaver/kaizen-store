@@ -234,7 +234,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             {memberCan(member, "owner") && (
               <Link
                 href={`/admin/${store.slug}/orders/export?numbers=${encodeURIComponent(order.number)}`}
-                className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm"
+                className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm"
               >
                 Export this order
               </Link>
@@ -243,7 +243,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
               <Link
                 href={`/admin/${store.slug}/orders/${order.id}/packing-slip`}
                 target="_blank"
-                className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm"
+                className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm"
               >
                 {order.gift ? "Print gift slip" : "Packing slip"}
               </Link>
@@ -273,7 +273,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <section aria-labelledby="items" className={card}>
-            <h2 id="items" className="mb-3 font-medium">Items</h2>
+            <h2 id="items" className="mb-3 text-title text-ink">Items</h2>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[28rem] text-left text-sm">
                 <thead>
@@ -436,7 +436,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {order.balanceMinor > 0 && order.status !== "cancelled" && (
             <section aria-labelledby="balance" className={card}>
-              <h2 id="balance" className="mb-1 font-medium">To pay at the appointment</h2>
+              <h2 id="balance" className="mb-1 text-title text-ink">To pay at the appointment</h2>
               <p className="mb-3 text-sm text-muted">
                 {money(order.balanceMinor)} is paid at the appointment, not online. Mark it paid when the customer has
                 paid you.
@@ -447,7 +447,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {(paid || toCharge) && order.ships && (
             <section aria-labelledby="sending" className={card}>
-              <h2 id="sending" className="mb-3 font-medium">
+              <h2 id="sending" className="mb-3 text-title text-ink">
                 {fulfilment.state === "partly_sent" ? "Partly sent" : sentParcels > 0 ? "Sent" : toCharge ? "Send and charge" : "Send the order"}
               </h2>
               {weekly && toCharge && (
@@ -549,7 +549,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {(paid || cancelledAfterPayment) && (order.refundableMinor > 0 || restockable.length > 0) && (
             <section aria-labelledby="refund" className={card}>
-              <h2 id="refund" className="mb-1 font-medium">Refund</h2>
+              <h2 id="refund" className="mb-1 text-title text-ink">Refund</h2>
               <p className="mb-3 text-sm text-muted">
                 Paid {money(order.paidMinor)}
                 {order.refundedMinor > 0 && `, refunded ${money(order.refundedMinor)}`}.{" "}
@@ -590,7 +590,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
 
           {((order.status === "paid" && sentParcels === 0) || toCharge) && (
             <section aria-labelledby="cancel" className={card}>
-              <h2 id="cancel" className="mb-1 font-medium">Cancel the order</h2>
+              <h2 id="cancel" className="mb-1 text-title text-ink">Cancel the order</h2>
               {order.subscriptionId && (
                 <p className="mb-2 text-sm text-muted">
                   This cancels this order only. The subscription goes on unless you also cancel it on its page.
@@ -624,7 +624,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           )}
 
           <section aria-labelledby="history" className={card}>
-            <h2 id="history" className="mb-3 font-medium">History</h2>
+            <h2 id="history" className="mb-3 text-title text-ink">History</h2>
             {order.status !== "pending_payment" && (
               <div className="mb-4">
                 <NoteForm {...ids} />
@@ -652,7 +652,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           <TagsCard tags={order.tags} suggestions={tagChoices.map((t) => t.label)} canWrite={canWrite} change={changeTagsAction.bind(null, store.slug, order.id)} />
           {order.gift && <GiftCard gift={order.gift} slipHref={paid && order.ships && !order.copied ? `/admin/${store.slug}/orders/${order.id}/packing-slip` : null} />}
           <section aria-labelledby="customer" className={`${card} text-sm`}>
-            <h2 id="customer" className="mb-2 font-medium">
+            <h2 id="customer" className="mb-2 text-title text-ink">
               {customer ? (
                 <Link href={`/admin/${store.slug}/customers/${customer.key}`} className="underline">
                   {customer.name || "Customer"}
@@ -675,7 +675,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
             )}
             {order.ships && (
               <>
-                <h3 className="mt-3 mb-1 font-medium">Ship to</h3>
+                <h3 className="mt-3 mb-1 text-body-strong text-ink">Ship to</h3>
                 <AddressBlock address={address} />
                 {order.delivery && (
                   <p className="mt-2">
@@ -713,7 +713,7 @@ export default async function OrderPage({ params }: PageProps<"/admin/[store]/or
           </section>
           {order.digitalConsentAt && (
             <section aria-labelledby="downloads" className={`${card} text-sm`}>
-              <h2 id="downloads" className="mb-2 font-medium">Downloads</h2>
+              <h2 id="downloads" className="mb-2 text-title text-ink">Downloads</h2>
               <p className="mb-2 text-muted">
                 The customer agreed to immediate delivery and the loss of the right of withdrawal on{" "}
                 {when(order.digitalConsentAt)}.

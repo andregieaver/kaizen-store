@@ -42,7 +42,7 @@ export function Modal({
         // A click on the backdrop (the dialog itself, outside its box) closes it.
         if (event.target === event.currentTarget) onClose();
       }}
-      className={`m-auto max-h-[90dvh] w-[calc(100%-2rem)] rounded-lg border border-line bg-card p-0 text-ink shadow-2xl backdrop:bg-black/40 ${
+      className={`m-auto max-h-[90dvh] w-[calc(100%-2rem)] rounded-panel border border-line bg-card p-0 text-ink shadow-2xl backdrop:bg-black/40 ${
         wide ? "max-w-3xl" : "max-w-lg"
       }`}
     >
@@ -50,7 +50,7 @@ export function Modal({
         // The dialog's own border takes 2 px of its 90dvh; only the middle scrolls.
         <div className="flex max-h-[calc(90dvh-2px)] flex-col">
           <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-3">
-            <h2 id={titleId} className="font-medium">
+            <h2 id={titleId} className="text-title text-ink">
               {title}
             </h2>
             <button

@@ -58,7 +58,7 @@ export function PeriodPicker({ basePath, preset, from, to, compare, preserve = {
               key={p.id}
               href={periodHref(basePath, { period: { preset: p.id, from, to }, compare: { mode: compare } }, explicitPeriod ? { ...preserve, period: p.id } : preserve)}
               aria-current={active ? "true" : undefined}
-              className={`inline-flex h-9 items-center rounded-lg border px-3 text-sm ${active ? "border-brand bg-sunken font-medium" : "border-line"}`}
+              className={`inline-flex h-9 items-center rounded-panel border px-3 text-sm ${active ? "border-brand bg-sunken font-medium" : "border-line"}`}
             >
               {p.label}
             </Link>

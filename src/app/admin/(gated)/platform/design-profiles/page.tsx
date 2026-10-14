@@ -59,7 +59,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
       </nav>
 
       {query.deleted && (
-        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
+        <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           The design profile was deleted; its workspace is closed and kept.
           {typeof query.cleared === "string" && query.cleared && ` It was the recommended profile of ${query.cleared}, which recommend none now.`}
         </p>
@@ -157,7 +157,7 @@ function DesignItem({
   const shown = shownDesignDetails(design);
   const edit = "flex min-h-10 items-center gap-1.5 rounded-md border border-edge px-3 text-sm hover:bg-sunken";
   return (
-    <li className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 md:flex-row md:items-start">
+    <li className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 md:flex-row md:items-start">
       {shown.pictureUrl ? (
         // eslint-disable-next-line @next/next/no-img-element -- a profile's picture from Kaizen's media library
         <img src={shown.pictureUrl} alt="" className="aspect-video w-full rounded-md border border-line object-cover md:w-48" />

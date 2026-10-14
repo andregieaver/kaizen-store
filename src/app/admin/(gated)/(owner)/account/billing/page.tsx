@@ -49,7 +49,7 @@ export default async function OwnerBillingPage() {
         description={<>The plan of each store you own, what it costs and when it renews. Change a plan in the store&apos;s own billing.</>}
       />
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-line p-4 text-sm">You do not own a store yet, so there are no plans to show.</p>
+        <p className="rounded-panel border border-line p-4 text-sm">You do not own a store yet, so there are no plans to show.</p>
       ) : (
         <>
           <StatGrid>
@@ -59,7 +59,7 @@ export default async function OwnerBillingPage() {
             <Stat label="Stores without a plan" value={rows.filter((r) => !r.status || ["canceled", "incomplete", "incomplete_expired"].includes(r.status)).length} />
           </StatGrid>
           <Section id="plans-heading" title="Your stores' plans">
-            <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+            <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
               {rows.map((row) => (
                 <li key={row.slug} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3">
                   <span className="min-w-40 flex-1">

@@ -31,9 +31,9 @@ export function DraftSummaryPanel({
   const blocking = problems.filter((p) => p.blocking);
   const notes = problems.filter((p) => !p.blocking);
   return (
-    <section aria-labelledby="draft-summary" className="flex flex-col gap-3 rounded-lg border border-line bg-sunken p-4 text-sm" aria-busy={state === "working"}>
+    <section aria-labelledby="draft-summary" className="flex flex-col gap-3 rounded-panel bg-sunken p-4 text-sm" aria-busy={state === "working"}>
       <div className="flex items-baseline justify-between gap-2">
-        <h2 id="draft-summary" className="font-medium">
+        <h2 id="draft-summary" className="text-title text-ink">
           Summary
         </h2>
         <span className={hint} aria-live="polite">

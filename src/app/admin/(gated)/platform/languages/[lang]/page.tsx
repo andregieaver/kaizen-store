@@ -109,7 +109,7 @@ export default async function LanguagePage({ params, searchParams }: PageProps<"
 
         <section aria-labelledby="group-heading" className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="group-heading" className="text-lg font-medium">{current}</h2>
+            <h2 id="group-heading" className="text-title text-ink">{current}</h2>
             <div role="group" aria-label="Show" className="flex gap-1 text-sm">
               {(Object.keys(FILTERS) as Filter[]).map((f) => (
                 <Link key={f} href={href(current, f)} aria-current={f === filter ? "true" : undefined}

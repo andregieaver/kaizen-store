@@ -41,7 +41,7 @@ export default async function PlanFeaturesPage() {
         </p>
       ) : (
         <ActionForm action={saveFeaturesAction} className="flex flex-col gap-4">
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
+          <div className="overflow-x-auto rounded-panel border border-line bg-card">
             <table className="w-full min-w-[56rem] text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-muted">

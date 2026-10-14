@@ -77,7 +77,7 @@ export function TemplatesTab({
           <button
             type="button"
             onClick={() => load(source, true)}
-            className="min-h-9 rounded-md border border-line px-3 text-xs text-ink"
+            className="min-h-9 rounded-pill border border-edge px-3 text-xs text-ink"
           >
             Try again
           </button>

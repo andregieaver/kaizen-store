@@ -17,8 +17,8 @@ export type MakeCoolPhase = { name: "idle" } | { name: "running" } | { name: "er
 const IDLE: MakeCoolPhase = { name: "idle" };
 const FAILED = "Something went wrong while looking at your page. Try again.";
 
-const secondary = "min-h-10 rounded-md border border-edge px-4 text-sm hover:bg-sunken disabled:opacity-50";
-const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
+const secondary = "min-h-10 rounded-pill border border-edge px-4 text-sm hover:bg-sunken disabled:opacity-50";
+const primary = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
 
 /** What the dialog says in each phase. While it works it says so in words, with a bar that only pulses where motion is welcome. */
 export function MakeCoolBody({ phase }: { phase: MakeCoolPhase }) {

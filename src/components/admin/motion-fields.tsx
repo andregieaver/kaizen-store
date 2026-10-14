@@ -340,7 +340,7 @@ function Section({ title, hint, children }: { title: string; hint: string; child
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3 border-t border-line pt-4">
       <div className="flex flex-col gap-0.5">
-        <h3 id={id} className="text-sm font-medium">
+        <h3 id={id} className="text-body-strong text-ink">
           {title}
         </h3>
         <p className="text-xs text-muted">{hint}</p>
@@ -500,7 +500,7 @@ export function EffectPicker<Id extends string>({
         </div>
         {groups.map((group) => (
           <div key={group.group} role="group" aria-label={group.group} className="flex flex-col gap-2">
-            <p aria-hidden className="text-xs font-medium tracking-wide text-muted uppercase">
+            <p aria-hidden className="text-eyebrow text-muted uppercase">
               {group.group}
             </p>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -571,7 +571,7 @@ function EffectCard<Id extends string>({
       onClick={onPick}
       onPointerEnter={id !== null && kind === "enter" ? play : undefined}
       onFocus={id !== null && kind === "enter" ? play : undefined}
-      className="flex min-h-14 items-start gap-3 rounded-md border border-edge p-2 text-left text-sm hover:bg-sunken focus-visible:outline-2 aria-checked:border-brand aria-checked:bg-sunken"
+      className="flex min-h-14 items-start gap-3 rounded-pill border border-edge p-2 text-left text-sm hover:bg-sunken focus-visible:outline-2 aria-checked:border-brand aria-checked:bg-sunken"
     >
       <span
         aria-hidden
@@ -724,12 +724,12 @@ export function MotionPreview({ part, motion }: { part: MotionPart; motion: Part
     // Where there is room it stays in view under the tabs, so a change can be watched while its settings are worked at.
     <div className="z-[5] flex flex-col gap-2 rounded-md border border-line bg-sunken p-3 sm:sticky sm:top-7">
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-medium">Preview</h3>
+        <h3 className="text-body-strong text-ink">Preview</h3>
         <button
           type="button"
           onClick={() => setReplay((n) => n + 1)}
           disabled={!motion?.enter || reduced}
-          className="min-h-9 rounded-md border border-line bg-card px-3 text-sm disabled:opacity-40"
+          className="min-h-9 rounded-pill border border-edge bg-card px-3 text-sm disabled:opacity-40"
         >
           Replay
         </button>

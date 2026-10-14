@@ -56,7 +56,7 @@ export function AccessibilityForm({
 }) {
   return (
     <div className="flex flex-col gap-8">
-      <p role="note" className="rounded-lg border border-line bg-card p-4 text-sm">
+      <p role="note" className="rounded-panel border border-line bg-card p-4 text-sm">
         <strong className="font-medium">An automated check finds only part of the problems</strong> and does not replace an assessment by someone who knows
         accessibility. This page never says the site meets the requirements on its own: that needs an assessment you give below. The statement text is a draft
         written by hand and not checked by a lawyer.

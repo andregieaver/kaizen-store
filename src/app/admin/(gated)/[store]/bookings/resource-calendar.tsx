@@ -22,7 +22,7 @@ export type CalendarActions = {
 
 const field = "flex flex-col gap-1 text-sm font-medium";
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
-const small = "min-h-10 rounded-md border border-line px-3 text-sm";
+const small = "min-h-10 rounded-pill border border-edge px-3 text-sm";
 
 /**
  * A resource's blocked dates and calendar sync (D67): dates the store closes
@@ -108,7 +108,7 @@ export async function ResourceCalendar({
       {!staff && (
         <Card title="Calendar sync" description={<>Listed on Airbnb, Booking.com or another site too? Give each site this {unit ? "room's" : "item's"} calendar address, and add theirs below, so a booking made on one closes the dates on the others. Other sites are read every 15 minutes.</>} className="flex flex-col gap-4" compact>
           <div className="flex flex-col gap-2 text-sm">
-            <h3 className="font-medium">This {unit ? "room's" : "item's"} calendar</h3>
+            <h3 className="text-body-strong text-ink">This {unit ? "room's" : "item's"} calendar</h3>
             {address ? (
               <>
                 <label className={field}>
@@ -135,7 +135,7 @@ export async function ResourceCalendar({
           </div>
 
           <div className="flex flex-col gap-2 text-sm">
-            <h3 className="font-medium">Other sites&apos; calendars</h3>
+            <h3 className="text-body-strong text-ink">Other sites&apos; calendars</h3>
             {feeds.length > 0 && (
               <ul className="divide-y divide-line rounded-md border border-line">
                 {feeds.map((f) => (

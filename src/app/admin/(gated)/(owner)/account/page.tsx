@@ -32,7 +32,7 @@ import {
 
 export const metadata: Metadata = { title: "Your account" };
 
-const smallButton = "min-h-10 rounded-md border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken";
+const smallButton = "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken";
 
 export default async function AccountPage({ searchParams }: PageProps<"/admin/account">) {
   const account = await requireAccount();
@@ -52,7 +52,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
       <PageHeader title="Your account" description={<>Signed in as {account.name ? `${account.name} (${account.email})` : account.email}.</>} />
 
       <section aria-labelledby="picture-heading" className="flex max-w-md flex-col gap-3">
-        <h2 id="picture-heading" className="font-medium">
+        <h2 id="picture-heading" className="text-title text-ink">
           Profile picture
         </h2>
         <AvatarPicker
@@ -71,7 +71,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
       </section>
 
       <section aria-labelledby="appearance-heading" className="flex max-w-md flex-col gap-3">
-        <h2 id="appearance-heading" className="font-medium">
+        <h2 id="appearance-heading" className="text-title text-ink">
           Light or dark
         </h2>
         <p className="text-sm text-muted">How the admin looks for you. Your stores keep the colours set under Design.</p>
@@ -79,7 +79,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
       </section>
 
       <section aria-labelledby="scheme-heading" className="flex max-w-md flex-col gap-3">
-        <h2 id="scheme-heading" className="font-medium">
+        <h2 id="scheme-heading" className="text-title text-ink">
           Colour scheme
         </h2>
         <p className="text-sm text-muted">The admin&apos;s colours, in light and in dark. Your stores keep the colours set under Design.</p>
@@ -91,7 +91,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
 
       {owner && (
         <section aria-labelledby="usage-heading" className="flex max-w-md flex-col gap-3">
-          <h2 id="usage-heading" className="font-medium">
+          <h2 id="usage-heading" className="text-title text-ink">
             AI usage
           </h2>
           <p className="text-sm text-muted">What the AI used for your stores, per provider and model and per store.</p>
@@ -102,7 +102,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
       )}
 
       <section aria-labelledby="password-heading" className="flex max-w-md flex-col gap-3">
-        <h2 id="password-heading" className="font-medium">
+        <h2 id="password-heading" className="text-title text-ink">
           Password
         </h2>
         <p className="text-sm text-muted">
@@ -132,7 +132,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
       </section>
 
       <section aria-labelledby="two-step-heading" className="flex max-w-md flex-col gap-3">
-        <h2 id="two-step-heading" className="font-medium">
+        <h2 id="two-step-heading" className="text-title text-ink">
           Two-step sign-in
         </h2>
         {twoStep ? (
@@ -154,7 +154,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
 
       {owner && kaizenLifeSignInOn() && (
         <section aria-labelledby="kaizen-life-heading" className="flex max-w-md flex-col gap-3">
-          <h2 id="kaizen-life-heading" className="font-medium">
+          <h2 id="kaizen-life-heading" className="text-title text-ink">
             Kaizen Life
           </h2>
           {status === "failed" && (
@@ -191,7 +191,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
 
       {owner && lifeLinkOn() && (
         <section aria-labelledby="life-assistant-heading" className="flex max-w-md flex-col gap-3">
-          <h2 id="life-assistant-heading" className="font-medium">
+          <h2 id="life-assistant-heading" className="text-title text-ink">
             Kaizen Life for your assistant
           </h2>
           {assistantStatus === "failed" && (
@@ -229,7 +229,7 @@ export default async function AccountPage({ searchParams }: PageProps<"/admin/ac
 
       {grants.length > 0 && (
         <section aria-labelledby="apps-heading" className="flex max-w-md flex-col gap-3">
-          <h2 id="apps-heading" className="font-medium">
+          <h2 id="apps-heading" className="text-title text-ink">
             Apps you sign in to with Kaizen Store
           </h2>
           <ul className="flex flex-col gap-2">

@@ -93,32 +93,32 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
       </Card>
 
       <section aria-labelledby="stats-heading" className="flex flex-col gap-3">
-        <h2 id="stats-heading" className="font-medium">
+        <h2 id="stats-heading" className="text-title text-ink">
           The last 30 days
         </h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className={tile}>
             <span className="text-sm text-muted">Carts with an email</span>
-            <span className="text-2xl font-medium">{stats.captured}</span>
+            <span className="text-metric text-ink tabular-nums">{stats.captured}</span>
           </div>
           <div className={tile}>
             <span className="text-sm text-muted">Reminded</span>
-            <span className="text-2xl font-medium">{stats.reminded}</span>
+            <span className="text-metric text-ink tabular-nums">{stats.reminded}</span>
           </div>
           <div className={tile}>
             <span className="text-sm text-muted">Bought after a reminder</span>
-            <span className="text-2xl font-medium">{stats.recovered}</span>
+            <span className="text-metric text-ink tabular-nums">{stats.recovered}</span>
           </div>
           <div className={tile}>
             <span className="text-sm text-muted">Sales after reminders</span>
-            <span className="text-2xl font-medium">{recovered || formatMoney(0, mainCurrency(store), locale)}</span>
+            <span className="text-metric text-ink tabular-nums">{recovered || formatMoney(0, mainCurrency(store), locale)}</span>
           </div>
         </div>
       </section>
 
       <section aria-labelledby="steps-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 id="steps-heading" className="font-medium">
+          <h2 id="steps-heading" className="text-title text-ink">
             Reminders
           </h2>
           <Link href={`${base}/new`} className="min-h-10 rounded-pill bg-brand px-4 py-2 text-sm font-medium text-brand-ink">
@@ -126,7 +126,7 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
           </Link>
         </div>
         {settings.steps.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
             No reminders yet. Turn reminders on to start with three, or make one.
           </p>
         ) : (
@@ -160,11 +160,11 @@ export default async function CartRemindersPage({ params }: PageProps<"/admin/[s
       </section>
 
       <section aria-labelledby="carts-heading" className="flex flex-col gap-3">
-        <h2 id="carts-heading" className="font-medium">
+        <h2 id="carts-heading" className="text-title text-ink">
           Latest carts
         </h2>
         {carts.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+          <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
             No carts yet. They show here once a shopper types their email at checkout.
           </p>
         ) : (

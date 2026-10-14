@@ -34,9 +34,9 @@ export default async function ReferralsPage() {
       />
 
       {!overview.enabled && !overview.code ? (
-        <p className="rounded-lg border border-line bg-card p-4 text-sm">The referral program is not running right now. Check back later.</p>
+        <p className="rounded-panel border border-line bg-card p-4 text-sm">The referral program is not running right now. Check back later.</p>
       ) : !overview.code ? (
-        <p className="rounded-lg border border-line bg-card p-4 text-sm">Referrals are for store owners. You get a link once you own a store.</p>
+        <p className="rounded-panel border border-line bg-card p-4 text-sm">Referrals are for store owners. You get a link once you own a store.</p>
       ) : (
         <>
           {overview.blocked && (
@@ -45,7 +45,7 @@ export default async function ReferralsPage() {
             </p>
           )}
           {!overview.enabled && (
-            <p className="rounded-lg border border-line bg-card p-4 text-sm">
+            <p className="rounded-panel border border-line bg-card p-4 text-sm">
               The referral program is paused: stores that open now do not earn you anything. Credit you have can still be used.
             </p>
           )}
@@ -89,7 +89,7 @@ export default async function ReferralsPage() {
 
           <Section id="stores-heading" title="Stores you referred">
             {overview.stores.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+              <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
                 No store has opened through your link yet.
               </p>
             ) : (
@@ -118,7 +118,7 @@ export default async function ReferralsPage() {
 
           <Section id="history-heading" title="History">
             {overview.entries.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+              <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
                 Nothing yet. Credit shows here when a store you referred pays Kaizen.
               </p>
             ) : (

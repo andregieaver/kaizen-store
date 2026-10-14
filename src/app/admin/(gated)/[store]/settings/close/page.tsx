@@ -78,8 +78,8 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       />
 
       {blockers.length > 0 && (
-        <section aria-labelledby="blockers" className="flex flex-col gap-2 rounded-lg border border-line bg-sunken p-4">
-          <h2 id="blockers" className="font-medium">
+        <section aria-labelledby="blockers" className="flex flex-col gap-2 rounded-panel bg-sunken p-4">
+          <h2 id="blockers" className="text-title text-ink">
             Before you can close it
           </h2>
           <ul className="list-disc pl-5 text-sm">
@@ -91,7 +91,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       )}
 
       <section aria-labelledby="warnings" className="flex flex-col gap-2">
-        <h2 id="warnings" className="font-medium">
+        <h2 id="warnings" className="text-title text-ink">
           What closing does
         </h2>
         <ul className="list-disc pl-5 text-sm text-muted">
@@ -102,8 +102,8 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       </section>
 
       {blockers.length === 0 && !fresh && (
-        <section aria-labelledby="signin" className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4">
-          <h2 id="signin" className="font-medium">
+        <section aria-labelledby="signin" className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4">
+          <h2 id="signin" className="text-title text-ink">
             Sign in again first
           </h2>
           <p className="text-sm text-muted">Closing a store needs a sign-in from the last ten minutes. You come back to this page afterwards.</p>
@@ -114,7 +114,7 @@ export default async function CloseStorePage({ params }: PageProps<"/admin/[stor
       )}
 
       {blockers.length === 0 && fresh && (
-        <ActionForm action={closeStoreAction.bind(null, store.slug)} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4" successMessage="The store is closed.">
+        <ActionForm action={closeStoreAction.bind(null, store.slug)} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4" successMessage="The store is closed.">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Type the store&apos;s address, <span className="font-mono">{store.slug}</span>, to confirm
             <input name="address" required autoComplete="off" spellCheck={false} className={control} />

@@ -39,7 +39,7 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
         <PeriodLinks base={base} period={chosen.id} extra={keep} />
         {owned.length > 1 && (
           <nav aria-label="Store" className="flex flex-wrap gap-1 text-sm">
-            <Link href={`${base}?period=${chosen.id}`} aria-current={!store ? "page" : undefined} className={`rounded-md px-3 py-1.5 ${!store ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}>
+            <Link href={`${base}?period=${chosen.id}`} aria-current={!store ? "page" : undefined} className={`rounded-pill px-3 py-1.5 ${!store ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}>
               All my stores
             </Link>
             {owned.map((s) => (
@@ -47,7 +47,7 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
                 key={s.slug}
                 href={`${base}?period=${chosen.id}&store=${s.slug}`}
                 aria-current={store?.slug === s.slug ? "page" : undefined}
-                className={`rounded-md px-3 py-1.5 ${store?.slug === s.slug ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}
+                className={`rounded-pill px-3 py-1.5 ${store?.slug === s.slug ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}
               >
                 {s.name}
               </Link>
@@ -56,7 +56,7 @@ export default async function OwnerAiUsagePage({ searchParams }: PageProps<"/adm
         )}
       </div>
       {owned.length === 0 ? (
-        <p className="rounded-lg border border-line p-4 text-sm">You do not own a store yet, so there is no usage to show.</p>
+        <p className="rounded-panel border border-line p-4 text-sm">You do not own a store yet, so there is no usage to show.</p>
       ) : (
         <UsageReport rows={rows} days={days} scope="owner" />
       )}

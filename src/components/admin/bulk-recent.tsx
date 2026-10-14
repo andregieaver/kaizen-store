@@ -12,7 +12,7 @@ export async function BulkRecent({ storeId, timeZone, undo }: { storeId: string;
   const summaries = (await Promise.all(batches.map((b) => batchSummary(storeId, b.id)))).flatMap((s, i) => (s ? [{ summary: s, when: momentText(batches[i].createdAt, timeZone) }] : []));
   return (
     <section aria-labelledby="recent-bulk" className="flex flex-col gap-2">
-      <h2 id="recent-bulk" className="text-base font-medium">
+      <h2 id="recent-bulk" className="text-title text-ink">
         Recent bulk changes
       </h2>
       <RecentBatches batches={summaries} undo={undo} />

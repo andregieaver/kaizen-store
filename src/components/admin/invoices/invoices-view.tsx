@@ -88,7 +88,7 @@ export function InvoicesView({
       </div>
 
       {!invoicingOn && (
-        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
+        <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           Invoicing is switched off for this store, so new orders get no invoice.{" "}
           {canSettings ? (
             <Link href={`${base}/settings/invoices`} className="underline">
@@ -219,7 +219,7 @@ function ListTab({
         </p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[56rem] rounded-lg border border-line bg-card text-left text-sm">
+          <table className="w-full min-w-[56rem] rounded-panel border border-line bg-card text-left text-sm">
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className={th}>{credit ? "Credit note" : "Invoice"}</th>
@@ -280,7 +280,7 @@ function ListTab({
               To
               <input type="date" name="to" required defaultValue={to} className={control} />
             </label>
-            <button type="submit" className="min-h-10 rounded-md border border-line bg-card px-4 text-sm">
+            <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm">
               Download CSV
             </button>
           </form>

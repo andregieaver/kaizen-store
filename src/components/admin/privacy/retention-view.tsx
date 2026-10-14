@@ -118,7 +118,7 @@ export function RetentionView({
       />
 
       <section aria-labelledby="unreviewed" className={card}>
-        <h2 id="unreviewed" className="font-medium">
+        <h2 id="unreviewed" className="text-title text-ink">
           Not reviewed yet
         </h2>
         {overview.unverified === 0 ? (
@@ -133,7 +133,7 @@ export function RetentionView({
       {RETENTION_KINDS.filter((kind) => byKind.has(kind)).map((kind) => (
         <section key={kind} aria-labelledby={`kind-${kind}`} className={card}>
           <div>
-            <h2 id={`kind-${kind}`} className="font-medium">
+            <h2 id={`kind-${kind}`} className="text-title text-ink">
               {KIND_LABELS[kind]}
             </h2>
             {isBookkeepingKind(kind) && <p className="text-sm text-muted">The database refuses a bookkeeping period under five years. The financial year is counted as the calendar year.</p>}
@@ -160,7 +160,7 @@ export function RetentionView({
       ))}
 
       <section aria-labelledby="change-rule" className={card}>
-        <h2 id="change-rule" className="font-medium">
+        <h2 id="change-rule" className="text-title text-ink">
           Change a period
         </h2>
         <p className="text-sm text-muted">
@@ -171,7 +171,7 @@ export function RetentionView({
       </section>
 
       <section aria-labelledby="register" className={card}>
-        <h2 id="register" className="font-medium">
+        <h2 id="register" className="text-title text-ink">
           The register of personal data
         </h2>
         <p className="text-sm text-muted">
@@ -186,7 +186,7 @@ export function RetentionView({
               ["keep", "Kept"],
             ] as const
           ).map(([key, text]) => (
-            <div key={key} className="rounded-lg border border-line p-3">
+            <div key={key} className="rounded-panel border border-line p-3">
               <dt className="text-muted">{text}</dt>
               <dd className="text-xl font-medium">{actions(key)}</dd>
             </div>
@@ -195,7 +195,7 @@ export function RetentionView({
       </section>
 
       <section aria-labelledby="runs" className={card}>
-        <h2 id="runs" className="font-medium">
+        <h2 id="runs" className="text-title text-ink">
           The daily job
         </h2>
         {overview.lastRuns.length === 0 ? (
@@ -235,7 +235,7 @@ export function RetentionView({
 
       {history.length > 0 && (
         <section aria-labelledby="history" className={card}>
-          <h2 id="history" className="font-medium">
+          <h2 id="history" className="text-title text-ink">
             Earlier periods
           </h2>
           <ul className="flex flex-col gap-1 text-sm">

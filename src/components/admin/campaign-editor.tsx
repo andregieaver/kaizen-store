@@ -139,7 +139,7 @@ export function CampaignEditor({
       )}
 
       <section aria-labelledby="campaign-heading" className={card}>
-        <h2 id="campaign-heading" className="font-medium">
+        <h2 id="campaign-heading" className="text-title text-ink">
           The campaign
         </h2>
         <label className={label}>
@@ -249,7 +249,7 @@ export function CampaignEditor({
       </section>
 
       <section aria-labelledby="applies-heading" className={card}>
-        <h2 id="applies-heading" className="font-medium">
+        <h2 id="applies-heading" className="text-title text-ink">
           {scopeWord}
         </h2>
         <fieldset className="flex flex-col gap-2">
@@ -304,7 +304,7 @@ export function CampaignEditor({
       </section>
 
       <section aria-labelledby="when-heading" className={card}>
-        <h2 id="when-heading" className="font-medium">
+        <h2 id="when-heading" className="text-title text-ink">
           When
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -336,7 +336,7 @@ export function CampaignEditor({
 
       {markets.length > 1 && (
         <section aria-labelledby="where-heading" className={card}>
-          <h2 id="where-heading" className="font-medium">
+          <h2 id="where-heading" className="text-title text-ink">
             Where
           </h2>
           <fieldset className="flex flex-col gap-2">
@@ -367,7 +367,7 @@ export function CampaignEditor({
       )}
 
       <section aria-labelledby="who-heading" className={card}>
-        <h2 id="who-heading" className="font-medium">
+        <h2 id="who-heading" className="text-title text-ink">
           Who
         </h2>
         {tiers.length === 0 ? (

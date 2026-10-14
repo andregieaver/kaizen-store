@@ -25,7 +25,7 @@ export function OrderSettingsForm({
     <ActionForm action={action} successMessage="Saved." className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
         <section aria-labelledby="gift" className={card}>
-          <h2 id="gift" className="font-medium">
+          <h2 id="gift" className="text-title text-ink">
             Gift messages
           </h2>
           <label className="flex items-start gap-2 text-sm">
@@ -40,7 +40,7 @@ export function OrderSettingsForm({
         </section>
 
         <section aria-labelledby="archive" className={card}>
-          <h2 id="archive" className="font-medium">
+          <h2 id="archive" className="text-title text-ink">
             Automatic archiving
           </h2>
           <label className="flex items-start gap-2 text-sm">
@@ -69,7 +69,7 @@ export function OrderSettingsForm({
         </section>
 
         <section aria-labelledby="links" className={card}>
-          <h2 id="links" className="font-medium">
+          <h2 id="links" className="text-title text-ink">
             Draft orders
           </h2>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -86,7 +86,7 @@ export function OrderSettingsForm({
         </section>
 
         <section aria-labelledby="outside" className={card}>
-          <h2 id="outside" className="font-medium">
+          <h2 id="outside" className="text-title text-ink">
             Money taken outside Kaizen
           </h2>
           {isOwner ? (

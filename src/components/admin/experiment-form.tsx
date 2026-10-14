@@ -100,7 +100,7 @@ export function ExperimentForm({
   return (
     <form onSubmit={submit} className="flex max-w-3xl flex-col gap-6" aria-busy={pending}>
       <section className={card} aria-labelledby="ab-page">
-        <h2 id="ab-page" className="text-lg font-medium">{part ? "1. What you are testing" : "1. What do you want to test?"}</h2>
+        <h2 id="ab-page" className="text-title text-ink">{part ? "1. What you are testing" : "1. What do you want to test?"}</h2>
         {part ? (
           <p className="text-sm">
             <span className="font-medium">{part.label}</span> in {page && page.kind !== "page" ? `the ${(page.kind === "role" && isTestedPlace(page.role) ? ROLE_NAMES[page.role] : KIND_WORDS[page.kind].name).toLowerCase()} ` : "the page "}
@@ -130,7 +130,7 @@ export function ExperimentForm({
       </section>
 
       <section className={card} aria-labelledby="ab-goal">
-        <h2 id="ab-goal" className="text-lg font-medium">2. What should get better?</h2>
+        <h2 id="ab-goal" className="text-title text-ink">2. What should get better?</h2>
         <fieldset className="flex flex-col gap-2">
           <legend className="sr-only">What the test should improve</legend>
           {GOALS.map((g) => (
@@ -185,7 +185,7 @@ export function ExperimentForm({
       </section>
 
       <section className={card} aria-labelledby="ab-name">
-        <h2 id="ab-name" className="text-lg font-medium">3. Name and idea</h2>
+        <h2 id="ab-name" className="text-title text-ink">3. Name and idea</h2>
         <label className={label}>
           Name
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder={part ? `Test of ${part.label}` : `Test of ${page?.title ?? "the page"}`} className={input} />
@@ -205,7 +205,7 @@ export function ExperimentForm({
       </section>
 
       <section className={card} aria-labelledby="ab-who">
-        <h2 id="ab-who" className="text-lg font-medium">4. Who takes part?</h2>
+        <h2 id="ab-who" className="text-title text-ink">4. Who takes part?</h2>
         <label className={label}>
           Share of visitors in the test
           <select value={share} onChange={(e) => setShare(Number(e.target.value))} className={input}>
@@ -240,7 +240,7 @@ export function ExperimentForm({
       </section>
 
       <section className={card} aria-labelledby="ab-time">
-        <h2 id="ab-time" className="text-lg font-medium">How long will it take? (optional)</h2>
+        <h2 id="ab-time" className="text-title text-ink">How long will it take? (optional)</h2>
         <RuntimeEstimate share={share} versions={2} />
       </section>
 

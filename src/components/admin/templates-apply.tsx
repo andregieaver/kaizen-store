@@ -159,7 +159,7 @@ function Choice({
       )}
 
       <div className="flex flex-wrap justify-end gap-2">
-        <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-line px-4 text-sm">
+        <button type="button" onClick={onClose} className="min-h-10 rounded-pill border border-edge px-4 text-sm">
           Cancel
         </button>
         <button

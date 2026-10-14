@@ -120,7 +120,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
       )}
 
       {/* The week as a grid, on screens wide enough for seven columns. */}
-      <div className="hidden overflow-x-auto rounded-lg border border-line bg-card md:block" data-week-grid>
+      <div className="hidden overflow-x-auto rounded-panel border border-line bg-card md:block" data-week-grid>
         <div className="grid min-w-[48rem] grid-cols-[3.5rem_repeat(7,minmax(0,1fr))]">
           <div className="border-b border-line" />
           {days.map((day) => (
@@ -160,7 +160,7 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
                       key={b.id}
                       href={`#booking-${b.id}`}
                       title={`${span(b)} ${b.service} · ${b.staff}${b.customer ? ` · ${b.customer}` : ""}`}
-                      className={`absolute overflow-hidden rounded-md border px-1.5 py-0.5 text-xs leading-tight hover:z-10 hover:shadow ${
+                      className={`absolute overflow-hidden rounded-pill border px-1.5 py-0.5 text-xs leading-tight hover:z-10 hover:shadow ${
                         b.status === "held"
                           ? "border-dashed border-line bg-card text-muted"
                           : "border-brand/20 bg-sunken"
@@ -192,8 +192,8 @@ export default async function BookingsPage({ params, searchParams }: PageProps<"
             .filter((day) => bookings.some((b) => dayOf(b) === day))
             .map((day) => (
               <section key={day} aria-label={longDay.format(noon(day))}>
-                <h2 className="mb-2 font-medium">{longDay.format(noon(day))}</h2>
-                <ul className="divide-y divide-line rounded-lg border border-line bg-card">
+                <h2 className="mb-2 text-title text-ink">{longDay.format(noon(day))}</h2>
+                <ul className="divide-y divide-line rounded-panel border border-line bg-card">
                   {bookings
                     .filter((b) => dayOf(b) === day)
                     .map((b) => (

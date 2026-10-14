@@ -250,10 +250,10 @@ export function ConversationActions({
         >
           {acts.reply && (
             <div role="radiogroup" aria-label="Write" className="flex gap-1 text-sm">
-              <button type="button" role="radio" aria-checked={!asNote} onClick={() => setAsNote(false)} className={`rounded-md px-2 py-1 ${!asNote ? "bg-sunken font-medium" : ""}`}>
+              <button type="button" role="radio" aria-checked={!asNote} onClick={() => setAsNote(false)} className={`rounded-pill px-2 py-1 ${!asNote ? "bg-sunken font-medium" : ""}`}>
                 Reply
               </button>
-              <button type="button" role="radio" aria-checked={asNote} onClick={() => setAsNote(true)} className={`rounded-md px-2 py-1 ${asNote ? "bg-sunken font-medium" : ""}`}>
+              <button type="button" role="radio" aria-checked={asNote} onClick={() => setAsNote(true)} className={`rounded-pill px-2 py-1 ${asNote ? "bg-sunken font-medium" : ""}`}>
                 Internal note
               </button>
             </div>
@@ -340,7 +340,7 @@ export function ConversationActions({
             <span className="flex items-center gap-3 text-xs text-muted">
               Ctrl or ⌘ and Enter sends
               {canTranslate && !translated && (
-                <button type="button" disabled={busy || !draft.trim()} onClick={() => void translateDraft()} className="rounded-md border border-edge px-2 py-1 text-ink hover:bg-sunken disabled:opacity-50">
+                <button type="button" disabled={busy || !draft.trim()} onClick={() => void translateDraft()} className="rounded-pill border border-edge px-2 py-1 text-ink hover:bg-sunken disabled:opacity-50">
                   Translate to {languageName(conversation.locale)}
                 </button>
               )}
@@ -420,7 +420,7 @@ function SummaryEditor({
         <button type="submit" disabled={busy} className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink disabled:opacity-50">
           Save summary
         </button>
-        <button type="button" onClick={onCancel} className="rounded-md border border-edge px-3 py-1.5 text-sm hover:bg-sunken">
+        <button type="button" onClick={onCancel} className="rounded-pill border border-edge px-3 py-1.5 text-sm hover:bg-sunken">
           Cancel
         </button>
       </div>

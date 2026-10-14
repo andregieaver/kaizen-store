@@ -50,7 +50,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           ["Put in the cart", String(figures.toCart), "from a list"],
           ["Bought", String(figures.bought), [conversion !== null && `${conversion} %`, moneyByCurrency(figures.boughtMinor, locale)].filter(Boolean).join(" · ") || null],
         ].map(([label, value, note]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-lg border border-line bg-card p-4">
+          <div key={label} className="flex flex-col gap-1 rounded-panel border border-line bg-card p-4">
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
             {note && <span className="text-xs text-muted">{note}</span>}
@@ -91,7 +91,7 @@ export default async function WishlistsPage({ params, searchParams }: PageProps<
           )}
 
           {lists.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+            <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
               {q || customerId ? "No list matches." : "No wishlists yet. They show here once a shopper taps a heart."}
             </p>
           ) : (

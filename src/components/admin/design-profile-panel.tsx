@@ -51,13 +51,13 @@ export function DesignProfilePanel({
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {designs.map((design) => (
-            <li key={design.id} className="flex flex-col overflow-hidden rounded-lg border border-line">
+            <li key={design.id} className="flex flex-col overflow-hidden rounded-panel border border-line">
               <div className="flex flex-1 flex-col gap-2 p-3 text-sm">
                 {design.pictureUrl && (
                   // eslint-disable-next-line @next/next/no-img-element -- a profile's picture from Kaizen's media library
                   <img src={design.pictureUrl} alt="" loading="lazy" className="aspect-video w-full rounded-md border border-line object-cover" />
                 )}
-                <h3 className="font-medium">
+                <h3 className="text-body-strong text-ink">
                   {design.title}
                   {design.published === false && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs font-normal">Not published</span>}
                 </h3>

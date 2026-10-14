@@ -71,7 +71,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
           ["On a plan", String(customer.onPlan)],
           ["Plan reminders", customer.planRemindersOptedOut ? "Said no" : "Allowed"],
         ].map(([label, value]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-lg border border-line bg-card p-4">
+          <div key={label} className="flex flex-col gap-1 rounded-panel border border-line bg-card p-4">
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
           </div>
@@ -79,7 +79,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
       </div>
 
       <section aria-labelledby="two-step" className={card}>
-        <h2 id="two-step" className="mb-1 font-medium">
+        <h2 id="two-step" className="mb-1 text-title text-ink">
           Two-step sign-in
         </h2>
         <p className="mb-3 text-sm text-muted">
@@ -105,7 +105,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
       </section>
 
       <section aria-labelledby="stores" className={card}>
-        <h2 id="stores" className="mb-3 font-medium">Stores and plans</h2>
+        <h2 id="stores" className="mb-3 text-title text-ink">Stores and plans</h2>
         {customer.stores.length === 0 ? (
           <p className="text-sm text-muted">Works in no store.</p>
         ) : (
@@ -143,14 +143,14 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
       </section>
 
       <section aria-labelledby="invoices" className={card}>
-        <h2 id="invoices" className="mb-3 font-medium">Invoices</h2>
+        <h2 id="invoices" className="mb-3 text-title text-ink">Invoices</h2>
         {owned.length === 0 ? (
           <p className="text-sm text-muted">Owns no store, so gets no invoices.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {invoices.map(({ store, invoices: list }) => (
               <div key={store.slug}>
-                {owned.length > 1 && <h3 className="mb-1 text-sm font-medium">{store.name}</h3>}
+                {owned.length > 1 && <h3 className="mb-1 text-body-strong text-ink">{store.name}</h3>}
                 <InvoiceList storeSlug={store.slug} invoices={list} date={date} />
               </div>
             ))}
@@ -160,7 +160,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
 
       {customer.unpaidPlans.length > 0 && (
         <section aria-labelledby="unpaid" className={card}>
-          <h2 id="unpaid" className="mb-3 font-medium">Went to pay for a plan</h2>
+          <h2 id="unpaid" className="mb-3 text-title text-ink">Went to pay for a plan</h2>
           <ul className="divide-y divide-line text-sm">
             {customer.unpaidPlans.map((u) => (
               <li key={`${u.storeSlug}-${u.capturedAt}`} className="flex flex-wrap justify-between gap-2 py-2">
@@ -180,7 +180,7 @@ export default async function PlatformCustomerPage({ params }: PageProps<"/admin
       )}
 
       <section aria-labelledby="emails" className={card}>
-        <h2 id="emails" className="mb-3 font-medium">Emails from Kaizen</h2>
+        <h2 id="emails" className="mb-3 text-title text-ink">Emails from Kaizen</h2>
         {kaizenEmails.length === 0 ? (
           <p className="text-sm text-muted">No emails yet.</p>
         ) : (

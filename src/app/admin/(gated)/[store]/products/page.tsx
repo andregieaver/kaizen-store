@@ -32,21 +32,21 @@ export default async function ProductsPage({ params, searchParams }: Props) {
         <div className="flex flex-wrap gap-2">
           <Link
             href={`/admin/${store.slug}/products/export`}
-            className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium"
+            className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
           >
             Export
           </Link>
           {canWrite && (
             <Link
               href={`/admin/${store.slug}/products/import`}
-              className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium"
+              className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
             >
               Import
             </Link>
           )}
           <Link
             href={`/admin/${store.slug}/products/categories`}
-            className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium"
+            className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium"
           >
             Categories and tags
           </Link>
@@ -106,7 +106,7 @@ async function ProductList({
     <>
       {!needsFilter && <NeedsContentNotice count={needing.length} href={needsHref} />}
       {openImport && (
-        <p className="rounded-lg border border-line bg-sunken p-3 text-sm">
+        <p className="rounded-panel bg-sunken p-3 text-sm">
           A product import is open ({openImport.inputName ?? "a file"}).{" "}
           <Link href={`${base}/import/${openImport.id}`} className="underline underline-offset-2">
             Continue it

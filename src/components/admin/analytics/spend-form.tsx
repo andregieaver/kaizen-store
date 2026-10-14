@@ -118,7 +118,7 @@ export function SpendSection({ currency, locale, today, entries, limit, actions 
         </ActionForm>
 
         <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <h3 className="text-sm font-medium">Latest entries</h3>
+          <h3 className="text-body-strong text-ink">Latest entries</h3>
           <DataTable
             caption="Latest ad spend entries"
             columns={columns}

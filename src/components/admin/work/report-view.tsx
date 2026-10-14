@@ -58,7 +58,7 @@ export function ReportView({ storeSlug, locale, today, params, report, clients }
       </div>
 
       {params.problem && (
-        <p role="alert" className="rounded-lg border border-line bg-card p-4 text-sm text-danger-text">
+        <p role="alert" className="rounded-panel border border-line bg-card p-4 text-sm text-danger-text">
           {params.problem} Showing this month instead.
         </p>
       )}

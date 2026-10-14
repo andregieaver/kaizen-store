@@ -23,7 +23,7 @@ export function CategoriesCard({
   return (
     <section aria-labelledby="categories" className={card}>
       <div>
-        <h2 id="categories" className="font-medium">
+        <h2 id="categories" className="text-title text-ink">
           Categories
         </h2>
         <p className="text-sm text-muted">
@@ -49,7 +49,7 @@ export function CategoriesCard({
         ))}
       </ul>
       <ActionForm action={addAction} successMessage="The category is added." className="flex flex-col gap-4 border-t border-line pt-4">
-        <h3 className="text-sm font-medium">Add a category</h3>
+        <h3 className="text-body-strong text-ink">Add a category</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={label}>
             Code <span className={hint}>(lower-case letters, digits and underscores)</span>

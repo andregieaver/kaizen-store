@@ -42,7 +42,7 @@ export default async function ActivityPage({ params, searchParams }: PageProps<"
         description={<>What people changed in the store, and when: products, prices, pages, coupons, shipping, the team and the payment settings.{" "}{owner ? "You see every entry." : "You see your own entries and those of the parts of the admin you can open."} Entries are kept for 24 months and cannot be changed.</>}
       />
       {problem && (
-        <p role="alert" className="rounded-lg border border-line bg-card p-3 text-sm">
+        <p role="alert" className="rounded-panel border border-line bg-card p-3 text-sm">
           {problem}
         </p>
       )}

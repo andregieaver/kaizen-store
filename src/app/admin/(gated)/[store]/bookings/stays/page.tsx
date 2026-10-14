@@ -90,7 +90,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
           , then choose them in a stay or a rental.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
+        <div className="overflow-x-auto rounded-panel border border-line bg-card">
           <table className="w-full min-w-[40rem] border-collapse text-sm">
             <caption className="sr-only">Nights and days taken</caption>
             <thead>
@@ -149,7 +149,7 @@ export default async function StaysPage({ params, searchParams }: PageProps<"/ad
       {bookings.length === 0 ? (
         <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">No bookings in these two weeks.</p>
       ) : (
-        <ul className="flex max-w-3xl flex-col divide-y divide-line rounded-lg border border-line bg-card">
+        <ul className="flex max-w-3xl flex-col divide-y divide-line rounded-panel border border-line bg-card">
           {bookings.map((b) => (
             <li key={b.id} className="flex flex-wrap items-start justify-between gap-3 p-3 text-sm">
               <div>

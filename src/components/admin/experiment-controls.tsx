@@ -26,8 +26,8 @@ import { RuntimeEstimate } from "./runtime-estimate";
 
 type Outcome = { ok: true } | { ok: false; problems: string[] };
 
-const button = "min-h-10 rounded-md border border-line px-4 text-sm font-medium disabled:opacity-50";
-const primary = "min-h-10 rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
+const button = "min-h-10 rounded-pill border border-edge px-4 text-sm font-medium disabled:opacity-50";
+const primary = "min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const label = "flex flex-col gap-1 text-sm font-medium";
 
@@ -260,7 +260,7 @@ export function DraftPanel({ store, test, markets }: { store: string; test: Expe
           {confirmDelete ? (
             <span className="flex items-center gap-2 text-sm">
               Delete this draft and its versions?
-              <button type="button" disabled={pending} onClick={() => run(() => deleteDraftAction(store, test.id), () => router.push(base))} className="min-h-10 rounded-md bg-danger-soft px-4 text-danger-text disabled:opacity-50">
+              <button type="button" disabled={pending} onClick={() => run(() => deleteDraftAction(store, test.id), () => router.push(base))} className="min-h-10 rounded-pill bg-danger-soft px-4 text-danger-text disabled:opacity-50">
                 Delete
               </button>
               <button type="button" onClick={() => setConfirmDelete(false)} className="underline">
@@ -305,7 +305,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
           {confirm === "stop" ? (
             <div className="flex flex-wrap items-center gap-3 text-sm">
               Stop the test now?
-              <button type="button" disabled={pending} onClick={() => run(() => stopExperimentAction(store, test.id), () => setConfirm(null))} className="min-h-10 rounded-md bg-danger-soft px-4 text-danger-text disabled:opacity-50">
+              <button type="button" disabled={pending} onClick={() => run(() => stopExperimentAction(store, test.id), () => setConfirm(null))} className="min-h-10 rounded-pill bg-danger-soft px-4 text-danger-text disabled:opacity-50">
                 Stop the test
               </button>
               <button type="button" onClick={() => setConfirm(null)} className="underline">
@@ -350,7 +350,7 @@ export function RunPanel({ store, test }: { store: string; test: ExperimentInfo 
         </Card>
       )}
       {(test.status === "applied" || test.status === "discarded") && (
-        <p className="rounded-lg border border-line bg-card p-4 text-sm">
+        <p className="rounded-panel border border-line bg-card p-4 text-sm">
           {test.status === "applied"
             ? `${test.variants.find((v) => v.key === test.appliedVariant)?.name ?? "A version"} is now your page.`
             : "The original was kept."}{" "}

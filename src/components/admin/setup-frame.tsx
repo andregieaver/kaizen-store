@@ -48,7 +48,7 @@ export function SetupFrame({
               <Link
                 href={`${base}/${s.id}`}
                 aria-current={s.id === step ? "step" : undefined}
-                className="flex flex-col gap-1.5 rounded-md py-1 text-ink-2 hover:text-ink aria-[current=step]:text-body-strong aria-[current=step]:text-ink"
+                className="flex flex-col gap-1.5 rounded-pill py-1 text-ink-2 hover:text-ink aria-[current=step]:text-body-strong aria-[current=step]:text-ink"
               >
                 <span aria-hidden="true" className={`h-1.5 rounded-pill ${s.id === step ? "bg-brand" : done(s.id) ? "bg-brand/50" : "bg-line"}`} />
                 <span className="truncate">

@@ -26,7 +26,7 @@ export function GiftCard({ gift, slipHref }: { gift: GiftFields; slipHref: strin
       )}
       <p className="mt-3 text-xs text-muted">The buyer wrote this at checkout. It is printed on the packing slip, which has no prices. It is not sent to the recipient.</p>
       {slipHref && (
-        <a href={slipHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center rounded-md border border-line px-4">
+        <a href={slipHref} target="_blank" rel="noreferrer" className="mt-3 inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
           Print gift slip
         </a>
       )}

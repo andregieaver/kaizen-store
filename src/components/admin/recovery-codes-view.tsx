@@ -46,12 +46,12 @@ export function RecoveryCodesView({
     setNote("Downloaded. Keep the file apart from the device with your authenticator app.");
   };
 
-  const button = "min-h-10 rounded-md border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken";
+  const button = "min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium hover:bg-sunken";
   return (
     <section aria-labelledby={`${id}-heading`} className="flex flex-col gap-4">
       <style>{`@media print { body * { visibility: hidden; } [data-print-area], [data-print-area] * { visibility: visible; } [data-print-area] { position: absolute; left: 0; top: 0; } }`}</style>
       <div>
-        <h2 id={`${id}-heading`} className="text-lg font-medium">
+        <h2 id={`${id}-heading`} className="text-title text-ink">
           Your recovery codes
         </h2>
         <p className="text-sm text-muted">
@@ -59,7 +59,7 @@ export function RecoveryCodesView({
           <strong className="font-medium text-ink"> This is the only time they are shown.</strong>
         </p>
       </div>
-      <div data-print-area="" className="rounded-lg border border-line bg-card p-4">
+      <div data-print-area="" className="rounded-panel border border-line bg-card p-4">
         <p className="mb-3 text-sm">Kaizen Store recovery codes for {account}. Made {madeOn}.</p>
         <ol className="grid grid-cols-1 gap-x-8 gap-y-2 font-mono text-base sm:grid-cols-2">
           {codes.map((code) => (

@@ -32,14 +32,14 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
   return (
     <DesignShell design={design} facts={facts} tab="details">
       {query.made && (
-        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
+        <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           The design profile is made, unpublished. Set its look up on the tabs above, preview the draft, then publish it.
           {query.notes && " Some of the store's look could not be kept: custom fields, menus other than the header's and footer's, or CSS reaching into its files."}
         </p>
       )}
 
       <section aria-labelledby="publishing" className={card}>
-        <h2 id="publishing" className="font-medium">
+        <h2 id="publishing" className="text-title text-ink">
           Publishing
         </h2>
         <ul className="list-disc pl-5 text-sm text-muted">
@@ -57,7 +57,7 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
       </section>
 
       <ActionForm action={saveDesignDraftAction.bind(null, design.id)} className="flex max-w-3xl flex-col gap-4">
-        <h2 className="font-medium">Details</h2>
+        <h2 className="text-title text-ink">Details</h2>
         <label className={field}>
           Title
           <input name="title" required maxLength={DESIGN_LIMITS.title} defaultValue={shown.title} className={control} />
@@ -77,7 +77,7 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
       </ActionForm>
 
       <section aria-labelledby="previews" className="flex flex-col gap-2 text-sm">
-        <h2 id="previews" className="font-medium">
+        <h2 id="previews" className="text-title text-ink">
           Preview on a store template
         </h2>
         <p className="text-muted">Opens in a new window: the front page and a product of a store template (its store as it is now), drawn with this look. Nothing is changed.</p>
@@ -100,7 +100,7 @@ export default async function DesignProfilePage({ params, searchParams }: PagePr
 
       <section aria-labelledby="start-again" className={card}>
         <div>
-          <h2 id="start-again" className="font-medium">
+          <h2 id="start-again" className="text-title text-ink">
             Start again from a store
           </h2>
           <p className="text-sm text-muted">

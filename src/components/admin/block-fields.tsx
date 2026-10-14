@@ -296,7 +296,7 @@ export function editorFor(block: PageBlock): BlockEditor<PageBlock> | undefined 
 // ---------------------------------------------------------------------------
 
 export const fieldClass = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
-export const smallButton = "min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40";
+export const smallButton = "min-h-9 rounded-pill border border-edge px-3 text-sm disabled:opacity-40";
 
 /** A labelled line of text. */
 export function TextField({
@@ -1055,7 +1055,7 @@ function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]
     next.splice(to, 0, taken);
     onChange(next);
   };
-  const small = "min-h-9 rounded-md border border-line px-2 text-xs disabled:opacity-40";
+  const small = "min-h-9 rounded-pill border border-edge px-2 text-xs disabled:opacity-40";
   return (
     <fieldset className="flex flex-col gap-2 rounded-md border border-line p-3" data-answer-parts="">
       <legend className="px-1 text-sm font-medium">Components under the answer</legend>
@@ -1103,7 +1103,7 @@ function AnswerPartsFields({ blocks, editPart, onChange }: { blocks: PageBlock[]
             // Its settings open at once, so it can be filled in.
             if (editPart) window.setTimeout(() => editPart(child.id), 0);
           }}
-          className="min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40"
+          className="min-h-9 rounded-pill border border-line px-3 text-sm disabled:opacity-40"
         >
           Add
         </button>
@@ -1951,7 +1951,7 @@ function IconPicker({ value, onChange }: { value: IconName; onChange: (icon: Ico
             aria-label={ICONS[icon]}
             title={ICONS[icon]}
             onClick={() => onChange(icon)}
-            className={`flex size-10 items-center justify-center rounded-md border ${
+            className={`flex size-10 items-center justify-center rounded-pill border ${
               icon === value ? "border-brand bg-brand text-brand-ink" : "border-edge hover:bg-sunken"
             }`}
           >
@@ -3016,7 +3016,7 @@ export function LoopStandIn({ value, entities }: { value: LoopConfig; entities: 
             {[0, 1, 2].slice(0, layout === "list" ? 2 : Math.min(columns, 3)).map((n) => (
               <span
                 key={n}
-                className={`flex gap-2 rounded-lg border border-line p-2 ${layout === "list" ? "flex-row items-center" : "flex-col"}`}
+                className={`flex gap-2 rounded-panel border border-line p-2 ${layout === "list" ? "flex-row items-center" : "flex-col"}`}
               >
                 {slots.image && <span className={layout === "list" ? "size-10 shrink-0 rounded bg-inverse/10" : "aspect-video rounded bg-inverse/10"} />}
                 <span className="flex flex-1 flex-col gap-1">
@@ -3062,7 +3062,7 @@ export function FieldsStandIn({
   const names = single ? (field ? [field] : []) : shownGroups.flatMap(publicFields);
   const label = (name: string, n: number) =>
     display === "cards" ? (
-      <span key={n} className="flex flex-col gap-1 rounded-lg border border-line p-2">
+      <span key={n} className="flex flex-col gap-1 rounded-panel border border-line p-2">
         {value.showLabel !== false && <span className="text-[10px] font-medium tracking-wide text-muted uppercase">{name}</span>}
         <span className="h-2.5 w-2/3 rounded bg-inverse/10" />
       </span>

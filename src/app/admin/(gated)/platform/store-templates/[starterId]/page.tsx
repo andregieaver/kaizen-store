@@ -156,7 +156,7 @@ export default async function StoreTemplatePage({ params }: PageProps<"/admin/pl
       </Card>
 
       <ActionForm action={saveStarterDraftAction.bind(null, starter.id)} className="flex max-w-3xl flex-col gap-4">
-        <h2 className="font-medium">Details</h2>
+        <h2 className="text-title text-ink">Details</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className={field}>
             Title

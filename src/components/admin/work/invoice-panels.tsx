@@ -22,7 +22,7 @@ export { BillUnbilledButton };
  */
 
 const button =
-  "inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-card px-3 text-sm disabled:opacity-40";
+  "inline-flex min-h-9 items-center justify-center rounded-pill border border-edge bg-card px-3 text-sm disabled:opacity-40";
 
 // --- A client's invoices ---------------------------------------------------------------------------------------------
 
@@ -43,7 +43,7 @@ export function ClientInvoicesPanel({ storeSlug, clientId, clientName, locale, a
   return (
     <section aria-labelledby="client-invoices-heading" className="flex flex-col gap-3" data-slot="client-invoices">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="client-invoices-heading" className="text-lg font-medium">
+        <h2 id="client-invoices-heading" className="text-title text-ink">
           Invoices
         </h2>
         {archived ? null : <NewInvoiceButton storeSlug={storeSlug} clientId={clientId} className={button} />}
@@ -99,7 +99,7 @@ export function AssignmentInvoicesPanel({
       data-slot="assignment-invoices"
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="assignment-invoices-heading" className="text-lg font-medium">
+        <h2 id="assignment-invoices-heading" className="text-title text-ink">
           Invoices
         </h2>
         {draftInvoiceId ? (
@@ -152,7 +152,7 @@ export function BillUnbilledPanel({
   return (
     <section
       aria-label="Bill unbilled time"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card p-4"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line bg-card p-4"
       data-slot="bill-unbilled"
     >
       <p className="text-sm">
@@ -188,10 +188,10 @@ async function InvoiceList({
   const list = await listWorkInvoices(store.id, { ...filter, pageSize: 50 });
   const base = `${workBase(storeSlug)}/invoices`;
   if (list.rows.length === 0)
-    return <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">{empty}</p>;
+    return <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">{empty}</p>;
   return (
     <ul
-      className="flex flex-col divide-y divide-line rounded-lg border border-line bg-card px-4"
+      className="flex flex-col divide-y divide-line rounded-panel border border-line bg-card px-4"
       aria-label="Invoices"
     >
       {list.rows.map((row) => (

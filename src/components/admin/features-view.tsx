@@ -39,7 +39,7 @@ export function FeaturesView({ base, owner, shop, groups, count, onSwitch }: Fea
         {!owner && <p className="text-sm">Only an owner can switch features on or off.</p>}
       </div>
 
-      <section aria-labelledby="feature-group-shop" className="rounded-lg border border-line bg-sunken">
+      <section aria-labelledby="feature-group-shop" className="rounded-panel bg-sunken">
         <h2 id="feature-group-shop" className="sr-only">
           Online shop
         </h2>
@@ -49,8 +49,8 @@ export function FeaturesView({ base, owner, shop, groups, count, onSwitch }: Fea
       </section>
 
       {groups.map((group) => (
-        <section key={group.id} aria-labelledby={`feature-group-${group.id}`} className="rounded-lg border border-line bg-sunken">
-          <h2 id={`feature-group-${group.id}`} className="px-4 pt-4 font-medium">
+        <section key={group.id} aria-labelledby={`feature-group-${group.id}`} className="rounded-panel bg-sunken">
+          <h2 id={`feature-group-${group.id}`} className="px-4 pt-4 text-title text-ink">
             {group.label}
           </h2>
           <ul className="divide-y divide-line">
@@ -232,7 +232,7 @@ export function OffPanel({ id, row, base, blockers, warnings, pending, problems,
             Switch off
           </button>
         )}
-        <button type="button" onClick={onCancel} className="min-h-11 rounded-md border border-line px-4 font-medium">
+        <button type="button" onClick={onCancel} className="min-h-11 rounded-pill border border-edge px-4 font-medium">
           {blocked ? "Close" : "Keep it on"}
         </button>
       </div>

@@ -44,7 +44,7 @@ export default async function PlansPage() {
       </div>
 
       {modes.length === 0 && (
-        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
+        <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           Kaizen&apos;s Stripe keys are not set, so plans are saved here only. Once the keys are in
           place (Platform → Stripe), press Sync to Stripe: each plan becomes a Stripe product with
           a monthly and a yearly price in every currency.
@@ -58,7 +58,7 @@ export default async function PlansPage() {
           className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 id={`plan-${plan.id}`} className="font-medium">
+            <h2 id={`plan-${plan.id}`} className="text-title text-ink">
               {plan.name}
               {!plan.active && <span className="ml-2 text-sm font-normal text-muted">(archived)</span>}
             </h2>
@@ -84,8 +84,8 @@ export default async function PlansPage() {
         </section>
       ))}
 
-      <section aria-labelledby="new-plan" className="flex flex-col gap-4 rounded-lg border border-dashed border-line bg-card p-5">
-        <h2 id="new-plan" className="font-medium">
+      <section aria-labelledby="new-plan" className="flex flex-col gap-4 rounded-panel border border-dashed border-line bg-card p-5">
+        <h2 id="new-plan" className="text-title text-ink">
           New plan
         </h2>
         <ActionForm action={savePlanAction.bind(null, null)} replaceOnSuccess className="flex flex-col gap-4">

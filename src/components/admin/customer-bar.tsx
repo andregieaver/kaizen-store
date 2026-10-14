@@ -39,7 +39,7 @@ export function CustomerBar({ customer }: { customer: CustomerBarData }) {
   return (
     <section
       aria-label="Customer"
-      className="flex flex-wrap items-center gap-4 rounded-lg border border-line bg-card p-4"
+      className="flex flex-wrap items-center gap-4 rounded-panel border border-line bg-card p-4"
     >
       <Avatar avatar={avatarFor(customer)} size={44} className="bg-brand font-medium text-brand-ink" />
       <div className="min-w-0 flex-1">

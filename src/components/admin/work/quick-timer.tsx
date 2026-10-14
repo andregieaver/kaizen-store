@@ -32,7 +32,7 @@ export function QuickTimer({
 
   if (choices.length === 0) {
     return (
-      <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">
+      <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">
         There is no active assignment to log time on. Add an assignment to a client to start.
       </p>
     );
@@ -41,9 +41,9 @@ export function QuickTimer({
   return (
     <section
       aria-labelledby="quick-heading"
-      className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4"
+      className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4"
     >
-      <h2 id="quick-heading" className="font-medium">
+      <h2 id="quick-heading" className="text-title text-ink">
         Track time
       </h2>
       <div className="flex flex-wrap items-end gap-3">

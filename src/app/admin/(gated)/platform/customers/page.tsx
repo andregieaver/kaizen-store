@@ -46,7 +46,7 @@ export default async function PlatformCustomersPage({ searchParams }: PageProps<
         )}
       </form>
       {customers.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           {q ? "No customer matches the search." : "No customers yet."}
         </p>
       ) : (

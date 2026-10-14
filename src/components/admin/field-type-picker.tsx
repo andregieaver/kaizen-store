@@ -35,14 +35,14 @@ export function FieldTypePicker({
           if (inCategory.length === 0) return null;
           return (
             <section key={category} aria-label={category}>
-              <h3 className="mb-2 text-sm font-medium">{category}</h3>
+              <h3 className="mb-2 text-body-strong text-ink">{category}</h3>
               <ul className="grid gap-2 sm:grid-cols-2">
                 {inCategory.map((type) => (
                   <li key={type}>
                     <button
                       type="button"
                       onClick={() => onPick(type)}
-                      className="flex h-full w-full flex-col items-start gap-0.5 rounded-md border border-edge p-3 text-left hover:border-brand hover:bg-sunken"
+                      className="flex h-full w-full flex-col items-start gap-0.5 rounded-pill border border-edge p-3 text-left hover:border-brand hover:bg-sunken"
                     >
                       <span className="text-sm font-medium">{FIELD_TYPES[type].label}</span>
                       <span className={hint}>{FIELD_TYPES[type].hint}</span>

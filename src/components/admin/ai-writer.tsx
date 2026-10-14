@@ -144,7 +144,7 @@ export function AiWriter({
                 onUse(draft.written);
                 setDraft(null);
               }}
-              className="min-h-10 rounded-md button-primary px-4 text-sm font-medium disabled:opacity-50"
+              className="min-h-10 rounded-pill button-primary px-4 text-sm font-medium disabled:opacity-50"
             >
               Use this
             </button>

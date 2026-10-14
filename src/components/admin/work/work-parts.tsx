@@ -9,17 +9,17 @@ import { useId, type ReactNode } from "react";
  * for its control, so only client components draw it.
  */
 
-export const card = "rounded-lg border border-line bg-card p-5";
+export const card = "rounded-card bg-card p-5 dark:border dark:border-line forced-colors:border";
 export const control =
   "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal disabled:opacity-60";
 export const smallControl =
   "min-h-9 rounded-md border border-line bg-card px-2 text-sm font-normal disabled:opacity-60";
 export const primaryButton =
-  "inline-flex min-h-10 items-center justify-center rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
+  "inline-flex min-h-10 items-center justify-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-40";
 export const secondaryButton =
-  "inline-flex min-h-10 items-center justify-center rounded-md border border-line bg-card px-4 text-sm disabled:opacity-40";
+  "inline-flex min-h-10 items-center justify-center rounded-pill border border-edge bg-card px-4 text-sm disabled:opacity-40";
 export const smallButton =
-  "inline-flex min-h-9 items-center justify-center rounded-md border border-line bg-card px-3 text-sm disabled:opacity-40";
+  "inline-flex min-h-9 items-center justify-center rounded-pill border border-edge bg-card px-3 text-sm disabled:opacity-40";
 export const dangerLink = "text-sm text-danger-text underline disabled:opacity-50";
 export const errorText = "text-sm text-danger-text";
 export const hintText = "text-xs font-normal text-muted";

@@ -43,15 +43,15 @@ export default async function WordpressPage() {
       </Card>
 
       <section aria-labelledby="sites-heading" className="flex max-w-3xl flex-col gap-3">
-        <h2 id="sites-heading" className="font-medium">
+        <h2 id="sites-heading" className="text-title text-ink">
           Connected sites
         </h2>
         {sites.length === 0 ? (
-          <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">No site is connected.</p>
+          <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">No site is connected.</p>
         ) : (
           <ul className="flex flex-col gap-3">
             {sites.map((site) => (
-              <li key={site.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card p-4">
+              <li key={site.id} className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line bg-card p-4">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{site.siteName}</p>
                   <p className="truncate text-sm text-muted">{site.siteUrl}</p>

@@ -7,7 +7,7 @@ function Figures({ total, locale, many }: { total: ReportTotals; locale: string;
   const money = (minor: number) => formatMoney(minor, total.currency, locale);
   return (
     <div className="flex flex-col gap-2">
-      {many && <h3 className="text-sm font-medium text-muted">{total.currency}</h3>}
+      {many && <h3 className="text-muted text-body-strong text-ink">{total.currency}</h3>}
       <StatGrid>
         <Stat
           label="Invoiced"

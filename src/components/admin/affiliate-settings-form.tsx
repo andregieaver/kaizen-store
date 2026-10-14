@@ -168,7 +168,7 @@ export function AffiliateSettingsView({
     <form onSubmit={onSubmit} noValidate aria-busy={pending} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="flex min-w-0 flex-col gap-6 border-0 p-0">
         <div className={card} role="group" aria-labelledby="affiliate-switch-heading">
-          <h2 id="affiliate-switch-heading" className="font-medium">
+          <h2 id="affiliate-switch-heading" className="text-title text-ink">
             Referral program
           </h2>
           <p className="text-sm text-muted">{AFFILIATE_EXPLANATION}</p>
@@ -345,7 +345,7 @@ export function AffiliateSettingsView({
       </fieldset>
 
       <section aria-labelledby="affiliate-summary-heading" className={card}>
-        <h2 id="affiliate-summary-heading" className="font-medium">
+        <h2 id="affiliate-summary-heading" className="text-title text-ink">
           What it comes to
         </h2>
         <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">

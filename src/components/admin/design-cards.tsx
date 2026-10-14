@@ -58,7 +58,7 @@ export function DesignCards({
           return (
             <li
               key={card.id || "keep"}
-              className="flex flex-col overflow-hidden rounded-lg border border-line bg-card has-[:checked]:border-brand has-[:checked]:ring-1 has-[:checked]:ring-ink"
+              className="flex flex-col overflow-hidden rounded-panel border border-line bg-card has-[:checked]:border-brand has-[:checked]:ring-1 has-[:checked]:ring-ink"
             >
               <label htmlFor={inputId} className="flex flex-1 cursor-pointer flex-col gap-2 p-3 text-sm">
                 {card.pictureUrl && (

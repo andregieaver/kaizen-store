@@ -10,7 +10,7 @@ export function PickListView({ list }: { list: PickList }) {
   return (
     <article aria-label="Pick list" className="flex flex-col gap-4 bg-white p-6 text-black print:p-0">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl font-medium">Pick list</h2>
+        <h2 className="text-title text-ink">Pick list</h2>
         <p className="text-sm">
           {list.totalUnits} {list.totalUnits === 1 ? "unit" : "units"} for {list.orderCount} {list.orderCount === 1 ? "order" : "orders"} · {list.by === "product" ? "by product" : "by order"}
         </p>
@@ -65,7 +65,7 @@ export function PickListView({ list }: { list: PickList }) {
         <div className="flex flex-col gap-4">
           {list.orders.map((order) => (
             <section key={order.orderId} aria-label={`Order ${order.number}`} className="break-inside-avoid">
-              <h3 className="border-b-2 border-black pb-1 font-medium">
+              <h3 className="border-b-2 border-black pb-1 text-body-strong text-ink">
                 #{order.number} <span className="font-normal">· {order.units} {order.units === 1 ? "unit" : "units"}</span>
               </h3>
               <table className="w-full text-left text-sm">

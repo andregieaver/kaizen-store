@@ -64,7 +64,7 @@ export function OwnerTimeView({
         method="get"
         role="search"
         aria-label="Filter time"
-        className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4"
+        className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4"
       >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StoreFilter stores={stores} value={storeSlug} />
@@ -174,13 +174,13 @@ export function OwnerTimeView({
           </p>
         )}
         {list.entries.length === 0 ? (
-          <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">
+          <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">
             {totals.count === 0 && page === 1
               ? "No time matches. Log time in a store's Time page, or change the filters."
               : "There is no time on this page."}
           </p>
         ) : (
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card">
             {list.entries.map((entry) => (
               <li key={`${entry.storeId}:${entry.id}`} className="flex flex-col gap-1 px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">

@@ -14,7 +14,7 @@ import {
 } from "@/lib/opening-hours";
 
 const control = "min-h-10 rounded-md border border-line bg-card px-2 text-sm";
-const small = "min-h-10 rounded-md border border-edge px-3 text-sm hover:bg-sunken";
+const small = "min-h-10 rounded-pill border border-edge px-3 text-sm hover:bg-sunken";
 const OPEN: NonNullable<DayHours> = { open: "09:00", close: "17:00" };
 
 /**
@@ -61,7 +61,7 @@ export function HoursEditor({
 
           <div className="flex flex-col gap-3">
             <div>
-              <h3 className="text-sm font-medium">Other hours</h3>
+              <h3 className="text-body-strong text-ink">Other hours</h3>
               <p className="text-xs text-muted">
                 A season (such as summer) with its own week, or single dates such as public holidays. A single date wins over a
                 season, and a season over the usual week.
@@ -111,7 +111,7 @@ function ExceptionEditor({
   const what = exception.kind === "season" ? "season" : "date";
   return (
     <fieldset className="flex flex-col gap-3 rounded-md border border-line p-3">
-      <legend className="px-1 text-xs font-medium tracking-wide text-muted uppercase">
+      <legend className="px-1 text-eyebrow text-muted uppercase">
         {exception.kind === "season" ? "Season" : "Single date"}
       </legend>
       <div className="flex flex-wrap items-end gap-3">

@@ -27,7 +27,7 @@ export type OverviewProps = {
 };
 
 const table = "w-full text-sm";
-const th = "px-4 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
+const th = "px-4 py-2 text-left text-eyebrow text-muted uppercase";
 const card = "overflow-x-auto rounded-lg border border-line bg-card";
 
 const hours = (minutes: number) => formatDuration(minutes);
@@ -37,7 +37,7 @@ function Figures({ f, locale, base, many }: { f: CurrencyFigures; locale: string
   const overdue = f.receivables.overdue;
   return (
     <div className="flex flex-col gap-2">
-      {many && <h3 className="text-sm font-medium text-muted">{f.currency}</h3>}
+      {many && <h3 className="text-muted text-body-strong text-ink">{f.currency}</h3>}
       <StatGrid>
         <Stat
           label="Unbilled time"
@@ -72,7 +72,7 @@ function Figures({ f, locale, base, many }: { f: CurrencyFigures; locale: string
 }
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">{children}</p>;
+  return <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">{children}</p>;
 }
 
 /** The Work page (docs/work.md 6.5): what is unbilled, drafted and owed, what needs you, and what is running. */
@@ -87,8 +87,8 @@ export function OverviewBody(props: OverviewProps) {
       <PageHeader title="Work" description={<>Your clients, the hours you log for them and the invoices you send.</>} />
 
       {props.missing.length > 0 && (
-        <section aria-labelledby="ready-heading" className="rounded-lg border border-line bg-card p-4 text-sm">
-          <h2 id="ready-heading" className="mb-1 font-medium">
+        <section aria-labelledby="ready-heading" className="rounded-panel border border-line bg-card p-4 text-sm">
+          <h2 id="ready-heading" className="mb-1 text-title text-ink">
             Before your first invoice
           </h2>
           <ul className="mb-2 list-disc pl-5">
@@ -107,7 +107,7 @@ export function OverviewBody(props: OverviewProps) {
           aria-labelledby="start-heading"
           className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
         >
-          <h2 id="start-heading" className="font-medium">
+          <h2 id="start-heading" className="text-title text-ink">
             Add your first client
           </h2>
           <p className="text-sm text-muted">
@@ -129,7 +129,7 @@ export function OverviewBody(props: OverviewProps) {
 
           {hasFigures ? (
             <section aria-labelledby="figures-heading" className="flex flex-col gap-4">
-              <h2 id="figures-heading" className="text-lg font-medium">
+              <h2 id="figures-heading" className="text-title text-ink">
                 Where things stand
               </h2>
               {overview.currencies.map((f) => (
@@ -233,7 +233,7 @@ export function OverviewBody(props: OverviewProps) {
             {overview.runningTimers.length === 0 ? (
               <Empty>No timer is running.</Empty>
             ) : (
-              <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+              <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
                 {overview.runningTimers.map((timer) => {
                   const assignment = props.assignmentNames[timer.assignmentId];
                   return (

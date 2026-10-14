@@ -20,7 +20,7 @@ export function DataPageHead({ backHref, backLabel, title, intro }: { backHref: 
 export function Notice({ title, children, tone = "plain" }: { title?: string; children: ReactNode; tone?: "plain" | "warning" }) {
   return (
     <aside className={`${card} flex flex-col gap-1 ${tone === "warning" ? "border-brand" : ""}`} role={tone === "warning" ? "note" : undefined}>
-      {title && <h2 className="text-sm font-medium">{title}</h2>}
+      {title && <h2 className="text-title text-ink">{title}</h2>}
       <div className="text-sm">{children}</div>
     </aside>
   );
@@ -30,7 +30,7 @@ export function Notice({ title, children, tone = "plain" }: { title?: string; ch
 export function ProblemAlert({ text }: { text: string | null }) {
   if (!text) return null;
   return (
-    <p role="alert" className="rounded-lg border border-line bg-sunken p-3 text-sm text-danger-text">
+    <p role="alert" className="rounded-panel bg-sunken p-3 text-sm text-danger-text">
       {text}
     </p>
   );

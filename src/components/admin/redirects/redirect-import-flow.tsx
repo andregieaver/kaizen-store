@@ -129,7 +129,7 @@ export function RedirectImportOptions({ initial, check, checked }: { initial: Ex
         });
       }}
     >
-      <h2 className="text-base font-medium">What should the import do</h2>
+      <h2 className="text-title text-ink">What should the import do</h2>
       <div className="flex flex-col gap-1">
         <label htmlFor="redirect-existing" className={label}>
           A redirect from the same address already exists
@@ -179,7 +179,7 @@ export function RedirectImportApply({
     });
   return (
     <section aria-label="Import" className={`${card} flex flex-col gap-3`} aria-busy={pending}>
-      <h2 className="text-base font-medium">Ready to import</h2>
+      <h2 className="text-title text-ink">Ready to import</h2>
       <p className="text-sm">
         {wholeNumber(counts.toCreate)} to create, {wholeNumber(counts.toReplace)} to replace, {wholeNumber(counts.unchanged)} unchanged
         {counts.skipped > 0 ? `, ${wholeNumber(counts.skipped)} skipped` : ""}

@@ -15,11 +15,11 @@ import { CurrencyNote, StoreTag } from "./owner-common";
 import { NewInStoreButton } from "./owner-parts";
 
 const table = "w-full text-sm";
-const th = "px-4 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
+const th = "px-4 py-2 text-left text-eyebrow text-muted uppercase";
 const card = "overflow-x-auto rounded-lg border border-line bg-card";
 
 function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">{children}</p>;
+  return <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">{children}</p>;
 }
 
 function Figures({ f, many }: { f: CurrencyFigures; many: boolean }) {
@@ -27,7 +27,7 @@ function Figures({ f, many }: { f: CurrencyFigures; many: boolean }) {
   const overdue = f.receivables.overdue;
   return (
     <div className="flex flex-col gap-2">
-      {many && <h3 className="text-sm font-medium text-muted">{f.currency}</h3>}
+      {many && <h3 className="text-muted text-body-strong text-ink">{f.currency}</h3>}
       <StatGrid>
         <Stat
           label="Unbilled time"
@@ -88,8 +88,8 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
       </div>
 
       {view.missing.length > 0 && (
-        <section aria-labelledby="ready-heading" className="rounded-lg border border-line bg-card p-4 text-sm">
-          <h2 id="ready-heading" className="mb-2 font-medium">
+        <section aria-labelledby="ready-heading" className="rounded-panel border border-line bg-card p-4 text-sm">
+          <h2 id="ready-heading" className="mb-2 text-title text-ink">
             Before the first invoice
           </h2>
           <ul className="flex flex-col gap-3">
@@ -115,7 +115,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
           aria-labelledby="start-heading"
           className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
         >
-          <h2 id="start-heading" className="font-medium">
+          <h2 id="start-heading" className="text-title text-ink">
             Add your first client
           </h2>
           <p className="text-sm text-muted">
@@ -132,7 +132,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
 
           {combined.currencies.length > 0 ? (
             <section aria-labelledby="figures-heading" className="flex flex-col gap-4">
-              <h2 id="figures-heading" className="text-lg font-medium">
+              <h2 id="figures-heading" className="text-title text-ink">
                 Where things stand{many ? ", all stores" : ""}
               </h2>
               {combined.currencies.map((f) => (
@@ -337,7 +337,7 @@ export function OwnerOverviewBody({ view, stores }: { view: OwnerOverviewView; s
             {combined.runningTimers.length === 0 ? (
               <Empty>No timer is running.</Empty>
             ) : (
-              <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+              <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
                 {combined.runningTimers.map((timer) => {
                   const assignment = view.assignmentNames[timer.assignmentId];
                   return (

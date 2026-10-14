@@ -46,7 +46,7 @@ export type TermActions = {
 };
 
 const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
-const button = "min-h-10 rounded-md border border-line px-3 text-sm disabled:opacity-50";
+const button = "min-h-10 rounded-pill border border-edge px-3 text-sm disabled:opacity-50";
 
 function Problems({ problems }: { problems: string[] }) {
   if (problems.length === 0) return null;

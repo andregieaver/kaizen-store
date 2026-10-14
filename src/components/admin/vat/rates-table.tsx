@@ -33,7 +33,7 @@ export function UnverifiedCard({ rows, categoryName, verify }: { rows: VatRateRo
   return (
     <section aria-labelledby="unverified" className={card}>
       <div>
-        <h2 id="unverified" className="font-medium">
+        <h2 id="unverified" className="text-title text-ink">
           Not verified yet
         </h2>
         <p className="text-sm text-muted">
@@ -106,7 +106,7 @@ export function RateHistory({ rows, categoryName, verify }: { rows: VatRateRow[]
   return (
     <section aria-labelledby="history" className={card}>
       <div>
-        <h2 id="history" className="font-medium">
+        <h2 id="history" className="text-title text-ink">
           Rates and history
         </h2>
         <p className="text-sm text-muted">Every period of every rate for this country. A category with no row takes the standard rate.</p>

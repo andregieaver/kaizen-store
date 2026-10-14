@@ -78,12 +78,12 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         <PageHeader title={<>{copy.list}</>} description={<>{INTRO[type]}</>} />
         <div className="flex flex-wrap gap-2">
           {!LAYOUT_TYPES.includes(type) && (
-            <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium">
+            <Link href={`${base}/categories`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
               Categories and tags
             </Link>
           )}
           {type === "page" && (
-            <Link href={`${base}/ai`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4 text-sm font-medium">
+            <Link href={`${base}/ai`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm font-medium">
               Create with AI
             </Link>
           )}
@@ -96,7 +96,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
         </div>
       </div>
       {query.deleted && (
-        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
+        <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           The {copy.one} was deleted.
         </p>
       )}
@@ -151,7 +151,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
       {type === "page" && (
         <section className="flex flex-col gap-4" aria-labelledby="special-pages">
           <div className="flex flex-col gap-1">
-            <h2 id="special-pages" className="text-lg font-medium">Special pages</h2>
+            <h2 id="special-pages" className="text-title text-ink">Special pages</h2>
             <p className="max-w-2xl text-sm text-muted">
               Your store&apos;s working pages, the blog and the 404 page have a standard look. Build any of them in the
               page builder instead: choose one of your published pages for it, or start from a new page that looks like
@@ -160,7 +160,7 @@ export async function StorePagesListView({ type, params, searchParams }: { type:
           </div>
           {ROLE_GROUPS.map((group) => (
             <div key={group.name} className="flex flex-col gap-3">
-              <h3 className="text-sm font-medium text-muted">{group.name}</h3>
+              <h3 className="text-muted text-body-strong text-ink">{group.name}</h3>
               {/* A working page of a store feature that is off (D178) is not offered; one already chosen stays, so it can be changed. */}
               {group.roles.filter((role) => roleOffered(store, role)).map((role) => (
                 <PageRoleForm
@@ -374,7 +374,7 @@ function FrontPageForm({
       action={setFrontPageAction.bind(null, storeSlug)}
       className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
     >
-      <h2 className="font-medium">Front page</h2>
+      <h2 className="text-title text-ink">Front page</h2>
       <p className="max-w-2xl text-sm text-muted">
         What shoppers see first in your store: your products, or one of your published pages (with a content grid of
         products, for instance).
@@ -419,7 +419,7 @@ function ProductsPageForm({
       action={setProductsPageAction.bind(null, storeSlug)}
       className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
     >
-      <h2 className="font-medium">All products page</h2>
+      <h2 className="text-title text-ink">All products page</h2>
       <p className="max-w-2xl text-sm text-muted">
         What shoppers see at All products (/products, where menus&apos; All products link goes): the standard list, or one
         of your published pages. Give its content grid of products the Filter and sort button so shoppers can narrow it.
@@ -519,7 +519,7 @@ function ProductLayoutsTable({
     );
   };
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-card">
+    <div className="overflow-x-auto rounded-panel border border-line bg-card">
       <table className="w-full text-left text-sm">
         <thead>
           <tr className="border-b border-line">

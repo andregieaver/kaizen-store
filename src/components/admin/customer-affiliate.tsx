@@ -69,7 +69,7 @@ export function CustomerAffiliateSection({
       )}
       {data.attributions.length > 0 && (
         <>
-          <h3 className="mb-2 text-sm font-medium">Orders through links</h3>
+          <h3 className="mb-2 text-body-strong text-ink">Orders through links</h3>
           <ul className="flex flex-col gap-1 text-sm">
             {data.attributions.map((row) => (
               <li key={row.id}>

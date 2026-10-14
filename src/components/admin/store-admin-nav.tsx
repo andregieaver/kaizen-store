@@ -144,14 +144,14 @@ export function StoreSidebar({ groups, label }: { groups: NavGroup[]; label: str
     <nav aria-label={label} className="flex flex-col gap-6">
       {groups.map((group) => (
         <div key={group.heading}>
-          <h2 className="mb-1 px-3 text-xs font-medium tracking-wide text-muted uppercase">{group.heading}</h2>
+          <h2 className="mb-1 px-3 text-xs tracking-wide text-muted uppercase text-title text-ink">{group.heading}</h2>
           <ul className="flex flex-col gap-0.5">
             {group.items.map((item) => (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   aria-current={isCurrent(item) ? "page" : undefined}
-                  className="flex min-h-10 items-center rounded-md px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium"
+                  className="flex min-h-10 items-center rounded-pill px-3 text-sm hover:bg-sunken aria-[current=page]:bg-sunken aria-[current=page]:font-medium"
                 >
                   {item.icon && <NavIcon name={item.icon} className="mr-2 size-4" />}
                   {item.label}

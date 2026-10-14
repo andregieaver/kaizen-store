@@ -45,8 +45,8 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
         title={<>Connect {host} to your stores?</>}
         description={<>The Kaizen plugin on <strong className="text-ink">{request.name}</strong> ({request.site}) asks to read the products of your stores, so it can show them on its pages. Only approve a site you run.</>}
       />
-      <section aria-labelledby="reads-heading" className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4 text-sm">
-        <h2 id="reads-heading" className="font-medium">
+      <section aria-labelledby="reads-heading" className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4 text-sm">
+        <h2 id="reads-heading" className="text-title text-ink">
           What it can read
         </h2>
         <ul className="list-disc pl-5 text-muted">
@@ -56,11 +56,11 @@ export default async function ConnectWordpressPage({ searchParams }: PageProps<"
           </li>
           <li>The stores you belong to when it asks, so a store you leave is no longer shown.</li>
         </ul>
-        <h2 className="mt-2 font-medium">What else it can do</h2>
+        <h2 className="mt-2 text-title text-ink">What else it can do</h2>
         <ul className="list-disc pl-5 text-muted">
           <li>Make a shopping cart in a store for a shopper who presses Checkout on the site, which opens in the store to be paid there.</li>
         </ul>
-        <h2 className="mt-2 font-medium">What it cannot do</h2>
+        <h2 className="mt-2 text-title text-ink">What it cannot do</h2>
         <ul className="list-disc pl-5 text-muted">
           <li>Read orders, customers, settings or anything private, or change a product, price, order or setting.</li>
         </ul>

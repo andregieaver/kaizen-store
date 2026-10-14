@@ -36,7 +36,7 @@ export function ErasurePlanView({ plan, locale = "en-GB" }: { plan: ErasurePlan;
   return (
     <div className="flex flex-col gap-4">
       <section aria-labelledby="plan-table" className={card}>
-        <h2 id="plan-table" className="font-medium">
+        <h2 id="plan-table" className="text-title text-ink">
           What happens to each kind of data
         </h2>
         {plan.rows.length === 0 ? (
@@ -80,7 +80,7 @@ export function ErasurePlanView({ plan, locale = "en-GB" }: { plan: ErasurePlan;
       </section>
 
       <section aria-labelledby="plan-also" className={card}>
-        <h2 id="plan-also" className="font-medium">
+        <h2 id="plan-also" className="text-title text-ink">
           What else happens
         </h2>
         <ul className="list-disc pl-5 text-sm">
@@ -93,7 +93,7 @@ export function ErasurePlanView({ plan, locale = "en-GB" }: { plan: ErasurePlan;
 
       {plan.warnings.length > 0 && (
         <section aria-labelledby="plan-warnings" className={card}>
-          <h2 id="plan-warnings" className="font-medium">
+          <h2 id="plan-warnings" className="text-title text-ink">
             Check before you erase
           </h2>
           <ul className="list-disc pl-5 text-sm">

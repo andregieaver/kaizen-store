@@ -37,7 +37,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         description={<>How your store looks: choose a theme, change any of its settings, and save your own versions to switch between. Pages you build use it too.</>}
       />
       {designFailed && (
-        <p role="alert" className="max-w-3xl rounded-lg border border-line bg-card p-4 text-sm">
+        <p role="alert" className="max-w-3xl rounded-panel border border-line bg-card p-4 text-sm">
           The store is made, but the design profile you chose could not be applied: it has its store template&apos;s look. Apply the
           profile below, or choose another.
         </p>

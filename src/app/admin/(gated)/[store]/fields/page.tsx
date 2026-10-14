@@ -53,7 +53,7 @@ export default async function FieldsPage({ params }: PageProps<"/admin/[store]/f
         importGroups={importFieldGroupsAction.bind(null, store.slug)}
       />
       {groups.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No groups yet. Start from a preset such as Specifications or Size guide, or make your own.
         </p>
       ) : (

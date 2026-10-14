@@ -271,9 +271,9 @@ export function PageStudio({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      <section aria-labelledby={`${inputId}-talk`} className="flex min-h-[32rem] flex-col rounded-lg border border-line bg-card">
+      <section aria-labelledby={`${inputId}-talk`} className="flex min-h-[32rem] flex-col rounded-panel border border-line bg-card">
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
-          <h2 id={`${inputId}-talk`} className="font-medium">
+          <h2 id={`${inputId}-talk`} className="text-title text-ink">
             Talk to the AI
           </h2>
           <div className="flex items-center gap-3 text-sm">
@@ -373,7 +373,7 @@ export function PageStudio({
 
         {!plan && (
           <div className={`${card} flex flex-col gap-3`}>
-            <h3 className="font-medium">What the AI has understood</h3>
+            <h3 className="text-body-strong text-ink">What the AI has understood</h3>
             {briefShown ? <Brief brief={brief} /> : <p className="text-sm text-muted">Nothing yet: tell it about the page.</p>}
             <p className="text-xs text-muted">
               The page is written in {language}. {abilities.pictures ? "Its pictures are made by AI." : "No picture model is set up, so the page gets no pictures."} It is saved as a
@@ -391,7 +391,7 @@ export function PageStudio({
         {plan && (
           <div className={`${card} flex flex-col gap-4`}>
             <div>
-              <h3 className="font-medium">{plan.title}</h3>
+              <h3 className="text-body-strong text-ink">{plan.title}</h3>
               <p className="text-sm text-muted">
                 {plan.sections.length} sections{planPictureCount(plan) > 0 ? `, ${planPictureCount(plan)} pictures` : ""}
                 {plan.description ? ` · ${plan.description}` : ""}

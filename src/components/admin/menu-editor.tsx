@@ -64,7 +64,7 @@ const INDENT = 32;
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm font-normal";
 const field = "flex flex-col gap-1 text-sm font-medium";
-const small = "min-h-9 rounded-md border border-line px-3 text-sm disabled:opacity-40";
+const small = "min-h-9 rounded-pill border border-edge px-3 text-sm disabled:opacity-40";
 
 let counter = 0;
 const keyed = (item: AnyMenuEntry): Item => ({ ...item, key: `item-${++counter}` });
@@ -179,7 +179,7 @@ export function MenuEditor({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-card p-4 text-sm">
+      <div className="flex flex-wrap items-center gap-2 rounded-panel border border-line bg-card p-4 text-sm">
         {menus.length > 0 && (
           <>
             <label className="flex flex-wrap items-center gap-2">
@@ -211,7 +211,7 @@ export function MenuEditor({
       <div className="grid items-start gap-6 lg:grid-cols-[20rem_minmax(0,1fr)]">
         <AddItems kinds={kinds} targets={targets} copy={copy} locale={main.locale} full={items.length >= MENU_MAX_ITEMS} onAdd={add} />
 
-        <section aria-labelledby="menu-structure-heading" className="flex min-w-0 flex-col rounded-lg border border-line bg-card">
+        <section aria-labelledby="menu-structure-heading" className="flex min-w-0 flex-col rounded-panel border border-line bg-card">
           <div className="flex flex-wrap items-end gap-3 border-b border-line p-4">
             <h2 id="menu-structure-heading" className="sr-only">
               Menu structure
@@ -323,7 +323,7 @@ export function MenuEditor({
           )}
           {menu.id && (
             <div className="border-t border-line p-4 text-sm">
-              <h3 className="font-medium">Where it shows</h3>
+              <h3 className="text-body-strong text-ink">Where it shows</h3>
               {uses.length === 0 ? (
                 <p className="text-muted">
                   Nowhere yet. Choose it for the standard header or footer under Header and footer, or place it with a Menu
@@ -372,8 +372,8 @@ function AddItems({
   const targetKinds = kinds.filter((k): k is KindOption & { kind: TargetKind } => k.kind in TARGET_NOUNS);
   const own = kinds.filter((k) => !(k.kind in TARGET_NOUNS) && k.kind !== "url");
   return (
-    <aside aria-labelledby="add-items-heading" className="flex flex-col rounded-lg border border-line bg-card">
-      <h2 id="add-items-heading" className="border-b border-line p-4 font-medium">
+    <aside aria-labelledby="add-items-heading" className="flex flex-col rounded-panel border border-line bg-card">
+      <h2 id="add-items-heading" className="border-b border-line p-4 text-title text-ink">
         Add menu items
       </h2>
       {full && <p className="p-4 text-sm text-muted">The menu has as many links as it can take ({MENU_MAX_ITEMS}).</p>}

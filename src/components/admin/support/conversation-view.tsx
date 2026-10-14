@@ -33,7 +33,7 @@ export function ConversationView({
   return (
     <article className="flex min-h-0 flex-1 flex-col" aria-label={`Conversation with ${conversation.who}`}>
       <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-4 py-3">
-        <h2 className="min-w-0 flex-1 truncate text-base font-medium">{conversation.who}</h2>
+        <h2 className="min-w-0 flex-1 truncate text-title text-ink">{conversation.who}</h2>
         <span className="rounded-full border border-line px-2 py-0.5 text-xs">{handlerWords({ ...conversation, queuedAt: null }, now)}</span>
         <ToneDot score={conversation.tone} />
         {conversation.toneAlertAt && conversation.status === "open" && <span className="rounded-full border border-line px-2 py-0.5 text-xs font-medium">Tone alert</span>}

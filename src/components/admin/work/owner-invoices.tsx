@@ -131,7 +131,7 @@ export function OwnerInvoicesView({
         <section aria-label="Totals of these invoices" className="flex flex-col gap-2">
           <ul className="flex flex-wrap gap-3">
             {list.totals.map((total) => (
-              <li key={total.currency} className="rounded-lg border border-line bg-card px-4 py-3 text-sm">
+              <li key={total.currency} className="rounded-panel border border-line bg-card px-4 py-3 text-sm">
                 <span className="block text-xs text-muted">
                   {total.currency}, {total.count} {total.count === 1 ? "invoice" : "invoices"}
                 </span>

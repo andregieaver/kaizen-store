@@ -72,7 +72,7 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_18rem]">
         <section aria-labelledby="lines" className={card}>
-          <h2 id="lines" className="mb-3 font-medium">What it is for</h2>
+          <h2 id="lines" className="mb-3 text-title text-ink">What it is for</h2>
           <table className="w-full text-left text-sm">
             <tbody>
               {invoice.lines.map((line, i) => (
@@ -91,7 +91,7 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
 
         <div className="flex flex-col gap-6">
           <section aria-labelledby="payment" className={`${card} text-sm`}>
-            <h2 id="payment" className="mb-2 font-medium">Payment</h2>
+            <h2 id="payment" className="mb-2 text-title text-ink">Payment</h2>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
               <dt className="text-muted">Status</dt>
               <dd>{INVOICE_STATUS[invoice.status] ?? invoice.status}</dd>
@@ -140,7 +140,7 @@ export default async function PlanInvoicePage({ params }: PageProps<"/admin/plat
             </p>
           </section>
           <section aria-labelledby="plan" className={`${card} text-sm`}>
-            <h2 id="plan" className="mb-2 font-medium">Plan</h2>
+            <h2 id="plan" className="mb-2 text-title text-ink">Plan</h2>
             <p>
               {billing?.planName ?? "No plan"}
               {billing?.status && <span className="text-muted"> · {SUBSCRIPTION_LABELS[billing.status] ?? billing.status}</span>}

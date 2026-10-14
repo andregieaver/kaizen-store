@@ -312,7 +312,7 @@ export function ProductEditor(props: Props) {
       />
       <MediaSection storeSlug={storeSlug} product={product} update={update} uploads={uploads} />
       <section aria-labelledby="terms-heading" className={card}>
-        <h2 id="terms-heading" className="mb-1 font-medium">
+        <h2 id="terms-heading" className="mb-1 text-title text-ink">
           Categories and tags
         </h2>
         <p className="mb-4 text-sm text-muted">
@@ -367,13 +367,13 @@ export function ProductEditor(props: Props) {
       />
       {variantGroups.length > 0 && product.variants.length > 0 && (
         <section aria-labelledby="variant-fields-heading" className="flex flex-col gap-3">
-          <h2 id="variant-fields-heading" className="font-medium">
+          <h2 id="variant-fields-heading" className="text-title text-ink">
             Custom fields for each variant
           </h2>
           {product.variants.map((variant) => {
             const key = variantKey(variant);
             return (
-              <details key={key} className="rounded-lg border border-line bg-card" open={product.variants.length === 1}>
+              <details key={key} className="rounded-panel border border-line bg-card" open={product.variants.length === 1}>
                 <summary className="cursor-pointer px-5 py-3 text-sm font-medium">
                   {variant.sku} <span className="font-normal text-muted">{variantLabel(variant.options)}</span>
                 </summary>
@@ -536,7 +536,7 @@ function TextSection({
 
   return (
     <section aria-labelledby="text-heading" className={card}>
-      <h2 id="text-heading" className="mb-4 font-medium">
+      <h2 id="text-heading" className="mb-4 text-title text-ink">
         Title and description
       </h2>
       {context.locales.length > 1 && (
@@ -552,7 +552,7 @@ function TextSection({
                 aria-selected={l === locale}
                 aria-controls={`${tabsId}-panel`}
                 onClick={() => setLocale(l)}
-                className="min-h-9 rounded-md border border-line px-3 text-sm aria-selected:border-brand aria-selected:font-medium"
+                className="min-h-9 rounded-pill border border-edge px-3 text-sm aria-selected:border-brand aria-selected:font-medium"
               >
                 {languageNames[l] ?? l}
                 {!filled && <span className="text-muted"> (empty)</span>}
@@ -654,7 +654,7 @@ function TextSection({
           </span>
         </label>
         <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <h3 className="text-sm font-medium">In search results and shares</h3>
+          <h3 className="text-body-strong text-ink">In search results and shares</h3>
           <p className="text-sm text-muted">
             Optional. Empty fields use the title and the start of the description.
           </p>
@@ -727,7 +727,7 @@ function MediaSection({ storeSlug, product, update, uploads }: SectionProps & { 
 
   return (
     <section aria-labelledby="media-heading" className={card}>
-      <h2 id="media-heading" className="mb-1 font-medium">
+      <h2 id="media-heading" className="mb-1 text-title text-ink">
         Pictures
       </h2>
       <p className="mb-4 text-sm text-muted">
@@ -947,7 +947,7 @@ function VariantsSection({
 
   return (
     <section aria-labelledby="variants-heading" className={card}>
-      <h2 id="variants-heading" className="mb-4 font-medium">
+      <h2 id="variants-heading" className="mb-4 text-title text-ink">
         {allDigital ? "Price" : "Price and stock"}
       </h2>
 
@@ -1563,7 +1563,7 @@ function VariantPicture({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
         aria-label={image ? `Change the picture for ${name}` : `Choose a picture for ${name}`}
-        className="block rounded-md"
+        className="block rounded-pill"
       >
         {image ? (
           // eslint-disable-next-line @next/next/no-img-element -- the store's own uploaded picture
@@ -1577,7 +1577,7 @@ function VariantPicture({
       {at && (
         <div
           style={{ top: at.top, left: at.left }}
-          className="fixed z-50 flex w-64 flex-col gap-2 rounded-lg border border-line bg-card p-3 shadow-lg"
+          className="fixed z-50 flex w-64 flex-col gap-2 rounded-panel border border-line bg-card p-3 shadow-lg"
         >
           <p className="text-xs font-medium">Picture for {name}</p>
           {pictures.length > 0 ? (
@@ -1589,7 +1589,7 @@ function VariantPicture({
                     onClick={() => choose({ url: picture.url, thumbnailUrl: picture.thumbnailUrl })}
                     aria-label={`Picture ${index + 1}`}
                     aria-pressed={image?.url === picture.url}
-                    className="block rounded-md aria-pressed:ring-2 aria-pressed:ring-ink"
+                    className="block rounded-pill aria-pressed:ring-2 aria-pressed:ring-ink"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element -- the product's own picture */}
                     <img src={picture.thumbnailUrl ?? picture.url} alt="" className="aspect-square w-full rounded-md object-cover" />
@@ -1688,7 +1688,7 @@ function DigitalSection({ storeSlug, product, update, uploads }: SectionProps & 
 
   return (
     <section aria-labelledby="digital-heading" className={card}>
-      <h2 id="digital-heading" className="mb-1 font-medium">
+      <h2 id="digital-heading" className="mb-1 text-title text-ink">
         Files to download
       </h2>
       <p className="mb-4 text-sm text-muted">
@@ -1849,7 +1849,7 @@ function SubscriptionSection({
 
   return (
     <section aria-labelledby="subscription-heading" className={card}>
-      <h2 id="subscription-heading" className="mb-1 font-medium">
+      <h2 id="subscription-heading" className="mb-1 text-title text-ink">
         Subscriptions
       </h2>
       <p className="mb-4 text-sm text-muted">
@@ -2003,7 +2003,7 @@ function SubscriptionSection({
           <button
             type="button"
             onClick={addPlan}
-            className="min-h-10 rounded-md border border-dashed border-brand px-4 text-sm font-medium"
+            className="min-h-10 rounded-pill border border-dashed border-brand px-4 text-sm font-medium"
           >
             {product.plans.length === 0 ? "Offer a subscription" : "Add another purchase option"}
           </button>
@@ -2151,7 +2151,7 @@ function AppointmentSection({
   const people = context.staff.filter((s) => s.kind === "staff");
   return (
     <section aria-labelledby="appointment-heading" className={card}>
-      <h2 id="appointment-heading" className="mb-1 font-medium">
+      <h2 id="appointment-heading" className="mb-1 text-title text-ink">
         Appointment
       </h2>
       <p className="mb-4 text-sm text-muted">
@@ -2292,7 +2292,7 @@ function RangeSection({
   const nights = stay ? "nights" : "days";
   return (
     <section aria-labelledby="range-heading" className={card}>
-      <h2 id="range-heading" className="mb-1 font-medium">
+      <h2 id="range-heading" className="mb-1 text-title text-ink">
         {stay ? "Stay" : "Rental"}
       </h2>
       <p className="mb-4 text-sm text-muted">
@@ -2486,7 +2486,7 @@ function PricingFields({
   const languageName = (locale: string) => new Intl.DisplayNames(["en"], { type: "language" }).of(locale.slice(0, 2)) ?? locale;
   const setSeason = (index: number, change: Partial<SeasonInput>) =>
     set({ seasons: a.seasons.map((season, i) => (i === index ? { ...season, ...change } : season)) });
-  const small = "min-h-9 rounded-md border border-line bg-card px-2 text-sm";
+  const small = "min-h-9 rounded-pill border border-edge bg-card px-2 text-sm";
   return (
     <>
       <fieldset className="mt-6 flex flex-col gap-2 text-sm">
@@ -2563,7 +2563,7 @@ function PricingFields({
                 <button
                   type="button"
                   onClick={() => set({ seasons: a.seasons.filter((_, i) => i !== index) })}
-                  className="min-h-9 rounded-md px-2 underline"
+                  className="min-h-9 rounded-pill px-2 underline"
                 >
                   Remove <span className="sr-only">{season.name || "season"}</span>
                 </button>
@@ -2728,7 +2728,7 @@ function SafetySection({
 }: SectionProps & { operators: Operator[]; countries: CountryOption[] }) {
   return (
     <section aria-labelledby="safety-heading" className={card}>
-      <h2 id="safety-heading" className="mb-1 font-medium">
+      <h2 id="safety-heading" className="mb-1 text-title text-ink">
         Product safety
       </h2>
       <p className="mb-4 text-sm text-muted">
@@ -2853,7 +2853,7 @@ function LegalSection({
   const general = product.taxCode === GENERAL_TAX_CODE;
   return (
     <section aria-labelledby="legal-heading" className={card}>
-      <h2 id="legal-heading" className="mb-4 font-medium">
+      <h2 id="legal-heading" className="mb-4 text-title text-ink">
         Tax, returns and recycling
       </h2>
       <div className="flex flex-col gap-5">

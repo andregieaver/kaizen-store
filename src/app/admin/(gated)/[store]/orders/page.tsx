@@ -38,15 +38,15 @@ export default async function OrdersPage({ params, searchParams }: Props) {
               Make a draft order
             </Link>
           )}
-          <Link href={`/admin/${store.slug}/orders/drafts`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4">
+          <Link href={`/admin/${store.slug}/orders/drafts`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
             Draft orders
           </Link>
-          <Link href={`/admin/${store.slug}/emails`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4">
+          <Link href={`/admin/${store.slug}/emails`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
             Emails to customers
           </Link>
           {/* The order file (D165) holds personal data, so only the owner is offered it. */}
           {memberCan(member, "owner") && (
-            <Link href={`/admin/${store.slug}/orders/export`} className="inline-flex min-h-10 items-center rounded-md border border-line px-4">
+            <Link href={`/admin/${store.slug}/orders/export`} className="inline-flex min-h-10 items-center rounded-pill border border-edge px-4">
               Export
             </Link>
           )}

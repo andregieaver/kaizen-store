@@ -81,7 +81,7 @@ export function RequestDetail({
       )}
 
       <section aria-labelledby="request-facts" className={`${card} text-sm`}>
-        <h2 id="request-facts" className="font-medium">
+        <h2 id="request-facts" className="text-title text-ink">
           The request
         </h2>
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2">
@@ -136,7 +136,7 @@ export function RequestDetail({
 
       {open && canWrite && (
         <section aria-labelledby="request-answer" className={card}>
-          <h2 id="request-answer" className="font-medium">
+          <h2 id="request-answer" className="text-title text-ink">
             Answer it
           </h2>
           {subjectKey && holdsData ? (
@@ -171,7 +171,7 @@ export function RequestDetail({
 
       {open && canWrite && (
         <section aria-labelledby="request-other" className={card}>
-          <h2 id="request-other" className="font-medium">
+          <h2 id="request-other" className="text-title text-ink">
             Other ways to deal with it
           </h2>
           <div className="flex flex-col gap-4">
@@ -213,7 +213,7 @@ export function RequestDetail({
 
       {plan && (
         <section aria-labelledby="request-done" className={`${card} text-sm`}>
-          <h2 id="request-done" className="font-medium">
+          <h2 id="request-done" className="text-title text-ink">
             What was done
           </h2>
           {plan.rows.length === 0 ? (

@@ -52,7 +52,7 @@ export function PrivacyCard({
   return (
     <section aria-labelledby="privacy" className={`${card} text-sm`}>
       <div>
-        <h2 id="privacy" className="font-medium">
+        <h2 id="privacy" className="text-title text-ink">
           Privacy
         </h2>
         <p className="mt-1 text-muted">{data.countsLine ? `The store holds: ${data.countsLine}.` : "The store holds no data about this person that a file would list."}</p>

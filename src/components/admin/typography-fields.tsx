@@ -443,7 +443,7 @@ function ButtonsField({
             aria-label={option.name}
             title={option.name}
             onClick={() => onChange(value === option.value ? "" : option.value)}
-            className="min-h-10 min-w-10 rounded-md border border-line px-3 text-sm aria-pressed:border-brand aria-pressed:bg-sunken aria-pressed:font-medium"
+            className="min-h-10 min-w-10 rounded-pill border border-edge px-3 text-sm aria-pressed:border-brand aria-pressed:bg-sunken aria-pressed:font-medium"
           >
             {option.label}
           </button>

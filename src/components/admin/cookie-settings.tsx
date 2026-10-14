@@ -29,7 +29,7 @@ export function TrackingForm({
   return (
     <section aria-labelledby="tools-heading" className={card}>
       <div>
-        <h2 id="tools-heading" className="font-medium">
+        <h2 id="tools-heading" className="text-title text-ink">
           Analytics and marketing tools
         </h2>
         <p className="text-sm text-muted">
@@ -98,7 +98,7 @@ export function CustomCodeForm({
   return (
     <section aria-labelledby="code-heading" className={card}>
       <div>
-        <h2 id="code-heading" className="font-medium">
+        <h2 id="code-heading" className="text-title text-ink">
           Custom code
         </h2>
         <p className="text-sm text-muted">
@@ -168,7 +168,7 @@ export function ConsentLog({
   return (
     <section aria-labelledby="consents-heading" className={card}>
       <div>
-        <h2 id="consents-heading" className="font-medium">
+        <h2 id="consents-heading" className="text-title text-ink">
           Consents
         </h2>
         <p className="text-sm text-muted">

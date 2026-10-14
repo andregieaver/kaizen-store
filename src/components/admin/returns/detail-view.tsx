@@ -142,7 +142,7 @@ export function ReturnDetailView({
 
       {request && confirmedAt && request.acknowledgement === "not_sent" && (
         <section role="alert" aria-labelledby="ack-problem" className="flex flex-col gap-3 rounded-lg border border-danger-text bg-card p-5">
-          <h2 id="ack-problem" className="font-medium">
+          <h2 id="ack-problem" className="text-title text-ink">
             The acknowledgement was not sent
           </h2>
           <p className="text-sm">
@@ -324,13 +324,13 @@ export function ReturnDetailView({
               <div className="flex flex-col gap-5">
                 {can("mark_in_transit") && (
                   <div>
-                    <h3 className="mb-2 text-sm font-medium">The customer has sent them</h3>
+                    <h3 className="mb-2 text-body-strong text-ink">The customer has sent them</h3>
                     <DayStepForm action={actions.markInTransit} button="Mark as on their way" help="the day they were sent; today if left empty" today={today} successMessage="Marked as on their way." />
                   </div>
                 )}
                 {can("mark_received") && (
                   <div className={can("mark_in_transit") ? "border-t border-line pt-4" : ""}>
-                    <h3 className="mb-2 text-sm font-medium">The goods have arrived</h3>
+                    <h3 className="mb-2 text-body-strong text-ink">The goods have arrived</h3>
                     <DayStepForm action={actions.markReceived} button="Mark as received" help="the day they arrived; today if left empty" today={today} successMessage="Marked as received. The customer has been told." />
                   </div>
                 )}

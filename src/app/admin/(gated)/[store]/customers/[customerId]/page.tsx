@@ -107,7 +107,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           // Subscriptions (D178): the figure and the list are there while the feature is on (off, none can be running).
           ...(subscriptionsOn ? [["Active subscriptions", String(customer.liveSubscriptions)]] : []),
         ].map(([label, value]) => (
-          <div key={label} className="flex flex-col gap-1 rounded-lg border border-line bg-card p-4">
+          <div key={label} className="flex flex-col gap-1 rounded-panel border border-line bg-card p-4">
             <span className="text-sm text-muted">{label}</span>
             <span className="text-xl font-medium">{value}</span>
           </div>
@@ -117,7 +117,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <section aria-labelledby="orders" className={card}>
-            <h2 id="orders" className="mb-3 font-medium">Orders</h2>
+            <h2 id="orders" className="mb-3 text-title text-ink">Orders</h2>
             {customer.orderList.length === 0 ? (
               <p className="text-sm text-muted">No orders yet.</p>
             ) : (
@@ -155,7 +155,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
           {subscriptionsOn && (
           <section aria-labelledby="subscriptions" className={card}>
-            <h2 id="subscriptions" className="mb-3 font-medium">Subscriptions</h2>
+            <h2 id="subscriptions" className="mb-3 text-title text-ink">Subscriptions</h2>
             {customer.subscriptionList.length === 0 ? (
               <p className="text-sm text-muted">No subscriptions.</p>
             ) : (
@@ -215,7 +215,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           )}
 
           <section aria-labelledby="emails" className={card}>
-            <h2 id="emails" className="mb-3 font-medium">Emails</h2>
+            <h2 id="emails" className="mb-3 text-title text-ink">Emails</h2>
             {emails.length === 0 ? (
               <p className="text-sm text-muted">No emails yet.</p>
             ) : (
@@ -235,7 +235,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
 
         <div className="flex flex-col gap-6">
           <section aria-labelledby="contact" className={`${card} text-sm`}>
-            <h2 id="contact" className="mb-2 font-medium">Contact</h2>
+            <h2 id="contact" className="mb-2 text-title text-ink">Contact</h2>
             <a href={`mailto:${customer.email}`} className="break-all underline">
               {customer.email}
             </a>
@@ -248,7 +248,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
             )}
             {address && (
               <>
-                <h3 className="mt-3 mb-1 font-medium">Address</h3>
+                <h3 className="mt-3 mb-1 text-body-strong text-ink">Address</h3>
                 <address className="not-italic">
                   {[address.name, address.line1, address.line2, `${address.postalCode ?? ""} ${address.city ?? ""}`, address.country]
                     .filter((part) => part && String(part).trim())
@@ -263,7 +263,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           </section>
           {customer.customerId && (
             <section aria-labelledby="discount" className={`${card} text-sm`}>
-              <h2 id="discount" className="mb-2 font-medium">Discount</h2>
+              <h2 id="discount" className="mb-2 text-title text-ink">Discount</h2>
               {businessOn && access?.companyName && (
                 <p className="mb-2">
                   {access.role === "owner" ? "Main account of " : "Employee of "}
@@ -308,7 +308,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps<"
           )}
 
           <section aria-labelledby="more" className={`${card} text-sm`}>
-            <h2 id="more" className="mb-2 font-medium">Account and preferences</h2>
+            <h2 id="more" className="mb-2 text-title text-ink">Account and preferences</h2>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
               <dt className="text-muted">Account</dt>
               <dd>{accountLabel(customer.account)}</dd>

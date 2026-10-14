@@ -39,7 +39,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       />
 
       <section aria-labelledby="business" className={card}>
-        <h2 id="business" className="mb-1 font-medium">Business</h2>
+        <h2 id="business" className="mb-1 text-title text-ink">Business</h2>
         <p className="mb-4 text-sm text-muted">
           Shoppers see these in the footer, the terms of sale and every order confirmation. The law requires them.
         </p>
@@ -60,7 +60,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       </section>
 
       <section aria-labelledby="customers" className={card}>
-        <h2 id="customers" className="mb-1 font-medium">Customers</h2>
+        <h2 id="customers" className="mb-1 text-title text-ink">Customers</h2>
         <p className="mb-4 text-sm text-muted">
           Who you sell to. Prices are always charged with VAT; businesses see them without it, and give their company&apos;s name and
           organisation number at checkout.
@@ -84,12 +84,12 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       </section>
 
       <section aria-labelledby="office" className={card}>
-        <h2 id="office" className="mb-1 font-medium">Office</h2>
+        <h2 id="office" className="mb-1 text-title text-ink">Office</h2>
         <p className="mb-4 text-sm text-muted">Where the business is run from, and when you can be reached.</p>
         <ActionForm action={saveOfficeAction.bind(null, store.slug)} className="flex flex-col gap-4">
           <PlaceFields place={company.office} countries={countries} defaultCountry={homeCountry} what="the office" />
           <div className="border-t border-line pt-4">
-            <h3 className="mb-3 text-sm font-medium">Office hours</h3>
+            <h3 className="mb-3 text-body-strong text-ink">Office hours</h3>
             <HoursEditor name="hours" initial={company.office?.hours ?? null} optional />
           </div>
           <div>
@@ -101,7 +101,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       <section aria-labelledby="places" className={card}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 id="places" className="font-medium">Stores and pickup points</h2>
+            <h2 id="places" className="text-title text-ink">Stores and pickup points</h2>
             <p className="text-sm text-muted">Places where shoppers can visit you or collect their orders.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -142,7 +142,7 @@ function PlaceRow({ place, href }: { place: StoreLocation; href: string }) {
         </span>
         <span className="block text-xs text-muted">{place.hours ? weekSummary(place.hours.week) : "No opening hours shown"}</span>
       </div>
-      <Link href={href} className="min-h-10 rounded-md px-3 py-2 hover:bg-sunken">
+      <Link href={href} className="min-h-10 rounded-pill px-3 py-2 hover:bg-sunken">
         Edit <span className="sr-only">{place.name}</span>
       </Link>
     </li>

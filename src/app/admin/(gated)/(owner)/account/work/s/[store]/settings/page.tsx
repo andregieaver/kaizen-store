@@ -44,7 +44,7 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
       />
 
       <section aria-labelledby="ready-heading" className={card}>
-        <h2 id="ready-heading" className="mb-1 font-medium">
+        <h2 id="ready-heading" className="mb-1 text-title text-ink">
           {readiness.problems.length === 0
             ? "You can issue invoices"
             : "What is still missing before you can issue an invoice"}
@@ -74,7 +74,7 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
       </section>
 
       <section aria-labelledby="seller-heading" className={card}>
-        <h2 id="seller-heading" className="mb-1 font-medium">
+        <h2 id="seller-heading" className="mb-1 text-title text-ink">
           Who is selling
         </h2>
         <p className="mb-3 text-sm text-muted">
@@ -106,7 +106,7 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
       />
 
       <section aria-labelledby="numbering-heading" className={card}>
-        <h2 id="numbering-heading" className="mb-1 font-medium">
+        <h2 id="numbering-heading" className="mb-1 text-title text-ink">
           Numbering
         </h2>
         <p className="mb-4 text-sm text-muted">
@@ -132,7 +132,7 @@ export default async function WorkSettingsPage({ params }: PageProps<"/admin/acc
       </section>
 
       <section aria-labelledby="differs-heading" className={card}>
-        <h2 id="differs-heading" className="mb-1 font-medium">
+        <h2 id="differs-heading" className="mb-1 text-title text-ink">
           How this differs from Kaizen Life
         </h2>
         <p className="mb-2 text-sm text-muted">

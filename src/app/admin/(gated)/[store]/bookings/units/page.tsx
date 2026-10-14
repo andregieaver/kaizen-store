@@ -16,13 +16,13 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
   const { store } = current;
   const all = await listResources(store.id, ["unit", "item"]);
   const base = `/admin/${store.slug}/bookings/units`;
-  const button = "min-h-10 rounded-md border border-line px-4 py-2 text-sm font-medium";
+  const button = "min-h-10 rounded-pill border border-edge px-4 py-2 text-sm font-medium";
 
   const list = (items: BookingResource[], empty: string) =>
     items.length === 0 ? (
       <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">{empty}</p>
     ) : (
-      <ul className="divide-y divide-line rounded-lg border border-line bg-card">
+      <ul className="divide-y divide-line rounded-panel border border-line bg-card">
         {items.map((u) => (
           <li key={u.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
             <div className="min-w-0">
@@ -35,7 +35,7 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
                 {u.capacity > 1 && ` · ${u.capacity} at once`}
               </span>
             </div>
-            <Link href={`${base}/${u.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-sunken">
+            <Link href={`${base}/${u.id}`} className="min-h-10 rounded-pill px-3 py-2 hover:bg-sunken">
               Edit <span className="sr-only">{u.name}</span>
             </Link>
           </li>
@@ -51,7 +51,7 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
       />
       <section aria-labelledby="units-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="units-heading" className="font-medium">
+          <h2 id="units-heading" className="text-title text-ink">
             Rooms and homes
           </h2>
           <Link href={`${base}/new?kind=unit`} className={button}>
@@ -65,7 +65,7 @@ export default async function UnitsPage({ params }: PageProps<"/admin/[store]/bo
       </section>
       <section aria-labelledby="items-heading" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="items-heading" className="font-medium">
+          <h2 id="items-heading" className="text-title text-ink">
             Rental items
           </h2>
           <Link href={`${base}/new?kind=item`} className={button}>

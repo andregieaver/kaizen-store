@@ -34,17 +34,17 @@ export default async function SearchStatsPage({ params }: PageProps<"/admin/[sto
         description={<>What shoppers searched for in the last {stats.days} days. Searches are kept {SEARCH_LOG_DAYS} days, as they can contain personal details.</>}
       />
       <dl className="grid grid-cols-2 gap-4 sm:max-w-md">
-        <div className="rounded-lg border border-line bg-card p-4">
+        <div className="rounded-panel border border-line bg-card p-4">
           <dt className="text-sm text-muted">Searches</dt>
-          <dd className="text-2xl font-medium tabular-nums">{stats.searches}</dd>
+          <dd className="text-metric text-ink tabular-nums">{stats.searches}</dd>
         </div>
-        <div className="rounded-lg border border-line bg-card p-4">
+        <div className="rounded-panel border border-line bg-card p-4">
           <dt className="text-sm text-muted">Found nothing</dt>
-          <dd className="text-2xl font-medium tabular-nums">{stats.searches === 0 ? "–" : percent.format(stats.zeroRate)}</dd>
+          <dd className="text-metric text-ink tabular-nums">{stats.searches === 0 ? "–" : percent.format(stats.zeroRate)}</dd>
         </div>
-        <div className="col-span-2 rounded-lg border border-line bg-card p-4">
+        <div className="col-span-2 rounded-panel border border-line bg-card p-4">
           <dt className="text-sm text-muted">Helped by meaning</dt>
-          <dd className="text-2xl font-medium tabular-nums">
+          <dd className="text-metric text-ink tabular-nums">
             {stats.meaningSearches === 0 ? "–" : percent.format(stats.meaningHelped / stats.meaningSearches)}
           </dd>
           <dd className="text-sm text-muted">
@@ -59,7 +59,7 @@ export default async function SearchStatsPage({ params }: PageProps<"/admin/[sto
       </dl>
 
       <section aria-labelledby="zero-heading" className="flex flex-col gap-2">
-        <h2 id="zero-heading" className="font-medium">
+        <h2 id="zero-heading" className="text-title text-ink">
           Searches that found nothing
         </h2>
         <p className="text-sm text-muted">
@@ -70,7 +70,7 @@ export default async function SearchStatsPage({ params }: PageProps<"/admin/[sto
         {stats.zero.length === 0 ? (
           <p className="text-sm text-muted">None.</p>
         ) : (
-          <ol className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ol className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {stats.zero.map((row) => (
               <li key={row.query} className="flex justify-between gap-3 p-3">
                 <span className="break-all">{row.query}</span>
@@ -87,13 +87,13 @@ export default async function SearchStatsPage({ params }: PageProps<"/admin/[sto
       </section>
 
       <section aria-labelledby="top-heading" className="flex flex-col gap-2">
-        <h2 id="top-heading" className="font-medium">
+        <h2 id="top-heading" className="text-title text-ink">
           Most searched
         </h2>
         {stats.top.length === 0 ? (
           <p className="text-sm text-muted">No searches yet.</p>
         ) : (
-          <table className="w-full rounded-lg border border-line bg-card text-sm">
+          <table className="w-full rounded-panel border border-line bg-card text-sm">
             <thead className="text-left text-muted">
               <tr>
                 <th className="p-3 font-normal">Search</th>

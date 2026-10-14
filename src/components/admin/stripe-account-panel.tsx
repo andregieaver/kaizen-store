@@ -39,7 +39,7 @@ export function StripeAccountPanel({
       className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
     >
       <div>
-        <h2 id={`stripe-${mode}-heading`} className="font-medium">
+        <h2 id={`stripe-${mode}-heading`} className="text-title text-ink">
           {title ?? (mode === "live" ? "Stripe account" : "Stripe test account")}
         </h2>
         <p className="text-sm">

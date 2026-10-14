@@ -14,7 +14,7 @@ type Save = (state: FormState, form: FormData) => Promise<FormState>;
 export function RepliesManager({ replies, languages, save, remove }: { replies: SavedReply[]; languages: { code: string; name: string }[]; save: Save | null; remove: Save | null }) {
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-lg border border-line bg-sunken p-4 text-sm">
+      <section className="rounded-panel bg-sunken p-4 text-sm">
         <p>
           Type <kbd className="rounded border border-line px-1 font-mono">/</kbd> at the start of a line in the inbox&apos;s composer to pick a reply by its
           shortcut or title. These are filled in for the conversation:
@@ -30,14 +30,14 @@ export function RepliesManager({ replies, languages, save, remove }: { replies: 
       </section>
       {save && (
         <section aria-labelledby="new-reply" className="flex flex-col gap-2">
-          <h2 id="new-reply" className="text-lg font-medium">
+          <h2 id="new-reply" className="text-title text-ink">
             New saved reply
           </h2>
           <ReplyForm languages={languages} save={save} />
         </section>
       )}
       <section aria-labelledby="all-replies" className="flex flex-col gap-3">
-        <h2 id="all-replies" className="text-lg font-medium">
+        <h2 id="all-replies" className="text-title text-ink">
           Saved replies ({replies.length})
         </h2>
         {replies.length === 0 ? (
@@ -45,7 +45,7 @@ export function RepliesManager({ replies, languages, save, remove }: { replies: 
         ) : (
           <ul className="flex flex-col gap-3">
             {replies.map((reply) => (
-              <li key={reply.id} className="rounded-lg border border-line p-4">
+              <li key={reply.id} className="rounded-panel border border-line p-4">
                 {save ? (
                   <details>
                     <summary className="cursor-pointer">

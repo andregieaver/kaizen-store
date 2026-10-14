@@ -25,7 +25,7 @@ export function RateForm({
   return (
     <section aria-labelledby="set-rate" className={card}>
       <div>
-        <h2 id="set-rate" className="font-medium">
+        <h2 id="set-rate" className="text-title text-ink">
           Set a rate
         </h2>
         <p className="text-sm text-muted">

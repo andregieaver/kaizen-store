@@ -33,7 +33,7 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
     <ActionForm action={action} className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="flex flex-col gap-6">
         <section aria-labelledby="vat-heading" className={card}>
-          <h2 id="vat-heading" className="mb-1 font-medium">
+          <h2 id="vat-heading" className="mb-1 text-title text-ink">
             VAT and payment details
           </h2>
           <p className="mb-4 text-sm text-muted">
@@ -124,7 +124,7 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
         </section>
 
         <section aria-labelledby="defaults-heading" className={card}>
-          <h2 id="defaults-heading" className="mb-1 font-medium">
+          <h2 id="defaults-heading" className="mb-1 text-title text-ink">
             Defaults
           </h2>
           <p className="mb-4 text-sm text-muted">Used when a client or an invoice does not say otherwise.</p>
@@ -171,7 +171,7 @@ export function WorkSettingsForm({ action, settings, currencies, mainCurrency, c
         </section>
 
         <section aria-labelledby="estimates-heading" className={card}>
-          <h2 id="estimates-heading" className="mb-1 font-medium">
+          <h2 id="estimates-heading" className="mb-1 text-title text-ink">
             Estimate warnings
           </h2>
           <p className="mb-4 text-sm text-muted">
@@ -247,7 +247,7 @@ export function SeriesForm({
   const locked = issued > 0;
   return (
     <ActionForm action={action} className="flex flex-col gap-3">
-      <h3 className="font-medium">{title}</h3>
+      <h3 className="text-body-strong text-ink">{title}</h3>
       {locked ? (
         <p className="text-sm">
           {issued} issued, the last is <span className="font-medium">{lastDocumentNumber}</span>. The next will be{" "}

@@ -87,7 +87,7 @@ export default function StripeConnectEmbed({
                 type="button"
                 onClick={() => setManaging((open) => !open)}
                 aria-expanded={managing}
-                className="min-h-10 rounded-md border border-line bg-card px-4 text-sm"
+                className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm"
               >
                 {managing ? "Hide account details" : "Business and bank details"}
               </button>

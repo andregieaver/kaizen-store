@@ -35,10 +35,10 @@ export function RequestsView({
   return (
     <div className="flex flex-col gap-4">
       <nav aria-label="Requests" className="flex gap-2 text-sm">
-        <Link href={`${base}/support/requests`} aria-current={which === "open" ? "page" : undefined} className={`rounded-lg border border-line px-3 py-1.5 ${which === "open" ? "bg-sunken font-medium" : ""}`}>
+        <Link href={`${base}/support/requests`} aria-current={which === "open" ? "page" : undefined} className={`rounded-panel px-3 py-1.5 ${which === "open" ? "bg-sunken font-medium" : ""}`}>
           To decide
         </Link>
-        <Link href={`${base}/support/requests?show=decided`} aria-current={which === "decided" ? "page" : undefined} className={`rounded-lg border border-line px-3 py-1.5 ${which === "decided" ? "bg-sunken font-medium" : ""}`}>
+        <Link href={`${base}/support/requests?show=decided`} aria-current={which === "decided" ? "page" : undefined} className={`rounded-panel px-3 py-1.5 ${which === "decided" ? "bg-sunken font-medium" : ""}`}>
           Decided
         </Link>
       </nav>
@@ -47,7 +47,7 @@ export function RequestsView({
       ) : (
         <ul className="flex flex-col gap-3">
           {rows.map((row) => (
-            <li key={row.id} className="flex flex-col gap-2 rounded-lg border border-line bg-sunken p-4">
+            <li key={row.id} className="flex flex-col gap-2 rounded-panel bg-sunken p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="font-medium">
                   {REQUEST_KIND_WORDS[row.kind]}
@@ -91,7 +91,7 @@ export function RequestsView({
                   <ActionForm action={decide(row.id)} className="flex flex-col gap-2">
                     <label className="flex flex-col gap-1 text-sm">
                       Note to the customer (optional)
-                      <textarea name="note" maxLength={500} rows={2} className="rounded-lg border border-line bg-card px-3 py-2" />
+                      <textarea name="note" maxLength={500} rows={2} className="rounded-panel border border-line bg-card px-3 py-2" />
                     </label>
                     <div className="flex flex-wrap gap-2">
                       <SubmitButton name="decision" value="done">

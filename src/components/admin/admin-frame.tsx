@@ -86,7 +86,7 @@ export function AdminFrame({
       type="button"
       data-open-menu
       aria-haspopup="dialog"
-      className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-md hover:bg-sunken lg:hidden"
+      className="-ml-2 flex size-11 shrink-0 items-center justify-center rounded-pill hover:bg-sunken lg:hidden"
     >
       <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />

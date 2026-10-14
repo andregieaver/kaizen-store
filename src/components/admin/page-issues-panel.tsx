@@ -31,7 +31,7 @@ export function PageIssuesPanel({ issues, onShow = showOnCanvas }: { issues: rea
   const warnings = issues.length - blocking;
   return (
     <section aria-labelledby="page-checks" className="flex flex-col gap-3">
-      <h3 id="page-checks" className="text-sm font-medium">
+      <h3 id="page-checks" className="text-body-strong text-ink">
         Checks
       </h3>
       <p role="status" aria-live="polite" className="text-sm">
@@ -41,7 +41,7 @@ export function PageIssuesPanel({ issues, onShow = showOnCanvas }: { issues: rea
       </p>
       {groups.map((group) => (
         <div key={group.rule} className="flex flex-col gap-1">
-          <h4 className="text-xs font-medium tracking-wide text-muted uppercase">
+          <h4 className="text-eyebrow text-muted uppercase">
             {group.title} <span className="normal-case">({group.severity === "blocking" ? "blocks publishing" : "worth a look"})</span>
           </h4>
           <ul className="flex flex-col gap-1">
@@ -101,7 +101,7 @@ export function PublishWithIssuesDialog({
       }}
       className={`m-auto w-[min(32rem,calc(100vw-2rem))] p-5 text-ink backdrop:bg-black/40 ${CARD_CLASS}`}
     >
-      <h2 id="publish-issues-title" className="mb-2 text-lg font-medium">
+      <h2 id="publish-issues-title" className="mb-2 text-title text-ink">
         This page has {issues.length === 1 ? "a problem" : `${issues.length} problems`} to look at
       </h2>
       <p className="mb-3 text-sm text-muted">Fix {issues.length === 1 ? "it" : "them"} first, or publish anyway. Publishing anyway is written down in the activity log.</p>
@@ -116,7 +116,7 @@ export function PublishWithIssuesDialog({
         <button type="button" onClick={onFixFirst} className="min-h-10 rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink">
           Fix first
         </button>
-        <button type="button" onClick={onPublishAnyway} disabled={busy} className="min-h-10 rounded-md border border-line bg-card px-4 text-sm font-medium disabled:opacity-50">
+        <button type="button" onClick={onPublishAnyway} disabled={busy} className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm font-medium disabled:opacity-50">
           Publish anyway
         </button>
       </div>

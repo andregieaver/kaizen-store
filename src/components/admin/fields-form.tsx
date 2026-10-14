@@ -41,7 +41,7 @@ export type { FieldFileUploader };
 
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
 const hint = "font-normal text-muted";
-const button = "min-h-10 rounded-md border border-line px-3 text-sm";
+const button = "min-h-10 rounded-pill border border-edge px-3 text-sm";
 const small = "min-h-9 min-w-9 rounded border border-line px-2 text-sm disabled:opacity-40";
 
 /** Uploads a picture chosen on the owner's computer (shrunk here first); the host says where it goes. */

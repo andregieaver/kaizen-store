@@ -47,7 +47,7 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
             key={y}
             href={`${base}/dac7?year=${y}`}
             aria-current={y === year ? "page" : undefined}
-            className={`min-h-10 rounded-md border border-line px-3 py-2 ${y === year ? "bg-sunken font-medium" : ""}`}
+            className={`min-h-10 rounded-pill border border-edge px-3 py-2 ${y === year ? "bg-sunken font-medium" : ""}`}
           >
             {y}
             {y === current && " (so far)"}
@@ -64,13 +64,13 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
       )}
 
       <section aria-labelledby="sellers-heading" className="flex flex-col gap-2">
-        <h2 id="sellers-heading" className="font-medium">
+        <h2 id="sellers-heading" className="text-title text-ink">
           Hosts paid in {year}
         </h2>
         {report.sellers.length === 0 ? (
           <p className="text-sm text-muted">No host was paid in {year}: there is nothing to report.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
+          <div className="overflow-x-auto rounded-panel border border-line bg-card">
             <table className="w-full text-sm">
               <thead className="text-left text-muted">
                 <tr>
@@ -107,10 +107,10 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
 
       {report.properties.length > 0 && (
         <section aria-labelledby="properties-heading" className="flex flex-col gap-2">
-          <h2 id="properties-heading" className="font-medium">
+          <h2 id="properties-heading" className="text-title text-ink">
             Homes rented out
           </h2>
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {report.properties.map((p) => (
               <li key={`${p.resourceId}:${p.currency}`} className="flex flex-wrap justify-between gap-2 p-3">
                 <span>
@@ -129,16 +129,16 @@ export default async function Dac7Page({ params, searchParams }: PageProps<"/adm
       {report.sellers.length > 0 &&
         (memberCan(staffer, "owner") ? (
           <section aria-labelledby="download-heading" className="flex flex-col gap-2 text-sm">
-            <h2 id="download-heading" className="font-medium">
+            <h2 id="download-heading" className="text-title text-ink">
               Download
             </h2>
             <p className="text-muted">Spreadsheets with every field the report asks for, per quarter.</p>
             <div className="flex flex-wrap gap-3">
-              <a href={`${base}/dac7/${year}/sellers.csv`} className="min-h-10 rounded-md border border-line px-3 py-2" download>
+              <a href={`${base}/dac7/${year}/sellers.csv`} className="min-h-10 rounded-pill border border-edge px-3 py-2" download>
                 Hosts ({year})
               </a>
               {report.properties.length > 0 && (
-                <a href={`${base}/dac7/${year}/properties.csv`} className="min-h-10 rounded-md border border-line px-3 py-2" download>
+                <a href={`${base}/dac7/${year}/properties.csv`} className="min-h-10 rounded-pill border border-edge px-3 py-2" download>
                   Homes ({year})
                 </a>
               )}

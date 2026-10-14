@@ -44,7 +44,7 @@ import { CARD_CLASS } from "@/components/admin/ui";
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const errorText = "text-sm text-danger-text";
-const button = "min-h-10 rounded-md border border-line bg-card px-3 text-sm disabled:opacity-40";
+const button = "min-h-10 rounded-pill border border-edge bg-card px-3 text-sm disabled:opacity-40";
 
 /** Where a problem sends the person: the field that has to change. */
 const fieldId = (problem: WizardProblem): string => {
@@ -301,7 +301,7 @@ function KindChoice({
 /** A collapsed list of what is or is not copied. */
 function Details({ summary, children }: { summary: string; children: ReactNode }) {
   return (
-    <details className="rounded-lg border border-line bg-card p-4 text-sm">
+    <details className="rounded-panel border border-line bg-card p-4 text-sm">
       <summary className="cursor-pointer font-medium">{summary}</summary>
       <div className="mt-3 flex flex-col gap-2">{children}</div>
     </details>

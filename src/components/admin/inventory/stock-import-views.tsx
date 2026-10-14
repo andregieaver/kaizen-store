@@ -15,12 +15,12 @@ export function StockDryRun({ counts }: { counts: { toUpdate: number; unchanged:
   ];
   return (
     <section aria-label="What the check found" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-base font-medium">What the check found</h2>
+      <h2 className="text-title text-ink">What the check found</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-2xl font-medium tabular-nums">{wholeNumber(n)}</dd>
+            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n)}</dd>
           </div>
         ))}
       </dl>
@@ -42,12 +42,12 @@ export function StockApplied({ counts, jobId, written }: { counts: { updated: nu
   ];
   return (
     <section aria-label="Result" className={`${card} flex flex-col gap-3`}>
-      <h2 className="text-base font-medium">{written ? "What was imported" : "What was imported before it stopped"}</h2>
+      <h2 className="text-title text-ink">{written ? "What was imported" : "What was imported before it stopped"}</h2>
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {items.map(([name, n]) => (
           <div key={name} className="flex flex-col">
             <dt className={hint}>{name}</dt>
-            <dd className="text-2xl font-medium tabular-nums">{wholeNumber(n)}</dd>
+            <dd className="text-metric text-ink tabular-nums">{wholeNumber(n)}</dd>
           </div>
         ))}
       </dl>
@@ -109,7 +109,7 @@ export function StockFindings({
   return (
     <section aria-labelledby="stock-findings-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="stock-findings-title" className="text-base font-medium">
+        <h2 id="stock-findings-title" className="text-title text-ink">
           What the file says, row by row
         </h2>
         {problemsHref && (
@@ -128,7 +128,7 @@ export function StockFindings({
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No row has a finding of this kind."}</p>
+        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No row has a finding of this kind."}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">

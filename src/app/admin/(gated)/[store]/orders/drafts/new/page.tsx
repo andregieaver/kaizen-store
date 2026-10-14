@@ -28,7 +28,7 @@ export default async function NewDraftPage({ params }: PageProps<"/admin/[store]
       {memberCan(member, "orders:write") ? (
         <NewDraftForm options={options} action={createDraftAction.bind(null, store.slug)} defaultCountry={store.markets[0]?.code ?? ""} />
       ) : (
-        <p className="rounded-lg border border-line bg-sunken p-4 text-sm">You can look at draft orders but not make one: that needs the right to change orders.</p>
+        <p className="rounded-panel bg-sunken p-4 text-sm">You can look at draft orders but not make one: that needs the right to change orders.</p>
       )}
     </div>
   );

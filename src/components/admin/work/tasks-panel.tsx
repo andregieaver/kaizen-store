@@ -182,7 +182,7 @@ export function TasksPanel({
 
   return (
     <section aria-labelledby="tasks-heading" className="flex flex-col gap-3">
-      <h2 id="tasks-heading" className="text-lg font-medium">
+      <h2 id="tasks-heading" className="text-title text-ink">
         Tasks
       </h2>
 
@@ -238,13 +238,13 @@ export function TasksPanel({
       <Problems messages={listProblems} />
 
       {empty ? (
-        <p className="rounded-lg border border-line bg-card p-4 text-sm text-muted">
+        <p className="rounded-panel border border-line bg-card p-4 text-sm text-muted">
           No tasks yet. Tasks split the job into parts you can estimate, time and tick off. They are optional.
         </p>
       ) : (
         <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-            <ul className="divide-y divide-line rounded-lg border border-line bg-card">
+            <ul className="divide-y divide-line rounded-panel border border-line bg-card">
               {ids.map((id, index) => {
                 const task = byId.get(id)!;
                 return (
@@ -402,7 +402,7 @@ function TaskRow({
           {...attributes}
           {...listeners}
           aria-label={`Drag ${task.title} to reorder`}
-          className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-md text-muted hover:bg-sunken active:cursor-grabbing"
+          className="flex size-9 shrink-0 cursor-grab touch-none items-center justify-center rounded-pill text-muted hover:bg-sunken active:cursor-grabbing"
         >
           <svg viewBox="0 0 24 24" aria-hidden className="size-4" fill="currentColor">
             <circle cx="9" cy="6" r="1.5" />

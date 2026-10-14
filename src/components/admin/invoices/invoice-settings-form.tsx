@@ -26,7 +26,7 @@ export function InvoiceReadinessList({ base, readiness }: { base: string; readin
   if (!readiness.taxProfileSaved) items.push({ key: "tax", text: "The tax profile is not saved, so it is not known whether the store is registered for VAT.", href: `${base}/settings/tax` });
   return (
     <section aria-labelledby="readiness" className={card}>
-      <h2 id="readiness" className="font-medium">
+      <h2 id="readiness" className="text-title text-ink">
         Before you switch on
       </h2>
       {items.length === 0 ? (
@@ -39,7 +39,7 @@ export function InvoiceReadinessList({ base, readiness }: { base: string; readin
             Orders paid while something is missing wait for their invoice; the payment is never held back. They are issued, with that day as the issue date,
             within five minutes of the cause being put right.
           </p>
-          <ul className="divide-y divide-line rounded-lg border border-line text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line text-sm">
             {items.map((item) => (
               <li key={item.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-3">
                 <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-warning-solid" />
@@ -83,7 +83,7 @@ export function InvoiceSettingsForm({
   return (
     <ActionForm action={saveAction} successMessage="Saved." className="flex flex-col gap-6">
       <section aria-labelledby="switch" className={card}>
-        <h2 id="switch" className="font-medium">
+        <h2 id="switch" className="text-title text-ink">
           Invoices
         </h2>
         <label className="flex items-start gap-2 text-sm">
@@ -121,7 +121,7 @@ export function InvoiceSettingsForm({
       </section>
 
       <section aria-labelledby="note" className={card}>
-        <h2 id="note" className="font-medium">
+        <h2 id="note" className="text-title text-ink">
           Note on every document
         </h2>
         <label className={label}>
@@ -155,7 +155,7 @@ export function SeriesForm({ state, action }: { state: SeriesState; action: Acti
   const title = SERIES_TITLES[state.series];
   return (
     <section aria-labelledby={`series-${state.series}`} className={card}>
-      <h2 id={`series-${state.series}`} className="font-medium">
+      <h2 id={`series-${state.series}`} className="text-title text-ink">
         {title}
       </h2>
       {state.locked ? (
@@ -200,7 +200,7 @@ export function SeriesForm({ state, action }: { state: SeriesState; action: Acti
 export function InvoiceNotes() {
   return (
     <section aria-labelledby="notes" className={card}>
-      <h2 id="notes" className="font-medium">
+      <h2 id="notes" className="text-title text-ink">
         What the system does
       </h2>
       <ul className="list-disc space-y-2 pl-5 text-sm text-muted">

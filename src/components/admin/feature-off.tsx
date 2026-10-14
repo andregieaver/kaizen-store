@@ -35,7 +35,7 @@ export function FeatureOff({ storeSlug, feature, features, owner }: Props) {
   const need = asleep ? FEATURES_BY_ID[asleep].needs.find((n) => !featureOn(features, n)) : undefined;
   const href = `/admin/${storeSlug}/settings/features`;
   return (
-    <section aria-labelledby="feature-off-heading" className="flex flex-col gap-3 rounded-lg border border-line bg-sunken p-5">
+    <section aria-labelledby="feature-off-heading" className="flex flex-col gap-3 rounded-panel bg-sunken p-5">
       <h1 id="feature-off-heading" className="text-xl font-medium">
         {label} {ids.length > 1 ? "are" : "is"} switched off
       </h1>

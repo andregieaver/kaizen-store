@@ -201,13 +201,13 @@ function CostsSection({ base, currency, summary, actions }: Pick<AnalyticsSettin
         </p>
 
         <div className="flex flex-col gap-2 border-t border-line pt-4">
-          <h3 className="text-sm font-medium">Costs on earlier orders</h3>
+          <h3 className="text-body-strong text-ink">Costs on earlier orders</h3>
           {variantsWithCost === 0 ? (
             <p className="text-sm text-muted">Once variants have a cost you can apply it to orders sold before you entered it.</p>
           ) : backfillableLines === 0 ? (
             <p className="text-sm text-muted">No earlier order lines are waiting for a cost: every line whose variant has a cost already has it.</p>
           ) : actions ? (
-            <details className="max-w-xl rounded-lg border border-line bg-sunken">
+            <details className="max-w-xl rounded-panel bg-sunken">
               <summary className="min-h-10 cursor-pointer list-none px-4 py-2.5 text-sm font-medium">Apply costs to earlier orders</summary>
               <div className="border-t border-line p-4">
                 <ActionForm action={actions.backfillCosts} className="flex flex-col gap-3" replaceOnSuccess successMessage="Updated 0 order lines.">
@@ -392,7 +392,7 @@ function TargetsSection({ currency, locale, today, targets, actions }: Pick<Anal
           </ActionForm>
         ) : null}
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-medium">Targets for the next 12 months</h3>
+          <h3 className="text-body-strong text-ink">Targets for the next 12 months</h3>
           <DataTable
             caption="Revenue targets for the next 12 months"
             columns={columns}
@@ -434,7 +434,7 @@ function VisitsSection({ summary, visitCounting, actions }: Pick<AnalyticsSettin
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <h3 className="text-sm font-medium">What is counted</h3>
+            <h3 className="text-body-strong text-ink">What is counted</h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
               <li>One line per visitor per day, with no name, contact detail, IP address or browser details on it.</li>
               <li>The market, the kind of device (phone, tablet or computer) and where the visitor came from: the link, or the campaign tag in it.</li>
@@ -443,7 +443,7 @@ function VisitsSection({ summary, visitCounting, actions }: Pick<AnalyticsSettin
             </ul>
           </div>
           <div className="flex flex-col gap-1.5">
-            <h3 className="text-sm font-medium">What is not counted or kept</h3>
+            <h3 className="text-body-strong text-ink">What is not counted or kept</h3>
             <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
               <li>No cookies and nothing stored in the browser, so it shows no cookie banner.</li>
               <li>No IP address and no browser details are stored.</li>

@@ -124,7 +124,7 @@ function ModelTable({ rows, first = "Provider and model" }: { rows: UsageRow[]; 
 function GroupList({ groups, empty }: { groups: UsageGroup[]; empty: string }) {
   if (groups.length === 0) return <p className="text-sm text-muted">{empty}</p>;
   return (
-    <ul className="flex flex-col divide-y divide-line rounded-lg border border-line">
+    <ul className="flex flex-col divide-y divide-line rounded-panel border border-line">
       {groups.map((g) => (
         <li key={g.key}>
           <details className="group">
@@ -151,9 +151,9 @@ function GroupList({ groups, empty }: { groups: UsageGroup[]; empty: string }) {
 
 function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="rounded-lg border border-line p-4">
-      <p className="text-xs font-medium tracking-wide text-muted uppercase">{label}</p>
-      <p className="mt-1 text-2xl font-medium tabular-nums">{value}</p>
+    <div className="rounded-panel border border-line p-4">
+      <p className="text-eyebrow text-muted uppercase">{label}</p>
+      <p className="mt-1 text-metric text-ink tabular-nums">{value}</p>
       {note && <p className="mt-1 text-xs text-muted">{note}</p>}
     </div>
   );
@@ -191,7 +191,7 @@ export function PeriodLinks({ base, period, extra = "" }: { base: string; period
           key={p.id}
           href={`${base}?period=${p.id}${extra}`}
           aria-current={p.id === period ? "page" : undefined}
-          className={`rounded-md px-3 py-1.5 text-sm ${p.id === period ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}
+          className={`rounded-pill px-3 py-1.5 text-sm ${p.id === period ? "bg-sunken font-medium" : "text-muted hover:bg-sunken"}`}
         >
           {p.label}
         </Link>
@@ -205,7 +205,7 @@ const card = "rounded-lg border border-line bg-card p-5";
 function Section({ id, title, note, children }: { id: string; title: string; note?: string; children: ReactNode }) {
   return (
     <section aria-labelledby={id} className={card}>
-      <h2 id={id} className="font-medium">
+      <h2 id={id} className="text-title text-ink">
         {title}
       </h2>
       {note && <p className="mb-3 mt-1 text-sm text-muted">{note}</p>}

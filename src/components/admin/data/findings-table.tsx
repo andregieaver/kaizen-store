@@ -55,7 +55,7 @@ export function FindingsTable({
   return (
     <section aria-labelledby="findings-title" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="findings-title" className="text-base font-medium">
+        <h2 id="findings-title" className="text-title text-ink">
           What the file says, product by product
         </h2>
         {problemsHref && (
@@ -74,7 +74,7 @@ export function FindingsTable({
         ))}
       </nav>
       {items.length === 0 ? (
-        <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No product has a finding of this kind."}</p>
+        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{severity === "all" ? "Nothing to show." : "No product has a finding of this kind."}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">

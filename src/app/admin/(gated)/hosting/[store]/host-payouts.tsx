@@ -77,7 +77,7 @@ export function HostPayouts({
       ) : null}
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">Payments</h3>
+        <h3 className="text-body-strong text-ink">Payments</h3>
         {earnings.length === 0 ? (
           <p className="text-sm text-muted">None yet.</p>
         ) : (

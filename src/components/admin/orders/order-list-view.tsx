@@ -58,7 +58,7 @@ export function OrderListView({
     <div className="flex flex-col gap-4">
       <ViewBar base={base} params={params} views={views} openViewId={openView?.id ?? null} />
       {openView && ignoredInView && (
-        <p role="status" className="rounded-lg border border-line bg-sunken p-3 text-sm">
+        <p role="status" className="rounded-panel bg-sunken p-3 text-sm">
           Some of the view “{openView.title}” settings no longer apply, so the list shows the rest.
         </p>
       )}
@@ -72,7 +72,7 @@ export function OrderListView({
       </p>
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 rounded-lg border border-line bg-sunken p-8 text-sm">
+        <div className="flex flex-col items-start gap-3 rounded-panel bg-sunken p-8 text-sm">
           <p>
             {params.q !== ""
               ? `No order matches “${params.q}”${filtered && params.q !== "" && (params.pay.length || params.ship.length || params.tag.length || params.status.length || params.range || params.from || params.to) ? " with these filters" : ""}.`

@@ -99,7 +99,7 @@ export function BonusAdjustForm({
               type="button"
               onClick={() => setConfirming(null)}
               disabled={pending}
-              className="min-h-10 rounded-md border border-line px-4 text-sm disabled:opacity-40"
+              className="min-h-10 rounded-pill border border-edge px-4 text-sm disabled:opacity-40"
             >
               Back
             </button>
@@ -166,7 +166,7 @@ export function BonusAdjustForm({
             </p>
           </div>
           <div>
-            <button type="submit" className="min-h-10 rounded-md border border-line bg-card px-4 text-sm">
+            <button type="submit" className="min-h-10 rounded-pill border border-edge bg-card px-4 text-sm">
               Review
             </button>
           </div>

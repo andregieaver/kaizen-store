@@ -151,7 +151,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
 
       {preview && (
         <section aria-label="Review" className={`${card} flex flex-col gap-3`}>
-          <h2 className="text-base font-medium">
+          <h2 className="text-title text-ink">
             {preview.changes.length === 0 ? "Nothing would change" : `${preview.changes.length} ${preview.changes.length === 1 ? "change" : "changes"} in ${preview.products} ${preview.products === 1 ? "product" : "products"} and ${preview.variants} ${preview.variants === 1 ? "variant" : "variants"}`}
           </h2>
           {preview.changes.length > 0 && (
@@ -192,7 +192,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
           )}
           {preview.invalid.length > 0 && (
             <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-medium text-danger-text">Cannot be changed</h3>
+              <h3 className="text-danger-text text-body-strong text-ink">Cannot be changed</h3>
               <ul className="text-sm">
                 {preview.invalid.map((c, i) => (
                   <li key={`${c.variantId}-${c.field}-${i}`}>
@@ -205,7 +205,7 @@ export function ProductsGrid({ rows, markets, mainCurrency, tools, locale }: { r
           )}
           {preview.conflicts.length > 0 && (
             <div className="flex flex-col gap-1">
-              <h3 className="text-sm font-medium">Changed in the store since you opened this page</h3>
+              <h3 className="text-body-strong text-ink">Changed in the store since you opened this page</h3>
               <p className={hint}>These are not overwritten. Reload the page to see the current values.</p>
               <ul className="text-sm">
                 {preview.conflicts.map((c, i) => (

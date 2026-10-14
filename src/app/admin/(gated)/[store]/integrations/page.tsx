@@ -40,7 +40,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
               <div className="flex items-start gap-3">
                 <IntegrationMark id={info.id} />
                 <div className="min-w-0 flex-1">
-                  <h2 className="flex flex-wrap items-center gap-2 font-medium">
+                  <h2 className="flex flex-wrap items-center gap-2 text-title text-ink">
                     {info.name}
                     {badge && <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${badge.tone}`}>{badge.text}</span>}
                   </h2>
@@ -53,7 +53,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                 ) : (
                   <Link
                     href={`${base}/${info.id}`}
-                    className={`inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium ${
+                    className={`inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-medium ${
                       status ? "border border-edge hover:bg-sunken" : "bg-brand text-brand-ink"
                     }`}
                   >
@@ -67,7 +67,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
       </ul>
       <section aria-labelledby="shipping-carriers" className="flex flex-col gap-4">
         <div>
-          <h2 id="shipping-carriers" className="text-lg font-medium">
+          <h2 id="shipping-carriers" className="text-title text-ink">
             Shipping carriers
           </h2>
           <p className="text-sm text-muted">
@@ -92,7 +92,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                 <div className="flex items-start gap-3">
                   <IntegrationMark id={info.id} />
                   <div className="min-w-0 flex-1">
-                    <h3 className="flex flex-wrap items-center gap-2 font-medium">
+                    <h3 className="flex flex-wrap items-center gap-2 text-body-strong text-ink">
                       {info.name}
                       <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${badge.tone}`}>{badge.text}</span>
                     </h3>
@@ -102,7 +102,7 @@ export default async function IntegrationsPage({ params }: PageProps<"/admin/[st
                 <div className="mt-auto">
                   <Link
                     href={`${base}/shipping/${info.id}`}
-                    className={`inline-flex min-h-10 items-center rounded-md px-4 text-sm font-medium ${
+                    className={`inline-flex min-h-10 items-center rounded-pill px-4 text-sm font-medium ${
                       saved ? "border border-edge hover:bg-sunken" : "bg-brand text-brand-ink"
                     }`}
                   >

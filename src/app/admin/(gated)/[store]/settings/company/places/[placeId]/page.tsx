@@ -45,7 +45,7 @@ export default async function PlacePage({ params }: PageProps<"/admin/[store]/se
         </label>
         <PlaceFields place={place} countries={countries} defaultCountry={store.details.country ?? "NO"} what={`the ${what}`} />
         <div className="border-t border-line pt-4">
-          <h2 className="mb-3 text-sm font-medium">Opening hours</h2>
+          <h2 className="mb-3 text-title text-ink">Opening hours</h2>
           <HoursEditor name="hours" initial={place.hours} optional />
         </div>
         <div>

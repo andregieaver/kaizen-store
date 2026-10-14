@@ -111,7 +111,7 @@ export function FilterBar({
           )}
         </div>
 
-        <details className="rounded-lg border border-line bg-sunken">
+        <details className="rounded-panel bg-sunken">
           <summary className="cursor-pointer px-4 py-2 text-sm font-medium">Filters, sorting and columns</summary>
           <div className="flex flex-col gap-4 border-t border-line p-4">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

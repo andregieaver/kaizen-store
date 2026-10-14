@@ -34,8 +34,8 @@ export default async function CountriesPage({ params }: PageProps<"/admin/[store
         description={<>Each country gets its own storefront address, in its own language and currency, with its own prices and shipping. A product shows in a country once it has a price there.</>}
       />
 
-      <section aria-labelledby="home-heading" className="flex flex-col gap-2 rounded-lg border border-line bg-sunken p-4">
-        <h2 id="home-heading" className="text-base font-medium">Your own country</h2>
+      <section aria-labelledby="home-heading" className="flex flex-col gap-2 rounded-panel bg-sunken p-4">
+        <h2 id="home-heading" className="text-title text-ink">Your own country</h2>
         {home ? (
           <p className="text-sm">
             <strong>{nameOf(home.code)}</strong>, in {home.nativeCurrency}. It is your business&apos;s country under{" "}

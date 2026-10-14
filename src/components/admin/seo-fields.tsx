@@ -198,7 +198,7 @@ export function ShareImageField({
                 placeholder="https://…"
                 className={`${input} w-full max-w-64`}
               />
-              <button type="button" onClick={() => setUrl(link.trim())} className="rounded-md border border-border px-3">
+              <button type="button" onClick={() => setUrl(link.trim())} className="rounded-pill border border-border px-3">
                 Use
               </button>
             </div>

@@ -46,7 +46,7 @@ export default async function DiscountsPage({ params }: PageProps<"/admin/[store
         </Link>
       </div>
       {discounts.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No codes yet. Make one for a campaign, a newsletter or a loyal customer.
         </p>
       ) : (

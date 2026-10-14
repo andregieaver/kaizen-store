@@ -13,7 +13,7 @@ export function BonusOverviewCard({ overview, locale }: { overview: BonusOvervie
       aria-labelledby="bonus-overview-heading"
       className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
     >
-      <h2 id="bonus-overview-heading" className="font-medium">
+      <h2 id="bonus-overview-heading" className="text-title text-ink">
         Credits at a glance
       </h2>
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">

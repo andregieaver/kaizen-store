@@ -26,7 +26,7 @@ export const needsReasonWords = (reason: NeedsContent["reason"]): string =>
 export function NeedsContentNotice({ count, href }: { count: number; href: string }) {
   if (count === 0) return null;
   return (
-    <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-line bg-sunken px-4 py-3 text-sm">
+    <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-panel bg-sunken px-4 py-3 text-sm">
       <span>{needsContentNotice(count)}</span>
       <Link href={href} className="font-medium underline">
         Show them
@@ -50,7 +50,7 @@ export function NeedsContentList({ products, base }: { products: NeedsContent[];
         These products are on sale without a price per kg or litre. They stay on sale and the shop shows no unit price for them, until
         you give each shipped variant its content in the product&apos;s editor; saving one before then is refused.
       </p>
-      <table className="w-full overflow-hidden rounded-lg border border-line bg-card text-left text-sm">
+      <table className="w-full overflow-hidden rounded-panel border border-line bg-card text-left text-sm">
         <caption className="sr-only">Products that need content for the unit price</caption>
         <thead>
           <tr className="border-b border-line">

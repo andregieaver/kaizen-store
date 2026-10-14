@@ -28,7 +28,7 @@ export type IssuedViewProps = {
   homeCurrency: string | null;
 };
 
-const th = "px-3 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
+const th = "px-3 py-2 text-left text-eyebrow text-muted uppercase";
 
 /**
  * An issued, paid or void invoice (docs/work.md 4.6): read-only, from what was frozen at issue (the seller and
@@ -96,7 +96,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
       </div>
 
       <section aria-labelledby="amounts-heading" className={card}>
-        <h2 id="amounts-heading" className="mb-3 font-medium">
+        <h2 id="amounts-heading" className="mb-3 text-title text-ink">
           Amounts
         </h2>
         <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
@@ -115,7 +115,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
       </section>
 
       <section aria-labelledby="doc-heading" className={card}>
-        <h2 id="doc-heading" className="mb-3 font-medium">
+        <h2 id="doc-heading" className="mb-3 text-title text-ink">
           The document
         </h2>
         <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
@@ -190,7 +190,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
       </section>
 
       <section aria-labelledby="lines-heading" className={card}>
-        <h2 id="lines-heading" className="mb-4 font-medium">
+        <h2 id="lines-heading" className="mb-4 text-title text-ink">
           Lines
         </h2>
         <ol className="flex flex-col gap-3 md:hidden" aria-label="Invoice lines">
@@ -286,7 +286,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
       </section>
 
       <section aria-labelledby="payments-heading" className={card}>
-        <h2 id="payments-heading" className="mb-3 font-medium">
+        <h2 id="payments-heading" className="mb-3 text-title text-ink">
           Payments
         </h2>
         {detail.payments.length === 0 ? (
@@ -326,7 +326,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
       </section>
 
       <section aria-labelledby="credit-heading" className={card}>
-        <h2 id="credit-heading" className="mb-3 font-medium">
+        <h2 id="credit-heading" className="mb-3 text-title text-ink">
           Credit notes
         </h2>
         {detail.creditNotes.length === 0 ? (
@@ -365,7 +365,7 @@ export function IssuedInvoiceView({ storeSlug, locale, timeZone, detail, isOwner
       </section>
 
       <section aria-labelledby="history-heading" className={card}>
-        <h2 id="history-heading" className="mb-3 font-medium">
+        <h2 id="history-heading" className="mb-3 text-title text-ink">
           History
         </h2>
         {detail.events.length === 0 ? (
@@ -432,7 +432,7 @@ function Party({ title, lines }: { title: string; lines: (string | null | undefi
   const shown = lines.filter((line): line is string => Boolean(line));
   return (
     <div>
-      <h3 className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">{title}</h3>
+      <h3 className="mb-1 text-xs tracking-wide text-muted uppercase text-body-strong text-ink">{title}</h3>
       {shown.length === 0 ? (
         <p className="text-muted">Not kept.</p>
       ) : (

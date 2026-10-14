@@ -65,7 +65,7 @@ export function TaxProfileForm({
     <ActionForm action={saveAction} successMessage="Saved." className="flex flex-col gap-6">
       <fieldset disabled={!canEdit} className="contents">
         <section aria-labelledby="vat" className={card}>
-          <h2 id="vat" className="font-medium">
+          <h2 id="vat" className="text-title text-ink">
             VAT registration
           </h2>
           <label className="flex items-start gap-2 text-sm">
@@ -103,7 +103,7 @@ export function TaxProfileForm({
         </section>
 
         <section aria-labelledby="oss" className={card}>
-          <h2 id="oss" className="font-medium">
+          <h2 id="oss" className="text-title text-ink">
             One Stop Shop (OSS)
           </h2>
           <p className="text-sm text-muted">
@@ -156,7 +156,7 @@ export function TaxProfileForm({
         </section>
 
         <section aria-labelledby="ioss" className={card}>
-          <h2 id="ioss" className="font-medium">
+          <h2 id="ioss" className="text-title text-ink">
             Import One Stop Shop (IOSS)
           </h2>
           <p className="text-sm text-muted">
@@ -225,7 +225,7 @@ export function OwnNumberCheckCard({
   const source = check?.source === "brreg" ? "the register of business enterprises (Brønnøysundregistrene)" : "VIES";
   return (
     <section aria-labelledby="check" className={card}>
-      <h2 id="check" className="font-medium">
+      <h2 id="check" className="text-title text-ink">
         Check the VAT number
       </h2>
       {number === null ? (
@@ -290,7 +290,7 @@ export function OwnNumberCheckCard({
 export function ReadinessList({ lines }: { lines: ReadinessLine[] }) {
   return (
     <section aria-labelledby="readiness" className={card}>
-      <h2 id="readiness" className="font-medium">
+      <h2 id="readiness" className="text-title text-ink">
         What is on
       </h2>
       <ul className="flex flex-col divide-y divide-line text-sm">
@@ -309,7 +309,7 @@ export function ReadinessList({ lines }: { lines: ReadinessLine[] }) {
 export function TaxWarnings({ warnings }: { warnings: readonly string[] }) {
   return (
     <section aria-labelledby="warnings" className={card}>
-      <h2 id="warnings" className="font-medium">
+      <h2 id="warnings" className="text-title text-ink">
         Read this with your accountant
       </h2>
       <p className="text-sm text-muted">This is how Kaizen handles VAT, and where it stops. It is not tax advice.</p>

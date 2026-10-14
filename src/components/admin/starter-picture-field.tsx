@@ -29,7 +29,7 @@ export function StarterPictureField({ initial, upload }: { initial: string | nul
       <div className="flex flex-wrap items-center gap-3">
         <ImageUploadButton upload={upload} label={url ? "Upload another picture" : "Upload a picture"} onUploaded={(image) => setUrl(image.url)} />
         {url && (
-          <button type="button" onClick={() => setUrl("")} className="min-h-10 rounded-md border border-line px-3">
+          <button type="button" onClick={() => setUrl("")} className="min-h-10 rounded-pill border border-edge px-3">
             Remove the picture
           </button>
         )}

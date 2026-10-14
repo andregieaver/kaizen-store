@@ -53,7 +53,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
       {customer ? (
         <CustomerBar customer={storeCustomerBar(store.slug, customer, locale)} />
       ) : (
-        <section aria-label="Shopper" className="rounded-lg border border-line bg-card p-4 text-sm">
+        <section aria-label="Shopper" className="rounded-panel border border-line bg-card p-4 text-sm">
           <p className="font-medium">A guest, not signed in</p>
           <p className="text-muted">
             The list is kept in the shopper&apos;s browser and joins their account if they sign in. Who they are shows below
@@ -63,7 +63,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
       )}
 
       <section aria-labelledby="items" className={card}>
-        <h2 id="items" className="mb-3 font-medium">In the list</h2>
+        <h2 id="items" className="mb-3 text-title text-ink">In the list</h2>
         {list.items.length === 0 ? (
           <p className="text-sm text-muted">The list is empty.</p>
         ) : (
@@ -111,7 +111,7 @@ export default async function WishlistPage({ params }: PageProps<"/admin/[store]
       </section>
 
       <section aria-labelledby="to-cart" className={card}>
-        <h2 id="to-cart" className="mb-1 font-medium">From this list to purchase</h2>
+        <h2 id="to-cart" className="mb-1 text-title text-ink">From this list to purchase</h2>
         <p className="mb-3 text-sm text-muted">Each time the shopper put items from this list in the cart, and what came of it.</p>
         {adds.length === 0 ? (
           <p className="text-sm text-muted">Nothing from this list has gone to the cart yet.</p>

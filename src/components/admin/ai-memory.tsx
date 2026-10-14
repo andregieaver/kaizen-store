@@ -66,7 +66,7 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
   return (
     <section aria-labelledby="memory-heading" className="flex max-w-3xl flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <h2 id="memory-heading" className="text-lg font-medium">
+        <h2 id="memory-heading" className="text-title text-ink">
           What it knows about you
         </h2>
         <p className="text-sm text-muted">
@@ -84,12 +84,12 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
         </p>
       )}
       {memories.length === 0 ? (
-        <p className="rounded-lg border border-line p-4 text-sm">Nothing yet. Tell it about your business, or say &ldquo;remember that …&rdquo;.</p>
+        <p className="rounded-panel border border-line p-4 text-sm">Nothing yet. Tell it about your business, or say &ldquo;remember that …&rdquo;.</p>
       ) : (
         groups.map((group) => (
           <div key={group.kind} className="flex flex-col gap-2">
-            <h3 className="text-sm font-medium">{KIND_WORDS[group.kind]}</h3>
-            <ul className="flex flex-col divide-y divide-line rounded-lg border border-line">
+            <h3 className="text-body-strong text-ink">{KIND_WORDS[group.kind]}</h3>
+            <ul className="flex flex-col divide-y divide-line rounded-panel border border-line">
               {group.items.map((memory) => (
                 <li key={memory.id} className="flex flex-col gap-2 p-3">
                   {editing === memory.id ? (
@@ -115,7 +115,7 @@ export function AiMemory({ memories: initial, learning: initialLearning, actions
                         <button type="submit" className="rounded-pill bg-brand px-3 py-1.5 text-sm text-brand-ink">
                           Save
                         </button>
-                        <button type="button" className="rounded-md border border-line px-3 py-1.5 text-sm" onClick={() => setEditing(null)}>
+                        <button type="button" className="rounded-pill border border-line px-3 py-1.5 text-sm" onClick={() => setEditing(null)}>
                           Cancel
                         </button>
                       </div>

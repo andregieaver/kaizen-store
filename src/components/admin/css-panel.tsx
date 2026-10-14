@@ -85,10 +85,10 @@ export function CssPanel({
       className="fixed inset-y-0 right-0 z-30 flex w-full max-w-md flex-col border-l border-line bg-card shadow-2xl"
     >
       <div className="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
-        <h2 id={`${id}-title`} className="font-medium">
+        <h2 id={`${id}-title`} className="text-title text-ink">
           Custom CSS
         </h2>
-        <button type="button" onClick={onClose} className="min-h-9 rounded-md px-3 text-sm hover:bg-sunken" aria-label="Close custom CSS">
+        <button type="button" onClick={onClose} className="min-h-9 rounded-pill px-3 text-sm hover:bg-sunken" aria-label="Close custom CSS">
           Close
         </button>
       </div>

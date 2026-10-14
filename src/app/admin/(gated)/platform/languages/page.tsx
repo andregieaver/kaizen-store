@@ -60,7 +60,7 @@ export default async function LanguagesPage() {
             const c = coverage[language.lang];
             const builtIn = isBuiltIn(language.lang);
             return (
-              <li key={language.lang} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 sm:flex-row sm:items-start sm:justify-between">
+              <li key={language.lang} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex flex-col gap-1 text-sm">
                   <span className="font-medium">
                     {language.name} <span className="font-normal text-muted">· {nativeName(language.lang)} · {language.lang}</span>
@@ -85,7 +85,7 @@ export default async function LanguagesPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {!builtIn && (
-                    <Link href={`/admin/platform/languages/${language.lang}`} className="flex min-h-10 items-center rounded-md border border-line px-4 text-sm">
+                    <Link href={`/admin/platform/languages/${language.lang}`} className="flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm">
                       Translate and review
                     </Link>
                   )}

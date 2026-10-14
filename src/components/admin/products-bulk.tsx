@@ -215,7 +215,7 @@ export function ProductsTable({ slug, rows, archived, priceHeader, locale, bulk 
           )}
         </div>
       )}
-      <table className="w-full overflow-hidden rounded-lg border border-line bg-card text-left text-sm">
+      <table className="w-full overflow-hidden rounded-panel border border-line bg-card text-left text-sm">
         <caption className="sr-only">{archived ? "Archived products" : "Products"}</caption>
         <thead>
           <tr className="border-b border-line">

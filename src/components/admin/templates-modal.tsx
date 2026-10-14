@@ -165,7 +165,7 @@ function Browser({
             <button
               type="button"
               onClick={() => load(source, true)}
-              className="min-h-9 rounded-md border border-line px-3 text-xs text-ink"
+              className="min-h-9 rounded-pill border border-edge px-3 text-xs text-ink"
             >
               Try again
             </button>
@@ -181,7 +181,7 @@ function Browser({
             <button
               type="button"
               onClick={() => setFilters(NO_FILTERS)}
-              className="min-h-9 rounded-md border border-line px-3 text-xs"
+              className="min-h-9 rounded-pill border border-edge px-3 text-xs"
             >
               Clear filters
             </button>
@@ -226,7 +226,7 @@ function Browser({
                             onClick={() => controller.setActive(source, item.id, !item.active)}
                             disabled={controller.busy.has(item.id)}
                             aria-label={`${item.active ? "Deactivate" : "Activate"} ${item.name}`}
-                            className={`min-h-9 shrink-0 rounded-md px-3 text-xs font-medium disabled:opacity-50 ${
+                            className={`min-h-9 shrink-0 rounded-pill px-3 text-xs font-medium disabled:opacity-50 ${
                               item.active ? "border border-edge hover:bg-sunken" : "bg-brand text-brand-ink"
                             }`}
                           >

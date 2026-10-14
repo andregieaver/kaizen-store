@@ -27,7 +27,7 @@ export function ShippingRulesCard({
   return (
     <section aria-labelledby="shipping-rule" className={card}>
       <div>
-        <h2 id="shipping-rule" className="font-medium">
+        <h2 id="shipping-rule" className="text-title text-ink">
           VAT on shipping
         </h2>
         <p className="text-sm text-muted">
@@ -70,7 +70,7 @@ export function ShippingRulesCard({
         </div>
       )}
       <ActionForm action={action} successMessage="The rule is saved." className="flex flex-col gap-4 border-t border-line pt-4">
-        <h3 className="text-sm font-medium">Set a rule</h3>
+        <h3 className="text-body-strong text-ink">Set a rule</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           {country ? (
             <input type="hidden" name="country" value={country} />

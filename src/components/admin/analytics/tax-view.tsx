@@ -138,7 +138,7 @@ export function TaxView({ base, locale, range, report, reconciliation, drift, ca
 
       <AnalyticsSection id="vat-cards" title="VAT in the period" description={`In ${report.mainCurrency}, each document at the rate stored on it when it was issued. Credit notes are counted in the period they are issued.`}>
         {documents === 0 ? (
-          <div className="rounded-lg border border-dashed border-line px-4 py-6 text-sm text-muted">
+          <div className="rounded-panel border border-dashed border-line px-4 py-6 text-sm text-muted">
             <p>No invoice or credit note is dated in this period, so there is nothing to report.</p>
             <p className="mt-1">
               Reports are made from your invoices. If invoicing is off, switch it on under{" "}
@@ -314,7 +314,7 @@ export function ReconciliationPanel({ view, base, locale, range, last, canExport
         </p>
       ) : null}
       {view.refunds.length > 0 ? (
-        <div className="space-y-1 rounded-lg border border-line bg-sunken p-4 text-sm">
+        <div className="space-y-1 rounded-panel bg-sunken p-4 text-sm">
           <p className="font-medium">Refunds against credit notes (for information)</p>
           {view.refunds.map((r) => (
             <p key={r.currency} className="text-muted">

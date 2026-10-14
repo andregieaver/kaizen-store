@@ -12,7 +12,7 @@ import type { WorkAssignmentItem, WorkClientItem } from "@/server/work";
 
 import { Badge, card } from "./work-parts";
 
-const th = "px-4 py-2 text-left text-xs font-medium tracking-wide text-muted uppercase";
+const th = "px-4 py-2 text-left text-eyebrow text-muted uppercase";
 
 const LANGUAGE_NAMES = { nb: "Norwegian", sv: "Swedish", da: "Danish", en: "English" } as const;
 
@@ -52,7 +52,7 @@ export function ClientDetails({
   const address = addressText(client.billingAddress);
   return (
     <section aria-labelledby="client-details-heading" className={card}>
-      <h2 id="client-details-heading" className="mb-3 font-medium">
+      <h2 id="client-details-heading" className="mb-3 text-title text-ink">
         Details
       </h2>
       <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[11rem_1fr]">
@@ -119,7 +119,7 @@ export function ClientAssignments({
     );
   }
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-card">
+    <div className="overflow-x-auto rounded-panel border border-line bg-card">
       <table className="w-full text-sm">
         <caption className="sr-only">Assignments</caption>
         <thead>

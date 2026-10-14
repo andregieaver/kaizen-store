@@ -44,7 +44,7 @@ export async function LayoutTab({ presetId, kind }: { presetId: string; kind: De
   if (page.problem !== null) {
     return (
       <DesignShell design={page.design} facts={page.facts} tab={words.tab}>
-        <p role="alert" className="rounded-lg border border-line bg-card p-4 text-sm">{page.problem}</p>
+        <p role="alert" className="rounded-panel border border-line bg-card p-4 text-sm">{page.problem}</p>
       </DesignShell>
     );
   }

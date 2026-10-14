@@ -40,8 +40,8 @@ export default async function FeaturesPage({ params }: PageProps<"/admin/[store]
         onSwitch={switchFeatureAction.bind(null, store.slug)}
       />
 
-      <section aria-labelledby="times-heading" className="rounded-lg border border-line bg-sunken p-4">
-        <h2 id="times-heading" className="mb-1 font-medium">
+      <section aria-labelledby="times-heading" className="rounded-panel bg-sunken p-4">
+        <h2 id="times-heading" className="mb-1 text-title text-ink">
           Time zone and reminders
         </h2>
         <p className="mb-4 text-sm text-muted">

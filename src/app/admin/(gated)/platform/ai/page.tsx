@@ -43,7 +43,7 @@ export default async function PlatformAiPage() {
       </div>
 
       <section aria-labelledby="provider" className={card}>
-        <h2 id="provider" className="mb-1 font-medium">Provider and models</h2>
+        <h2 id="provider" className="mb-1 text-title text-ink">Provider and models</h2>
         <p className="mb-4 text-sm text-muted">
           Every store uses these unless its owner chooses their own ({ownCount} {ownCount === 1 ? "store does" : "stores do"}). Keep
           data in the EU where a model allows it, and add any new provider to the residency register before saving it. Shoppers&apos;
@@ -54,7 +54,7 @@ export default async function PlatformAiPage() {
 
       {settings && (
         <section aria-labelledby="test" className={card}>
-          <h2 id="test" className="mb-1 font-medium">Test</h2>
+          <h2 id="test" className="mb-1 text-title text-ink">Test</h2>
           <p className="mb-3 text-sm text-muted">Tries the saved models now, even while off.</p>
           <AiTestButton action={testPlatformAiAction} />
           <div className="mt-4 border-t border-line pt-4">

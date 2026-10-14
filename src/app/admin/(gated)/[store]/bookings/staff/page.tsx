@@ -31,7 +31,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/bo
           No one yet. Add the people who take appointments, with their working hours.
         </p>
       ) : (
-        <ul className="divide-y divide-line rounded-lg border border-line bg-card">
+        <ul className="divide-y divide-line rounded-panel border border-line bg-card">
           {staff.map((s) => (
             <li key={s.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
               <div className="min-w-0">
@@ -45,7 +45,7 @@ export default async function StaffPage({ params }: PageProps<"/admin/[store]/bo
                   {s.capacity > 1 && ` · ${s.capacity} at once`}
                 </span>
               </div>
-              <Link href={`${base}/${s.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-sunken">
+              <Link href={`${base}/${s.id}`} className="min-h-10 rounded-pill px-3 py-2 hover:bg-sunken">
                 Edit <span className="sr-only">{s.name}</span>
               </Link>
             </li>

@@ -35,10 +35,10 @@ export function SiteFontsForm({
       </div>
 
       <FontLinks families={[heading, body]} />
-      <figure className="flex flex-col gap-2 rounded-lg border border-line p-5">
+      <figure className="flex flex-col gap-2 rounded-panel border border-line p-5">
         <figcaption className="text-xs text-muted">Sample</figcaption>
         <div className={body ? fontClass(body) : undefined}>
-          <p className={`text-2xl font-medium ${heading ? fontClass(heading) : ""}`}>Handmade cups for slow mornings</p>
+          <p className={`text-metric text-ink tabular-nums ${heading ? fontClass(heading) : ""}`}>Handmade cups for slow mornings</p>
           <p className="mt-2 max-w-prose">
             Each cup is thrown by hand in our workshop and glazed in small batches, so no two are quite alike. Free delivery
             on orders over 500 kr.

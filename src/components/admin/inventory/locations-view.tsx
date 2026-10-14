@@ -157,16 +157,16 @@ export function LocationsView({
                     <span className="flex flex-wrap justify-end gap-2">
                       {canWrite && row.active && (
                         <>
-                          <button type="button" disabled={pending || at <= 0} onClick={() => run(async () => void show(await tools.move(row.id, "up"), "Moved up."))} aria-label={`Move ${row.name} up`} className="min-h-9 rounded-md border border-line px-2 text-xs disabled:opacity-40">
+                          <button type="button" disabled={pending || at <= 0} onClick={() => run(async () => void show(await tools.move(row.id, "up"), "Moved up."))} aria-label={`Move ${row.name} up`} className="min-h-9 rounded-pill border border-edge px-2 text-xs disabled:opacity-40">
                             Move up
                           </button>
-                          <button type="button" disabled={pending || at < 0 || at >= activeRows.length - 1} onClick={() => run(async () => void show(await tools.move(row.id, "down"), "Moved down."))} aria-label={`Move ${row.name} down`} className="min-h-9 rounded-md border border-line px-2 text-xs disabled:opacity-40">
+                          <button type="button" disabled={pending || at < 0 || at >= activeRows.length - 1} onClick={() => run(async () => void show(await tools.move(row.id, "down"), "Moved down."))} aria-label={`Move ${row.name} down`} className="min-h-9 rounded-pill border border-edge px-2 text-xs disabled:opacity-40">
                             Move down
                           </button>
                         </>
                       )}
                       {canWrite && (
-                        <button type="button" disabled={pending} onClick={() => setRenaming({ id: row.id, name: row.name, country: row.country })} aria-label={`Rename ${row.name}`} className="min-h-9 rounded-md border border-line px-2 text-xs">
+                        <button type="button" disabled={pending} onClick={() => setRenaming({ id: row.id, name: row.name, country: row.country })} aria-label={`Rename ${row.name}`} className="min-h-9 rounded-pill border border-line px-2 text-xs">
                           Rename
                         </button>
                       )}
@@ -177,13 +177,13 @@ export function LocationsView({
                           onClick={() => row.impact && setConfirming({ id: row.id, impact: row.impact })}
                           aria-label={`Deactivate ${row.name}`}
                           title={activeCount <= 1 ? "A store keeps at least one active location." : undefined}
-                          className="min-h-9 rounded-md border border-line px-2 text-xs disabled:opacity-40"
+                          className="min-h-9 rounded-pill border border-line px-2 text-xs disabled:opacity-40"
                         >
                           Deactivate
                         </button>
                       )}
                       {isOwner && !row.active && (
-                        <button type="button" disabled={pending} onClick={() => reactivate(row.id)} aria-label={`Reactivate ${row.name}`} className="min-h-9 rounded-md border border-line px-2 text-xs">
+                        <button type="button" disabled={pending} onClick={() => reactivate(row.id)} aria-label={`Reactivate ${row.name}`} className="min-h-9 rounded-pill border border-edge px-2 text-xs">
                           Reactivate
                         </button>
                       )}
@@ -199,23 +199,23 @@ export function LocationsView({
 
       {confirming && confirmingRow && words && (
         <section aria-label="Deactivate the location" className={`${card} flex flex-col gap-3`} role="group">
-          <h2 className="text-base font-medium">Deactivate {confirmingRow.name}?</h2>
+          <h2 className="text-title text-ink">Deactivate {confirmingRow.name}?</h2>
           <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="flex flex-col">
               <dt className={hint}>Units that stop being for sale</dt>
-              <dd className="text-2xl font-medium tabular-nums">{confirming.impact.units.toLocaleString("en-GB")}</dd>
+              <dd className="text-metric text-ink tabular-nums">{confirming.impact.units.toLocaleString("en-GB")}</dd>
             </div>
             <div className="flex flex-col">
               <dt className={hint}>Variants</dt>
-              <dd className="text-2xl font-medium tabular-nums">{confirming.impact.variants.toLocaleString("en-GB")}</dd>
+              <dd className="text-metric text-ink tabular-nums">{confirming.impact.variants.toLocaleString("en-GB")}</dd>
             </div>
             <div className="flex flex-col">
               <dt className={hint}>Held by checkouts now</dt>
-              <dd className="text-2xl font-medium tabular-nums">{confirming.impact.committedUnits.toLocaleString("en-GB")}</dd>
+              <dd className="text-metric text-ink tabular-nums">{confirming.impact.committedUnits.toLocaleString("en-GB")}</dd>
             </div>
             <div className="flex flex-col">
               <dt className={hint}>Owed on backorder here</dt>
-              <dd className="text-2xl font-medium tabular-nums">{confirming.impact.owedUnits.toLocaleString("en-GB")}</dd>
+              <dd className="text-metric text-ink tabular-nums">{confirming.impact.owedUnits.toLocaleString("en-GB")}</dd>
             </div>
           </dl>
           <p className="text-sm">

@@ -82,7 +82,7 @@ export function CustomerBonus({
         </ul>
       )}
 
-      <h3 className="mb-2 text-sm font-medium">History</h3>
+      <h3 className="mb-2 text-body-strong text-ink">History</h3>
       {entries.length === 0 ? (
         <p className="mb-4 text-sm text-muted">No credits yet.</p>
       ) : (

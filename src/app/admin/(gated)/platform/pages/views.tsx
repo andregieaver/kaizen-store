@@ -68,12 +68,12 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
         <PageHeader title={<>{copy.list}</>} description={<>{INTRO[type]}</>} />
         <div className="flex flex-wrap gap-3">
           {!LAYOUT_TYPES.includes(type) && (
-            <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-md border border-line px-5 font-medium">
+            <Link href={`${base}/categories`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
               Categories and tags
             </Link>
           )}
           {type === "page" && (
-            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-md border border-line px-5 font-medium">
+            <Link href={`${base}/ai`} className="flex min-h-11 items-center rounded-pill border border-edge px-5 font-medium">
               Create with AI
             </Link>
           )}
@@ -84,7 +84,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
       </div>
 
       {query.deleted && (
-        <p role="status" className="rounded-lg border border-line bg-card p-4 text-sm">
+        <p role="status" className="rounded-panel border border-line bg-card p-4 text-sm">
           The {copy.one} was deleted.
         </p>
       )}
@@ -107,7 +107,7 @@ export async function PagesListView({ type, searchParams }: { type: PageType; se
       {type === "page" && (
         <section className="flex flex-col gap-4" aria-labelledby="special-pages">
           <div className="flex flex-col gap-1">
-            <h2 id="special-pages" className="text-lg font-medium">Special pages</h2>
+            <h2 id="special-pages" className="text-title text-ink">Special pages</h2>
             <p className="max-w-2xl text-sm text-muted">
               Kaizen&apos;s front page, blog and 404 page have a standard look. Build any of them in the page builder instead: choose one
               of your published pages for it, or start from a new page that looks like the standard one. The standard page shows until you do.
@@ -251,7 +251,7 @@ export async function PreviewPageView({ type, params }: { type: PageType; params
         <ScopedCss css={[(await getPlatformChrome()).customCss, page.draft.css]} root="[data-site-css]" />
         {type === "header" || type === "footer" ? (
           // As Kaizen's pages draw it (D80), with its logo, menus and details.
-          <div className="overflow-hidden rounded-lg border border-line">
+          <div className="overflow-hidden rounded-panel border border-line">
             {type === "header" ? (
               <KaizenSiteHeader chrome={await getPlatformChrome()} layout={{ id: page.id, content: page.draft }} />
             ) : (

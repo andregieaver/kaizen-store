@@ -145,7 +145,7 @@ export function RefundsView(props: RefundsViewProps) {
       ) : null}
 
       {none ? (
-        <div className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
+        <div className="rounded-panel border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
           No refund was made from Kaizen in this period, so there are no reasons, products or markets to show.
         </div>
       ) : (
@@ -155,7 +155,7 @@ export function RefundsView(props: RefundsViewProps) {
               <HorizontalBars label="Refunded amount by reason" rows={reasonRows} emptyText="No reasons to show." exportId="traffic.refund_reasons" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </ChartCard>
             <div className="min-w-0 space-y-2">
-              <h3 className="text-sm font-medium">Most refunded products</h3>
+              <h3 className="text-body-strong text-ink">Most refunded products</h3>
               <p className="text-xs text-muted">Each refund is shared over the products on its order by what they were sold for, so the products add up to the refunds.</p>
               <DataTable caption="The most refunded products with the value refunded, its share, the number of refunds and the units put back in stock" columns={productColumns} rows={r.products} rowKey={(p, i) => p.productId ?? `none-${i}`} exportId="traffic.refund_products" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
               {r.productCount > r.products.length ? <p className="text-xs text-muted">{`Showing ${formatCount(r.products.length)} of ${formatCount(r.productCount)} products.`}</p> : null}
@@ -163,12 +163,12 @@ export function RefundsView(props: RefundsViewProps) {
           </div>
           <div className="grid gap-4 2xl:grid-cols-2">
             <div className="min-w-0 space-y-2">
-              <h3 className="text-sm font-medium">New and returning customers</h3>
+              <h3 className="text-body-strong text-ink">New and returning customers</h3>
               <p className="text-xs text-muted">A new customer is one whose first paid order is in this period.</p>
               <DataTable caption="Refunds by new and returning customers" columns={segmentColumns} rows={segments} rowKey={(s) => s.segment} exportId="traffic.refund_segments" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </div>
             <div className="min-w-0 space-y-2">
-              <h3 className="text-sm font-medium">By market</h3>
+              <h3 className="text-body-strong text-ink">By market</h3>
               <p className="text-xs text-muted">The refund rate is the market&apos;s refunds over its own revenue in this period.</p>
               <DataTable caption="Refunds and refund rate by market" columns={marketColumns} rows={r.markets} rowKey={(m) => m.market} exportId="traffic.refund_markets" exportLeftOut={{ orders: r.unconverted, currencies: r.missingRates }} />
             </div>

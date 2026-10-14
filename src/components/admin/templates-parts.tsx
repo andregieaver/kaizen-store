@@ -47,7 +47,7 @@ export function EmptyState({ title, hint, children }: { title: string; hint: str
 }
 
 /** A group's heading, as the Saved tab's. */
-export const groupHeading = "text-xs font-medium tracking-wide text-muted uppercase";
+export const groupHeading = "text-eyebrow text-muted uppercase";
 
 /** "For articles": what kind of page a page layout is made for (D127). Nothing for the other kinds. `warn` when it does not fit this page. */
 export function PageTypeBadge({ item, warn = false }: { item: Pick<TemplateItem, "kind" | "pageType">; warn?: boolean }) {
@@ -64,7 +64,7 @@ export function PageTypeBadge({ item, warn = false }: { item: Pick<TemplateItem,
   );
 }
 
-const cardButton = "min-h-9 shrink-0 rounded-md border border-edge px-3 text-xs font-medium hover:bg-sunken disabled:opacity-50";
+const cardButton = "min-h-9 shrink-0 rounded-pill border border-edge px-3 text-xs font-medium hover:bg-sunken disabled:opacity-50";
 
 /**
  * A template card's buttons: Preview (D127) and Use, with the reason Use is off in words under them, joined to the

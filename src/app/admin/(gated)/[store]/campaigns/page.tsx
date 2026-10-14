@@ -51,7 +51,7 @@ export default async function CampaignsPage({ params }: PageProps<"/admin/[store
         </Link>
       </div>
       {campaigns.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No campaigns yet. Try 3 for 2 on a category, or a free product above a basket amount.
         </p>
       ) : (

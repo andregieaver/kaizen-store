@@ -40,7 +40,7 @@ export function LinkNotice({ link, onClose }: { link: string; onClose: () => voi
   const [copied, setCopied] = useState(false);
   return (
     <section aria-labelledby={id} className="flex flex-col gap-2 rounded-lg border border-brand bg-sunken p-4 text-sm">
-      <h2 id={id} className="font-medium">
+      <h2 id={id} className="text-title text-ink">
         The pay link
       </h2>
       <p className={hint}>It is shown only now: Kaizen keeps nothing it could show again. Anyone who has it can open the page to pay this order. If you lose it, make a new one: the old one stops working.</p>
@@ -104,8 +104,8 @@ export function SendBox({
       onResult(answer);
     });
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
-      <h2 id={`${id}-h`} className="font-medium">
+    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+      <h2 id={`${id}-h`} className="text-title text-ink">
         Send it
       </h2>
       <p className={hint}>
@@ -157,15 +157,15 @@ export function PaidOutsideBox({
   const [working, startTransition] = useTransition();
   if (!allowed) {
     return (
-      <section className="rounded-lg border border-line bg-card p-4 text-sm">
-        <h2 className="mb-1 font-medium">Paid outside Kaizen</h2>
+      <section className="rounded-panel border border-line bg-card p-4 text-sm">
+        <h2 className="mb-1 text-title text-ink">Paid outside Kaizen</h2>
         <p className="text-muted">Only the owner can record a payment taken outside Kaizen, unless the owner allows staff to (Settings, Orders).</p>
       </section>
     );
   }
   return (
-    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
-      <h2 id={`${id}-h`} className="font-medium">
+    <section aria-labelledby={`${id}-h`} className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
+      <h2 id={`${id}-h`} className="text-title text-ink">
         Mark as paid outside Kaizen
       </h2>
       <p className={hint}>

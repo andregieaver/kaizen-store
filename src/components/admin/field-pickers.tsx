@@ -186,7 +186,7 @@ function MultiSelect({
             type="button"
             onClick={add}
             disabled={pick === ""}
-            className="min-h-10 rounded-md border border-line px-3 text-sm disabled:opacity-40"
+            className="min-h-10 rounded-pill border border-edge px-3 text-sm disabled:opacity-40"
           >
             Add
           </button>

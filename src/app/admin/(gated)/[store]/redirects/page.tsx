@@ -62,7 +62,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       <p className={`${card} !p-3 text-sm`}>{redirectSentences.permanent}</p>
       {canWrite && (
         <section aria-labelledby="add-redirect" className="flex flex-col gap-2">
-          <h2 id="add-redirect" className="text-base font-medium">
+          <h2 id="add-redirect" className="text-title text-ink">
             Add a redirect
           </h2>
           <RedirectForm actions={actions} />
@@ -81,7 +81,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
       )}
       <section aria-labelledby="all-redirects" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="all-redirects" className="text-base font-medium">
+          <h2 id="all-redirects" className="text-title text-ink">
             Your redirects
           </h2>
           <p className="text-sm text-muted">{manualCountWords(list.manual, list.limit)}</p>
@@ -115,7 +115,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           )}
         </form>
         {list.rows.length === 0 ? (
-          <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">{emptyListWords(q, filter)}</p>
+          <p className="rounded-panel bg-sunken p-6 text-center text-sm">{emptyListWords(q, filter)}</p>
         ) : (
           <RedirectTable rows={list.rows} timeZone={store.timeZone} actions={actions} canWrite={canWrite} />
         )}

@@ -130,7 +130,7 @@ export function BrregLookup({
   const busy = status.kind === "busy";
 
   return (
-    <div className="rounded-lg border border-line bg-sunken p-4">
+    <div className="rounded-panel bg-sunken p-4">
       <label htmlFor={`${id}-input`} className="mb-1 block text-sm font-medium">
         Fill in from the company register
       </label>

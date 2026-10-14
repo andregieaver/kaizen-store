@@ -35,7 +35,7 @@ export default async function PlatformSeoPage() {
 
       <ActionForm action={savePlatformSeoAction} successMessage="Search and sharing saved." className="flex flex-col gap-6">
         <section aria-labelledby="home-heading" className={card}>
-          <h2 id="home-heading" className="font-medium">
+          <h2 id="home-heading" className="text-title text-ink">
             Front page in search results
           </h2>
           <SearchTextFields
@@ -47,7 +47,7 @@ export default async function PlatformSeoPage() {
         </section>
 
         <section aria-labelledby="share-heading" className={card}>
-          <h2 id="share-heading" className="font-medium">
+          <h2 id="share-heading" className="text-title text-ink">
             Share picture
           </h2>
           <ShareImageField
@@ -60,7 +60,7 @@ export default async function PlatformSeoPage() {
         </section>
 
         <section aria-labelledby="more-heading" className={card}>
-          <h2 id="more-heading" className="font-medium">
+          <h2 id="more-heading" className="text-title text-ink">
             Profiles, AI assistants and crawlers
           </h2>
           <label className={label}>

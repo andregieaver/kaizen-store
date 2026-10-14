@@ -216,7 +216,7 @@ function PlacedPanel({
         if (event.key === "Escape" && !event.defaultPrevented && !(event.target as HTMLElement).closest("dialog")) onClose();
       }}
       style={{ left: rect.x, top: rect.y, width: rect.w, ...(rect.h !== null && { height: rect.h }), maxHeight: rect.h === null ? "90dvh" : undefined }}
-      className="fixed z-50 flex max-w-[100vw] flex-col rounded-lg border border-line bg-card text-ink shadow-2xl outline-none"
+      className="fixed z-50 flex max-w-[100vw] flex-col rounded-panel border border-line bg-card text-ink shadow-2xl outline-none"
     >
       <div
         data-edge="move"
@@ -226,7 +226,7 @@ function PlacedPanel({
         onPointerCancel={end}
         className="flex cursor-move touch-none items-center justify-between gap-4 rounded-t-lg border-b border-line px-5 py-3 select-none"
       >
-        <h2 id={titleId} className="font-medium">
+        <h2 id={titleId} className="text-title text-ink">
           {title}
         </h2>
         <div className="flex items-center gap-1">

@@ -136,7 +136,7 @@ function SaveAs({ what, disabled, onSave }: { what: string; disabled?: boolean; 
       <button type="button" onClick={done} className="min-h-8 rounded-pill bg-brand px-2 text-xs font-medium text-brand-ink">
         Save
       </button>
-      <button type="button" onClick={() => setOpen(false)} className="min-h-8 rounded-md border border-line px-2 text-xs">
+      <button type="button" onClick={() => setOpen(false)} className="min-h-8 rounded-pill border border-line px-2 text-xs">
         Cancel
       </button>
     </span>

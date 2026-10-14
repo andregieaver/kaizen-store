@@ -33,7 +33,7 @@ export type RecurringPanelProps = {
 export function RecurringPanel(props: RecurringPanelProps) {
   return (
     <section aria-labelledby="recurring-heading" className="flex flex-col gap-3" data-slot="client-recurring">
-      <Suspense fallback={<h2 id="recurring-heading" className="text-lg font-medium">Repeating invoices</h2>}>
+      <Suspense fallback={<h2 id="recurring-heading" className="text-title text-ink">Repeating invoices</h2>}>
         <RecurringBody {...props} />
       </Suspense>
     </section>
@@ -61,7 +61,7 @@ export function RecurringPanelView({
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="recurring-heading" className="text-lg font-medium">
+        <h2 id="recurring-heading" className="text-title text-ink">
           Repeating invoices
         </h2>
         {archived ? null : <NewRecurringButton {...form} />}
@@ -74,7 +74,7 @@ export function RecurringPanelView({
       ) : (
         <ul className="flex flex-col gap-3">
           {list.templates.map((template) => (
-            <li key={template.id} className="rounded-lg border border-line bg-card p-4">
+            <li key={template.id} className="rounded-panel border border-line bg-card p-4">
               <TemplateCard storeSlug={storeSlug} template={template} form={form} locale={locale} />
             </li>
           ))}
@@ -107,7 +107,7 @@ function TemplateCard({
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-medium [overflow-wrap:anywhere]">
+          <h3 className="[overflow-wrap:anywhere] text-body-strong text-ink">
             {template.name}{" "}
             {!template.isActive && <Badge tone="warn">Paused</Badge>}{" "}
             {template.autoIssue && <Badge tone="good">Issued by itself</Badge>}

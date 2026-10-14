@@ -23,7 +23,7 @@ function StoreCard({ row, action }: { row: OwnerSettingsRow; action: SwitchActio
   return (
     <li className={card}>
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-medium">{store.name}</h2>
+        <h2 className="text-title text-ink">{store.name}</h2>
         <span className="flex items-center gap-2 text-xs text-muted">
           <Badge tone={store.workOn ? "good" : "neutral"}>{store.workOn ? "Work on" : "Work off"}</Badge>
           {!owner && "You are an admin here"}
@@ -106,7 +106,7 @@ export function OwnerWorkStart({ rows, actions, title }: { rows: OwnerSettingsRo
     <div className="flex max-w-3xl flex-col gap-6">
       <PageHeader title={<>{title}</>} />
       <section aria-labelledby="start-heading" className={`${card} flex flex-col gap-2`}>
-        <h2 id="start-heading" className="font-medium">
+        <h2 id="start-heading" className="text-title text-ink">
           Work is for the time you sell
         </h2>
         <p className="text-sm text-muted">

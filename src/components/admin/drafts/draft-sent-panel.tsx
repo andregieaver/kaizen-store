@@ -93,7 +93,7 @@ export function DraftSentPanel({
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="flex min-w-0 flex-col gap-6">
         <section aria-labelledby={`${id}-status`} className={card}>
-          <h2 id={`${id}-status`} className="font-medium">
+          <h2 id={`${id}-status`} className="text-title text-ink">
             {number}: {DRAFT_STATUS_LABELS[status].toLowerCase()}
           </h2>
           {status === "open" && <p className="text-muted">This draft is open. You can read it, but only someone who may change orders can edit it.</p>}
@@ -114,7 +114,7 @@ export function DraftSentPanel({
 
         {status === "sent" && canWrite && (
           <section aria-labelledby={`${id}-send`} className={card}>
-            <h2 id={`${id}-send`} className="font-medium">
+            <h2 id={`${id}-send`} className="text-title text-ink">
               The pay link
             </h2>
             <p className={hint}>
@@ -133,7 +133,7 @@ export function DraftSentPanel({
 
         {canWrite && canReopenDraft(status) && (
           <section aria-labelledby={`${id}-reopen`} className={card}>
-            <h2 id={`${id}-reopen`} className="font-medium">
+            <h2 id={`${id}-reopen`} className="text-title text-ink">
               Change it
             </h2>
             <p className={hint}>
@@ -169,7 +169,7 @@ export function DraftSentPanel({
         )}
 
         <section aria-labelledby={`${id}-who`} className={card}>
-          <h2 id={`${id}-who`} className="font-medium">
+          <h2 id={`${id}-who`} className="text-title text-ink">
             Customer and notes
           </h2>
           <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-[8rem_minmax(0,1fr)]">
@@ -199,7 +199,7 @@ export function DraftSentPanel({
 
         {canWrite && isDraftDeletable(status) && (
           <section aria-labelledby={`${id}-delete`} className={card}>
-            <h2 id={`${id}-delete`} className="font-medium">
+            <h2 id={`${id}-delete`} className="text-title text-ink">
               Delete the draft
             </h2>
             <p className={hint}>The order it made, if any, stays: it is a real order. Only the draft&apos;s own copy of the customer&apos;s details goes.</p>

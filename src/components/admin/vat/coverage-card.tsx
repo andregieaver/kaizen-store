@@ -15,7 +15,7 @@ export function CoverageCard({ categories, countries }: { categories: VatCategor
   return (
     <section aria-labelledby="coverage" className={card}>
       <div>
-        <h2 id="coverage" className="font-medium">
+        <h2 id="coverage" className="text-title text-ink">
           Coverage
         </h2>
         <p className="text-sm text-muted">

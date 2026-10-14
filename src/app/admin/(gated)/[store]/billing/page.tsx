@@ -91,7 +91,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
       {offered.length > 0 && mode && (
         <section aria-labelledby="plans-heading" className="flex flex-col gap-4">
           <div>
-            <h2 id="plans-heading" className="font-medium">
+            <h2 id="plans-heading" className="text-title text-ink">
               {onPlan ? "Change plan" : "Choose a plan"}
             </h2>
             <p className="text-sm text-muted">
@@ -133,7 +133,7 @@ export default async function BillingPage({ params, searchParams }: PageProps<"/
 
       {offered.length > 0 && matrix.features.some((feature) => feature.planIds.length > 0) && (
         <section aria-labelledby="compare-heading" className="flex flex-col gap-3">
-          <h2 id="compare-heading" className="font-medium">
+          <h2 id="compare-heading" className="text-title text-ink">
             Compare plans
           </h2>
           <PlanFeatureTable matrix={matrix} planIds={offered.map((plan) => plan.id)} current={onPlan ? billing?.planId : null} />
@@ -207,10 +207,10 @@ function PlanCard({
   return (
     <article
       aria-labelledby={`card-${plan.id}`}
-      className={`flex h-full flex-col gap-4 rounded-lg border bg-card p-5 ${isCurrent ? "border-brand" : "border-line"}`}
+      className={`flex h-full flex-col gap-4 rounded-panel border bg-card p-5 ${isCurrent ? "border-brand" : "border-line"}`}
     >
       <div>
-        <h3 id={`card-${plan.id}`} className="text-lg font-medium">
+        <h3 id={`card-${plan.id}`} className="text-body-strong text-ink">
           {plan.name}
         </h3>
         {plan.description && <p className="text-sm text-muted">{plan.description}</p>}

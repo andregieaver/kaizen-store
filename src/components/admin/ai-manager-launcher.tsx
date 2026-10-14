@@ -108,7 +108,7 @@ export function AiManagerLauncher({
       >
         <div className="flex items-center gap-2 border-b border-line px-4 py-3">
           <Spark className="size-5" />
-          <h2 className="font-medium">AI manager</h2>
+          <h2 className="text-title text-ink">AI manager</h2>
           <span className="truncate text-sm text-muted">{siteName}</span>
           <button
             type="button"
@@ -116,7 +116,7 @@ export function AiManagerLauncher({
               toggle(false);
               buttonRef.current?.focus();
             }}
-            className="ml-auto flex size-9 items-center justify-center rounded-md hover:bg-sunken"
+            className="ml-auto flex size-9 items-center justify-center rounded-pill hover:bg-sunken"
             aria-label="Close the AI manager"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" className="size-5" fill="none" stroke="currentColor" strokeWidth="2">

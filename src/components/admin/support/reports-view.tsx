@@ -17,9 +17,9 @@ const HANDOFF_WHY_WORDS: Record<HandoffWhy, string> = { ...(HANDOFF_WORDS as Rec
 
 function Figure({ label, value, sub, help }: { label: string; value: ReactNode; sub?: ReactNode; help?: string }) {
   return (
-    <div className="flex flex-col gap-1 rounded-lg border border-line bg-sunken p-4">
+    <div className="flex flex-col gap-1 rounded-panel bg-sunken p-4">
       <dt className="text-sm text-muted">{label}</dt>
-      <dd className="text-2xl font-medium tabular-nums">{value}</dd>
+      <dd className="text-metric text-ink tabular-nums">{value}</dd>
       {sub && <dd className="text-xs text-muted">{sub}</dd>}
       {help && <dd className="text-xs text-muted">{help}</dd>}
     </div>
@@ -73,10 +73,10 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
       <p className="text-sm text-muted">
         Conversations that started in the period ({periodLabel}). Rates and medians are shown from {MIN_SUPPORT_SAMPLE} conversations. For the desk, never per person.
       </p>
-      {cut && <p className="rounded-lg border border-line p-3 text-sm">This period has more conversations than one report reads: the figures are from the first 50 000.</p>}
+      {cut && <p className="rounded-panel border border-line p-3 text-sm">This period has more conversations than one report reads: the figures are from the first 50 000.</p>}
 
       <section aria-labelledby="support-volume" className="flex flex-col gap-3">
-        <h2 id="support-volume" className="text-lg font-medium">
+        <h2 id="support-volume" className="text-title text-ink">
           Conversations
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -114,7 +114,7 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
       </section>
 
       <section aria-labelledby="support-speed" className="flex flex-col gap-3">
-        <h2 id="support-speed" className="text-lg font-medium">
+        <h2 id="support-speed" className="text-title text-ink">
           Waiting and answering
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -134,7 +134,7 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
       </section>
 
       <section aria-labelledby="support-quality" className="flex flex-col gap-3">
-        <h2 id="support-quality" className="text-lg font-medium">
+        <h2 id="support-quality" className="text-title text-ink">
           How it went
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -157,7 +157,7 @@ export function ReportsView({ report, periodLabel, cut = false, picker }: { repo
       </section>
 
       <section aria-labelledby="support-requests" className="flex flex-col gap-3">
-        <h2 id="support-requests" className="text-lg font-medium">
+        <h2 id="support-requests" className="text-title text-ink">
           Requests to your team
         </h2>
         <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

@@ -39,7 +39,7 @@ export function InventoryView({
         {counts.map((c) => (
           <div key={c.id} className={`${card} flex flex-col gap-1`}>
             <span className={hint}>{c.label}</span>
-            <span className="text-2xl font-medium tabular-nums">{figureText(c.n)}</span>
+            <span className="text-metric text-ink tabular-nums">{figureText(c.n)}</span>
             {c.link && c.n > 0 && (
               <Link href={listHref(base, { ...c.link, location: applied.locationId })} className="text-xs underline underline-offset-2">
                 Show them
@@ -101,7 +101,7 @@ export function InventoryView({
       )}
 
       {page.rows.length === 0 ? (
-        <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">
+        <p className="rounded-panel bg-sunken p-6 text-center text-sm">
           {filtered ? (
             "No variant matches this filter."
           ) : (

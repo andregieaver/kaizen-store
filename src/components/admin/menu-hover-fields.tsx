@@ -26,7 +26,7 @@ export function MenuHoverFields({ value, onChange }: { value: MenuHover | undefi
   const set = (patch: Partial<MenuHover>) => value && onChange({ ...value, ...patch });
   const kind: MenuHoverKind | "none" = value?.kind ?? "none";
   return (
-    <fieldset className="flex flex-col gap-4 rounded-lg border border-line p-4">
+    <fieldset className="flex flex-col gap-4 rounded-panel border border-line p-4">
       <legend className="px-1 text-sm font-medium">Hover and active</legend>
       <p className="text-xs text-muted">How the links answer the pointer, and how the link of the page a visitor is on is shown. Times and easing follow the theme&apos;s hover timing, or this component&apos;s own under Motion.</p>
       <Choices<MenuHoverKind | "none">

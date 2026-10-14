@@ -118,7 +118,7 @@ export function TeamList({
       </ul>
       {past.length > 0 && (
         <div>
-          <h3 className="mb-2 text-sm font-medium text-muted">Access ended</h3>
+          <h3 className="mb-2 text-muted text-body-strong text-ink">Access ended</h3>
           <ul className="divide-y divide-line">
             {past.map((member) => (
               <li key={member.accountId} className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm text-muted">

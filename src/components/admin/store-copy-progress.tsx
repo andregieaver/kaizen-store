@@ -42,7 +42,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       </div>
 
       {trouble && status === "running" && (
-        <p className="rounded-lg border border-line bg-card p-3 text-sm">
+        <p className="rounded-panel border border-line bg-card p-3 text-sm">
           The latest news could not be fetched. The copy carries on in the background, and this page keeps trying.
         </p>
       )}
@@ -70,7 +70,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
           aria-labelledby="copy-next"
           className={`flex flex-col gap-3 p-5 ${CARD_CLASS}`}
         >
-          <h2 id="copy-next" className="font-medium">
+          <h2 id="copy-next" className="text-title text-ink">
             What next
           </h2>
           <p className="text-sm text-muted">
@@ -94,10 +94,10 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       )}
 
       <section aria-labelledby="copy-steps" className="flex flex-col gap-2">
-        <h2 id="copy-steps" className="font-medium">
+        <h2 id="copy-steps" className="text-title text-ink">
           Steps
         </h2>
-        <ol className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+        <ol className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
           {steps.map((step) => (
             <li
               key={step.phase}
@@ -116,10 +116,10 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
 
       {rows.length > 0 && (
         <section aria-labelledby="copy-counts" className="flex flex-col gap-2">
-          <h2 id="copy-counts" className="font-medium">
+          <h2 id="copy-counts" className="text-title text-ink">
             What is copied
           </h2>
-          <ul className="flex flex-col gap-3 rounded-lg border border-line bg-card p-4 text-sm">
+          <ul className="flex flex-col gap-3 rounded-panel border border-line bg-card p-4 text-sm">
             {rows.map((row) => (
               <li key={row.key} className="flex flex-col gap-1">
                 <span className="flex justify-between gap-3">
@@ -139,7 +139,7 @@ export function StoreCopyProgressView({ progress, trouble = false }: { progress:
       )}
 
       {progress.mediaLeftOut > 0 && (
-        <p className="rounded-lg border border-line bg-card p-3 text-sm">
+        <p className="rounded-panel border border-line bg-card p-3 text-sm">
           {leftOutText(progress.mediaLeftOut)}
         </p>
       )}

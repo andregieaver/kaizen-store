@@ -71,7 +71,7 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
   return (
     <div className="flex flex-col gap-6">
       <section aria-labelledby="ab-verdict" className={`rounded-lg border-2 bg-card p-5 ${SOFT[verdict.kind]}`}>
-        <h2 id="ab-verdict" className="text-lg font-medium">
+        <h2 id="ab-verdict" className="text-title text-ink">
           {verdict.headline}
         </h2>
         <p className="mt-1 max-w-3xl text-sm">{verdict.detail}</p>
@@ -88,10 +88,10 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
       </section>
 
       <section aria-labelledby="ab-versions" className="flex flex-col gap-2">
-        <h2 id="ab-versions" className="text-lg font-medium">
+        <h2 id="ab-versions" className="text-title text-ink">
           The versions, for: {goal.label.toLowerCase()}
         </h2>
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
+        <div className="overflow-x-auto rounded-panel border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line text-muted">
@@ -138,8 +138,8 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
       </section>
 
       <section aria-labelledby="ab-funnel" className="flex flex-col gap-2">
-        <h2 id="ab-funnel" className="text-lg font-medium">What visitors did</h2>
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
+        <h2 id="ab-funnel" className="text-title text-ink">What visitors did</h2>
+        <div className="overflow-x-auto rounded-panel border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line text-muted">
@@ -182,12 +182,12 @@ export function ExperimentResultsView({ test, results, locale }: { test: Experim
       </section>
 
       <section aria-labelledby="ab-trend" className="flex flex-col gap-2">
-        <h2 id="ab-trend" className="text-lg font-medium">How it developed</h2>
+        <h2 id="ab-trend" className="text-title text-ink">How it developed</h2>
         <Trend test={test} results={results} />
         {results.weekly.length > 0 && (
           <details className="text-sm">
             <summary className="cursor-pointer underline">Week by week</summary>
-            <div className="mt-2 overflow-x-auto rounded-lg border border-line bg-card">
+            <div className="mt-2 overflow-x-auto rounded-panel border border-line bg-card">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line text-muted">

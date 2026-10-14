@@ -51,7 +51,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       />
 
       <section aria-labelledby="settings" className={card}>
-        <h2 id="settings" className="font-medium">
+        <h2 id="settings" className="text-title text-ink">
           Settings
         </h2>
         <ActionForm action={saveCompanyAction.bind(null, store.slug, company.id)} className="flex flex-col gap-3">
@@ -68,7 +68,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       </section>
 
       <section aria-labelledby="accounts" className={card}>
-        <h2 id="accounts" className="font-medium">
+        <h2 id="accounts" className="text-title text-ink">
           Accounts ({members.length}/{company.maxMembers})
         </h2>
         {members.length === 0 ? (
@@ -110,7 +110,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       </section>
 
       <section aria-labelledby="invitations" className={card}>
-        <h2 id="invitations" className="font-medium">
+        <h2 id="invitations" className="text-title text-ink">
           Invitations
         </h2>
         {invites.length === 0 ? (
@@ -154,7 +154,7 @@ export default async function CompanyPage({ params }: PageProps<"/admin/[store]/
       </section>
 
       <section aria-labelledby="delete" className={card}>
-        <h2 id="delete" className="font-medium">
+        <h2 id="delete" className="text-title text-ink">
           Delete the company
         </h2>
         <p className="text-sm text-muted">Only a company with no accounts can be deleted. Otherwise, remove the accounts, or switch the company off above.</p>

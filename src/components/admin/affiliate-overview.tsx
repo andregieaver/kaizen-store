@@ -14,7 +14,7 @@ export function AffiliateOverviewCard({ overview, locale }: { overview: Affiliat
       aria-labelledby="affiliate-overview-heading"
       className={`flex flex-col gap-4 p-5 ${CARD_CLASS}`}
     >
-      <h2 id="affiliate-overview-heading" className="font-medium">
+      <h2 id="affiliate-overview-heading" className="text-title text-ink">
         Referrals at a glance
       </h2>
       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">

@@ -35,11 +35,11 @@ export default async function CustomerGroupsPage({ params }: PageProps<"/admin/[
       />
 
       {groups.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           No groups yet. Make one, for example Wholesale at 10 %.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
+        <div className="overflow-x-auto rounded-panel border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line">

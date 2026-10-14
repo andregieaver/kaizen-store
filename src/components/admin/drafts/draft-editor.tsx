@@ -301,7 +301,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
           </button>
         </div>
         {message && (
-          <p role="alert" className="rounded-lg border border-line bg-sunken p-3 text-sm text-danger-text">
+          <p role="alert" className="rounded-panel bg-sunken p-3 text-sm text-danger-text">
             {message}
             {status === "conflict" && (
               <>
@@ -314,20 +314,20 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
           </p>
         )}
         {generalIssues.length > 0 && (
-          <ul role="alert" className="list-disc rounded-lg border border-line bg-sunken p-3 pl-8 text-sm text-danger-text">
+          <ul role="alert" className="list-disc rounded-panel bg-sunken p-3 pl-8 text-sm text-danger-text">
             {generalIssues.map((i, n) => (
               <li key={`${i.path}-${n}`}>{i.message}</li>
             ))}
           </ul>
         )}
         {marketNote && (
-          <p role="status" className="rounded-lg border border-line bg-sunken p-3 text-sm">
+          <p role="status" className="rounded-panel bg-sunken p-3 text-sm">
             The market changed. {marketNote}
           </p>
         )}
 
         <section aria-labelledby="draft-market" className={card}>
-          <h2 id="draft-market" className="font-medium">
+          <h2 id="draft-market" className="text-title text-ink">
             Market
           </h2>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -375,7 +375,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
         </section>
 
         <section aria-labelledby="draft-customer" className={card}>
-          <h2 id="draft-customer" className="font-medium">
+          <h2 id="draft-customer" className="text-title text-ink">
             Customer
           </h2>
           <div className="flex flex-col gap-1">
@@ -417,7 +417,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
               <input value={form.phone} onChange={(e) => patch({ phone: e.target.value })} maxLength={40} autoComplete="off" className={field} />
             </label>
           </div>
-          <h3 className="text-sm font-medium">Shipping address {!ships && <span className="font-normal text-muted">(nothing is shipped)</span>}</h3>
+          <h3 className="text-body-strong text-ink">Shipping address {!ships && <span className="font-normal text-muted">(nothing is shipped)</span>}</h3>
           <AddressFields prefix="ship" value={form.shippingAddress} onChange={(next) => patch({ shippingAddress: next })} />
           <details className="text-sm">
             <summary className="cursor-pointer font-medium">{companyFields || form.companyName || form.organisationNumber ? "Billing address and company" : "Billing address"}</summary>
@@ -443,7 +443,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
         </section>
 
         <section aria-labelledby="draft-lines" className={card}>
-          <h2 id="draft-lines" className="font-medium">
+          <h2 id="draft-lines" className="text-title text-ink">
             Lines
           </h2>
           {form.lines.length === 0 ? (
@@ -574,7 +574,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
         </section>
 
         <section aria-labelledby="draft-discount" className={card}>
-          <h2 id="draft-discount" className="font-medium">
+          <h2 id="draft-discount" className="text-title text-ink">
             Discount
           </h2>
           <div className="grid gap-3 sm:grid-cols-[10rem_10rem_minmax(0,1fr)]">
@@ -611,7 +611,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
 
         {ships && (
           <section aria-labelledby="draft-shipping" className={card}>
-            <h2 id="draft-shipping" className="font-medium">
+            <h2 id="draft-shipping" className="text-title text-ink">
               Shipping
             </h2>
             <fieldset className="flex flex-col gap-2 text-sm">
@@ -639,7 +639,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
         )}
 
         <section aria-labelledby="draft-notes" className={card}>
-          <h2 id="draft-notes" className="font-medium">
+          <h2 id="draft-notes" className="text-title text-ink">
             Notes and tags
           </h2>
           <label className="flex flex-col gap-1 text-sm font-medium">
@@ -719,7 +719,7 @@ export function DraftEditor({ number, initial, version: initialVersion, currency
         />
 
         <section aria-labelledby="draft-delete" className="flex flex-col gap-2 text-sm">
-          <h2 id="draft-delete" className="font-medium">
+          <h2 id="draft-delete" className="text-title text-ink">
             Delete the draft
           </h2>
           <p className={hint}>Nothing else points at an open draft, so it is deleted for good.</p>

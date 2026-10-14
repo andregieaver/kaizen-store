@@ -47,7 +47,7 @@ export function LibraryButton({ label = "Choose from the library", onPicked }: {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-fit rounded-md border border-line px-3 py-2 text-sm focus-visible:outline-2"
+        className="w-fit rounded-pill border border-edge px-3 py-2 text-sm focus-visible:outline-2"
       >
         {label}
       </button>
@@ -129,7 +129,7 @@ function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose:
                   type="button"
                   disabled={choosing !== null}
                   onClick={() => void choose(item)}
-                  className="flex w-full flex-col gap-1 rounded-md border border-edge p-1 text-left hover:bg-sunken focus-visible:outline-2 disabled:opacity-50"
+                  className="flex w-full flex-col gap-1 rounded-pill border border-edge p-1 text-left hover:bg-sunken focus-visible:outline-2 disabled:opacity-50"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element -- the admin shows the owner's own file as it is */}
                   <img src={item.thumbnailUrl ?? item.url} alt={item.alt} loading="lazy" className="aspect-square w-full rounded object-cover" />
@@ -143,7 +143,7 @@ function LibraryDialog({ list, onClose, onPicked }: { list: PickerList; onClose:
           <button
             type="button"
             onClick={() => setLimit((n) => Math.min(n + PICKER_PAGE, PICKER_MOST))}
-            className="w-fit rounded-md border border-line px-3 py-2 text-sm"
+            className="w-fit rounded-pill border border-edge px-3 py-2 text-sm"
           >
             Show more ({result.items.length} of {result.total})
           </button>

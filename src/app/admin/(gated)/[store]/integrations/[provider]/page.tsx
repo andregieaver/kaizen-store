@@ -75,7 +75,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
 
       {addToSlack && (
         <section aria-labelledby="add-to-slack" className={card}>
-          <h2 id="add-to-slack" className="mb-1 font-medium">
+          <h2 id="add-to-slack" className="mb-1 text-title text-ink">
             {integration ? "Change the channel" : "Add to Slack"}
           </h2>
           <p className="mb-3 text-sm text-muted">
@@ -90,7 +90,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
       )}
 
       <section aria-labelledby="how" className={card}>
-        <h2 id="how" className="mb-2 font-medium">{addToSlack ? "Or make a webhook yourself" : "How to connect"}</h2>
+        <h2 id="how" className="mb-2 text-title text-ink">{addToSlack ? "Or make a webhook yourself" : "How to connect"}</h2>
         <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
           {info.steps?.map((step) => <li key={step}>{step}</li>)}
         </ol>
@@ -104,7 +104,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
       </section>
 
       <section aria-labelledby="settings" className={card}>
-        <h2 id="settings" className="mb-1 font-medium">Settings</h2>
+        <h2 id="settings" className="mb-1 text-title text-ink">Settings</h2>
         <p className="mb-4 text-sm text-muted">
           {slack
             ? "Messages name the shopper and what they bought, never their email or address: open the order in Kaizen for those. Everyone in the channel sees them, so choose one for the people who handle orders, and make sure your agreement with Slack covers personal data (a data processing agreement)."
@@ -164,7 +164,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
 
       {integration && owner && (
         <section aria-labelledby="test" className={card}>
-          <h2 id="test" className="mb-1 font-medium">Test</h2>
+          <h2 id="test" className="mb-1 text-title text-ink">Test</h2>
           <p className="mb-3 text-sm text-muted">
             {slack
               ? "Posts your latest order (or a sample one) to the channel now, marked as a test. It is sent even while Slack is off here."
@@ -176,7 +176,7 @@ export default async function IntegrationPage({ params, searchParams }: PageProp
 
       {integration && (
         <section aria-labelledby="log" className={card}>
-          <h2 id="log" className="mb-1 font-medium">Recently sent</h2>
+          <h2 id="log" className="mb-1 text-title text-ink">Recently sent</h2>
           <p className="mb-3 text-sm text-muted">Events that did not get through are tried again for about eight hours.</p>
           {deliveries.length === 0 ? (
             <p className="text-sm text-muted">Nothing sent yet.</p>

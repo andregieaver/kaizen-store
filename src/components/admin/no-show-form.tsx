@@ -29,7 +29,7 @@ export function NoShowForm({ storeSlug, bookingId, feeLabel }: { storeSlug: stri
           Charge the no-show fee, {feeLabel}, to the saved card
         </label>
       )}
-      <button type="submit" disabled={pending} className="min-h-10 rounded-md border border-line px-3 font-medium disabled:opacity-50">
+      <button type="submit" disabled={pending} className="min-h-10 rounded-pill border border-edge px-3 font-medium disabled:opacity-50">
         {pending ? "Saving …" : "Mark as no-show"}
       </button>
       {state.message && (

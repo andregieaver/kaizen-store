@@ -116,7 +116,7 @@ export function CookieScanPanel({
   return (
     <section aria-labelledby="scan-heading" className={card}>
       <div>
-        <h2 id="scan-heading" className="font-medium">
+        <h2 id="scan-heading" className="text-title text-ink">
           Cookie scan
         </h2>
         <p className="text-sm text-muted">

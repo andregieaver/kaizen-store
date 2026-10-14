@@ -11,7 +11,7 @@ import { Modal } from "./modal";
 type Result = { ok: true; id?: string; ids?: string[] } | { ok: false; problems: string[] };
 
 const button =
-  "flex min-h-10 items-center rounded-md border border-edge px-4 text-sm hover:bg-sunken disabled:opacity-50";
+  "flex min-h-10 items-center rounded-pill border border-edge px-4 text-sm hover:bg-sunken disabled:opacity-50";
 /** The biggest file of groups read; a store has at most 50 groups of at most 60 fields. */
 const IMPORT_MAX_BYTES = 2_000_000;
 

@@ -41,9 +41,9 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           ["Stopped", overview.stopped, "waiting for a decision"],
           ["Need a look", overview.needAttention, "see the notes below"],
         ].map(([label, value, note]) => (
-          <div key={label} className="rounded-lg border border-line bg-card p-4">
+          <div key={label} className="rounded-panel border border-line bg-card p-4">
             <dt className="text-sm text-muted">{label}</dt>
-            <dd className="text-2xl font-medium">{value}</dd>
+            <dd className="text-metric text-ink tabular-nums">{value}</dd>
             <dd className="text-xs text-muted">{note}</dd>
           </div>
         ))}
@@ -59,7 +59,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
       </div>
 
       {tests.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
+        <p className="rounded-panel border border-dashed border-line bg-card p-8 text-center text-sm text-muted">
           {everything ? "No store has made a test yet." : "No test is running, scheduled or waiting for a decision."}
         </p>
       ) : (
@@ -106,7 +106,7 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
 
       <section aria-labelledby="own" className="flex flex-col gap-3">
         <div>
-          <h2 id="own" className="text-lg font-medium">
+          <h2 id="own" className="text-title text-ink">
             Tests that run on their own
           </h2>
           <p className="max-w-2xl text-sm text-muted">
@@ -115,11 +115,11 @@ export default async function PlatformExperimentsPage({ searchParams }: PageProp
           </p>
         </div>
         {own.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
+          <p className="rounded-panel border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
             No search test is running, and no store has recommendations with a held-out ranking and tabs to count.
           </p>
         ) : (
-          <ul className="flex flex-col divide-y divide-line rounded-lg border border-line bg-card">
+          <ul className="flex flex-col divide-y divide-line rounded-panel border border-line bg-card">
             {own.map((t) => (
               <li key={t.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">

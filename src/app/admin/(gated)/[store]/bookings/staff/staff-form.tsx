@@ -37,7 +37,7 @@ export function StaffForm({
         Takes bookings
       </label>
       <div className="border-t border-line pt-4">
-        <h2 className="mb-1 text-sm font-medium">Working hours</h2>
+        <h2 className="mb-1 text-title text-ink">Working hours</h2>
         <p className="mb-3 text-sm text-muted">Appointments are offered only inside these, in the store&apos;s time zone.</p>
         <HoursEditor name="hours" initial={staff?.hours ?? null} />
       </div>

@@ -42,7 +42,7 @@ const AT_ONCE = 3;
 const BULK_AT_ONCE = 100;
 
 const input = "min-h-10 rounded-md border border-line bg-card px-3 text-sm";
-const button = "min-h-10 rounded-md border border-line px-4 text-sm font-medium disabled:opacity-50";
+const button = "min-h-10 rounded-pill border border-edge px-4 text-sm font-medium disabled:opacity-50";
 
 /** Whether a file has an alt text in any language. */
 const hasAlt = (item: MediaItem) => item.alt !== "" || Object.keys(item.altTranslations).length > 0;
@@ -157,7 +157,7 @@ export function MediaLibrary({
       <form
         role="search"
         action={basePath}
-        className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card p-4"
+        className="flex flex-wrap items-end gap-3 rounded-panel border border-line bg-card p-4"
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -257,7 +257,7 @@ export function MediaLibrary({
       </div>
 
       {choosing && (
-        <div role="region" aria-label="Delete several files" className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-sunken p-3 text-sm shadow-sm">
+        <div role="region" aria-label="Delete several files" className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-panel bg-sunken p-3 text-sm shadow-sm">
           <p role="status" className="mr-auto font-medium">
             {chosen.size === 0 ? "Choose files to delete together." : `${chosen.size} ${chosen.size === 1 ? "file" : "files"} chosen.`}
           </p>
@@ -286,7 +286,7 @@ export function MediaLibrary({
                 type="button"
                 onClick={() => (choosing ? pick(item.id) : setOpenId(item.id))}
                 aria-pressed={choosing ? chosen.has(item.id) : undefined}
-                className={`relative flex w-full flex-col overflow-hidden rounded-lg border bg-card text-left hover:border-brand/40 focus-visible:outline-2 ${choosing && chosen.has(item.id) ? "border-brand ring-2 ring-ink" : "border-line"}`}
+                className={`relative flex w-full flex-col overflow-hidden rounded-panel border bg-card text-left hover:border-brand/40 focus-visible:outline-2 ${choosing && chosen.has(item.id) ? "border-brand ring-2 ring-ink" : "border-line"}`}
                 aria-label={`${item.fileName}, ${describeType(item.contentType)}, ${formatBytes(item.sizeBytes)}${item.uses.length === 0 ? ", not in use" : `, used in ${item.uses.length} ${item.uses.length === 1 ? "place" : "places"}`}${item.kind === "image" && !hasAlt(item) ? ", no alt text" : ""}`}
               >
                 <Preview item={item} small />
@@ -361,7 +361,7 @@ export function MediaLibrary({
 function FileList({ items, onOpen, chosen, onPick }: { items: MediaItem[]; onOpen: (id: string) => void; chosen: ReadonlySet<string> | null; onPick: (id: string) => void }) {
   const cell = "px-3 py-2 align-middle";
   return (
-    <div className="overflow-x-auto rounded-lg border border-line bg-card">
+    <div className="overflow-x-auto rounded-panel border border-line bg-card">
       <table className="w-full min-w-[40rem] text-left text-sm">
         <caption className="sr-only">Files</caption>
         <thead className="border-b border-line text-xs text-muted">
@@ -526,7 +526,7 @@ function Details({
             ))}
           </dl>
           <section aria-labelledby={`${id}-uses`} className="flex flex-col gap-2">
-            <h3 id={`${id}-uses`} className="text-sm font-medium">
+            <h3 id={`${id}-uses`} className="text-body-strong text-ink">
               In use
             </h3>
             <Uses item={item} />
@@ -616,7 +616,7 @@ function CompressOne({ item, compress, onCompressed }: { item: MediaItem; compre
   };
   return (
     <section aria-labelledby={`${id}-size`} className="flex flex-col gap-2">
-      <h3 id={`${id}-size`} className="text-sm font-medium">
+      <h3 id={`${id}-size`} className="text-body-strong text-ink">
         Size
       </h3>
       {plan.offered ? (
@@ -677,7 +677,7 @@ function CompressAll({ waiting, compress, onChanged }: { waiting: number; compre
 
   if (waiting === 0 && !progress) return null;
   return (
-    <section aria-label="Compress files" className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4">
+    <section aria-label="Compress files" className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4">
       <p className="text-sm">
         <span className="font-medium">Compress files.</span>{" "}
         {waiting === 0
@@ -865,7 +865,7 @@ function AltTextForm({
       }}
     >
       <div className="flex flex-wrap items-center gap-2">
-        <h3 id={`${id}-heading`} className="text-sm font-medium">
+        <h3 id={`${id}-heading`} className="text-body-strong text-ink">
           Alt text
         </h3>
         {source && (
@@ -980,7 +980,7 @@ function AltTexts({
   };
 
   return (
-    <section aria-label="Alt texts" className="flex flex-col gap-2 rounded-lg border border-line bg-card p-4">
+    <section aria-label="Alt texts" className="flex flex-col gap-2 rounded-panel border border-line bg-card p-4">
       <p className="text-sm">
         <span className="font-medium">Alt texts.</span>{" "}
         {missing === 0
@@ -1037,7 +1037,7 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
   const [over, setOver] = useState(false);
   const busy = jobs.some((job) => job.state === "waiting" || job.state === "uploading");
 
-  if (!upload) return <p className="rounded-lg border border-line p-4 text-sm text-muted">Uploads are not set up on this server.</p>;
+  if (!upload) return <p className="rounded-panel border border-line p-4 text-sm text-muted">Uploads are not set up on this server.</p>;
 
   const set = (key: string, patch: Partial<Job>) => setJobs((all) => all.map((job) => (job.key === key ? { ...job, ...patch } : job)));
 
@@ -1088,7 +1088,7 @@ function Uploader({ upload, startVideo, onDone }: { upload: Upload | null; start
         setOver(false);
         void add([...event.dataTransfer.files]);
       }}
-      className={`flex flex-col gap-3 rounded-lg border-2 border-dashed p-6 text-center ${over ? "border-brand bg-sunken" : "border-line bg-card"}`}
+      className={`flex flex-col gap-3 rounded-panel border-2 border-dashed p-6 text-center ${over ? "border-brand bg-sunken" : "border-line bg-card"}`}
     >
       <p className="font-medium">Drop pictures and videos here</p>
       <p className="text-sm text-muted">

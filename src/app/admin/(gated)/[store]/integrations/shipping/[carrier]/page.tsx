@@ -84,7 +84,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
       )}
 
       <section aria-labelledby="will-do" className={card}>
-        <h2 id="will-do" className="mb-2 font-medium">
+        <h2 id="will-do" className="mb-2 text-title text-ink">
           What it will do
         </h2>
         <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
@@ -101,7 +101,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
       </section>
 
       <section aria-labelledby="get-ready" className={card}>
-        <h2 id="get-ready" className="mb-2 font-medium">
+        <h2 id="get-ready" className="mb-2 text-title text-ink">
           Get ready
         </h2>
         <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm">
@@ -117,7 +117,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
       </section>
 
       <section aria-labelledby="details" className={card}>
-        <h2 id="details" className="mb-1 font-medium">
+        <h2 id="details" className="mb-1 text-title text-ink">
           Your details
         </h2>
         {!owner && <p className="mb-3 text-sm text-muted">Only an owner of the store can change these.</p>}
@@ -180,7 +180,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
 
       {checkout && services && (
         <section aria-labelledby="checkout" className={card}>
-          <h2 id="checkout" className="mb-1 font-medium">
+          <h2 id="checkout" className="mb-1 text-title text-ink">
             Delivery options at checkout
           </h2>
           <p className="mb-4 text-sm text-muted">
@@ -280,7 +280,7 @@ export default async function CarrierPage({ params }: PageProps<"/admin/[store]/
 
       {live && owner && saved?.complete && (
         <section aria-labelledby="check" className={card}>
-          <h2 id="check" className="mb-1 font-medium">
+          <h2 id="check" className="mb-1 text-title text-ink">
             Check connection
           </h2>
           <p className="mb-3 text-sm text-muted">

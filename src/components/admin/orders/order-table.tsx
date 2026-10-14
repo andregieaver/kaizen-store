@@ -113,7 +113,7 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
     <div className="flex flex-col gap-3">
       {result && <ResultPanel result={result} onClose={() => setResult(null)} />}
       {problem && (
-        <p role="alert" className="rounded-lg border border-line bg-sunken p-3 text-sm text-danger-text">
+        <p role="alert" className="rounded-panel bg-sunken p-3 text-sm text-danger-text">
           {problem}
         </p>
       )}
@@ -209,7 +209,7 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
       )}
 
       {canWrite && banner.kind === "offer" && (
-        <p className="rounded-lg border border-line bg-sunken p-3 text-sm" role="status">
+        <p className="rounded-panel bg-sunken p-3 text-sm" role="status">
           All {rows.length} orders on this page are selected.{" "}
           <button type="button" onClick={() => setAllMatching(true)} className="underline underline-offset-2">
             Select all {banner.matching.toLocaleString("en")} matching
@@ -217,12 +217,12 @@ export function OrderTable({ slug, rows, columns, matching, capped, matchingQuer
         </p>
       )}
       {canWrite && banner.kind === "too_many" && (
-        <p className="rounded-lg border border-line bg-sunken p-3 text-sm" role="status">
+        <p className="rounded-panel bg-sunken p-3 text-sm" role="status">
           All {rows.length} orders on this page are selected. More than {BULK_MAX} orders match, which is more than one batch takes: narrow the list to act on all of them.
         </p>
       )}
       {canWrite && banner.kind === "all_matching" && (
-        <p className="rounded-lg border border-line bg-sunken p-3 text-sm" role="status">
+        <p className="rounded-panel bg-sunken p-3 text-sm" role="status">
           All {banner.matching.toLocaleString("en")} matching orders are selected.{" "}
           <button type="button" onClick={clear} className="underline underline-offset-2">
             Clear selection
@@ -383,7 +383,7 @@ function OrderRow({ row, slug, columns, canWrite, ticked, onToggle }: { row: Ord
 export function ResultPanel({ result, onClose }: { result: BulkResult; onClose?: () => void }) {
   const groups = groupRefusals(result.refused);
   return (
-    <section aria-label="Result of the bulk action" role="status" className="flex flex-col gap-2 rounded-lg border border-line bg-sunken p-4 text-sm">
+    <section aria-label="Result of the bulk action" role="status" className="flex flex-col gap-2 rounded-panel bg-sunken p-4 text-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="font-medium">{bulkSummary(result)}</p>
         {onClose && (

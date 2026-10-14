@@ -44,7 +44,7 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
       />
 
       <section aria-labelledby="run" className={card}>
-        <h2 id="run" className="mb-2 font-medium">
+        <h2 id="run" className="mb-2 text-title text-ink">
           {running ? "Running" : "Start a test"}
         </h2>
         {running ? (
@@ -90,7 +90,7 @@ export default async function SearchTestPage({ searchParams }: PageProps<"/admin
 
       {experiments.length > 1 && (
         <section aria-labelledby="earlier" className={card}>
-          <h2 id="earlier" className="mb-2 font-medium">
+          <h2 id="earlier" className="mb-2 text-title text-ink">
             Tests
           </h2>
           <ul className="flex flex-col gap-1 text-sm">
@@ -136,7 +136,7 @@ function Results({ results }: { results: ExperimentResults }) {
   );
   return (
     <section aria-labelledby="results" className={card}>
-      <h2 id="results" className="mb-1 font-medium">
+      <h2 id="results" className="mb-1 text-title text-ink">
         Results{results.experiment.endedAt ? "" : " so far"}
       </h2>
       <p className="mb-3 text-sm text-muted">
@@ -173,7 +173,7 @@ function Results({ results }: { results: ExperimentResults }) {
       </p>
       {results.weeks.length > 0 && (
         <div className="mt-4 overflow-x-auto">
-          <h3 className="mb-1 text-sm font-medium">Week by week</h3>
+          <h3 className="mb-1 text-body-strong text-ink">Week by week</h3>
           <table className="w-full text-left text-sm">
             <thead>
               <tr>

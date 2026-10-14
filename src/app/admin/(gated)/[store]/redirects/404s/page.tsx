@@ -94,7 +94,7 @@ async function Body({ storeSlug, searchParams }: { storeSlug: string; searchPara
           </p>
           {uncounted && <p className={`${card} !p-3 text-sm`}>{uncounted}</p>}
           {report.rows.length === 0 ? (
-            <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">
+            <p className="rounded-panel bg-sunken p-6 text-center text-sm">
               {report.distinct === 0 && !showCovered && !showIgnored
                 ? "Nothing to fix. Addresses that were asked for and not found will be listed here, most asked first."
                 : "No address to show with these choices."}

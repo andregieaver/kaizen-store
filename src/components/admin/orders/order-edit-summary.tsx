@@ -29,9 +29,9 @@ export function OrderEditSummary({
   const problems = [...formProblems.map((text, i) => ({ code: "form", key: String(i), text })), ...(summary?.problems ?? [])].filter((p) => p.code !== "no_change");
   const unchanged = summary?.problems.some((p) => p.code === "no_change") ?? true;
   return (
-    <section aria-labelledby="edit-summary" aria-busy={state === "working"} className="flex flex-col gap-3 rounded-lg border border-line bg-sunken p-4 text-sm">
+    <section aria-labelledby="edit-summary" aria-busy={state === "working"} className="flex flex-col gap-3 rounded-panel bg-sunken p-4 text-sm">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 id="edit-summary" className="font-medium">
+        <h2 id="edit-summary" className="text-title text-ink">
           Summary
         </h2>
         <span className={hint} aria-live="polite">

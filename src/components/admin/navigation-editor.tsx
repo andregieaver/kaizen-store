@@ -122,7 +122,7 @@ export function NavigationEditor({
       />
       <section aria-labelledby="standard-menus-heading" className={card}>
         <div>
-          <h2 id="standard-menus-heading" className="font-medium">
+          <h2 id="standard-menus-heading" className="text-title text-ink">
             Menus
           </h2>
           <p className="text-sm text-muted">
@@ -251,7 +251,7 @@ function FaviconField({
   return (
     <section aria-labelledby={`${id}-heading`} className={card}>
       <div>
-        <h2 id={`${id}-heading`} className="font-medium">
+        <h2 id={`${id}-heading`} className="text-title text-ink">
           Icon (favicon)
         </h2>
         <p className="text-sm text-muted">
@@ -294,7 +294,7 @@ function FaviconField({
             <p className="text-muted">Uploads are not set up on this server.</p>
           )}
           {favicon && (
-            <button type="button" onClick={() => onChange(null)} className="rounded-md px-3 py-2 underline">
+            <button type="button" onClick={() => onChange(null)} className="rounded-pill px-3 py-2 underline">
               Remove
             </button>
           )}
@@ -358,7 +358,7 @@ function LogoField({
   return (
     <section aria-labelledby={`${id}-heading`} className={card}>
       <div>
-        <h2 id={`${id}-heading`} className="font-medium">
+        <h2 id={`${id}-heading`} className="text-title text-ink">
           {title}
         </h2>
         <p className="text-sm text-muted">{help}</p>
@@ -395,7 +395,7 @@ function LogoField({
             <p className="text-muted">Uploads are not set up on this server.</p>
           )}
           {logo && (
-            <button type="button" onClick={() => onChange(null)} className="rounded-md px-3 py-2 underline">
+            <button type="button" onClick={() => onChange(null)} className="rounded-pill px-3 py-2 underline">
               Remove
             </button>
           )}
@@ -426,7 +426,7 @@ function BusinessFields({ value, onChange }: { value: BusinessDetails; onChange:
   return (
     <section aria-labelledby="business-heading" className={card}>
       <div>
-        <h2 id="business-heading" className="font-medium">
+        <h2 id="business-heading" className="text-title text-ink">
           Business details
         </h2>
         <p className="text-sm text-muted">

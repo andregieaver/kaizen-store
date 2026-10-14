@@ -40,7 +40,7 @@ export default async function CustomerGroupPage({ params }: PageProps<"/admin/[s
       />
 
       <section aria-labelledby="settings" className={card}>
-        <h2 id="settings" className="font-medium">
+        <h2 id="settings" className="text-title text-ink">
           Settings
         </h2>
         <ActionForm action={saveGroupAction.bind(null, store.slug, group.id)} className="flex flex-col gap-3">
@@ -68,7 +68,7 @@ export default async function CustomerGroupPage({ params }: PageProps<"/admin/[s
       </section>
 
       <section aria-labelledby="customers" className={card}>
-        <h2 id="customers" className="font-medium">
+        <h2 id="customers" className="text-title text-ink">
           Customers in this group ({members.length})
         </h2>
         {members.length === 0 ? (
@@ -108,7 +108,7 @@ export default async function CustomerGroupPage({ params }: PageProps<"/admin/[s
 
       {using.length > 0 && (
         <section aria-labelledby="companies" className={card}>
-          <h2 id="companies" className="font-medium">
+          <h2 id="companies" className="text-title text-ink">
             Companies with this group
           </h2>
           <ul className="text-sm">
@@ -127,7 +127,7 @@ export default async function CustomerGroupPage({ params }: PageProps<"/admin/[s
       )}
 
       <section aria-labelledby="delete" className={card}>
-        <h2 id="delete" className="font-medium">
+        <h2 id="delete" className="text-title text-ink">
           Delete the group
         </h2>
         <p className="text-sm text-muted">Only a group no customer or company is in can be deleted. Otherwise, switch it off above.</p>

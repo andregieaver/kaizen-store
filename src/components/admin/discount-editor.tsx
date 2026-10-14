@@ -102,7 +102,7 @@ export function DiscountEditor({
       )}
 
       <section aria-labelledby="code-heading" className={card}>
-        <h2 id="code-heading" className="font-medium">
+        <h2 id="code-heading" className="text-title text-ink">
           The code
         </h2>
         <label className={label}>
@@ -195,7 +195,7 @@ export function DiscountEditor({
       </section>
 
       <section aria-labelledby="applies-heading" className={card}>
-        <h2 id="applies-heading" className="font-medium">
+        <h2 id="applies-heading" className="text-title text-ink">
           What it applies to
         </h2>
         <fieldset className="flex flex-col gap-2">
@@ -260,7 +260,7 @@ export function DiscountEditor({
       </section>
 
       <section aria-labelledby="limits-heading" className={card}>
-        <h2 id="limits-heading" className="font-medium">
+        <h2 id="limits-heading" className="text-title text-ink">
           When and how often
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">

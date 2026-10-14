@@ -72,7 +72,7 @@ export function EntityFields({
 
   return (
     <section aria-labelledby={`${idPrefix}-${side ? "side" : "main"}`} className={card}>
-      <h2 id={`${idPrefix}-${side ? "side" : "main"}`} className="mb-1 font-medium">
+      <h2 id={`${idPrefix}-${side ? "side" : "main"}`} className="mb-1 text-title text-ink">
         {title}
       </h2>
       <p className="mb-4 text-sm text-muted">{intro}</p>

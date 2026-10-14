@@ -99,15 +99,15 @@ export default async function RecommendationsPage({ params, searchParams }: Page
       </Card>
 
       <section aria-labelledby="rules" className="flex flex-col gap-3">
-        <h2 id="rules" className="font-medium">Your rules</h2>
+        <h2 id="rules" className="text-title text-ink">Your rules</h2>
         <p className="text-sm text-muted">
           A pairing is offered with the product ahead of what the engine finds, as a complement. A product is never shown with another when you say so,
           and a hidden product is never recommended anywhere. Margins are not part of the catalogue, so the ceiling above is the upsell rule.
         </p>
         {rules.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-line bg-card p-6 text-center text-sm text-muted">No rules yet.</p>
+          <p className="rounded-panel border border-dashed border-line bg-card p-6 text-center text-sm text-muted">No rules yet.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card">
             {rules.map((rule) => (
               <li key={rule.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 text-sm">
                 <span>
@@ -122,7 +122,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
             ))}
           </ul>
         )}
-        <ActionForm action={addRuleAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card p-4">
+        <ActionForm action={addRuleAction.bind(null, store.slug)} className="flex flex-wrap items-end gap-3 rounded-panel border border-line bg-card p-4">
           <label className="flex flex-col gap-1 text-sm font-medium">
             Product
             <select name="productId" required className={control} defaultValue="">
@@ -153,7 +153,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
       </section>
 
       <section aria-labelledby="replay" className="flex flex-col gap-3">
-        <h2 id="replay" className="font-medium">Check against past orders</h2>
+        <h2 id="replay" className="text-title text-ink">Check against past orders</h2>
         <p className="text-sm text-muted">
           Takes the last {REPLAY_ORDERS} paid orders of two goods or more, holds one product of each back, and asks the engine (the plain ranking, with that order left out of what it
           learns from) what it would show a shopper who had looked at the others. It shows whether the engine finds what people really bought together, and how that compares with showing
@@ -161,11 +161,11 @@ export default async function RecommendationsPage({ params, searchParams }: Page
         </p>
         {replay ? (
           replay.evaluated === 0 ? (
-            <p className="rounded-lg border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
+            <p className="rounded-panel border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
               No order to check yet: the store needs paid orders of two goods or more that are still on sale ({replay.considered} found, {replay.skipped.notOnSaleNow} of them for products not on sale now).
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-lg border border-line bg-card">
+            <div className="overflow-x-auto rounded-panel border border-line bg-card">
               <table className="w-full text-left text-sm">
                 <thead>
                   <tr className="border-b border-line">
@@ -204,7 +204,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
 
       <section aria-labelledby="results" className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id="results" className="font-medium">What shoppers did</h2>
+          <h2 id="results" className="text-title text-ink">What shoppers did</h2>
           <nav aria-label="Period" className="flex gap-2 text-sm">
             {REPORT_PERIODS.map((d) => (
               <Link key={d} href={`${base}/recommendations?days=${d}`} aria-current={d === days ? "page" : undefined} className={`rounded-button border border-line px-3 py-1 ${d === days ? "bg-sunken font-medium" : ""}`}>
@@ -217,7 +217,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           Visitors are browser tabs that were shown a recommendation (a random id kept in the tab, never joined to a person). Revenue is what the
           recommended products&apos; lines came to, with VAT and after discounts, in orders of a cart they were added to from a recommendation, placed within 14 days; per currency, never added across them.
         </p>
-        <div className="overflow-x-auto rounded-lg border border-line bg-card">
+        <div className="overflow-x-auto rounded-panel border border-line bg-card">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-line">
@@ -257,7 +257,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
             </tbody>
           </table>
         </div>
-        <p className="rounded-lg border border-line bg-card p-4 text-sm" role="status">
+        <p className="rounded-panel border border-line bg-card p-4 text-sm" role="status">
           <strong className="font-medium">The AI&apos;s order against the plain one: </strong>
           {report.comparison.words}
           {report.comparison.clicked.p !== null && (
@@ -269,7 +269,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           )}
         </p>
         {report.placements.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
+          <div className="overflow-x-auto rounded-panel border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">
@@ -293,7 +293,7 @@ export default async function RecommendationsPage({ params, searchParams }: Page
           </div>
         )}
         {report.topProducts.length > 0 && (
-          <div className="overflow-x-auto rounded-lg border border-line bg-card">
+          <div className="overflow-x-auto rounded-panel border border-line bg-card">
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-line">

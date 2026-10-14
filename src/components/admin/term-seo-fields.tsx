@@ -48,7 +48,7 @@ export function TermSeoFields({ setup, name, kind, slug, value, onChange }: { se
               type="button"
               aria-pressed={l === locale}
               onClick={() => setLocale(l)}
-              className="min-h-9 rounded-md border border-border px-3 text-sm aria-pressed:border-foreground aria-pressed:bg-surface aria-pressed:font-medium"
+              className="min-h-9 rounded-pill border border-border px-3 text-sm aria-pressed:border-foreground aria-pressed:bg-surface aria-pressed:font-medium"
             >
               {setup.languageNames[l] ?? l}
               {filled(l) ? <span className="sr-only"> (has a text)</span> : null}

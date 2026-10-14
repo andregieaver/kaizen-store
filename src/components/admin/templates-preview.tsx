@@ -77,13 +77,13 @@ export function TemplatePreviewDialog({
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
-      className="m-auto max-h-[94dvh] w-[calc(100%-1rem)] max-w-5xl rounded-lg border border-line bg-card p-0 text-ink shadow-2xl backdrop:bg-black/50"
+      className="m-auto max-h-[94dvh] w-[calc(100%-1rem)] max-w-5xl rounded-panel border border-line bg-card p-0 text-ink shadow-2xl backdrop:bg-black/50"
     >
       {item && (
         <div className="flex max-h-[calc(94dvh-2px)] flex-col">
           <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-3">
             <div className="flex min-w-0 flex-col gap-1">
-              <h2 id={titleId} className="truncate font-medium">
+              <h2 id={titleId} className="truncate text-title text-ink">
                 Preview: {item.name}
               </h2>
               <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
@@ -122,7 +122,7 @@ export function TemplatePreviewDialog({
                 </p>
               )}
             </div>
-            <button type="button" onClick={onClose} className="min-h-10 rounded-md border border-line px-4 text-sm">
+            <button type="button" onClick={onClose} className="min-h-10 rounded-pill border border-edge px-4 text-sm">
               Close
             </button>
             <button
@@ -236,7 +236,7 @@ function PreviewFrame({ title, href, device }: { title: string; href: string; de
               setAttempt((n) => n + 1);
               setStatus("loading");
             }}
-            className="min-h-9 rounded-md border border-line bg-card px-3 text-xs"
+            className="min-h-9 rounded-pill border border-line bg-card px-3 text-xs"
           >
             Try again
           </button>

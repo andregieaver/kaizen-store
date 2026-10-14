@@ -90,7 +90,7 @@ export function HistoryView({
       {query.variant && <p className={hint}>Showing the changes of one variant.</p>}
 
       {rows.length === 0 ? (
-        <p className="rounded-lg border border-line bg-sunken p-6 text-center text-sm">{filtered ? "No change matches this filter." : "No change of stock has been recorded yet."}</p>
+        <p className="rounded-panel bg-sunken p-6 text-center text-sm">{filtered ? "No change matches this filter." : "No change of stock has been recorded yet."}</p>
       ) : (
         <div className={tableShell}>
           <table className="w-full text-sm">

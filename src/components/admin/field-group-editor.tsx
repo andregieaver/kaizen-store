@@ -78,7 +78,7 @@ const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-s
 const label = "flex flex-col gap-1 text-sm font-medium";
 const hint = "text-xs font-normal text-muted";
 const card = "flex flex-col gap-4 rounded-lg border border-line bg-card p-5";
-const small = "min-h-9 rounded-md border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-40";
+const small = "min-h-9 rounded-pill border border-edge px-3 text-sm hover:bg-sunken disabled:opacity-40";
 
 /**
  * A group of custom fields (D118): its name, where it applies, its fields in
@@ -259,7 +259,7 @@ export function FieldGroupEditor({
         </p>
 
         <section aria-labelledby="group-heading" className={card}>
-          <h2 id="group-heading" className="font-medium">
+          <h2 id="group-heading" className="text-title text-ink">
             The group
           </h2>
           <label className={label}>
@@ -356,7 +356,7 @@ export function FieldGroupEditor({
         </section>
 
         <section aria-labelledby="where-heading" className={card}>
-          <h2 id="where-heading" className="font-medium">
+          <h2 id="where-heading" className="text-title text-ink">
             Where it applies
           </h2>
           <LocationBuilder
@@ -370,7 +370,7 @@ export function FieldGroupEditor({
 
         <section aria-labelledby="fields-heading" className={card}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 id="fields-heading" className="font-medium">
+            <h2 id="fields-heading" className="text-title text-ink">
               Fields <span className="font-normal text-muted">({fields.length})</span>
             </h2>
             <button
@@ -424,7 +424,7 @@ export function FieldGroupEditor({
       <aside aria-labelledby="preview-heading" className="min-w-0 xl:sticky xl:top-4 xl:self-start">
         <div className={card}>
           <div>
-            <h2 id="preview-heading" className="font-medium">
+            <h2 id="preview-heading" className="text-title text-ink">
               Preview (nothing is saved)
             </h2>
             <p className={hint}>

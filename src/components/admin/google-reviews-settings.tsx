@@ -17,7 +17,7 @@ export type GoogleReviewsActions = {
 
 const card = "rounded-lg border border-line bg-card p-5";
 const input = "min-h-10 w-full rounded-md border border-line bg-card px-3 text-sm";
-const button = "inline-flex min-h-10 items-center rounded-md bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
+const button = "inline-flex min-h-10 items-center rounded-pill bg-brand px-4 text-sm font-medium text-brand-ink disabled:opacity-50";
 
 /**
  * Google reviews for testimonials (D91): the owner's Google Maps Platform
@@ -68,7 +68,7 @@ export function GoogleReviewsSettings({
       )}
 
       <section aria-labelledby="google-key" className={card}>
-        <h2 id="google-key" className="mb-1 font-medium">
+        <h2 id="google-key" className="mb-1 text-title text-ink">
           1. Google API key
         </h2>
         <p className="mb-4 text-sm text-muted">
@@ -94,7 +94,7 @@ export function GoogleReviewsSettings({
       </section>
 
       <section aria-labelledby="google-place" className={card}>
-        <h2 id="google-place" className="mb-1 font-medium">
+        <h2 id="google-place" className="mb-1 text-title text-ink">
           2. Your business on Google
         </h2>
         <p className="mb-4 text-sm text-muted">

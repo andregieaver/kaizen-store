@@ -40,7 +40,7 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
       {hosts.length === 0 ? (
         <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">No hosts yet.</p>
       ) : (
-        <ul className="divide-y divide-line rounded-lg border border-line bg-card">
+        <ul className="divide-y divide-line rounded-panel border border-line bg-card">
           {hosts.map((h) => (
             <li key={h.id} className="flex flex-wrap items-start justify-between gap-3 p-4 text-sm">
               <div className="min-w-0">
@@ -59,7 +59,7 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
                   </span>
                 )}
               </div>
-              <Link href={`${base}/${h.id}`} className="min-h-10 rounded-md px-3 py-2 hover:bg-sunken">
+              <Link href={`${base}/${h.id}`} className="min-h-10 rounded-pill px-3 py-2 hover:bg-sunken">
                 Edit <span className="sr-only">{h.name}</span>
               </Link>
             </li>
@@ -68,7 +68,7 @@ export default async function HostsPage({ params }: PageProps<"/admin/[store]/ho
       )}
       {memberCan(current, "owner") ? (
         <section aria-labelledby="add-host" className="flex flex-col gap-3">
-          <h2 id="add-host" className="font-medium">
+          <h2 id="add-host" className="text-title text-ink">
             Add a host
           </h2>
           <HostForm host={null} action={inviteHostAction.bind(null, store.slug)} />

@@ -84,10 +84,10 @@ export default async function AllStoresPage() {
       )}
       {closed.length > 0 && (
         <section aria-labelledby="closed-heading" className="flex flex-col gap-2">
-          <h2 id="closed-heading" className="text-lg font-medium">
+          <h2 id="closed-heading" className="text-title text-ink">
             Closed stores
           </h2>
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {closed.map((c) => (
               <li key={c.slug} className="p-4">
                 <Link href={`/admin/${c.slug}`} className="font-medium underline-offset-2 hover:underline">
@@ -104,10 +104,10 @@ export default async function AllStoresPage() {
       )}
       {copies.length > 0 && (
         <section aria-labelledby="copies-heading" className="flex flex-col gap-2">
-          <h2 id="copies-heading" className="text-lg font-medium">
+          <h2 id="copies-heading" className="text-title text-ink">
             Recent copies
           </h2>
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {copies.map((copy) => (
               <li key={copy.id} className="p-4">
                 <Link href={copyProgressPath(copy.id)} className="font-medium underline-offset-2 hover:underline">
@@ -124,10 +124,10 @@ export default async function AllStoresPage() {
       )}
       {hostings.length > 0 && (
         <section aria-labelledby="hosting-heading" className="flex flex-col gap-2">
-          <h2 id="hosting-heading" className="text-lg font-medium">
+          <h2 id="hosting-heading" className="text-title text-ink">
             Hosting
           </h2>
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line bg-card text-sm">
             {hostings.map((h) => (
               <li key={h.slug} className="p-4">
                 <Link href={`/admin/hosting/${h.slug}`} className="font-medium underline-offset-2 hover:underline">
