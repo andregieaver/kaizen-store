@@ -8,6 +8,7 @@ import type { FormState } from "@/components/admin/action-form";
 import { cleanReason, REASON_MAX, REASON_MIN } from "@/lib/store-closure";
 import { requireAccount, type Account } from "@/server/auth";
 import { closeStore, reopenStore, suspendStore, type ClosureResult } from "@/server/store-closure";
+import { detachDryRun } from "@/server/theme-detach";
 
 async function requirePlatformAdmin(): Promise<Account> {
   const account = await requireAccount();
@@ -47,4 +48,25 @@ export async function reopenStoreForPlatformAction(storeId: string, _state: Form
   const admin = await requirePlatformAdmin();
   if (!z.uuid().safeParse(storeId).success) return unknown;
   return answer(await reopenStore(admin, storeId, { by: "platform" }), "The store is open again and its owners are told.");
+}
+
+/**
+ * The page migration of docs/theme-store.md 4.4 as a dry run (D241): how many of the store's page settings only repeat its theme and would
+ * follow it once taken out, and how many are its own. Nothing is changed.
+ */
+export async function detachDryRunAction(storeId: string): Promise<FormState> {
+  await requirePlatformAdmin();
+  if (!z.uuid().safeParse(storeId).success) return unknown;
+  const report = await detachDryRun(storeId);
+  if (!report) return unknown;
+  const lines = report.pages
+    .slice(0, 10)
+    .map((page) => `${page.title} (${page.type}): ${page.followed} would follow the theme, ${page.own} are its own.`);
+  return {
+    status: "ok",
+    messages: [
+      `Nothing was changed. Across ${report.pages.length} ${report.pages.length === 1 ? "page" : "pages"}: ${report.followed} ${report.followed === 1 ? "setting" : "settings"} would follow the theme, ${report.own} ${report.own === 1 ? "is" : "are"} the store's own.${report.unreadable > 0 ? ` ${report.unreadable} could not be read.` : ""}`,
+      ...lines,
+    ],
+  };
 }

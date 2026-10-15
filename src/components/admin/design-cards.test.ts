@@ -65,9 +65,9 @@ describe("the design profiles on a store's Design settings (D176)", () => {
   it("says exactly what applying changes and that the look from before is kept, before the Apply button", () => {
     const html = draw();
     expect(html).toContain("<details");
-    expect(html).toContain("replaces the theme");
+    expect(html).toContain("installs it and makes it live");
     expect(html).toContain("keeps your products, pages, menus, logo, name and business details as they are");
-    expect(html).toContain("Before Nordic calm");
+    expect(html).toContain("stays in your theme library");
     expect(html).toContain("Apply Nordic calm");
     expect(html).toContain(`name="design" value="${calm.id}"`);
     for (const link of links(html)) {
@@ -79,6 +79,9 @@ describe("the design profiles on a store's Design settings (D176)", () => {
   it("offers the way back after a profile was applied, and nothing to press for someone who may not change the website", () => {
     const html = draw({ latest: { presetTitle: "Nordic calm", appliedAt: "2026-10-07T10:00:00.000Z", savedTheme: "Before Nordic calm (2026-10-07)" } });
     expect(html).toContain("Put back the look from before Nordic calm");
+    expect(html).toContain("The theme from before is the saved theme");
+    const installed = draw({ latest: { presetTitle: "Nordic calm", appliedAt: "2026-10-07T10:00:00.000Z", savedTheme: null, previousInstall: "Custom" } });
+    expect(installed).toContain("“Custom” in your theme library");
     const reader = draw({ canChange: false, apply: null, restore: null, latest: { presetTitle: "Nordic calm", appliedAt: "2026-10-07T10:00:00.000Z", savedTheme: null } });
     expect(reader).not.toContain("Apply Nordic calm");
     expect(reader).not.toContain("Put back");

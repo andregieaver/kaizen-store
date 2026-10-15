@@ -1,6 +1,6 @@
 "use server";
 
-import { updateTag } from "next/cache";
+import { refresh, updateTag } from "next/cache";
 
 import type { FormState } from "@/components/admin/action-form";
 import { designChoice } from "@/lib/design-presets";
@@ -8,6 +8,7 @@ import { BUILDER_WRITE } from "@/lib/permissions";
 import { NO_ACCESS, checkPermission, requireAnyPermission, requirePermission } from "@/server/permissions";
 import { setOpenCartOnAdd } from "@/server/cart";
 import { applyDesignPreset, designTags, restoreDesignLook } from "@/server/design-presets";
+import { removeInstall, switchToInstall } from "@/server/theme-installs";
 import { installFont } from "@/server/fonts";
 import { storeTag } from "@/server/stores";
 import { deleteSavedTheme, saveSavedTheme, saveStoreTheme, saveThemeLibrary, saveThemeTab } from "@/server/themes";
@@ -93,7 +94,28 @@ export async function applyDesignAction(storeSlug: string, _state: FormState, fo
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(member.store)) updateTag(tag);
   const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
-  return { status: "ok", messages: [`Applied. Your look from before is kept as the saved theme “${result.savedTheme}”, and can be put back here.${notes}`] };
+  return { status: "ok", messages: [`Applied. Your look from before stays in your theme library as “${result.previous}”, and can be put back here.${notes}`] };
+}
+
+/** Makes one of the store's installed themes live (D241); the live one is put away with every change made to it. */
+export async function switchThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const result = await switchToInstall(member.store.id, String(formData.get("install") ?? ""), member.account.id);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  for (const tag of designTags(member.store)) updateTag(tag);
+  const notes = result.notes.length > 0 ? ` ${result.notes.join(" ")}` : "";
+  return { status: "ok", messages: [`${result.title} is live. ${result.from} stays in your theme library.${notes}`] };
+}
+
+/** Removes an installed theme that is not live (D241). */
+export async function removeThemeAction(storeSlug: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const member = await checkPermission(storeSlug, "website:write");
+  if (!member) return { status: "error", messages: [NO_ACCESS] };
+  const result = await removeInstall(member.store.id, String(formData.get("install") ?? ""), member.account.id);
+  if (!result.ok) return { status: "error", messages: result.problems };
+  refresh();
+  return { status: "ok", messages: [`${result.title} is removed from your theme library.`] };
 }
 
 /** Puts back the store's look from before its latest design profile (D176). */

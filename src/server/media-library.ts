@@ -307,6 +307,8 @@ export async function mediaUses(owner: MediaOwner, ids: string[]): Promise<Map<s
     select m.id, 'seo', null, null, null, null, true from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.seo::text`)}
     union all
     select m.id, 'theme', null, null, null, null, null from m join commerce.stores s on s.id = ${storeId}::uuid where ${found(sql`s.theme::text`)}
+    union all
+    select m.id, 'theme', null, null, null, null, null from m join commerce.store_theme_installs i on i.store_id = ${storeId}::uuid and i.look is not null where ${found(sql`i.look::text`)}
     `
         : sql`
     select m.id, 'navigation', null, null, null, null, true from m join commerce.platform_settings k on true where ${found(sql`k.navigation::text`)}

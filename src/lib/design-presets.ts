@@ -28,7 +28,7 @@ import { THEME_TEMPLATE_KEYS, themeSettingsSchema, type ThemeSettings, type Them
 /**
  * Design profiles (D176, `docs/design-profiles.md`): a frozen snapshot of a store's look, never its content, that the platform's admins
  * make from a store and that any store can apply. Called "design presets" in code so they are never confused with the builder's templates
- * (D125), page layouts (D127), store templates (`starters`, D175) or a store's themes (D60); "Design profiles" in the interface. Pure:
+ * (D125), page layouts (D127), store templates (`starters`, D175) or a store's saved themes (D60); "Themes" in the interface (D241). Pure:
  * shared by the platform's pages, the owner's design settings, the sign-up form, the preview and the tests.
  */
 

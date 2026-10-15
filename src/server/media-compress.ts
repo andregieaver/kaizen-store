@@ -224,6 +224,8 @@ export function rewriteAddresses(storeId: string | null, pairs: [string, string]
     json(sql`commerce.terms`, sql`seo`),
     json(sql`commerce.field_values`, sql`values`),
     json(sql`commerce.cart_reminder_steps`, sql`content`),
+    // The look a store's installed theme keeps while it is not live (D241): its theme and CSS name the same files.
+    ...(storeId ? [json(sql`commerce.store_theme_installs`, sql`look`, sql`look is not null`)] : []),
   ];
   const settings = storeId ? sql`commerce.stores` : sql`commerce.platform_settings`;
   const which = storeId ? sql`id = ${storeId}::uuid` : sql`true`;

@@ -812,14 +812,85 @@ export const designPresetUses = commerce.table(
     appliedAt: timestamp("applied_at", { withTimezone: true }).notNull().defaultNow(),
     restoredAt: timestamp("restored_at", { withTimezone: true }),
     restoredBy: uuid("restored_by").references(() => accounts.id),
+    /** The install this use made live (theme store phase 1, D241); null for a use from before installs, or once the install was removed. */
+    installId: uuid("install_id").references((): AnyPgColumn => storeThemeInstalls.id, { onDelete: "set null" }),
+    /** The install that was live before it, which *Put back the look from before* switches to while it is still installed. */
+    previousInstallId: uuid("previous_install_id").references((): AnyPgColumn => storeThemeInstalls.id, { onDelete: "set null" }),
   },
   (t) => [
+    index("design_preset_uses_install_idx").on(t.installId),
+    index("design_preset_uses_previous_install_idx").on(t.previousInstallId),
     index("design_preset_uses_store_idx").on(t.storeId, t.appliedAt),
     index("design_preset_uses_preset_idx").on(t.presetId),
     index("design_preset_uses_saved_theme_idx").on(t.savedThemeId),
     index("design_preset_uses_applied_by_idx").on(t.appliedBy),
     index("design_preset_uses_restored_by_idx").on(t.restoredBy),
     check("design_preset_uses_previous", sql`jsonb_typeof(${t.previous}) = 'object'`),
+  ],
+);
+
+/**
+ * The published versions of a theme (D241, `docs/theme-store.md` 5; a theme is a design profile, `design_presets`, in code): each Publish whose
+ * look differs from the version before adds one, numbered from 1, never edited or deleted (`design_preset_versions_rules()`). A store's
+ * install names the version it came from, so a later Publish never changes what a store has.
+ */
+export const designPresetVersions = commerce.table(
+  "design_preset_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    presetId: uuid("preset_id")
+      .notNull()
+      .references(() => designPresets.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    snapshot: jsonb("snapshot").notNull(),
+    publishedAt: timestamp("published_at", { withTimezone: true }).notNull().defaultNow(),
+    publishedBy: uuid("published_by").references(() => accounts.id),
+  },
+  (t) => [
+    uniqueIndex("design_preset_versions_number_idx").on(t.presetId, t.number),
+    index("design_preset_versions_published_by_idx").on(t.publishedBy),
+    check("design_preset_versions_number", sql`${t.number} >= 1`),
+    check(
+      "design_preset_versions_snapshot",
+      sql`jsonb_typeof(${t.snapshot}) = 'object' and ${t.snapshot} ->> 'v' = '1' and octet_length(${t.snapshot}::text) <= 2000000`,
+    ),
+  ],
+);
+
+/**
+ * The themes installed in a store (D241, `docs/theme-store.md` 4.5 and 5): several, one live. The live install's look is the store's own columns
+ * (`stores.theme`, `custom_css`, `header_id`, `footer_id`, `product_layout_id`), read as ever, so `look` is null for it; an install that is not live
+ * keeps its look in `look` (`InstalledLook`: the theme as stored, the chosen layouts' page ids and the CSS) until it is switched to. Every store
+ * has one from its first moment (a trigger on `stores`: *Custom*, `preset_id` null, the store's own look). Written only by
+ * `src/server/theme-installs.ts` and `applyDesignPreset()` (a scan test). Never copied with a store: a copy starts with its own *Custom*.
+ */
+export const storeThemeInstalls = commerce.table(
+  "store_theme_installs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id),
+    /** The theme it came from; null: *Custom*, the store's own look. */
+    presetId: uuid("preset_id").references(() => designPresets.id),
+    /** The version installed; null for *Custom* and for an unpublished theme tried on a store template. */
+    versionId: uuid("version_id").references(() => designPresetVersions.id),
+    title: text("title").notNull(),
+    look: jsonb("look"),
+    live: boolean("live").notNull().default(false),
+    installedBy: uuid("installed_by").references(() => accounts.id, { onDelete: "set null" }),
+    installedAt: timestamp("installed_at", { withTimezone: true }).notNull().defaultNow(),
+    /** When it was last made live or put away. */
+    switchedAt: timestamp("switched_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("store_theme_installs_live_idx").on(t.storeId).where(sql`${t.live}`),
+    index("store_theme_installs_store_idx").on(t.storeId, t.installedAt),
+    index("store_theme_installs_preset_idx").on(t.presetId),
+    index("store_theme_installs_version_idx").on(t.versionId),
+    index("store_theme_installs_installed_by_idx").on(t.installedBy),
+    check("store_theme_installs_title", sql`length(btrim(${t.title})) between 1 and 80`),
+    check("store_theme_installs_look", sql`(${t.live} and ${t.look} is null) or (not ${t.live} and coalesce(jsonb_typeof(${t.look}) = 'object', false))`),
   ],
 );
 

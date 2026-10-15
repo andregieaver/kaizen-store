@@ -23,7 +23,7 @@ export function DesignProfilePanel({
 }: {
   designs: PanelDesign[];
   /** The latest profile applied whose look from before can be put back. */
-  latest: { presetTitle: string; appliedAt: string; savedTheme: string | null } | null;
+  latest: { presetTitle: string; appliedAt: string; savedTheme: string | null; previousInstall?: string | null } | null;
   apply: ((state: FormState, formData: FormData) => Promise<FormState>) | null;
   restore: (() => Promise<FormState>) | null;
   canChange: boolean;
@@ -31,13 +31,17 @@ export function DesignProfilePanel({
   closedNote?: string;
 }) {
   return (
-    <Card title="Design profiles" description={<>A whole look made by Kaizena Flow: the theme (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before is kept so you can put it back.</>} className="flex flex-col gap-4" compact>
+    <Card title="Add a theme" description={<>A whole look made by Kaizena Flow: its settings (colours, fonts, buttons, corners, light and dark), a header, a footer, the product page layout and the site&apos;s CSS. Applying one never touches your products, pages, menus&apos; links, logo, name or business details, and your look from before stays in your theme library so you can switch back.</>} className="flex flex-col gap-4" compact>
       {!canChange && closedNote && <p className="text-sm">{closedNote}</p>}
       {latest && (
         <div className="flex flex-col gap-2 rounded-md border border-line p-3 text-sm">
           <p>
             Applied last: <strong>{latest.presetTitle}</strong> on {latest.appliedAt.slice(0, 10)}.
-            {latest.savedTheme && <> The theme from before is the saved theme “{latest.savedTheme}”.</>}
+            {latest.previousInstall ? (
+              <> The look from before is “{latest.previousInstall}” in your theme library.</>
+            ) : (
+              latest.savedTheme && <> The theme from before is the saved theme “{latest.savedTheme}”.</>
+            )}
           </p>
           {canChange && restore && (
             <ActionForm action={restore}>
@@ -47,7 +51,7 @@ export function DesignProfilePanel({
         </div>
       )}
       {designs.length === 0 ? (
-        <p className="text-sm text-muted">No design profiles are offered yet.</p>
+        <p className="text-sm text-muted">No themes are offered yet.</p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {designs.map((design) => (
@@ -70,12 +74,12 @@ export function DesignProfilePanel({
                     <div className="mt-2 flex flex-col gap-2">
                       <p>Applying {design.title}:</p>
                       <ul className="list-disc pl-5">
-                        <li>replaces the theme: colours, fonts, buttons, corners, product cards, light and dark;</li>
+                        <li>installs it and makes it live: colours, fonts, buttons, corners, product cards, light and dark;</li>
                         <li>adds its header, footer and product page layout as new pages and uses them (yours stay, unchosen);</li>
                         <li>replaces the store&apos;s custom CSS;</li>
                         <li>keeps your products, pages, menus, logo, name and business details as they are.</li>
                       </ul>
-                      <p>Your look now is kept as a saved theme named “Before {design.title}”, and you can put it all back here.</p>
+                      <p>Your look now stays in your theme library with every change you made to it, and you can switch back to it at any time.</p>
                       <ActionForm action={apply}>
                         <input type="hidden" name="design" value={design.id} />
                         <SubmitButton>Apply {design.title}</SubmitButton>

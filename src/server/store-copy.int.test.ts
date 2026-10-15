@@ -943,6 +943,8 @@ describe("a whole copy, run to the end", () => {
       ["document_series", 5],
       ["payment_providers", 1],
       ["store_members", 1],
+      // Its own look as its live theme (D241, `stores_first_install()`).
+      ["store_theme_installs", 1],
       ["audit_log", 2],
       ["inventory_movements", Number(openings.n)],
       // The warning state of each variant that has a level is worked out again from the copied figures (D172).

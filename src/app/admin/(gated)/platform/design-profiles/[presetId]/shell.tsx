@@ -30,7 +30,7 @@ export function DesignShell({
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        back={{ href: facts.archivedAt ? "/admin/platform/design-profiles?show=archived" : "/admin/platform/design-profiles", label: "Design profiles" }}
+        back={{ href: facts.archivedAt ? "/admin/platform/design-profiles?show=archived" : "/admin/platform/design-profiles", label: "Themes" }}
         title={shown.title}
         status={<LifecycleBadge facts={facts} />}
         meta={[

@@ -822,7 +822,7 @@ const PAGES: readonly AdminPage[] = [
     tasks: ["Publish a store template's changes", "Archive a store template", "Delete an unused store template"],
     keywords: ["draft", "archive", "restore", "delete template"],
   }),
-  platform("design-profiles", "/design-profiles", "Design profiles", "Platform", "A look kept to use again (D176, D177): theme, header, footer, product page layout and CSS, never content or brand. Make one from a store or from scratch, edit it on its own pages, publish, unpublish, archive, restore or delete it, order them and preview it; any store applies one from its Design settings and people creating a store choose one.", {
+  platform("design-profiles", "/design-profiles", "Themes", "Platform", "Kaizena Flow's themes (design profiles in code, D241): a look kept to use again (D176, D177): theme, header, footer, product page layout and CSS, never content or brand. Make one from a store or from scratch, edit it on its own pages, publish, unpublish, archive, restore or delete it, order them and preview it; any store applies one from its Design settings and people creating a store choose one.", {
     tasks: ["Make a design profile from a store", "Make a design profile from scratch", "Publish a design profile", "Preview a design profile", "Archive a design profile"],
     keywords: ["design template", "look", "theme preset", "style", "skin"],
   }),

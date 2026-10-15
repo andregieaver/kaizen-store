@@ -158,7 +158,7 @@ export async function applyDesignToStoreAction(storeSlug: string, _state: FormSt
   if (!result.ok) return { status: "error", messages: result.problems };
   for (const tag of designTags(store)) updateTag(tag);
   refresh();
-  return { status: "ok", messages: withNotes(`Applied. The look from before is kept as the saved theme “${result.savedTheme}” and can be put back.`, result.notes) };
+  return { status: "ok", messages: withNotes(`Applied. The look from before stays in the store's theme library as “${result.previous}” and can be put back.`, result.notes) };
 }
 
 /** Puts back the look a store had before its latest design profile, from its page on the platform. */

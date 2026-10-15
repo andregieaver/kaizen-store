@@ -22,7 +22,7 @@ import { requirePlatformAdmin } from "@/server/auth";
 import { Card, PageHeader } from "@/components/admin/ui";
 
 import { applyDesignToStoreAction, restoreDesignForStoreAction } from "../../design-profiles/actions";
-import { closeStoreForPlatformAction, reopenStoreForPlatformAction, suspendStoreAction } from "./actions";
+import { closeStoreForPlatformAction, detachDryRunAction, reopenStoreForPlatformAction, suspendStoreAction } from "./actions";
 
 export const metadata: Metadata = { title: "Store plan" };
 
@@ -276,6 +276,18 @@ export default async function PlatformStorePage({ params }: PageProps<"/admin/pl
         canChange={store.status === "active"}
         closedNote="The store is not open, so its look cannot be changed."
       />
+
+      {/* The page migration of docs/theme-store.md 4.4 (D241): a dry run only in phase 1. */}
+      <Card
+        title="Theme migration (dry run)"
+        description="How many settings on this store's pages only repeat its theme and would follow it once taken out, and how many are its own. Nothing is changed."
+        className="text-sm"
+        compact
+      >
+        <ActionForm action={detachDryRunAction.bind(null, store.id)}>
+          <SubmitButton variant="secondary">Count the settings</SubmitButton>
+        </ActionForm>
+      </Card>
 
       <Card title="People" className="text-sm" compact>
         {people.length === 0 ? (

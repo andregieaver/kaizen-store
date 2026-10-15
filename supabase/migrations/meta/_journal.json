@@ -2353,6 +2353,20 @@
       "when": 1792061258397,
       "tag": "20261015104738_kaizena_flow_rename",
       "breakpoints": true
+    },
+    {
+      "idx": 336,
+      "version": "7",
+      "when": 1792065233511,
+      "tag": "20261015115353_theme_installs",
+      "breakpoints": true
+    },
+    {
+      "idx": 337,
+      "version": "7",
+      "when": 1792065248114,
+      "tag": "20261015115408_theme_installs_rules",
+      "breakpoints": true
     }
   ]
 }

@@ -21,7 +21,7 @@ import {
   unpublishDesignAction,
 } from "./actions";
 
-export const metadata: Metadata = { title: "Design profiles" };
+export const metadata: Metadata = { title: "Themes" };
 
 const control = "min-h-10 rounded-md border border-line bg-card px-3 font-normal";
 const field = "flex flex-col gap-1 text-sm font-medium";
@@ -45,7 +45,7 @@ export default async function DesignProfilesPage({ searchParams }: PageProps<"/a
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Design profiles"
+        title="Themes"
         description={<>A look kept to use again: a theme (colours, fonts, buttons, corners, light and dark), a header and footer, a product page layout and CSS. Never a store&apos;s name, logos, business details, menus&apos; links, pages or products. Owners apply one from their store&apos;s Design settings, and people creating a store choose one after the store template. Applying keeps the store&apos;s look from before, so it can be put back. Every change is a draft until you publish it.</>}
       />
 

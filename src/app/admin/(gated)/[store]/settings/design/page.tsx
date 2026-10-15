@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 
 import { ActionForm, SubmitButton } from "@/components/admin/action-form";
 import { DesignProfilePanel } from "@/components/admin/design-profile-panel";
+import { ThemeLibrary } from "@/components/admin/theme-library";
 import { ThemeEditor } from "@/components/admin/theme-editor";
 import { designPreviewPath } from "@/lib/design-presets";
 import { latestDesignUse, listOfferedDesigns } from "@/server/design-presets";
 import { memberCan, requirePermission } from "@/server/permissions";
+import { listInstalls } from "@/server/theme-installs";
 import { listSavedThemes } from "@/server/themes";
 import { Card, PageHeader } from "@/components/admin/ui";
 
@@ -16,7 +18,9 @@ import {
   saveCartBehaviourAction,
   saveSavedThemeAction,
   saveThemeAction,
+  removeThemeAction,
   restoreDesignAction,
+  switchThemeAction,
 } from "./actions";
 
 export const metadata: Metadata = { title: "Design" };
@@ -25,7 +29,7 @@ export const metadata: Metadata = { title: "Design" };
 export default async function StoreDesignPage({ params, searchParams }: PageProps<"/admin/[store]/settings/design">) {
   const member = await requirePermission((await params).store, "website:read");
   const { store } = member;
-  const [saved, designs, latest] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id)]);
+  const [saved, designs, latest, installs] = await Promise.all([listSavedThemes(store.id), listOfferedDesigns(), latestDesignUse(store.id), listInstalls(store.id)]);
   // Design profiles (D176): applied by those who may change the website.
   const canChange = memberCan(member, "website:write");
   // A new store whose chosen design profile could not be applied lands here (`createStoreAction`).
@@ -34,14 +38,19 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Design"
-        description={<>How your store looks: choose a theme, change any of its settings, and save your own versions to switch between. Pages you build use it too.</>}
+        description={<>How your store looks: the themes installed in it, one of them live, and the live theme&apos;s settings. Pages you build use it too.</>}
       />
       {designFailed && (
         <p role="alert" className="max-w-3xl rounded-panel border border-line bg-card p-4 text-sm">
-          The store is made, but the design profile you chose could not be applied: it has its store template&apos;s look. Apply the
-          profile below, or choose another.
+          The store is made, but the theme you chose could not be applied: it has its store template&apos;s look. Add the theme below,
+          or choose another.
         </p>
       )}
+      <ThemeLibrary
+        installs={installs}
+        switchTo={canChange ? switchThemeAction.bind(null, store.slug) : null}
+        remove={canChange ? removeThemeAction.bind(null, store.slug) : null}
+      />
       <DesignProfilePanel
         designs={designs.map((d) => ({ ...d, previewHref: designPreviewPath(d.id) }))}
         latest={latest}
@@ -50,7 +59,7 @@ export default async function StoreDesignPage({ params, searchParams }: PageProp
         canChange={canChange}
       />
       <ThemeEditor
-        // A design profile applied or put back changes the theme under the editor: it starts again from the store's.
+        // A theme applied, switched to or put back changes the settings under the editor: it starts again from the store's.
         key={JSON.stringify(store.theme)}
         storeName={store.name}
         current={store.theme}

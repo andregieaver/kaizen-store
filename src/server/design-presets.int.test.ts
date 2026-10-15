@@ -230,13 +230,21 @@ describe("applying a design profile (D176)", () => {
     // The fonts were installed first.
     expect(fontsAsked.at(-1)).toEqual(expect.arrayContaining(["Playfair Display", "Lora"]));
 
-    // The look before: a saved theme, and the use that can put it back.
-    const ok = result as { savedTheme: string; useId: string };
-    expect(ok.savedTheme).toMatch(/^Before Nordic calm/);
-    const saved = await one(sql`select base, settings from commerce.store_themes where store_id = ${target.id}::uuid and name = ${ok.savedTheme}`);
-    expect(saved.settings).toEqual(parseStoreTheme(before.theme).settings);
-    const use = await one(sql`select previous, preset_id, applied_by from commerce.design_preset_uses where id = ${ok.useId}::uuid`);
-    expect(use).toMatchObject({ preset_id: presetId, applied_by: owner.id });
+    // The look before (D241): the install that was live, put away with the look as it was, no saved theme made; the profile is the live
+    // install, of its published version; and the use that can put it back.
+    const ok = result as { previous: string; useId: string; installId: string };
+    expect(ok.previous).toBe("Custom");
+    expect((await one(sql`select count(*)::int as n from commerce.store_themes where store_id = ${target.id}::uuid`)).n).toBe(0);
+    const put = await one(sql`select look, live from commerce.store_theme_installs where store_id = ${target.id}::uuid and not live`);
+    expect((put.look as { theme: unknown }).theme).toEqual(before.theme);
+    expect((put.look as { headerId: string }).headerId).toBe(target.oldHeader);
+    const live = await one(sql`
+      select i.id, i.title, i.preset_id, v.number from commerce.store_theme_installs i left join commerce.design_preset_versions v on v.id = i.version_id
+      where i.store_id = ${target.id}::uuid and i.live
+    `);
+    expect(live).toMatchObject({ id: ok.installId, title: `Nordic calm ${run}`, preset_id: presetId, number: 1 });
+    const use = await one(sql`select previous, preset_id, applied_by, install_id from commerce.design_preset_uses where id = ${ok.useId}::uuid`);
+    expect(use).toMatchObject({ preset_id: presetId, applied_by: owner.id, install_id: ok.installId });
     expect((use.previous as { headerId: string }).headerId).toBe(target.oldHeader);
     const audit = await one(sql`select area from commerce.audit_log where action = 'store.design_preset_applied' and store_id = ${target.id}::uuid`);
     expect(audit.area).toBe("website");
@@ -249,6 +257,9 @@ describe("applying a design profile (D176)", () => {
     expect(parseStoreTheme(store.theme).settings.light.accent).toBe(templateSettings("minimal").light.accent);
     expect(String(store.header_id)).toBe(target.oldHeader);
     expect(store.custom_css).toBe("");
+    // It switched back to the install that was live before: the profile's stays installed, put away (D241).
+    const installs = await db().execute<Row>(sql`select title, live from commerce.store_theme_installs where store_id = ${target.id}::uuid order by live desc`);
+    expect(installs.map((i) => [i.title, i.live])).toEqual([["Custom", true], [`Nordic calm ${run}`, false]]);
     expect(await designs.restoreDesignLook(target.id, owner.id)).toEqual({ ok: false, problems: ["There is no look from before to put back."] });
   });
 
@@ -436,6 +447,11 @@ describe("a design profile's workspace and its draft (D177)", () => {
     expect((await designs.listOfferedDesigns()).find((d) => d.id === scratch)?.title).toBe(`Scratch ${run}`);
 
     expect(await designs.publishDesign(admin, scratch)).toMatchObject({ ok: true });
+    // Each Publish of a different look is a new version (D241); publishing the same look again adds none.
+    const versions = async () => (await db().execute<Row>(sql`select number from commerce.design_preset_versions where preset_id = ${scratch}::uuid order by number`)).map((v) => v.number);
+    expect(await versions()).toEqual([1, 2]);
+    expect(await designs.publishDesign(admin, scratch)).toMatchObject({ ok: true });
+    expect(await versions()).toEqual([1, 2]);
     const after = (await designs.getDesign(scratch))!;
     expect(await designs.designChanged(after)).toBe(false);
     expect(after).toMatchObject({ title: `Scratch bold ${run}`, draft: null });

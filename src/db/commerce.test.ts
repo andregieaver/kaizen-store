@@ -5020,10 +5020,10 @@ describe("duplicating a store (D129)", () => {
        where n.nspname = 'commerce' and c.relkind = 'r'
          and exists (select 1 from pg_attribute a where a.attrelid = c.oid and a.attname = 'store_id' and not a.attisdropped)`,
     );
-    // Made for every store on its own: numbering, the payment provider row, the owner as member.
+    // Made for every store on its own: numbering, the payment provider row, the owner as member, its own look as its live theme (D241).
     // The level inserts write the copy's own opening movements (wave 3): one for each level that holds stock.
     const openings = await scalar<number>("select count(*)::int from commerce.inventory_levels where store_id = $1 and on_hand <> 0", [copy]);
-    const made = new Map([["document_series", 5], ["payment_providers", 1], ["store_members", 1], ["inventory_movements", openings]]);
+    const made = new Map([["document_series", 5], ["payment_providers", 1], ["store_members", 1], ["store_theme_installs", 1], ["inventory_movements", openings]]);
     for (const { relname } of tables) {
       const rule = COPY_RULES[relname];
       if (rule.group === "never") expect([relname, await count(relname, copy)]).toEqual([relname, made.get(relname) ?? 0]);

@@ -170,3 +170,78 @@ describe("the life of a design profile (D177)", () => {
     await refused("insert into commerce.store_starters (store_id, title, category) values ($1, 'W', 'other')", [workspace], /store_starters\.not_starter/);
   });
 });
+
+describe("themes installed in a store (D241)", () => {
+  async function newStore(slug: string): Promise<string> {
+    const { id } = await one<{ id: string }>("insert into commerce.stores (slug, name) values ($1, $1) returning id", [slug]);
+    return id;
+  }
+  const LOOK = JSON.stringify({ theme: {}, headerId: null, footerId: null, productLayoutId: null, css: "" });
+
+  it("start with the store's own look as its live Custom install, one live at a time", async () => {
+    const id = await newStore("installs-one");
+    const rows = (await db.query<{ title: string; live: boolean; look: unknown; preset_id: string | null }>(
+      "select title, live, look, preset_id from commerce.store_theme_installs where store_id = $1",
+      [id],
+    )).rows;
+    expect(rows).toEqual([{ title: "Custom", live: true, look: null, preset_id: null }]);
+    await refused("insert into commerce.store_theme_installs (store_id, title, live) values ($1, 'Second', true)", [id], /store_theme_installs_live_idx|duplicate/);
+    // The live one keeps its look in the store's columns; any other keeps it in the row.
+    await refused("insert into commerce.store_theme_installs (store_id, title) values ($1, 'No look')", [id], /store_theme_installs_look/);
+    await refused("update commerce.store_theme_installs set look = $2::jsonb where store_id = $1 and live", [id, LOOK], /store_theme_installs_look/);
+    await db.query("insert into commerce.store_theme_installs (store_id, title, look) values ($1, 'Put away', $2::jsonb)", [id, LOOK]);
+  });
+
+  it("keep what they came from, and the live one is never removed", async () => {
+    const id = await newStore("installs-two");
+    const presetId = await preset("Installed");
+    const { id: put } = await one<{ id: string }>(
+      "insert into commerce.store_theme_installs (store_id, preset_id, title, look) values ($1, $2, 'Installed', $3::jsonb) returning id",
+      [id, presetId, LOOK],
+    );
+    await refused("update commerce.store_theme_installs set preset_id = null where id = $1", [put], /store_theme_installs.fixed/);
+    await refused("update commerce.store_theme_installs set store_id = $2 where id = $1", [put, store], /store_theme_installs.fixed/);
+    await refused("delete from commerce.store_theme_installs where store_id = $1 and live", [id], /store_theme_installs.live/);
+    // Switching: the live one is put away with its look, the other made live without one, in one go.
+    await db.query("begin");
+    await db.query("update commerce.store_theme_installs set live = false, look = $2::jsonb where store_id = $1 and live", [id, LOOK]);
+    await db.query("update commerce.store_theme_installs set live = true, look = null where id = $1", [put]);
+    await db.query("commit");
+    await db.query("delete from commerce.store_theme_installs where store_id = $1 and not live", [id]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.store_theme_installs where store_id = $1", [id])).n).toBe(1);
+    // A theme a store has installed is not deleted.
+    await refused("delete from commerce.design_presets where id = $1", [presetId], /foreign key|store_theme_installs/);
+  });
+
+  it("are named by a use, which loses the install's id only when it is removed", async () => {
+    const id = await newStore("installs-three");
+    const presetId = await preset("Used again");
+    const { id: install } = await one<{ id: string }>(
+      "insert into commerce.store_theme_installs (store_id, preset_id, title, look) values ($1, $2, 'Used again', $3::jsonb) returning id",
+      [id, presetId, LOOK],
+    );
+    const { id: use } = await one<{ id: string }>(
+      `insert into commerce.design_preset_uses (store_id, preset_id, previous, previous_install_id) values ($1, $2, '{}'::jsonb, $3) returning id`,
+      [id, presetId, install],
+    );
+    await refused("update commerce.design_preset_uses set install_id = $2 where id = $1", [use, install], /design_preset_uses.fixed/);
+    await db.query("delete from commerce.store_theme_installs where id = $1", [install]);
+    expect((await one<{ p: string | null }>("select previous_install_id as p from commerce.design_preset_uses where id = $1", [use])).p).toBeNull();
+  });
+});
+
+describe("a theme's versions (D241)", () => {
+  it("are never changed, are numbered from 1 once each, and go only with their theme", async () => {
+    const presetId = await preset("Versioned");
+    const { id } = await one<{ id: string }>(
+      "insert into commerce.design_preset_versions (preset_id, number, snapshot) values ($1, 1, $2::jsonb) returning id",
+      [presetId, SNAPSHOT],
+    );
+    await refused("update commerce.design_preset_versions set snapshot = $2::jsonb where id = $1", [id, SNAPSHOT.replace("minimal", "bold")], /design_preset_versions.fixed/);
+    await refused("delete from commerce.design_preset_versions where id = $1", [id], /design_preset_versions.kept/);
+    await refused("insert into commerce.design_preset_versions (preset_id, number, snapshot) values ($1, 1, $2::jsonb)", [presetId, SNAPSHOT], /design_preset_versions_number_idx|duplicate/);
+    await refused("insert into commerce.design_preset_versions (preset_id, number, snapshot) values ($1, 0, $2::jsonb)", [presetId, SNAPSHOT], /design_preset_versions_number/);
+    await db.query("delete from commerce.design_presets where id = $1", [presetId]);
+    expect((await one<{ n: number }>("select count(*)::int as n from commerce.design_preset_versions where preset_id = $1", [presetId])).n).toBe(0);
+  });
+});
